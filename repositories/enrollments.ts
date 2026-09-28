@@ -134,7 +134,9 @@ export async function findStudiosAttended(supabase: SupabaseClient, userId: stri
   const out: Tenant[] = [];
   for (const row of (data ?? []) as unknown as Array<{ businesses: TenantRow | null }>) {
     const b = row.businesses;
-    if (!b || seen.has(b.id) || b.type === "org") continue;
+    /* the `type === "org"` skip went with organizations (29 Sep 2026) — nobody
+       ever booked a class at one, so it excluded nothing it still needed to */
+    if (!b || seen.has(b.id)) continue;
     seen.add(b.id);
     out.push(toTenant(b));
   }

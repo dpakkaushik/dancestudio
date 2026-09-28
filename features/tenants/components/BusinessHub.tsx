@@ -23,7 +23,6 @@ import { publicProfilePath } from "@/lib/routes/publicProfile";
 import { priceWords, type PlanCatalogRow } from "@/repositories/plans";
 import type { StudioSubscriptionState } from "@/repositories/subscriptions";
 import type { MyMembership } from "@/repositories/tenants";
-import type { ProfileRole } from "@/types/profile";
 import { DOS_TOOLS, SHEET_ANIMATION, dosToolPaint } from "./biz-kit";
 
 /* Icons lifted from the prototype (DanceOSApp.jsx:3136-3142). */
@@ -117,7 +116,6 @@ export function BusinessHub({
   memberships,
   /** live rooms per owned tenant id — the "· N rooms" half of the sub-line (2655) */
   roomCounts,
-  role,
   isArtist,
   whyNoStudio,
   studioSubscriptions = {},
@@ -130,10 +128,12 @@ export function BusinessHub({
   memberships: MyMembership[];
   /** THE STUDIOS YOU HAVE TAKEN CLASSES AT (18 Sep 2026, the user's Home grid:
    *  a person's Studios tile lists them) — every business behind one of your
-   *  bookings, once each. A person's list; an organization books nothing. */
+   *  bookings, once each. */
   attended?: MyMembership["tenant"][];
   roomCounts: Record<string, number>;
-  role: ProfileRole;
+  /* ⚠ `role` went on 29 Sep 2026 with organizations: it only ever separated an
+     organization's hub from a person's, and `ProfileRole` is `"user"` alone now
+     — a prop nobody reads is a lie to the next reader. */
   /** the plan is live — decides which empty-state sentence a person reads (the
    *  page itself is provisioned on Home since 18 Sep 2026, not opened here) */
   isArtist: boolean;
@@ -242,9 +242,9 @@ export function BusinessHub({
   /* system back closes the sheet that is open, exactly as tapping the scrim does */
   useCloseOnBack(() => setSheetOpen(false), sheetOpen);
 
-  /* ⚠ NEVER TRUE SINCE 26 Sep 2026: the organization login is retired and `role`
-     is `user` for everybody; the two branches below keep reading as a decision */
-  const isOrg = role === "org";
+  /* ⚠ `isOrg` went with organizations (29 Sep 2026). It had been unreachable
+     since R48 retired the login on 26 Sep, and its three branches are gone with
+     it — every reader of this hub is a person. */
   const mine = memberships.filter((m) => m.memberRole === "owner").map((m) => m.tenant);
   const theirs = memberships.filter((m) => m.memberRole !== "owner").map((m) => m.tenant);
   const myStudios = mine.filter((t) => t.type === "studio");
@@ -532,9 +532,7 @@ export function BusinessHub({
               <div style={{ fontSize: 11.5, color: SUB, padding: "0 2px 10px" }}>
                 {gateShut
                   ? "No studios yet. One studio = one location; add another for each branch."
-                  : isOrg
-                    ? "No studios yet — the button above opens the first. One studio = one location; add another for each branch."
-                    : "No studios yet — the button above opens one. DanceOS verifies it, then its own subscription puts it on Discover; you run it from the profile switcher."}
+                  : "No studios yet — the button above opens one. DanceOS verifies it, then its own subscription puts it on Discover; you run it from the profile switcher."}
               </div>
             )}
 
@@ -566,13 +564,13 @@ export function BusinessHub({
             {theirs.map((t) => plainCard(t))}
           </div>
         )}
-        {!isOrg && learnt.length > 0 && (
+        {learnt.length > 0 && (
           <div style={{ marginTop: 20 }}>
             <Head>STUDIOS YOU HAVE LEARNT AT</Head>
             {learnt.map((t) => plainCard(t))}
           </div>
         )}
-        {!isOrg && learnt.length === 0 && theirs.length === 0 ? (
+        {learnt.length === 0 && theirs.length === 0 ? (
           <div style={{ fontSize: 11.5, color: SUB, padding: "14px 2px 0" }}>
             {isArtist
               ? "The studios you teach at and learn at will be listed here — teach a class at one, or book one."

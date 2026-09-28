@@ -5,10 +5,12 @@
 # to see; nobody is put on a roster without saying yes (only the person asked
 # answers); every write is an RPC (no direct inserts); the leader alone asks,
 # withdraws, removes, promotes, hands the crew over and arranges the roster; a
-# member may leave but the leader cannot; and the two things Step 21 left
-# waiting - a crew entry is made by the crew's LEADER from a crew they lead, and
-# a duet partner is a PERSON on DanceOS who is asked and answers - hold at the
-# database, with the crew's entries readable as its public battle record.
+# member may leave but the leader cannot.
+#
+# !! THE TWO THINGS STEP 21 LEFT WAITING - a crew entry made by the crew's LEADER
+# from a crew they lead, and a duet partner who is a PERSON on DanceOS, asked and
+# answering - were checks 10-13 here and went with events on 29 Sep 2026. They
+# needed an event, and an event needed an organization to host it.
 #
 # Reads keys from .env.local - run from the repo root:
 #   powershell -File scripts/rls-proof-crews.ps1
@@ -76,8 +78,6 @@ function Count-Of($headers, $crewId) {
   if ($rows.Count -eq 0) { return $null }
   return [int]$rows[0].members
 }
-$in10 = (Get-Date).AddDays(10).ToString("yyyy-MM-dd")
-
 $pass = $true
 $stamp = Get-Date -Format "HHmmss"
 $lead = New-EmailUser "crew-lead-$stamp@example.com" "Crew Lead $stamp" "user"
@@ -87,7 +87,6 @@ $out = New-EmailUser "crew-out-$stamp@example.com" "Outsider $stamp" "user"
 $owner = New-EmailUser "crew-owner-$stamp@example.com" "Owner $stamp" "user"
 $ta = New-Studio $owner.token "Crew Proof Studio $stamp" "Kothrud" "Pune"
 Subscribe-Studio ([string]$ta.id)
-$orgA = $null
 
 try {
   # 1. CREATE: the leader is on the roster confirmed; everyone named is ASKED, not written
@@ -169,62 +168,30 @@ try {
   Check 9 "Leader cannot leave ($leaderLeaves); bystander cannot remove ($outRemoves); M2 left -> count $c2; leader reorders -> first row is M1: $($ordered[0].user_id -eq $m1.id)" (
     ($leaderLeaves -match "cannot leave") -and ($outRemoves -match "leader") -and ($c2 -eq 2) -and ($ordered[0].user_id -eq $m1.id))
 
-  # 10. STEP 21's DEBT, PART ONE - a crew entry is the LEADER's, from a crew they lead
-  # R15 (10 Sep 2026): an event belongs to the ORGANIZATION, never to one of its studios; save_event
-  # refuses a studio outright. 26 Sep 2026: the organization is a BUSINESS the owner opens (the login
-  # is retired), with its OWN GST number and its own mandate - which is what lets a stranger read the
-  # crew's battle record on it below (org_is_public).
-  $orgA = [string](New-Org $owner.token "Crew Proof Org $stamp" "Pune").id
-  Verify-Org-Gst $owner.token $orgA "CRW$((Get-Date -Format 'HHmmss').Substring(1))" | Out-Null
-  Subscribe-Org $orgA
-  $ev = Rpc (Api $owner.token) "save_event" @{ p_business_id = $orgA; p_event_id = $null; p_event = @{
-    category = "battle"; title = "Crew Battle $stamp"; style = "All styles"; start_date = $in10; end_date = $in10; start_time = "18:00"
-    venue = "Proof Hall"; address = "Kothrud"; city = "Pune"; maps_url = "https://maps.google.com/?q=Proof+Hall"; about = "Proof"
-    entry_format = "mixed"; bracket = 16; rounds = 0; prizes = @(); tickets_on = $false; ticket_tiers = @()
-    entry_tiers = @(@{ format = "crew"; fee_inr = 0; capacity = 8 }, @{ format = "duo"; fee_inr = 0; capacity = 8 }) } }
-  Rpc (Api $owner.token) "publish_event" @{ p_event_id = $ev } | Out-Null
-  $noCrew = Fails { Rpc (Api $lead.token) "book_event" @{ p_event_id = $ev; p_kind = "participant"; p_format = "crew" } }
-  $m1Enters = Fails { Rpc (Api $m1.token) "book_event" @{ p_event_id = $ev; p_kind = "participant"; p_format = "crew"; p_crew_id = $crew.id } }
-  $entry = Rpc (Api $lead.token) "book_event" @{ p_event_id = $ev; p_kind = "participant"; p_format = "crew"; p_crew_id = $crew.id }
-  $twice = Fails { Rpc (Api $lead.token) "book_event" @{ p_event_id = $ev; p_kind = "participant"; p_format = "crew"; p_crew_id = $crew.id } }
-  Check 10 "Crew entry without a crew refused ($noCrew); a member who does not lead it refused ($m1Enters); the leader enters as '$($entry.entrant_name)' (crew_id set: $($entry.crew_id -eq $crew.id)); twice refused ($twice)" (
-    ($noCrew -match "pick the crew") -and ($m1Enters -match "leads") -and ($entry.entrant_name -eq "Proof Crew $stamp") -and ($entry.crew_id -eq $crew.id) -and ($twice -match "already"))
+  # !! CHECKS 10-13 WENT WITH EVENTS (29 Sep 2026, the user: "remove Organization
+  # and Events completely"). They were STEP 21's two debts, paid by Step 22: a
+  # crew entry is the LEADER's from a crew they lead (10), a stranger reads the
+  # crew's battle record and no other booking on the event (11), a duet partner
+  # is a PERSON on DanceOS rather than a typed name (12), and only that person
+  # answers the ask (13). Every one of them needed an event to exist, and an event
+  # needed an organization to host it - so the whole block went, together with the
+  # three-step org world (New-Org / Verify-Org-Gst / Subscribe-Org) it stood on.
+  #
+  # !! WHAT A CREW LOSES IS A RECORD OF WHAT IT COMPETED IN. What it keeps is
+  # everything checks 1-9 and 10 below are about: a roster answered by consent, a
+  # leader who cannot leave, the order its public page prints, and the hub's two
+  # lists. `event_bookings.crew_id` and `.partner_id` are still columns; nothing
+  # writes them.
 
-  # 11. THE BATTLE RECORD IS PUBLIC: a stranger reads the crew's entry and no other booking
-  $anonEntries = Get-Rows $anonH "event_bookings?crew_id=eq.$($crew.id)&status=eq.booked&deleted_at=is.null&select=id,entrant_name,events(title)"
-  $anonAll = Get-Rows $anonH "event_bookings?event_id=eq.$ev&select=id"
-  Check 11 "A stranger reads the crew's $($anonEntries.Count) entry ('$($anonEntries[0].events.title)') and $($anonAll.Count) booking on the event in all (only the crew's)" (
-    ($anonEntries.Count -eq 1) -and ($anonEntries[0].events.title -eq "Crew Battle $stamp") -and ($anonAll.Count -eq 1))
-
-  # 12. STEP 21's DEBT, PART TWO - a duet partner is a PERSON on DanceOS, asked
-  $typed = Fails { Rpc (Api $m1.token) "book_event" @{ p_event_id = $ev; p_kind = "participant"; p_format = "duo"; p_partner_name = "Somebody" } }
-  $selfP = Fails { Rpc (Api $m1.token) "book_event" @{ p_event_id = $ev; p_kind = "participant"; p_format = "duo"; p_partner_id = $m1.id } }
-  $duo = Rpc (Api $m1.token) "book_event" @{ p_event_id = $ev; p_kind = "participant"; p_format = "duo"; p_partner_id = $m2.id }
-  Check 12 "A typed partner refused ($typed); yourself refused ($selfP); M1 enters with '$($duo.partner_name)' - partner_id set: $($duo.partner_id -eq $m2.id), status $($duo.partner_status)" (
-    ($typed -match "needs your partner") -and ($selfP -match "somebody else") -and ($duo.partner_name -eq "Member Two $stamp") -and ($duo.partner_id -eq $m2.id) -and ($duo.partner_status -eq "asked"))
-
-  # 13. THE PARTNER READS THE ENTRY THAT NAMES THEM AND ANSWERS IT; nobody else can
-  $m2Sees = Get-Rows (Api $m2.token) "event_bookings?partner_id=eq.$($m2.id)&select=id,partner_status"
-  $outSees = Get-Rows (Api $out.token) "event_bookings?id=eq.$($duo.id)&select=id"
-  $outAnswers2 = Fails { Rpc (Api $out.token) "respond_to_partner_ask" @{ p_booking_id = $duo.id; p_accept = $true } }
-  $m1Answers = Fails { Rpc (Api $m1.token) "respond_to_partner_ask" @{ p_booking_id = $duo.id; p_accept = $true } }
-  Rpc (Api $m2.token) "respond_to_partner_ask" @{ p_booking_id = $duo.id; p_accept = $true } | Out-Null
-  $duoNow = (Get-Rows (Api $m1.token) "event_bookings?id=eq.$($duo.id)&select=partner_status")[0]
-  $again2 = Fails { Rpc (Api $m2.token) "respond_to_partner_ask" @{ p_booking_id = $duo.id; p_accept = $false } }
-  Check 13 "M2 reads $($m2Sees.Count) entry naming them; a bystander reads $($outSees.Count) and cannot answer ($outAnswers2); the entrant cannot answer for them ($m1Answers); M2 confirms -> $($duoNow.partner_status); twice refused ($again2)" (
-    ($m2Sees.Count -eq 1) -and ($outSees.Count -eq 0) -and ($outAnswers2 -match "not found") -and ($m1Answers -match "not found") -and ($duoNow.partner_status -eq "confirmed") -and ($again2 -match "already answered"))
-
-  # 14. THE HUB'S TWO LISTS come off real rows: the leader leads 1 and is in 0; M1 leads 0 and is in 1
+  # 10. THE HUB'S TWO LISTS come off real rows: the leader leads 1 and is in 0; M1 leads 0 and is in 1
   $leadLeads = Get-Rows (Api $lead.token) "crews?leader_id=eq.$($lead.id)&deleted_at=is.null&select=id"
   $m1In = Get-Rows (Api $m1.token) "crew_members?user_id=eq.$($m1.id)&status=eq.confirmed&role=neq.leader&deleted_at=is.null&select=id"
   $leadIn = Get-Rows (Api $lead.token) "crew_members?user_id=eq.$($lead.id)&status=eq.confirmed&role=neq.leader&deleted_at=is.null&select=id"
-  Check 14 "Leader: leads $($leadLeads.Count), in $($leadIn.Count); M1: in $($m1In.Count)" (
+  Check 10 "Leader: leads $($leadLeads.Count), in $($leadIn.Count); M1: in $($m1In.Count)" (
     ($leadLeads.Count -eq 1) -and ($leadIn.Count -eq 0) -and ($m1In.Count -eq 1))
 }
 finally {
   Invoke-RestMethod -Method Delete -Uri "$base/rest/v1/businesses?id=eq.$($ta.id)" -Headers $svcH | Out-Null
-  # the org business goes BEFORE its owner (26 Sep 2026), like the studio
-  if ($orgA) { try { Invoke-RestMethod -Method Delete -Uri "$base/rest/v1/businesses?id=eq.$orgA" -Headers $svcH | Out-Null } catch {} }
   foreach ($u in @($lead, $m1, $m2, $out, $owner)) {
     Invoke-RestMethod -Method Delete -Uri "$base/auth/v1/admin/users/$($u.id)" -Headers $adminH | Out-Null
   }

@@ -10,10 +10,15 @@
  *  the RULE below is the part that can be wrong in a way nothing on screen would
  *  show, and a pure module is the only kind a proof can call directly. */
 
-/* the five grids, matching the migration's own comment exactly. Kept as a local
-   union rather than imported from `home-kit` so the dependency runs one way:
-   the kit reads this file, this file reads nothing. */
-export type GridKind = "user" | "artist" | "org" | "studio" | "crew";
+/* the grids, matching the migration's own comment. Kept as a local union rather
+   than imported from `home-kit` so the dependency runs one way: the kit reads
+   this file, this file reads nothing.
+   ⚠ `org` went with organizations on 29 Sep 2026. **Nothing is migrated and
+   nothing is lost**: `profiles.layout` is keyed by grid, so a stored
+   `tools:org:{id}` is simply a key no screen asks for any more — the same
+   harmless leftover the arrangement rule already tolerates for a tile that no
+   longer exists (C56). */
+export type GridKind = "user" | "artist" | "studio" | "crew";
 
 /** ⚠ THE SAME SHAPE THE DATABASE'S CHECK ENFORCES (`^[a-z][a-z0-9_:-]{0,79}$`).
  *  It is repeated here on purpose rather than trusted: the RPC would refuse a bad
@@ -21,7 +26,7 @@ export type GridKind = "user" | "artist" | "org" | "studio" | "crew";
  *  drag is a worse way to learn than never sending it. */
 const KEY = /^[a-z][a-z0-9_:-]{0,79}$/;
 
-/** WHICH GRID THIS IS — `tools:user`, `tools:artist`, `tools:org`,
+/** WHICH GRID THIS IS — `tools:user`, `tools:artist`,
  *  `tools:studio:{business id}`, `tools:crew:{crew id}`.
  *
  *  ⚠ A studio's and a crew's grid are keyed BY THAT ENTITY, so two people on one
@@ -33,11 +38,8 @@ const KEY = /^[a-z][a-z0-9_:-]{0,79}$/;
  *  the caller simply draws the code's order instead of sending something the
  *  database would refuse. */
 export function toolsLayoutKey(kind: GridKind, id?: string | null): string | null {
-  /* ⚠ AN ORGANIZATION'S GRID IS KEYED BY THE ORGANIZATION SINCE 26 Sep 2026
-     (`tools:org:{business id}`), because an organization is a business a person
-     opens now — one account can own several, each arranged on its own — where
-     `tools:org` was the retired organization LOGIN's one grid. No id, no key. */
-  if (kind === "studio" || kind === "crew" || kind === "org") {
+  /* no id, no key */
+  if (kind === "studio" || kind === "crew") {
     const at = (id ?? "").trim().toLowerCase();
     if (!at) return null;
     const key = `tools:${kind}:${at}`;

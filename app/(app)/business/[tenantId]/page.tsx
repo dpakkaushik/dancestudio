@@ -2,7 +2,6 @@ import { redirect } from "next/navigation";
 import type { Tile } from "@/features/home/components/home-kit";
 import { toolsLayoutKey } from "@/features/home/toolOrder";
 import { DOS_TOOLS } from "@/features/tenants/components/biz-kit";
-import { OrgHome } from "@/features/tenants/components/OrgHome";
 import { StudioHome } from "@/features/tenants/components/StudioHome";
 import { photoUrl } from "@/lib/media/photo";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
@@ -20,12 +19,9 @@ import { findMyMemberships, runsTheBusiness } from "@/repositories/tenants";
    Live badge is arithmetic over the moment the page was served */
 const stampNowIso = (): string => new Date().toISOString();
 
-/** /business/{tenantId} — ONE STUDIO'S HOME (14 Sep 2026), AND SINCE 26 Sep 2026
- *  ONE ORGANIZATION'S. The hub row used to open the classes register; it opens
- *  this now, and the register is one of the tools. An artist page's desk IS its
- *  register, so that address redirects. ⚠ An `org` row used to redirect to its
- *  events desk, because it was the retired organization login's hosting row;
- *  an organization is a business a person opens now, with a home of its own. */
+/** /business/{tenantId} — ONE STUDIO'S HOME (14 Sep 2026). The hub row used to
+ *  open the classes register; it opens this now, and the register is one of the
+ *  tools. An artist page's desk IS its register, so that address redirects. */
 export default async function StudioHomePage({ params, searchParams }: { params: Promise<{ tenantId: string }>; searchParams: Promise<Record<string, string | undefined>> }) {
   const { tenantId } = await params;
   /* ⚠ `?edit=1` — Settings' "Edit studio" navigates here with it (22 Sep 2026),
@@ -65,63 +61,12 @@ export default async function StudioHomePage({ params, searchParams }: { params:
   const { tenant, memberRole } = membership;
   const isOwner = memberRole === "owner";
 
-  if (tenant.type === "org") {
-    /* ── AN ORGANIZATION'S HOME (26 Sep 2026) ── */
-    const [photos, row, followerCounts, toolOrder, myCounts] = await Promise.all([
-      /* its header pictures — `studio_photos` rows in the private bucket, the same
-         read a studio's home makes; the owner and, once public, anyone may sign them */
-      findStudioProofPhotos(supabase, tenantId),
-      /* the row as the Edit sheet reads it — the owner's pencil, and everybody's
-         "Since": an RLS read of one row the member already owns a seat on */
-      findPublicTenant(supabase, tenantId).catch(() => null),
-      findFollowerCounts(supabase, [tenantId]).catch(() => new Map<string, number>()),
-      /* keyed by the ORGANIZATION (`tools:org:{id}`): one account may own several */
-      findMyToolOrder(supabase, user.id, toolsLayoutKey("org", tenantId)),
-      /* ⚠ WHAT THE ACCOUNT THAT RUNS IT FOLLOWS (27 Sep 2026, the user:
-         "following section for organization and crews is missing on home") — the
-         figure a studio's home has carried since 20 Sep, and this one did not.
-         A business follows nothing of its own, so the honest number is its
-         OWNER's, which is what `StudioHome`'s own note says at length. Null
-         draws no figure; it never reads as 0. */
-      findPersonFollowerCounts(supabase, [user.id]).catch(() => new Map()),
-    ]);
-    /* AN ORGANIZATION'S GRID: Events · Team · Earnings · Assets · Subscription —
-       the owner's alone where the desk behind the tile is the owner's, so a door
-       that would be refused is not offered */
-    const desk = (path: string) => `/business/${tenantId}/${path}`;
-    const tiles: Tile[] = [
-      { name: DOS_TOOLS.events.name, href: desk("events"), k: "events", c: DOS_TOOLS.events.c },
-      /* ⚠ AN ORGANIZATION TAKES ENQUIRIES TOO (27 Sep 2026) — `send_enquiry` has
-         admitted an org host since 19 Sep for celebration · corporate · collab,
-         and until today the only door was the bar's tab. Every member, for the
-         same reason as a studio's; `?as=` names which organization. */
-      { name: DOS_TOOLS.enquiries.name, href: `/enquiries?as=${encodeURIComponent(tenantId)}`, k: "enquiries", c: DOS_TOOLS.enquiries.c },
-      ...(isOwner
-        ? ([
-            { name: DOS_TOOLS.team.name, href: desk("team"), k: "team", c: DOS_TOOLS.team.c },
-            { name: DOS_TOOLS.earn.name, href: desk("earnings"), k: "earn", c: DOS_TOOLS.earn.c },
-            { name: DOS_TOOLS.assets.name, href: desk("assets"), k: "assets", c: DOS_TOOLS.assets.c },
-            { name: DOS_TOOLS.subscription.name, href: desk("subscription"), k: "subscription", c: DOS_TOOLS.subscription.c },
-          ] as Tile[])
-        : []),
-    ];
-    return (
-      <OrgHome
-        tenant={tenant}
-        photo={photoUrl(tenant.photoPath)}
-        canEditPhoto={isOwner || memberRole === "trainer"}
-        header={photos}
-        ownerId={isOwner ? user.id : null}
-        editable={isOwner ? row : null}
-        since={row?.createdAt ?? null}
-        editOpen={editOpen}
-        followers={followerCounts.get(tenantId) ?? 0}
-        followingN={isOwner ? (myCounts.get(user.id)?.following ?? null) : null}
-        tiles={tiles}
-        order={toolOrder}
-      />
-    );
-  }
+  /* ⚠⚠ THE ORGANIZATION'S HOME WENT WITH ORGANIZATIONS (29 Sep 2026, the user:
+     "remove Organization and Events completely"). It was this route's first
+     branch from 26 Sep — `OrgHome`, its own tool grid (Events · Enquiries ·
+     Team · Earnings · Assets · Subscription) and its own five reads — and
+     before that an `org` row redirected here to its events desk, because it was
+     the retired organization login's hosting row. There is no such row now. */
   if (tenant.type !== "studio") {
     /* an artist page's register is the Manage segment of Your classes — ONE hop
        (19 Sep 2026): the old two-hop chain through /classes left a URL in the

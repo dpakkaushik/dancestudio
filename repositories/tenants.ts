@@ -24,15 +24,19 @@ export interface TenantRow {
   contact_email?: string | null;
   styles?: string[] | null;
   member_no?: number | null;
-  gstin?: string | null;
-  gstin_verified_at?: string | null;
 }
 
 /* ⚠ `about` LEFT on 20 Sep 2026 (`20260920160000_the_bio_is_gone`) — selecting a
-   dropped column would fail every business read. `events.about` is untouched.
-   `gstin` and `gstin_verified_at` ARRIVED on 26 Sep 2026 (`20260926120000`): an
-   organization's GST number is the business row's now. */
-export const TENANT_COLUMNS = "id, type, name, area, city, profile_photo_path, founded_year, phone, socials, enquiry_types, accepts_upi, accepts_cards, accepts_cash, accepts_bank, verified_at, location_set_at, contact_email, styles, member_no, gstin, gstin_verified_at";
+   dropped column would fail every business read.
+   ⚠⚠ `gstin` / `gstin_verified_at` LEFT THIS SELECT on 29 Sep 2026 with
+   organizations, and it is the SAME rule read forwards rather than backwards:
+   nothing maps them any more, and if the removal's migration ever drops the two
+   columns, a select still naming them would answer "column does not exist" on
+   EVERY business read — which is exactly what `poster_path` did on 27 Sep, one
+   line ahead of its migration, and it surfaced as React #441 rather than as
+   anything that named a column. A column nothing reads comes out of the select
+   BEFORE it can come out of the table. */
+export const TENANT_COLUMNS = "id, type, name, area, city, profile_photo_path, founded_year, phone, socials, enquiry_types, accepts_upi, accepts_cards, accepts_cash, accepts_bank, verified_at, location_set_at, contact_email, styles, member_no";
 
 const toSocials = (raw: unknown): SocialLink[] =>
   Array.isArray(raw)
@@ -66,8 +70,9 @@ export const toTenant = (row: TenantRow): Tenant => ({
      (20 Sep 2026, the user: "Id should be besides profile type on home and
      profilepage both") — until today only `profiles` had one */
   memberNo: row.member_no == null ? null : Number(row.member_no),
-  gstin: row.gstin ?? null,
-  gstinVerifiedAt: row.gstin_verified_at ?? null,
+  /* `gstin` / `gstinVerifiedAt` went with organizations (29 Sep 2026) — a GST
+     number was an organization's alone, and it is what its events and its
+     subscription waited on. The columns stay on the row; nothing reads them. */
 });
 
 export interface TenantProfileInput {
@@ -512,4 +517,20 @@ export async function setTenantLocation(
   if (error) {
     throw new Error(error.message);
   }
+}
+
+/** THE PERSON WHO OWNS AN ARTIST PAGE — where `/artist/{id}` sends you now that
+ *  an artist's public face is their profile (18 Sep 2026); null for anything
+ *  else. Its three callers each hold a business id and need the person behind
+ *  it: `/artist/{id}`, the class page, and a studio's stats page.
+ *
+ *  ⚠ MOVED HERE FROM `repositories/publicOrganization.ts` (29 Sep 2026), when
+ *  organizations were removed. It was the one read in that file with nothing to
+ *  do with an organization, and a file named after a thing the app no longer has
+ *  is a lie to the next reader — so the file went and this came here, where
+ *  every other business read already lives. */
+export async function findArtistPageOwner(supabase: SupabaseClient, businessId: string): Promise<string | null> {
+  const { data, error } = await supabase.rpc("artist_page_owner", { p_business_id: businessId });
+  if (error) return null;
+  return (data as string | null) ?? null;
 }

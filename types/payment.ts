@@ -5,16 +5,20 @@ export type RefundStatus = "requested" | "pending" | "processed" | "failed";
 export type PaymentProvider = "razorpay" | "cashfree";
 
 /** The orders row as the pay flow needs it (repository maps snake_case). An
- *  order names a class session OR an event booking (17 Sep 2026), so each pair
- *  is null on the other kind. */
+ *  order names a class session OR a membership, so each pair is null on the
+ *  other kind.
+ *
+ *  ⚠ `eventId` / `eventBookingId` were a THIRD subject (17 Sep 2026) and went
+ *  with events on 29 Sep. **The columns and the CHECK behind them stay**, and so
+ *  do the 4 paid event orders on production — an order is a money record, and
+ *  money records are not rewritten because a feature was removed. What changed
+ *  is that nothing in the app reads or writes them any more. */
 export interface PaymentOrder {
   id: string;
   tenantId: string;
   classId: string | null;
   sessionId: string | null;
-  eventId: string | null;
-  eventBookingId: string | null;
-  /** the third subject an order may name (19 Sep 2026): a membership, and the
+  /** the other subject an order may name (19 Sep 2026): a membership, and the
    *  pass the money turns from `pending_payment` into one somebody holds */
   membershipId: string | null;
   membershipPassId: string | null;

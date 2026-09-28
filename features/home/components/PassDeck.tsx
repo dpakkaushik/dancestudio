@@ -7,24 +7,21 @@ import { ClassTile } from "@/features/classes/components/ClassTile";
 import { PassSheet } from "@/features/classes/components/PassSheet";
 import { dosPosterAuto } from "@/features/classes/components/poster";
 import { dosKey } from "@/features/classes/components/ShareSheet";
-import { EventCard } from "@/features/events/components/EventCard";
-import { eventCodeOf } from "@/features/events/components/event-kit";
 import { InvoiceSheet, bookingCodeOf } from "@/features/payments/components/InvoiceSheet";
 import { RefundSheet } from "@/features/payments/components/RefundSheet";
 import { DOS_LEVEL_LABEL, dosStyleColor } from "@/lib/constants/styles";
 import { DOS_UI, GREEN, LINE, PINK } from "@/lib/design/tokens";
 import { dateParts, timeRangeOf } from "@/lib/format/session";
-import { EV_TINT, TYPE_LABEL } from "@/types/event";
-import type { DeckClassItem, DeckEventItem, DeckItem } from "@/types/home";
+import type { DeckClassItem, DeckItem } from "@/types/home";
 
 const DOS_MONO = 'ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace';
 
 /** THE PASS DECK — lifted from the prototype (PassDeck 6863-7204, the rail at
  *  7183-7199): today's sessions as ONE swiped rail of 88%-width cards, snapped to
  *  centre, a row of dots under them saying where you are. One card, everywhere —
- *  the same ClassTile the calendar and Discover draw, the same EventCard the desk
- *  draws — each wearing the chip that says what the session is to you and, on
- *  exactly one of them, the Live badge.
+ *  the same ClassTile the calendar and Discover draw — each wearing the chip that
+ *  says what the session is to you and, on exactly one of them, the Live badge.
+ *  ⚠ It drew an `EventCard` too until 29 Sep 2026, when events were removed.
  *
  *  A booked card carries its BookingActions strip (6399-6448): the drawn code
  *  (tap it and the ticket opens full screen — the same PassSheet the class page
@@ -39,48 +36,10 @@ const whenTextOf = (startsAt: string, endsAt: string) => {
   return `${when.weekday} ${when.day} ${when.month} · ${timeRangeOf(startsAt, endsAt)}`;
 };
 
-/* the chip the event card cannot wear itself — the class tile draws its own */
-const RoleChip = ({ label }: { label: string }) => (
-  <span
-    style={{
-      flexShrink: 0,
-      fontSize: 8.5,
-      fontWeight: 900,
-      letterSpacing: 0.5,
-      textTransform: "uppercase",
-      padding: "2px 7px",
-      borderRadius: 999,
-      background: "var(--el)",
-      color: "var(--sub)",
-    }}
-  >
-    {label}
-  </span>
-);
-
-const LiveBadge = () => (
-  <span
-    style={{
-      marginLeft: "auto",
-      flexShrink: 0,
-      display: "inline-flex",
-      alignItems: "center",
-      gap: 4,
-      fontSize: 8.5,
-      fontWeight: 800,
-      padding: "2px 7px",
-      borderRadius: 999,
-      background: GREEN,
-      color: "#fff",
-    }}
-  >
-    <span style={{ position: "relative", width: 4, height: 4 }}>
-      <span style={{ position: "absolute", inset: 0, borderRadius: 2, background: "#fff" }} />
-      <span style={{ position: "absolute", inset: -3, borderRadius: 5, border: "1.5px solid #fff", opacity: 0.5, animation: "dosPulseH 1.4s ease-out infinite" }} />
-    </span>
-    Live
-  </span>
-);
+/* ⚠ `RoleChip` AND `LiveBadge` WENT WITH THE EVENT CARD (29 Sep 2026). Both
+   existed for one reason: an event card cannot wear its own role chip or its own
+   Live badge the way `ClassTile` does, so the deck drew them beside it. The deck
+   is classes and nothing else now, and the tile draws both itself. */
 
 /** The booking, in the card's own clothes (BookingActions 6399-6448): the drawn
  *  code, the green DOT carrying "confirmed", the entry code — and the two money
@@ -203,63 +162,26 @@ export function PassDeck({ items }: { items: DeckItem[] }) {
     );
   };
 
-  const eventCard = (p: DeckEventItem): ReactNode => (
-    <div data-kind="event" style={{ marginBottom: 10 }}>
-      <EventCard event={p.event} href={p.href} />
-      {/* the event card has no line for what the session is to you — it gets one
-          under it, with the strip when you hold a way in */}
-      <div style={{ margin: "-4px 0 0", padding: "8px 12px 10px", background: "var(--card)", border: `1.5px solid ${LINE}`, borderTop: "none", borderRadius: "0 0 20px 20px" }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 7, minWidth: 0 }}>
-          <RoleChip label={p.roleLabel} />
-          {p.booking ? (
-            <span style={{ minWidth: 0, fontSize: 10.5, fontWeight: 700, color: "var(--sub)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{p.booking.words}</span>
-          ) : null}
-          {p.live ? <LiveBadge /> : null}
-        </div>
-        {p.booking ? (
-          <div style={{ marginTop: 9 }}>
-            <BookingStrip title={p.event.title} code={eventCodeOf(p.booking.id)} going onCode={() => setPass(p)} />
-          </div>
-        ) : null}
-      </div>
-    </div>
-  );
+  /* ⚠ `eventCard` was here and went with events (29 Sep 2026) — the one card in
+     this rail that was not a class, drawn by `EventCard` with the role chip and
+     the ticket strip under it. */
 
-  /* the ticket, for whichever kind of card asked for it — the class page's own sheet */
+  /* the ticket — the class page's own sheet. ⚠ It forked on `p.kind` until
+     29 Sep 2026, because an event's pass wore its kind's tint and opened `/e/`. */
   const passSheet = (p: DeckItem) => {
-    if (p.kind === "class") {
-      const c = p.danceClass;
-      const col = dosStyleColor(c.style);
-      return (
-        <PassSheet
-          posterItem={{ title: c.title, style: c.style, styleColor: col }}
-          posterK={c.poster && c.poster !== "none" ? c.poster : dosPosterAuto(c.title)}
-          col={col}
-          title={c.title}
-          styleName={c.style}
-          levelWord={DOS_LEVEL_LABEL[c.level] ?? c.level}
-          pass={{ code: bookingCodeOf(p.enrollment?.id ?? ""), label: "Entry code", note: "Scan this at the door." }}
-          slug={c.shareSlug}
-          path="c"
-          fire={fire}
-          onClose={() => setPass(null)}
-        />
-      );
-    }
-    const ev = p.event;
-    const tint = EV_TINT[ev.cat];
+    const c = p.danceClass;
+    const col = dosStyleColor(c.style);
     return (
       <PassSheet
-        posterItem={{ title: ev.title, style: ev.style, styleColor: tint }}
-        posterK={ev.poster ?? dosPosterAuto(ev.title)}
-        col={tint}
-        title={ev.title}
-        styleName={ev.style}
-        levelWord={TYPE_LABEL[ev.cat]}
-        pass={{ code: eventCodeOf(p.booking?.id ?? ""), label: "Entry code", note: "Show this at the door." }}
-        slug={ev.shareSlug}
-        path="e"
-        ariaLabel="Event pass"
+        posterItem={{ title: c.title, style: c.style, styleColor: col }}
+        posterK={c.poster && c.poster !== "none" ? c.poster : dosPosterAuto(c.title)}
+        col={col}
+        title={c.title}
+        styleName={c.style}
+        levelWord={DOS_LEVEL_LABEL[c.level] ?? c.level}
+        pass={{ code: bookingCodeOf(p.enrollment?.id ?? ""), label: "Entry code", note: "Scan this at the door." }}
+        slug={c.shareSlug}
+        path="c"
         fire={fire}
         onClose={() => setPass(null)}
       />
@@ -289,7 +211,7 @@ export function PassDeck({ items }: { items: DeckItem[] }) {
       >
         {items.map((p) => (
           <div key={p.key} data-testid="deck-card" style={{ flex: "0 0 88%", scrollSnapAlign: "center", minWidth: 0 }}>
-            {p.kind === "class" ? classCard(p) : eventCard(p)}
+            {classCard(p)}
           </div>
         ))}
       </div>

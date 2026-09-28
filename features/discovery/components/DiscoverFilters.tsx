@@ -11,9 +11,7 @@ import { dosStyleColor } from "@/lib/constants/styles";
 import { DOS_DISPLAY } from "@/lib/design/tokens";
 import { useCloseOnBack } from "@/lib/hooks/useCloseOnBack";
 import type { SearchHit, SearchKind } from "@/repositories/search";
-import { CATS, filtersOnCount, filtersToParams, type DiscoverFilters, type Dist, type Dur, type Fmt, type PriceBand, type SortBy, type When } from "../filters";
-import { EvIcon } from "@/features/events/components/event-kit";
-import { EV_TINT, type EventCat } from "@/types/event";
+import { filtersOnCount, filtersToParams, type DiscoverFilters, type Dist, type Dur, type PriceBand, type SortBy, type When } from "../filters";
 
 /** Step 23's controls, lifted from prototype S_discover: the one search box
  *  ("Search" — "the placeholder listed the same five things a third time",
@@ -38,11 +36,12 @@ const pressKey = (fn: () => void) => (e: React.KeyboardEvent) => {
     fn();
   }
 };
-const KIND_LABEL: Record<SearchKind, string> = { studio: "Studios", artist: "Artists", crew: "Crews", event: "Events", person: "People" };
+const KIND_LABEL: Record<SearchKind, string> = { studio: "Studios", artist: "Artists", crew: "Crews", person: "People" };
 /* the prototype's own order, with Dancers last (4548-4552). People arrived once
    there was a page to send them to — Step 23 left the section out for exactly
-   that reason. */
-const KIND_ORDER: SearchKind[] = ["studio", "artist", "crew", "event", "person"];
+   that reason. ⚠ Events went the other way on 29 Sep 2026: the page they sent
+   somebody to stopped existing. */
+const KIND_ORDER: SearchKind[] = ["studio", "artist", "crew", "person"];
 const KEYFRAMES = "@keyframes dosPop{0%{transform:scale(1)}35%{transform:scale(1.08)}65%{transform:scale(.97)}100%{transform:scale(1)}}@keyframes dosSheetUp{from{transform:translateY(100%)}to{transform:translateY(0)}}";
 
 /* the sheet's chip and row (4834-4842) — module-level, so they are not remade on every render */
@@ -115,26 +114,25 @@ export function DiscoverFilters({ tab, city, filters, styleOrder, tabs, as = nul
     setTimeout(() => setTapped(null), 450);
     go({ ...filters, styles: s === "All" ? [] : filters.styles.includes(s) ? filters.styles.filter((x) => x !== s) : [...filters.styles, s] });
   };
-  const reset = () => go({ ...filters, sort: "near", dist: "any", when: "any", dur: "any", prices: [], cats: [], fmt: "all" });
+  const reset = () => go({ ...filters, sort: "near", dist: "any", when: "any", dur: "any", prices: [] });
 
-  const isEv = tab === "events";
   const isBiz = tab === "studios" || tab === "artists";
   const onN = filtersOnCount(filters, tab);
   const freeOn = filters.prices.length === 1 && filters.prices[0] === "free";
-  const battlesOn = filters.cats.length === 1 && filters.cats[0] === "battle";
+  /* ⚠ THE THIRD CHIP WAS "BATTLES" ON THE EVENTS TAB (29 Sep 2026) — the one
+     quick filter that was not shared, and the only place `tab` decided which
+     chips these were. With events gone every tab gets the same three. */
   const quick: Array<[string, string, boolean, () => void]> = [
     ["free", "Free", freeOn, () => go({ ...filters, prices: freeOn ? [] : ["free"] })],
     ["eve", "Evening", filters.when === "evening", () => go({ ...filters, when: filters.when === "evening" ? "any" : "evening" })],
-    ...(isEv
-      ? ([["battle", "Battles", battlesOn, () => go({ ...filters, cats: battlesOn ? [] : ["battle"] })]] as Array<[string, string, boolean, () => void]>)
-      /* ⚠ "WITHIN 5 KM", NOT "NEAR ME" (21 Sep 2026). This chip is a RADIUS —
-         `dist === "5"` — and it was called Near me while the chip one row above
-         was ALSO called Near me and meant something else entirely: where the
-         distance is measured FROM. Two controls, one name, one screen, since
-         18 Sep. Merging the origin into the place chip (the user: "merge near me
-         and city filter on discover") is only half the answer while a second
-         thing is still wearing its words; this half costs one string. */
-      : ([["near", "Within 5 km", filters.dist === "5", () => go({ ...filters, dist: filters.dist === "5" ? "any" : "5" })]] as Array<[string, string, boolean, () => void]>)),
+    /* ⚠ "WITHIN 5 KM", NOT "NEAR ME" (21 Sep 2026). This chip is a RADIUS —
+       `dist === "5"` — and it was called Near me while the chip one row above
+       was ALSO called Near me and meant something else entirely: where the
+       distance is measured FROM. Two controls, one name, one screen, since
+       18 Sep. Merging the origin into the place chip (the user: "merge near me
+       and city filter on discover") is only half the answer while a second
+       thing is still wearing its words; this half costs one string. */
+    ["near", "Within 5 km", filters.dist === "5", () => go({ ...filters, dist: filters.dist === "5" ? "any" : "5" })],
   ];
 
   /* the sheet's chips apply live (4844-4849); "Show results" only closes it (4874) */
@@ -262,26 +260,10 @@ export function DiscoverFilters({ tab, city, filters, styleOrder, tabs, as = nul
         ) : null}
       </div>
 
-      {/* the events tab's own box (S_eventslist 13551): title, style or organiser */}
-      {isEv ? (
-        <div style={{ display: "flex", alignItems: "center", gap: 8, background: "var(--card)", border: "1.5px solid var(--el)", borderRadius: 12, padding: "9px 11px", marginBottom: 10 }}>
-          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--muted)" strokeWidth="1.9" strokeLinecap="round" aria-hidden="true">
-            <circle cx="11" cy="11" r="6.5" />
-            <path d="m16 16 4 4" />
-          </svg>
-          <input
-            defaultValue={filters.q}
-            aria-label="Search events"
-            onChange={(e) => {
-              const v = e.target.value.slice(0, 60);
-              window.clearTimeout((window as unknown as { __dosEvQ?: number }).__dosEvQ);
-              (window as unknown as { __dosEvQ?: number }).__dosEvQ = window.setTimeout(() => go({ ...filters, q: v }), 300);
-            }}
-            placeholder="Search events, styles or organisers…"
-            style={{ flex: 1, minWidth: 0, background: "transparent", border: "none", outline: "none", color: "var(--text)", fontSize: 12.5, fontFamily: "inherit" }}
-          />
-        </div>
-      ) : null}
+      {/* ⚠ THE EVENTS TAB'S OWN SEARCH BOX (S_eventslist 13551) WENT WITH EVENTS
+          (29 Sep 2026) — title, style or organiser, debounced into `?q=`. It was
+          the only search on this screen other than the one at the top, which
+          searches everything. */}
 
       {/* THE FILTER SHEET (4827) */}
       {open ? (
@@ -299,22 +281,10 @@ export function DiscoverFilters({ tab, city, filters, styleOrder, tabs, as = nul
             {!isBiz && tab !== "crews" ? <Row label="TIME OF DAY">{pick<When>([["any", "Any"], ["morning", "Morning"], ["afternoon", "Afternoon"], ["evening", "Evening"]], filters.when, (v) => go({ ...filters, when: v }))}</Row> : null}
             {tab === "classes" ? <Row label="DURATION">{pick<Dur>([["any", "Any"], ["60", "Up to 1 h"], ["90", "Up to 1½ h"], ["120", "Up to 2 h"]], filters.dur, (v) => go({ ...filters, dur: v }))}</Row> : null}
             {!isBiz && tab !== "crews" ? <Row label="PRICE">{multi<PriceBand>([["free", "Free"], ["paid", "Paid"]], filters.prices, (v) => go({ ...filters, prices: v }))}</Row> : null}
-            {isEv ? (
-              <Row label="TYPE OF EVENT">
-                {CATS.map((k) => {
-                  const on = filters.cats.includes(k);
-                  const l = k === "showcase" ? "Showcases" : k === "battle" ? "Battles" : "Tournaments";
-                  const flip = () => go({ ...filters, cats: on ? filters.cats.filter((x) => x !== k) : [...filters.cats, k] });
-                  return (
-                    <div role="button" tabIndex={0} onKeyDown={pressKey(flip)} key={k} aria-pressed={on} aria-label={l} onClick={flip} style={{ ...chip(on), display: "inline-flex", alignItems: "center", gap: 6 }}>
-                      <EvIcon cat={k as EventCat} size={12} color={on ? "var(--solid)" : EV_TINT[k as EventCat]} sw={2} />
-                      {l}
-                    </div>
-                  );
-                })}
-              </Row>
-            ) : null}
-            {isEv ? <Row label="COMPETING AS">{pick<Fmt>([["all", "Any"], ["solo", "Solo"], ["duo", "Duet"], ["crew", "Crew"]], filters.fmt, (v) => go({ ...filters, fmt: v }))}</Row> : null}
+            {/* ⚠ TYPE OF EVENT and COMPETING AS were the sheet's last two rows
+                and went with events (29 Sep 2026). The prototype's own rule
+                still holds for the four that are left: a row is offered only
+                where it means something (4827). */}
             <div
               role="button"
               tabIndex={0}

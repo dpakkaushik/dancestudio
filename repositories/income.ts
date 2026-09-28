@@ -30,7 +30,8 @@ interface PaymentRow {
    *  called Classes over two real sources. The order names its subject, so now
    *  it does not. A subscription payment has no order at all (`order_id` is
    *  nullable since 10 Sep 2026), hence the null. */
-  orders: { membership_id: string | null; event_id: string | null } | null;
+  /* ⚠ `event_id` came off the embed on 29 Sep 2026 with the bucket it fed */
+  orders: { membership_id: string | null } | null;
 }
 
 interface ProcessedRefundRow {
@@ -49,15 +50,15 @@ interface Bucket {
   count: number;
   /** the membership share of gross (19 Sep 2026) */
   memberships: number;
-  /** ⚠ THE TICKET SHARE (20 Sep 2026, the user: "Earnings make sure to check all
-   *  revenue sources mentioned for all types of profiles according to there
-   *  revenue sources"). An order names a class session, an EVENT or a membership
-   *  (`orders_subject_check`), and this read only ever asked about the third — so
-   *  on the ORGANIZATION's hosting row, whose every payment is a ticket or an
-   *  entry, 100% of the money printed under a row headed **Classes**, on the very
-   *  desk the events screen links to as "Ticket money ›". Three subjects, three
-   *  rows; what is left after the two named ones is seats. */
-  events: number;
+  /* ⚠⚠ THE TICKET SHARE (20 Sep 2026) WENT WITH EVENTS ON 29 Sep 2026, and it
+     is the ONE money bucket that did — `findEarnings` keeps its own, and the
+     reason the two differ is WHOSE money each reads. This is a STUDIO's
+     money-in, and a studio never took ticket money: every event on DanceOS was
+     hosted by an organization's own row (R15), so `business_id` on a ticket
+     payment is that row's and never a studio's. The residual — what is not a
+     membership — is seats for every business that can still open this screen.
+     `findEarnings` is every profile type's and is given a LIST of business ids,
+     so there a ticket payment could land in it; there the bucket stays. */
   refunded: number;
   refundCount: number;
   methods: Map<string, { amount: number; count: number }>;
@@ -81,7 +82,6 @@ const emptyBucket = (): Bucket => ({
   gross: 0,
   count: 0,
   memberships: 0,
-  events: 0,
   refunded: 0,
   refundCount: 0,
   methods: new Map(),
@@ -99,7 +99,7 @@ export async function findTenantIncome(
   const [paymentsRes, refundsRes, openRes] = await Promise.all([
     supabase
       .from("payments")
-      .select("amount_inr, status, method, created_at, orders (membership_id, event_id)")
+      .select("amount_inr, status, method, created_at, orders (membership_id)")
       .eq("business_id", tenantId)
       /* ⚠ MONEY THIS BUSINESS TOOK, SAID OUT LOUD (20 Sep 2026). `payments.kind`
          is order | subscription_auth | subscription_charge, and the last two are
@@ -161,7 +161,6 @@ export async function findTenantIncome(
     bucket.gross += p.amount_inr;
     bucket.count += 1;
     if (p.orders?.membership_id) bucket.memberships += p.amount_inr;
-    else if (p.orders?.event_id) bucket.events += p.amount_inr;
     const method = normaliseMethod(p.method);
     const share = bucket.methods.get(method) ?? { amount: 0, count: 0 };
     share.amount += p.amount_inr;
@@ -188,7 +187,6 @@ export async function findTenantIncome(
       label: ref.label,
       grossInr: bucket.gross,
       membershipsInr: bucket.memberships,
-      eventsInr: bucket.events,
       paymentCount: bucket.count,
       refundedInr: bucket.refunded,
       refundCount: bucket.refundCount,

@@ -24,18 +24,21 @@ export interface EnquiryType {
 }
 
 export const ENQ_TYPES: EnquiryType[] = [
-  /* AN ORGANIZATION CAN BE ASKED (19 Sep 2026, the user: "Send Enquiry for all
-     except users") — through its hosting row (`type = 'org'`), for the three
-     kinds a host of events can answer: a celebration, a corporate show, a
-     collaboration. Judging is a person's job and private sessions a teacher's;
-     `send_enquiry` refuses both for an organization, and this is the same list
-     so the sheet never offers what the database would refuse. */
+  /* ⚠ AN ORGANIZATION COULD BE ASKED THREE OF THESE (19 Sep 2026) and cannot be
+     asked anything now, because there is no organization (29 Sep 2026). What is
+     left is a studio, an artist page and a crew — a crew's three kinds are fixed
+     inside `send_enquiry` and never read from here.
+     ⚠⚠ THE JUDGE TYPE STAYS, and that is a decision rather than an oversight:
+     its "Which event" is a FREE-TEXT field naming an event out in the world (the
+     prototype's own "Pick from DanceOS" picker was never built, 18 Sep), so
+     being invited to judge somebody else's battle is a job an artist can still
+     be asked to do. It never depended on this app hosting events. */
   {
     k: "celebration",
     label: "Celebrations",
     sub: "weddings · birthdays · anniversaries",
     c: "#EC4899",
-    to: ["studio", "artist_page", "org"],
+    to: ["studio", "artist_page"],
     fields: [
       {
         k: "occasion",
@@ -51,7 +54,7 @@ export const ENQ_TYPES: EnquiryType[] = [
     label: "Corporate",
     sub: "brand shoots · offsites · employee classes",
     c: "#0EA5E9",
-    to: ["studio", "artist_page", "org"],
+    to: ["studio", "artist_page"],
     fields: [
       {
         k: "kind",
@@ -97,7 +100,7 @@ export const ENQ_TYPES: EnquiryType[] = [
     label: "Collaboration",
     sub: "content · workshops · campaigns",
     c: "#8B5CF6",
-    to: ["studio", "artist_page", "org"],
+    to: ["studio", "artist_page"],
     fields: [
       {
         k: "kind",

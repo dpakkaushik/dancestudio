@@ -60,5 +60,7 @@ export async function resolveActingAs(supabase: SupabaseClient, raw: string | nu
   /* an ARTIST PAGE is the person's own public face, not a profile they switch
      into — they book as themselves there, so it is not a business for this */
   if (m.tenant.type === "artist_page") return null;
-  return { kind: m.tenant.type === "org" ? "org" : "studio", name: m.tenant.name, id: m.tenant.id };
+  /* ⚠ the `org` arm went with organizations (29 Sep 2026); a studio is the only
+     business left that anybody acts AS */
+  return { kind: "studio", name: m.tenant.name, id: m.tenant.id };
 }

@@ -8,11 +8,18 @@
 # What it answers, with no session at all - which is the whole point, because
 # every other net in this repo runs as somebody:
 #   * does the site answer, and does a signed-out visitor get sent to sign in?
-#   * are the four PUBLIC pages public - a studio, an organization, a crew, an
-#     artist - and does each carry the thing that makes it that page?
+#   * are the three PUBLIC pages public - a studio, a crew, an artist - and does
+#     each carry the thing that makes it that page?
 #   * is a PLAIN USER's page still NOT public (Step 1's line, held since 18 Sep)?
-#   * does a stranger read the two things 20 Sep widened, and NOT the one it
-#     deliberately did not (an artist's account number - 20260919090000)?
+#   * does a stranger read what 20 Sep widened, and NOT the thing it deliberately
+#     did not (an artist's account number - 20260919090000)?
+#
+# !! THREE CHECKS WENT WITH ORGANIZATIONS (29 Sep 2026) and are named here rather
+# than quietly missing: a public organization's PAGE (old 4), the two reads
+# `public_organization_team` / `public_organization` (old 8), and the
+# `organization_members` ceiling that proved a front-desk seat never reaches a
+# stranger (old 11). All three smoked a surface that no longer exists; the four
+# survivors after them are renumbered, so 11/11 becomes 8/8.
 #
 #   powershell -File scripts/stranger-smoke.ps1
 #   powershell -File scripts/stranger-smoke.ps1 -Site https://dancestudio-orcin.vercel.app
@@ -91,11 +98,6 @@ function Rpc-Anon($fn, $body) {
 # ---- PAGES rather than about which row happens to be first ------------------
 $studio = Rows "businesses?select=id,name&type=eq.studio&visibility=eq.listed&deleted_at=is.null&limit=1"
 $crew = Rows "crews?select=id,name&deleted_at=is.null&limit=1"
-# 26 Sep 2026: an organization is a BUSINESS (type org) with its own GST number - the organization
-# login is retired. A PUBLIC one also needs its own live mandate (org_is_public), so the pick
-# joins the subscription rather than taking the first row with a number.
-# !! the embed goes INSIDE select= - outside it PostgREST answers 400 and the whole smoke dies (26 Sep 2026, its first run)
-$org = Rows "businesses?select=id,name,subscriptions!inner(kind,status)&type=eq.org&deleted_at=is.null&gstin_verified_at=not.is.null&subscriptions.kind=eq.org&subscriptions.status=eq.active&limit=1"
 # !! AN ARTIST IS A LIVE PLAN **ON A LIVE PROFILE** - the first cut took the first
 # active artist subscription and got one whose profile is gone, so `/person/{id}`
 # answered 307 and the check read as a broken rule rather than a bad pick. A
@@ -132,28 +134,22 @@ if ($studio.Count) {
   Check 3 "A listed studio's page is public ($($p.code)) and names the studio" ($p.code -eq 200 -and $p.body -match [regex]::Escape($studio[0].name))
 } else { Check 3 "A listed studio's page - NO LISTED STUDIO ON THIS DATABASE, nothing smoked" $false }
 
-# ---- 4. a public organization's page ---------------------------------------
-if ($org.Count) {
-  $p = Get-Page "/org/$($org[0].id)"
-  Check 4 "A public organization's page is public ($($p.code)) - by its BUSINESS id since 26 Sep 2026" ($p.code -eq 200)
-} else { Check 4 "A public organization's page - none with a verified GST number AND a live mandate, nothing smoked" $false }
-
-# ---- 5. a crew's page -------------------------------------------------------
+# ---- 4. a crew's page -------------------------------------------------------
 if ($crew.Count) {
   $p = Get-Page "/crew/$($crew[0].id)"
-  Check 5 "A crew's page is public ($($p.code)) and names the crew" ($p.code -eq 200 -and $p.body -match [regex]::Escape($crew[0].name))
-} else { Check 5 "A crew's page - no crew on this database, nothing smoked" $false }
+  Check 4 "A crew's page is public ($($p.code)) and names the crew" ($p.code -eq 200 -and $p.body -match [regex]::Escape($crew[0].name))
+} else { Check 4 "A crew's page - no crew on this database, nothing smoked" $false }
 
-# ---- 6. an ARTIST is their profile, and a PLAIN USER is not public ---------
+# ---- 5. an ARTIST is their profile, and a PLAIN USER is not public ---------
 # R24 (18 Sep 2026) and the line Step 1 has held since the beginning. These two
 # are one check on purpose: what makes the rule a rule is the pair.
 if ($artistId -and $plain) {
   $a = Get-Page "/person/$artistId"
   $u = Get-Page "/person/$($plain.id)"
-  Check 6 "An artist's profile is public ($($a.code)); a plain user's is not ($($u.code))" ($a.code -eq 200 -and $u.code -ne 200)
-} else { Check 6 "An artist and a plain user - could not find both, nothing smoked" $false }
+  Check 5 "An artist's profile is public ($($a.code)); a plain user's is not ($($u.code))" ($a.code -eq 200 -and $u.code -ne 200)
+} else { Check 5 "An artist and a plain user - could not find both, nothing smoked" $false }
 
-# ---- 7. !! AND WHAT A STRANGER STILL MAY NOT READ --------------------------
+# ---- 6. !! AND WHAT A STRANGER STILL MAY NOT READ --------------------------
 # 20260919090000 took the account number and the age OUT of an artist's public
 # face on purpose. 20 Sep gave a BUSINESS a number and deliberately did not give
 # one back to a person. This is the check that keeps that true.
@@ -161,26 +157,18 @@ if ($artistId) {
   $face = Rpc-Anon "public_artist" @{ p_user_id = $artistId }
   $hasNo = $face.text -match '"member_no"'
   $hasAge = $face.text -match '"age"'
-  Check 7 "An artist's public face carries no account number and no age (19 Sep privacy, kept)" ((-not $hasNo) -and (-not $hasAge)) "code $($face.code)"
-} else { Check 7 "An artist's public face - no live artist, nothing smoked" $false }
+  Check 6 "An artist's public face carries no account number and no age (19 Sep privacy, kept)" ((-not $hasNo) -and (-not $hasAge)) "code $($face.code)"
+} else { Check 6 "An artist's public face - no live artist, nothing smoked" $false }
 
-# ---- 8. what 20 Sep 2026 widened, as a stranger ----------------------------
-if ($org.Count) {
-  $team = Rpc-Anon "public_organization_team" @{ p_org_id = $org[0].id }
-  $page = Rpc-Anon "public_organization" @{ p_org_id = $org[0].id }
-  Check 8 "A stranger reads a public organization's team ($($team.code)) and its page WITH its number ($($page.code))" (
-    $team.code -eq 200 -and $page.code -eq 200 -and $page.text -match '"member_no"')
-} else { Check 8 "The two organization reads - no public organization business, nothing smoked" $false }
-
-# ---- 9. a person's seats answer a stranger for an ARTIST only --------------
+# ---- 7. a person's seats answer a stranger for an ARTIST only --------------
 if ($artistId -and $plain) {
   $mine = Rpc-Anon "person_associations" @{ p_user_id = $artistId }
   $theirs = Rpc-Anon "person_associations" @{ p_user_id = $plain.id }
-  Check 9 "person_associations answers a stranger for an artist and hands back nothing for a plain user" (
+  Check 7 "person_associations answers a stranger for an artist and hands back nothing for a plain user" (
     $mine.code -eq 200 -and $theirs.code -eq 200 -and $theirs.text.Trim() -eq "[]")
-} else { Check 9 "person_associations - could not find both, nothing smoked" $false }
+} else { Check 7 "person_associations - could not find both, nothing smoked" $false }
 
-# ---- 10. the tables behind all of it are still shut ------------------------
+# ---- 8. the tables behind all of it are still shut -------------------------
 $shut = $true
 $detail = @()
 # assets joined the list on 21 Sep 2026: what a business owns and what it is
@@ -196,22 +184,14 @@ foreach ($t in @("business_members", "membership_passes", "payments", "leads", "
     if ($code -ne 401 -and $code -ne 403 -and $code -ne 404) { $shut = $false; $detail += "$t -> $code" }
   }
 }
-Check 10 "A stranger reads no row of business_members, membership_passes, payments, leads, class_bookings or assets" $shut ($detail -join "; ")
+Check 8 "A stranger reads no row of business_members, membership_passes, payments, leads, class_bookings or assets" $shut ($detail -join "; ")
 
-# ---- 11. !! AND A FRONT-DESK SEAT IS NOT PUBLIC, AT THE CEILING TOO ---------
-# !! `organization_members` is DELIBERATELY readable by a stranger for a public
-# organization's PUBLISHED team - that is what `public_organization_team` serves,
-# and check 8 proves it answers. What must never come back is a `member` row:
-# R36 is "Other team members do not appear on somebody's public profile", and
-# until 20260920150000 the definer read honoured it while the table policy did
-# not. This is the check that found that, and the one that keeps it closed.
-$leak = "?"
-try {
-  $r = Invoke-WebRequest -Uri "$base/rest/v1/organization_members?select=role&role=eq.member&limit=5" -Headers $anonH -UseBasicParsing
-  $leak = [string]$r.Content
-} catch { $leak = "refused" }
-Check 11 "A stranger reads the published team and NOT a front-desk seat (member rows: $leak)" (
-  $leak -eq "refused" -or $leak.Trim() -eq "[]")
+# !! `organization_members` IS DELIBERATELY NOT ON THAT LIST, and was not before
+# either: its policy admits a stranger to a public organization's PUBLISHED team
+# on purpose, so "it answers nothing" is a pass for the wrong reason now that no
+# organization is public. The old check 11 asserted the half that mattered - that
+# a `member` row never comes back - and it went with the feature rather than
+# being kept as a check that can only ever pass.
 
 ""
 if ($pass) { "ALL STRANGER SMOKE CHECKS PASSED" } else { "-- FAIL: see above" }

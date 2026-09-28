@@ -240,6 +240,13 @@ export async function findBusinessEarnings(
     [
       { key: "classes", label: "Classes", by: classes, href: one ? `/business/${one}/invoices` : undefined },
       { key: "memberships", label: "Memberships", by: memberships, href: one ? `/business/${one}/memberships` : undefined },
+      /* ⚠⚠ THIS LINE STAYS THOUGH EVENTS ARE GONE (29 Sep 2026, Rule 9: money).
+         Four paid event orders are on production and their payments are real
+         money a business took. Dropping the bucket would not drop them — the
+         `else` below would fold them into CLASSES, and a ledger line would state
+         a number that is not what it says it is. A historical line that reads ₹0
+         for everybody who never sold a ticket is honest; a Classes figure with
+         somebody else's ticket money in it is not. */
       { key: "events", label: "Tickets & entries", by: events },
       /* ⚠ THE NOTES ARE GONE (27 Sep 2026) — a line on a ledger says WHAT and
          HOW MUCH, and each of these said a sentence about the accounting

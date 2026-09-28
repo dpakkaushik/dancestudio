@@ -1,6 +1,5 @@
 import { redirect } from "next/navigation";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
-import { findProfileById } from "@/repositories/profiles";
 
 /** `/stats` IS AN ADDRESS NOW, NOT A SCREEN (22 Sep 2026).
  *
@@ -12,11 +11,14 @@ import { findProfileById } from "@/repositories/profiles";
  *  the pair C32 found drifting five ways on the profile and C40 collapsed;
  *  this is the same pair one page further on.
  *
- *  ⚠ THE ROUTE STAYS, AND MUST (Rule 14). The crew desk's "See crew ranking"
- *  and a crew's home both open `/stats?tab=charts&seg=crew`, `OrgDashboard`
- *  opens `…&seg=studio`, and neither knows the VIEWER's id — which is the whole
- *  reason `/profile` survives too. A bookmark and the installed TWA's last URL
- *  are the rest of it.
+ *  ⚠ THE ROUTE STAYS, AND MUST (Rule 14). A crew's home opens
+ *  `/stats?tab=charts&seg=crew` and does not know the VIEWER's id — which is
+ *  the whole reason `/profile` survives too. A bookmark and the installed TWA's
+ *  last URL are the rest of it. (The crew DESK's "See crew ranking" was the
+ *  other such control and went with the battle record on 29 Sep 2026.)
+ *  ⚠ `OrgDashboard`, which opened `…&seg=studio`, went with organizations on
+ *  29 Sep 2026, and the profile read that chose between `/org` and `/person`
+ *  went with it: this is one hop and no round trip.
  *
  *  ⚠⚠ AND THE QUERY RIDES ALONG, WHICH IS MOST OF THE POINT. Every tab, board,
  *  city, metric and style on that screen is URL state (19 Sep 2026), so a
@@ -31,15 +33,11 @@ export default async function StatsPage({ searchParams }: { searchParams: Promis
   if (!user) {
     redirect("/login");
   }
-  const profile = await findProfileById(supabase, user.id);
-  if (!profile) {
-    redirect("/onboarding");
-  }
   const q = new URLSearchParams();
   for (const [k, v] of Object.entries(await searchParams)) {
     if (typeof v === "string") q.set(k, v);
     else if (Array.isArray(v) && v[0] != null) q.set(k, v[0]);
   }
   const search = q.size > 0 ? `?${q.toString()}` : "";
-  redirect(`${profile.role === "org" ? "/org" : "/person"}/${user.id}/stats${search}`);
+  redirect(`/person/${user.id}/stats${search}`);
 }

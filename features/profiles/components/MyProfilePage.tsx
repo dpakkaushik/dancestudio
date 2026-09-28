@@ -7,17 +7,19 @@ import { CARD, DOS_UI, INK, LILAC, MUTED, PINK, SUB } from "@/lib/design/tokens"
 import { photoUrl } from "@/lib/media/photo";
 import type { MembershipOnSale } from "@/repositories/memberships";
 import type { PublicPerson } from "@/repositories/publicPerson";
-import type { FollowedCrew, FollowedOrganization, PersonFollowRow } from "@/repositories/follows";
+import type { FollowedCrew, PersonFollowRow } from "@/repositories/follows";
 import type { FollowedTenant } from "@/types/follow";
 import { KIND_WORD, heroMetaWords, kindOf, memberNoWords } from "@/types/profile";
 import { PersonBody } from "./PersonBody";
-import { ActionRow, CallButton, LocationButton, MailButton, MessageButton, mapsPinHref, whatsappHrefOf } from "./ContactButtons";
+/* ⚠ `LocationButton` and `mapsPinHref` were the retired organization login's
+   pin (26 Sep 2026) and went with organizations on 29 Sep — a person's row has
+   never carried one */
+import { ActionRow, CallButton, MailButton, MessageButton, whatsappHrefOf } from "./ContactButtons";
 import { EnquiryButton } from "@/features/enquiries/components/EnquirySheet";
 import { ProfileLink, ProfileShare } from "./ProfileShare";
 import { StatsChip } from "./StatsChip";
 import type { ArtistPlan } from "@/repositories/plans";
 import type { Tenant } from "@/types/tenant";
-import type { PersonOrganization } from "@/repositories/organizationTeam";
 import type { PublicTeamMember } from "@/types/publicProfile";
 import type { HeaderPhoto } from "@/repositories/headerPhotos";
 import type { HeroShot } from "./HeroRail";
@@ -30,7 +32,7 @@ import type { TenantType } from "@/types/tenant";
  *  (27 Sep 2026). ⚠ `satisfies`, so a fourth `TenantType` cannot be added
  *  without this map being told — the `GLYPH` lesson of this same morning, where
  *  a `Record<string, …>` let two tiles name a key nobody had written. */
-const OWNED_WORD = { studio: "Studio", artist_page: "Artist page", org: "Organization" } satisfies Record<TenantType, string>;
+const OWNED_WORD = { studio: "Studio", artist_page: "Artist page" } satisfies Record<TenantType, string>;
 
 /** THE PROFILE TAB — prototype S_profiletab's OWN render (10565-11400), lifted
  *  whole: the profile lit like a player (the role's colour bleeding off the top;
@@ -70,15 +72,11 @@ export function MyProfilePage({
   followers,
   followingPeople,
   followingTenants,
-  followingOrgs = [],
   followingCrews = [],
   scheduleHref,
-  businesses = [],
   owned = [],
   memberships = [],
-  organizations = [],
   artistTeam = [],
-  eventsHostId = null,
   plan,
 }: {
   person: PublicPerson;
@@ -91,15 +89,15 @@ export function MyProfilePage({
   followers: PersonFollowRow[];
   followingPeople: PersonFollowRow[];
   followingTenants: FollowedTenant[];
-  /** the organizations and the crews this person follows (19 Sep 2026) — two more segments of the Following sheet */
-  followingOrgs?: FollowedOrganization[];
+  /** the crews this person follows (19 Sep 2026) — one more segment of the
+   *  Following sheet. ⚠ `followingOrgs` sat beside it and went on 29 Sep 2026. */
   followingCrews?: FollowedCrew[];
   scheduleHref: string | null;
-  /** every business this account is on the team of — what `scheduleHref` is
-   *  picked from, and nothing else since "What you run" took the list below */
-  businesses?: Tenant[];
-  /** ⚠ THE BUSINESSES THIS ACCOUNT **OWNS** (27 Sep 2026) — studios, its artist
-   *  page and organizations alike, public or not yet. A different list from
+  /* ⚠ `businesses` — every business this account is on the team of — went on
+     29 Sep 2026. It was picked from for `scheduleHref`, which the caller works
+     out now, and for an organization's event-hosting row, which is gone. */
+  /** ⚠ THE BUSINESSES THIS ACCOUNT **OWNS** (27 Sep 2026) — studios and its
+   *  artist page, public or not yet. A different list from
    *  `businesses`, which is every seat: the group is about what you RUN, and a
    *  studio you teach at is not that. The tab's alone — `findMyMemberships` is
    *  the caller's own read, so there is nothing here a stranger could be shown. */
@@ -108,15 +106,11 @@ export function MyProfilePage({
    *  since 19 Sep and this one showed nothing, which is one of the five ways the
    *  two screens had drifted */
   memberships?: MembershipOnSale[];
-  /** the organizations whose Team desk names this person (27 Sep 2026) — on
-   *  their OWN tab this carries the private ones too, because their own rows are
-   *  theirs to read; a stranger's view of the same group is public-only */
-  organizations?: PersonOrganization[];
+  /* ⚠ `organizations` — the organizations whose Team desk named this person
+     (27 Sep 2026) — and `eventsHostId`, an organization's own event-hosting row
+     (R15), both went with organizations on 29 Sep 2026 */
   /** the people seated on this artist's own page (27 Sep 2026) */
   artistTeam?: PublicTeamMember[];
-  /** an ORGANIZATION's own event-hosting row (R15) — where an enquiry to it
-   *  lands, and the one id the button row needs that `person` cannot carry */
-  eventsHostId?: string | null;
   /** the Artist plan — the KIND this screen draws is the plan's answer as much
    *  as the role's. ⚠ `isAdmin`, `gstVerified` and `business` left this page
    *  with the Settings sheet on 21 Sep 2026: they were its props and nothing
@@ -125,7 +119,7 @@ export function MyProfilePage({
 }) {
   const { profile } = person;
   /* the KIND is the plan's answer as much as the role's: an artist while the plan is live */
-  const kind = kindOf(profile.role, Boolean(plan?.active));
+  const kind = kindOf(Boolean(plan?.active));
   const ring = ROLE_RING[kind];
   const RC = ring[1];
   /* the one sentence both screens print under the name (19 Sep 2026) */
@@ -136,22 +130,16 @@ export function MyProfilePage({
   const shots: HeroShot[] = header
     .filter((h) => h.url)
     .map((h, i) => ({ key: h.id, src: h.url as string, alt: `Header picture ${i + 1} of ${profile.fullName}` }));
-  const followingN = followingPeople.length + followingTenants.length + followingOrgs.length + followingCrews.length;
-  /* an organization has a page of its own since 18 Sep 2026 (/org/{id}, R23) and
-     CAN be followed since 19 Sep 2026 — it still follows nobody and dances
-     nothing, so its figures are its studios and its followers */
-  const isOrg = profile.role === "org";
+  const followingN = followingPeople.length + followingTenants.length + followingCrews.length;
+  /* ⚠ `isOrg` went with organizations (29 Sep 2026) — every account is a person */
   /* the button row's three questions, asked exactly as `/person/{id}` asks them
      (21 Sep 2026): an artist's Call is their own switch, a plain user's row is
      not drawn at all, and an enquiry names a BUSINESS — the artist page behind
      them, or an organization's hosting row — because `send_enquiry` takes no
      person (R24, R15) */
   const isArtist = kind === "artist";
-  const isPlainUser = !isOrg && !isArtist;
-  /* ⚠ an ORGANIZATION's asks go to its own HOSTING row (R15), which is NOT an
-     artist page and is not in `person` — the route reads it and hands it over,
-     the same id Home already asks for */
-  const asksGoHere = isOrg ? eventsHostId : isArtist ? person.artistPageId : null;
+  const isPlainUser = !isArtist;
+  const asksGoHere = isArtist ? person.artistPageId : null;
 
   const [followList, setFollowList] = useState<"followers" | "following" | null>(null);
   /* ⚠ `?settings=1` is not read here any more (21 Sep 2026) — the chrome reads
@@ -170,15 +158,15 @@ export function MyProfilePage({
 
   const followRows: Array<{ key: string; href: string; name: string; kind: string; glyph: FollowGlyph; tint: string; face: string | null; initials: string }> =
     followList === "followers"
-      ? followers.map((f) => ({ key: f.followId, href: `/person/${f.userId}`, name: f.name, kind: kindOf(f.role, f.isArtist), glyph: kindOf(f.role, f.isArtist) as FollowGlyph, tint: followTint(kindOf(f.role, f.isArtist)), face: photoUrl(f.avatarPath), initials: initialsOf(f.name) }))
+      ? followers.map((f) => ({ key: f.followId, href: `/person/${f.userId}`, name: f.name, kind: kindOf(f.isArtist), glyph: kindOf(f.isArtist) as FollowGlyph, tint: followTint(kindOf(f.isArtist)), face: photoUrl(f.avatarPath), initials: initialsOf(f.name) }))
       : [
-          ...followingPeople.map((f) => ({ key: f.followId, href: `/person/${f.userId}`, name: f.name, kind: kindOf(f.role, f.isArtist), glyph: kindOf(f.role, f.isArtist) as FollowGlyph, tint: followTint(kindOf(f.role, f.isArtist)), face: photoUrl(f.avatarPath), initials: initialsOf(f.name) })),
-          ...followingTenants.map((t) => ({ key: t.followId, href: `/${t.tenantType === "studio" ? "studio" : "artist"}/${t.tenantId}`, name: t.tenantName, kind: t.tenantType === "studio" ? "studio" : "artist", glyph: (t.tenantType === "studio" ? "org" : "artist") as FollowGlyph, tint: followTint(t.tenantType === "studio" ? "studio-biz" : "artist-biz"), face: null, initials: initialsOf(t.tenantName) })),
-          /* the organizations and the crews (19 Sep 2026) — each row opens its own page */
-          ...followingOrgs.map((o) => ({ key: o.followId, href: `/org/${o.orgId}`, name: o.name, kind: "organization", glyph: "org" as FollowGlyph, tint: followTint("org"), face: photoUrl(o.photoPath), initials: initialsOf(o.name) })),
+          ...followingPeople.map((f) => ({ key: f.followId, href: `/person/${f.userId}`, name: f.name, kind: kindOf(f.isArtist), glyph: kindOf(f.isArtist) as FollowGlyph, tint: followTint(kindOf(f.isArtist)), face: photoUrl(f.avatarPath), initials: initialsOf(f.name) })),
+          ...followingTenants.map((t) => ({ key: t.followId, href: `/${t.tenantType === "studio" ? "studio" : "artist"}/${t.tenantId}`, name: t.tenantName, kind: t.tenantType === "studio" ? "studio" : "artist", glyph: (t.tenantType === "studio" ? "studio" : "artist") as FollowGlyph, tint: followTint(t.tenantType === "studio" ? "studio-biz" : "artist-biz"), face: null, initials: initialsOf(t.tenantName) })),
+          /* the crews (19 Sep 2026) — each row opens its own page. ⚠ The
+             organizations followed sat here and went on 29 Sep 2026. */
           ...followingCrews.map((c) => ({ key: c.followId, href: `/crew/${c.crewId}`, name: c.name, kind: "crew", glyph: "crew" as FollowGlyph, tint: followTint("crew"), face: photoUrl(c.photo), initials: initialsOf(c.name) })),
         ];
-  const segOf = (kind: string): FollowSeg => (kind === "user" ? "Users" : kind === "artist" ? "Artists" : kind === "organization" ? "Organizations" : kind === "crew" ? "Crews" : "Studios");
+  const segOf = (kind: string): FollowSeg => (kind === "user" ? "Users" : kind === "artist" ? "Artists" : kind === "crew" ? "Crews" : "Studios");
   const shownFollowRows = followRows.filter((r) => followSeg === "All" || segOf(r.kind) === followSeg);
 
   return (
@@ -242,16 +230,10 @@ export function MyProfilePage({
           <EntityBand
             figures={
               <>
-                {/* an organization's first figure is what it actually has: its
-                    studios, a door to the hub. Followers and Following follow,
-                    exactly as they do for a person (20 Sep 2026: an organization
-                    follows now, so the second figure means something). */}
-                {isOrg ? (
-                  <Link href="/business" aria-label={`${businesses.length} ${businesses.length === 1 ? "studio" : "studios"} — open the hub`} style={{ textDecoration: "none", textAlign: "left" }}>
-                    <span style={figureNum}>{businesses.length}</span>
-                    <span style={figureLabel}>{businesses.length === 1 ? "Studio" : "Studios"}</span>
-                  </Link>
-                ) : null}
+                {/* ⚠ an organization's Studios figure sat here and went with
+                    organizations (29 Sep 2026); every profile is a person's now,
+                    so the row is the two follow figures it has always been for
+                    one. What somebody runs is the "What you run" group below. */}
                 <button type="button" aria-label={`${followers.length} followers`} onClick={() => { setFollowSeg("All"); setFollowList("followers"); }} style={{ background: "none", border: "none", padding: 0, cursor: "pointer", textAlign: "left", fontFamily: "inherit" }}>
                   <span data-testid="my-followers" style={figureNum}>{followers.length}</span>
                   <span style={figureLabel}>Followers</span>
@@ -279,13 +261,12 @@ export function MyProfilePage({
                     because this screen is only ever your own */}
                 {/* this subject's own address, one segment on (22 Sep 2026) — the
                 same string the two chips below already build */}
-            <StatsChip href={`${isOrg ? `/org/${profile.id}` : `/person/${profile.id}`}/stats`} />
-                <ProfileShare path={isOrg ? `/org/${profile.id}` : `/person/${profile.id}`} name={profile.fullName} />
-                <ProfileLink path={isOrg ? `/org/${profile.id}` : `/person/${profile.id}`} name={profile.fullName} />
+                <StatsChip href={`/person/${profile.id}/stats`} />
+                <ProfileShare path={`/person/${profile.id}`} name={profile.fullName} />
+                <ProfileLink path={`/person/${profile.id}`} name={profile.fullName} />
               </>
             }
-            /* an organization dances no style of its own — what it runs does */
-            styles={isOrg ? [] : styleList}
+            styles={styleList}
             styleAria={(s) => `${s} — one of your styles`}
             /* ⚠ WHATSAPP IS OFF THE PUBLISHED RAIL, HERE TOO (20 Sep 2026): the
                public page has filtered it since the rail was built — "a number is
@@ -293,12 +274,12 @@ export function MyProfilePage({
                tab and your own public page listed different links. This tab is
                the published view of yourself; the link is still yours to edit on
                Home, where every platform is shown. */
-            socials={isOrg ? socials : socials.filter((l) => l.platform !== "WhatsApp")}
+            socials={socials.filter((l) => l.platform !== "WhatsApp")}
           >
             {/* THE ONE THING THIS SCREEN SAYS THAT THE PUBLIC ONE CANNOT: where a
                 row is filled in. Drawn only when a row is EMPTY, so a profile
                 with styles and links is pixel-for-pixel its own public page. */}
-            {isOrg || styleList.length ? null : <div style={{ marginTop: 12, fontSize: 11.5, color: SUB, fontWeight: 700 }}>The styles you dance are added on Home.</div>}
+            {styleList.length ? null : <div style={{ marginTop: 12, fontSize: 11.5, color: SUB, fontWeight: 700 }}>The styles you dance are added on Home.</div>}
             {socials.length ? null : <div style={{ marginTop: 8, fontSize: 11.5, color: SUB, fontWeight: 700 }}>Your links are added on Home.</div>}
           </EntityBand>
         </IdentityHero>
@@ -321,20 +302,20 @@ export function MyProfilePage({
             <EnquiryButton
               tenantId={asksGoHere}
               tenantName={profile.fullName}
-              tenantType={isOrg ? "org" : "artist_page"}
+              tenantType="artist_page"
               signedIn
               accent={RC}
               cannotAsk="This is your own page — enquiries come to you here"
             />
           ) : null}
-          {profile.phone && (isOrg || (isArtist && profile.phonePublic)) ? <CallButton phone={profile.phone} /> : null}
+          {profile.phone && isArtist && profile.phonePublic ? <CallButton phone={profile.phone} /> : null}
           {!isPlainUser && profile.contactEmail ? <MailButton email={profile.contactEmail} /> : null}
           {!isPlainUser && whatsappHrefOf(profile.socials) ? <MessageButton href={whatsappHrefOf(profile.socials) as string} /> : null}
-          {isOrg && profile.lat != null && profile.lng != null ? (
-            <LocationButton href={mapsPinHref(profile.lat, profile.lng)} />
-          ) : isOrg && profile.city ? (
-            <LocationButton query={`${profile.fullName} ${profile.city}`} />
-          ) : null}
+          {/* ⚠ NO LOCATION BUTTON (29 Sep 2026). It was an ORGANIZATION's alone —
+              its pin, set from Edit profile through `set_my_place` — because a
+              person's city is a city rather than an address (19 Sep 2026, push 2).
+              With organizations gone nothing on a person's row carries a place to
+              open, and `profiles.lat/lng` has no writer left. */}
         </ActionRow>
 
         {/* ── AND EVERYTHING BELOW IS `PersonBody`, THE VERY COMPONENT
@@ -349,14 +330,9 @@ export function MyProfilePage({
           isMe
           signedIn
           memberships={memberships}
-          organizations={organizations}
           artistTeam={artistTeam}
           scheduleHref={scheduleHref}
           accent={RC}
-          /* an organization's only seats are the owner rows on its own studios,
-             and "What you run" below lists those already — and more completely,
-             because it carries the unlisted ones too */
-          omitStudioSeats={isOrg}
           beforeGroups={
             /* ⚠⚠ WHAT YOU RUN, AND IT IS DRAWN FOR EVERYBODY NOW (27 Sep 2026,
                the user: *"user and artist profiles dont show what they own on
@@ -372,10 +348,8 @@ export function MyProfilePage({
                ⚠ IT IS THE ONES YOU **OWN**, not the ones you are on the team of
                — `owned` is filtered on the owner seat, so a studio you merely
                teach at stays under "Studios" below with its seat word, where it
-               belongs. And it carries STUDIOS, ARTIST PAGES **and
-               ORGANIZATIONS**, because since R48 all three are businesses a
-               person opens; the old list filtered `type !== "org"` for R15's
-               hosting row, which no longer exists.
+               belongs. It carries STUDIOS and ARTIST PAGES; organizations were
+               the third until 29 Sep 2026.
                ⚠ THE UNLISTED ONES ARE HERE ON PURPOSE. This is your own tab and
                `findMyMemberships` is your own read, so a studio waiting on its
                badge shows with "Not public yet" on it — which is the one place
@@ -386,7 +360,7 @@ export function MyProfilePage({
                 {owned.map((t) => (
                   <Row
                     key={t.id}
-                    href={t.type === "studio" || t.type === "org" ? `/business/${t.id}` : `/business/${t.id}/classes`}
+                    href={t.type === "studio" ? `/business/${t.id}` : `/business/${t.id}/classes`}
                     markName={t.name}
                     photo={t.photoPath ? photoUrl(t.photoPath) : null}
                     title={t.name}

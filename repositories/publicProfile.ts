@@ -111,12 +111,10 @@ export async function findPublicTenantProfile(supabase: SupabaseClient, tenantId
   if (!tenant) {
     return null;
   }
-  /* R15 (9 Sep 2026): an organization's event-hosting row is not a business
-     anybody browses to. Its members can read it (they own it), so RLS returns
-     it — and "not found" is the honest answer for a page that does not exist. */
-  if (tenant.type === "org") {
-    return null;
-  }
+  /* ⚠ the `type === "org"` guard went with organizations (29 Sep 2026). It was
+     R15's: an organization's hosting row is not a business anybody browses to,
+     and its members could read it, so RLS returned it and this said "not found"
+     for a page that did not exist. Both kinds left have a page. */
 
   const [classesRes, team, counts] = await Promise.all([
     supabase.from("classes").select("id, style").eq("business_id", tenantId).eq("status", "published").is("deleted_at", null).limit(MAX_CLASSES),

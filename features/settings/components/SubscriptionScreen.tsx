@@ -44,7 +44,6 @@ export function SubscriptionScreen({
   subscription,
   catalog,
   studioPrice,
-  orgPrice = null,
   businesses = [],
 }: {
   subscription: Subscription | null;
@@ -52,12 +51,10 @@ export function SubscriptionScreen({
   catalog: PlanCatalogRow[];
   /** what one studio costs, or null when none is on offer */
   studioPrice: PlanCatalogRow | null;
-  /** what one organization costs (26 Sep 2026), or null when none is on offer */
-  orgPrice?: PlanCatalogRow | null;
-  /** ⚠ the businesses this person OWNS — studios and, since 26 Sep 2026,
-   *  organizations — each with its standing and its control: this screen holds
-   *  the app's one Stop renewing, so it must list everything that renews */
-  businesses?: Array<{ id: string; name: string; kind: "studio" | "org"; verified: boolean; state: StudioSubscriptionState | null }>;
+  /** ⚠ the studios this person OWNS, each with its standing and its control:
+   *  this screen holds the app's one Stop renewing, so it must list everything
+   *  that renews. `orgPrice` and the organizations went on 29 Sep 2026. */
+  businesses?: Array<{ id: string; name: string; kind: "studio"; verified: boolean; state: StudioSubscriptionState | null }>;
 }) {
   const router = useRouter();
   const offers = catalog.filter((p) => p.kind === "artist" && p.active);
@@ -88,7 +85,6 @@ export function SubscriptionScreen({
 
   const live = subscription && subscription.hasAccess ? subscription : null;
   const studios = businesses.filter((b) => b.kind === "studio");
-  const orgs = businesses.filter((b) => b.kind === "org");
 
   return (
     <BizPage title="Subscription" tool="subscription">
@@ -200,22 +196,10 @@ export function SubscriptionScreen({
           )}
         </div>
       ) : null}
-      {/* ⚠ AND THEIR ORGANIZATIONS (26 Sep 2026): an organization is a business a
-          person opens now, with a ₹5,000 mandate of its own that starts once its
-          GST number is verified — `verified` here is that number, not a badge */}
-      {orgs.length > 0 ? (
-        <div style={{ marginTop: 18 }}>
-          <div style={{ fontSize: 9.5, fontWeight: 900, letterSpacing: 1, color: "var(--muted)", padding: "0 2px 8px" }}>YOUR ORGANIZATIONS</div>
-          {orgPrice ? null : (
-            <div style={{ fontSize: 11.5, color: "var(--sub)", lineHeight: 1.55, padding: "0 2px 10px" }}>No organization plan is on offer right now.</div>
-          )}
-          {orgs.map((t) =>
-            t.state ? (
-              <StudioSubscriptionStrip key={t.id} tenantId={t.id} tenantName={t.name} state={t.state} studioPrice={orgPrice} heading={t.name} />
-            ) : null
-          )}
-        </div>
-      ) : null}
+      {/* ⚠ THE ORGANIZATIONS BLOCK WENT WITH ORGANIZATIONS (29 Sep 2026). It
+          listed each one's ₹5,000 mandate beside the studios' ₹1,200 ones, and
+          `org_monthly` is a plan nothing can buy now — the six live org
+          subscriptions on production are the sweep's, not this screen's. */}
       <BizToast msg={toast} />
     </BizPage>
   );

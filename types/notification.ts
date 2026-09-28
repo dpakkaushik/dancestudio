@@ -2,6 +2,19 @@
  *  and NOTIF_PREFS (13700): six kinds, each with its own tint, stacked one card
  *  per kind on S_notif, and a settings sheet — "What reaches you". */
 
+/** ⚠⚠ `event` IS KEPT, AND IT IS HISTORY RATHER THAN A FEATURE (29 Sep 2026).
+ *
+ *  Events were removed on the user's word, and every trigger that RAISED one of
+ *  these went with them — but **162 notification rows on production carry this
+ *  kind**, and `notifications.kind`'s own CHECK still admits it. Dropping the
+ *  word from this union would leave those 162 rows with no label and no tint:
+ *  `NOTIF_KINDS.find` returns undefined and the stack they belong to cannot be
+ *  drawn, so somebody's Inbox would quietly lose lines it used to have.
+ *
+ *  That is this repo's own recurring lesson pointed the other way — a value
+ *  retired from a column leaves every reader of it answering the wrong question
+ *  (R52) — so the reader stays while the rows do. The held sweep deletes them,
+ *  and the word goes in the same push that does. */
 export type NotificationKind = "enquiry" | "booking" | "money" | "people" | "event" | "class";
 
 /** NOTIF_KINDS, in the prototype's own order and colours */

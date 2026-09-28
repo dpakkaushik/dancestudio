@@ -33,7 +33,8 @@ export default async function StudioMediaPage({ params }: { params: Promise<{ te
   }
   const { tenant, memberRole } = membership;
   if (tenant.type !== "studio") {
-    redirect(tenant.type === "org" ? `/business/${tenantId}/events` : `/business/${tenantId}/classes`);
+    /* ⚠ the hosting row's arm went with events (29 Sep 2026) */
+    redirect(`/business/${tenantId}/classes`);
   }
 
   const isOwner = memberRole === "owner";

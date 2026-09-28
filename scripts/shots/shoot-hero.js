@@ -12,15 +12,15 @@
    everything the hero used to.
 
    Two throwaway accounts (the e2e's admin generate_link trick):
-     an ORGANIZATION → its studio → /business/{id}: the empty header and the
+     a STUDIO OWNER → their studio → /business/{id}: the empty header and the
        initials disc, with NO ＋ and NO Add tile on them; the owner's pencil
        opens Edit studio, where the disc's picture goes up, the header's photos
        go up, the only picture's ✕ is disabled (a header never empties) and a
        second one's is not; the location is LOCKED behind Change address; the
        Media desk shows the same two pictures; the PUBLIC page shows the header
-       to the organization AND to a signed-out stranger (the storage policy for
-       a listed studio's photos); then its Home — the logo on the disc, no
-       header, no QR;
+       to the owner AND to a signed-out stranger (the storage policy for a
+       listed studio's photos); then their own Home — the photo on the disc, an
+       empty header, the QR;
      a USER → Home: the face on the disc, an empty header and no tile on it;
        Edit profile puts ONE header picture up and then offers no more; the
        service role grants the Artist plan (₹0, nothing charged) → the sheet
@@ -82,28 +82,29 @@ async function pickCity(page, city) {
   await page.getByRole("option", { name: city, exact: true }).click();
 }
 
-/* the onboarding, as e2e/happy-path.spec.ts walks it */
-async function onboard(page, name, role, city) {
+/* the onboarding, as e2e/happy-path.spec.ts walks it.
+   ⚠ THE `role` ARGUMENT AND ITS WHOLE BRANCH WENT ON 29 Sep 2026. Onboarding
+   asked who was signing up — a person or an ORGANIZATION — and an organization
+   was given a Logo rather than a profile photo and a shorter walk with no
+   styles and no links. The organization LOGIN was retired on 26 Sep, so both
+   callers had been passing "User" since then and the branch had rendered for
+   nobody for three days: a parameter every caller passes the same value to is
+   a parameter that is lying about the choice it offers. */
+async function onboard(page, name, city) {
   await page.waitForURL(/\/onboarding/);
-  const isOrg = role === "Organization";
-  if (isOrg) await page.getByText("Organization", { exact: true }).click();
   await page.locator('input[name="name"]').fill(name);
   await pickCity(page, city);
   await page.getByRole("button", { name: "Continue" }).click();
   await page.getByLabel("Add a photo").setInputFiles(FILE);
   await useIt(page);
-  await page.getByLabel(isOrg ? "Your logo" : "Your profile photo", { exact: true }).waitFor({ timeout: 20000 });
+  await page.getByLabel("Your profile photo", { exact: true }).waitFor({ timeout: 20000 });
   await page.getByRole("button", { name: "Continue", exact: true }).click();
-  if (isOrg) {
-    await page.getByText(/Welcome, /).waitFor();
-  } else {
-    await page.getByText("Your dance styles").waitFor();
-    await page.getByRole("button", { name: "Hip-Hop", exact: true }).click();
-    await page.getByRole("button", { name: "Continue · 1 style" }).click();
-    await page.getByText("Your social links").waitFor();
-    await page.getByRole("button", { name: "Skip for now →" }).click();
-    await page.getByText(/Take a bow, /).waitFor();
-  }
+  await page.getByText("Your dance styles").waitFor();
+  await page.getByRole("button", { name: "Hip-Hop", exact: true }).click();
+  await page.getByRole("button", { name: "Continue · 1 style" }).click();
+  await page.getByText("Your social links").waitFor();
+  await page.getByRole("button", { name: "Skip for now →" }).click();
+  await page.getByText(/Take a bow, /).waitFor();
   await page.getByRole("button", { name: "Open DanceOS →" }).click();
   await page.waitForURL((u) => !u.pathname.startsWith("/onboarding"));
 }
@@ -132,98 +133,86 @@ const enterEdit = async (page) => {
 (async () => {
   const browser = await chromium.launch();
   const stamp = Date.now().toString(36);
-  let orgId = null;
+  let ownerId = null;
   let userId = null;
   let studioId = null;
-  /* the ORGANIZATION BUSINESS the first account owns (26 Sep 2026) */
-  let orgBizId = null;
   const today = new Date().toISOString().slice(0, 10);
   const until = new Date(Date.now() + 365 * 24 * 3600 * 1000).toISOString().slice(0, 10);
   try {
-    /* ── ONE: the organization and its studio ─────────────────────────────── */
-    const org = await browser.newPage({ viewport: { width: 430, height: 932 }, deviceScaleFactor: 1 });
+    /* ── ONE: the studio owner and their studio ───────────────────────────── */
+    const owner = await browser.newPage({ viewport: { width: 430, height: 932 }, deviceScaleFactor: 1 });
     /* the browser's own complaints are the first thing to read when a wait
        below times out — printed, never asserted (a third-party warning is not
        a failed check) */
-    org.on("console", (m) => { if (m.type() === "error") console.log("CONSOLE", m.text().slice(0, 300)); });
-    org.on("pageerror", (e) => console.log("PAGEERROR", String(e).slice(0, 300)));
+    owner.on("console", (m) => { if (m.type() === "error") console.log("CONSOLE", m.text().slice(0, 300)); });
+    owner.on("pageerror", (e) => console.log("PAGEERROR", String(e).slice(0, 300)));
     /* and every failed request, with its body — a 400 from Storage or PostgREST
        says in words what a blank "Failed to load resource" does not */
-    org.on("response", async (r) => {
+    owner.on("response", async (r) => {
       if (r.status() >= 400 && !r.url().includes("/_next/")) {
         let body = "";
         try { body = (await r.text()).slice(0, 300); } catch { /* no body */ }
         console.log("HTTP", r.status(), r.request().method(), r.url().slice(0, 180), body);
       }
     });
-    const shot = shotOf(org);
-    orgId = await signUp(org, `hero-org-${stamp}@example.com`);
-    /* 26 Sep 2026: a PERSON. The organization login is retired; "EEE Dance
-       Company" is this person's own name, they open the studio themselves, and
-       their ORGANIZATION is a business of its own below — GST verified and its
-       mandate granted through the service role, so it is PUBLIC (org_is_public). */
-    await onboard(org, "EEE Dance Company", "User", "New Delhi");
-    {
-      const orgRes = await fetch(`${supabaseUrl}/rest/v1/businesses`, {
-        method: "POST", headers: { ...adminHeaders, Prefer: "return=representation" },
-        body: JSON.stringify({ type: "org", name: "EEE Dance Company Events", city: "New Delhi", visibility: "unlisted", gstin: `HRO${String(Date.now() % 100000).padStart(5, "0")}`, gstin_verified_at: new Date().toISOString(), created_by: orgId, updated_by: orgId }),
-      });
-      if (!orgRes.ok) throw new Error(`could not make the org business: ${orgRes.status} ${await orgRes.text()}`);
-      const [orgBiz] = await orgRes.json();
-      orgBizId = orgBiz.id;
-      await fetch(`${supabaseUrl}/rest/v1/business_members`, { method: "POST", headers: adminHeaders, body: JSON.stringify({ business_id: orgBizId, user_id: orgId, member_role: "owner", created_by: orgId, updated_by: orgId }) });
-      await fetch(`${supabaseUrl}/rest/v1/subscriptions`, {
-        method: "POST", headers: adminHeaders,
-        body: JSON.stringify({ kind: "org", user_id: orgId, business_id: orgBizId, plan_key: "org_monthly", price_inr: 0, period: "monthly", status: "active", current_period_start: today, current_period_end: until, granted: true, note: "Granted by shoot-hero.js — nothing charged", created_by: orgId, updated_by: orgId }),
-      });
-    }
-    await org.goto(`${BASE}/business`);
+    const shot = shotOf(owner);
+    ownerId = await signUp(owner, `hero-owner-${stamp}@example.com`);
+    /* 26 Sep 2026: a PERSON. "EEE Dance Company" is this person's own name and
+       they open the studio themselves.
+       ⚠ AN ORG BUSINESS WAS MADE HERE UNTIL 29 Sep 2026 — "EEE Dance Company
+       Events", with a GST number and a granted ₹5,000 mandate through the
+       service role so it read PUBLIC (org_is_public) — and its own home and its
+       public page were driven at the foot of this script. It is gone, and so is
+       everything it was for. */
+    await onboard(owner, "EEE Dance Company", "New Delhi");
+    await owner.goto(`${BASE}/business`);
     /* ⚠ BY ITS ACCESSIBLE NAME, NOT ITS TEXT (20 Sep 2026, the user: "fix add
        studio button also similarly"). It was a dashed row whose whole content
        was the string "＋ Add studio"; it is the shared `DeskAddButton` pill now,
        whose ＋ is an aria-hidden SVG — so the text node is "Add studio" and the
        NAME is what every other add button in the app is found by. */
-    await org.getByRole("button", { name: "Add studio" }).first().click();
-    await org.locator('input[name="name"]').fill("EEE Dance Studio");
-    await org.locator('input[name="area"]').fill("Kothrud");
-    await pickCity(org, "Pune");
+    await owner.getByRole("button", { name: "Add studio" }).first().click();
+    await owner.locator('input[name="name"]').fill("EEE Dance Studio");
+    await owner.locator('input[name="area"]').fill("Kothrud");
+    await pickCity(owner, "Pune");
     /* the sheet asks for a number and an email now (26 Sep 2026) */
-    await org.locator('input[name="phone"]').fill("+919876543210");
-    await org.locator('input[name="contact_email"]').fill(`hero-studio-${stamp}@example.com`);
-    await org.getByLabel("Room 1 name").fill("Studio A");
+    await owner.locator('input[name="phone"]').fill("+919876543210");
+    await owner.locator('input[name="contact_email"]').fill(`hero-studio-${stamp}@example.com`);
+    await owner.getByLabel("Room 1 name").fill("Studio A");
     /* the app's one style picker, never a native select (parity F4/W2) */
-    await org.getByRole("button", { name: "Add a dance style", exact: true }).click();
-    await org.getByRole("button", { name: "Hip-Hop", exact: true }).click();
-    await org.getByRole("button", { name: "Create studio" }).click();
-    await org.getByText("EEE Dance Studio").first().waitFor();
-    const rows = await rest(`business_members?user_id=eq.${orgId}&member_role=eq.owner&deleted_at=is.null&select=business_id,businesses(type)`);
+    await owner.getByRole("button", { name: "Add a dance style", exact: true }).click();
+    await owner.getByRole("button", { name: "Hip-Hop", exact: true }).click();
+    await owner.getByRole("button", { name: "Create studio" }).click();
+    await owner.getByText("EEE Dance Studio").first().waitFor();
+    const rows = await rest(`business_members?user_id=eq.${ownerId}&member_role=eq.owner&deleted_at=is.null&select=business_id,businesses(type)`);
     studioId = (rows.find((r) => r.businesses && r.businesses.type === "studio") || {}).business_id;
     if (!studioId) throw new Error("the studio was not created");
     /* the badge, a granted ₹0 subscription and the listing, so the page is the one a live studio sees */
     await fetch(`${supabaseUrl}/rest/v1/businesses?id=eq.${studioId}`, { method: "PATCH", headers: adminHeaders, body: JSON.stringify({ verified_at: new Date().toISOString() }) });
     await fetch(`${supabaseUrl}/rest/v1/subscriptions`, {
       method: "POST", headers: adminHeaders,
-      body: JSON.stringify({ kind: "studio", user_id: orgId, business_id: studioId, plan_key: "studio_monthly", price_inr: 0, period: "monthly", status: "active", current_period_start: today, current_period_end: until, granted: true, note: "Granted by shoot-hero.js — nothing charged", created_by: orgId, updated_by: orgId }),
+      body: JSON.stringify({ kind: "studio", user_id: ownerId, business_id: studioId, plan_key: "studio_monthly", price_inr: 0, period: "monthly", status: "active", current_period_start: today, current_period_end: until, granted: true, note: "Granted by shoot-hero.js — nothing charged", created_by: ownerId, updated_by: ownerId }),
     });
     await fetch(`${supabaseUrl}/rest/v1/businesses?id=eq.${studioId}`, { method: "PATCH", headers: adminHeaders, body: JSON.stringify({ visibility: "listed" }) });
 
     /* ── THE HUB, ONE CARD PER STUDIO (15 Sep 2026) ── */
-    await org.goto(`${BASE}/business`);
-    const card = org.getByTestId("studio-card").first();
+    await owner.goto(`${BASE}/business`);
+    const card = owner.getByTestId("studio-card").first();
     await card.waitFor();
-    check((await org.getByTestId("studio-card").count()) === 1, "hub: one card for the one studio");
-    check((await org.getByText("VERIFIED STUDIO").count()) === 0, "hub: no VERIFIED STUDIO line — the tick beside the name is the whole state");
+    check((await owner.getByTestId("studio-card").count()) === 1, "hub: one card for the one studio");
+    check((await owner.getByText("VERIFIED STUDIO").count()) === 0, "hub: no VERIFIED STUDIO line — the tick beside the name is the whole state");
     check((await card.getByLabel("Verified").count()) === 1, "hub: the verified tick sits beside the studio name");
-    check((await org.getByText("Manage ›").count()) === 0, "hub: no Manage word — the card itself is the door");
+    check((await owner.getByText("Manage ›").count()) === 0, "hub: no Manage word — the card itself is the door");
     check((await card.getByRole("link", { name: /open the studio/ }).getAttribute("href")) === `/business/${studioId}`, "hub: the card opens the manage screen");
-    check((await org.getByTestId("studio-live").count()) === 1, "hub: LIVE, not PUBLIC + RENEWS");
-    check((await org.getByText("Stop renewing").count()) === 0, "hub: the renewal detail is off the card");
-    /* 15 Sep 2026: the hub is Studios — events open from Home, the one door */
-    check((await org.getByRole("link", { name: "Your events" }).count()) === 0, "hub: no events block — the hub lists studios");
+    check((await owner.getByTestId("studio-live").count()) === 1, "hub: LIVE, not PUBLIC + RENEWS");
+    check((await owner.getByText("Stop renewing").count()) === 0, "hub: the renewal detail is off the card");
+    /* ⚠ "the hub carries no Your-events block" was checked here from 15 Sep 2026
+       until 29 Sep, when events went: a check that can only ever pass is not a
+       check, so it went with them rather than being kept as reassurance. */
     await shot("hub-one-card");
     /* pressing the card lands on the studio's home */
     await card.getByRole("link", { name: /open the studio/ }).click();
-    await org.waitForURL(new RegExp(`/business/${studioId}$`));
+    await owner.waitForURL(new RegExp(`/business/${studioId}$`));
     check(true, "hub: pressing the card opened the studio's home");
     /* ⚠ AND THE CANCEL DOOR SURVIVED ITS SECOND MOVE (20 Sep 2026, the user:
        "remove your conversation with dance os and subscription from just the home
@@ -232,37 +221,39 @@ const enterEdit = async (page) => {
        today, and it is on `/subscription` — Settings' own Subscription tile —
        now. There is exactly ONE Stop renewing in this app; this check is what
        stops a move from quietly becoming a deletion. */
-    check((await org.getByTestId("studio-subscription").count()) === 0, "studio home: NO subscription strip — it is Settings' Subscription tile now (20 Sep 2026)");
-    await org.goto(`${BASE}/subscription`);
-    const strip = org.getByTestId("studio-subscription").first();
+    check((await owner.getByTestId("studio-subscription").count()) === 0, "studio home: NO subscription strip — it is Settings' Subscription tile now (20 Sep 2026)");
+    await owner.goto(`${BASE}/subscription`);
+    const strip = owner.getByTestId("studio-subscription").first();
     await strip.waitFor({ timeout: 15000 }).catch(() => {});
     check(await strip.isVisible(), "subscription: the studio's own strip is here, under Settings › Subscription");
-    check(await strip.getByText("EEE Dance Studio", { exact: true }).isVisible(), "subscription: and it NAMES the studio — an organization runs several, so the heading is which one");
+    check(await strip.getByText("EEE Dance Studio", { exact: true }).isVisible(), "subscription: and it NAMES the studio — one person can run several, so the heading is which one");
     /* this studio's plan is a GRANT (₹0, set up above) and a grant does not
        renew — so the strip says so and offers no Stop renewing, which is the
        honest answer. The paid-mandate path that DOES offer it needs a real
        Cashfree authorisation, which no script can drive; `rls-proof-*` and the
        live sandbox cover that. */
-    /* scoped to THE STUDIO's strip (26 Sep 2026): this account also owns an
-       organization business now, whose own granted strip sits under YOUR ORGANIZATIONS */
+    /* scoped to THE STUDIO's strip: this account owned an organization business
+       too until 29 Sep 2026, and its own granted strip sat under YOUR
+       ORGANIZATIONS on this same page. The scoping stays — a second studio
+       would put a second strip here for the same reason. */
     check(await strip.getByText("GRANTED", { exact: true }).isVisible(), "subscription: the strip names the standing (GRANTED)");
-    check((await org.getByRole("button", { name: /Stop .* renewing/ }).count()) === 0, "subscription: a grant offers no Stop renewing — there is nothing to stop");
-    await org.goto(`${BASE}/business/${studioId}`);
+    check((await owner.getByRole("button", { name: /Stop .* renewing/ }).count()) === 0, "subscription: a grant offers no Stop renewing — there is nothing to stop");
+    await owner.goto(`${BASE}/business/${studioId}`);
 
     /* the studio's own home: an empty header and the initials disc, and NOTHING
        on either of them to press (16 Sep 2026) */
-    await org.goto(`${BASE}/business/${studioId}`);
-    const hero = org.getByTestId("studio-hero");
+    await owner.goto(`${BASE}/business/${studioId}`);
+    const hero = owner.getByTestId("studio-hero");
     await hero.waitFor();
-    check(await org.getByRole("heading", { name: "EEE Dance Studio", exact: true }).isVisible(), "studio home: the name is the heading");
+    check(await owner.getByRole("heading", { name: "EEE Dance Studio", exact: true }).isVisible(), "studio home: the name is the heading");
     /* ⚠ THE WORD CARRIES THE NUMBER (20 Sep 2026, the user: "Id should be placed
        like for eg. Artist-000123 together there should be no gap"). They are ONE
        span now, not two flex siblings, so the exact text is "Studio-000123" —
        which is also what a screen reader says, and was the reason for nesting
        them: side by side they looked joined and read as two words with a space. */
-    check(await org.getByText(/^Studio(-\d{6})?$/).first().isVisible(), "studio home: STUDIO over the name, with the studio's number against it");
+    check(await owner.getByText(/^Studio(-\d{6})?$/).first().isVisible(), "studio home: STUDIO over the name, with the studio's number against it");
     check((await hero.locator("img").count()) === 0, "studio home: no picture anywhere yet → initials on the disc, no <img>");
-    check((await disc(org).count()) === 1, "studio home: the disc is there");
+    check((await disc(owner).count()) === 1, "studio home: the disc is there");
     /* 16 Sep 2026, the user: "the update image option should be inside the edit profile" */
     /* ⚠ A STUDIO'S PICTURES ARE EDITED WHERE A PERSON'S ARE (20 Sep 2026, the
        user: "edit profile for studio not consistent with how its done for Artist
@@ -275,17 +266,17 @@ const enterEdit = async (page) => {
        open the option to edit everything from the home tab thats when the button
        to edits need to appear") — both states, because a ⊕ that is always there
        is exactly what was asked to go */
-    check((await org.getByRole("button", { name: "Change profile picture" }).count()) === 0 && (await org.getByRole("button", { name: "Add a link" }).count()) === 0, "studio home: read-only until the pencil — no ⊕, no ＋ (26 Sep 2026)");
-    await enterEdit(org);
-    check((await org.getByRole("button", { name: "Change profile picture" }).count()) === 1, "studio home: a ⊕ beside the disc, and only that changes the picture (20 Sep 2026)");
-    check((await org.getByRole("button", { name: "Edit posters" }).count()) === 1, "studio home: the posters have their OWN ⊕ on the rail");
-    check((await org.getByRole("button", { name: "Add a link" }).count()) === 1, "studio home: and ＋ Add link in the band, exactly as on a person's home");
-    check((await org.getByRole("button", { name: "Add a dance style" }).count()) === 1, "studio home: and ＋ on the styles");
-    check((await org.getByRole("button", { name: "Edit contact buttons" }).count()) === 1, "studio home: and the ⊕ that makes and unmakes Call · Mail · Message · Enquiry (26 Sep 2026)");
-    check((await org.getByRole("link", { name: "Edit details" }).getAttribute("href")) === `/business/${studioId}?edit=1`, "studio home: Edit details lands on the sheet's own address (?edit=1)");
-    check((await org.getByLabel("Add a header picture").count()) === 0, "studio home: no Add tile ON the header itself — the ⊕ opens the grid");
-    check((await rail(org).getAttribute("role")) === null, "studio home: an empty header is one square, so no swipe");
-    check((await org.getByText(/^Managing/).count()) === 0, "studio home: no Managing strip");
+    check((await owner.getByRole("button", { name: "Change profile picture" }).count()) === 0 && (await owner.getByRole("button", { name: "Add a link" }).count()) === 0, "studio home: read-only until the pencil — no ⊕, no ＋ (26 Sep 2026)");
+    await enterEdit(owner);
+    check((await owner.getByRole("button", { name: "Change profile picture" }).count()) === 1, "studio home: a ⊕ beside the disc, and only that changes the picture (20 Sep 2026)");
+    check((await owner.getByRole("button", { name: "Edit posters" }).count()) === 1, "studio home: the posters have their OWN ⊕ on the rail");
+    check((await owner.getByRole("button", { name: "Add a link" }).count()) === 1, "studio home: and ＋ Add link in the band, exactly as on a person's home");
+    check((await owner.getByRole("button", { name: "Add a dance style" }).count()) === 1, "studio home: and ＋ on the styles");
+    check((await owner.getByRole("button", { name: "Edit contact buttons" }).count()) === 1, "studio home: and the ⊕ that makes and unmakes Call · Mail · Message · Enquiry (26 Sep 2026)");
+    check((await owner.getByRole("link", { name: "Edit details" }).getAttribute("href")) === `/business/${studioId}?edit=1`, "studio home: Edit details lands on the sheet's own address (?edit=1)");
+    check((await owner.getByLabel("Add a header picture").count()) === 0, "studio home: no Add tile ON the header itself — the ⊕ opens the grid");
+    check((await rail(owner).getAttribute("role")) === null, "studio home: an empty header is one square, so no swipe");
+    check((await owner.getByText(/^Managing/).count()) === 0, "studio home: no Managing strip");
     /* ⚠ THE BAND, THE SAME ONE EVERY PROFILE WEARS (20 Sep 2026). A studio's home
        had the hero and then went straight to the deck — no figures at all — while
        Home and the Profile tab both lead with Followers. It is a plain number
@@ -294,8 +285,8 @@ const enterEdit = async (page) => {
     /* ⚠ AND THE SECOND FIGURE (20 Sep 2026, the user: "Organization and Studio
        still dont have Following section in profile and home"). A studio cannot
        follow anything of its own — `follows.follower_id` references `profiles` —
-       so what is counted is what the account that RUNS it follows. The
-       organization owning this studio exists, so the figure is drawn. */
+       so what is counted is what the account that RUNS it follows. The person
+       owning this studio exists, so the figure is drawn. */
     check((await hero.getByTestId("studio-following").count()) === 1, "studio home: the Following figure too — the owner's, since a studio has nothing to follow with (20 Sep 2026)");
     /* ⚠⚠ AND IT OPENS ITS LIST (27 Sep 2026, the user: "following list not
        opening properly crew and organization"). It was a plain `Figure` — a
@@ -309,7 +300,7 @@ const enterEdit = async (page) => {
     /* ⚠ the sheet is on the PAGE, not inside `hero`: it is `position: fixed`
        over the whole screen, which is the same reason `pick()` looks for a
        portalled option on the page rather than in its trigger's scope */
-    const followingSheet = org.getByRole("dialog", { name: "Following" });
+    const followingSheet = owner.getByRole("dialog", { name: "Following" });
     check(await followingSheet.isVisible().catch(() => false), "studio home: pressing it opens the Following sheet, like Followers beside it");
     await followingSheet.getByRole("button", { name: "Done" }).click();
     await followingSheet.waitFor({ state: "detached", timeout: 10000 });
@@ -327,9 +318,9 @@ const enterEdit = async (page) => {
        the disc's ⊕ and the posters' ⊕ on this very home ARE the editor, so the
        tile was a third door to a job whose controls sit on the pictures. The
        ROUTE stays (Rule 14) and is driven further down this file. */
-    check((await org.getByRole("link", { name: "Media", exact: true }).count()) === 0, "studio home: NO Media tile — the pictures are edited on the pictures (21 Sep 2026)");
-    check((await org.getByRole("link", { name: "Assets", exact: true }).getAttribute("href")) === `/business/${studioId}/assets`, "studio home: the Assets tile opens THIS studio's desk");
-    check((await org.getByRole("link", { name: "Stats", exact: true }).count()) === 1, "studio home: one Stats door — the chip beside the QR (it left the grid on 18 Sep 2026)");
+    check((await owner.getByRole("link", { name: "Media", exact: true }).count()) === 0, "studio home: NO Media tile — the pictures are edited on the pictures (21 Sep 2026)");
+    check((await owner.getByRole("link", { name: "Assets", exact: true }).getAttribute("href")) === `/business/${studioId}/assets`, "studio home: the Assets tile opens THIS studio's desk");
+    check((await owner.getByRole("link", { name: "Stats", exact: true }).count()) === 1, "studio home: one Stats door — the chip beside the QR (it left the grid on 18 Sep 2026)");
     /* ⚠ AND THE CHIPS ARE IN THE FIGURES ROW, NOT THE HERO'S RIGHT EDGE (20 Sep
        2026, the user: "should be placed in same row as follower following numbers
        on its right side"). Measured, because nothing about the DOM says which
@@ -338,10 +329,11 @@ const enterEdit = async (page) => {
        of check that can catch the chips drifting back into their own column —
        the same reason the style-tile size is measured rather than asserted. */
     const figBox = await hero.getByTestId("studio-followers").evaluate((el) => el.getBoundingClientRect().toJSON());
-    const statsBox = await org.getByRole("link", { name: "Stats", exact: true }).evaluate((el) => el.getBoundingClientRect().toJSON());
+    const statsBox = await owner.getByRole("link", { name: "Stats", exact: true }).evaluate((el) => el.getBoundingClientRect().toJSON());
     check(Math.abs(figBox.top + figBox.height / 2 - (statsBox.top + statsBox.height / 2)) < 26 && statsBox.left > figBox.left, "studio home: the QR and Stats chips ride the FIGURES row, to the right of the numbers (20 Sep 2026)");
-    /* R15, 15 Sep 2026: a studio cannot host an event, so its home offers no door to one */
-    check((await org.getByRole("link", { name: "Events", exact: true }).count()) === 0, "studio home: NO Events tile — a studio does not host events");
+    /* ⚠ "no Events tile on a studio's home" was R15's check (15 Sep 2026) and
+       went on 29 Sep with events: it drew the line between a studio and the
+       organization that hosted, and neither side of that line is there now. */
     /* ⚠⚠ AND THE PENCIL HAS LEFT THE CORNER (22 Sep 2026, the user: "studio edit
        profile should be in settings … and profile view button similar to other
        profiles"). BOTH ENDS, because a check that only looks at the new place
@@ -353,8 +345,8 @@ const enterEdit = async (page) => {
        button on top right with public page view right now") — and it toggles
        every editor rather than opening one form. Settings' tile is gone (driven
        in shoot-tiles). */
-    check((await org.getByRole("button", { name: "Edit studio", exact: true }).count()) === 0, "studio home: no 'Edit studio' button — the corner's pencil is 'Edit profile' and toggles edit mode");
-    check((await org.getByTestId("hero-corner").locator("a").count()) === 1 && (await org.getByTestId("hero-corner").getByRole("button", { name: "Edit profile", exact: true }).count()) === 1, "studio home: the corner is the pencil over the eye, like every other profile's (26 Sep 2026)");
+    check((await owner.getByRole("button", { name: "Edit studio", exact: true }).count()) === 0, "studio home: no 'Edit studio' button — the corner's pencil is 'Edit profile' and toggles edit mode");
+    check((await owner.getByTestId("hero-corner").locator("a").count()) === 1 && (await owner.getByTestId("hero-corner").getByRole("button", { name: "Edit profile", exact: true }).count()) === 1, "studio home: the corner is the pencil over the eye, like every other profile's (26 Sep 2026)");
     /* ⚠⚠ THE CORNER OPENS **THIS STUDIO'S** PUBLIC PAGE (21 Sep 2026, the user:
        "studio and crew pages on home tab should have option to view their
        profile pages currently taking to organizations page and user/artist
@@ -366,10 +358,10 @@ const enterEdit = async (page) => {
        corner goes to the public face of the thing you are standing on. Both ends
        asserted, because a check that only looks for what was added lets what it
        replaced live on. */
-    check((await org.getByRole("link", { name: "Public view", exact: true }).getAttribute("href")) === `/studio/${studioId}`, "studio home: the corner opens THIS studio's public page (21 Sep 2026)");
-    check((await org.getByRole("link", { name: "Your profile", exact: true }).count()) === 0, "studio home: and not the organization behind it");
+    check((await owner.getByRole("link", { name: "Public view", exact: true }).getAttribute("href")) === `/studio/${studioId}`, "studio home: the corner opens THIS studio's public page (21 Sep 2026)");
+    check((await owner.getByRole("link", { name: "Your profile", exact: true }).count()) === 0, "studio home: and not the organization behind it");
     /* AND THE BUTTONS ABOVE THE SCHEDULE, the row its public page carries */
-    check((await org.getByRole("button", { name: /enquiries come to you here/ }).count()) === 1, "studio home: Enquiry is drawn and disabled with its reason, as on your own page");
+    check((await owner.getByRole("button", { name: /enquiries come to you here/ }).count()) === 1, "studio home: Enquiry is drawn and disabled with its reason, as on your own page");
     /* ⚠ THE DISC IS THE PICTURE, NOT A THIRD DOOR (20 Sep 2026). It opened the
        studio's public page from 19 Sep — a SECOND door beside the eye, and a
        third beside the QR chip, all to one address — while a person's disc has
@@ -377,15 +369,15 @@ const enterEdit = async (page) => {
        the eye above is the one door out. This asserts the old link is gone as
        well as the new control being there: a check that only looks for what was
        added lets the thing it replaced live on. */
-    check((await org.getByRole("link", { name: "Open the studio's public page", exact: true }).count()) === 0, "studio home: the disc is no longer a link to the public page — the eye is that door (20 Sep 2026)");
-    check((await org.getByRole("button", { name: "EEE Dance Studio — profile picture" }).count()) === 0, "studio home: and with no picture yet the disc is not a button either — there is nothing to open");
+    check((await owner.getByRole("link", { name: "Open the studio's public page", exact: true }).count()) === 0, "studio home: the disc is no longer a link to the public page — the eye is that door (20 Sep 2026)");
+    check((await owner.getByRole("button", { name: "EEE Dance Studio — profile picture" }).count()) === 0, "studio home: and with no picture yet the disc is not a button either — there is nothing to open");
     /* Discover joined the entity's bar on 19 Sep 2026: allowed, while booking is
        not. ⚠ ENQUIRIES IS THE FOURTH SINCE 27 Sep 2026 — the user asked for the
        enquiry desk off Settings and out of the Inbox ("enquiries should be
        removed from settings and inbox merged into a section on home tab"), and
        chose the tab over a section. Asserted by NAME as well as by count, so a
        fifth tab added without one cannot pass this line. */
-    const studioBar = org.getByRole("navigation", { name: "Studio" });
+    const studioBar = owner.getByRole("navigation", { name: "Studio" });
     /* ⚠ THREE AGAIN (27 Sep 2026, evening): Enquiries was the fourth tab for a
        few hours this morning and is a TOOL TILE now, on this studio's own grid.
        The count alone would pass on the wrong three, so the absent one is named
@@ -405,13 +397,13 @@ const enterEdit = async (page) => {
        owner pressing it was told the feature does not exist while it was live
        one address away. Driven from the tile, because the tile is what was
        broken. */
-    check((await org.getByRole("link", { name: "Memberships", exact: true }).getAttribute("href")) === `/business/${studioId}/memberships`, "studio home: the Memberships tile opens THIS studio's desk (21 Sep 2026)");
-    await org.goto(`${BASE}/business/${studioId}/memberships`);
-    await org.getByRole("heading", { name: "Memberships" }).waitFor({ timeout: 15000 });
-    check((await org.getByText("Class packs and plans this studio sells").count()) === 0, "studio memberships: not the 'nothing here yet' shrug any more");
-    check((await org.getByText(/^What .* sells$/).count()) === 1, "studio memberships: the desk says WHOSE it is — an organization runs several");
+    check((await owner.getByRole("link", { name: "Memberships", exact: true }).getAttribute("href")) === `/business/${studioId}/memberships`, "studio home: the Memberships tile opens THIS studio's desk (21 Sep 2026)");
+    await owner.goto(`${BASE}/business/${studioId}/memberships`);
+    await owner.getByRole("heading", { name: "Memberships" }).waitFor({ timeout: 15000 });
+    check((await owner.getByText("Class packs and plans this studio sells").count()) === 0, "studio memberships: not the 'nothing here yet' shrug any more");
+    check((await owner.getByText(/^What .* sells$/).count()) === 1, "studio memberships: the desk says WHOSE it is — an organization runs several");
     /* a studio holds no passes (a business is not a person), so one side, no switch */
-    check((await org.getByRole("button", { name: /^Booked/ }).count()) === 0, "studio memberships: no Booked side — a studio holds no pass");
+    check((await owner.getByRole("button", { name: /^Booked/ }).count()) === 0, "studio memberships: no Booked side — a studio holds no pass");
     /* ⚠ STALE SINCE STAGE 2 AND ONLY FOUND TODAY (22 Sep 2026). This asserted
        `/memberships/new?business={studio}` — right on 21 Sep, when the desk's
        add control was a LINK to a page that had to be told which studio it was
@@ -420,21 +412,21 @@ const enterEdit = async (page) => {
        pass. The page still exists and still takes `?business=` (Rule 14), which
        `shoot-tiles` drives. The lesson is this file's own: shoot-hero had not
        been run since stage 1, and a proof is only true the last time it ran. */
-    check((await org.getByRole("link", { name: "New membership" }).getAttribute("href")) === "?new=1", "studio memberships: the form opens over THIS studio's desk, so the studio is the address (22 Sep 2026)");
-    await org.goto(`${BASE}/business/${studioId}`);
+    check((await owner.getByRole("link", { name: "New membership" }).getAttribute("href")) === "?new=1", "studio memberships: the form opens over THIS studio's desk, so the studio is the address (22 Sep 2026)");
+    await owner.goto(`${BASE}/business/${studioId}`);
 
     /* ⚠ AND IT IS OFF THE DESKS TOO NOW (18 Sep 2026, the user: "remove the blue
        bar which shows exit studio from all pages"). It was kept there on 16 Sep
        with the argument that a tool hero names the tool and nothing names the
        studio; the user has answered that argument, and `WorkspaceStrip` is
        deleted rather than hidden. The back chip is the way out of a desk. */
-    await org.goto(`${BASE}/business/${studioId}/classes`);
+    await owner.goto(`${BASE}/business/${studioId}/classes`);
     /* the register's hero is the tool card, not a heading element (the 18 Sep
        class-form re-cut drew it as a div) — its one stable control is the
        Create class pill, so that is what says the page is up */
-    await org.getByRole("link", { name: /Create class/ }).waitFor();
-    check((await org.getByText(/^Managing/).count()) === 0, "a desk: no Managing strip either — it is gone from every page");
-    check((await org.getByRole("link", { name: /Leave this studio/ }).count()) === 0, "a desk: and no blue Exit studio pill");
+    await owner.getByRole("link", { name: /Create class/ }).waitFor();
+    check((await owner.getByText(/^Managing/).count()) === 0, "a desk: no Managing strip either — it is gone from every page");
+    check((await owner.getByRole("link", { name: /Leave this studio/ }).count()) === 0, "a desk: and no blue Exit studio pill");
 
     /* ── A STUDIO'S TWO PICTURES, WHERE A PERSON'S ARE (20 Sep 2026) ──────────
        The user: "edit profile for studio not consistent with how its done for
@@ -444,7 +436,7 @@ const enterEdit = async (page) => {
        person's home. This block drives the NEW controls and keeps every claim it
        made before — above all the destroy-on-cancel regression, which is the
        whole reason it exists. */
-    await org.goto(`${BASE}/business/${studioId}`);
+    await owner.goto(`${BASE}/business/${studioId}`);
     await hero.waitFor();
 
     /* ⚠ THE SHEET IS AN ADDRESS NOW (22 Sep 2026) — `?edit=1` on the studio's own
@@ -452,8 +444,8 @@ const enterEdit = async (page) => {
        sheet. Settings' THIS STUDIO tile navigates here; driving the URL is what
        proves the door survives whichever control points at it, and the gate is
        still the owner-only read behind it rather than the query. */
-    await org.goto(`${BASE}/business/${studioId}?edit=1`);
-    const sheet = org.getByRole("dialog", { name: "Edit business" });
+    await owner.goto(`${BASE}/business/${studioId}?edit=1`);
+    const sheet = owner.getByRole("dialog", { name: "Edit business" });
     await sheet.waitFor();
     check((await sheet.getByText("Update profile", { exact: true }).count()) === 0, "edit studio: NO picture block in the sheet any more — the disc's own ⊕ changes it (20 Sep 2026)");
     check((await sheet.getByText("Update header", { exact: true }).count()) === 0, "edit studio: and no header block — the posters rail's ⊕ does");
@@ -478,25 +470,25 @@ const enterEdit = async (page) => {
     /* ── THE DISC (businesses.profile_photo_path, through set_business_profile_photo).
        It commits on upload, because replacing a picture is not destroying one —
        the same rule a person's disc keeps. ── */
-    await enterEdit(org);
-    await org.getByRole("button", { name: "Change profile picture" }).click();
-    const picSheet = org.getByRole("dialog", { name: "Profile picture" });
+    await enterEdit(owner);
+    await owner.getByRole("button", { name: "Change profile picture" }).click();
+    const picSheet = owner.getByRole("dialog", { name: "Profile picture" });
     await picSheet.waitFor();
     await picSheet.getByLabel("Add a photo").setInputFiles(FILE);
-    await useIt(org);
-    const discUp = await disc(org).locator("img").first().waitFor({ timeout: 20000 }).then(() => true).catch(() => false);
+    await useIt(owner);
+    const discUp = await disc(owner).locator("img").first().waitFor({ timeout: 20000 }).then(() => true).catch(() => false);
     if (!discUp) {
       const words = await picSheet.locator('[role="status"], [role="alert"]').allTextContents().catch(() => []);
-      console.log("DISC DID NOT LAND — sheet says:", JSON.stringify(words), "| open dialogs:", await org.getByRole("dialog").count(), "| disc imgs:", await discImgs(org), "| url:", org.url());
+      console.log("DISC DID NOT LAND — sheet says:", JSON.stringify(words), "| open dialogs:", await owner.getByRole("dialog").count(), "| disc imgs:", await discImgs(owner), "| url:", owner.url());
     }
-    check(discUp && (await discImgs(org)) === 1, "studio picture: it landed on the disc behind the sheet");
-    check((await railImgs(org)) === 0, "studio picture: and not in the header");
+    check(discUp && (await discImgs(owner)) === 1, "studio picture: it landed on the disc behind the sheet");
+    check((await railImgs(owner)) === 0, "studio picture: and not in the header");
     await picSheet.getByRole("button", { name: "Done" }).click();
     await picSheet.waitFor({ state: "detached" });
     const photoPath = await rest(`businesses?id=eq.${studioId}&select=profile_photo_path`);
     check(String(photoPath[0] && photoPath[0].profile_photo_path).startsWith(`tenants/${studioId}/`), "businesses.profile_photo_path is set, in the studio's own folder");
     /* and now that there IS one, the disc is a button that opens it */
-    check((await org.getByRole("button", { name: "EEE Dance Studio — profile picture" }).count()) === 1, "studio picture: the disc is now a button that opens the picture full size");
+    check((await owner.getByRole("button", { name: "EEE Dance Studio — profile picture" }).count()) === 1, "studio picture: the disc is now a button that opens the picture full size");
 
     /* ── THE POSTERS ARE A DRAFT (16 Sep 2026, carried through every move since) ──
        The user pressed ✕ on four pictures, pressed CANCEL, and lost all four.
@@ -508,20 +500,20 @@ const enterEdit = async (page) => {
       const live = await rest(`studio_photos?business_id=eq.${studioId}&deleted_at=is.null&select=id`);
       return Array.isArray(live) ? live.length : -1;
     };
-    const posters = org.getByRole("dialog", { name: "Posters", exact: true });
+    const posters = owner.getByRole("dialog", { name: "Posters", exact: true });
     /* ⚠ `openStudioPosters`, not `openPosters` — the USER's half of this script
        further down already has one of those, and two `const`s of one name in one
        scope is a parse error that only `node --check` (or the run) finds */
     const openStudioPosters = async () => {
-      await enterEdit(org);
-      const edit = org.getByRole("button", { name: "Edit posters" });
+      await enterEdit(owner);
+      const edit = owner.getByRole("button", { name: "Edit posters" });
       await edit.waitFor({ timeout: 20000 });
       await edit.click();
       await posters.waitFor();
     };
     await openStudioPosters();
     await posters.getByLabel("Add photos of your space").setInputFiles(FILE);
-    await useIt(org);
+    await useIt(owner);
     const headerUp = await posters
       .getByLabel(/is the only one/)
       .first()
@@ -530,17 +522,17 @@ const enterEdit = async (page) => {
       .catch(() => false);
     if (headerUp) {
       check(true, "studio posters: a staged picture appears in the sheet");
-      check((await railImgs(org)) === 0, "studio posters: and NOT on the page behind it — nothing is saved yet");
+      check((await railImgs(owner)) === 0, "studio posters: and NOT on the page behind it — nothing is saved yet");
       check((await studioRows()) === 0, "studio posters: and the database still holds nothing");
       check((await posters.getByLabel(/is the only one/).count()) === 1, "studio posters: the only picture's ✕ is disabled and says why — a header never empties");
       await posters.getByRole("button", { name: /^Save/ }).click();
-      await waitRailImgs(org, 1);
+      await waitRailImgs(owner, 1);
       check((await studioRows()) === 1, "studio posters: Save is what put the picture on the record");
 
       /* ⚠ THE REPORTED BUG, AS A STANDING CHECK */
       await openStudioPosters();
       await posters.getByLabel("Add photos of your space").setInputFiles(FILE);
-      await useIt(org);
+      await useIt(owner);
       await posters.getByLabel("Remove photo 1").first().waitFor({ timeout: 25000 });
       check((await posters.getByLabel(/^Remove photo/).count()) === 2, "studio posters: two pictures, two live ✕");
       await posters.getByLabel("Remove photo 1").click();
@@ -553,22 +545,22 @@ const enterEdit = async (page) => {
 
       /* the gallery opens a picture full size */
       await posters.getByLabel("Open picture 1").click();
-      check((await org.getByRole("dialog", { name: /picture 1 of/ }).count()) === 1, "studio posters: pressing a picture opens it full size");
-      await org.getByRole("button", { name: "Close the picture" }).click();
-      check((await org.getByRole("dialog", { name: /picture 1 of/ }).count()) === 0, "studio posters: and it closes again");
+      check((await owner.getByRole("dialog", { name: /picture 1 of/ }).count()) === 1, "studio posters: pressing a picture opens it full size");
+      await owner.getByRole("button", { name: "Close the picture" }).click();
+      check((await owner.getByRole("dialog", { name: /picture 1 of/ }).count()) === 0, "studio posters: and it closes again");
       await shot("studio-header");
 
       /* a second picture, saved — then a removal, saved */
       await posters.getByLabel("Add photos of your space").setInputFiles(FILE);
-      await useIt(org);
+      await useIt(owner);
       await posters.getByLabel("Remove photo 2").first().waitFor({ timeout: 25000 });
       await posters.getByRole("button", { name: /^Save/ }).click();
-      await waitRailImgs(org, 2);
+      await waitRailImgs(owner, 2);
       check((await studioRows()) === 2, "studio posters: Save committed the second one too");
       await openStudioPosters();
       await posters.getByLabel("Remove photo 1").click();
       await posters.getByRole("button", { name: /^Save/ }).click();
-      await waitRailImgs(org, 1);
+      await waitRailImgs(owner, 1);
       check((await studioRows()) === 1, "studio posters: and Save is what removes one, too");
 
       /* the Media desk: the same two pictures as a desk.
@@ -576,11 +568,11 @@ const enterEdit = async (page) => {
          (Rule 14: a link handed out is a promise, and the installed TWA reopens
          on the last URL it showed) — which is why it is still reached by URL
          here and still has to work. */
-      await org.goto(`${BASE}/business/${studioId}/media`);
-      await org.getByRole("heading", { name: "Media", exact: true }).waitFor();
-      check((await org.getByTestId("media-disc").locator("img").count()) === 1, "media desk: the disc with its picture");
-      check(await org.getByText("1 / 5–10").isVisible(), "media desk: the header count");
-      check((await org.getByLabel(/is the only one/).count()) === 1, "media desk: the only picture's ✕ is disabled and says why");
+      await owner.goto(`${BASE}/business/${studioId}/media`);
+      await owner.getByRole("heading", { name: "Media", exact: true }).waitFor();
+      check((await owner.getByTestId("media-disc").locator("img").count()) === 1, "media desk: the disc with its picture");
+      check(await owner.getByText("1 / 5–10").isVisible(), "media desk: the header count");
+      check((await owner.getByLabel(/is the only one/).count()) === 1, "media desk: the only picture's ✕ is disabled and says why");
       await shot("studio-media");
 
       /* the public page reads the header through business_header_photos, which
@@ -590,10 +582,10 @@ const enterEdit = async (page) => {
       const rpcProbe = await fetch(`${supabaseUrl}/rest/v1/rpc/business_header_photos`, { method: "POST", headers: adminHeaders, body: JSON.stringify({ p_business_id: studioId }) });
       const rpcNote = rpcProbe.ok ? "" : " (NEEDS migration 20260915090000 — business_header_photos is not on the database)";
       /* to the organization … */
-      await org.goto(`${BASE}/studio/${studioId}`);
-      await org.getByTestId("public-hero").waitFor();
-      check((await railImgs(org)) === 1, `public studio page (owner): the header picture is there${rpcNote}`);
-      check((await discImgs(org)) === 1, "public studio page (owner): the disc is there");
+      await owner.goto(`${BASE}/studio/${studioId}`);
+      await owner.getByTestId("public-hero").waitFor();
+      check((await railImgs(owner)) === 1, `public studio page (owner): the header picture is there${rpcNote}`);
+      check((await discImgs(owner)) === 1, "public studio page (owner): the disc is there");
       /* … and to a stranger with no account at all — the storage policy's whole point */
       const guestCtx = await browser.newContext({ viewport: { width: 430, height: 932 } });
       const guest = await guestCtx.newPage();
@@ -612,27 +604,28 @@ const enterEdit = async (page) => {
     /* THE OWNER'S OWN HOME (26 Sep 2026: a PERSON's — the organization login is
        retired, so this is a user's Home wearing the same hero: the profile photo
        on the disc, an empty header (a user holds one), and a QR to its own page.
-       The ORGANIZATION's own home is `/business/{org}`, driven at the end. */
-    await org.goto(`${BASE}/`);
-    await org.getByRole("heading", { name: "EEE Dance Company", exact: true }).waitFor();
-    check((await discImgs(org)) === 1, "org home: the profile photo is on the disc");
-    check((await railImgs(org)) === 0, "org home: an empty header — nothing added yet (a user holds one)");
+       ⚠ The organization's own home at `/business/{orgId}` was driven at the end
+       of this script until 29 Sep 2026, when organizations went. */
+    await owner.goto(`${BASE}/`);
+    await owner.getByRole("heading", { name: "EEE Dance Company", exact: true }).waitFor();
+    check((await discImgs(owner)) === 1, "owner home: the profile photo is on the disc");
+    check((await railImgs(owner)) === 0, "owner home: an empty header — nothing added yet (a user holds one)");
     /* ⚠ THE QR AND THE SHARE ARE TWO CHIPS NOW (21 Sep 2026, the user: "Seprate
        current Qr Code from share option and share to directly send link of that
        profile"). The QR's own name dropped "Share this profile — ", because the
        chip beside it is what shares; this asserts BOTH, and asserts the old
        combined name is gone, so nothing is left answering to two jobs. */
-    check((await org.getByLabel("QR code").count()) === 1, "org home: a QR — an organization has a page of its own (18 Sep 2026)");
-    check((await org.getByLabel("Share EEE Dance Company").count()) === 1, "org home: the Share chip beside it, which sends the link itself (21 Sep 2026)");
-    check((await org.getByLabel("Share this profile — QR code").count()) === 0, "org home: nothing answers to the old combined name");
+    check((await owner.getByLabel("QR code").count()) === 1, "owner home: a QR — every person has a page of its own to share");
+    check((await owner.getByLabel("Share EEE Dance Company").count()) === 1, "owner home: the Share chip beside it, which sends the link itself (21 Sep 2026)");
+    check((await owner.getByLabel("Share this profile — QR code").count()) === 0, "owner home: nothing answers to the old combined name");
     /* THE ORDER THE USER GAVE: Follow bell · Stats · QR · Share. There is no bell
        on your own home, so on this page it is Stats · QR · Share — measured by
        LEFT EDGE rather than by DOM position, because the row is `flex` and a
        re-order that only changed the markup would pass a DOM check and still
        draw them in the old order. */
-    const chipX = async (label) => (await org.getByLabel(label).first().boundingBox())?.x ?? -1;
+    const chipX = async (label) => (await owner.getByLabel(label).first().boundingBox())?.x ?? -1;
     const [xStats, xQr, xShare] = [await chipX("Stats"), await chipX("QR code"), await chipX("Share EEE Dance Company")];
-    check(xStats > 0 && xStats < xQr && xQr < xShare, `org home: the chips read Stats · QR · Share, left to right (${xStats} < ${xQr} < ${xShare})`);
+    check(xStats > 0 && xStats < xQr && xQr < xShare, `owner home: the chips read Stats · QR · Share, left to right (${xStats} < ${xQr} < ${xShare})`);
     /* ⚠ THE QR IS A REAL CODE NOW, AND THE SHEET IS ONLY THE CODE (21 Sep 2026,
        the user: "qr code button should just open qr not link on all profiles
        code should look better as well"). Both halves are asserted here because
@@ -652,38 +645,38 @@ const enterEdit = async (page) => {
        And the printed link and the Copy button are asserted GONE,
        because a check that only looks for what was added lets what it replaced
        live on — this file's own recurring lesson. */
-    await org.getByLabel("QR code").first().click();
-    const qrSheet = org.getByRole("dialog", { name: /^Share / });
+    await owner.getByLabel("QR code").first().click();
+    const qrSheet = owner.getByRole("dialog", { name: /^Share / });
     await qrSheet.waitFor({ state: "visible", timeout: 15000 });
     const qrSvg = qrSheet.locator("svg[data-qr-modules]");
-    check((await qrSvg.count()) === 1, "org QR sheet: one code square, and it came out of the encoder");
+    check((await qrSvg.count()) === 1, "owner QR sheet: one code square, and it came out of the encoder");
     const qrModules = Number(await qrSvg.getAttribute("data-qr-modules"));
-    check(qrModules >= 29 && qrModules <= 45 && (qrModules - 21) % 4 === 0, `org QR sheet: a real QR size, sized to the link rather than fixed (drew ${qrModules}; the old square was always 13)`);
-    check((await qrSvg.getAttribute("data-qr-scannable")) === "yes", "org QR sheet: drawn big enough for a camera to resolve a module");
-    check((await qrSvg.locator("rect").count()) > 40, "org QR sheet: real modules, not three drawn eyes and a hash field");
-    check((await qrSheet.getByRole("button", { name: "Copy link" }).count()) === 0, "org QR sheet: no Copy link — the chip beside it is the share (21 Sep 2026)");
-    check((await qrSheet.getByText(/vercel\.app|localhost:/).count()) === 0, "org QR sheet: the link is not printed — the button opens a QR, not a link");
+    check(qrModules >= 29 && qrModules <= 45 && (qrModules - 21) % 4 === 0, `owner QR sheet: a real QR size, sized to the link rather than fixed (drew ${qrModules}; the old square was always 13)`);
+    check((await qrSvg.getAttribute("data-qr-scannable")) === "yes", "owner QR sheet: drawn big enough for a camera to resolve a module");
+    check((await qrSvg.locator("rect").count()) > 40, "owner QR sheet: real modules, not three drawn eyes and a hash field");
+    check((await qrSheet.getByRole("button", { name: "Copy link" }).count()) === 0, "owner QR sheet: no Copy link — the chip beside it is the share (21 Sep 2026)");
+    check((await qrSheet.getByText(/vercel\.app|localhost:/).count()) === 0, "owner QR sheet: the link is not printed — the button opens a QR, not a link");
     /* the one thing no assertion settles: "should look better" is a thing to
        look at, so it is shot on its own rather than buried in a full-page grab */
     await qrSvg.screenshot({ path: path.join(OUT, "hero-qr-code.png") });
     await qrSheet.getByRole("button", { name: "Done" }).click();
     await qrSheet.waitFor({ state: "hidden", timeout: 15000 });
-    check(await org.getByText(/^User(-\d{6})?$/).first().isVisible(), "org home: the role word — User, since 26 Sep 2026 — with the account number against it");
+    check(await owner.getByText(/^User(-\d{6})?$/).first().isVisible(), "owner home: the role word — User, since 26 Sep 2026 — with the account number against it");
     /* BOTH FIGURES, on this person's Home like everybody's */
     check(
-      (await org.getByTestId("home-followers").count()) === 1 && (await org.getByTestId("home-following").count()) === 1,
-      "org home: Followers AND Following, both drawn and both clickable (20 Sep 2026)"
+      (await owner.getByTestId("home-followers").count()) === 1 && (await owner.getByTestId("home-following").count()) === 1,
+      "owner home: Followers AND Following, both drawn and both clickable (20 Sep 2026)"
     );
-    await org.getByTestId("home-following").click();
-    check(await org.getByRole("dialog", { name: "Following", exact: true }).isVisible(), "org home: and the Following figure opens its list");
-    await org.keyboard.press("Escape").catch(() => {});
-    await org.goto(`${BASE}/`);
-    await org.getByRole("heading", { name: "EEE Dance Company", exact: true }).waitFor();
-    check((await org.getByLabel("Change your photo").count()) === 0, "org home: no ＋ on the disc — the picture is changed behind the pencil beside it");
+    await owner.getByTestId("home-following").click();
+    check(await owner.getByRole("dialog", { name: "Following", exact: true }).isVisible(), "owner home: and the Following figure opens its list");
+    await owner.keyboard.press("Escape").catch(() => {});
+    await owner.goto(`${BASE}/`);
+    await owner.getByRole("heading", { name: "EEE Dance Company", exact: true }).waitFor();
+    check((await owner.getByLabel("Change your photo").count()) === 0, "owner home: no ＋ on the disc — the picture is changed behind the pencil beside it");
     /* the chrome, re-cut 19 Sep 2026: THREE in the bar, the DISC is the door to the public page (the eye left Home
        later the same day — the user: "clicking on the profile photo on home tab takes to profile so can remove
        the eye from top right on home"), Stats the chip */
-    const bar = org.getByRole("navigation", { name: "Main" });
+    const bar = owner.getByRole("navigation", { name: "Main" });
     check((await bar.getByRole("link", { name: "Stats" }).count()) === 0 && (await bar.getByRole("link", { name: "Profile" }).count()) === 0, "bar: neither Stats nor Profile is a tab any more");
     check((await bar.getByRole("link", { name: "Public view" }).count()) === 0, "bar: the eye left the bar (19 Sep 2026, the user: 'remove profile tab from navbar')");
     check((await bar.getByRole("link", { name: "Enquiries" }).count()) === 0 && (await bar.getByRole("link").count()) === 3, "bar: Home · Discover · Inbox — three, Enquiries off it (27 Sep 2026)");
@@ -698,65 +691,64 @@ const enterEdit = async (page) => {
        the door rather than to where the door goes, and it went red for a change
        that moved nobody anywhere. Asserting the resolved address is STRICTER:
        a corner pointing at the wrong account would have passed the old line. */
-    /* the corner opens this PERSON's own profile (26 Sep 2026: `/person/{id}`,
-       C40 — `/org/{id}` is the organization BUSINESS's page now, driven below) */
-    check((await org.getByRole("link", { name: "Your profile", exact: true }).count()) === 1 && (await org.getByRole("link", { name: "Your profile", exact: true }).getAttribute("href")) === `/person/${orgId}`, "org home: the corner opens this person's own profile (21 Sep 2026; a person's since 26 Sep)");
-    check((await org.getByRole("link", { name: "Public view", exact: true }).count()) === 0, "org home: no eye — its public page is the Share chip, and the corner no longer loops");
-    /* a plain user's Home carries no Enquiry — they have no artist page for one to land on; the ORGANIZATION's enquiries land on ITS home */
-    check((await org.getByRole("button", { name: /enquiries come to you here/ }).count()) === 0, "org home: no Enquiry on a plain user's Home (the organization's enquiries are its own business's)");
+    /* the corner opens this PERSON's own profile (26 Sep 2026: `/person/{id}`, C40) */
+    check((await owner.getByRole("link", { name: "Your profile", exact: true }).count()) === 1 && (await owner.getByRole("link", { name: "Your profile", exact: true }).getAttribute("href")) === `/person/${ownerId}`, "owner home: the corner opens this person's own profile (21 Sep 2026; a person's since 26 Sep)");
+    check((await owner.getByRole("link", { name: "Public view", exact: true }).count()) === 0, "owner home: no eye — its public page is the Share chip, and the corner no longer loops");
+    /* a plain user's Home carries no Enquiry — they have no artist page for one to land on */
+    check((await owner.getByRole("button", { name: /enquiries come to you here/ }).count()) === 0, "owner home: no Enquiry on a plain user's Home — they hold no artist page for one to land on");
     /* INVERTED 26 Sep 2026: the pencil is BACK on the corner, and it toggles
        edit mode ("should be a button on top right with public page view") */
-    check((await org.getByRole("button", { name: "Edit profile", exact: true }).count()) === 1, "org home: the pencil on the corner, over the door (26 Sep 2026)");
-    check((await org.getByRole("link", { name: "Stats", exact: true }).count()) === 1, "org home: one Stats door — the chip beside the name (a tile until 18 Sep 2026)");
+    check((await owner.getByRole("button", { name: "Edit profile", exact: true }).count()) === 1, "owner home: the pencil on the corner, over the door (26 Sep 2026)");
+    check((await owner.getByRole("link", { name: "Stats", exact: true }).count()) === 1, "owner home: one Stats door — the chip beside the name (a tile until 18 Sep 2026)");
     /* AND IT IS THIS PERSON'S OWN ADDRESS (C57): the chip builds `${subject}/stats` */
-    check((await org.getByRole("link", { name: "Stats", exact: true }).getAttribute("href")) === `/person/${orgId}/stats`, "org home: the Stats chip opens this person's own address");
+    check((await owner.getByRole("link", { name: "Stats", exact: true }).getAttribute("href")) === `/person/${ownerId}/stats`, "owner home: the Stats chip opens this person's own address");
     /* ⚠ NO "YOUR PICTURES" SHEET SINCE 20 Sep 2026 (the user: "Profile pic edit
        should just be a pencil besides and clciking on photo to view it not
        together in one. Similarly seprate for poster photos"). The in-between
        screen that showed both and edited neither is gone: the picture is pressed
        to SEE it, the pencil beside it CHANGES it, and the posters have a pencil
        of their own on the rail. */
-    check((await org.getByRole("button", { name: "Your pictures", exact: true }).count()) === 0, "org home: the in-between 'Your pictures' sheet is gone (20 Sep 2026)");
-    check((await org.getByRole("button", { name: "Change profile picture" }).count()) === 0, "org home: read-only until the pencil (26 Sep 2026)");
-    await enterEdit(org);
-    check((await org.getByRole("button", { name: "Change profile picture" }).count()) === 1, "org home: a pencil beside the disc, and only that changes the picture");
-    check((await org.getByRole("button", { name: "Edit posters" }).count()) === 1, "org home: the posters have their OWN pencil on the rail");
-    check((await org.getByRole("button", { name: "Edit contact buttons" }).count()) === 1, "org home: and the ⊕ for the contact buttons (26 Sep 2026)");
-    await org.getByRole("button", { name: "Change profile picture" }).click();
+    check((await owner.getByRole("button", { name: "Your pictures", exact: true }).count()) === 0, "owner home: the in-between 'Your pictures' sheet is gone (20 Sep 2026)");
+    check((await owner.getByRole("button", { name: "Change profile picture" }).count()) === 0, "owner home: read-only until the pencil (26 Sep 2026)");
+    await enterEdit(owner);
+    check((await owner.getByRole("button", { name: "Change profile picture" }).count()) === 1, "owner home: a pencil beside the disc, and only that changes the picture");
+    check((await owner.getByRole("button", { name: "Edit posters" }).count()) === 1, "owner home: the posters have their OWN pencil on the rail");
+    check((await owner.getByRole("button", { name: "Edit contact buttons" }).count()) === 1, "owner home: and the ⊕ for the contact buttons (26 Sep 2026)");
+    await owner.getByRole("button", { name: "Change profile picture" }).click();
     /* "Profile picture", not "Logo" (26 Sep 2026): a person's disc is a picture — the Logo editor went with the organization login */
-    const orgLogo = org.getByRole("dialog", { name: "Profile picture" });
-    await orgLogo.waitFor();
-    check((await org.getByRole("dialog", { name: "Logo" }).count()) === 0, "org pictures: no Logo editor — a person's disc is a Profile picture (26 Sep 2026)");
-    check((await orgLogo.getByLabel("Change your photo").count()) === 1, "org pictures: the picker is in the picture's own editor, reached in ONE press");
-    await shot("org-pictures");
-    await orgLogo.getByRole("button", { name: "Done" }).click().catch(() => {});
+    const ownerLogo = owner.getByRole("dialog", { name: "Profile picture" });
+    await ownerLogo.waitFor();
+    check((await owner.getByRole("dialog", { name: "Logo" }).count()) === 0, "owner pictures: no Logo editor — a person's disc is a Profile picture (26 Sep 2026)");
+    check((await ownerLogo.getByLabel("Change your photo").count()) === 1, "owner pictures: the picker is in the picture's own editor, reached in ONE press");
+    await shot("owner-pictures");
+    await ownerLogo.getByRole("button", { name: "Done" }).click().catch(() => {});
     /* ⚠ THE WORDS ARE THE EDIT DETAILS CHIP, NOT A SETTINGS TILE (26 Sep 2026,
        the user: "edit profile to be removed from all profiles settings and
        should be a button on top right"). Both ends: Settings carries no Edit
        profile tile, and the chip beside the name opens the sheet. */
-    await org.goto(`${BASE}/profile?settings=1`);
-    const orgSettings = org.getByRole("dialog", { name: "Settings" });
-    await orgSettings.waitFor();
-    await orgSettings.getByText("ACCOUNT").waitFor();
-    check((await orgSettings.getByRole("button", { name: "Edit profile", exact: true }).count()) === 0 && !(await orgSettings.innerText()).includes("YOU\n"), "settings: NO Edit profile tile and no YOU block — the pencil is on Home's corner (26 Sep 2026)");
-    await org.goto(`${BASE}/`);
-    await enterEdit(org);
-    const orgEdit = org.getByRole("button", { name: "Edit details", exact: true });
-    await orgEdit.waitFor();
-    check((await orgEdit.count()) === 1, "home: Edit details appears with the pencil (26 Sep 2026)");
-    await orgEdit.click();
-    const orgSheet = org.getByRole("dialog", { name: "Edit profile" });
-    await orgSheet.waitFor();
+    await owner.goto(`${BASE}/profile?settings=1`);
+    const ownerSettings = owner.getByRole("dialog", { name: "Settings" });
+    await ownerSettings.waitFor();
+    await ownerSettings.getByText("ACCOUNT").waitFor();
+    check((await ownerSettings.getByRole("button", { name: "Edit profile", exact: true }).count()) === 0 && !(await ownerSettings.innerText()).includes("YOU\n"), "settings: NO Edit profile tile and no YOU block — the pencil is on Home's corner (26 Sep 2026)");
+    await owner.goto(`${BASE}/`);
+    await enterEdit(owner);
+    const ownerEdit = owner.getByRole("button", { name: "Edit details", exact: true });
+    await ownerEdit.waitFor();
+    check((await ownerEdit.count()) === 1, "home: Edit details appears with the pencil (26 Sep 2026)");
+    await ownerEdit.click();
+    const ownerSheet = owner.getByRole("dialog", { name: "Edit profile" });
+    await ownerSheet.waitFor();
     /* a PERSON's sheet asks their date of birth (an organization's never did — that sheet is gone with the login) */
-    check((await orgSheet.getByLabel("Date of birth", { exact: true }).count()) === 1, "edit profile: a date-of-birth field — this is a person's sheet (26 Sep 2026)");
-    check((await orgSheet.getByLabel("Change your photo").count()) === 0 && (await orgSheet.getByLabel("Add picture").count()) === 0, "edit profile: and NO pictures in it — they are behind the disc on Home");
-    check((await orgSheet.getByLabel("Phone", { exact: true }).count()) === 0 && (await orgSheet.getByLabel("Email", { exact: true }).count()) === 0, "edit profile: and NO number or email — they are the contact ⊕ beside the buttons (26 Sep 2026)");
-    await shot("org-edit");
-    await orgSheet.getByRole("button", { name: "Cancel" }).click().catch(() => {});
-    await orgSheet.waitFor({ state: "detached" }).catch(() => {});
+    check((await ownerSheet.getByLabel("Date of birth", { exact: true }).count()) === 1, "edit profile: a date-of-birth field — this is a person's sheet (26 Sep 2026)");
+    check((await ownerSheet.getByLabel("Change your photo").count()) === 0 && (await ownerSheet.getByLabel("Add picture").count()) === 0, "edit profile: and NO pictures in it — they are behind the disc on Home");
+    check((await ownerSheet.getByLabel("Phone", { exact: true }).count()) === 0 && (await ownerSheet.getByLabel("Email", { exact: true }).count()) === 0, "edit profile: and NO number or email — they are the contact ⊕ beside the buttons (26 Sep 2026)");
+    await shot("owner-edit");
+    await ownerSheet.getByRole("button", { name: "Cancel" }).click().catch(() => {});
+    await ownerSheet.waitFor({ state: "detached" }).catch(() => {});
     /* the contact sheet: a number in, the button appears; the number out, the button goes */
-    await org.getByRole("button", { name: "Edit contact buttons" }).click();
-    const contacts = org.getByRole("dialog", { name: "Contact buttons" });
+    await owner.getByRole("button", { name: "Edit contact buttons" }).click();
+    const contacts = owner.getByRole("dialog", { name: "Contact buttons" });
     await contacts.waitFor();
     await contacts.getByLabel("WhatsApp", { exact: true }).fill("+91 98765 00000");
     await contacts.getByRole("button", { name: "Save" }).click();
@@ -764,15 +756,15 @@ const enterEdit = async (page) => {
     /* the entry is a chip in the links row (a button while editing, a link when
        not) — and ⚠ a PLAIN USER's Home draws NO Message button, by the 19 Sep
        list ("user — nothing"): the sheet said so, and this asserts it */
-    const waChip = org.getByRole("button", { name: /^WhatsApp — / }).or(org.getByRole("link", { name: /^WhatsApp — / }));
+    const waChip = owner.getByRole("button", { name: /^WhatsApp — / }).or(owner.getByRole("link", { name: /^WhatsApp — / }));
     await waChip.first().waitFor({ timeout: 15000 }).catch(() => {});
     check((await waChip.count()) === 1, "contact ⊕: the WhatsApp number is a chip in the links row — one list, two readings (26 Sep 2026)");
-    check((await org.getByRole("link", { name: "Message", exact: true }).count()) === 0, "contact ⊕: and a plain user's Home draws no Message button — their page carries no buttons");
+    check((await owner.getByRole("link", { name: "Message", exact: true }).count()) === 0, "contact ⊕: and a plain user's Home draws no Message button — their page carries no buttons");
     /* on a BUSINESS it becomes the button: the studio's own contact ⊕ */
-    await org.goto(`${BASE}/business/${studioId}`);
-    await enterEdit(org);
-    await org.getByRole("button", { name: "Edit contact buttons" }).click();
-    const bizContacts = org.getByRole("dialog", { name: "Contact buttons" });
+    await owner.goto(`${BASE}/business/${studioId}`);
+    await enterEdit(owner);
+    await owner.getByRole("button", { name: "Edit contact buttons" }).click();
+    const bizContacts = owner.getByRole("dialog", { name: "Contact buttons" });
     await bizContacts.waitFor();
     /* ⚠ THE TAKE-ENQUIRIES SWITCH IS NOT HERE ANY MORE (27 Sep 2026). It was, and
        rightly, while Enquiries was a BUTTON somebody makes and unmakes — the ⊕ is
@@ -784,7 +776,7 @@ const enterEdit = async (page) => {
     await bizContacts.getByLabel("WhatsApp", { exact: true }).fill("+91 98765 00001");
     await bizContacts.getByRole("button", { name: "Save" }).click();
     await bizContacts.waitFor({ state: "detached", timeout: 15000 });
-    const msg = org.getByRole("link", { name: "Message", exact: true });
+    const msg = owner.getByRole("link", { name: "Message", exact: true });
     await msg.waitFor({ timeout: 15000 }).catch(() => {});
     check((await msg.count()) === 1 && (await msg.getAttribute("href")) === "https://wa.me/919876500001", "studio contact ⊕: a WhatsApp number becomes the Message button, a wa.me link (26 Sep 2026)");
 
@@ -809,7 +801,7 @@ const enterEdit = async (page) => {
        `document.elementFromPoint` at the button's own top edge is the question
        a rect cannot answer, so that is what is asked. */
     const measureContacts = () =>
-      org.evaluate(() => {
+      owner.evaluate(() => {
         const btn = [...document.querySelectorAll("a,button")].find((el) => (el.getAttribute("aria-label") || "") === "Message");
         const grid = btn ? btn.parentElement : null;
         if (!grid) return null;
@@ -839,8 +831,8 @@ const enterEdit = async (page) => {
         };
       });
     for (const w of [430, 360]) {
-      await org.setViewportSize({ width: w, height: 932 });
-      await org.waitForTimeout(150);
+      await owner.setViewportSize({ width: w, height: 932 });
+      await owner.waitForTimeout(150);
       const cr = await measureContacts();
       check(Boolean(cr && cr.words.length), `contact row @${w}: the row is on the studio's home with its labels readable`);
       if (!cr) continue;
@@ -850,47 +842,33 @@ const enterEdit = async (page) => {
       const covered = cr.tops.filter((t) => !t.ownsTop);
       check(covered.length === 0, `contact row @${w}: every button owns its own TOP edge — nothing is painted over it${covered.length ? ` (covered: ${covered.map((t) => `${t.label} by a <${t.covering}>`).join(", ")})` : ""}`);
     }
-    await org.setViewportSize({ width: 430, height: 932 });
+    await owner.setViewportSize({ width: 430, height: 932 });
     /* …and the other end: the Enquiries DESK, opened the way its tile opens it —
        `?as={studio}`, because one screen serves the whole account and the settings
        would otherwise have no subject at all. */
-    await org.goto(`${BASE}/enquiries?as=${studioId}`, { waitUntil: "networkidle" });
-    check(await org.getByRole("heading", { name: "Enquiries", exact: true }).isVisible().catch(() => false), "enquiries desk: it is a DRILL page with its own title, not a tab under the wordmark (27 Sep 2026)");
-    const enqTypes = org.getByRole("button", { name: /^Enquiry types/ }).first();
+    await owner.goto(`${BASE}/enquiries?as=${studioId}`, { waitUntil: "networkidle" });
+    check(await owner.getByRole("heading", { name: "Enquiries", exact: true }).isVisible().catch(() => false), "enquiries desk: it is a DRILL page with its own title, not a tab under the wordmark (27 Sep 2026)");
+    const enqTypes = owner.getByRole("button", { name: /^Enquiry types/ }).first();
     check((await enqTypes.count()) === 1, "enquiries desk: the studio's own What-you-take disclosure is here — the settings moved with the tool");
     await enqTypes.click();
-    check((await org.getByRole("switch", { name: "Take enquiries" }).count()) === 1, "enquiries desk: and the Take-enquiries switch is the first thing under it");
-    await org.goto(`${BASE}/`);
-    await shot("org-home");
+    check((await owner.getByRole("switch", { name: "Take enquiries" }).count()) === 1, "enquiries desk: and the Take-enquiries switch is the first thing under it");
+    await owner.goto(`${BASE}/`);
+    await shot("owner-home");
 
-    /* ⚠ THE ORGANIZATION IS A BUSINESS OF ITS OWN (26 Sep 2026): the checks that
-       used to read `/business/stats` → `/org/{me}/stats` and the "Studios ·
-       combined" dashboard are DELETED — both were the organization LOGIN's, and
-       an organization runs no studios to combine. What replaces them: the org
-       business's own home renders for its owner, its public page answers a
-       STRANGER (GST verified + mandate live = org_is_public), and that page
-       lists no studios. */
-    await org.goto(`${BASE}/business/${orgBizId}`, { waitUntil: "networkidle" });
-    check(await org.getByRole("heading", { name: "EEE Dance Company Events", exact: true }).isVisible().catch(() => false), "org business: its own home renders for its owner, headed with its name");
-    check((await org.getByRole("link", { name: "Events", exact: true }).count()) >= 1, "org business: an Events tile on ITS home — the desk is the organization's, not the person's");
-    await shot("org-business-home");
-    {
-      const guestCtx2 = await browser.newContext({ viewport: { width: 430, height: 932 } });
-      const guest2 = await guestCtx2.newPage();
-      const res = await guest2.goto(`${BASE}/org/${orgBizId}`, { waitUntil: "domcontentloaded" });
-      check(res !== null && res.status() === 200, `org business: its public page answers a stranger by its business id (${res ? res.status() : "no response"})`);
-      check((await guest2.getByText("Studios", { exact: true }).count()) === 0, "org business: and lists NO studios — an organization runs none (26 Sep 2026)");
-      await shotOf(guest2)("public-org-guest");
-      await guestCtx2.close();
-    }
+    /* ⚠ THE ORGANIZATION'S OWN HOME AND ITS PUBLIC PAGE were driven here — the
+       business's home rendering for its owner with an Events tile on it, and
+       the public organization page answering a STRANGER 200 while listing no
+       studios. Both went on 29 Sep 2026, and the earlier pair this block had
+       replaced (`/business/stats` and the "Studios · combined" dashboard) had
+       already gone on 26 Sep with the organization LOGIN. Nothing to drive. */
 
-    await org.close();
+    await owner.close();
 
     /* ── TWO: a person — one header picture; then an artist — up to five (19 Sep 2026; ten before) ── */
     const me = await browser.newPage({ viewport: { width: 430, height: 932 }, deviceScaleFactor: 1 });
     const shotMe = shotOf(me);
     userId = await signUp(me, `hero-user-${stamp}@example.com`);
-    await onboard(me, "Rhea Kapoor", "User", "Pune");
+    await onboard(me, "Rhea Kapoor", "Pune");
     await me.goto(`${BASE}/`);
     await me.getByRole("heading", { name: "Rhea Kapoor", exact: true }).waitFor();
     check((await discImgs(me)) === 1, "user home: the profile photo is on the disc");
@@ -898,7 +876,7 @@ const enterEdit = async (page) => {
     check((await me.getByLabel("Add a header picture").count()) === 0, "user home: NO Add tile on the hero — the header is filled behind the disc");
     check((await me.getByLabel("Change your photo").count()) === 0, "user home: NO ＋ on the disc either");
     check(await me.getByText(/^User(-\d{6})?$/).first().isVisible(), "user home: the role word, with the account number against it");
-    /* the destination rather than the spelling — see the org's own corner above */
+    /* the destination rather than the spelling — see the owner's own corner above */
     check((await me.getByRole("link", { name: "Your profile", exact: true }).count()) === 1 && (await me.getByRole("link", { name: "Your profile", exact: true }).getAttribute("href")) === `/person/${userId}`, "user home: the corner opens this person's own profile (21 Sep 2026)");
     check((await me.getByRole("link", { name: "Public view", exact: true }).count()) === 0, "user home: no eye — this is the end of the loop the user reported");
     /* ⚠ A PLAIN USER'S ROW IS NOT DRAWN AT ALL, which is what the public page
@@ -1109,10 +1087,11 @@ const enterEdit = async (page) => {
 
       /* ⚠⚠ `/stats` IS A REDIRECT NOW, AND THE QUERY IS THE HALF THAT COULD
          BREAK IN SILENCE (22 Sep 2026). Every tab, board, city, metric and
-         style on that screen is URL state, and two live controls open it with
-         one — the crew desk's "See crew ranking" and OrgDashboard's per-studio
-         door — neither of which knows the viewer's id, which is why the address
-         survives at all. A redirect that dropped the parameters would answer
+         style on that screen is URL state, and a live control opens it with
+         one — a crew home's Stats chip, which does not know the viewer's id,
+         and is why the address survives at all. (The crew DESK's "See crew
+         ranking" and OrgDashboard's per-studio door were the other two, and
+         went on 29 Sep 2026.) A redirect that dropped the parameters would answer
          every one of them with somebody's own record instead, and nothing on
          screen would say so. */
       /* ⚠ `waitForURL`, NOT `me.url()` STRAIGHT AFTER `goto` — and the reason is
@@ -1146,17 +1125,18 @@ const enterEdit = async (page) => {
     fail += 1;
   } finally {
     if (studioId) await fetch(`${supabaseUrl}/rest/v1/businesses?id=eq.${studioId}`, { method: "DELETE", headers: adminHeaders });
-    /* every business either account owns goes with it (18 Sep 2026): the
-       organization's hosting row, and the artist page Home provisions for the
-       user once the plan is granted — otherwise an ownerless row is left behind */
-    for (const uid of [orgId, userId]) {
+    /* every business either account owns goes with it (18 Sep 2026): until
+       29 Sep that meant the organization business as well, and what it still
+       catches is the artist page Home provisions for the user once the plan is
+       granted — otherwise an ownerless row is left behind */
+    for (const uid of [ownerId, userId]) {
       if (!uid) continue;
       const owned = await rest(`business_members?user_id=eq.${uid}&member_role=eq.owner&select=business_id`);
       if (Array.isArray(owned) && owned.length) {
         await fetch(`${supabaseUrl}/rest/v1/businesses?id=in.(${owned.map((o) => o.business_id).join(",")})`, { method: "DELETE", headers: adminHeaders });
       }
     }
-    if (orgId) await fetch(`${supabaseUrl}/auth/v1/admin/users/${orgId}`, { method: "DELETE", headers: adminHeaders });
+    if (ownerId) await fetch(`${supabaseUrl}/auth/v1/admin/users/${ownerId}`, { method: "DELETE", headers: adminHeaders });
     if (userId) await fetch(`${supabaseUrl}/auth/v1/admin/users/${userId}`, { method: "DELETE", headers: adminHeaders });
     await browser.close();
     console.log(`\n${pass} passed, ${fail} failed`);

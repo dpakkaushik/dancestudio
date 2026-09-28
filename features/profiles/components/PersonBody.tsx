@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { MembershipsOnSale } from "@/features/memberships/components/MembershipsOnSale";
 import type { MembershipOnSale } from "@/repositories/memberships";
-import { ORG_ROLE_WORD, type PersonOrganization } from "@/repositories/organizationTeam";
+/* ⚠ `ORG_ROLE_WORD` and `PersonOrganization` went with organizations (29 Sep 2026) */
 import type { PublicTeamMember } from "@/types/publicProfile";
 import type { PublicPerson } from "@/repositories/publicPerson";
 import { photoUrl } from "@/lib/media/photo";
@@ -61,8 +61,6 @@ export function PersonBody({
   scheduleHref,
   accent,
   beforeGroups = null,
-  omitStudioSeats = false,
-  organizations = [],
   artistTeam = [],
 }: {
   person: PublicPerson;
@@ -74,25 +72,16 @@ export function PersonBody({
    *  a button pointing nowhere (10868) */
   scheduleHref: string | null;
   accent: string;
-  /** a group only ONE of the two screens has — an organization's own studios,
-   *  which nobody but itself reads (R9) */
+  /** a group only ONE of the two screens has — "What you run", on your own tab
+   *  (27 Sep 2026); a stranger's view of you never draws it */
   beforeGroups?: ReactNode;
-  /** ⚠ AN ORGANIZATION'S SEATS ARE ITS OWN STUDIOS (20 Sep 2026, and the e2e
-   *  caught it in one line). "Studios associated with" is a person's SEATS on
-   *  somebody else's studios; an organization's only seats are the owner rows on
-   *  the studios it runs — which `beforeGroups` has already listed as "Your
-   *  studios", and listed more completely, because that list carries the
-   *  unlisted ones too. Drawn both ways, the same studio appeared twice on one
-   *  screen, which is the very duplication this file exists to end. */
-  omitStudioSeats?: boolean;
-  /** ⚠ THE ORGANIZATIONS THAT NAME THEM (27 Sep 2026, the user: "all profiles
-   *  should only showcase according to how the team sections are managed for
-   *  each profile and their associations linked properly"). The link ran one way
-   *  only: an organization's Team desk names somebody and prints them on its
-   *  page with a door to here, and here said nothing back.
-   *  `findOrganizationsNaming` has the whole reason, including why it needs no
-   *  migration. Empty for a screen that does not pass it. */
-  organizations?: PersonOrganization[];
+  /* ⚠ `omitStudioSeats` and `organizations` went with organizations (29 Sep
+     2026). The first suppressed a person's studio SEATS on an organization's own
+     profile, because an organization's only seats were the owner rows on the
+     studios it ran and `beforeGroups` already listed those — so the same studio
+     appeared twice. The second was the Organizations group: an organization's
+     Team desk named somebody and printed them with a door to here, and this was
+     the door back. Neither has a subject any more. */
   /** ⚠ THE PEOPLE ON THIS ARTIST'S OWN PAGE (27 Sep 2026, the user: "an
    *  artist's team, both ways"). The link ran one way here too: a person seated
    *  on an artist page has read "Artists associated with" on their own profile
@@ -124,7 +113,7 @@ export function PersonBody({
      from the one above, which counts PUBLISHED CLASSES: somebody asked onto a
      team who has not taught yet is associated and teaches at nothing. Their own
      page is not an association with themselves, so it is left out. */
-  const studiosWith = omitStudioSeats ? [] : person.associations.filter((a) => a.tenantType === "studio");
+  const studiosWith = person.associations.filter((a) => a.tenantType === "studio");
   const artistsWith = person.associations.filter((a) => a.tenantType === "artist_page" && a.role !== "owner");
   /* who works WITH this artist, on their own page — the owner is the person
      whose page it is, so their own row is not drawn (see the prop's comment) */
@@ -259,27 +248,10 @@ export function PersonBody({
         </PeopleGroup>
       ) : null}
 
-      {/* ⚠ THE ORGANIZATIONS THAT NAME THEM (27 Sep 2026) — the other end of the
-          link an organization's Team desk makes. Its page has printed these
-          people with a door to here since push 2; this is the door back. The
-          label is the organization's own word for the seat, so the two screens
-          cannot disagree about what somebody is. */}
-      {organizations.length ? (
-        <PeopleGroup title="Organizations" n={organizations.length}>
-          {organizations.map((o) => (
-            <PersonChip
-              key={o.orgId}
-              href={`/org/${o.orgId}`}
-              name={o.name}
-              photo={o.photoPath ? photoUrl(o.photoPath) : null}
-              /* ⚠ one word map since 28 Sep 2026 — this was a ternary, so the
-                 moment a third published label existed it read as the second */
-              role={ORG_ROLE_WORD[o.role]}
-              roleColour={accent}
-            />
-          ))}
-        </PeopleGroup>
-      ) : null}
+      {/* ⚠ THE ORGANIZATIONS GROUP WENT WITH ORGANIZATIONS (29 Sep 2026). It was
+          the other end of the link an organization's Team desk made — its page
+          printed these people with a door to here, and this was the door back
+          (27 Sep 2026). Nothing names anybody that way now. */}
 
       {/* ⚠ THE OTHER END OF "Artists associated with" (27 Sep 2026) — the people
           seated on this artist's own page, named the way a studio's page has

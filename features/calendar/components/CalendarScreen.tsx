@@ -16,7 +16,7 @@ import {
 } from "@/lib/format/month";
 import { timeOf } from "@/lib/format/session";
 import { useCloseOnBack } from "@/lib/hooks/useCloseOnBack";
-import type { CalendarEntry, CalendarEventEntry, CalendarMonth, CalendarPracticeEntry, CalendarSide } from "@/types/calendar";
+import type { CalendarEntry, CalendarMonth, CalendarPracticeEntry, CalendarSide } from "@/types/calendar";
 import { PRACTICE_TINT, PRACTICE_WORD, practiceWhen } from "@/types/crewPractice";
 import type { DanceClass } from "@/types/class";
 
@@ -32,10 +32,12 @@ import type { DanceClass } from "@/types/class";
  *  published classes still to come — no hero, no switcher, no sides, no day
  *  gutter, one view.
  *
- *  Left out on purpose, and tracked in the parity backlog: the Classes/Events
- *  switch above the sides (events are Step 21), the hold-to-reorder gesture on
- *  the side pills (a saved preference that also drives Home, which is not
- *  built). The History chip LANDED 30 Aug 2026: the record page it waited for
+ *  Left out on purpose, and tracked in the parity backlog: the hold-to-reorder
+ *  gesture on the side pills (a saved preference that also drives Home, which
+ *  is not built). ⚠ The prototype's Classes/Events switch was BUILT on 18 Sep
+ *  2026 and is a Classes/Practice switch since 29 Sep, events being gone — the
+ *  control is the prototype's and the second half is not.
+ *  The History chip LANDED 30 Aug 2026: the record page it waited for
  *  has existed since Step 25, so the chip is the prototype's own (9071-9075) and
  *  it opens /stats?tab=history — the library of what you have already danced. */
 
@@ -52,11 +54,9 @@ const SIDES: Record<CalendarSide, { name: string; tint: string }> = {
   hosting: { name: "Teach", tint: PINK },
 };
 const SIDE_KEYS: CalendarSide[] = ["attending", "assisting", "hosting"];
-/* the events half wears the Events tool's own amber, so the switch says which
-   half you are in before you read the words (DOS_TOOLS.events) */
-const EVENTS_TINT = "#F59E0B";
-/* and the practices half wears the Practice tool's own green, for the same
-   reason: the switch says which half you are in before you read the words */
+/* ⚠ `EVENTS_TINT` went with events (29 Sep 2026) — the amber half of the switch.
+   The practices half wears the Practice tool's own green, so the switch says
+   which half you are in before you read the words */
 const PRACTICE_C = "#15803D";
 
 /** ⚠⚠ TODAY IS INK, AND IT IS SAID ONCE (28 Sep 2026, the user: *"should not
@@ -151,15 +151,15 @@ const emptyCard: React.CSSProperties = {
   border: `1.5px dashed ${LINE}`,
 };
 
-/** ONE ROW ON THE CALENDAR — a class session or a day of an event. Every view
- *  groups, filters and counts through these five fields and nothing else, so
- *  adding events did not have to touch the schedule, the day rail, the week or
- *  the month grid. `side` is null on an event: Train · Teach · Assist are class
- *  ideas, and nobody assists a battle. */
+/** ONE ROW ON THE CALENDAR — a class session or a crew practice. Every view
+ *  groups, filters and counts through these five fields and nothing else, so a
+ *  second kind of row did not have to touch the schedule, the day rail, the week
+ *  or the month grid. `side` is null on anything but a class: Train · Teach ·
+ *  Assist are class ideas.
+ *  ⚠ A DAY OF AN EVENT was the second variant and went on 29 Sep 2026. */
 type Row =
   | { k: "class"; id: string; dayKey: string; hour: number; startsAt: string; style: string; room: string | null; side: CalendarSide; e: CalendarEntry }
-  | { k: "event"; id: string; dayKey: string; hour: number; startsAt: string; style: string; room: null; side: null; e: CalendarEventEntry }
-  /* ⚠ A PRACTICE IS A THIRD KIND (27 Sep 2026) — see `CalendarPracticeEntry` for
+  /* ⚠ A PRACTICE IS ITS OWN KIND (27 Sep 2026) — see `CalendarPracticeEntry` for
      why it is neither of the other two. It carries the same five fields every
      view groups, filters and counts through, so adding it did not have to touch
      the schedule, the day rail, the week or the month grid either. */
@@ -174,17 +174,6 @@ const classRow = (e: CalendarEntry): Row => ({
   style: e.style,
   room: e.room,
   side: e.side,
-  e,
-});
-const eventRow = (e: CalendarEventEntry): Row => ({
-  k: "event",
-  id: e.key,
-  dayKey: e.dayKey,
-  hour: e.hour,
-  startsAt: e.startsAt,
-  style: e.style,
-  room: null,
-  side: null,
   e,
 });
 const practiceRow = (e: CalendarPracticeEntry): Row => ({
@@ -249,51 +238,41 @@ const pillChip = (tint: string): React.CSSProperties => ({
 });
 
 export interface CalendarScreenProps {
-  /** personal: a person's own, classes AND events; studio: the venue's classes,
-   *  drafts included; org: the events it hosts, drafts included — it teaches no
-   *  class, so there is nothing else to show; public: the prototype's
-   *  `pubSchedule` — published classes still to come, one view */
-  /** ⚠ `crew` JOINED THE LIST (27 Sep 2026, the user: "crews should also have a
-   *  calendar tab") — a crew teaches no class and hosts no event of its own, so
-   *  its calendar IS its practices, exactly as an organization's IS its events. */
-  mode: "personal" | "studio" | "org" | "crew" | "public";
+  /** personal: a person's own classes and practices; studio: the venue's
+   *  classes, drafts included; public: the prototype's `pubSchedule` — published
+   *  classes still to come, one view.
+   *  ⚠ `crew` JOINED THE LIST (27 Sep 2026, the user: "crews should also have a
+   *  calendar tab") — a crew teaches no class, so its calendar IS its practices.
+   *  ⚠ `org` WAS THE FIFTH and went on 29 Sep 2026: an organization's calendar
+   *  WAS its events, so with events gone there was nothing on it at all. */
+  mode: "personal" | "studio" | "crew" | "public";
   months: CalendarMonth[];
   /** "2026-08-28" in IST — the clock is the server's, handed in */
   todayKey: string;
   entries: CalendarEntry[];
-  /** the events on this calendar: a person's tickets and what they run, or an
-   *  organization's own. Absent on a studio's (a studio hosts no event, R15)
-   *  and on a public schedule */
-  events?: CalendarEventEntry[];
   /** the crew practices on this calendar: every crew this person leads or is
    *  confirmed on, or — on a crew's own tab — that one crew's */
   practices?: CalendarPracticeEntry[];
   /** where an empty day sends you: Discover for a person, the class form for a studio */
   emptyHref: string;
-  /** studio only: the compose button's destination */
-  composeHref?: string;
   /** public only: whose schedule this is — the page stands on its own URL */
   title?: string;
 }
 
-export function CalendarScreen({ mode, months, todayKey, entries, events = [], practices = [], emptyHref, composeHref, title: pageTitle }: CalendarScreenProps) {
+export function CalendarScreen({ mode, months, todayKey, entries, practices = [], emptyHref, title: pageTitle }: CalendarScreenProps) {
   const isPublic = mode === "public";
-  const isOrg = mode === "org";
   const isCrew = mode === "crew";
   const idx = (monthKey: string) => months.findIndex((m) => m.key === monthKey);
   const inWindow = (dayKey: string) => idx(monthOfDay(dayKey)) >= 0;
 
   const [view, setView] = useState<View>("sched");
   const [side, setSide] = useState<"all" | CalendarSide>("all");
-  /* THE PROTOTYPE'S CLASSES/EVENTS SWITCH, finally real (18 Sep 2026). An
-     organization has no classes, so it is never offered the choice — its
-     calendar IS its events. */
-  /* ⚠ A THIRD VALUE SINCE 27 Sep 2026. A crew's calendar IS its practices, the
-     way an organization's IS its events, so neither is ever offered the switch —
-     each opens on the only half it has. */
-  const [kind, setKind] = useState<"classes" | "events" | "practices">(isOrg ? "events" : isCrew ? "practices" : "classes");
-  const showEvents = isOrg || (!isCrew && kind === "events");
-  const showPractices = isCrew || (!isOrg && kind === "practices");
+  /* THE HALF THIS TAB IS SHOWING. The prototype's Classes/Events switch became
+     real on 18 Sep 2026 and gained a third value on 27 Sep; ⚠ the EVENTS half
+     went on 29 Sep, so what is left is Classes and Practice. A crew's calendar
+     IS its practices, so a crew is never offered the switch at all. */
+  const [kind, setKind] = useState<"classes" | "practices">(isCrew ? "practices" : "classes");
+  const showPractices = isCrew || kind === "practices";
   /* a person is offered the switch whenever every half can exist; a studio and
      a public schedule have classes only */
   const canSwitch = mode === "personal";
@@ -308,14 +287,15 @@ export function CalendarScreen({ mode, months, todayKey, entries, events = [], p
     (mode === "studio" || isPublic) && rooms.length > 1 ? rooms[0] : null
   );
   const [ddOpen, setDdOpen] = useState(false);
-  const [fabOpen, setFabOpen] = useState(false);
+  /* ⚠ `fabOpen` went with the compose FAB (29 Sep 2026): it opened the sheet
+     that offered Add class / Add event, and a calendar composes nothing now */
   const todayRef = useRef<HTMLDivElement>(null);
   const jumped = useRef("");
 
   const isToday = (dayKey: string) => dayKey === todayKey;
   /* the half this tab is showing: one axis at a time, never both mixed, because
      a day with a class and a battle on it answers two different questions */
-  const half: Row[] = showPractices ? practices.map(practiceRow) : showEvents ? events.map(eventRow) : entries.map(classRow);
+  const half: Row[] = showPractices ? practices.map(practiceRow) : entries.map(classRow);
   const roomScoped = half.filter((r) => room === null || r.room === room);
   /* ⚠ THE SIDES ARE A CLASS IDEA and neither an event nor a practice has one —
      nobody assists a battle, and nobody trains at their own crew's rehearsal */
@@ -350,7 +330,6 @@ export function CalendarScreen({ mode, months, todayKey, entries, events = [], p
   const sideCounts = Object.fromEntries(
     SIDE_KEYS.map((k) => [k, classScoped.filter((e) => e.side === k).length])
   ) as Record<CalendarSide, number>;
-  const eventsInScope = events.filter((e) => inScope(e.dayKey)).length;
   const practicesInScope = practices.filter((e) => inScope(e.dayKey)).length;
   const scopeLabel =
     view === "day"
@@ -494,17 +473,7 @@ export function CalendarScreen({ mode, months, todayKey, entries, events = [], p
    *  chip saying what it is to you. See `PILL` above for why, and for the one
    *  surface this is NOT used on. */
   const pill = (r: Row) => {
-    if (r.k === "event") {
-      const e = r.e;
-      return (
-        <Link key={r.id} data-testid="cal-pill" href={e.href} aria-label={`${e.title}, ${timeOf(e.startsAt)} — ${e.roleLabel}`} style={PILL}>
-          <span aria-hidden="true" style={pillDot(EVENTS_TINT)} />
-          <span style={PILL_TIME}>{timeOf(e.startsAt)}</span>
-          <span style={PILL_NAME}>{e.title}</span>
-          <span style={pillChip(EVENTS_TINT)}>{e.roleLabel}</span>
-        </Link>
-      );
-    }
+    /* ⚠ an EVENT's pill was the first branch and went on 29 Sep 2026 */
     if (r.k === "practice") {
       const e = r.e;
       /* a called-off practice keeps its row and says so — the 27 Sep rule that
@@ -569,12 +538,11 @@ export function CalendarScreen({ mode, months, todayKey, entries, events = [], p
     </div>
   ) : (
     /* the empty state names the half you are looking at, and its door goes where
-       that half comes from — an organization is sent to its events desk, never
-       to Discover to book a class the database refuses it (guard_person_only) */
+       that half comes from */
     <div style={emptyCard}>
-      {showPractices ? (isCrew ? "Nothing arranged on " : "No practice on — ") : showEvents ? (isOrg ? "No events on " : "No events on — ") : mode === "personal" ? "Nothing booked — " : "Nothing scheduled — "}
+      {showPractices ? (isCrew ? "Nothing arranged on " : "No practice on — ") : mode === "personal" ? "Nothing booked — " : "Nothing scheduled — "}
       <Link href={emptyHref} style={{ color: PINK, fontWeight: 800, textDecoration: "none" }}>
-        {showPractices ? (isCrew ? "arrange one →" : "open your crew →") : isOrg ? "open the events desk →" : showEvents ? "find one →" : mode === "personal" ? "find a class →" : "add a class →"}
+        {showPractices ? (isCrew ? "arrange one →" : "open your crew →") : mode === "personal" ? "find a class →" : "add a class →"}
       </Link>
     </div>
   );
@@ -789,9 +757,9 @@ export function CalendarScreen({ mode, months, todayKey, entries, events = [], p
             it takes a third value the way it took a second. */}
         {canSwitch ? (
           <div style={{ display: "flex", gap: 6, marginBottom: 8 }}>
-            {([["classes", "Classes", entries.length], ["events", "Events", eventsInScope], ["practices", "Practice", practicesInScope]] as const).map(([k, label, n]) => {
+            {([["classes", "Classes", entries.length], ["practices", "Practice", practicesInScope]] as const).map(([k, label, n]) => {
               const on = kind === k;
-              const tint = k === "events" ? EVENTS_TINT : k === "practices" ? PRACTICE_C : TOOL_COLOUR;
+              const tint = k === "practices" ? PRACTICE_C : TOOL_COLOUR;
               return (
                 <div
                   key={k}
@@ -823,7 +791,14 @@ export function CalendarScreen({ mode, months, todayKey, entries, events = [], p
           </div>
         ) : null}
 
-        {mode === "personal" && !showEvents ? (
+        {/* ⚠ this was `mode === "personal" && !showEvents` (29 Sep 2026). The
+            sides were hidden on the EVENTS half alone — they were still drawn on
+            the practices half, counting CLASSES whichever tab is open, which is
+            what the counts' own comment above says they are for. With the events
+            half gone the second half of the test can only ever be true, so it is
+            dropped rather than re-pointed at practices, which would have been a
+            silent behaviour change. */}
+        {mode === "personal" ? (
           <>
             <div style={{ display: "flex", gap: 5, marginBottom: 5 }}>
               {SIDE_KEYS.map((k) => {
@@ -1092,81 +1067,17 @@ export function CalendarScreen({ mode, months, todayKey, entries, events = [], p
         </div>
       ) : null}
 
-      {/* the compose button (10538-10560): "Add event" on an organization's
-          calendar — the one thing its owner can actually create here (a studio
-          hosts no event, R15; an organization runs no class, R17).
-          ⚠⚠ AND "ADD CLASS" IS GONE FROM A STUDIO'S CALENDAR (22 Sep 2026, the
-          user: "class should only be created from home tab", then "no, from
-          inside their respective sections, in home tab only"). A class begins in
-          the CLASSES section — the register, one tile away — and this was the
-          one door that made one from somewhere else. What the calendar does is
-          show you the days; making the thing that fills them is the other
-          section's job. The organization's Add event stays, because an event's
-          own section IS this calendar for an organization (R21: its calendar is
-          its events). */}
-      {isOrg && composeHref ? (
-        <>
-          {fabOpen ? (
-            <div aria-hidden="true" onClick={() => setFabOpen(false)} style={{ position: "fixed", inset: 0, zIndex: 315, background: "rgba(0,0,0,.25)" }} />
-          ) : null}
-          {fabOpen ? (
-            <div style={{ position: "fixed", bottom: 158, left: "50%", transform: "translateX(64px)", zIndex: 320, display: "flex", flexDirection: "column", gap: 10, alignItems: "stretch" }}>
-              <Link
-                href={composeHref}
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 9,
-                  padding: "11px 16px",
-                  borderRadius: 14,
-                  background: "var(--solid)",
-                  border: `1.5px solid ${LINE}`,
-                  boxShadow: "0 8px 24px rgba(0,0,0,.35)",
-                  fontSize: 13,
-                  fontWeight: 700,
-                  color: INK,
-                  whiteSpace: "nowrap",
-                  textDecoration: "none",
-                }}
-              >
-                <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke={isOrg ? EVENTS_TINT : PINK} strokeWidth="1.8" strokeLinecap="round">
-                  <path d="M12 5v14M5 12h14" />
-                </svg>
-                {isOrg ? "Add event" : "Add class"}
-              </Link>
-            </div>
-          ) : null}
-          <div
-            role="button"
-            tabIndex={0}
-            aria-label="Compose"
-            aria-expanded={fabOpen}
-            onKeyDown={pressKey(() => setFabOpen((v) => !v))}
-            onClick={() => setFabOpen((v) => !v)}
-            style={{
-              position: "fixed",
-              bottom: 92,
-              left: "50%",
-              transform: "translateX(133px)",
-              zIndex: 320,
-              width: 56,
-              height: 56,
-              borderRadius: 18,
-              cursor: "pointer",
-              background: INK,
-              color: "var(--solid)",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              boxShadow: "0 10px 28px rgba(0,0,0,.4)",
-            }}
-          >
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--solid)" strokeWidth="2" strokeLinecap="round" style={{ transform: fabOpen ? "rotate(45deg)" : "none", transition: "transform .2s" }}>
-              <path d="M12 5v14M5 12h14" />
-            </svg>
-          </div>
-        </>
-      ) : null}
+      {/* ⚠⚠ THE COMPOSE BUTTON IS GONE ALTOGETHER (29 Sep 2026), and it went in
+          two halves a week apart. "Add class" left a STUDIO's calendar on
+          22 Sep (the user: "class should only be created from home tab", then
+          "no, from inside their respective sections, in home tab only") — a
+          class begins in the CLASSES section, and this was the one door that
+          made one from somewhere else. "Add event" stayed for an ORGANIZATION,
+          because an event's own section WAS this calendar for one (R21), and it
+          goes now with events. Nothing has passed `composeHref` since, so the
+          FAB, its scrim, its open state and the prop are all deleted rather than
+          left as a branch no screen renders — which is where this repo keeps
+          finding its defects. */}
     </div>
   );
 }

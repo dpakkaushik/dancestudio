@@ -1,13 +1,13 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { dosClassLabel } from "@/lib/constants/styles";
-import { addDays, dayKeyOf, hourOf } from "@/lib/format/month";
-import type { CalendarEntry, CalendarEventEntry, CalendarSide } from "@/types/calendar";
+/* ⚠ `addDays` walked a multi-day event into one row per day and went with
+   events (29 Sep 2026) — a class session is one day by construction */
+import { dayKeyOf, hourOf } from "@/lib/format/month";
+import type { CalendarEntry, CalendarSide } from "@/types/calendar";
 import type { ClassLevel, ClassStatus } from "@/types/class";
 import type { EnrollmentStatus } from "@/types/enrollment";
-import type { DanceEvent, MyEventBooking } from "@/types/event";
 import { findClassArtists } from "./claims";
 import { countEnrolledBySession } from "./enrollments";
-import { findEventBySlug, findEventsByTenants, findMyEventBookings } from "./events";
 
 /** Step 14 reads. No table, no RPC, no policy: a calendar is class sessions
  *  read through rows that already exist — a person's bookings and confirmed
@@ -277,99 +277,16 @@ async function findVenueEntries(
   return out;
 }
 
-// ── EVENTS ON THE CALENDAR (18 Sep 2026) ─────────────────────────────────────
-// The calendar has drawn classes only since Step 14, while Home's deck has
-// carried tickets, entries and the events you run since Step 21 — so a person
-// booked a ticket, saw it on Home for one day, and never saw it again, and an
-// organization (which hosts every event in the app and teaches no class) had a
-// calendar that could only ever be empty. See `CalendarEventEntry`.
-
-const IST_OFFSET = "+05:30";
-/* a guard, not a rule: no real festival runs two months, and a bad end date
-   must not spin this loop */
-const MAX_EVENT_DAYS = 60;
-
-/** An event as calendar rows: ONE PER DAY it covers inside the window, because
- *  the calendar groups by day and a festival is on every day of itself. Each day
- *  carries the event's own start time — the doors open at the same hour each
- *  day, which is the only time the record holds. */
-function eventEntries(
-  ev: DanceEvent,
-  roleLabel: string,
-  href: string,
-  fromIso: string,
-  toIso: string
-): CalendarEventEntry[] {
-  const last = ev.endDate && ev.endDate >= ev.startDate ? ev.endDate : ev.startDate;
-  const time = ev.startTime || "00:00";
-  const out: CalendarEventEntry[] = [];
-  let day = ev.startDate;
-  for (let n = 0; day <= last && n < MAX_EVENT_DAYS; day = addDays(day, 1), n++) {
-    const startsAt = `${day}T${time}:00${IST_OFFSET}`;
-    if (!inWindow(startsAt, fromIso, toIso)) continue;
-    out.push({
-      key: `event:${ev.id}:${day}`,
-      eventId: ev.id,
-      title: ev.title,
-      style: ev.style,
-      startsAt,
-      endsAt: `${day}T23:59:59${IST_OFFSET}`,
-      dayKey: day,
-      hour: hourOf(startsAt),
-      roleLabel,
-      href,
-      event: ev,
-    });
-  }
-  return out;
-}
-
-const byStart = (a: CalendarEventEntry, b: CalendarEventEntry) => a.startsAt.localeCompare(b.startsAt);
-
-/** A PERSON's events: the ones they hold a ticket or an entry for, and the ones
- *  their businesses are running. Drafts are left out — a draft is not "on", the
- *  same rule Home's deck keeps — and an event you RUN outranks a seat on it, so
- *  it is drawn once, as the thing you are running. */
-export async function findMyCalendarEvents(
-  supabase: SupabaseClient,
-  userId: string,
-  tenantIds: string[],
-  fromIso: string,
-  toIso: string
-): Promise<CalendarEventEntry[]> {
-  const [tickets, hosted] = await Promise.all([
-    findMyEventBookings(supabase, userId),
-    tenantIds.length ? findEventsByTenants(supabase, tenantIds) : Promise.resolve([] as DanceEvent[]),
-  ]);
-
-  const out: CalendarEventEntry[] = [];
-  const running = new Set<string>();
-  for (const ev of hosted) {
-    if (ev.status === "draft") continue;
-    running.add(ev.id);
-    out.push(...eventEntries(ev, "Running", `/business/${ev.tenantId}/events/${ev.id}`, fromIso, toIso));
-  }
-
-  /* one row per EVENT however many tickets you hold on it — the register lists
-     them; a calendar says you are going */
-  const mine = new Map<string, MyEventBooking>();
-  for (const t of tickets) {
-    if (running.has(t.eventId) || mine.has(t.eventId)) continue;
-    mine.set(t.eventId, t);
-  }
-  const held = [...mine.values()];
-  /* a booking carries its event's START date and no end, so the EVENT decides
-     which days it covers — one read per distinct event booked, as the deck does */
-  const full = await Promise.all(held.map((t) => findEventBySlug(supabase, t.eventShareSlug)));
-  full.forEach((ev, i) => {
-    if (!ev) return;
-    out.push(
-      ...eventEntries(ev, held[i].kind === "participant" ? "Competing" : "Spectator", `/e/${ev.shareSlug}`, fromIso, toIso)
-    );
-  });
-
-  return out.sort(byStart);
-}
+// ── ⚠⚠ EVENTS ON THE CALENDAR WENT ON 29 Sep 2026 ────────────────────────────
+// The user: *"Remove Organization and Events completely from the system."*
+// `findMyCalendarEvents`, `eventEntries` and `MAX_EVENT_DAYS` were here, and
+// with them the only thing in this file that had to be expanded ONE ROW PER DAY
+// (a festival is on every day of itself, where a class session is one evening).
+// The Classes/Events switch the screen drew above the sides went too.
+//
+// ⚠ It cost the calendar three reads per visit — the tickets, the businesses'
+// events, and one `findEventBySlug` per distinct event held — so a person's
+// calendar is materially cheaper than it was.
 
 /** A business's PUBLIC schedule (prototype `pubSchedule`, 8902-8907): published
  *  classes that have not happened yet, and nothing else — not drafts, not what

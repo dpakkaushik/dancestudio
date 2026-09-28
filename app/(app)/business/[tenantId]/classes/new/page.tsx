@@ -34,10 +34,7 @@ export default async function NewClassPage({
     redirect("/business");
   }
   const { tenant, memberRole } = membership;
-  /* the hosting row has no classes and no form for one (17 Sep 2026) */
-  if (tenant.type === "org") {
-    redirect(`/business/${tenantId}/events`);
-  }
+  /* ⚠ the hosting row's redirect went with events (29 Sep 2026) */
   if (memberRole !== "owner") {
     redirect(tenant.type === "artist_page" ? "/my-classes" : `/business/${tenantId}/classes`);
   }

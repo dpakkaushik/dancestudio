@@ -1,5 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { HEADER_MAX_CREW, HEADER_MAX_ORG, photoUrl } from "@/lib/media/photo";
+import { HEADER_MAX_ARTIST, HEADER_MAX_CREW, photoUrl } from "@/lib/media/photo";
 import { PROOF_BUCKET, PROOF_URL_SECONDS } from "@/lib/media/proof";
 
 /** One picture in a header rail, ready to draw. */
@@ -17,15 +17,21 @@ export interface HeaderPhoto {
  *  disc, in the order they were added. Public content in the public bucket, so
  *  a URL is a plain string and never expires.
  *
- *  `max` is what the page may SHOW: a user's header is one picture, an artist's
- *  five and an organization's ten (19 Sep 2026), and a plan that lapsed with
- *  five stored still draws one — the rest wait, undeleted, for the plan to come
- *  back. An artist who held ten before the cap came down still holds them; the
- *  page shows five and the Edit sheet lets them take the rest down.
+ *  `max` is what the page may SHOW: a user's header is one picture and an
+ *  artist's five (19 Sep 2026), and a plan that lapsed with five stored still
+ *  draws one — the rest wait, undeleted, for the plan to come back. An artist
+ *  who held ten before the cap came down still holds them; the page shows five
+ *  and the Edit sheet lets them take the rest down.
+ *
+ *  ⚠ THE DEFAULT WAS `HEADER_MAX_ORG` (ten) AND IS `HEADER_MAX_ARTIST` (five)
+ *  since 29 Sep 2026, when organizations were removed. It is a ceiling on a
+ *  `.limit()`, and every caller passes its own `headerMaxFor(kind)` — so this
+ *  default has never decided what anybody sees; it only stops being a number
+ *  that names a kind of profile the app no longer has.
  *
  *  Degrades to empty rather than throwing: a Home that 500s over a picture rail
  *  would be worse than one that shows the disc alone. */
-export async function findPersonHeaderPhotos(supabase: SupabaseClient, userId: string, max = HEADER_MAX_ORG): Promise<HeaderPhoto[]> {
+export async function findPersonHeaderPhotos(supabase: SupabaseClient, userId: string, max = HEADER_MAX_ARTIST): Promise<HeaderPhoto[]> {
   const { data, error } = await supabase
     .from("profile_header_photos")
     .select("id, path, sort, created_at")

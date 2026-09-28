@@ -42,7 +42,8 @@ export type MoneyLine = {
 export const EARNING_TINT: Record<string, string> = {
   classes: "#0D9488",
   memberships: "#B45309",
-  events: "#EC4899",
+  /* `events: "#EC4899"` went with events (29 Sep 2026) — the one revenue line
+     that could ever be filled by a ticket or an entry */
   enquiries: "#8B5CF6",
   teaching: "#22C55E",
   pay: "#9A3412",

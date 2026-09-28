@@ -78,11 +78,9 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
   if (profile) {
     switcher.push({ key: "me", href: "/", label: profile.fullName, sub: plan?.active ? "Artist" : "User", kind: "me" });
     for (const m of runsA) {
+      /* ⚠ the organization arm went with organizations (29 Sep 2026) */
       if (m.tenant.type === "studio") {
         switcher.push({ key: m.tenant.id, href: `/business/${m.tenant.id}`, label: m.tenant.name, sub: "Studio", kind: "studio" });
-      } else if (m.tenant.type === "org") {
-        /* an organization is run from here too (26 Sep 2026) — its home, like a studio's */
-        switcher.push({ key: m.tenant.id, href: `/business/${m.tenant.id}`, label: m.tenant.name, sub: "Organization", kind: "org" });
       }
     }
     for (const c of ledCrews) {
@@ -93,8 +91,8 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
   /* ⚠⚠ WHAT THE GEAR OPENS, FOR THE PROFILE YOU ARE IN (21 Sep 2026, the user:
      "settings are seprate for each profile type according to which profile you
      are in"). The chrome renders the sheet and picks the subject from the
-     pathname; `businesses` carries every studio AND organization this account
-     is on the team of, so the sheet can be THAT one's while you are inside it.
+     pathname; `businesses` carries every studio this account runs, so the sheet
+     can be THAT one's while you are inside it.
      ⚠ `ownBusiness` is the artist page this account OWNS — never a business it
      is merely on the team of, and never an arbitrary pick among the ones it
      owns. */
@@ -111,7 +109,7 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
            wider list here would only be a list nothing can reach — and the THIS
            STUDIO block it feeds carries Verification, the Subscription and the
            money desks, which are the last things a visiting teacher should meet. */
-        businesses: runsA.filter((m) => m.tenant.type === "studio" || m.tenant.type === "org").map((m) => m.tenant),
+        businesses: runsA.filter((m) => m.tenant.type === "studio").map((m) => m.tenant),
       }
     : null;
 

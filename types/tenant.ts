@@ -1,11 +1,17 @@
-/** studio | artist_page (an artist page) | **org** — AN ORGANIZATION A PERSON
- *  OPENS (26 Sep 2026; it was the retired organization login's hosting row,
- *  R15). Owned through an owner seat like a studio, run from the profile
- *  switcher, with its events, its team, its own GST number and a ₹5,000 mandate.
- *  Never `listed` — it is PUBLIC (its page at `/org/{id}`, its events bookable,
- *  followable) when its GST number is verified AND its subscription is live
- *  (`org_is_public`). It runs no studios. */
-export type TenantType = "studio" | "artist_page" | "org";
+/** studio | artist_page (an artist page) — the two kinds of business left.
+ *
+ *  ⚠⚠ `org` WAS THE THIRD AND IS GONE (29 Sep 2026, the user: *"Remove
+ *  Organization and Events completely from the system"*). It had been an
+ *  organization's hosting row (R15), then the organization itself (R48) — owned
+ *  through a seat like a studio, run from the switcher, with its events, its
+ *  team, its GST number and a ₹5,000 mandate. Every one of those went with it,
+ *  and events went with it too: on production all ten live events were hosted by
+ *  an organization, because only an organization could ever host one.
+ *
+ *  ⚠ THE COLUMN'S CHECK STILL ADMITS `'org'` and 20 live rows still carry it
+ *  until the held sweep runs. Narrowing the type here is what turned every
+ *  reader of the word into a compile error, which is how they were found. */
+export type TenantType = "studio" | "artist_page";
 
 import type { SocialLink } from "@/types/profile";
 
@@ -45,12 +51,6 @@ export interface Tenant {
   accepts: AcceptedMethods;
   /** set by DanceOS after KYC — the tick */
   verifiedAt: string | null;
-  /** AN ORGANIZATION'S GST NUMBER (26 Sep 2026) — on the business row since the
-   *  organization login was retired; null on a studio and an artist page */
-  gstin?: string | null;
-  /** when `verify_business_gstin` passed it — the org's own tick, and what its
-   *  events and its subscription wait on */
-  gstinVerifiedAt?: string | null;
   /** WHEN AN OWNER PLACED THIS BUSINESS ON THE MAP (11 Sep 2026). Null means
    *  its lat/lng is still the city centroid `create_business_with_owner`
    *  defaulted to — a guess, not an address — so Discover cannot honestly say

@@ -5,16 +5,13 @@ import { useRouter } from "next/navigation";
 import { useState, type ReactNode } from "react";
 import { respondToClaimAction, withdrawClaimAction } from "@/features/claims/server-actions/claims";
 import { respondToVenueRequestAction } from "@/features/classes/server-actions/classes";
-import { respondToCrewAskAction, respondToPartnerAskAction, withdrawCrewAskAction } from "@/features/crews/server-actions/crews";
+import { respondToCrewAskAction, withdrawCrewAskAction } from "@/features/crews/server-actions/crews";
 import { respondToPracticeAction } from "@/features/crews/server-actions/practices";
-import { respondToOrganizationAskAction, withdrawOrganizationAskAction } from "@/features/organization/server-actions/team";
 import { acceptInviteAction, declineInviteAction, revokeInviteAction } from "@/features/staff/server-actions/staff";
 import { ClassTile } from "@/features/classes/components/ClassTile";
-import { EventCard } from "@/features/events/components/EventCard";
 import { DeskHero } from "@/features/tenants/components/biz-kit";
 import { DOS_DISPLAY, DOS_UI, LILAC, PINK } from "@/lib/design/tokens";
 import type { DanceClass } from "@/types/class";
-import type { DanceEvent } from "@/types/event";
 import {
   ENQ_STAGES,
   ENQ_STAGE_WORD,
@@ -54,7 +51,9 @@ export interface RequestItem {
   /** ⚠ and 27 Sep 2026 the PRACTICE ask — a crew's rehearsal, which is about ONE
    *  OCCASION and so falls in the Accept · Reject group rather than the
    *  invitations one; `JOIN_KINDS` leaves it out by omission */
-  kind: "claim" | "invite" | "crew" | "partner" | "venue" | "orgteam" | "practice";
+  /** ⚠ `partner` (a duet entry) and `orgteam` (an organization's label) went on
+   *  29 Sep 2026 with events and organizations */
+  kind: "claim" | "invite" | "crew" | "venue" | "practice";
   id: string;
   dir: "in" | "out";
   /** in: who is asking; out: who is being asked */
@@ -63,7 +62,7 @@ export interface RequestItem {
   what: string;
   /** DOS_LINK_WHAT verb: "list you as the artist on" */
   verb: string;
-  subjectKind: "CLASS" | "STUDIO" | "CREW" | "EVENT" | "ORGANIZATION" | "PRACTICE";
+  subjectKind: "CLASS" | "STUDIO" | "CREW" | "PRACTICE";
   subjectTitle: string;
   when: string | null;
   href: string | null;
@@ -88,20 +87,19 @@ export interface RequestItem {
   /** ⚠ THE THING ITSELF, SO THE DESK CAN DRAW ITS OWN CARD (27 Sep 2026, the
    *  user: *"event and class request cards should also look like class and
    *  event cards on discover with accept and reject buttons"*). A class ask and
-   *  a room ask carry the CLASS; a duet ask carries the EVENT. Both are the
-   *  same objects Discover draws, through the same two components — so an ask
-   *  about a class cannot end up describing it differently from the shelf it
-   *  came off. Absent only when the row could not be read, and then the card
-   *  falls back to the plain row. */
+   *  a room ask carry the CLASS — the same object Discover draws, through the
+   *  same component — so an ask about a class cannot end up describing it
+   *  differently from the shelf it came off. Absent only when the row could not
+   *  be read, and then the card falls back to the plain row.
+   *  ⚠ `event` was its twin, for a duet ask, and went on 29 Sep 2026. */
   danceClass?: DanceClass | null;
-  event?: DanceEvent | null;
 }
 
 /* ⚠ A `Record` KEYED ON THE UNION, which is the point: adding `practice` to
    `RequestItem["kind"]` made this line fail to COMPILE until the word was
    written, so a kind the desk cannot name cannot ship. That is the `GLYPH`
    lesson of the same morning working the right way round. */
-const KIND_WORD: Record<RequestItem["kind"], string> = { claim: "class", invite: "team", crew: "crew", partner: "duet", venue: "room", orgteam: "organization", practice: "practice" };
+const KIND_WORD: Record<RequestItem["kind"], string> = { claim: "class", invite: "team", crew: "crew", venue: "room", practice: "practice" };
 
 /** ⚠⚠ TWO KINDS OF THING WERE WEARING ONE CARD (27 Sep 2026, the user:
  *  *"class and event requests should have same cards with accept and reject
@@ -125,13 +123,14 @@ const KIND_WORD: Record<RequestItem["kind"], string> = { claim: "class", invite:
  *  in the ENTITY'S OWN colour, leading with what you would be joining rather
  *  than with who is asking, and reads **Join · Decline** — because "confirm" is
  *  not what a person does with an invitation. */
-const JOIN_KINDS: ReadonlySet<RequestItem["kind"]> = new Set(["invite", "crew", "orgteam"]);
+/* ⚠ `orgteam` was the third and went with organizations (29 Sep 2026) */
+const JOIN_KINDS: ReadonlySet<RequestItem["kind"]> = new Set(["invite", "crew"]);
 const isJoin = (r: RequestItem) => JOIN_KINDS.has(r.kind);
 
 const REQ_TINT = "#8B5CF6";
 /* a join wears the colour of the thing you would be joining, so the three
    sections of the app it can come from are told apart at a glance */
-const JOIN_TINT: Partial<Record<RequestItem["kind"], string>> = { invite: "#0EA5E9", crew: "#DC2626", orgteam: "#701A75" };
+const JOIN_TINT: Partial<Record<RequestItem["kind"], string>> = { invite: "#0EA5E9", crew: "#DC2626" };
 
 const Row = ({ children, c, testId }: { children: React.ReactNode; c: string; testId?: string }) => (
   <div data-testid={testId} style={{ background: "var(--card)", border: "1.5px solid var(--el)", borderLeft: `4px solid ${c}`, borderRadius: 16, padding: "12px 14px", marginBottom: 10 }}>{children}</div>
@@ -289,11 +288,7 @@ export function InboxScreen({
           ? respondToCrewAskAction({ memberId: r.memberId!, accept })
           : r.kind === "venue"
             ? respondToVenueRequestAction({ classId: r.classId!, accept })
-            : r.kind === "orgteam"
-              ? respondToOrganizationAskAction({ memberId: r.memberId!, accept })
-              : r.kind === "practice"
-                ? respondToPracticeAction({ practiceId: r.practiceId!, accept, crewId: r.crewId })
-                : respondToPartnerAskAction({ bookingId: r.bookingId!, accept });
+            : respondToPracticeAction({ practiceId: r.practiceId!, accept, crewId: r.crewId });
   const withdraw = (r: RequestItem) =>
     r.kind === "claim"
       ? withdrawClaimAction({ claimId: r.claimId! })
@@ -301,11 +296,7 @@ export function InboxScreen({
         ? revokeInviteAction({ tenantId: r.tenantId!, inviteId: r.inviteId! })
         : r.kind === "crew"
           ? withdrawCrewAskAction({ memberId: r.memberId!, crewId: r.crewId })
-          : r.kind === "venue"
-            ? Promise.resolve({ error: "Pick another studio or room from the class's Edit form — that is the withdrawal" })
-            : r.kind === "orgteam"
-              ? withdrawOrganizationAskAction({ memberId: r.memberId! })
-              : Promise.resolve({ error: "A duet entry is withdrawn from the event page" });
+          : Promise.resolve({ error: "Pick another studio or room from the class's Edit form — that is the withdrawal" });
 
   /** THE TWO ANSWERS, AS AN ACTION ROW UNDER A CARD (27 Sep 2026) — the same
    *  buttons the row card carries, lifted out so the class card and the event
@@ -424,15 +415,7 @@ export function InboxScreen({
         </div>
       );
     }
-    if (r.event) {
-      return (
-        <div key={`${r.kind}-${r.id}`} data-testid="request-row" style={{ marginBottom: 12 }}>
-          {askWho(r)}
-          <EventCard event={r.event} href={r.href ?? undefined} actions={askActions(r)} />
-          {r.note ? <div style={{ fontSize: 10.5, color: "var(--muted)", margin: "2px 2px 0", lineHeight: 1.45 }}>{r.note}</div> : null}
-        </div>
-      );
-    }
+    /* ⚠ the EVENT CARD branch (a duet ask) went on 29 Sep 2026 */
     return requestCard(r);
   };
 

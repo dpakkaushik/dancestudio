@@ -2,7 +2,7 @@
 
 import { z } from "zod";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
-import { findCrewFollowers, findMyFollowedCrews, findMyFollowedOrganizations, findMyFollowedPeople, findMyFollowing, findTenantFollowers } from "@/repositories/follows";
+import { findCrewFollowers, findMyFollowedCrews, findMyFollowedPeople, findMyFollowing, findTenantFollowers } from "@/repositories/follows";
 
 /** ⚠⚠ THE FOLLOWER LIST, READ WHEN IT IS ASKED FOR (27 Sep 2026, the user:
  *  *"fix follow following for all profiles. list should open when clicked from
@@ -98,18 +98,18 @@ export async function loadFollowingAction(): Promise<FollowListResult> {
   } = await supabase.auth.getUser();
   if (!user) return { error: null, rows: [] };
   try {
-    const [people, tenants, orgs, crews] = await Promise.all([
+    const [people, tenants, crews] = await Promise.all([
       findMyFollowedPeople(supabase),
       findMyFollowing(supabase),
-      findMyFollowedOrganizations(supabase).catch(() => []),
       findMyFollowedCrews(supabase).catch(() => []),
     ]);
-    /* the same four kinds the person's own sheet lists, in the same order, so
-       the two sheets cannot come to disagree about what "following" means */
+    /* the same three kinds the person's own sheet lists, in the same order, so
+       the two sheets cannot come to disagree about what "following" means.
+       ⚠ The organizations segment was the fourth and went on 29 Sep 2026; the
+       `follows` rows naming one are the sweep's. */
     const rows: FollowListResult["rows"] = [
       ...people.map((f) => ({ id: f.followId, name: f.name, sub: f.city, href: `/person/${f.userId}`, photoPath: f.avatarPath })),
       ...tenants.map((t) => ({ id: t.followId, name: t.tenantName, sub: t.tenantType === "studio" ? "Studio" : "Artist", href: `/${t.tenantType === "studio" ? "studio" : "artist"}/${t.tenantId}`, photoPath: null })),
-      ...orgs.map((o) => ({ id: o.followId, name: o.name, sub: "Organization", href: `/org/${o.orgId}`, photoPath: o.photoPath })),
       ...crews.map((c) => ({ id: c.followId, name: c.name, sub: "Crew", href: `/crew/${c.crewId}`, photoPath: c.photo })),
     ];
     return { error: null, rows };

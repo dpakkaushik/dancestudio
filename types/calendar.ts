@@ -2,7 +2,6 @@ import type { ClassArtist } from "@/types/claim";
 import type { PracticeStanding } from "@/types/crewPractice";
 import type { ClassLevel, ClassStatus } from "@/types/class";
 import type { EnrollmentStatus } from "@/types/enrollment";
-import type { DanceEvent } from "@/types/event";
 
 /** Step 14 — the calendar. Nothing new is stored: a calendar entry is a class
  *  session seen from one side. The prototype's three sides are what the person
@@ -42,50 +41,26 @@ export interface CalendarEntry {
   artist: ClassArtist | null;
 }
 
-/** ⚠ AN EVENT ON THE CALENDAR (18 Sep 2026). The calendar has drawn CLASSES
- *  ONLY since Step 14, while Home's deck has carried event tickets, entries and
- *  the events you run since Step 21 — so the one screen whose entire job is
- *  "when is my dancing" was the one screen that did not know about half of it.
- *  A person booked a ticket and it appeared on Home for one day and nowhere
- *  else; an organization, which hosts every event in the app, had a calendar
- *  that could only ever be empty.
- *
- *  Two things make this its own type rather than a fourth `CalendarSide`:
- *  an event has NO session row and can run for DAYS, so it is expanded to one
- *  entry PER DAY it covers (the calendar groups by day, and a festival is on
- *  every day of itself); and Train · Teach · Assist are class ideas — nobody
- *  assists a battle. The prototype's own answer is a Classes/Events switch
- *  above the sides, which is what the screen draws. */
-export interface CalendarEventEntry {
-  /** unique per DRAWN ROW — one event across three days is three rows */
-  key: string;
-  eventId: string;
-  title: string;
-  style: string;
-  startsAt: string;
-  endsAt: string;
-  /** "2026-09-20" in IST — the day this row belongs to */
-  dayKey: string;
-  /** the IST hour it starts — the day view's rail */
-  hour: number;
-  /** what this event is to you: Running · Competing · Spectator · Draft */
-  roleLabel: string;
-  href: string;
-  event: DanceEvent;
-}
+/** ⚠⚠ `CalendarEventEntry` WAS HERE AND WENT WITH EVENTS (29 Sep 2026, the
+ *  user: *"Remove Organization and Events completely from the system"*). It was
+ *  added on 18 Sep because the calendar had drawn classes only while Home's deck
+ *  carried tickets — so the one screen whose whole job is "when is my dancing"
+ *  did not know about half of it. With events gone, the half is gone, and with
+ *  it the prototype's Classes/Events switch above the sides. What survives is
+ *  the reason the type existed separately at all, which the practice entry below
+ *  inherited: Train · Teach · Assist are CLASS ideas, and anything that is not a
+ *  class needs its own shape rather than a fourth `CalendarSide`. */
 
 /** ⚠ A CREW PRACTICE ON THE CALENDAR (27 Sep 2026, the user: *"practice also get
  *  added to calendar. crews should also have a calendar tab."*).
  *
- *  A THIRD kind beside the class and the event, for the same reason the event was
- *  not a fourth `CalendarSide`: Train · Teach · Assist are class ideas, and
- *  nobody trains at a rehearsal — what a practice asks is whether you are COMING.
- *  It is not an event either: an event is a thing with tickets and entries that
- *  can run for days, and a practice is two hours in a room on one evening.
+ *  A SECOND kind beside the class, and its own shape rather than a fourth
+ *  `CalendarSide`: Train · Teach · Assist are class ideas, and nobody trains at
+ *  a rehearsal — what a practice asks is whether you are COMING.
  *
- *  ⚠ ONE DAY, ALWAYS. Unlike an event, a practice is not expanded per day — the
- *  database's own CHECK is `ends_at > starts_at` and the form asks for one date
- *  and two times, so a practice cannot span midnight by construction. */
+ *  ⚠ ONE DAY, ALWAYS — the database's own CHECK is `ends_at > starts_at` and the
+ *  form asks for one date and two times, so a practice cannot span midnight by
+ *  construction, and nothing here has to expand a row across days. */
 export interface CalendarPracticeEntry {
   practiceId: string;
   crewId: string;

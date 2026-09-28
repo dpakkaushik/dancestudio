@@ -2,14 +2,12 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { cache } from "react";
 import { CrewPublicPage } from "@/features/crews/components/CrewPublicPage";
-import { dayKeyOf } from "@/lib/format/month";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
-import { findCrewById, findCrewEntries, findCrewMembers } from "@/repositories/crews";
+import { findCrewById, findCrewMembers } from "@/repositories/crews";
 import { findCrewFollowerCount, isFollowingCrew } from "@/repositories/follows";
 import { findCrewHeaderPhotos } from "@/repositories/headerPhotos";
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-const stampNowIso = (): string => new Date().toISOString();
 
 const loadCrew = cache(async (crewId: string) => {
   const supabase = await createSupabaseServerClient();
@@ -43,9 +41,10 @@ export default async function CrewPage({ params }: { params: Promise<{ crewId: s
   /* ⚠ THE VIEWER'S OWN PROFILE IS NO LONGER READ (20 Sep 2026). It was fetched
      for one reason — "an organization does not follow" — and an organization
      follows since `20260920180000_an_organization_follows`. */
-  const [members, entries, header, following, followers] = await Promise.all([
+  /* ⚠ THE BATTLE RECORD WENT WITH EVENTS (29 Sep 2026): `findCrewEntries` read
+     the events this crew had been entered into, and a crew enters nothing now. */
+  const [members, header, following, followers] = await Promise.all([
     findCrewMembers(supabase, crewId),
-    findCrewEntries(supabase, crewId),
     findCrewHeaderPhotos(supabase, crewId),
     user ? isFollowingCrew(supabase, crewId) : Promise.resolve(false),
     /* the count on the Follow button (19 Sep 2026, later) */
@@ -58,13 +57,11 @@ export default async function CrewPage({ params }: { params: Promise<{ crewId: s
     <CrewPublicPage
       crew={crew}
       members={confirmed}
-      entries={entries}
       header={header}
       viewer={viewer}
       following={following}
       followers={followers}
       signedIn={Boolean(user)}
-      todayKey={dayKeyOf(stampNowIso())}
     />
   );
 }

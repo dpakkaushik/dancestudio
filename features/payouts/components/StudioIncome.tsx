@@ -236,8 +236,9 @@ export function HowStudentsPaid({ month }: { month: MonthIncome }) {
 export function sourceRows(m: MonthIncome): Array<[string, number]> {
   return (
     [
-      ["Classes", m.grossInr - m.membershipsInr - m.eventsInr],
-      ["Tickets & entries", m.eventsInr],
+      /* ⚠ "Tickets & entries" was the third row and went with events (29 Sep
+         2026), so what is not a membership is a seat again */
+      ["Classes", m.grossInr - m.membershipsInr],
       ["Memberships", m.membershipsInr],
     ] as Array<[string, number]>
   ).filter(([, v]) => v > 0);

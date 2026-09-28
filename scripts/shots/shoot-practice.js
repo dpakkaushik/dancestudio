@@ -229,7 +229,7 @@ const tomorrowIst = () => {
        fact a person on three crews needs and "Practice" was a word the Practice
        half of the switch had already said. */
     check(await leader.getByText(/Studio 4, Baner/).first().isVisible().catch(() => false), "the CREW's calendar carries it");
-    check((await leader.getByRole("button", { name: /^Classes:/ }).count()) === 0, "…and is never offered the Classes · Events · Practice switch — a crew's calendar IS its practices");
+    check((await leader.getByRole("button", { name: /^Classes:/ }).count()) === 0, "…and is never offered the Classes · Practice switch — a crew's calendar IS its practices");
     await member.goto(`${BASE}/calendar`, { waitUntil: "networkidle" });
     const switchBtn = member.getByRole("button", { name: /^Practice: 1$/ });
     check((await switchBtn.count()) === 1, "a PERSON's calendar offers Practice as the third half, counting one");

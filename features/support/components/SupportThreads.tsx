@@ -161,7 +161,7 @@ export function SupportThreads({
                   </span>
                   {isAdmin ? (
                     <span style={{ display: "block", fontSize: 10.5, color: SUB, marginTop: 1 }}>
-                      {t.accountName} · {t.accountRole === "org" ? "organization" : "user"}
+                      {t.accountName} · user
                       {t.kind === "verification" ? " · verification" : ""}
                     </span>
                   ) : null}

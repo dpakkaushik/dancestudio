@@ -5,12 +5,9 @@ import { DOS_TINT } from "@/lib/design/tokens";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { findAskedClaimsForTenants, findMyPendingClaims } from "@/repositories/claims";
 import { findMyVenueAsks, findVenueRequestsForTenants } from "@/repositories/classes";
-import { findAskedForMyCrews, findMyPendingCrewAsks, findMyPendingPartnerAsks, findMyUnansweredPartners } from "@/repositories/crews";
+import { findAskedForMyCrews, findMyPendingCrewAsks } from "@/repositories/crews";
 import { findMyCrewPractices } from "@/repositories/crewPractices";
-import { findEventsByIds } from "@/repositories/events";
 import { findMyPendingInvites, findPendingInvites } from "@/repositories/invites";
-import { findAskedByOrganizations, findMyPendingOrganizationAsks } from "@/repositories/organizationTeam";
-import { findProfileById } from "@/repositories/profiles";
 import { findMyMemberships } from "@/repositories/tenants";
 import { findMyArtistPlan } from "@/repositories/plans";
 import { kindOf } from "@/types/profile";
@@ -36,56 +33,37 @@ export default async function InboxPage() {
      becomes a new option in tab and is removed from inbox"). Three reads and
      the crews-you-lead lookup went with the section — so this tab costs less
      than it did, and `/enquiries` pays for exactly what it draws. */
-  const [profile, memberships, plan] = await Promise.all([
-    findProfileById(supabase, user.id),
-    findMyMemberships(supabase),
-    findMyArtistPlan(supabase),
-  ]);
+  /* ⚠ THE PROFILE READ WENT WITH ORGANIZATIONS (29 Sep 2026): it was asked for
+     one thing, the accent `kindOf` paints this desk with, and the KIND is the
+     plan's answer alone now. One round trip fewer. */
+  const [memberships, plan] = await Promise.all([findMyMemberships(supabase), findMyArtistPlan(supabase)]);
   const businesses = memberships.map((m) => m.tenant);
   const tenantIds = businesses.map((t) => t.id);
   /* the rooms asked of the STUDIOS you own, and the rooms your own PAGE has asked for */
   const ownedStudioIds = memberships.filter((m) => m.memberRole === "owner" && m.tenant.type === "studio").map((m) => m.tenant.id);
   const ownedPageIds = memberships.filter((m) => m.memberRole === "owner" && m.tenant.type === "artist_page").map((m) => m.tenant.id);
-  /* the ORGANIZATIONS this account owns (26 Sep 2026) — their team asks are its
-     out-rows, one organization or several, each row wearing its own name */
-  const ownedOrgs = memberships.filter((m) => m.memberRole === "owner" && m.tenant.type === "org").map((m) => m.tenant);
-  const orgNameById = new Map(ownedOrgs.map((t) => [t.id, t.name]));
 
   /* AN ANSWERED ASK STAYS ON THE DESK (19 Sep 2026, the user: "enquiries and
      requests don't get removed after accepting"): every ask read takes the
      answered rows too, newest first, and the row wears its answer. Team invites
      are the one kind the invitee cannot read back once answered (the table has
      no policy for them — `my_pending_invites` is the only door), so those go. */
+  /* ⚠⚠ FOUR READS WENT WITH EVENTS AND ORGANIZATIONS (29 Sep 2026): the duet
+     PARTNER asks from both ends, the one `findEventsByIds` call behind them —
+     which is what let this desk draw the app's own event card rather than a row
+     of its own invention (27 Sep) — and the organization team asks from both
+     ends (push 2, 19 Sep; keyed on the businesses owned since 26 Sep). */
   const ALL = ["asked", "confirmed", "rejected"] as const;
-  const PARTNER_ALL = ["asked", "accepted", "declined"] as const;
-  const [claimsIn, invitesIn, claimsOut, invitesOutByTenant, crewIn, crewOut, partnerIn, partnerOut, venueIn, venueOut, orgIn, orgAsked] = await Promise.all([
+  const [claimsIn, invitesIn, claimsOut, invitesOutByTenant, crewIn, crewOut, venueIn, venueOut] = await Promise.all([
     findMyPendingClaims(supabase, [...ALL]),
     findMyPendingInvites(supabase),
     findAskedClaimsForTenants(supabase, tenantIds, [...ALL]),
     Promise.all(businesses.map(async (t) => (await findPendingInvites(supabase, t.id)).map((i) => ({ ...i, tenantName: t.name })))),
     findMyPendingCrewAsks(supabase, [...ALL]),
     findAskedForMyCrews(supabase, [...ALL]),
-    findMyPendingPartnerAsks(supabase, [...PARTNER_ALL]),
-    findMyUnansweredPartners(supabase, [...PARTNER_ALL]),
     findVenueRequestsForTenants(supabase, ownedStudioIds).catch(() => []),
     findMyVenueAsks(supabase, ownedPageIds).catch(() => []),
-    /* push 2: an organization naming you on its page (a person's in), and the
-       people YOUR organizations are still waiting on (the owner's out, keyed
-       on the businesses owned since 26 Sep 2026) — each read says whose rows
-       it wants, so the other side is simply empty */
-    findMyPendingOrganizationAsks(supabase, [...ALL]).catch(() => []),
-    findAskedByOrganizations(
-      supabase,
-      ownedOrgs.map((t) => t.id),
-      [...ALL]
-    ).catch(() => []),
   ]);
-
-  /* THE EVENTS BEHIND THE DUET ASKS, in one read (27 Sep 2026) — so the desk
-     draws the app's own event card rather than a row of its own invention. It
-     rides after the batch above because it is keyed on what that batch found;
-     usually there are none, and then it is not a round trip at all. */
-  const events = await findEventsByIds(supabase, [...partnerIn, ...partnerOut].map((p) => p.eventId));
 
   /* ⚠ THE PRACTICES THIS PERSON HAS BEEN ASKED TO (27 Sep 2026). Only the ones
      still AHEAD: a rehearsal that has happened is not a yes or a no you owe
@@ -96,23 +74,18 @@ export default async function InboxPage() {
   const practiceIn = (await findMyCrewPractices(supabase, { from: stampNowIso() })).filter((p) => p.myStatus !== "leader" && p.status !== "cancelled");
 
   const { requestsIn, requestsOut } = buildRequests({
-    events,
     venueIn,
     claimsIn,
     invitesIn,
     crewIn,
-    partnerIn,
     practiceIn,
-    orgIn,
     venueOut,
     claimsOut,
     invitesOut: invitesOutByTenant.flat(),
     crewOut,
-    partnerOut,
-    orgOut: orgAsked.map((m) => ({ ...m, orgName: orgNameById.get(m.orgId) ?? "Your organization" })),
   });
 
-  const accent = DOS_TINT[kindOf(profile?.role ?? "user", Boolean(plan?.active))];
+  const accent = DOS_TINT[kindOf(Boolean(plan?.active))];
 
   return (
     <InboxScreen

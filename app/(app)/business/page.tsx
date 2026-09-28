@@ -39,18 +39,15 @@ export default async function BusinessPage() {
   if (!profile) {
     redirect("/onboarding");
   }
-  const isOrg = profile.role === "org";
   // membership is the spine, and the ROLE on it decides which list a business
   // sits in — owned rows get their room count for the sub-line (prototype 2655)
   const [memberships, plan, whyNoStudio, catalog, cityCentres] = await Promise.all([
     findMyMemberships(supabase),
-    isOrg ? Promise.resolve(null) : findMyArtistPlan(supabase),
+    findMyArtistPlan(supabase),
     /* the gate to CREATING a studio, in the database's own words — everybody's since 26 Sep 2026 */
     findWhyNoStudio(supabase).catch(() => null),
-    /* ⚠ THE EVENTS HOST IS NOT READ HERE ANY MORE (15 Sep 2026). This hub is
-       "Studios"; its events block duplicated Home's Events tile and read as
-       though a studio had events. Home is the one door — and `my_org_business()`
-       MAKES the host row on first ask, so Home asking for it is enough. */
+    /* ⚠ THE EVENTS HOST WAS NOT READ HERE FROM 15 Sep 2026, and there is no such
+       row to read since 29 Sep: this hub is "Studios", and events are gone. */
     findPlanCatalog(supabase).catch(() => []),
     /* the cities that already have a business in them (11 Sep 2026) — the
        New-studio sheet's quick chips, and where its map opens. Replaces
@@ -70,14 +67,13 @@ export default async function BusinessPage() {
       owned.filter((t) => t.type === "studio").map((t) => ({ id: t.id, verifiedAt: t.verifiedAt }))
     ),
     /* the Studios tile's second list for a person (18 Sep 2026): where they have been a student */
-    isOrg ? Promise.resolve([]) : findStudiosAttended(supabase, user.id).catch(() => []),
+    findStudiosAttended(supabase, user.id).catch(() => []),
   ]);
   return (
     <BusinessHub
       memberships={memberships}
       attended={attended}
       roomCounts={roomCounts}
-      role={profile.role}
       isArtist={Boolean(plan?.active)}
       whyNoStudio={whyNoStudio}
       studioSubscriptions={studioSubscriptions}

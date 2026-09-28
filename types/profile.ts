@@ -1,15 +1,27 @@
-/** Who an account IS (8 Sep 2026): a person, or an organization that runs
- *  studios. The prototype's dancer | trainer | studio is gone at the user's
- *  instruction — "Pro" is the artist plan, a ROW on `artist_plans_legacy`, never a role
- *  again. Chosen once at onboarding; only DanceOS may change it afterwards. */
-export type ProfileRole = "user" | "org";
+/** Who an account IS. The prototype's dancer | trainer | studio went at the
+ *  user's instruction on 8 Sep 2026 — "Pro" is the artist plan, a ROW, never a
+ *  role again.
+ *
+ *  ⚠⚠ AND THERE IS ONLY ONE VALUE NOW (29 Sep 2026, the user: *"Remove
+ *  Organization and Events completely from the system"*). `org` was the second,
+ *  and it had already stopped meaning anything twice over: R48 retired the
+ *  organization LOGIN on 26 Sep, so no live profile has carried the word since;
+ *  the organization itself was a `businesses` row after that, and now that is
+ *  gone too.
+ *
+ *  ⚠ THE COLUMN'S CHECK STILL ADMITS `'org'` and 52 soft-deleted rows still
+ *  carry it — narrowing the TYPE is what makes every reader of the word a
+ *  compile error, which is how this removal found them. Two reads still send
+ *  `.neq("role", "org")` to PostgREST as a plain string, deliberately: those
+ *  filter the dead rows out of search, and they are about the DATABASE's
+ *  vocabulary rather than this app's. */
+export type ProfileRole = "user";
 
-/** What a screen PRINTS beside a name. The role says person-or-organization;
- *  a live plan is what makes a person an artist, so the word needs both. */
-export type PersonKind = "user" | "artist" | "org";
+/** What a screen PRINTS beside a name: a live plan is what makes a person an
+ *  artist, and that is now the whole of the question. */
+export type PersonKind = "user" | "artist";
 
-export const kindOf = (role: ProfileRole, isArtist: boolean): PersonKind =>
-  role === "org" ? "org" : isArtist ? "artist" : "user";
+export const kindOf = (isArtist: boolean): PersonKind => (isArtist ? "artist" : "user");
 
 /** ⚠⚠ A BUSINESS DOES NOT BOOK — AND THE OLD TEST FOR IT DIED ON 26 Sep 2026.
  *
@@ -35,25 +47,30 @@ export const kindOf = (role: ProfileRole, isArtist: boolean): PersonKind =>
  *  carries the answer (`?as=`), because `/discover` belongs to no profile by
  *  itself. A pointer is never an authority: the page it lands on looks the
  *  business up among the ones this account actually belongs to before it
- *  believes a word of it. */
-export type ActingAs = { kind: "studio" | "org" | "crew"; name: string; id: string } | null;
+ *  believes a word of it.
+ *
+ *  ⚠ `org` LEFT THIS UNION ON 29 Sep 2026 with organizations themselves. A CREW
+ *  stays in it — it is still a profile you switch into — even though what it
+ *  used to be able to do here (enter an event) is gone: it still cannot take a
+ *  class seat, and that refusal is the one this type now carries. */
+export type ActingAs = { kind: "studio" | "crew"; name: string; id: string } | null;
 
-/** May the profile you are acting as take a CLASS SEAT? Only you can. */
+/** May the profile you are acting as take a CLASS SEAT? Only you can.
+ *
+ *  ⚠ `canBookEvent` was its twin until 29 Sep 2026 and went with events. It
+ *  admitted a CREW, because entering an event as a crew is what a crew is for;
+ *  with events gone a crew books nothing, which is why the two predicates have
+ *  collapsed back into this one. */
 export const canBookClass = (as: ActingAs): boolean => as === null;
-
-/** May it enter an EVENT? A crew can — that is what a crew is for (a crew entry
- *  is made by the person who leads it, R22) — and a studio or an organization
- *  cannot: it RUNS events. */
-export const canBookEvent = (as: ActingAs): boolean => as === null || as.kind === "crew";
 
 /** What a card says in place of the button, in the rule's own words. One
  *  sentence per kind, naming the profile you are in, because "you cannot book"
  *  with no reason on a screen you reached by pressing Discover is the kind of
  *  refusal somebody reads as a broken button. */
-export const noBookingWords = (as: NonNullable<ActingAs>, what: "class" | "event"): string =>
+export const noBookingWords = (as: NonNullable<ActingAs>): string =>
   as.kind === "crew"
-    ? `${as.name} is a crew — it enters events, it does not take classes. Switch to your own profile to book one.`
-    : `${as.name} ${as.kind === "org" ? "runs" : "teaches"} ${what === "class" ? "classes" : "events"} — it does not book them. Switch to your own profile to take a place.`;
+    ? `${as.name} is a crew — it dances together, it does not take classes. Switch to your own profile to book one.`
+    : `${as.name} teaches classes — it does not book them. Switch to your own profile to take a place.`;
 
 /** One link where else to find a person (S_profiletab 10760): a known
  *  platform's name, or a short custom label, and the URL. Order is the
@@ -110,7 +127,7 @@ export interface Profile {
  *  `PublicPersonPage` was the one that was missed, and it is on this map now.
  *  The capitals belong to the style sheet, never to the text. */
 /** what an account IS, in a sentence — the word every hero's eyebrow prints */
-export const KIND_WORD: Record<PersonKind, string> = { user: "User", artist: "Artist", org: "Organization" };
+export const KIND_WORD: Record<PersonKind, string> = { user: "User", artist: "Artist" };
 
 /** the account number as the prototype prints it: six digits, zero-padded */
 export const memberNoWords = (n: number | null | undefined): string => (n == null ? "" : String(n).padStart(6, "0"));

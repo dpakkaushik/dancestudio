@@ -41,9 +41,10 @@ import { useRecordListsOptional } from "./RecordLists";
  *  ⚠ THE ORGANIZATION'S PIN BLOCK IS GONE (26 Sep 2026): it wrote `set_my_place`
  *  on the organization LOGIN's profile row, and that login is retired — an
  *  organization is a business a person opens, and its pin is its business
- *  row's, placed from its own Edit sheet like a studio's. `isOrg` here can no
- *  longer be true; the branches that read it are left so the file keeps its
- *  shape until the profile role itself is retired. */
+ *  row's, placed from its own Edit sheet like a studio's.
+ *  ⚠ AND THE `isOrg` BRANCHES WENT ON 29 Sep 2026 with organizations themselves.
+ *  They were kept for three days "until the profile role itself is retired" —
+ *  which is what this removal did. */
 
 /** THE "EDIT DETAILS" CHIP ON HOME AND THE SHEET IT OPENS (26 Sep 2026) — drawn
  *  beside the name while the home is in edit mode; the words a form still holds
@@ -86,7 +87,6 @@ export function EditProfileSheet({
   onSaved?: () => void;
 }) {
   const router = useRouter();
-  const isOrg = profile.role === "org";
   /* the styles and the links as the HOME holds them, when this sheet is opened
      from a home being edited (26 Sep 2026) — a style added on the band a moment
      ago is not written back over by a change of city; off the prop elsewhere */
@@ -113,9 +113,9 @@ export function EditProfileSheet({
       const out = await updateMyProfileAction({
         fullName: d.fullName,
         city: d.city.trim(),
-        age: isOrg ? null : d.age,
+        age: d.age,
         /* THE DATE OF BIRTH (19 Sep 2026): the database works the age out from it; an empty box leaves it as it is */
-        dob: isOrg || !d.dob ? undefined : d.dob,
+        dob: d.dob ? d.dob : undefined,
         socials: lists.socials,
         styles: lists.styles,
         /* unchanged — the contact sheet on Home is where these move */
@@ -148,29 +148,26 @@ export function EditProfileSheet({
       <CityPicker value={d.city.trim() || null} onChange={(c) => setD((x) => ({ ...x, city: c ?? "" }))} label="" />
       {!d.city.trim() ? <div style={{ fontSize: 10.5, color: "#EF4444", marginTop: 4 }}>Your city is required — it is where Discover and the rankings place you.</div> : null}
       {/* ⚠ no pin block (26 Sep 2026) — a person's row carries none; see the header */}
-      {/* an organization has no age (10594) */}
-      {isOrg ? null : (
-        <>
-          {/* A DATE OF BIRTH, NOT AN AGE (19 Sep 2026, the user: "age should
-              always be DOB instead when selecting anywhere in the app" — "dob in
-              picker and age on profile according to that"). A typed age is wrong
-              a year later; the date is asked once and the age is worked out from
-              it. The page still prints the number alone ("24, Gurugram"). */}
-          <div style={fieldLabel}>Date of birth</div>
-          <input
-            type="date"
-            aria-label="Date of birth"
-            value={d.dob}
-            min={isoYearsAgo(99)}
-            max={isoYearsAgo(13)}
-            onChange={(e) => setD((x) => ({ ...x, dob: e.target.value }))}
-            style={fieldInput}
-          />
-          <div style={{ fontSize: 10.5, color: MUTED, marginTop: 4 }}>
-            {d.dob ? `Your profile says ${ageFromDob(d.dob)}.` : "Your age is worked out from this — it is never shown as a date."}
-          </div>
-        </>
-      )}
+      {/* A DATE OF BIRTH, NOT AN AGE (19 Sep 2026, the user: "age should always
+          be DOB instead when selecting anywhere in the app" — "dob in picker and
+          age on profile according to that"). A typed age is wrong a year later;
+          the date is asked once and the age is worked out from it. The page
+          still prints the number alone ("24, Gurugram").
+          ⚠ It was skipped for an organization, which has no age (10594) — and
+          every profile is a person's since 29 Sep 2026. */}
+      <div style={fieldLabel}>Date of birth</div>
+      <input
+        type="date"
+        aria-label="Date of birth"
+        value={d.dob}
+        min={isoYearsAgo(99)}
+        max={isoYearsAgo(13)}
+        onChange={(e) => setD((x) => ({ ...x, dob: e.target.value }))}
+        style={fieldInput}
+      />
+      <div style={{ fontSize: 10.5, color: MUTED, marginTop: 4 }}>
+        {d.dob ? `Your profile says ${ageFromDob(d.dob)}.` : "Your age is worked out from this — it is never shown as a date."}
+      </div>
       {/* ⚠ NO BIO FIELD, AND NO COLUMN BEHIND IT (20 Sep 2026: "Remove bio from
           all profiles", then "about and bio for profiles need to go away").
           `profiles.about` and this door's `p_about` argument are both gone; the

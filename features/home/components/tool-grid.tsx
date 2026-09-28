@@ -1,7 +1,6 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
 import { CrewI, dosToolPaint } from "@/features/crews/components/crew-kit";
-import { EventI } from "@/features/discovery/components/discover-kit";
 import { StudioI } from "@/features/shell/components/shell-glyphs";
 import { InvertedPanel } from "@/components/ui/InvertedPanel";
 import { DOS_DISPLAY } from "@/lib/design/tokens";
@@ -10,8 +9,9 @@ import { DOS_DISPLAY } from "@/lib/design/tokens";
  *  BESIDE IT (27 Sep 2026). Moved here from `home-kit` with the panel, so the
  *  client component that draws the arranging can render its own head without
  *  importing the kit that renders IT. */
-export type ToolsKind = "user" | "artist" | "org" | "studio" | "crew";
-export const TOOLS_HEADING: Record<ToolsKind, string> = { user: "User Tools", artist: "Artist Tools", org: "Organization Tools", studio: "Studio Tools", crew: "Crew Tools" };
+/* ⚠ `org` / "Organization Tools" went with organizations on 29 Sep 2026 */
+export type ToolsKind = "user" | "artist" | "studio" | "crew";
+export const TOOLS_HEADING: Record<ToolsKind, string> = { user: "User Tools", artist: "Artist Tools", studio: "Studio Tools", crew: "Crew Tools" };
 
 /** ⚠⚠ THE HEAD CARRIES THE ARRANGE CONTROL NOW (27 Sep 2026, the user:
  *  *"arrange tools options in top left with tools heading"*).
@@ -84,7 +84,11 @@ export const GLYPH = {
   ),
   crews: <CrewI size={20} color="currentColor" />,
   studios: <StudioI size={20} color="currentColor" />,
-  events: <EventI size={20} color="currentColor" />,
+  /* ⚠ `events` WENT ON 29 Sep 2026 with the tile it was drawn for, and it went
+     in the SAME push rather than being left behind — which is the whole reason
+     this map carries the comment above it. A glyph whose tile no longer exists
+     is the `Stats` icon of 15 Sep, which sat here unread for twelve days and
+     was found only because a type listed the keys. */
   classesmod: I(
     <>
       <rect x="3.5" y="4.5" width="17" height="16" rx="3" />

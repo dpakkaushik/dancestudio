@@ -13,7 +13,17 @@ import { dosClassLabel } from "@/lib/constants/styles";
  *  person's own ledger — the subscription payments they made: the Artist
  *  plan, or a studio's ₹1,200 a month. A studio's ledger lists only what it
  *  TOOK; what it PAID DanceOS is the owner's own invoice, not the studio's
- *  income. */
+ *  income.
+ *
+ *  ⚠⚠ THE EVENT ROW STAYS THOUGH EVENTS ARE GONE (29 Sep 2026, Rule 9: money).
+ *  A ledger is a record of what HAPPENED, and four paid event orders are on
+ *  production: somebody's money moved, and a receipt that stops describing what
+ *  it was for is a worse receipt. So the title is still read and the row still
+ *  reads "Ticket · {name}" — what it lost is its DOOR, because `/e/{slug}` does
+ *  not exist any more and a receipt that opens a 404 is the one thing worse.
+ *  ⚠ This is also why the migration should NOT drop the four event tables: the
+ *  FK cascade would take those four orders and their payments with them, and
+ *  this embed would stop resolving. Soft-delete the rows, keep the tombstones. */
 
 export type InvoiceStatus = "paid" | "refunded";
 export type InvoiceKind = "class" | "event" | "subscription";
@@ -29,7 +39,7 @@ export interface InvoiceRow {
   status: InvoiceStatus;
   paidAt: string;
   kind: InvoiceKind;
-  /** where the row opens — the class page, the event page, the plan */
+  /** where the row opens — the class page, or the plan; an EVENT row has none */
   href: string | null;
 }
 
@@ -79,7 +89,8 @@ const toOrderRow = (r: OrderPaymentRow, side: "mine" | "tenant"): InvoiceRow => 
     status: r.status === "refunded" ? "refunded" : "paid",
     paidAt: r.created_at,
     kind: ev ? "event" : "class",
-    href: cls ? `/c/${cls.share_slug}` : ev ? `/e/${ev.share_slug}` : null,
+    /* ⚠ an event row has no door since 29 Sep 2026 — see the note at the top */
+    href: cls ? `/c/${cls.share_slug}` : null,
   };
 };
 
@@ -140,9 +151,9 @@ export async function findMyInvoices(supabase: SupabaseClient): Promise<InvoiceR
   ].sort(newestFirst);
 }
 
-/** the payments a business took — its ledger (members, by RLS). Seats and,
- *  for an organization's hosting row, tickets; never its own subscription,
- *  which is money it paid, not money it took. */
+/** the payments a business took — its ledger (members, by RLS). Seats, and the
+ *  historical tickets an organization's hosting row took (29 Sep 2026); never
+ *  its own subscription, which is money it paid, not money it took. */
 export async function findTenantInvoices(supabase: SupabaseClient, tenantId: string): Promise<InvoiceRow[]> {
   const { data, error } = await supabase
     .from("payments")

@@ -1,20 +1,27 @@
 import type { ClassArtist } from "@/types/claim";
 import type { DanceClass } from "@/types/class";
 import type { EnrollmentStatus } from "@/types/enrollment";
-import type { DanceEvent } from "@/types/event";
 
 /** Parity slice H10 — Home's PassDeck (prototype 6863-7204). Nothing new is
- *  stored: a deck row is a class session or an event seen on ONE day from the
- *  side you are on — booked, assisting, teaching, a ticket you hold, an event
- *  you run, or (a studio's Home) what is running in your rooms. */
+ *  stored: a deck row is a class session seen on ONE day from the side you are
+ *  on — booked, assisting, teaching, or (a studio's Home) what is running in
+ *  your rooms.
+ *
+ *  ⚠ IT CARRIED EVENTS TOO UNTIL 29 Sep 2026 (the user: *"Remove Organization
+ *  and Events completely"*), which is why `DeckItem` was a union and every row
+ *  carries a `kind`. Both are kept: the union has one member today and the deck
+ *  is still the one rail in this app that mixes what it is given, so a second
+ *  kind of thing to be on somebody's day arrives as a member rather than as a
+ *  rewrite. */
 
 /** What this session is to you — the chip the card wears (prototype roleOf 7003-7008,
  *  and "At your studio" 7056). Home shows the whole day in one list, so the card
- *  has to say it; every other surface passes none and the chip is absent. */
-export type DeckRole = "Booked" | "Waitlisted" | "Assisting" | "Teaching" | "Spectator" | "Competing" | "Running" | "At your studio";
+ *  has to say it; every other surface passes none and the chip is absent.
+ *  ⚠ `Spectator`, `Competing` and `Running` went with events (29 Sep 2026). */
+export type DeckRole = "Booked" | "Waitlisted" | "Assisting" | "Teaching" | "At your studio";
 
 interface DeckBase {
-  /** "class:<sessionId>" / "event:<eventId>" — unique across both kinds in one rail */
+  /** "class:<sessionId>" — unique in the rail */
   key: string;
   roleLabel: DeckRole;
   /** you run it — wins a dead heat for the Live badge (7093-7097) */
@@ -44,11 +51,4 @@ export interface DeckClassItem extends DeckBase {
   receipt: { amountInr: number; method: string | null } | null;
 }
 
-export interface DeckEventItem extends DeckBase {
-  kind: "event";
-  event: DanceEvent;
-  /** the ticket or entry you hold — its id is the entry code, its words the strip's line */
-  booking: { id: string; words: string } | null;
-}
-
-export type DeckItem = DeckClassItem | DeckEventItem;
+export type DeckItem = DeckClassItem;

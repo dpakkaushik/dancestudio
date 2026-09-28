@@ -57,8 +57,9 @@ const toTileClass = (e: MyEnrollment): DanceClass => ({
  *     ask is the Inbox's, not a class you are on);
  *   · MANAGE › — your own page's register, where Create / Draft / Published /
  *     Completed already live (ClassesManager), rather than a second copy here.
- *  Events left this page for /my-events the same day; `?kind=event` links that
- *  are out in the world land there (Rule 14). */
+ *  Events left this page for /my-events the same day, and went altogether on
+ *  29 Sep 2026; a `?kind=event` link out in the world lands on Home, the way
+ *  `/my-events` itself does (Rule 14). */
 type Show = "booked" | "assist" | "manage";
 const SHOWS: Record<Show, { label: string; aria: string }> = {
   booked: { label: "Booked", aria: "Show the classes you booked" },
@@ -99,8 +100,10 @@ export default async function MyClassesPage({ searchParams }: { searchParams: Pr
   const params = await searchParams;
   const kind = Array.isArray(params.kind) ? params.kind[0] : params.kind;
   if (kind === "event") {
-    /* the old Events filter of this page (Rule 14: a link is a promise) */
-    redirect("/my-events");
+    /* the old Events filter of this page (Rule 14: a link is a promise). It
+       pointed at `/my-events` until 29 Sep 2026; that address redirects here-ish
+       too, and one hop beats two. */
+    redirect("/");
   }
   const rawShow = Array.isArray(params.show) ? params.show[0] : params.show;
   /* the Add class sheet, opened from the Manage segment (22 Sep 2026) */

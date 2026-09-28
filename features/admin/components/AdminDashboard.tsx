@@ -119,10 +119,15 @@ export function AdminDashboardScreen({ pulse, nowIso }: { pulse: Pulse; nowIso: 
       <Head>THE LAST SEVEN DAYS</Head>
       <Grid>
         <Fig n={pulse.activity.bookingsWeek} label="class bookings" />
-        <Fig n={pulse.activity.eventBookingsWeek} label="event bookings" />
+        {/* ⚠ "event bookings" and "events live" WENT ON 29 Sep 2026, and it is a
+            deliberate difference from the Businesses desk one screen away, which
+            KEEPS its `org` rows labelled RETIRED. This is a PULSE — what moved
+            in seven days — so a figure that can only ever read 0 is telling the
+            admin the platform is quiet about something nobody can do, where a
+            LIST of what the database still holds is telling them the truth.
+            `admin_dashboard` still returns both counts; nothing draws them. */}
         <Fig n={rupees(pulse.money.capturedWeekInr)} label="captured" href="/admin/payments" />
         <Fig n={pulse.activity.classesLive} label="classes live" />
-        <Fig n={pulse.activity.eventsLive} label="events live" />
         <Fig n={pulse.activity.enquiriesOpen} label="enquiries open" />
       </Grid>
 

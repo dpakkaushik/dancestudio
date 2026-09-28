@@ -8,8 +8,8 @@
  * WHY IT IS SAFE TO WIPE. Every demo account is `demo.<name>@example.com`, and
  * every demo row is owned by one of them: businesses are created BY a demo
  * owner, so deleting the business cascades its rooms, classes, sessions,
- * class_bookings, claims, leads, invites, orders, payments, refunds, payouts,
- * events and event bookings; deleting the account cascades its profile, and the
+ * class_bookings, claims, leads, invites, orders, payments, refunds and
+ * payouts; deleting the account cascades its profile, and the
  * profile cascades the crews it leads and the follows it made. So the wipe is:
  * delete the demo businesses, then delete the demo users. Nothing untagged is
  * ever touched — the script never issues a delete that is not keyed on a demo
@@ -19,34 +19,41 @@
  * (password grant) and the data is written by the same RPCs the screens call —
  * `create_business_with_owner`, `create_class_with_session`, `book_class_session`,
  * `ask_class_person` / `respond_to_class_ask`, `respond_to_venue_request`,
- * `create_crew` / `respond_to_crew_ask`, `save_event` / `publish_event` /
- * `book_event` / `check_in_event_booking`, `send_enquiry` /
+ * `create_crew` / `respond_to_crew_ask`, `send_enquiry` /
  * `send_enquiry_quote` / `answer_enquiry_quote` / `record_enquiry_payment`,
  * `set_follow` / `set_person_follow` / `set_crew_follow`,
- * `ask_organization_member`, `record_payout`. So the demo world obeys every rule
+ * `record_payout`. So the demo world obeys every rule
  * the real one does: consent is real, capacity is real, a waitlist is a real
  * waitlist, a venue's yes is a real yes. The service role is used for exactly
  * the things a user cannot legally do: creating the accounts, back-dating a
- * session or an event so a PAST one exists, writing the attendance rows of a
+ * session so a PAST one exists, writing the attendance rows of a
  * register that ran in the past, standing in for the payment webhook
  * (`apply_captured_payment`), and standing in for the platform admin who
- * verifies the organizations and badges their studios.
+ * badges the studios.
+ *
+ * ⚠ 29 Sep 2026: ORGANIZATIONS AND EVENTS ARE GONE FROM THE PRODUCT, and this
+ * file lost about a fifth of itself with them — the four org businesses and
+ * their GST numbers, mandates, pins and named teams; the ten events across four
+ * cities with their solo, duet and crew entries, their free and paid spectators,
+ * their walk-ins, their check-ins, the two past ones and the draft; and the org
+ * follows. ⚠ What was KEPT rather than deleted is the four ENQUIRIES that used
+ * to land on an organization — a celebration, two corporate shows and a
+ * collaboration — because those four kinds go to a `studio` too (types/enquiry.ts
+ * re-cut the same day), so they are asked of the studios instead and the demo
+ * world still shows all five kinds at every stage. The four people who owned
+ * the organizations are unchanged: they were always the people who own the
+ * STUDIOS, and that is now the whole of what they are.
  *
  * THE WORLD (19 Sep 2026, the user: "create 15 dummy accounts for all kinds
- * of user … mostly in Gurugram, Pune, Delhi, Bengaluru … show all types of
- * events and participation and spectators … so I can view all kinds of
- * records"): 4 organization OWNERS (users who each own an org business — the
- * organization LOGIN is retired since 26 Sep 2026), 4 artists, 7 users; 5 studios (two in Gurugram),
- * 4 artist pages; classes of every state — free, paid, full with a waitlist, a
- * draft, an artist's class in a studio's room (accepted, pending, declined),
- * an artist's class at their own pin, and PAST classes with registers that
- * ran; money in (UPI, card, netbanking), a refund waiting and one settled,
- * payouts; enquiries of all five kinds at every stage; three crews; events of
- * all three kinds in all four cities with solo, duet and crew entries, free
- * and paid spectators, a walk-in, check-ins, a past showcase, a past battle,
- * a draft; follows of a studio, a person, an organization and a crew; an
- * organization's named team; the Call switch on and off; leads at five
- * stages; a support thread; a report.
+ * of user … mostly in Gurugram, Pune, Delhi, Bengaluru … so I can view all
+ * kinds of records"): 4 studio OWNERS, 4 artists, 7 users; 5 studios (two in
+ * Gurugram), 4 artist pages; classes of every state — free, paid, full with a
+ * waitlist, a draft, an artist's class in a studio's room (accepted, pending,
+ * declined), an artist's class at their own pin, and PAST classes with
+ * registers that ran; money in (UPI, card, netbanking), a refund waiting and
+ * one settled, payouts; enquiries of all five kinds at every stage; three
+ * crews; follows of a studio, a person and a crew; the Call switch on and off;
+ * leads at five stages; a support thread; a report.
  */
 
 const fs = require("fs");
@@ -147,12 +154,14 @@ async function seed() {
   console.log("Seeding the DanceOS demo world…\n");
 
   /* ────────────────────────────────────────────────────────────────────────
-     PEOPLE — 15 accounts: 4 organization owners, 4 artists, 7 users
+     PEOPLE — 15 accounts: 4 studio owners, 4 artists, 7 users
      ──────────────────────────────────────────────────────────────────────── */
   console.log("People");
-  /* 26 Sep 2026: the organization LOGIN is retired (20260926120000). These four
-     are USERS who own their studios directly and each open ONE org business —
-     a `businesses` row of type `org` — below, named after themselves. */
+  /* 26 Sep 2026: the organization LOGIN is retired (20260926120000), so these
+     four are USERS who own their studios directly. Until 29 Sep each also
+     opened ONE org business named after themselves; the names below are the
+     companies those organizations were called, and they read perfectly well as
+     the people who run the studios. */
   const rhythm = await makeUser("rhythm", "Rhythm Collective", "user", "Gurugram");
   const eeeCo = await makeUser("eee", "EEE Dance Company", "user", "Pune");
   const bounceCo = await makeUser("bounce", "Bounce Dance Academy", "user", "New Delhi");
@@ -170,18 +179,17 @@ async function seed() {
   const rohit = await makeUser("rohit", "Rohit Sen", "user", "New Delhi");
   const priya = await makeUser("priya", "Priya Iyer", "user", "Pune");
   const nikhil = await makeUser("nikhil", "Nikhil Rao", "user", "Bengaluru");
-  const orgs = [rhythm, eeeCo, bounceCo, namma];
+  const owners = [rhythm, eeeCo, bounceCo, namma];
   const artists = [meera, aditya, rhea, karan];
   const users = [kabir, zaid, aki, sneha, rohit, priya, nikhil];
-  const everyone = [...orgs, ...artists, ...users];
-  everyone.forEach((u) => log(`${u.name} · ${u.email} · ${orgs.includes(u) ? "organization owner" : artists.includes(u) ? "artist" : "user"} · ${u.city}`));
+  const everyone = [...owners, ...artists, ...users];
+  everyone.forEach((u) => log(`${u.name} · ${u.email} · ${owners.includes(u) ? "studio owner" : artists.includes(u) ? "artist" : "user"} · ${u.city}`));
 
-  /* ── plans: the Artist plan, each studio's own subscription and each
-     organization's own (26 Sep 2026, ₹5,000 a month) are PAID — the service
-     role stands in for an admin's grant ── */
+  /* ── plans: the Artist plan and each studio's own subscription are PAID — the
+     service role stands in for an admin's grant ── */
   const grantPlan = (kind, userId, tenantId, note) =>
     insert(H_SERVICE, "subscriptions", {
-      kind, user_id: userId, business_id: tenantId, plan_key: kind === "studio" ? "studio_monthly" : kind === "org" ? "org_monthly" : "artist_monthly",
+      kind, user_id: userId, business_id: tenantId, plan_key: kind === "studio" ? "studio_monthly" : "artist_monthly",
       price_inr: 0, period: "monthly", status: "active",
       current_period_start: new Date().toISOString().slice(0, 10),
       current_period_end: new Date(Date.now() + 365 * 24 * 3600 * 1000).toISOString().slice(0, 10),
@@ -190,36 +198,22 @@ async function seed() {
   for (const a of artists) await grantPlan("artist", a.id, null, "Granted by the demo seeder — nothing charged");
   log("Meera, Aditya, Rhea and Karan hold the Artist plan (granted, ₹0)");
 
-  /* ── the organizations: a BUSINESS each owner opens (26 Sep 2026), with a GST
-     number OF ITS OWN, its own ₹5,000 mandate, links, a number, a contact
-     email and a PIN — the owner's own profile is a person's, with a style ── */
-  const orgFacts = [
-    [rhythm, "Gurugram's home for street and contemporary — two studios, one crew, a stage every season.", "rhythmcollective", "+91 98100 10001", "hello@rhythm.example"],
-    [eeeCo, "Pune's cypher house since 2016.", "eeedance", "+91 98200 10002", "hi@eee.example"],
-    [bounceCo, "Hauz Khas. Bollywood, Hip-Hop, Kathak.", "bouncedance", "+91 98300 10003", "studio@bounce.example"],
-    [namma, "Indiranagar's breaking floor.", "nammadance", "+91 98400 10004", "namaste@namma.example"],
+  /* ── the four studio owners as PEOPLE: a city, a style, a link, a number and
+     a contact email, like everybody else ──
+     ⚠ 29 Sep 2026: an ORG BUSINESS used to be opened here for each of them, with
+     a GST number, a ₹5,000 mandate, its own links and a pin on the map. All of
+     that went with organizations; what is left is the profile update, which was
+     always the first line of this loop. */
+  const ownerFacts = [
+    [rhythm, "rhythmcollective", "+91 98100 10001", "hello@rhythm.example"],
+    [eeeCo, "eeedance", "+91 98200 10002", "hi@eee.example"],
+    [bounceCo, "bouncedance", "+91 98300 10003", "studio@bounce.example"],
+    [namma, "nammadance", "+91 98400 10004", "namaste@namma.example"],
   ];
-  /* ⚠ the second element is the old About and is IGNORED (20 Sep 2026): the
-     column is dropped and `update_my_profile` no longer takes `p_about`. The
-     tuples keep their shape so the cast below stays readable. */
-  for (const [o, , handle, phone, email] of orgFacts) {
-    /* the OWNER is a person now: a city and at least one style, like everybody */
+  for (const [o, handle, phone, email] of ownerFacts) {
     await rpc(o.h, "update_my_profile", { p_full_name: o.name, p_city: o.city, p_age: null, p_socials: [{ platform: "Instagram", url: `https://instagram.com/${handle}` }], p_styles: ["Hip-Hop"], p_phone: phone, p_contact_email: email });
-    /* the org BUSINESS, through the same door a studio uses — born private */
-    o.org = await rpc(o.h, "create_business_with_owner", { p_name: o.name, p_type: "org", p_area: null, p_city: o.city });
-    /* its GST number, the owner's own door (verify_gstin on a profile is DROPPED) */
-    await rpc(o.h, "verify_business_gstin", { p_business_id: o.org.id, p_gstin: `DM${handle.slice(0, 1).toUpperCase()}${String(Date.now() % 100000).padStart(5, "0")}` });
-    /* and its own mandate — GST then subscription is what makes it PUBLIC (org_is_public) */
-    await grantPlan("org", o.id, o.org.id, "Granted by the demo seeder — nothing charged");
-    /* the links, the number and the contact email are the BUSINESS's now — what
-       public_organization hands a stranger — through the business's own door */
-    await rpc(o.h, "update_business_profile", { p_business_id: o.org.id, p_founded_year: 2016, p_phone: phone, p_socials: [{ platform: "Instagram", url: `https://instagram.com/${handle}` }, { platform: "YouTube", url: `https://youtube.com/@${handle}` }], p_enquiry_types: null, p_accepts_upi: true, p_accepts_cards: true, p_accepts_cash: true, p_accepts_bank: false, p_contact_email: email });
-    /* the organization's own pin — on the business row since 26 Sep 2026
-       (set_my_place is DROPPED with the login); the service role stands in for
-       the Edit sheet's map, the way it stands in for the admin's grant */
-    await patch(H_SERVICE, `businesses?id=eq.${o.org.id}`, { lat: CITY[o.city].lat + 0.004, lng: CITY[o.city].lng + 0.003, location_set_at: nowIso() });
   }
-  log("the four organizations are businesses their owners opened: a verified GST number each, a ₹5,000 mandate granted, links, a number, a contact email and a pin on the map");
+  log("the four studio owners have a city, a style, a link, a number and a contact email");
 
   /* ── the people: a city, styles, About, links; the Call switch ON for Meera and OFF for Aditya (push 2) ── */
   const personFacts = [
@@ -284,7 +278,7 @@ async function seed() {
   log("Rooms: Hall A · Hall B (Sector 29), Floor 1 (DLF), Studio A (EEE), Hall 1 (Bounce), Main Floor (Namma)");
 
   /* ────────────────────────────────────────────────────────────────────────
-     TEAMS — studio invites really accepted, one pending; the organization's named team
+     TEAMS — studio invites really accepted, one pending
      ──────────────────────────────────────────────────────────────────────── */
   console.log("\nTeams");
   const invite = async (o, t, who, role, accept = true) => {
@@ -299,17 +293,11 @@ async function seed() {
   await invite(bounceCo, bounce, rohit, "staff");
   await invite(namma, nammaStudio, karan, "trainer");
   log("Sector 29: Aditya (faculty), Sneha (staff), Kabir invited and waiting · EEE: Rhea (faculty) · Bounce: Rohit (staff) · Namma: Karan (faculty)");
-  /* the organization NAMES people on its page (push 2): asked, then confirmed
-     from their Inbox — keyed on the org BUSINESS since 26 Sep 2026 */
-  const orgAsk = async (o, who, role, accept = true) => {
-    const m = await rpc(o.h, "ask_organization_member", { p_org_id: o.org.id, p_user_id: who.id, p_role: role });
-    if (accept) await rpc(who.h, "respond_to_organization_ask", { p_member_id: m.id, p_accept: true });
-  };
-  await orgAsk(rhythm, meera, "owner");
-  await orgAsk(rhythm, kabir, "member");
-  await orgAsk(rhythm, zaid, "member", false);
-  await orgAsk(eeeCo, rhea, "owner");
-  log("Rhythm Collective names Meera as Owner and Kabir on its Team (Zaid still asked) · EEE Dance Company names Rhea as Owner");
+  /* ⚠ AN ORGANIZATION'S NAMED TEAM was seeded here until 29 Sep 2026 — Meera as
+     Owner of Rhythm Collective, Kabir on its Team, Zaid still asked, Rhea as
+     Owner of EEE — through `ask_organization_member` / `respond_to_organization_ask`.
+     It is gone with organizations. A STUDIO's team above is the real thing and
+     is untouched: it is a seat with powers, where those were labels on a page. */
 
   /* ────────────────────────────────────────────────────────────────────────
      CLASSES — every state, through the real three steps: ask, yes, publish
@@ -520,7 +508,7 @@ async function seed() {
   log("Gurugram Rockers (Aditya; Zaid and Kabir in, Aki asked; Call on) · EEE Crew (Rhea; Priya in, Zaid asked; Call off) · Namma Breakers (Karan; Nikhil in)");
 
   /* ────────────────────────────────────────────────────────────────────────
-     FOLLOWS — a studio, a person, an organization, a crew
+     FOLLOWS — a studio, a person, a crew
      ──────────────────────────────────────────────────────────────────────── */
   console.log("\nFollows");
   const followBiz = (u, t) => rpc(u.h, "set_follow", { p_business_id: t.id, p_on: true });
@@ -542,28 +530,27 @@ async function seed() {
   await followPerson(priya, rhea);
   await followPerson(nikhil, karan);
   await followPerson(aki, meera);
-  /* a PUBLIC organization can be followed (19 Sep 2026) — following the
-     BUSINESS since 26 Sep 2026 (set_follow admits a public org row) */
-  await followBiz(kabir, rhythm.org);
-  await followBiz(sneha, rhythm.org);
-  await followBiz(priya, eeeCo.org);
+  /* ⚠ three ORGANIZATION follows were seeded here until 29 Sep 2026 — a public
+     organization could be followed since 19 Sep, by its BUSINESS row since
+     26 Sep. `set_follow` is the same door a studio's follow uses and is
+     untouched; there is simply no org row to aim it at. */
   /* a crew's own people cannot follow it — so the followers are outsiders */
   await followCrew(sneha, rockers);
   await followCrew(rohit, rockers);
   await followCrew(kabir, eeeCrew);
   await followCrew(zaid, breakers);
-  log("studios followed by 1–3 each · Meera 3, Aditya 2, Rhea 1, Karan 1 · Rhythm Collective 2, EEE Dance Company 1 · Rockers 2, EEE Crew 1, Breakers 1");
+  log("studios followed by 1–3 each · Meera 3, Aditya 2, Rhea 1, Karan 1 · Rockers 2, EEE Crew 1, Breakers 1");
 
   /* ────────────────────────────────────────────────────────────────────────
-     ENQUIRIES — all five kinds, at every stage, to a studio, an organization, an artist and a crew
+     ENQUIRIES — all five kinds, at every stage, to a studio, an artist and a crew
      ──────────────────────────────────────────────────────────────────────── */
   console.log("\nEnquiries");
-  /* the org BUSINESS each owner opened above is what an enquiry and an event
-     land on (my_org_business is DROPPED with the login, 26 Sep 2026) */
-  const rhythmHost = rhythm.org.id;
-  const eeeHost = eeeCo.org.id;
-  const bounceHost = bounceCo.org.id;
-  const nammaHost = namma.org.id;
+  /* ⚠ 29 Sep 2026: four of these landed on an ORGANIZATION — the celebration,
+     two corporate shows and the collaboration. They are asked of the STUDIOS
+     instead, because those four kinds go to a `studio` as well (types/enquiry.ts:
+     celebration, corporate, private and collab all list "studio" in `to`), so
+     the demo world still shows every kind at every stage. What went is the
+     subject, not the coverage. */
   /* an enquiry names a business OR a crew, never both (18 Sep 2026) */
   const enquire = (u, businessId, type, fields, days, where, message, crewId = null) => {
     log(`… ${u.name} asks ${(crewId ?? businessId).slice(0, 8)} (${type}${crewId ? ", crew" : ""})`);
@@ -584,22 +571,25 @@ async function seed() {
   /* private sessions at Bounce — new, nobody has answered */
   /* Zaid, not Rohit — Rohit is on Bounce's team */
   await enquire(zaid, bounce.id, "private", [["How many people", "4"], ["Where they train", "At the studio"], ["Style", "Bollywood"]], 15, "New Delhi", "A sangeet routine for four cousins.");
-  /* a CELEBRATION asked of the ORGANIZATION — quoted, accepted, advance and balance: WON */
-  const e4 = await enquire(kabir, rhythmHost, "celebration", [["Occasion", "Wedding"], ["Guests", "300"], ["Performers", "6"]], 30, "Gurugram", "A twenty-minute opening act at the reception.");
+  /* a CELEBRATION asked of the STUDIO — quoted, accepted, advance and balance: WON */
+  const e4 = await enquire(kabir, dlf.id, "celebration", [["Occasion", "Wedding"], ["Guests", "300"], ["Performers", "6"]], 30, "Gurugram", "A twenty-minute opening act at the reception.");
   const q4 = await quote(rhythm.h, e4, 80000, 40);
   await rpc(kabir.h, "answer_enquiry_quote", { p_quote_id: q4.id, p_accept: true });
   await rpc(rhythm.h, "record_enquiry_payment", { p_quote_id: q4.id, p_part: "advance" });
   await rpc(rhythm.h, "record_enquiry_payment", { p_quote_id: q4.id, p_part: "balance" });
-  /* a CORPORATE show asked of the organization — quoted, waiting on an answer */
-  const e5 = await enquire(zaid, rhythmHost, "corporate", [["Kind", "Annual day"], ["Audience", "500"]], 40, "Gurugram", "Twelve minutes, three styles, HDFC annual day.");
+  /* a CORPORATE show — quoted, waiting on an answer */
+  const e5 = await enquire(zaid, dlf.id, "corporate", [["Kind", "Annual day"], ["Audience", "500"]], 40, "Gurugram", "Twelve minutes, three styles, HDFC annual day.");
   await quote(rhythm.h, e5, 120000, 30);
   /* a COLLABORATION asked of EEE — new */
-  await enquire(priya, eeeHost, "collab", [["Kind", "Video"], ["Format", "Two crews"]], 20, "Pune", "A joint video with EEE Crew for the monsoon.");
-  /* a corporate show asked of Bounce and Namma — new, so every organization's desk has something */
-  await enquire(kabir, bounceHost, "corporate", [["Kind", "Product launch"], ["Audience", "200"]], 25, "New Delhi", "Ten minutes at a launch in Aerocity.");
-  await enquire(nikhil, nammaHost, "celebration", [["Occasion", "Birthday"], ["Guests", "60"], ["Performers", "2"]], 18, "Bengaluru", "A duet at a 50th birthday.");
+  await enquire(priya, eee.id, "collab", [["Kind", "Video"], ["Format", "Two crews"]], 20, "Pune", "A joint video with EEE Crew for the monsoon.");
+  /* a corporate show asked of Bounce and Namma — new, so every studio's desk has something */
+  await enquire(kabir, bounce.id, "corporate", [["Kind", "Product launch"], ["Audience", "200"]], 25, "New Delhi", "Ten minutes at a launch in Aerocity.");
+  await enquire(nikhil, nammaStudio.id, "celebration", [["Occasion", "Birthday"], ["Guests", "60"], ["Performers", "2"]], 18, "Bengaluru", "A duet at a 50th birthday.");
   /* an artist asked to JUDGE — through their page; quoted and accepted */
-  const e7 = await enquire(nikhil, karanPage.id, "judge", [["Event", "Bengaluru Breaking Open"], ["Rounds", "3"]], 25, "Bengaluru", "Would you judge the Open? Travel covered.");
+  /* ⚠ the event is FREE TEXT and names one out in the world, which is exactly why
+     the judge type survived organizations (types/enquiry.ts): DanceOS never hosted
+     it. It used to name a seeded event; it names somebody else's now. */
+  const e7 = await enquire(nikhil, karanPage.id, "judge", [["Event", "Karnataka B-Boy Championship"], ["Rounds", "3"]], 25, "Bengaluru", "Would you judge the finals? Travel covered.");
   const q7 = await quote(karan.h, e7, 15000, 0);
   await rpc(nikhil.h, "answer_enquiry_quote", { p_quote_id: q7.id, p_accept: true });
   /* an artist asked for private sessions — quoted, accepted, advance paid */
@@ -611,120 +601,26 @@ async function seed() {
   /* Rohit, an outsider to the crew (Aki has been asked into it) */
   const e9 = await enquire(rohit, rockers.id, "celebration", [["Occasion", "Sangeet"], ["Guests", "150"], ["Performers", "5"]], 22, "Gurugram", "A crew set at my cousin's sangeet.", rockers.id);
   await quote(aditya.h, e9, 30000, 30);
-  log("Sector 29: private (advance paid), private (declined → lost) · Bounce: private (new) · Rhythm Collective: celebration (WON), corporate (quoted) · EEE Dance Company: collab (new) · Bounce and Namma: one each (new) · Karan: judge (accepted) · Meera: private (advance paid) · Gurugram Rockers: celebration (quoted)");
+  log("Sector 29: private (advance paid), private (declined → lost) · DLF: celebration (WON), corporate (quoted) · EEE: collab (new) · Bounce: private (new), corporate (new) · Namma: celebration (new) · Karan: judge (accepted) · Meera: private (advance paid) · Gurugram Rockers: celebration (quoted)");
 
   /* ────────────────────────────────────────────────────────────────────────
-     EVENTS — all three kinds, all four cities, solo/duet/crew, free and paid seats, walk-ins, check-ins, a past one, a draft
+     ⚠ EVENTS WERE SEEDED HERE UNTIL 29 Sep 2026, and this is the whole of
+     what went: ten events across Gurugram, Pune, New Delhi and Bengaluru —
+     a showcase, a battle and a tournament each with their own entry and
+     ticket tiers; solo, duet (one accepted, one still awaiting its partner)
+     and crew entries; free seats, PAID seats and paid entries through the
+     real Cashfree rail; a cancelled seat, two walk-ins, check-ins, a past
+     showcase and a past battle back-dated to completed, and a draft. It was
+     about a hundred lines and it is the largest thing this file lost.
+     ⚠ TWO THINGS IT TOOK WITH IT are worth naming, because nothing else in
+     the demo world covers them now: an ABANDONED paid booking — an entry that
+     never paid, sitting `pending_payment` and holding no place — which was the
+     one row in the world showing that state (the class money above goes all the
+     way through the same applier and is captured); and the crews' BATTLE
+     RECORD, counted from event entries, so a seeded crew's page now shows its
+     roster and nothing under it.
      ──────────────────────────────────────────────────────────────────────── */
-  console.log("\nEvents");
-  const mkEvent = async (o, hostId, e) => {
-    const id = await rpc(o.h, "save_event", {
-      p_business_id: hostId,
-      p_event_id: null,
-      p_event: {
-        category: e.cat, title: e.title, style: e.style ?? "All styles",
-        start_date: e.date, end_date: e.endDate ?? e.date, start_time: e.time ?? "18:00",
-        venue: e.venue, address: e.address ?? null, city: e.city,
-        maps_url: `https://maps.google.com/?q=${encodeURIComponent(`${e.venue} ${e.city}`)}`,
-        about: e.about ?? null, entry_format: e.entryFormat ?? "none", bracket: e.bracket ?? 0, rounds: e.rounds ?? 0,
-        prizes: e.prizes ?? [], tickets_on: e.ticketsOn ?? false, entry_tiers: e.entryTiers ?? [], ticket_tiers: e.ticketTiers ?? [],
-      },
-    });
-    if (e.publish !== false) await rpc(o.h, "publish_event", { p_event_id: id });
-    return id;
-  };
-  const tiersOf = (eventId) => rows(H_ANON, `event_ticket_tiers?event_id=eq.${eventId}&deleted_at=is.null&select=id,name,price_inr`);
-  /* a PAID seat or entry: pending until the capture — the same RPC the webhook calls */
-  const payEvent = async (u, booking, amountInr, method) => {
-    const order = await rpc(u.h, "create_event_payment_order", { p_event_booking_id: booking.id });
-    const providerOrderId = `demo_evorder_${order.id.slice(0, 8)}`;
-    await rpc(u.h, "attach_provider_order", { p_order_id: order.id, p_provider_order_id: providerOrderId });
-    await rpc(H_SERVICE, "apply_captured_payment", { p_provider_order_id: providerOrderId, p_provider_payment_id: `demo_evpay_${order.id.slice(0, 8)}`, p_amount_paise: amountInr * 100, p_method: method });
-  };
 
-  /* Gurugram — the showcase: free seats, a paid VIP seat, a cancelled seat, a walk-in */
-  const showcase = await mkEvent(rhythm, rhythmHost, { cat: "showcase", title: "Gurugram Monsoon Showcase", date: dayShift(12), time: "18:30", venue: "Kingdom of Dreams", address: "Sector 29", city: "Gurugram", about: "Two hours, fourteen routines, one floor. Doors at 6:30 pm.", ticketsOn: true, ticketTiers: [{ name: "Free entry", price_inr: 0, capacity: 150, sort: 0 }, { name: "VIP", price_inr: 500, capacity: 20, sort: 1 }] });
-  {
-    const t = await tiersOf(showcase);
-    const free = t.find((x) => x.price_inr === 0);
-    const vip = t.find((x) => x.price_inr === 500);
-    await rpc(kabir.h, "book_event", { p_event_id: showcase, p_kind: "spectator", p_ticket_tier_id: free.id, p_qty: 2 });
-    const zaidVip = await rpc(zaid.h, "book_event", { p_event_id: showcase, p_kind: "spectator", p_ticket_tier_id: vip.id, p_qty: 1 });
-    await payEvent(zaid, zaidVip, 500, "upi");
-    const snehaSeat = await rpc(sneha.h, "book_event", { p_event_id: showcase, p_kind: "spectator", p_ticket_tier_id: free.id, p_qty: 1 });
-    await rpc(sneha.h, "cancel_event_booking", { p_booking_id: snehaSeat.id, p_reason: "Out of town" });
-    await rpc(rhythm.h, "add_event_walk_in", { p_event_id: showcase, p_kind: "spectator", p_name: "Walk-in · Meenal", p_ticket_tier_id: free.id });
-  }
-  /* Gurugram — the battle: solo, duet (one accepted, one awaiting), crew */
-  const league = await mkEvent(rhythm, rhythmHost, { cat: "battle", title: "Gurugram Breaking League", style: "Breaking", date: dayShift(20), time: "16:00", venue: "Rhythm Studio Sector 29", city: "Gurugram", about: "Top 16 brackets. Solo, duet and crew all enter.", entryFormat: "all", bracket: 16, prizes: [25000, 10000, 5000], entryTiers: [{ format: "solo", fee_inr: 0, capacity: 16 }, { format: "duo", fee_inr: 0, capacity: 8 }, { format: "crew", fee_inr: 0, capacity: 8 }] });
-  await rpc(zaid.h, "book_event", { p_event_id: league, p_kind: "participant", p_format: "solo" });
-  await rpc(nikhil.h, "book_event", { p_event_id: league, p_kind: "participant", p_format: "solo" });
-  const duet1 = await rpc(kabir.h, "book_event", { p_event_id: league, p_kind: "participant", p_format: "duo", p_partner_id: aki.id });
-  await rpc(aki.h, "respond_to_partner_ask", { p_booking_id: duet1.id, p_accept: true });
-  await rpc(sneha.h, "book_event", { p_event_id: league, p_kind: "participant", p_format: "duo", p_partner_id: priya.id });
-  await rpc(aditya.h, "book_event", { p_event_id: league, p_kind: "participant", p_format: "crew", p_crew_id: rockers.id });
-  await rpc(karan.h, "book_event", { p_event_id: league, p_kind: "participant", p_format: "crew", p_crew_id: breakers.id });
-  /* Gurugram — the tournament: PAID solo entries, paid spectator tickets */
-  const nritya = await mkEvent(rhythm, rhythmHost, { cat: "tournament", title: "Nritya Championship", style: "Kathak", date: dayShift(28), endDate: dayShift(29), time: "10:00", venue: "Epicentre, Apparel House", address: "Sector 44", city: "Gurugram", about: "Three rounds over two days.", entryFormat: "solo", rounds: 3, prizes: [50000, 20000, 10000], entryTiers: [{ format: "solo", fee_inr: 300, capacity: 32 }], ticketsOn: true, ticketTiers: [{ name: "General", price_inr: 200, capacity: 300, sort: 0 }] });
-  {
-    const snehaEntry = await rpc(sneha.h, "book_event", { p_event_id: nritya, p_kind: "participant", p_format: "solo" });
-    await payEvent(sneha, snehaEntry, 300, "upi");
-    /* an entry that never paid: pending, holding no place */
-    await rpc(aki.h, "book_event", { p_event_id: nritya, p_kind: "participant", p_format: "solo" });
-    const t = await tiersOf(nritya);
-    const rohitSeat = await rpc(rohit.h, "book_event", { p_event_id: nritya, p_kind: "spectator", p_ticket_tier_id: t[0].id, p_qty: 2 });
-    await payEvent(rohit, rohitSeat, 400, "card");
-  }
-  /* Gurugram — a PAST showcase and a PAST battle, with check-ins, completed */
-  const pastShow = await mkEvent(rhythm, rhythmHost, { cat: "showcase", title: "Spring Showcase", date: dayShift(40), time: "18:00", venue: "Kingdom of Dreams", city: "Gurugram", ticketsOn: true, ticketTiers: [{ name: "Free entry", price_inr: 0, capacity: 200, sort: 0 }] });
-  {
-    const t = await tiersOf(pastShow);
-    const b1 = await rpc(kabir.h, "book_event", { p_event_id: pastShow, p_kind: "spectator", p_ticket_tier_id: t[0].id, p_qty: 1 });
-    const b2 = await rpc(zaid.h, "book_event", { p_event_id: pastShow, p_kind: "spectator", p_ticket_tier_id: t[0].id, p_qty: 2 });
-    await rpc(aki.h, "book_event", { p_event_id: pastShow, p_kind: "spectator", p_ticket_tier_id: t[0].id, p_qty: 1 });
-    const walk = await rpc(rhythm.h, "add_event_walk_in", { p_event_id: pastShow, p_kind: "spectator", p_name: "Walk-in · Farhan", p_ticket_tier_id: t[0].id });
-    await rpc(rhythm.h, "check_in_event_booking", { p_booking_id: b1.id, p_in: true });
-    await rpc(rhythm.h, "check_in_event_booking", { p_booking_id: b2.id, p_in: true });
-    if (walk && walk.id) await rpc(rhythm.h, "check_in_event_booking", { p_booking_id: walk.id, p_in: true });
-    await patch(H_SERVICE, `events?id=eq.${pastShow}`, { start_date: dayShift(-20), end_date: dayShift(-20), status: "completed" });
-  }
-  const pastCypher = await mkEvent(rhythm, rhythmHost, { cat: "battle", title: "Winter Cypher", style: "Hip-Hop", date: dayShift(40), time: "17:00", venue: "Rhythm Studio Sector 29", city: "Gurugram", entryFormat: "all", bracket: 8, prizes: [10000, 4000], entryTiers: [{ format: "solo", fee_inr: 0, capacity: 8 }, { format: "crew", fee_inr: 0, capacity: 4 }] });
-  {
-    const z = await rpc(zaid.h, "book_event", { p_event_id: pastCypher, p_kind: "participant", p_format: "solo" });
-    const k = await rpc(kabir.h, "book_event", { p_event_id: pastCypher, p_kind: "participant", p_format: "solo" });
-    await rpc(priya.h, "book_event", { p_event_id: pastCypher, p_kind: "participant", p_format: "solo" });
-    const c = await rpc(aditya.h, "book_event", { p_event_id: pastCypher, p_kind: "participant", p_format: "crew", p_crew_id: rockers.id });
-    const c2 = await rpc(rhea.h, "book_event", { p_event_id: pastCypher, p_kind: "participant", p_format: "crew", p_crew_id: eeeCrew.id });
-    for (const b of [z, k, c, c2]) await rpc(rhythm.h, "check_in_event_booking", { p_booking_id: b.id, p_in: true });
-    await patch(H_SERVICE, `events?id=eq.${pastCypher}`, { start_date: dayShift(-30), end_date: dayShift(-30), status: "completed" });
-  }
-  /* Gurugram — a draft */
-  await mkEvent(rhythm, rhythmHost, { cat: "showcase", title: "Summer Intensive Showcase", date: dayShift(60), venue: "TBC", city: "Gurugram", ticketsOn: true, ticketTiers: [{ name: "General", price_inr: 150, capacity: 100, sort: 0 }], publish: false });
-  /* Pune — a solo battle with free spectator seats; a crew from Gurugram travels */
-  const cypher9 = await mkEvent(eeeCo, eeeHost, { cat: "battle", title: "Cypher Sundays Vol. 9", style: "Hip-Hop", date: dayShift(15), time: "17:00", venue: "EEE Dance Studio", city: "Pune", entryFormat: "all", bracket: 8, prizes: [8000, 3000], entryTiers: [{ format: "solo", fee_inr: 0, capacity: 8 }, { format: "crew", fee_inr: 0, capacity: 4 }], ticketsOn: true, ticketTiers: [{ name: "Free entry", price_inr: 0, capacity: 80, sort: 0 }] });
-  {
-    await rpc(priya.h, "book_event", { p_event_id: cypher9, p_kind: "participant", p_format: "solo" });
-    await rpc(zaid.h, "book_event", { p_event_id: cypher9, p_kind: "participant", p_format: "solo" });
-    await rpc(rhea.h, "book_event", { p_event_id: cypher9, p_kind: "participant", p_format: "crew", p_crew_id: eeeCrew.id });
-    await rpc(aditya.h, "book_event", { p_event_id: cypher9, p_kind: "participant", p_format: "crew", p_crew_id: rockers.id });
-    const t = await tiersOf(cypher9);
-    await rpc(kabir.h, "book_event", { p_event_id: cypher9, p_kind: "spectator", p_ticket_tier_id: t[0].id, p_qty: 1 });
-  }
-  /* New Delhi — a ticketed showcase, one paid and one free seat */
-  const delhiNight = await mkEvent(bounceCo, bounceHost, { cat: "showcase", title: "Delhi Dance Night", date: dayShift(18), time: "19:00", venue: "Siri Fort Auditorium", city: "New Delhi", ticketsOn: true, ticketTiers: [{ name: "Free entry", price_inr: 0, capacity: 100, sort: 0 }, { name: "General", price_inr: 300, capacity: 200, sort: 1 }] });
-  {
-    const t = await tiersOf(delhiNight);
-    const rohitGen = await rpc(rohit.h, "book_event", { p_event_id: delhiNight, p_kind: "spectator", p_ticket_tier_id: t.find((x) => x.price_inr === 300).id, p_qty: 1 });
-    await payEvent(rohit, rohitGen, 300, "upi");
-    await rpc(kabir.h, "book_event", { p_event_id: delhiNight, p_kind: "spectator", p_ticket_tier_id: t.find((x) => x.price_inr === 0).id, p_qty: 2 });
-  }
-  /* Bengaluru — a tournament with solo and crew entries */
-  const bluOpen = await mkEvent(namma, nammaHost, { cat: "tournament", title: "Bengaluru Breaking Open", style: "Breaking", date: dayShift(25), time: "11:00", venue: "Namma Studio Indiranagar", city: "Bengaluru", entryFormat: "all", rounds: 3, prizes: [30000, 10000], entryTiers: [{ format: "solo", fee_inr: 0, capacity: 16 }, { format: "crew", fee_inr: 0, capacity: 6 }] });
-  await rpc(nikhil.h, "book_event", { p_event_id: bluOpen, p_kind: "participant", p_format: "solo" });
-  await rpc(zaid.h, "book_event", { p_event_id: bluOpen, p_kind: "participant", p_format: "solo" });
-  await rpc(karan.h, "book_event", { p_event_id: bluOpen, p_kind: "participant", p_format: "crew", p_crew_id: breakers.id });
-  log("Gurugram: Monsoon Showcase (free + paid VIP + a cancelled seat + a walk-in), Breaking League (solo × 2, duet accepted, duet awaiting, crews × 2), Nritya Championship (paid entry, an unpaid entry, paid seats), Spring Showcase (past, checked in, completed), Winter Cypher (past, completed — the crews' battle record), Summer Intensive (draft)");
-  log("Pune: Cypher Sundays Vol. 9 (solo × 2, crews × 2, a free seat) · New Delhi: Delhi Dance Night (a paid and a free seat) · Bengaluru: Breaking Open (solo × 2, a crew)");
 
   /* ────────────────────────────────────────────────────────────────────────
      ROUTINES — a song and a video, put on the classes they were taught from
@@ -815,13 +711,13 @@ async function seed() {
      THE PLATFORM — a support thread, a report
      ──────────────────────────────────────────────────────────────────────── */
   console.log("\nPlatform");
-  await rpc(rhythm.h, "open_support_thread", { p_subject: "GST number", p_body: "Our GST certificate was renewed — does the number on file need updating?" });
+  await rpc(rhythm.h, "open_support_thread", { p_subject: "Studio verification", p_body: "We moved Sector 29 to a bigger floor — do we need to send photos again?" });
   await rpc(rohit.h, "report_content", { p_subject_kind: "business", p_subject_id: eee.id, p_reason: "other", p_note: "Demo report — nothing is wrong with this studio." });
   log("Rhythm Collective opened a support thread · Rohit filed a demo report on EEE Dance Studio");
 
   console.log("\n─────────────────────────────────────────────");
   console.log("Demo world ready. Sign in with any of these:");
-  everyone.forEach((u) => console.log(`  ${u.email}   (${u.name} · ${orgs.includes(u) ? "organization owner" : artists.includes(u) ? "artist" : "user"} · ${u.city})`));
+  everyone.forEach((u) => console.log(`  ${u.email}   (${u.name} · ${owners.includes(u) ? "studio owner" : artists.includes(u) ? "artist" : "user"} · ${u.city})`));
   console.log(`  password: ${PASSWORD}`);
   console.log("\nSign in at /login/email with the password. Remove everything with:  node scripts/demo-data.js wipe");
 }
@@ -870,12 +766,16 @@ async function wipe() {
     await remove(H_SERVICE, `crews?id=eq.${c.id}`);
     console.log(`  crew removed: ${c.name}`);
   }
-  /* the businesses — the studios, the artist pages AND the org businesses the
-     four owners opened (26 Sep 2026; `created_by` is the owner for all three,
-     and organization_members cascades off the org row): deleting one cascades
-     its rooms, classes, sessions,
-     class_bookings, claims, invites, leads, orders, payments, refunds,
-     payouts, events and event bookings. THE CLASSES GO FIRST: a studio that is
+  /* the businesses — the studios and the artist pages (`created_by` is the owner
+     for both): deleting one cascades its rooms, classes, sessions,
+     class_bookings, claims, invites, leads, orders, payments, refunds and
+     payouts.
+     ⚠ 29 Sep 2026: the four ORG businesses their owners opened were deleted by
+     this same loop, and events and event bookings cascaded off them. Neither is
+     seeded any more, so neither is named here — but the loop is UNCHANGED and
+     would still take an org row if an older seed left one behind, because it is
+     keyed on `created_by` rather than on a type.
+     THE CLASSES GO FIRST: a studio that is
      the VENUE of an artist's class would otherwise have that class's venue set
      to null by the cascade, an UPDATE the room guard refuses on a published
      class ("take the class off the calendar before moving it") */

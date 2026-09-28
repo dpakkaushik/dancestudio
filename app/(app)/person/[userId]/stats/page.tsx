@@ -47,11 +47,7 @@ export default async function PersonStatsPage({ params, searchParams }: { params
     if (!profile) {
       redirect("/onboarding");
     }
-    /* an organization dances nothing and teaches nothing, so its standing is its
-       studios' — one address per subject, and that subject's is /org/{id}/stats */
-    if (profile.role === "org") {
-      redirect(`/org/${userId}/stats`);
-    }
+    /* ⚠ the organization redirect went with organizations (29 Sep 2026) */
     return <OwnStatsScreen userId={userId} name={profile.fullName} isArtist={Boolean(plan?.active)} query={await searchParams} basePath={`/person/${userId}/stats`} />;
   }
 
@@ -62,10 +58,7 @@ export default async function PersonStatsPage({ params, searchParams }: { params
     }
     notFound();
   }
-  if (person.profile.role === "org") {
-    redirect(`/org/${userId}/stats`);
-  }
-  const kind = kindOf(person.profile.role, person.isArtist);
+  const kind = kindOf(person.isArtist);
   const segment = kind === "artist" ? "artist" : "dancer";
   const city = person.profile.city;
   const [everywhere, inCity] = await Promise.all([

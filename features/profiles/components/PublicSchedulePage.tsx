@@ -21,12 +21,8 @@ export async function PublicSchedulePage({ tenantId, expect }: { tenantId: strin
   if (!tenant) {
     notFound();
   }
-  /* R15 (9 Sep 2026): an organization's event-hosting row is not a business
-     anybody browses to, so it has no public schedule either. Its own members
-     can read the row, which is why RLS returns it and this says no. */
-  if (tenant.type === "org") {
-    notFound();
-  }
+  /* ⚠ the `type === "org"` guard went with organizations (29 Sep 2026) — R15's,
+     for a hosting row nobody browsed to */
   if (tenant.type !== expect) {
     redirect(publicSchedulePath(tenant));
   }

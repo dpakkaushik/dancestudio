@@ -332,7 +332,8 @@ async function personOpensAStudio(page, who, acc, stamp) {
     await signIn(p1, user);
     /* ⚠ Memberships is on a USER's grid since 21 Sep — they are who a membership
        is FOR, and a pass they had bought was reachable only by typing the URL */
-    await pressEveryTile(p1, "user", ["Classes", "Events", "Calendar", "Crews", "Studios", "Routines", "Memberships", "Earnings"]);
+    /* ⚠ `Events` left this list on 29 Sep 2026 with `/my-events` itself */
+    await pressEveryTile(p1, "user", ["Classes", "Calendar", "Crews", "Studios", "Routines", "Memberships", "Earnings"]);
     /* the grid is arrangeable, and the arrangement is the account's (22 Sep 2026) */
     await arrangeGrid(p1, "user", `${BASE}/`);
     /* a person opens a studio, runs it from the switcher, takes their own class (26 Sep 2026) */
@@ -357,7 +358,7 @@ async function personOpensAStudio(page, who, acc, stamp) {
        so the tiles that point at it are only right on the SECOND look — which is
        itself worth checking, because a first-time artist sees the first one. */
     await p2.goto(`${BASE}/`, { waitUntil: "networkidle" });
-    await pressEveryTile(p2, "artist", ["Classes", "Events", "Calendar", "Crews", "Studios", "Routines", "Team", "Students", "Earnings", "Memberships", "Assets"]);
+    await pressEveryTile(p2, "artist", ["Classes", "Calendar", "Crews", "Studios", "Routines", "Team", "Students", "Earnings", "Memberships", "Assets"]);
 
     /* ⚠ A FORM OPENS OVER THE DESK THAT OFFERED IT, AND IS STILL A PAGE OF ITS
        OWN (22 Sep 2026, the user: "All forms and add buttons anywhere in home
@@ -407,103 +408,31 @@ async function personOpensAStudio(page, who, acc, stamp) {
     check(new URL(p2.url()).search.includes("show=manage") && new URL(p2.url()).search.includes("new=1"), `artist · and it KEEPS the segment it was opened from (${new URL(p2.url()).search})`);
     await p2.close();
 
-    // ── 3. an ORGANIZATION — a BUSINESS a person opens (26 Sep 2026, the user:
-    //       "make organization a tab on home for artist and users and mechanism
-    //       to create and open an organization similar to studios"). The account
-    //       is a USER; the organization is opened from the Organizations hub
-    //       through the sheet, the way a studio is, and then run from ITS OWN
-    //       home, where its tiles are pressed.
-    const org = await makeAccount(stamp, "org");
-    made.push(org.id);
+    // ── 3. a person who OWNS A STUDIO
+    /* ⚠ THIS WAS AN ORGANIZATION UNTIL 29 Sep 2026, and the whole of what it
+       drove is worth naming: a business a person opened from the Organizations
+       hub (26 Sep) through the same sheet a studio uses, landing on its own
+       Subscription screen with what the ₹5,000 buys beside it, born PRIVATE,
+       its own tiles pressed on its own home, its memberships desk redirecting
+       to its events (asserted at both ends), and Create event opening a sheet
+       over that desk with `/events/new` still a page of its own. Every one of
+       those surfaces is gone.
+       ⚠ The ACCOUNT is kept, because section 4 needs somebody to own a studio
+       and that is all this one ever was underneath the organization. */
+    const owner = await makeAccount(stamp, "owner");
+    made.push(owner.id);
     const p3 = await b.newPage({ viewport: { width: 420, height: 1000 } });
-    p3.on("pageerror", (e) => { console.log("PAGEERROR(org) " + e.message); bad++; });
-    await signIn(p3, org);
-    const orgName = `Tiles Org ${stamp}`;
-    await p3.goto(`${BASE}/organizations`, { waitUntil: "networkidle" });
-    check(await p3.getByRole("button", { name: "Add organization" }).isVisible().catch(() => false), "org · the Organizations hub offers Add organization to a person");
-    await p3.getByRole("button", { name: "Add organization" }).click();
-    await p3.locator('input[name="name"]').fill(orgName);
-    await p3.locator('input[name="area"]').fill("Kothrud");
-    await p3.getByLabel("Choose a city").first().click();
-    await p3.getByRole("option", { name: "Pune", exact: true }).click();
-    await p3.locator('input[name="phone"]').fill("+919876543210");
-    await p3.locator('input[name="contact_email"]').fill(`tiles.org.biz.${stamp}@example.com`);
-    /* "Open organization" — the sheet's own word (a studio's is "Create studio") */
-    await p3.getByRole("button", { name: "Open organization" }).click();
-    /* ⚠ AND AN ORGANIZATION LANDS ON PAYMENT TOO (27 Sep 2026) — the same
-       hand-off a new studio gets, for the same reason */
-    await p3.waitForURL(/\/business\/[0-9a-f-]{36}\/subscription$/, { timeout: 20_000 }).catch(() => {});
-    check(/\/subscription$/.test(p3.url()), `org · opening one lands on its own Subscription screen (${p3.url().replace(BASE, "")})`);
-    const orgBuys = p3.getByText("What it buys");
-    await orgBuys.first().waitFor({ timeout: 15_000 }).catch(() => {});
-    check(await orgBuys.first().isVisible().catch(() => false), "org · with what the ₹5,000 buys beside it");
-    await p3.goto(`${BASE}/organizations`, { waitUntil: "networkidle" });
-    await p3.getByText(orgName, { exact: true }).first().waitFor({ timeout: 20_000 }).catch(() => {});
-    const orgRows = await rest("GET", `/rest/v1/businesses?name=eq.${encodeURIComponent(orgName)}&type=eq.org&deleted_at=is.null&select=id,visibility`);
-    const hostId = (orgRows && orgRows[0] && orgRows[0].id) || "";
-    check(/^[0-9a-f-]{36}$/.test(hostId), `org · the sheet made an org business (${hostId || "none"})`);
-    check(orgRows && orgRows[0] && orgRows[0].visibility === "unlisted", "org · born PRIVATE - its own GST number and its own mandate are what make it public");
+    p3.on("pageerror", (e) => { console.log("PAGEERROR(owner) " + e.message); bad++; });
+    await signIn(p3, owner);
 
-    /* the organization's OWN home carries its tools - the person's Home does not */
-    await pressEveryTile(p3, "org", ["Events", "Team", "Earnings", "Assets", "Subscription"], `/business/${hostId}`);
-
-    /* ⚠ AN ORGANIZATION SELLS NO MEMBERSHIPS, AND THE DESK SAYS SO BY URL
-       (22 Sep 2026, the user: "membership not required for organization"). No
-       grid has ever drawn that tile for one, so the only way in was to type it —
-       and the desk admitted the owner of any business they are on, which
-       includes an organization's own row. Asserted at BOTH ends, the way every
-       redirect in this repo is. */
-    if (hostId) {
-      await p3.goto(`${BASE}/business/${hostId}/memberships`);
-      /* ⚠ WAIT FOR THE URL, NEVER READ IT ONCE (the 19 Sep lesson, met again).
-         Every signed-in desk streams behind a `loading.tsx`, and once a boundary
-         streams a server `redirect()` goes out as a **200 with a client-side
-         hop** — so the events desk is already painted while the address bar
-         still says /memberships for another tick. Four specs went red on
-         `expect(status).toBe(404)` for this same reason in September. */
-      const landed = await p3
-        .waitForURL(`**/business/${hostId}/events`, { timeout: 15_000 })
-        .then(() => true)
-        .catch(() => false);
-      check(landed, `org: the memberships desk redirects to its events (${new URL(p3.url()).pathname})`);
-
-      /* ⚠ CREATE EVENT OPENS OVER THE DESK THAT OFFERS IT (22 Sep 2026, ask 6).
-         The GST number is stamped first because a door that would be refused is
-         not drawn: without one this desk prints the database's sentence where
-         the button goes, which is the 21 Sep rule and is the reason the button
-         is not simply always there. */
-      /* ⚠ a GSTIN is UNIQUE across the table, so it cannot be the documented
-         placeholder ABC12345 — a demo account already holds that one, and the
-         PATCH answered 23505. Three letters and five digits is the shape
-         `verify_business_gstin` accepts; the digits are this run's own.
-         26 Sep 2026: the number is the ORG BUSINESS's, stamped on its row. */
-      const gstin = `DOS${String(Math.floor(Math.random() * 90000) + 10000)}`;
-      await rest("PATCH", `/rest/v1/businesses?id=eq.${hostId}`, { gstin, gstin_verified_at: new Date().toISOString() });
-      await p3.goto(`${BASE}/business/${hostId}/events`, { waitUntil: "networkidle" });
-      await p3.getByRole("link", { name: "Create event" }).click();
-      const addEvent = p3.getByRole("dialog", { name: "Add event" });
-      await addEvent.waitFor({ timeout: 15_000 }).catch(() => {});
-      check(await addEvent.isVisible().catch(() => false), "org · Create event opens a sheet over the events desk");
-      check(new URL(p3.url()).search === "?new=1", `org · the event sheet is the URL, so back closes it (${new URL(p3.url()).search})`);
-      await p3.goBack();
-      await p3.waitForTimeout(600);
-      check(!(await addEvent.isVisible().catch(() => false)), "org · back closes the event sheet and leaves the desk");
-      /* and the route is still a page of its own (Rule 14) — with a real <h1>,
-         which it did NOT have until it moved onto FormPage: its title was a div,
-         so `/events/new` and `…/edit` rendered no heading for a screen reader */
-      await p3.goto(`${BASE}/business/${hostId}/events/new`, { waitUntil: "networkidle" });
-      check((await p3.locator("h1").first().innerText().catch(() => "")) === "Add event", "org · /events/new is still a page, and has a real heading at last");
-      check((await p3.getByRole("dialog").count()) === 0, "org · and that page is not a sheet");
-    }
-
-    // ── 4. and a STUDIO's own home, owned by the same person (an organization
+    // ── 4. a STUDIO's own home, owned by that person
     //       runs no studios since 26 Sep 2026 - the person does)
     const [studio] = await rest("POST", "/rest/v1/businesses", {
       type: "studio", name: `Tiles Studio ${stamp}`, area: "Kothrud", city: "Pune",
       lat: 18.5204, lng: 73.8567, visibility: "unlisted", styles: ["Hip-Hop"],
-      created_by: org.id, updated_by: org.id,
+      created_by: owner.id, updated_by: owner.id,
     });
-    await rest("POST", "/rest/v1/business_members", { business_id: studio.id, user_id: org.id, member_role: "owner", created_by: org.id, updated_by: org.id });
+    await rest("POST", "/rest/v1/business_members", { business_id: studio.id, user_id: owner.id, member_role: "owner", created_by: owner.id, updated_by: owner.id });
     /* ⚠ AND THE STUDIO'S STATS CHIP OPENS THIS STUDIO'S BOARD (21 Sep 2026). It
        pointed at `/stats?tab=charts&seg=studio`, which is the PERSON's stats
        screen on the studios leaderboard — a question about you, on a studio's
@@ -658,7 +587,7 @@ async function personOpensAStudio(page, who, acc, stamp) {
     await p3.keyboard.press("Escape").catch(() => {});
 
     /* ⚠ AND A STUDIO'S OWN GRID IS ARRANGED BY THE STUDIO (22 Sep 2026) — the
-       key carries the business id, so an organization's two studios are two
+       key carries the business id, so somebody's two studios are two
        arrangements and two people on one team each get their own. This is the
        case that a `tools:studio` key alone would have got wrong. */
     await arrangeGrid(p3, "studio", `${BASE}/business/${studio.id}`);

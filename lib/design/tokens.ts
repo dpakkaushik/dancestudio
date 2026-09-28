@@ -37,12 +37,11 @@ export const DOS_UI =
   'var(--font-inter-tight), "Inter Tight", Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif';
 
 /** Per-KIND accent — prototype DOS_TINT (line 2704), re-keyed 8 Sep 2026 when
- *  the roles became user | org and "artist" became the plan's word: an
- *  organization wears the studio blue, an artist the artist pink, a user the
- *  dancer cyan. Typed on PersonKind so a stale key is a compile error, not an
- *  undefined colour. */
-export const DOS_TINT: Record<"user" | "artist" | "org", string> = {
-  org: "#3B82F6",
+ *  the roles became user | org and "artist" became the plan's word: an artist
+ *  wears the artist pink, a user the dancer cyan. Typed on PersonKind so a
+ *  stale key is a compile error, not an undefined colour.
+ *  ⚠ The `org` key (the studio blue) went with organizations on 29 Sep 2026. */
+export const DOS_TINT: Record<"user" | "artist", string> = {
   artist: "#EC4899",
   user: "#5AC8FA",
 };

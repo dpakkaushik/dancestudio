@@ -6,7 +6,6 @@ import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { resolveActingAs } from "@/repositories/actingAs";
 import { findMyLedCrews } from "@/repositories/crews";
 import { findReceivedEnquiries, findReceivedEnquiriesForCrews, findSentEnquiries } from "@/repositories/enquiries";
-import { findProfileById } from "@/repositories/profiles";
 import { findMyMemberships } from "@/repositories/tenants";
 import { findMyArtistPlan } from "@/repositories/plans";
 import { kindOf } from "@/types/profile";
@@ -51,8 +50,9 @@ export default async function EnquiriesPage({ searchParams }: { searchParams: Pr
     redirect("/login");
   }
 
-  const [profile, memberships, plan, ledCrews, actingAs] = await Promise.all([
-    findProfileById(supabase, user.id),
+  /* ⚠ the profile read went with organizations (29 Sep 2026): it was asked for
+     one thing, the accent, and the KIND is the plan's answer alone now */
+  const [memberships, plan, ledCrews, actingAs] = await Promise.all([
     findMyMemberships(supabase),
     findMyArtistPlan(supabase),
     /* the crews you lead take enquiries too (18 Sep 2026); a business leads none */
@@ -79,7 +79,7 @@ export default async function EnquiriesPage({ searchParams }: { searchParams: Pr
 
   /* one desk: what your businesses were asked, and what your crews were asked, newest first */
   const enquiriesIn = [...enquiriesToBusinesses, ...enquiriesToCrews].sort((a, b) => b.createdAt.localeCompare(a.createdAt));
-  const accent = DOS_TINT[kindOf(profile?.role ?? "user", Boolean(plan?.active))];
+  const accent = DOS_TINT[kindOf(Boolean(plan?.active))];
 
   /* ⚠ THE SETTINGS ARE THE OWNER'S, AND ONLY A BUSINESS HAS ANY. `enquiry_types`
      is a `businesses` column and `update_business_profile` admits the owner

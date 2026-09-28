@@ -2,9 +2,8 @@ import { redirect } from "next/navigation";
 import { CalendarScreen } from "@/features/calendar/components/CalendarScreen";
 import { dayKeyOf, monthStartIso, monthsWindow, shiftMonthKey } from "@/lib/format/month";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
-import { findMyCalendar, findMyCalendarEvents } from "@/repositories/calendar";
+import { findMyCalendar } from "@/repositories/calendar";
 import { findMyCrewPractices, practiceToCalendar } from "@/repositories/crewPractices";
-import { findMyTenants } from "@/repositories/tenants";
 
 /* the clock lives outside the component (react-hooks/purity) */
 const stampNowIso = (): string => new Date().toISOString();
@@ -15,14 +14,15 @@ const stampNowIso = (): string => new Date().toISOString();
 const MONTHS_BACK = 2;
 const MONTHS_AHEAD = 3;
 
-/** Your calendar — what you train in, teach and assist, and the events you hold
- *  a ticket for or are running (prototype `CalTab`, S_profiletab calendarOnly).
+/** Your calendar — what you train in, teach and assist, and the practices of
+ *  every crew you are on (prototype `CalTab`, S_profiletab calendarOnly).
  *
- *  ⚠ THE ORGANIZATION BRANCH IS GONE (26 Sep 2026): it drew the organization
- *  LOGIN's events as its whole calendar (18 Sep, R21), and that login is
- *  retired. An organization is a business a person opens now, and the events
- *  it runs reach this person's calendar the way a studio's do — through
- *  `findMyCalendarEvents`, which already takes every business they are on. */
+ *  ⚠⚠ THE EVENTS HALF IS GONE (29 Sep 2026, the user: "remove Organization and
+ *  Events completely"). It was R21 (18 Sep): the tickets you held, the entries
+ *  you had made and the events run by a business you were on, one row per day an
+ *  event covered, behind the Classes · Events switch. With it went
+ *  `findMyCalendarEvents` and the `findMyTenants` read that fed it — so this
+ *  page makes two round trips where it made three. */
 export default async function CalendarPage() {
   const supabase = await createSupabaseServerClient();
   const {
@@ -38,12 +38,8 @@ export default async function CalendarPage() {
   const toIso = monthStartIso(shiftMonthKey(months[months.length - 1].key, -1));
   const todayKey = dayKeyOf(now);
 
-  const businesses = await findMyTenants(supabase);
-  const tenantIds = businesses.map((t) => t.id);
-
-  const [entries, events, practices] = await Promise.all([
+  const [entries, practices] = await Promise.all([
     findMyCalendar(supabase, user.id, fromIso, toIso),
-    findMyCalendarEvents(supabase, user.id, tenantIds, fromIso, toIso),
     /* ⚠ AND THE PRACTICES OF EVERY CREW THIS PERSON IS ON (27 Sep 2026, the
        user: "practice also get added to calendar"). `my_crew_practices` is
        scoped to `auth.uid()` inside its own SQL and takes no user id, so this
@@ -59,7 +55,6 @@ export default async function CalendarPage() {
       months={months}
       todayKey={todayKey}
       entries={entries}
-      events={events}
       practices={practices.map(practiceToCalendar)}
       emptyHref="/discover"
     />

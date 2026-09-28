@@ -4,25 +4,28 @@ import type { SupabaseClient } from "@supabase/supabase-js";
  *  back is exactly what the caller may read — a stranger's results and an
  *  owner's differ by the owner's own unlisted business, and nothing else. */
 
-export type SearchKind = "studio" | "artist" | "crew" | "event" | "person";
+export type SearchKind = "studio" | "artist" | "crew" | "person";
 
 export interface SearchHit {
   kind: SearchKind;
   id: string;
   name: string;
-  /** "Studio · Pune", "Battle · Talkatora Stadium" — the second line of the row */
+  /** "Studio · Pune" — the second line of the row */
   sub: string;
   href: string;
   /** THE FACE ON THE ROW (20 Sep 2026, the user: "search on discover should also
    *  show photo and name similarly" — similarly to the follow list, which has
    *  worn one since 19 Sep). A path in the public media bucket, or null for the
-   *  initials on the entity's gradient. An EVENT never has one: what an event
-   *  shows is its poster, which is drawn rather than stored. */
+   *  initials on the entity's gradient. */
   photoPath: string | null;
 }
 
 interface HitRow {
-  kind: SearchKind;
+  /** ⚠ WIDER THAN `SearchKind` ON PURPOSE (29 Sep 2026): `search_dance_os` still
+   *  has its events branch until the migration lands, so the RPC can hand back
+   *  `"event"` — the ROW type describes what the database says and the HIT type
+   *  what this app will show. */
+  kind: SearchKind | "event";
   id: string;
   name: string;
   sub: string;
@@ -30,7 +33,15 @@ interface HitRow {
 }
 
 /** Hits grouped the way the dropdown prints them: Studios · Artists · Crews ·
- *  Events, each at most `perKind`. An empty or one-letter term returns nothing. */
+ *  People, each at most `perKind`. An empty or one-letter term returns nothing.
+ *
+ *  ⚠⚠ EVENT HITS ARE DROPPED (29 Sep 2026, the user: "remove Organization and
+ *  Events completely"). The RPC's events branch is the migration's to remove;
+ *  until it lands this filter is what stops the dropdown offering a row that
+ *  opens `/e/{slug}`, a route that does not exist any more. **A row that opens
+ *  a 404 is worse than no row** — which is the opposite call from the admin
+ *  Businesses desk, and deliberately so: that desk's job is to show what the
+ *  database HOLDS, and a search box's job is to take somebody somewhere. */
 export async function searchEverything(supabase: SupabaseClient, term: string, perKind = 3): Promise<SearchHit[]> {
   const q = term.trim();
   if (q.length < 2) {
@@ -41,7 +52,9 @@ export async function searchEverything(supabase: SupabaseClient, term: string, p
     throw new Error(`search failed: ${error.message}`);
   }
   const rows = (data ?? []) as HitRow[];
-  return rows.map((r) => ({ kind: r.kind, id: r.id, name: r.name, sub: r.sub, href: r.href, photoPath: null }));
+  return rows
+    .filter((r): r is HitRow & { kind: SearchKind } => r.kind !== "event")
+    .map((r) => ({ kind: r.kind, id: r.id, name: r.name, sub: r.sub, href: r.href, photoPath: null }));
 }
 
 /** ⚠ THE PICTURES, IN AT MOST THREE MORE READS — AND NEVER AS PART OF THE SEARCH

@@ -20,7 +20,8 @@ const nextConfig: NextConfig = {
       }
     : undefined,
 
-  /** Gravestones for the phone channel deleted in 88ef3bb (Rule 26).
+  /** Gravestones — for the phone channel deleted in 88ef3bb (Rule 26), and for
+   *  organizations and events (29 Sep 2026; the block below the auth pair).
    *
    *  Deleting a route does not only remove it from the site — it strips the URL
    *  out from under everyone already standing on it. The installed TWA is the
@@ -46,17 +47,49 @@ const nextConfig: NextConfig = {
     return [
       { source: "/login/phone", destination: "/login/email", permanent: false },
       { source: "/login/verify", destination: "/login/email", permanent: false },
-      /* THE ORGANIZATION LOGIN'S FOUR ADDRESSES (26 Sep 2026). That login is
-         retired — an organization is a business a person opens — so its GST
-         screen, its Team desk, its combined earnings and its dashboard are each
-         that organization's own, under `/business/{id}/…`, and the hub that
-         lists them is where the old addresses land. Each route also redirects
-         on the server; this is the layer that catches a stale TWA before the
-         page does. 307, not 308, for the reason above. */
-      { source: "/gst", destination: "/organizations", permanent: false },
-      { source: "/business/team", destination: "/organizations", permanent: false },
-      { source: "/business/earnings", destination: "/organizations", permanent: false },
-      { source: "/business/stats", destination: "/organizations", permanent: false },
+
+      /* ══ ORGANIZATIONS AND EVENTS (29 Sep 2026, the user: "remove Organization
+         and Events completely from the system") ══
+         Twelve addresses stop existing in one push, and every one of them is a
+         link somebody may be standing on — a bookmark, a shared event link, the
+         installed TWA's last URL. Rule 14: none of them becomes a bare 404.
+
+         WHERE EACH ONE LANDS is the nearest TRUE thing rather than the nearest
+         similar thing. An event's public page and the events tab were things a
+         stranger came to BROWSE, so they land on Discover, which is what is left
+         to browse. An organization's own screens were things its owner came to
+         RUN, so they land on the studios hub, which is what they still run. A
+         person's own events desk and a business's belong to nobody but their
+         owner, so those land on Home and on that business's own home.
+
+         ⚠ ALL 307, NOT 308, and here the reason is sharper than it was for the
+         phone channel: a 308 is cached by the browser indefinitely, so the day
+         anything reclaims one of these paths every device that ever touched the
+         redirect would keep bouncing until its cache was cleared by hand. 307
+         costs nothing and forecloses nothing. */
+      { source: "/organizations", destination: "/", permanent: false },
+      { source: "/org/:orgId", destination: "/discover", permanent: false },
+      { source: "/org/:orgId/stats", destination: "/discover", permanent: false },
+      /* the four the retired organization LOGIN left behind (26 Sep 2026) —
+         they pointed at `/organizations`, which is gone too, so they go one hop
+         further rather than into a redirect that redirects */
+      { source: "/gst", destination: "/", permanent: false },
+      { source: "/business/team", destination: "/business", permanent: false },
+      { source: "/business/earnings", destination: "/business", permanent: false },
+      { source: "/business/stats", destination: "/business", permanent: false },
+      /* an EVENT's own public page, and the tab that listed them */
+      { source: "/e/:slug", destination: "/discover", permanent: false },
+      { source: "/my-events", destination: "/", permanent: false },
+      /* a business's events desk, its manager and both forms — the business's
+         own home is what its owner still has */
+      { source: "/business/:tenantId/events", destination: "/business/:tenantId", permanent: false },
+      { source: "/business/:tenantId/events/:rest*", destination: "/business/:tenantId", permanent: false },
+      { source: "/business/:tenantId/gst", destination: "/business/:tenantId", permanent: false },
+      /* an ORGANIZATION's Team desk lived here; a studio's is `/staff`, which is
+         where somebody typing this address almost certainly meant to go */
+      { source: "/business/:tenantId/team", destination: "/business/:tenantId/staff", permanent: false },
+      /* the crew's battle record */
+      { source: "/crews/:crewId/manage/events", destination: "/crews/:crewId/manage", permanent: false },
     ];
   },
 };

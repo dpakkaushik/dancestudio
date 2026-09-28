@@ -21,7 +21,7 @@ import { DOS_TOOLS } from "@/features/tenants/components/biz-kit";
 import { DOS_UI, INK, LILAC } from "@/lib/design/tokens";
 import { photoUrl } from "@/lib/media/photo";
 import type { HeaderPhoto } from "@/repositories/headerPhotos";
-import { CREW_GRAD, type Crew, type CrewEntry, type CrewMember } from "@/types/crew";
+import { CREW_GRAD, type Crew, type CrewMember } from "@/types/crew";
 import { CrewEditFromUrl } from "./CrewEditSheet";
 import { CrewPicturesButton, CrewPostersButton } from "./CrewPictures";
 
@@ -30,24 +30,24 @@ import { CrewPicturesButton, CrewPostersButton } from "./CrewPictures";
  *  lead opens now — the same shape as a studio's own home: the identity hero
  *  every profile page wears (the crew's photo on the disc, its style as a tile,
  *  the QR to its public page and the crew board's Stats chip stacked on the
- *  right), then the crew's tools as tiles. The two desks the prototype's
- *  S_crewmanage kept behind a segment switch — Members | Battle record — are the
- *  two tiles: **Team** (the roster, asks, promotions, order) and **Events** (the
- *  battle record and the crew ranking). The bottom bar on this page is the
- *  crew's own — Home · Inbox — drawn by the chrome.
+ *  right), then the crew's tools as tiles. ⚠ The prototype's S_crewmanage kept
+ *  TWO desks behind a segment switch — Members | Battle record — which became
+ *  two tiles here, **Team** and **Events**; the second went with events on
+ *  29 Sep 2026, so Team is the whole of that desk again. The bottom bar on this
+ *  page is the crew's own — Home · Inbox — drawn by the chrome.
  *
  *  THE CORNER IS A PENCIL OVER AN EYE (19 Sep 2026), like every other home's:
  *  the pencil opens Edit crew — the name, the photo, the header pictures (up to
  *  five, new today), the city, the style, the email — and the eye opens the
  *  crew's page as a stranger sees it. The picker that sat under the hero moved
  *  into the sheet, where every other picture in the app is changed. */
-export function CrewHome({ crew, members, entries, header = [], followers = 0, followingN = null, order = null, editOpen = false, todayKey }: { crew: Crew; members: CrewMember[]; entries: CrewEntry[]; header?: HeaderPhoto[]; /** how many follow this crew — `crew_follower_counts`, aggregate-only (20 Sep 2026) */ followers?: number; /** what the ACCOUNT THAT LEADS it follows (27 Sep 2026) — a crew has nothing to follow with; null draws no figure */ followingN?: number | null; /** this leader's own arrangement of THIS crew's tools (22 Sep 2026) */ order?: string[] | null; /** `?edit=1`, which Settings' "Edit crew" navigates here with (22 Sep 2026) — the leader's alone, and `requireLedCrew` is what has already said so */ editOpen?: boolean; todayKey: string }) {
+export function CrewHome({ crew, members, header = [], followers = 0, followingN = null, order = null, editOpen = false }: { crew: Crew; members: CrewMember[]; header?: HeaderPhoto[]; /** how many follow this crew — `crew_follower_counts`, aggregate-only (20 Sep 2026) */ followers?: number; /** what the ACCOUNT THAT LEADS it follows (27 Sep 2026) — a crew has nothing to follow with; null draws no figure */ followingN?: number | null; /** this leader's own arrangement of THIS crew's tools (22 Sep 2026) */ order?: string[] | null; /** `?edit=1`, which Settings' "Edit crew" navigates here with (22 Sep 2026) — the leader's alone, and `requireLedCrew` is what has already said so */ editOpen?: boolean }) {
   const confirmed = members.filter((m) => m.status === "confirmed").length;
   const asked = members.filter((m) => m.status === "asked").length;
-  const upcoming = entries.filter((e) => e.endDate >= todayKey && e.eventStatus !== "completed").length;
   const tiles: Tile[] = [
     { name: DOS_TOOLS.team.name, href: `/crews/${crew.id}/manage/team`, k: "team", c: DOS_TOOLS.team.c },
-    { name: DOS_TOOLS.events.name, href: `/crews/${crew.id}/manage/events`, k: "events", c: DOS_TOOLS.events.c },
+    /* ⚠ THE EVENTS TILE WENT WITH EVENTS (29 Sep 2026) — it opened the battle
+       record, the second half of the prototype's S_crewmanage switch */
     /* ⚠ A CREW TAKES ENQUIRIES (18 Sep 2026, `20260918160000`) and this is its
        first tile for them (27 Sep 2026, the user: "enquiries should not be on
        navbar a tab in tools for all"). `as=crew-{id}` is the crew half of the
@@ -62,9 +62,8 @@ export function CrewHome({ crew, members, entries, header = [], followers = 0, f
        crews should also have a calendar tab"). Both are the LEADER's desks —
        `requireLedCrew` fronts every route under `/crews/{id}/manage`, and the
        database asks again on every write. ⚠ A crew's calendar IS its practices:
-       it teaches no class and hosts no event of its own, so it is never offered
-       the Classes · Events · Practice switch, exactly as an organization's
-       calendar IS its events. */
+       it teaches no class, so it is never offered the Classes · Practice
+       switch — which read Classes · Events · Practice until 29 Sep 2026. */
     { name: DOS_TOOLS.practice.name, href: `/crews/${crew.id}/manage/practice`, k: "practice", c: DOS_TOOLS.practice.c },
     { name: DOS_TOOLS.calendar.name, href: `/crews/${crew.id}/manage/calendar`, k: "calendar", c: DOS_TOOLS.calendar.c },
   ];
@@ -100,14 +99,8 @@ export function CrewHome({ crew, members, entries, header = [], followers = 0, f
                   <span style={{ color: "#F59E0B" }}>{asked} asked</span>
                 </>
               ) : null}
-              {upcoming > 0 ? (
-                <>
-                  <HeroDot />
-                  <span>
-                    {upcoming} event{upcoming === 1 ? "" : "s"} coming
-                  </span>
-                </>
-              ) : null}
+              {/* ⚠ "N events coming" was the third fact on this line and went
+                  with events (29 Sep 2026) */}
             </>
           }
           /* ⚠ EMPTY ON PURPOSE — the band draws them, so the order matches every

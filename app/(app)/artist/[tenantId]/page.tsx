@@ -1,6 +1,6 @@
 import { notFound, redirect } from "next/navigation";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
-import { findArtistPageOwner } from "@/repositories/publicOrganization";
+import { findArtistPageOwner } from "@/repositories/tenants";
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 

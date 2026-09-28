@@ -43,11 +43,12 @@ import { PlusIcon, pictureChipPaint, Sheet, sheetBtn } from "./profile-kit";
 /** THE PROFILE PICTURE, ALONE (19 Sep 2026) — it commits on upload, because
  *  replacing a picture is not destroying one. */
 export function ProfilePictureSheet({ profile, onClose }: { profile: Profile; onClose: () => void }) {
-  const isOrg = profile.role === "org";
+  /* ⚠ it said "Logo" for an organization until 29 Sep 2026; every profile is a
+     person's now, so there is one word for it */
   return (
     <Portal>
-      <Sheet label={isOrg ? "Logo" : "Profile picture"} onClose={onClose} maxHeight="70vh">
-        <b style={{ fontSize: 16.5, letterSpacing: -0.2 }}>{isOrg ? "Logo" : "Profile picture"}</b>
+      <Sheet label="Profile picture" onClose={onClose} maxHeight="70vh">
+        <b style={{ fontSize: 16.5, letterSpacing: -0.2 }}>Profile picture</b>
         <div style={{ fontSize: 11.5, color: SUB, marginTop: 3 }}>It changes as soon as you pick one.</div>
         <div style={{ marginTop: 14 }}>
           <PhotoPicker owner={{ kind: "avatar", id: profile.id }} hasPhoto={Boolean(profile.avatarPath)} label="Change your photo" />

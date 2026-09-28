@@ -10,7 +10,6 @@ import {
   removeCrewMember,
   reorderCrewMembers,
   respondToCrewAsk,
-  respondToPartnerAsk,
   setCrewMemberRole,
   setCrewSocials,
   setCrewStyles,
@@ -233,17 +232,5 @@ export async function reorderCrewMembersAction(input: { crewId: string; memberId
   }
 }
 
-export async function respondToPartnerAskAction(input: { bookingId: string; accept: boolean }): Promise<CrewActionResult> {
-  const parsed = z.object({ bookingId: uuid, accept: z.boolean() }).safeParse(input);
-  if (!parsed.success) return { error: "Invalid request" };
-  const supabase = await requireUser();
-  try {
-    await respondToPartnerAsk(supabase, parsed.data.bookingId, parsed.data.accept);
-    revalidatePath("/inbox");
-    revalidatePath("/e/[slug]", "page");
-    revalidatePath("/business/[tenantId]/events/[eventId]", "page");
-    return { error: null };
-  } catch (error: unknown) {
-    return { error: error instanceof Error ? error.message : "Could not answer" };
-  }
-}
+/* ⚠ `respondToPartnerAskAction` went with events (29 Sep 2026) — it answered a
+   duet ask from the Requests desk, and there is nothing to be asked to. */

@@ -10,15 +10,12 @@ import { DiscoverTabs } from "@/features/discovery/components/DiscoverTabs";
 import { FollowedShelf, type FollowedTile } from "@/features/discovery/components/FollowedShelf";
 import { PlaceChip } from "@/features/discovery/components/PlaceChip";
 import { StudioCard } from "@/features/discovery/components/StudioCard";
-import { ArtistI, ClassI, DosFollowers, EventI, StudioI } from "@/features/discovery/components/discover-kit";
-import { filterClasses, filterCrews, filterEvents, filterTenants, filtersToParams, parseFilters, radiusOf } from "@/features/discovery/filters";
-import { EventBookButton } from "@/features/events/components/EventBookButton";
-import { EventCard } from "@/features/events/components/EventCard";
+import { ArtistI, ClassI, DosFollowers, StudioI } from "@/features/discovery/components/discover-kit";
+import { filterClasses, filterCrews, filterTenants, filtersToParams, parseFilters, radiusOf } from "@/features/discovery/filters";
 import { gradientOf } from "@/features/profiles/components/profile-kit";
 import { DOS_STYLE_NAMES } from "@/lib/constants/styles";
 import { INDIA_CENTRE, centreOf, findDiscoverCities } from "@/repositories/cities";
 import { DOS_DISPLAY, DOS_UI, INK, PINK, SUB } from "@/lib/design/tokens";
-import { dayKeyOf } from "@/lib/format/month";
 import { photoUrl } from "@/lib/media/photo";
 import { publicProfilePath } from "@/lib/routes/publicProfile";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
@@ -26,18 +23,15 @@ import { findClassArtists, findClassesWithArtist } from "@/repositories/claims";
 import { findPublishedClasses, findPublishedStylesByTenant } from "@/repositories/classes";
 import { findCrewsByCity } from "@/repositories/crews";
 import { findDiscoverArtists, findNearbyTenants, findTenantCardFacts, type DiscoverArtist, type TenantCardFacts } from "@/repositories/discovery";
-import { findMyEventBookings, findPublishedEvents } from "@/repositories/events";
 import { findFollowerCounts, findMyFollowedPeople, findMyFollowing } from "@/repositories/follows";
 import { findStudioHeaderPhotosMany, type HeaderPhoto } from "@/repositories/headerPhotos";
 import { findPersonFollowerCounts } from "@/repositories/publicPerson";
-import { findEventHostCards, type EventHostCard } from "@/repositories/publicOrganization";
-import { entriesOf, entryCapacityOf, seatCapacityOf, seatsSoldOf } from "@/types/event";
 import type { ClassArtist } from "@/types/claim";
 import { countEnrolledBySession, findMyEnrolledSessionIds } from "@/repositories/enrollments";
 import { findProfileById } from "@/repositories/profiles";
 import { resolveActingAs, withAs } from "@/repositories/actingAs";
 import type { EnrollmentStatus } from "@/types/enrollment";
-import { canBookClass, canBookEvent, noBookingWords } from "@/types/profile";
+import { canBookClass, noBookingWords } from "@/types/profile";
 
 /** ONE PAGE OF A SHELF (18 Sep 2026, the user: "should give option for second
  *  page after that"). The radius search answered 50 rows and stopped, so a city
@@ -55,16 +49,18 @@ const EL = "var(--el)";
 
 /** ENTITY_TABS (prototype 4149) — the prototype's order, opening on Studios.
  *  The URL words are the ones the app has always used, so every existing link
- *  keeps working. */
+ *  keeps working. ⚠ The Events tab went with events on 29 Sep 2026; `?tab=events`
+ *  is not a tab any more and falls through to Studios, which is what an unknown
+ *  word has always done. */
 const TABS = [
   ["studios", "Studios", StudioI],
   ["artists", "Artists", ArtistI],
   ["crews", "Crews", CrewI],
   ["classes", "Classes", ClassI],
-  ["events", "Events", EventI],
 ] as const;
 
-const stampNowIso = (): string => new Date().toISOString();
+/* ⚠ `stampNowIso` went with the events shelf (29 Sep 2026) — it dated the one
+   read on this page that asked "still to come" */
 
 /** A city is whatever the map named it (11 Sep 2026) — no list to belong to,
  *  so the only rule is that it is a sane-looking string. The database folds
@@ -114,7 +110,9 @@ export default async function DiscoverPage({
   /* ⚠⚠ WHICH PROFILE IS READING THIS SHELF (27 Sep 2026, the user: "studio and
      organization profiles should not be able book classes and events from
      discover breaking now", and "crew can only take part in events and should
-     not be able to book classes").
+     not be able to book classes"). ⚠ The second half of that sentence was the
+     only reason a CREW could act here at all, and events went on 29 Sep 2026 —
+     so a crew now books nothing, which is what `canBookClass` already said.
      Discover belongs to no profile, so the ENTITY BAR's Discover link carries
      the one you pressed it from (`?as=`) and this resolves it against what the
      account actually belongs to — a pointer is never an authority. Unresolvable
@@ -129,8 +127,7 @@ export default async function DiscoverPage({
   /* the raw value, kept only to carry onto the cards' own hrefs so the page a
      card opens agrees with the card that sent you */
   const asRaw = actingAs ? (params.as ?? null) : null;
-  const noClass = actingAs && !canBookClass(actingAs) ? noBookingWords(actingAs, "class") : null;
-  const noEvent = actingAs && !canBookEvent(actingAs) ? noBookingWords(actingAs, "event") : null;
+  const noClass = actingAs && !canBookClass(actingAs) ? noBookingWords(actingAs) : null;
   /* asked for, else where this person says they are, else wherever is busiest */
   const city: string = asCity(params.city) ?? asCity(profile?.city) ?? cities[0]?.city ?? "";
   const tab = TABS.some(([k]) => k === params.tab) ? (params.tab as string) : "studios";
@@ -165,10 +162,10 @@ export default async function DiscoverPage({
       /* ⚠ ON EVERY OTHER TAB THIS READ IS DECORATION (11 Sep 2026, found by the
          e2e suite): it orders the style rail and adds styles to business cards.
          Supabase's gateway answered it with a Cloudflare 502 once in a thousand
-         requests, and that one answer took the whole Events tab to a 500 page —
-         a shelf of real, published events unreachable because a rail could not
-         be sorted. So: on the Classes tab the classes ARE the shelf and the error
-         stands; on any other tab it is logged and the rail keeps its default
+         requests, and that one answer took a whole OTHER tab to a 500 page — a
+         real shelf unreachable because a rail could not be sorted. So: on the
+         Classes tab the classes ARE the shelf and the error stands; on any
+         other tab it is logged and the rail keeps its default
          order. The client also retries a 502/503/504 once before this is even
          reached (lib/supabase/fetch.ts). */
       if (tab === "classes") throw e;
@@ -201,8 +198,9 @@ export default async function DiscoverPage({
   );
 
   /* THE TAB'S OWN READS, IN ONE ROUND TRIP (19 Sep 2026, "make app snappier" —
-     these six ran one after another, four of them serial for no reason):
-     · the Events tab (Step 21): published, still to come, in this city;
+     these ran one after another, several of them serial for no reason):
+     ⚠ the Events tab's own read (Step 21: published, still to come, in this
+       city) went with events on 29 Sep 2026;
      · the Crews tab (Step 22);
      · ⚠ A CLASS WITH NOBODY TAKING IT IS NOT ON DISCOVER (18 Sep 2026, the user:
        "remove all classes on discover without an artist in it"). The test is the
@@ -213,42 +211,25 @@ export default async function DiscoverPage({
        BEFORE that rule, on 18 Sep 2026.);
      · every business card ends with its styles — the styles of its published
        classes — and a style filter narrows through the same map. */
-  const [eventsRaw, crewsRaw, taught, stylesByTenant] = await Promise.all([
-    tab === "events" ? findPublishedEvents(supabase, dayKeyOf(stampNowIso()), city) : Promise.resolve([]),
+  const [crewsRaw, taught, stylesByTenant] = await Promise.all([
     tab === "crews" ? findCrewsByCity(supabase, city) : Promise.resolve([]),
     tab === "classes" ? findClassesWithArtist(supabase, inCity.map((c) => c.id)) : Promise.resolve(new Set<string>()),
     wantsBusinesses ? findPublishedStylesByTenant(supabase, nearby.map((t) => t.id)) : Promise.resolve(new Map<string, string[]>()),
   ]);
-  const events = tab === "events" ? filterEvents(eventsRaw, filters) : [];
   const crews = tab === "crews" ? filterCrews(crewsRaw, filters) : [];
   const classes = tab === "classes" ? inCity.filter((c) => taught.has(c.id)) : inCity;
 
-  /* the second round: what depends on the first — who hosts each event, with a
-     picture and the organization's page (18 Sep 2026); the seat counts; and WHO
-     that teacher is — name and face, for the card's centre. A signed-out visitor
-     may not read `profiles`, so that map is empty for them and the card falls
-     back to the style square; the class is still ON the shelf, because the
-     filter above asked a question anon can answer. */
-  const [hosts, counts, classArtists, myTickets] = await Promise.all([
-    tab === "events" ? findEventHostCards(supabase, events.map((e) => e.tenantId)) : Promise.resolve(new Map<string, EventHostCard>()),
+  /* the second round: what depends on the first — the seat counts, and WHO that
+     teacher is: name and face, for the card's centre. A signed-out visitor may
+     not read `profiles`, so that map is empty for them and the card falls back
+     to the style square; the class is still ON the shelf, because the filter
+     above asked a question anon can answer.
+     ⚠ The host cards (18 Sep 2026) and what this person already held (27 Sep)
+     went with events on 29 Sep. */
+  const [counts, classArtists] = await Promise.all([
     tab === "classes" ? countEnrolledBySession(supabase, classes.map((c) => c.session?.id).filter(Boolean) as string[]) : Promise.resolve(new Map<string, number>()),
     tab === "classes" ? findClassArtists(supabase, classes.map((c) => c.id)) : Promise.resolve(new Map<string, ClassArtist>()),
-    /* ⚠ WHAT THIS PERSON ALREADY HOLDS (27 Sep 2026) — the event card's button
-       is `EnrollButton`'s twin now, and the one thing it can usefully say from
-       the shelf that the page cannot is "you are already in". ONE read for the
-       whole shelf, the way `findClassArtists` is one read for the class one —
-       never one per card. It is already scoped `user_id = me` and `status =
-       booked` inside, which is the rule RLS is a ceiling for, not a scope. */
-    tab === "events" && user ? findMyEventBookings(supabase, user.id).catch(() => []) : Promise.resolve([]),
   ]);
-  /* eventId → which side(s) of it they hold */
-  const heldByEvent = new Map<string, { participant: boolean; spectator: boolean }>();
-  myTickets.forEach((t) => {
-    const at = heldByEvent.get(t.eventId) ?? { participant: false, spectator: false };
-    if (t.kind === "participant") at.participant = true;
-    else at.spectator = true;
-    heldByEvent.set(t.eventId, at);
-  });
   const businesses = wantsBusinesses ? filterTenants(nearby, filters, stylesByTenant) : [];
   const followed = following.filter((f) => f.tenantType === "studio");
   /* an artist narrows by style through THEIR OWN styles — the ones on their profile */
@@ -294,8 +275,8 @@ export default async function DiscoverPage({
         grad: gradientOf(f.tenantName),
       }));
 
-  const shelfHead = tab === "classes" ? "Upcoming classes" : tab === "studios" ? "Studios near you" : tab === "artists" ? "Artists" : tab === "crews" ? "Crews" : "Events near you";
-  const shelfCount = tab === "classes" ? classes.length : tab === "events" ? events.length : tab === "crews" ? crews.length : tab === "artists" ? artists.length : businesses.length;
+  const shelfHead = tab === "classes" ? "Upcoming classes" : tab === "artists" ? "Artists" : tab === "crews" ? "Crews" : "Studios near you";
+  const shelfCount = tab === "classes" ? classes.length : tab === "crews" ? crews.length : tab === "artists" ? artists.length : businesses.length;
   const narrowed = filters.styles.length > 0 || Object.keys(params).some((k) => ["sort", "dist", "when", "dur", "price", "cat", "fmt", "q"].includes(k));
   /* the shelf's foot (18 Sep 2026): the Studios and Artists shelves are paged —
      "Next page" while a FULL page came back (a shorter one is the end), "Previous"
@@ -481,34 +462,9 @@ export default async function DiscoverPage({
         </div>
       )}
 
-      {tab === "events" &&
-        events.map((e) => {
-          const h = hosts.get(e.tenantId);
-          /* SOLD OUT is both sides gone, not one — the 19 Sep bug was exactly
-             this conflation, one side's state taking the other's button away */
-          const seatsGone = seatCapacityOf(e) > 0 && seatsSoldOf(e) >= seatCapacityOf(e);
-          const floorGone = entryCapacityOf(e) > 0 && entriesOf(e) >= entryCapacityOf(e);
-          const noSeats = seatCapacityOf(e) === 0;
-          const noFloor = entryCapacityOf(e) === 0;
-          return (
-            <EventCard
-              key={e.id}
-              event={e}
-              href={withAs(`/e/${e.shareSlug}`, asRaw)}
-              host={h ? { name: h.name, photo: photoUrl(h.photoPath ?? undefined), href: h.orgId ? `/org/${h.orgId}` : null } : null}
-              actions={
-                <EventBookButton
-                  shareSlug={e.shareSlug}
-                  isSignedIn={Boolean(user)}
-                  held={heldByEvent.get(e.id) ?? null}
-                  soldOut={(noSeats || seatsGone) && (noFloor || floorGone)}
-                  cannotBookWhy={noEvent}
-                  as={asRaw}
-                />
-              }
-            />
-          );
-        })}
+      {/* ⚠ THE EVENTS SHELF WENT WITH EVENTS (29 Sep 2026): the app's one
+          `EventCard`, its host named with a picture (18 Sep), and the
+          `EventBookButton` that was `EnrollButton`'s twin (27 Sep). */}
 
       {/* the shelf's foot: one page at a time (18 Sep 2026) */}
       {(hasPrev || hasNext) && (
@@ -552,8 +508,6 @@ export default async function DiscoverPage({
             </>
           ) : tab === "classes" ? (
             `No upcoming classes in ${city} — try another city.`
-          ) : tab === "events" ? (
-            "No events match that yet."
           ) : tab === "crews" ? (
             `No crews in ${city} yet — lead one from Crews on Home.`
           ) : tab === "artists" ? (

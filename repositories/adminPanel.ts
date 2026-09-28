@@ -158,7 +158,14 @@ export async function unsuspendAccount(supabase: SupabaseClient, accountId: stri
 
 export interface AdminBusiness {
   id: string;
-  /** `org` since 26 Sep 2026: an organization is a business a person opens,
+  /** ⚠⚠ `org` STAYS IN THIS UNION ON PURPOSE (29 Sep 2026). Organizations are
+   *  gone from the app, and until the sweep soft-deletes the 20 rows still on
+   *  production `admin_businesses` returns them — this is the ONE desk whose job
+   *  is to show what the database holds rather than what the app can make, so
+   *  narrowing the type here would make the cast at the bottom of this file a
+   *  lie. The desk draws such a row as RETIRED and gives it no door.
+   *
+   *  `org` since 26 Sep 2026: an organization is a business a person opens,
    *  and `admin_businesses` lists it with its own mandate */
   type: "studio" | "artist_page" | "org";
   name: string;

@@ -25,8 +25,18 @@
  *  beside it, so the next person can check it rather than trust it. What a plan
  *  does NOT gate is left out on purpose: a studio's rooms, team, students and
  *  earnings desks all work while it is unlisted, and saying otherwise would sell
- *  somebody something they already have. */
-export type PlanKind = "artist" | "studio" | "org";
+ *  somebody something they already have.
+ *
+ *  ⚠⚠ **THE `org` LIST WENT ON 29 Sep 2026**, and it is the same rule one more
+ *  time: it sold a public page, PUBLIC EVENTS, a named team and taking money for
+ *  tickets and entries — four claims, three of which the app can no longer keep
+ *  at all, on the screen where somebody decides to pay ₹5,000 a month. Nothing
+ *  passes `kind="org"` any more (the only two call sites are `"studio"` and
+ *  `"artist"`), so the type says so rather than leaving a branch nobody renders.
+ *  ⚠ `repositories/plans.ts` keeps ITS `PlanKind` with `"org"` on purpose —
+ *  `plan_catalog` still holds `org_monthly` and the admin's Plans desk lists it,
+ *  which is a fact about the database rather than a promise to a customer. */
+export type PlanKind = "artist" | "studio";
 
 export const PLAN_RIGHTS: Record<PlanKind, Array<[icon: string, title: string, sub: string]>> = {
   artist: [
@@ -50,15 +60,6 @@ export const PLAN_RIGHTS: Record<PlanKind, Array<[icon: string, title: string, s
     /* a class is public only through a LISTED business (Step 3's public policy) */
     ["🎟", "Bookable classes", "your published classes are open to everybody, not just your own people"],
     ["💳", "Take payments for seats", "through Cashfree, into your own account"],
-  ],
-  org: [
-    /* `org_is_public` = GST verified AND a live mandate (`20260926120000`) */
-    ["🌐", "A public page", "your organization, its team and everything it runs"],
-    /* `event_host_is_public` decides whether an event is readable and bookable */
-    ["🎪", "Public events", "published events are open for entries and tickets"],
-    /* `public_organization_team` prints the confirmed rows of a PUBLIC org */
-    ["👥", "Your team, named", "owners and event team shown on the page"],
-    ["💳", "Take money for tickets and entries", "through Cashfree, into your own account"],
   ],
 };
 

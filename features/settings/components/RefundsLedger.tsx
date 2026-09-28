@@ -113,8 +113,10 @@ export function RefundsLedger({ rows, side, canSettle = false, focusClassId = nu
             <div style={{ flex: 1, minWidth: 0 }}>
               <div style={{ fontSize: 13, fontWeight: 900 }}>{side === "mine" ? r.tenantName : r.learnerName}</div>
               <div style={{ fontSize: 10.5, color: "var(--sub)", marginTop: 1 }}>
-                {r.classShareSlug || r.eventShareSlug ? (
-                  <Link href={r.classShareSlug ? `/c/${r.classShareSlug}` : `/e/${r.eventShareSlug}`} style={{ color: "var(--sub)", textDecoration: "none" }}>
+                {/* ⚠ the event arm went with events (29 Sep 2026) — a ticket's
+                    refund still names what it was for and opens nothing */}
+                {r.classShareSlug ? (
+                  <Link href={`/c/${r.classShareSlug}`} style={{ color: "var(--sub)", textDecoration: "none" }}>
                     {r.classStyle} · {r.classTitle}
                   </Link>
                 ) : (
@@ -158,9 +160,9 @@ export function RefundsLedger({ rows, side, canSettle = false, focusClassId = nu
               Mark refunded at the desk
             </button>
           ) : null}
-          {r.status === "processed" && (r.classShareSlug || r.eventShareSlug) ? (
-            <Link href={r.classShareSlug ? `/c/${r.classShareSlug}` : `/e/${r.eventShareSlug}`} style={{ display: "block", marginTop: 9, textAlign: "center", fontSize: 11, fontWeight: 800, padding: 9, borderRadius: 999, background: "var(--el)", color: "var(--text)", textDecoration: "none" }}>
-              {r.classShareSlug ? "Receipt on the class page ›" : "Open the event ›"}
+          {r.status === "processed" && r.classShareSlug ? (
+            <Link href={`/c/${r.classShareSlug}`} style={{ display: "block", marginTop: 9, textAlign: "center", fontSize: 11, fontWeight: 800, padding: 9, borderRadius: 999, background: "var(--el)", color: "var(--text)", textDecoration: "none" }}>
+              Receipt on the class page ›
             </Link>
           ) : null}
         </div>

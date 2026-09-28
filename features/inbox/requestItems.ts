@@ -2,19 +2,23 @@ import type { RequestItem } from "@/features/inbox/components/InboxScreen";
 import { sessionDayLabel } from "@/lib/format/session";
 import type { VenueRequest } from "@/repositories/classes";
 import type { findMyPendingInvites, findPendingInvites } from "@/repositories/invites";
-import type { MyOrgTeamAsk, OrgTeamMember, OrgTeamRole } from "@/repositories/organizationTeam";
 import { askToTileClass, type MyClaimAsk } from "@/types/claim";
-import type { CrewMember, MyCrewAsk, PartnerAsk } from "@/types/crew";
+import type { CrewMember, MyCrewAsk } from "@/types/crew";
 import { practiceWhen, type CrewPractice } from "@/types/crewPractice";
-import type { DanceEvent } from "@/types/event";
 
 /** THE REQUESTS DESK'S ROWS, BUILT ONCE (18 Sep 2026). The person's Inbox has
  *  turned the asks that already exist — class asks, team invites, crew asks,
- *  duet partners, room requests — into `RequestItem`s since Step 18; a studio's
+ *  room requests, practices — into `RequestItem`s since Step 18; a studio's
  *  inbox and a crew's inbox (the Home · Inbox bar on their homes) want exactly
  *  the same rows, scoped to one entity. So the words and the mapping live here,
  *  and each page hands in whichever sources it has. Every list is optional:
- *  a crew has no venue requests and a studio no partner asks. */
+ *  a crew has no venue requests and a studio no practices.
+ *
+ *  ⚠⚠ TWO OF THE SIX KINDS WENT ON 29 Sep 2026 with organizations and events:
+ *  the DUET PARTNER ask (both ends — somebody entered an event with you) and the
+ *  ORGANIZATION TEAM ask (both ends — an organization named you on its public
+ *  page, and the four labels it could name you as). What is left is the class
+ *  ask, the team invite, the crew ask, the venue request and the practice. */
 
 /* DOS_LINK_WHAT (prototype 1805): the role in words, and the verb of the ask */
 export const CLAIM_WORDS = {
@@ -22,9 +26,9 @@ export const CLAIM_WORDS = {
   assistant: { what: "a class assistant", verb: "add you as an assistant on" },
 } as const;
 export const TEAM_WORDS = { what: "on the team", verb: "add you to the team at" } as const;
-/* Step 22: the crew ask (DOS_LINK_WHAT.member) and the duet partner (DOS_LINK_WHAT.partner) */
+/* Step 22: the crew ask (DOS_LINK_WHAT.member). ⚠ `PARTNER_WORDS` — the duet
+   partner, DOS_LINK_WHAT.partner — went with events on 29 Sep 2026. */
 export const CREW_WORDS = { what: "a crew member", verb: "add you to" } as const;
-export const PARTNER_WORDS = { what: "your entry partner", verb: "enter with you into" } as const;
 /* 18 Sep 2026: an artist asks a studio for one of its rooms — the class waits for the answer */
 export const VENUE_WORDS = { what: "the room for a class", verb: "hold a class in" } as const;
 /* 27 Sep 2026: a crew arranges a practice and asks everybody confirmed on it.
@@ -32,37 +36,12 @@ export const VENUE_WORDS = { what: "the room for a class", verb: "hold a class i
    or a duet, rather than about BELONGING, so it falls in the Accept · Reject
    group and `JOIN_KINDS` leaves it out by omission (C61's split). */
 export const PRACTICE_WORDS = { what: "at the practice", verb: "have you at a practice of" } as const;
-/* push 2 (19 Sep 2026): an organization names a person on its public page — as its owner, or on its team */
-/* ⚠ FOUR LABELS SINCE 28 Sep 2026: `manager` joined, and `studio_owner` is still
-   gone with the studios an organization no longer runs. */
-export const ORG_TEAM_WORDS: Record<OrgTeamRole, { what: string; verb: string }> = {
-  owner: { what: "an owner", verb: "name you as an owner of" },
-  manager: { what: "its manager", verb: "have you manage" },
-  event_team: { what: "its event team", verb: "put you on the event team of" },
-  member: { what: "a team member", verb: "add you to the team of" },
-};
+/* ⚠ `ORG_TEAM_WORDS` and `ORG_ASK_NOTE` — the four labels an organization could
+   name somebody as, and the sentence each one made them read before consenting —
+   went with organizations on 29 Sep 2026. */
 
-/** What saying yes actually means, label by label — the one sentence somebody
- *  reads before consenting, so each says what its own label does. ⚠ A plain
- *  `member` is NOT published (`public_organization_team` leaves it out).
- *
- *  ⚠⚠ THE OWNER LINE SAID "a label, not a login" AND THAT STOPPED BEING TRUE
- *  TODAY (28 Sep 2026). `20260928110000` makes Owner and Manager write a real
- *  `business_members` seat on the organization the moment somebody says yes — it
- *  had to, because two people on production held that label and neither could
- *  open the organization. This is the sentence they read WHILE consenting, so it
- *  is the last place in the app that may still describe the old rule. */
-const ORG_ASK_NOTE: Record<OrgTeamRole, string> = {
-  owner: "You would be shown as this organization's OWNER on its public page, and able to open and run it from your own profile switcher.",
-  manager: "You would run this organization from your own profile switcher, and be shown as its MANAGER on its public page. Its money, its plan and its badge stay the owner's.",
-  event_team: "You would be shown on this organization's public page under EVENT TEAM, and could run its events — not a login.",
-  member: "You would be on this organization's own list. Other team members are not shown on its public page.",
-};
-
-const dayWords = (iso: string) => {
-  const [y, m, d] = iso.split("-").map(Number);
-  return new Intl.DateTimeFormat("en-IN", { timeZone: "Asia/Kolkata", weekday: "short", day: "numeric", month: "short" }).format(new Date(Date.UTC(y, m - 1, d)));
-};
+/* ⚠ `dayWords` dated a duet ask's event on its row and went with events
+   (29 Sep 2026) — a practice ask carries its own instant instead */
 
 type MyPendingInvite = Awaited<ReturnType<typeof findMyPendingInvites>>[number];
 type SentInvite = Awaited<ReturnType<typeof findPendingInvites>>[number] & { tenantName: string };
@@ -72,26 +51,19 @@ export interface RequestSources {
   claimsIn?: MyClaimAsk[];
   invitesIn?: MyPendingInvite[];
   crewIn?: MyCrewAsk[];
-  partnerIn?: PartnerAsk[];
   venueOut?: VenueRequest[];
   claimsOut?: MyClaimAsk[];
   invitesOut?: SentInvite[];
   crewOut?: Array<CrewMember & { crewName: string }>;
-  partnerOut?: PartnerAsk[];
   /** the practices this person has been asked to and not answered (27 Sep 2026).
    *  ⚠ There is no `practiceOut`: a practice is asked of the whole roster at
    *  once by the leader, and who has answered is the REGISTER on its own desk —
    *  a Sent row per person per practice would be the desk again, in a list that
    *  cannot act on any of it. */
   practiceIn?: CrewPractice[];
-  /** push 2: an organization's asks — to the person (in), and the ones the organization is waiting on (out) */
-  orgIn?: MyOrgTeamAsk[];
-  orgOut?: Array<OrgTeamMember & { orgName: string }>;
-  /** ⚠ THE EVENTS BEHIND THE DUET ASKS, read by id in ONE query by the page
-   *  that has them (27 Sep 2026), so the desk can draw the app's own event card
-   *  instead of a row of its own invention. A missing id simply falls back to
-   *  that row — a card that cannot be read must never cost somebody the ask. */
-  events?: Map<string, DanceEvent>;
+  /* ⚠ `orgIn` / `orgOut` (an organization's asks) and `events` (the events behind
+     the duet asks, read by id in one query so the desk could draw the app's own
+     event card) went on 29 Sep 2026. */
 }
 
 const newestFirst = (a: RequestItem, b: RequestItem) => b.at.localeCompare(a.at);
@@ -171,24 +143,6 @@ export function buildRequests(s: RequestSources): { requestsIn: RequestItem[]; r
       memberId: c.id,
       status: askStatus(c.status),
     })),
-    /* a duet partner is asked; the entry stands either way (1815) */
-    ...(s.partnerIn ?? []).map((p): RequestItem => ({
-      kind: "partner",
-      id: p.bookingId,
-      dir: "in",
-      who: p.entrantName,
-      what: PARTNER_WORDS.what,
-      verb: PARTNER_WORDS.verb,
-      subjectKind: "EVENT",
-      subjectTitle: p.eventTitle,
-      when: p.startDate ? dayWords(p.startDate) : null,
-      href: p.eventShareSlug ? `/e/${p.eventShareSlug}` : null,
-      at: p.createdAt,
-      note: "Their entry is in either way — this decides whether the organiser sees you as confirmed.",
-      bookingId: p.bookingId,
-      status: askStatus(p.status),
-      event: s.events?.get(p.eventId) ?? null,
-    })),
     /* a practice your crew has arranged (27 Sep 2026) — an ask about ONE
        EVENING, answered here or on the crew's own desk, whichever you reach
        first. ⚠ The leader is never in this list: they arranged it, and
@@ -209,27 +163,6 @@ export function buildRequests(s: RequestSources): { requestsIn: RequestItem[]; r
       practiceId: p.id,
       crewId: p.crewId,
       status: askStatus(p.myStatus),
-    })),
-    /* an organization's page is public, so being named on it is a claim about you */
-    ...(s.orgIn ?? []).map((o): RequestItem => ({
-      kind: "orgteam",
-      id: o.id,
-      dir: "in",
-      who: o.orgName,
-      what: ORG_TEAM_WORDS[o.role].what,
-      verb: ORG_TEAM_WORDS[o.role].verb,
-      subjectKind: "ORGANIZATION",
-      subjectTitle: o.orgName,
-      when: null,
-      href: `/org/${o.orgId}`,
-      at: o.createdAt,
-      /* ⚠ WHAT THIS ASK ACTUALLY COSTS THEM, per label (20 Sep 2026). An "Other
-         team member" is the organization's own note and is NOT published, so
-         saying they would appear under TEAM was a claim the page does not keep —
-         and this sentence is the only thing they read before consenting. */
-      note: ORG_ASK_NOTE[o.role],
-      memberId: o.id,
-      status: askStatus(o.status),
     })),
   ].sort(newestFirst);
 
@@ -301,40 +234,6 @@ export function buildRequests(s: RequestSources): { requestsIn: RequestItem[]; r
       memberId: c.id,
       crewId: c.crewId,
       status: askStatus(c.status),
-    })),
-    ...(s.partnerOut ?? []).map((p): RequestItem => ({
-      kind: "partner",
-      id: p.bookingId,
-      dir: "out",
-      who: p.partnerName,
-      what: PARTNER_WORDS.what,
-      verb: PARTNER_WORDS.verb,
-      subjectKind: "EVENT",
-      subjectTitle: p.eventTitle,
-      when: p.startDate ? dayWords(p.startDate) : null,
-      href: p.eventShareSlug ? `/e/${p.eventShareSlug}` : null,
-      at: p.createdAt,
-      note: "Your entry holds whether or not they answer.",
-      bookingId: p.bookingId,
-      status: askStatus(p.status),
-      event: s.events?.get(p.eventId) ?? null,
-    })),
-    ...(s.orgOut ?? []).map((o): RequestItem => ({
-      kind: "orgteam",
-      id: o.id,
-      dir: "out",
-      who: o.name,
-      what: ORG_TEAM_WORDS[o.role].what,
-      verb: ORG_TEAM_WORDS[o.role].verb,
-      subjectKind: "ORGANIZATION",
-      subjectTitle: o.orgName,
-      when: null,
-      /* the ask's own organization's desk (26 Sep 2026) — one desk per organization now */
-      href: `/business/${o.orgId}/team`,
-      at: o.createdAt,
-      note: null,
-      memberId: o.id,
-      status: askStatus(o.status),
     })),
   ].sort(newestFirst);
 

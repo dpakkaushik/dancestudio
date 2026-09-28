@@ -45,10 +45,7 @@ export default async function TenantClassesPage({
     redirect("/business");
   }
   const tenant = seat.tenant;
-  /* an organization's hosting row (R15) runs events, never classes (17 Sep 2026) */
-  if (tenant.type === "org") {
-    redirect(`/business/${tenantId}/events`);
-  }
+  /* ⚠ the hosting row's redirect to its events desk went with events (29 Sep 2026) */
   if (tenant.type === "artist_page") {
     redirect("/my-classes?show=manage");
   }

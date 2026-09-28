@@ -40,45 +40,36 @@ export const DosShelfHead = ({ children, right, pad = "0 16px 10px" }: { childre
    there. They keep their old address here (re-exported at the foot). */
 
 /** WHO THE GRID IS FOR. A person is a user, or an artist while the plan is live.
- *  ⚠ `org` STAYS IN THE UNION AND NAMES NO LOGIN (26 Sep 2026): the organization
- *  account was retired — an organization is a `businesses` row a person opens,
- *  with a grid of its own beside its home (`OrgHome`). The word is kept so
- *  `ToolsKind`, `TOOLS_HEADING` and the layout key keep compiling; `tilesFor`
- *  answers the person's list for it. A STUDIO's own grid is built beside the
- *  studio's home (`app/(app)/business/[tenantId]/page.tsx`), because every one
- *  of its doors is that studio's. */
-export type HomeKind = "user" | "artist" | "org";
+ *  ⚠ `org` was kept in this union through 26 Sep 2026, naming no login, so the
+ *  types that share it kept compiling; it went with organizations on 29 Sep.
+ *  A STUDIO's own grid is built beside the studio's home
+ *  (`app/(app)/business/[tenantId]/page.tsx`), because every one of its doors is
+ *  that studio's. */
+export type HomeKind = "user" | "artist";
 
-/** THE HOME GRID, FOR ALL FOUR KINDS OF ACCOUNT (18 Sep 2026 — the user's list,
- *  verbatim in the deviations table, row R18). It replaces a grid that had grown
- *  by accretion: a plain user was offered Earnings and an artist's Students, an
- *  organization its first studio's register, everybody a Classes tile that
- *  opened the Discover listing.
+/** THE HOME GRID (18 Sep 2026 — the user's list, verbatim in the deviations
+ *  table, row R18). It replaces a grid that had grown by accretion: a plain user
+ *  was offered Earnings and an artist's Students, and everybody a Classes tile
+ *  that opened the Discover listing.
  *
- *  A. USER — Classes (booked, assist) · Events (participant, spectator, assisting)
- *     · Calendar · Crews · Studios (taken classes at) · Organizations · … ·
- *     Subscription.
+ *  A. USER — Classes (booked, assist) · Calendar · Crews · Studios (taken
+ *     classes at) · … · Subscription.
  *  B. ARTIST (the plan is live) — the same, then Team · Students · Routines ·
  *     Earnings · Memberships · Assets · Media. The desks that are their PAGE's
  *     (Team, Students) open that page, or the hub where the page is made when
  *     there is none yet; Media is their pictures, which live in the Profile tab's
  *     Edit sheet (16 Sep 2026); Routines, Memberships and Assets open the
  *     prototype's own "nothing here yet" until their desks exist.
- *  C. ⚠ ORGANIZATION IS NOT A KIND OF ACCOUNT ANY MORE (26 Sep 2026): its grid
- *     is built beside its own home (`OrgHome`), the way a studio's is — Events ·
- *     Team · Earnings · Assets · Subscription. An `org` kind handed here answers
- *     the person's list.
- *  D. STUDIO — on its own home: Classes · Calendar · Team · Students · Earnings ·
+ *  C. STUDIO — on its own home: Classes · Calendar · Team · Students · Earnings ·
  *     Memberships · Assets · Rooms · Media.
+ *  ⚠ There was a fourth list until 29 Sep 2026 — an ORGANIZATION's, built beside
+ *     its own home — and an Events and an Organizations tile on a person's.
  *
- *  ⚠ ORGANIZATIONS AND SUBSCRIPTION ARE ON EVERY PERSON'S GRID (26 Sep 2026,
- *  the user: "make organization a tab on home for artist and users", and
+ *  ⚠ SUBSCRIPTION IS ON EVERY PERSON'S GRID (26 Sep 2026, the user:
  *  "subscriptions also become an option on home tab for all profiles and is
  *  removed from settings for all … subscribe to become an artist should not be
- *  a separate tab in settings like artist tools"). Organizations sits right
- *  after Studios, because the two are the same shape of door — a business you
- *  open and run from the switcher; Subscription is LAST, because it is the one
- *  tile that is about the account rather than about dancing.
+ *  a separate tab in settings like artist tools"). It is LAST, because it is the
+ *  one tile that is about the account rather than about dancing.
  *
  *  ⚠ STATS IS NOT A TILE ANY MORE (18 Sep 2026, the user: "remove stats from
  *  tools and place like a button similar to the qr code in the same area on
@@ -87,22 +78,15 @@ export type HomeKind = "user" | "artist" | "org";
  *  studio's own home, pointing at the same board the tile did.
  *
  *  The prototype's list (DOS_TOOLS 2931) is the vocabulary — names, colours,
- *  glyphs; which tiles a kind gets is the user's decision. Events on an
- *  organization points at its ONE events desk (R15). */
+ *  glyphs; which tiles a kind gets is the user's decision. */
 export const tilesFor = (kind: HomeKind, pageId: string | null): Tile[] => {
-  /* ⚠ THE `org` BRANCH IS DELETED, NOT LEFT DEAD (26 Sep 2026): there is no
-     organization login for it to draw, and an organization's own grid is built
-     beside its home. The kind is kept in the union for the types that share it. */
   const person: Tile[] = [
     { name: DOS_TOOLS.classes.name, href: "/my-classes", k: "classesmod", c: DOS_TOOLS.classes.c },
-    { name: DOS_TOOLS.events.name, href: "/my-events", k: "events", c: DOS_TOOLS.events.c },
+    /* ⚠ THE EVENTS TILE (`/my-events`) AND THE ORGANIZATIONS TILE
+       (`/organizations`, 26 Sep 2026) BOTH WENT ON 29 Sep 2026 */
     { name: DOS_TOOLS.calendar.name, href: "/calendar", k: "calendar", c: DOS_TOOLS.calendar.c },
     { name: DOS_TOOLS.crews.name, href: "/crews", k: "crews", c: DOS_TOOLS.crews.c },
     { name: DOS_TOOLS.studios.name, href: "/business", k: "studios", c: DOS_TOOLS.studios.c },
-    /* AN ORGANIZATION IS OPENED FROM HERE (26 Sep 2026) — right after Studios,
-       because it is the same shape of door: a business you open, own through a
-       seat, and run from the profile switcher */
-    { name: DOS_TOOLS.organizations.name, href: "/organizations", k: "organizations", c: DOS_TOOLS.organizations.c },
     /* ⚠ ROUTINES IS A USER'S TILE TOO (20 Sep 2026, the user: "routines you
        learned … should be visible to user profiles as well in tools"). It was an
        artist's, because MAKING one is an artist's tool — but the desk has two

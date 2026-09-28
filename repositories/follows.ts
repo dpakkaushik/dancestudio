@@ -271,36 +271,12 @@ export async function setCrewFollow(supabase: SupabaseClient, crewId: string, on
   return { following: out.following, followers: Number(out.followers) };
 }
 
-/** One organization the signed-in person follows (19 Sep 2026) — through
- *  `my_followed_organizations`, because an organization's `profiles` row is
- *  private (R12) and the sheet could not embed it. */
-export interface FollowedOrganization {
-  followId: string;
-  orgId: string;
-  name: string;
-  city: string | null;
-  photoPath: string | null;
-  followedAt: string;
-}
-
-export async function findMyFollowedOrganizations(supabase: SupabaseClient): Promise<FollowedOrganization[]> {
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) return [];
-  const { data, error } = await supabase.rpc("my_followed_organizations");
-  if (error) {
-    return [];
-  }
-  return ((data ?? []) as Array<{ follow_id: string; org_id: string; name: string; city: string | null; photo_path: string | null; followed_at: string }>).map((r) => ({
-    followId: r.follow_id,
-    orgId: r.org_id,
-    name: r.name,
-    city: r.city,
-    photoPath: r.photo_path,
-    followedAt: r.followed_at,
-  }));
-}
+/* ⚠ `FollowedOrganization` and `findMyFollowedOrganizations` (19 Sep 2026, over
+   `my_followed_organizations` — an organization's `profiles` row was private
+   (R12), so the sheet could not embed it) went with organizations on 29 Sep.
+   ⚠ The three `follows` rows naming one are still on production and are the
+   sweep's: `set_person_follow` is the only door to them and nothing calls it
+   with an organization any more, so they are inert rather than wrong. */
 
 /** One crew the signed-in person follows (19 Sep 2026). A crew is public, so
  *  the row embeds it; `follower_id = me` is said out loud as everywhere here. */

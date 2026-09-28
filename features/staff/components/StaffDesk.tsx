@@ -378,7 +378,7 @@ export function StaffDesk({
                       </div>
                       <div style={{ display: "flex", alignItems: "center", gap: 5, marginTop: 2, flexWrap: "wrap" }}>
                         <span style={{ fontSize: 9.5, fontWeight: 900, letterSpacing: 0.4, textTransform: "uppercase", color: L.colour }}>{MEMBER_ROLE_WORD[m.role]}</span>
-                        <span style={{ fontSize: 9, fontWeight: 800, letterSpacing: 0.3, textTransform: "uppercase", color: MUTED }}>· {m.profileRole ? KIND_WORD[kindOf(m.profileRole, m.isArtist)] : "User"}</span>
+                        <span style={{ fontSize: 9, fontWeight: 800, letterSpacing: 0.3, textTransform: "uppercase", color: MUTED }}>· {KIND_WORD[kindOf(m.isArtist)]}</span>
                         {/* what they dance — their FIRST style, the one they put first (18563) */}
                         {m.style ? <span style={{ fontSize: 10.5, color: SUB }}>· {m.style}</span> : null}
                       </div>

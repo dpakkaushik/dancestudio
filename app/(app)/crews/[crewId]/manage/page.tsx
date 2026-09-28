@@ -2,20 +2,18 @@ import { CrewHome } from "@/features/crews/components/CrewHome";
 import { requireLedCrew } from "@/features/crews/server/requireLedCrew";
 import { toolsLayoutKey } from "@/features/home/toolOrder";
 import { findMyToolOrder } from "@/repositories/layout";
-import { dayKeyOf } from "@/lib/format/month";
-import { findCrewEntries, findCrewMembers } from "@/repositories/crews";
+import { findCrewMembers } from "@/repositories/crews";
 import { findCrewFollowerCount } from "@/repositories/follows";
 import { findCrewHeaderPhotos } from "@/repositories/headerPhotos";
 import { findPersonFollowerCounts } from "@/repositories/publicPerson";
 
-const stampNowIso = (): string => new Date().toISOString();
-
 /** THE CREW'S HOME (18 Sep 2026) — what a crew you lead opens. It was the
  *  members desk itself (S_crewmanage) until the user asked for a home with
- *  tools; the desk is one tile away at /manage/team, the battle record at
- *  /manage/events, and the URL stays what the hub, the Inbox and the e2e have
- *  always pointed at (Rule 14). The header pictures (19 Sep 2026) ride in for
- *  the hero and for the Edit sheet's grid. */
+ *  tools; the desk is one tile away at /manage/team, and the URL stays what the
+ *  hub, the Inbox and the e2e have always pointed at (Rule 14). The header
+ *  pictures (19 Sep 2026) ride in for the hero and for the Edit sheet's grid.
+ *  ⚠ The Events tile and its `/manage/events` battle record went with events
+ *  on 29 Sep 2026, and `findCrewEntries` with them. */
 export default async function CrewManagePage({ params, searchParams }: { params: Promise<{ crewId: string }>; searchParams: Promise<Record<string, string | undefined>> }) {
   const { crewId } = await params;
   /* `?edit=1` — Settings' "Edit crew" navigates here with it (22 Sep 2026).
@@ -27,9 +25,8 @@ export default async function CrewManagePage({ params, searchParams }: { params:
   const {
     data: { user },
   } = await supabase.auth.getUser();
-  const [members, entries, header, followers, order, myCounts] = await Promise.all([
+  const [members, header, followers, order, myCounts] = await Promise.all([
     findCrewMembers(supabase, crewId),
-    findCrewEntries(supabase, crewId),
     findCrewHeaderPhotos(supabase, crewId),
     findCrewFollowerCount(supabase, crewId).catch(() => 0),
     /* how THIS leader has arranged THIS crew's tools (22 Sep 2026) — the read
@@ -46,13 +43,11 @@ export default async function CrewManagePage({ params, searchParams }: { params:
     <CrewHome
       crew={crew}
       members={members}
-      entries={entries}
       header={header}
       followers={followers ?? 0}
       followingN={user ? (myCounts.get(user.id)?.following ?? null) : null}
       order={order}
       editOpen={editOpen}
-      todayKey={dayKeyOf(stampNowIso())}
     />
   );
 }

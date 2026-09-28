@@ -51,9 +51,10 @@ async function rest(method, pathname, body) {
     await rest("POST", "/rest/v1/business_members", { business_id: businessId, user_id: userId, member_role: "owner", created_by: userId, updated_by: userId });
 
     /* ⚠ an order must name a class+session, an event or a membership — the
-       CHECK `orders_subject_check`. A CLASS order is what makes the payment
-       bucket as "Classes", which is the residual once memberships and events
-       are taken out, so it is the branch worth driving. */
+       CHECK `orders_subject_check`, whose event branch is a TOMBSTONE since
+       29 Sep 2026 (four paid event orders on production keep it honest). A
+       CLASS order is what makes the payment bucket as "Classes", which is the
+       residual once memberships are taken out, so it is the branch to drive. */
     const [cls] = await rest("POST", "/rest/v1/classes", {
       business_id: businessId, title: "Hip-Hop · All levels", style: "Hip-Hop", level: "all",
       /* a DRAFT on purpose: publishing waits for a teacher to accept (18 Sep),
@@ -178,13 +179,11 @@ async function rest(method, pathname, body) {
     check(emptyLeft === rupees(0), `studio · a bucket with no money reads ${rupees(0)} (${firstKey} → ${emptyLeft})`);
     check(page.url().includes("period=day"), "studio · and picking a bucket does NOT navigate — every bucket came back in one read");
 
-    // ───────────────── the organization's combined ─────────────────
-    /* DELETED 26 Sep 2026: `/business/earnings` was the organization LOGIN's
-       combined ledger (its studios plus its hosting row), and that login is
-       retired — an organization is a business a person opens, with its OWN
-       earnings desk at `/business/{org}/earnings` holding only its events'
-       money, and this owner has no org business and no event money. What the
-       block proved (the expense side, the same net) is the studio's above. */
+    /* ⚠ AN ORGANIZATION'S COMBINED LEDGER was checked here until 26 Sep 2026
+       (`/business/earnings`, the organization LOGIN's studios plus its hosting
+       row), and again as that organization's own desk until 29 Sep, when
+       organizations went entirely. What the block proved — the expense side and
+       the same net — is the studio's above, which is the same component. */
 
     // ───────────────── a person's own ─────────────────
     await page.goto(`${BASE}/earnings?period=year`, { waitUntil: "networkidle" });

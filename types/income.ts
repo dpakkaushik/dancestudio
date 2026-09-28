@@ -24,13 +24,11 @@ export interface MonthIncome {
   label: string;
   /** captured payments (a refunded payment still CAME IN; its refund is a deduction) */
   grossInr: number;
-  /** the membership share of gross (19 Sep 2026) */
+  /** the membership share of gross (19 Sep 2026)
+   *  ⚠ `eventsInr` sat beside it until 29 Sep 2026 and went with events: an
+   *  order named a class session, an event or a membership, and there are two
+   *  subjects now — so what is not a membership is a seat. */
   membershipsInr: number;
-  /** ⚠ the TICKET share (20 Sep 2026) — an order names a class session, an event
-   *  or a membership, and this screen only ever asked about the last, so on an
-   *  organization's hosting row every ticket printed as "Classes". Three
-   *  subjects, three rows; seats are what is left. */
-  eventsInr: number;
   paymentCount: number;
   /** refunds actually processed in this month — the statement's one real deduction */
   refundedInr: number;

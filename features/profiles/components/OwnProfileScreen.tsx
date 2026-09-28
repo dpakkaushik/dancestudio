@@ -2,10 +2,9 @@ import { redirect } from "next/navigation";
 import { MyProfilePage } from "@/features/profiles/components/MyProfilePage";
 import { headerMaxFor } from "@/lib/media/photo";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
-import { findMyFollowedCrews, findMyFollowedOrganizations, findMyFollowedPeople, findMyFollowing, findMyPersonFollowers } from "@/repositories/follows";
+import { findMyFollowedCrews, findMyFollowedPeople, findMyFollowing, findMyPersonFollowers } from "@/repositories/follows";
 import { findPersonHeaderPhotos } from "@/repositories/headerPhotos";
 import { findMembershipsOnSale } from "@/repositories/memberships";
-import { findOrganizationsNaming } from "@/repositories/organizationTeam";
 import { findPublicStudioTeam } from "@/repositories/publicProfile";
 import { findPublicPerson, type PublicPerson } from "@/repositories/publicPerson";
 import { findMyArtistPlan } from "@/repositories/plans";
@@ -43,22 +42,20 @@ export async function OwnProfileScreen({ userId, loaded }: { userId: string; loa
   if (!person) {
     redirect("/onboarding");
   }
-  const role = person.profile.role;
+  /* ⚠ `role` went with organizations (29 Sep 2026): it told this screen which of
+     two profiles it was drawing, and there is one kind of profile now */
   /* what reaches you left this page on 19 Sep 2026 — the bell's own screen carries it, once */
   /* ⚠ `amIPlatformAdmin` AND `findMyGst` LEFT THIS LIST (21 Sep 2026). They were
      read here for the Settings sheet's Admin-panel and GST tiles, and the sheet
      is the chrome's now — so the layout reads them once for every page instead
      of this page reading them for one. Two fewer reads here, and the two they
      replaced in the layout ride a batch that was already being awaited. */
-  const [followers, followingPeople, followingTenants, followingOrgs, followingCrews, seats, plan, memberships, organizations, artistTeam] = await Promise.all([
+  const [followers, followingPeople, followingTenants, followingCrews, seats, plan, memberships, artistTeam] = await Promise.all([
     findMyPersonFollowers(supabase),
     findMyFollowedPeople(supabase),
     findMyFollowing(supabase),
-    /* the two kinds that became followable on 19 Sep 2026.
-       ⚠ AN ORGANIZATION ASKS FOR ALL FOUR NOW (20 Sep 2026): it follows since
-       `20260920180000_an_organization_follows`, so its Following figure counts
-       real rows rather than being withheld. */
-    findMyFollowedOrganizations(supabase),
+    /* the kind that became followable on 19 Sep 2026 — an organization was the
+       other and went on 29 Sep, taking `findMyFollowedOrganizations` with it */
     findMyFollowedCrews(supabase),
     findMyMemberships(supabase),
     findMyArtistPlan(supabase),
@@ -75,12 +72,8 @@ export async function OwnProfileScreen({ userId, loaded }: { userId: string; loa
        keeps finding from the other side (the two Inbox enquiry reads, the same
        day). ⚠ The FUNCTION stays: the Studios hub still lists where you have
        learnt (R22), which typecheck is what said out loud. One fewer read here. */
-    /* ⚠ THE ORGANIZATIONS THAT NAME THEM (27 Sep 2026) — on YOUR OWN tab this
-       carries the private ones too, because a person's own rows are theirs to
-       read whatever `org_is_public` says. That is deliberate and it is the same
-       shape "Your studios" has: your own page shows what you are part of, and a
-       stranger's view of it shows only what those organizations have published. */
-    findOrganizationsNaming(supabase, userId),
+    /* ⚠ `findOrganizationsNaming` sat here and went with organizations (29 Sep
+       2026) — one fewer read on every visit to your own profile */
     /* ⚠ AND THE PEOPLE ON YOUR OWN PAGE (27 Sep 2026) — the same read the public
        side makes, so an artist sees their own faculty here exactly as a visitor
        does. Not drawn on a studio's home or on a plain user's, because neither
@@ -89,27 +82,18 @@ export async function OwnProfileScreen({ userId, loaded }: { userId: string; loa
     /* ⚠ `findMyOrgTenantId` LEFT THIS LIST (26 Sep 2026) with the organization
        login: `my_org_business()` is dropped, and every profile here is a person's */
   ]);
-  /* THE HEADER (15 Sep 2026): the KIND decides how many — one for a user, five
-     for an artist, ten for an organization (19 Sep 2026) — the same rule the
-     database keeps on the way in */
-  const headerMax = headerMaxFor(kindOf(role, Boolean(plan?.active)));
+  /* THE HEADER (15 Sep 2026): the KIND decides how many — one for a user and
+     five for an artist (19 Sep 2026) — the same rule the database keeps on the
+     way in */
+  const headerMax = headerMaxFor(kindOf(Boolean(plan?.active)));
   const header = await findPersonHeaderPhotos(supabase, userId, headerMax);
-  /* R15 (9 Sep 2026): an organization's event-hosting row is a tenant but not
-     one of its BUSINESSES — it is unlisted for ever, has no rooms and no public
-     page. It is filtered out here so "Your studios" counts studios and the
-     Schedule button never points at a page that does not exist. */
-  const businesses = seats.filter((m) => m.tenant.type !== "org").map((m) => m.tenant);
+  /* ⚠ the `type !== "org"` filter went with organizations (29 Sep 2026); every
+     business left has a public page for `scheduleHref` to point at */
+  const businesses = seats.map((m) => m.tenant);
   /* ⚠⚠ WHAT YOU RUN (27 Sep 2026, the user: "user and artist profiles dont show
      what they own on their profile"). The owner seat, so a studio somebody
      merely teaches at is not in it — that one is an association and is listed as
-     one, with its seat word, further down the page.
-     ⚠ `type !== "org"` is NOT applied here, unlike `businesses` above: that
-     filter is R15's, written when an organization's only business row was an
-     unlisted EVENT-HOSTING row that had no page and no rooms. Since R48 an
-     organization IS a business a person opens, with a home and a desk of its
-     own, so leaving it out would hide exactly the thing the user could not
-     find. `businesses` keeps the filter because it feeds `scheduleHref`, and an
-     organization has no public schedule to point at. */
+     one, with its seat word, further down the page. */
   const owned = seats.filter((m) => m.memberRole === "owner").map((m) => m.tenant);
   /* ⚠ THE "WHICH BUSINESS" PICK LEFT THIS PAGE WITH SETTINGS (21 Sep 2026), and
      it is worth keeping the record of what it was: it read `businesses[0]` —
@@ -134,15 +118,11 @@ export async function OwnProfileScreen({ userId, loaded }: { userId: string; loa
       followers={followers}
       followingPeople={followingPeople}
       followingTenants={followingTenants}
-      followingOrgs={followingOrgs}
       followingCrews={followingCrews}
       scheduleHref={scheduleHref}
-      businesses={businesses}
       owned={owned}
       memberships={memberships}
-      organizations={organizations}
       artistTeam={artistTeam}
-      eventsHostId={null}
       plan={plan}
     />
   );

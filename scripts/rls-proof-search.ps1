@@ -1,16 +1,17 @@
 ﻿# Proof for Step 23 - search + Discover filters.
 #
 # The claims under test: search_dance_os is SECURITY INVOKER, so what it finds
-# is what the caller may read - a stranger finds a listed studio, a live crew
-# and a published event (by its title AND by its organiser's name), and does
-# NOT find an unlisted studio or a draft event, while the owner of each finds
-# their own; a match is a name that starts with the term or has a word that
-# does (never a substring in the middle of a word); results are capped per
-# kind; PEOPLE are returned to a signed-in caller and never to a stranger (the
-# person page landed with the first parity slice, so the Dancers section Step 23
-# left out arrived - see check 5); an empty term returns nothing. The Discover
-# predicates themselves are pure TypeScript (features/discovery/filters.ts) and
-# are exercised by the e2e.
+# is what the caller may read - a stranger finds a listed studio and a live crew
+# and does NOT find an unlisted studio, while its owner does; a match is a name
+# that starts with the term or has a word that does (never a substring in the
+# middle of a word); results are capped per kind; PEOPLE are returned to a
+# signed-in caller and never to a stranger (the person page landed with the first
+# parity slice, so the Dancers section Step 23 left out arrived - see check 5);
+# an empty term returns nothing. The Discover predicates themselves are pure
+# TypeScript (features/discovery/filters.ts) and are exercised by the e2e.
+#
+# !! The EVENT claims went with events on 29 Sep 2026 - see the block above
+# check 1.
 #
 # Reads keys from .env.local - run from the repo root:
 #   powershell -File scripts/rls-proof-search.ps1
@@ -60,17 +61,11 @@ function New-EmailUser($email, $name, $role) {
     email = $email; password = "Proof-passw0rd!" } | ConvertTo-Json)
   return [pscustomobject]@{ id = $u.id; email = $email; token = $tok.access_token }
 }
-$in10 = (Get-Date).AddDays(10).ToString("yyyy-MM-dd")
-
 $pass = $true
 $stamp = Get-Date -Format "HHmmss"
 $tag = "Zq$stamp"   # a token no real row carries, so every match is ours
-# the organization's NAME is what its events are found by (R15: the organiser is the organization).
-# 26 Sep 2026: the organization is a BUSINESS the owner opens (the login is retired), so the name
-# the search matches is the org business's, made below; the owner is a plain person.
 $ownerA = New-EmailUser "srch-a-$stamp@example.com" "Owner A $stamp" "user"
 $ownerB = New-EmailUser "srch-b-$stamp@example.com" "Owner B $stamp" "user"
-$orgA = $null
 $dancer = New-EmailUser "srch-d-$stamp@example.com" "$tag Dancer" "user"
 $ta = New-Studio $ownerA.token "$tag Studio Kothrud" "Kothrud" "Pune"
 Subscribe-Studio ([string]$ta.id)
@@ -80,48 +75,39 @@ Invoke-RestMethod -Method Patch -Uri "$base/rest/v1/businesses?id=eq.$($tb.id)" 
 
 try {
   $crew = Rpc (Api $dancer.token) "create_crew" @{ p_name = "$tag Crew"; p_city = "Pune"; p_style = "Hip-Hop"; p_member_ids = @() }
-  $ev = @{ category = "battle"; title = "Monsoon $tag Battle"; style = "All styles"; start_date = $in10; end_date = $in10; start_time = "18:00"
-    venue = "Proof Hall"; address = "Kothrud"; city = "Pune"; maps_url = "https://maps.google.com/?q=Proof+Hall"; about = "Proof"
-    entry_format = "solo"; bracket = 16; rounds = 0; prizes = @(); tickets_on = $false; ticket_tiers = @()
-    entry_tiers = @(@{ format = "solo"; fee_inr = 0; capacity = 8 }) }
-  # R15 (10 Sep 2026): an event belongs to the ORGANIZATION, never to one of its studios; save_event
-  # refuses a studio outright. 26 Sep 2026: the org BUSINESS carries the name the search matches, its
-  # OWN GST number, and its own mandate - a stranger finds its event only while it is public.
-  $orgA = [string](New-Org $ownerA.token "$tag Organization Kothrud" "Pune").id
-  Verify-Org-Gst $ownerA.token $orgA "SRC$((Get-Date -Format 'HHmmss').Substring(1))" | Out-Null
-  Subscribe-Org $orgA
-  $pubId = Rpc (Api $ownerA.token) "save_event" @{ p_business_id = $orgA; p_event_id = $null; p_event = $ev }
-  Rpc (Api $ownerA.token) "publish_event" @{ p_event_id = $pubId } | Out-Null
-  $ev.title = "Draft $tag Battle"
-  Rpc (Api $ownerA.token) "save_event" @{ p_business_id = $orgA; p_event_id = $null; p_event = $ev } | Out-Null
+  # !! THE EVENT HALF OF THIS PROOF WENT WITH EVENTS (29 Sep 2026, the user:
+  # "remove Organization and Events completely"). It built a public event on an
+  # org BUSINESS and a draft beside it, and asserted four things about them: that
+  # a stranger finds the published one and not the draft (1, 2), that the
+  # organiser's name matches by WORD (3) and by itself (4, deleted).
+  #
+  # !! WHAT IS KEPT AND MATTERS MOST IS CHECK 3's OTHER HALF: the word rule. It
+  # is the prototype's own `m` (4546) — a name that STARTS with the term, or has
+  # a WORD that does — and it is now asserted on the studio alone, which is
+  # enough: one row that matches on the second word, and none that matches
+  # mid-word. `search_dance_os` still has its events branch until the migration
+  # drops it, and the repository filters those hits out.
 
-  # 1. A STRANGER FINDS THE PUBLIC THINGS - the listed studio, the crew, the published event - and only those
+  # 1. A STRANGER FINDS THE PUBLIC THINGS - the listed studio and the crew - and only those
   $anonHits = Search $anonH $tag
   $kinds = @($anonHits | ForEach-Object { $_.kind } | Sort-Object)
   Check 1 "Stranger searching '$tag' finds: $(Names $anonHits)" (
-    ($anonHits.Count -eq 3) -and (($kinds -join ",") -eq "crew,event,studio") -and
-    -not ($anonHits | Where-Object { $_.name -like "*Private*" }) -and -not ($anonHits | Where-Object { $_.name -like "Draft*" }))
+    ($anonHits.Count -eq 2) -and (($kinds -join ",") -eq "crew,studio") -and
+    -not ($anonHits | Where-Object { $_.name -like "*Private*" }))
 
-  # 2. THE UNLISTED STUDIO IS ITS OWNER'S TO FIND; the draft event too - SECURITY INVOKER means RLS decides
+  # 2. THE UNLISTED STUDIO IS ITS OWNER'S TO FIND - SECURITY INVOKER means RLS decides
   $bHits = Search (Api $ownerB.token) $tag
   $aHits = Search (Api $ownerA.token) $tag
-  Check 2 "Owner B also finds the private studio ($(($bHits | Where-Object { $_.name -like '*Private*' }).Count)); Owner A also finds the draft ($(($aHits | Where-Object { $_.name -like 'Draft*' }).Count)); A does not find B's private studio ($(($aHits | Where-Object { $_.name -like '*Private*' }).Count))" (
-    ((@($bHits | Where-Object { $_.name -like "*Private*" })).Count -eq 1) -and ((@($aHits | Where-Object { $_.name -like "Draft*" })).Count -eq 1) -and ((@($aHits | Where-Object { $_.name -like "*Private*" })).Count -eq 0))
+  Check 2 "Owner B also finds the private studio ($(($bHits | Where-Object { $_.name -like '*Private*' }).Count)); A does not find B's private studio ($(($aHits | Where-Object { $_.name -like '*Private*' }).Count))" (
+    ((@($bHits | Where-Object { $_.name -like "*Private*" })).Count -eq 1) -and ((@($aHits | Where-Object { $_.name -like "*Private*" })).Count -eq 0))
 
-  # 3. A WORD THAT STARTS WITH THE TERM MATCHES (the studio, and the organization's event through the
-  #    organiser's name - both carry "Kothrud"); a substring inside a word does not (the prototype's `m`, 4546).
-  #    The organization's own business row is NEVER a result (R15: search lists the two public types
-  #    by name and never an `org` row) - only its event is. Its name carries "Kothrud" too, so this
-  #    count is also the proof that the org row stays out.
+  # 3. A WORD THAT STARTS WITH THE TERM MATCHES (the studio carries "Kothrud" as its
+  #    second word); a substring inside a word does not (the prototype's `m`, 4546).
   $word = Search $anonH "kothrud"
   $mid = Search $anonH "othrud"
   $wordKinds = @($word | ForEach-Object { $_.kind } | Sort-Object) -join ","
   Check 3 "'kothrud' (second word) finds $($word.Count) ($(Names $word)); 'othrud' (mid-word) finds $($mid.Count)" (
-    ($word.Count -eq 2) -and ($wordKinds -eq "event,studio") -and ($mid.Count -eq 0))
-
-  # 4. AN EVENT IS FOUND BY ITS ORGANISER'S NAME TOO - the ORGANIZATION's, since R15
-  $byOrg = @((Search $anonH "$tag Organization") | Where-Object { $_.kind -eq "event" })
-  Check 4 "Searching the organiser's name finds its event ($(Names $byOrg))" (($byOrg.Count -eq 1) -and ($byOrg[0].name -eq "Monsoon $tag Battle"))
+    ($word.Count -eq 1) -and ($wordKinds -eq "studio") -and ($mid.Count -eq 0))
 
   # 5. PEOPLE ARE RETURNED TO A SIGNED-IN CALLER, AND NEVER TO A STRANGER.
   #    Step 23 asserted the opposite and said why: there was no person page, and
@@ -144,9 +130,8 @@ try {
   $capped = @((Search $anonH $tag 2) | Where-Object { $_.kind -eq "studio" })
   $all = @((Search $anonH $tag 10) | Where-Object { $_.kind -eq "studio" })
   $crewRow = @((Search $anonH $tag) | Where-Object { $_.kind -eq "crew" })[0]
-  $evRow = @((Search $anonH $tag) | Where-Object { $_.kind -eq "event" })[0]
-  Check 6 "With p_limit 2: $($capped.Count) studios of $($all.Count); the crew opens $($crewRow.href), the event $($evRow.href), sub '$($evRow.sub)'" (
-    ($capped.Count -eq 2) -and ($all.Count -eq 3) -and ($crewRow.href -eq "/crew/$($crew.id)") -and ($evRow.href -like "/e/*") -and ($evRow.sub -like "Battle*Proof Hall"))
+  Check 6 "With p_limit 2: $($capped.Count) studios of $($all.Count); the crew opens $($crewRow.href)" (
+    ($capped.Count -eq 2) -and ($all.Count -eq 3) -and ($crewRow.href -eq "/crew/$($crew.id)"))
 
   # 7. AN EMPTY OR BLANK TERM FINDS NOTHING
   $empty = Search $anonH ""
@@ -180,11 +165,6 @@ finally {
     try { Invoke-RestMethod -Method Delete -Uri "$base/rest/v1/businesses?id=eq.$($t.id)" -Headers $svcH | Out-Null }
     catch { $left += "business $($t.id)" }
   }
-  # the org business too, BEFORE its owner (26 Sep 2026) - the name-prefix sweep below also catches it
-  if ($orgA) {
-    try { Invoke-RestMethod -Method Delete -Uri "$base/rest/v1/businesses?id=eq.$orgA" -Headers $svcH | Out-Null }
-    catch { $left += "org business $orgA" }
-  }
   try { Invoke-RestMethod -Method Delete -Uri "$base/rest/v1/businesses?name=like.$tag*" -Headers $svcH | Out-Null }
   catch { $left += "businesses named $tag*" }
   foreach ($u in @($ownerA, $ownerB, $dancer)) {
@@ -192,7 +172,7 @@ finally {
     catch { $left += "account $($u.id)" }
   }
   if ($left.Count) { "   (!! CLEANUP INCOMPLETE - still on production: $($left -join '; '))" }
-  else { "   (cleanup: proof studios, crew, events and throwaway accounts deleted)" }
+  else { "   (cleanup: proof studios, crew and throwaway accounts deleted)" }
 }
 
 if ($pass) { "`nALL SEARCH CHECKS PASSED"; exit 0 } else { "`nSEARCH CHECKS FAILED"; exit 1 }

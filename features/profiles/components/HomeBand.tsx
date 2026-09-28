@@ -7,7 +7,7 @@ import { useState, type ReactNode } from "react";
 import { updateMyProfileAction } from "@/features/profiles/server-actions/profile";
 import { CARD, INK, MUTED, PINK, SUB } from "@/lib/design/tokens";
 import { photoUrl } from "@/lib/media/photo";
-import type { FollowedCrew, FollowedOrganization, PersonFollowRow } from "@/repositories/follows";
+import type { FollowedCrew, PersonFollowRow } from "@/repositories/follows";
 import type { FollowedTenant } from "@/types/follow";
 import { kindOf, type Profile, type SocialLink } from "@/types/profile";
 import { LinksRowEditor } from "./LinksRowEditor";
@@ -39,7 +39,8 @@ import { RoleBadge, Sheet, followTint, initialsOf, type FollowGlyph } from "./pr
  *  ⚠ THE TWO ＋ APPEAR WITH THE PENCIL (26 Sep 2026): the home is read-only
  *  until the corner's Edit is pressed. */
 
-const FOLLOW_SEGS = ["All", "Users", "Artists", "Organizations", "Studios", "Crews"] as const;
+/* ⚠ "Organizations" went with organizations (29 Sep 2026) */
+const FOLLOW_SEGS = ["All", "Users", "Artists", "Studios", "Crews"] as const;
 type FollowSeg = (typeof FOLLOW_SEGS)[number];
 
 export function HomeBand({
@@ -48,7 +49,6 @@ export function HomeBand({
   followers,
   followingPeople,
   followingTenants,
-  followingOrgs,
   followingCrews,
 }: {
   profile: Profile;
@@ -59,7 +59,6 @@ export function HomeBand({
   followers: PersonFollowRow[];
   followingPeople: PersonFollowRow[];
   followingTenants: FollowedTenant[];
-  followingOrgs: FollowedOrganization[];
   followingCrews: FollowedCrew[];
 }) {
   const router = useRouter();
@@ -67,7 +66,7 @@ export function HomeBand({
   const [followList, setFollowList] = useState<"followers" | "following" | null>(null);
   const [followSeg, setFollowSeg] = useState<FollowSeg>("All");
 
-  const followingN = followingPeople.length + followingTenants.length + followingOrgs.length + followingCrews.length;
+  const followingN = followingPeople.length + followingTenants.length + followingCrews.length;
 
   /* ONE RECORD, ONE DOOR — the very action the Profile tab called for these
      fields; everything not named here rides through unchanged. ⚠ The database
@@ -91,14 +90,13 @@ export function HomeBand({
 
   const followRows: Array<{ key: string; href: string; name: string; kind: string; glyph: FollowGlyph; tint: string; face: string | null; initials: string }> =
     followList === "followers"
-      ? followers.map((f) => ({ key: f.followId, href: `/person/${f.userId}`, name: f.name, kind: kindOf(f.role, f.isArtist), glyph: kindOf(f.role, f.isArtist) as FollowGlyph, tint: followTint(kindOf(f.role, f.isArtist)), face: photoUrl(f.avatarPath), initials: initialsOf(f.name) }))
+      ? followers.map((f) => ({ key: f.followId, href: `/person/${f.userId}`, name: f.name, kind: kindOf(f.isArtist), glyph: kindOf(f.isArtist) as FollowGlyph, tint: followTint(kindOf(f.isArtist)), face: photoUrl(f.avatarPath), initials: initialsOf(f.name) }))
       : [
-          ...followingPeople.map((f) => ({ key: f.followId, href: `/person/${f.userId}`, name: f.name, kind: kindOf(f.role, f.isArtist), glyph: kindOf(f.role, f.isArtist) as FollowGlyph, tint: followTint(kindOf(f.role, f.isArtist)), face: photoUrl(f.avatarPath), initials: initialsOf(f.name) })),
-          ...followingTenants.map((t) => ({ key: t.followId, href: `/${t.tenantType === "studio" ? "studio" : "artist"}/${t.tenantId}`, name: t.tenantName, kind: t.tenantType === "studio" ? "studio" : "artist", glyph: (t.tenantType === "studio" ? "org" : "artist") as FollowGlyph, tint: followTint(t.tenantType === "studio" ? "studio-biz" : "artist-biz"), face: null, initials: initialsOf(t.tenantName) })),
-          ...followingOrgs.map((o) => ({ key: o.followId, href: `/org/${o.orgId}`, name: o.name, kind: "organization", glyph: "org" as FollowGlyph, tint: followTint("org"), face: photoUrl(o.photoPath), initials: initialsOf(o.name) })),
+          ...followingPeople.map((f) => ({ key: f.followId, href: `/person/${f.userId}`, name: f.name, kind: kindOf(f.isArtist), glyph: kindOf(f.isArtist) as FollowGlyph, tint: followTint(kindOf(f.isArtist)), face: photoUrl(f.avatarPath), initials: initialsOf(f.name) })),
+          ...followingTenants.map((t) => ({ key: t.followId, href: `/${t.tenantType === "studio" ? "studio" : "artist"}/${t.tenantId}`, name: t.tenantName, kind: t.tenantType === "studio" ? "studio" : "artist", glyph: (t.tenantType === "studio" ? "studio" : "artist") as FollowGlyph, tint: followTint(t.tenantType === "studio" ? "studio-biz" : "artist-biz"), face: null, initials: initialsOf(t.tenantName) })),
           ...followingCrews.map((c) => ({ key: c.followId, href: `/crew/${c.crewId}`, name: c.name, kind: "crew", glyph: "crew" as FollowGlyph, tint: followTint("crew"), face: photoUrl(c.photo), initials: initialsOf(c.name) })),
         ];
-  const segOf = (kind: string): FollowSeg => (kind === "user" ? "Users" : kind === "artist" ? "Artists" : kind === "organization" ? "Organizations" : kind === "crew" ? "Crews" : "Studios");
+  const segOf = (kind: string): FollowSeg => (kind === "user" ? "Users" : kind === "artist" ? "Artists" : kind === "crew" ? "Crews" : "Studios");
   const shownFollowRows = followRows.filter((r) => followSeg === "All" || segOf(r.kind) === followSeg);
 
   return (

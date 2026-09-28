@@ -1,16 +1,15 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { AdminBusiness } from "@/repositories/adminPanel";
 
-/** THE TWO GATES A PERSON MEETS BEFORE OPENING A BUSINESS (9 Sep 2026; trimmed
- *  11 Sep; re-cut 26 Sep), plus the removal of a proof photo and the figures
- *  the admin accounts desk draws per owner.
+/** THE GATE A PERSON MEETS BEFORE OPENING A STUDIO (9 Sep 2026; trimmed 11 Sep;
+ *  re-cut 26 Sep), plus the removal of a proof photo and the figures the admin
+ *  accounts desk draws per owner.
  *
  *  ⚠ `findMyOrgTenantId` LEFT ON 26 Sep 2026 with the organization LOGIN it
- *  served: `my_org_business()` made a hosting row for a login on first ask, and
- *  there is no such login any more — an organization is a `businesses` row a
- *  person opens from `/organizations`, found through `findMyMemberships` like a
- *  studio. Anything that still wants "the organization's id" reads the owned
- *  memberships of type `org`. */
+ *  served, and the organization itself went on 29 Sep. ⚠ THE FILE KEEPS ITS
+ *  NAME deliberately: `removeProofPhoto` and `findWhyNoStudio` are a STUDIO's —
+ *  the name was already wrong on 14 Sep, when only a studio started being
+ *  reviewed, and renaming a file is a diff in every importer for no behaviour. */
 
 /** The one sentence left between this account and CREATING a studio, or null.
  *  Asked of the database so the screen cannot disagree with the gate. */
@@ -22,17 +21,9 @@ export async function findWhyNoStudio(supabase: SupabaseClient): Promise<string 
   return typeof data === "string" && data.length > 0 ? data : null;
 }
 
-/** The one sentence between this account and OPENING AN ORGANIZATION, or null
- *  (26 Sep 2026) — `why_no_organization()`, the same shape as the studio's gate:
- *  the hub prints it where the Add button would be, and
- *  `create_business_with_owner` raises it. */
-export async function findWhyNoOrganization(supabase: SupabaseClient): Promise<string | null> {
-  const { data, error } = await supabase.rpc("why_no_organization");
-  if (error) {
-    throw new Error(`org.openGate failed: ${error.message}`);
-  }
-  return typeof data === "string" && data.length > 0 ? data : null;
-}
+/* ⚠ `findWhyNoOrganization` — the one sentence between an account and OPENING
+   an organization (26 Sep 2026, `why_no_organization()`) — went with
+   organizations on 29 Sep. Its RPC is the migration's to drop. */
 
 export async function removeProofPhoto(supabase: SupabaseClient, id: string): Promise<void> {
   const { error } = await supabase.rpc("remove_studio_photo", { p_id: id });
@@ -48,6 +39,9 @@ export interface OwnerStanding {
   /** studios whose own mandate (or comp) is live — `studio_plan_active`'s
    *  reading, taken off the same subscription row the Businesses desk prints */
   subscribedStudios: number;
+  /** ⚠ KEPT (29 Sep 2026): organizations are gone from the app and the 20 rows
+   *  on production are still returned by `admin_businesses` until the sweep, so
+   *  the admin desk counts what is there rather than what can be made. */
   organizations: number;
 }
 

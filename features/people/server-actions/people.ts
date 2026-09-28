@@ -99,7 +99,9 @@ export async function lookupPersonAction(input: { userId: string }): Promise<{ p
   }
   try {
     const profile = await findProfileById(supabase, parsed.data.userId);
-    if (!profile || profile.role === "org" || profile.id === user.id) {
+    /* the `role === "org"` skip went with organizations (29 Sep 2026) — nobody
+       carries that role, so it excluded nobody it still needed to */
+    if (!profile || profile.id === user.id) {
       return { person: null, error: "Nobody on DanceOS at that link" };
     }
     const artists = await findArtistIds(supabase, [profile.id]);

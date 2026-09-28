@@ -96,11 +96,14 @@ const switcherRows = async (page) => {
 };
 
 /** ⚠ THE DESKS A SEAT THAT RUNS THE BUSINESS REACHES — the register, the rooms,
- *  the people, the events, and the ledgers it may READ. Invoices, Payments and
+ *  the people, and the ledgers it may READ. Invoices, Payments and
  *  Refunds are on this list because they were readable by ANY member until
  *  28 Sep 2026: a manager reading them is a narrowing that stops short of the
- *  owner, not a widening, and every CONTROL on them is still `role === "owner"`. */
-const RUN_DESKS = ["", "/classes", "/calendar", "/rooms", "/staff", "/students", "/events", "/invoices", "/payments", "/refunds", "/media", "/inbox"];
+ *  owner, not a widening, and every CONTROL on them is still `role === "owner"`.
+ *  ⚠ `/events` left this list on 29 Sep 2026 with events themselves, so the
+ *  seventeen addresses this script drove are sixteen. The gate is unchanged —
+ *  `runsTheBusiness` is still asked at every one of them. */
+const RUN_DESKS = ["", "/classes", "/calendar", "/rooms", "/staff", "/students", "/invoices", "/payments", "/refunds", "/media", "/inbox"];
 
 /** ⚠ …and the ones that stay the OWNER's, which a manager is bounced off — back
  *  to the business's own home rather than out to the hub, because they DO run the

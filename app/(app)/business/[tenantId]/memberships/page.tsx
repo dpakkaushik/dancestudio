@@ -51,24 +51,13 @@ export default async function StudioMembershipsPage({ params, searchParams }: { 
   if (seat.memberRole !== "owner") {
     redirect(`/business/${tenantId}`);
   }
-  /* ⚠⚠ AND AN ORGANIZATION SELLS NO MEMBERSHIPS (22 Sep 2026, the user:
-     "membership not required for organization" — the same answer they gave the
-     tile audit a day earlier). No grid has ever drawn this tile for one, so the
-     ask is not about the grid: it is about THIS address, which admits the owner
-     of any business they are on — and an organization OWNS its hosting row
-     (R15). So an organization could type its way here and file a membership
-     **nothing could ever buy**, because that row is `unlisted` for ever.
-     The redirect is its events desk, which is what `type = 'org'` means on
-     every other per-studio route (`/business/{id}` has sent one there since
-     15 Sep), so the shape is the one already in this app rather than a new one.
-     ⚠ THIS IS A PRESENTATION GATE: `save_membership` still admits the owner of
-     ANY business with no type check, so a direct RPC call can still make one.
-     That clause is owed to the next migration that touches memberships (NEXT TO
-     DO #0al) — it is a rule change, and this file's standing rule is that the
-     list goes in front of the user before `db push`. */
-  if (seat.tenant.type === "org") {
-    redirect(`/business/${tenantId}/events`);
-  }
+  /* ⚠⚠ THE ORGANIZATION REFUSAL WENT WITH ORGANIZATIONS (29 Sep 2026). It was
+     the user's answer of 22 Sep ("membership not required for organization") and
+     it guarded THIS address, which admits the owner of any business they are on
+     — an organization owned its hosting row, so it could type its way here and
+     file a membership nothing could ever buy. There is no such row to refuse
+     now, and `save_membership`'s own check (read off the live catalog on 28 Sep)
+     admits a studio or an artist page and nothing else. */
   const selling = await findBusinessMemberships(supabase, tenantId).catch(() => []);
   /* the form opens over THIS studio's desk (22 Sep 2026), so the seller is the
      route's own business — the `?business=` pointer `/memberships/new` needs is

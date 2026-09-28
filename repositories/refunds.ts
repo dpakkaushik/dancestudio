@@ -24,19 +24,22 @@ interface RefundRow {
 /* an order names a class session OR an event (17 Sep 2026) — both are embedded,
    and whichever is there is what the row is "against" */
 const REFUND_SELECT =
-  "id, user_id, amount_inr, reason, status, created_at, decided_at, decision_note, settled_offline, provider_refund_id, profiles (full_name), orders!inner (class_id, event_id, business_id, classes (style, level, share_slug), events (title, share_slug), businesses (name))";
+  "id, user_id, amount_inr, reason, status, created_at, decided_at, decision_note, settled_offline, provider_refund_id, profiles (full_name), orders!inner (class_id, event_id, business_id, classes (style, level, share_slug), events (title), businesses (name))";
 
 /** a refund with the class — or, since 17 Sep 2026, the event — it is against;
  *  the ledger's row (16665-16680). The `class*` names are kept for the class
- *  case's callers; an event row fills them with the event's words. */
+ *  case's callers; an event row fills them with the event's words.
+ *
+ *  ⚠ `eventShareSlug` went on 29 Sep 2026 with events: it was the row's DOOR,
+ *  `/e/{slug}`, and that route is gone. The row itself stays and still says what
+ *  it was for — a refund ledger is a record of what happened (Rule 9), and the
+ *  same reasoning as the invoice ledger's applies. */
 export interface RefundLedgerRow extends RefundRequest {
   classId: string;
   tenantId: string;
   classTitle: string;
   classStyle: string;
   classShareSlug: string | null;
-  /** set on an event ticket's refund — the row opens /e/{slug} */
-  eventShareSlug: string | null;
   tenantName: string;
 }
 interface LedgerRow extends RefundRow {
@@ -45,7 +48,7 @@ interface LedgerRow extends RefundRow {
     event_id: string | null;
     business_id: string;
     classes: { style: string; level: string; share_slug: string } | null;
-    events: { title: string; share_slug: string } | null;
+    events: { title: string } | null;
     businesses: { name: string } | null;
   } | null;
 }
@@ -67,7 +70,6 @@ const toLedger = (r: LedgerRow): RefundLedgerRow => ({
   classTitle: r.orders?.classes ? dosClassLabel(r.orders.classes.style, r.orders.classes.level) : (r.orders?.events?.title ?? "Booking"),
   classStyle: r.orders?.classes?.style ?? (r.orders?.events ? "Event ticket" : ""),
   classShareSlug: r.orders?.classes?.share_slug ?? null,
-  eventShareSlug: r.orders?.events?.share_slug ?? null,
   tenantName: r.orders?.businesses?.name ?? "",
 });
 

@@ -12,51 +12,37 @@ import {
   withdrawCrewAskAction,
   type CrewActionResult,
 } from "@/features/crews/server-actions/crews";
-import { EvIcon } from "@/features/events/components/event-kit";
 import { PeoplePicker } from "@/features/people/components/PeoplePicker";
 import { DeskAddButton } from "@/features/settings/components/settings-kit";
 import { DeskHero, SheetHandle, sheetBody, sheetWrap } from "@/features/tenants/components/biz-kit";
 import { photoUrl } from "@/lib/media/photo";
 import { DOS_DISPLAY, DOS_UI, INK, LILAC } from "@/lib/design/tokens";
-import { CREW_ROLE_TINT, CREW_ROLE_WORD, type Crew, type CrewEntry, type CrewMember } from "@/types/crew";
-import { EV_TINT } from "@/types/event";
-import { Toast, bizBtn, bizCard, sinceWords } from "./crew-kit";
+import { CREW_ROLE_TINT, CREW_ROLE_WORD, type Crew, type CrewMember } from "@/types/crew";
+import { Toast, bizCard, sinceWords } from "./crew-kit";
 
-/** The crew desks — prototype S_crewmanage (16318-16480), lifted: the three
- *  tiles, then Members OR Battle record. Members: a row per person with the
- *  role's colour on its edge, the photo and the name one door, ASKED IS NOT
- *  JOINED ("⏳ Waiting on them to confirm"), Promote / Make leader / Remove — a
- *  row only offers what it can actually change — and the ↑ ↓ that arrange the
- *  public roster; ＋ Add member opens SEARCH DANCEOS, THEN ASK THEM. Battle
- *  record: the events the crew entered, each a door to its page.
+/** THE CREW'S TEAM DESK — prototype S_crewmanage (16318-16480), lifted: the
+ *  tiles, then a row per person with the role's colour on its edge, the photo
+ *  and the name one door, ASKED IS NOT JOINED ("⏳ Waiting on them to confirm"),
+ *  Promote / Make leader / Remove — a row only offers what it can actually
+ *  change — and the ↑ ↓ that arrange the public roster; ＋ Add a team member
+ *  opens SEARCH DANCEOS, THEN ASK THEM. It is headed by the tool's own hero the
+ *  way every other desk is (18 Sep 2026: "all heading when inside the page
+ *  should have similar design as Crew, Calendar etc."), and the BizShell strip
+ *  with the photo and the picker lives on the crew's home, where the identity
+ *  belongs.
  *
- *  TWO DESKS, NOT ONE WITH A SWITCH (18 Sep 2026, the user: "crews managed by
- *  you should take to Crew home tab with Teams and events to manage the
- *  section"). The prototype's segment switch became two tiles on the crew's
- *  home (`CrewHome`), so this component draws ONE section — `section` says
- *  which — headed by the tool's own hero the way every other desk is (the user:
- *  "all heading when inside the page should have similar design as Crew,
- *  Calendar etc."). The BizShell strip with the photo and the picker moved to
- *  the crew's home, where the identity belongs.
+ *  ⚠⚠ IT DREW TWO SECTIONS UNTIL 29 Sep 2026 — Members and the BATTLE RECORD,
+ *  picked by a `section` prop, which is why the crew's home had a Team tile and
+ *  an Events tile. The battle record was the events the crew had entered, each a
+ *  door to its page, with "See crew ranking" under it; it went with events, and
+ *  with it the `entries` and `todayKey` props and the whole `section` fork. The
+ *  crew's own board row survives (Step 25) and is reached from Stats.
  *
- *  Departures, stated: the tiles read Members / Entered / Upcoming where the
- *  prototype's read Members / Battles won / Points — results and points need
- *  scoring, which no table holds yet (tracked in the backlog); practice
- *  attendance and pay per performance are not columns. "SEE CREW RANKING"
- *  LANDED 30 Aug 2026 (16467): the board it wanted has existed since Step 25,
- *  so the button is the prototype's own and it opens the crew segment of the
- *  charts — /stats?tab=charts&seg=crew. It is the crews in one order; whether a
- *  crew WON anything still needs scoring, which is why the tiles beside it
- *  count what the app can actually count. */
+ *  Departures still standing: the prototype's tiles read Members / Battles won /
+ *  Points — results and points need scoring, which no table holds. */
 
-const monthDay = (iso: string) => {
-  const [y, m, d] = iso.split("-").map(Number);
-  return new Intl.DateTimeFormat("en-IN", { timeZone: "UTC", day: "numeric", month: "short", year: "numeric" }).format(new Date(Date.UTC(y, m - 1, d)));
-};
-
-export function CrewManager({ crew, members, entries, todayKey, section }: { crew: Crew; members: CrewMember[]; entries: CrewEntry[]; todayKey: string; section: "members" | "battles" }) {
+export function CrewManager({ crew, members }: { crew: Crew; members: CrewMember[] }) {
   const router = useRouter();
-  const seg = section;
   const [add, setAdd] = useState(false);
   const [busy, setBusy] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
@@ -80,12 +66,12 @@ export function CrewManager({ crew, members, entries, todayKey, section }: { cre
   };
 
   const confirmed = members.filter((m) => m.status === "confirmed");
-  const upcoming = entries.filter((e) => e.endDate >= todayKey && e.eventStatus !== "completed").length;
+  const asked = members.filter((m) => m.status === "asked");
 
   return (
     <div style={{ background: LILAC, color: INK, maxWidth: 430, margin: "0 auto", fontFamily: DOS_UI, minHeight: "100vh", padding: "0 16px 40px", boxSizing: "border-box" }}>
       {/* the tool's hero, as every desk wears it; the line under it says whose */}
-      <DeskHero tool={seg === "members" ? "team" : "events"} as="h1" margin="12px 0 8px" />
+      <DeskHero tool="team" as="h1" margin="12px 0 8px" />
       <Link href={`/crews/${crew.id}/manage`} aria-label={`Back to ${crew.name}'s home`} style={{ display: "block", fontSize: 11, fontWeight: 800, color: "var(--sub)", textDecoration: "none", margin: "0 2px 12px" }}>
         {crew.name} · {crew.style} · {crew.city}
       </Link>
@@ -94,9 +80,14 @@ export function CrewManager({ crew, members, entries, todayKey, section }: { cre
         <div style={{ ...bizCard, borderLeft: "4px solid #EC4899", display: "flex", gap: 8 }}>
           {(
             [
+              /* ⚠ THE THREE TILES WERE Members · Entered · Upcoming, and the two
+                 that counted EVENTS went on 29 Sep 2026. A one-tile strip reads
+                 as a broken row, so the two facts this desk actually has take
+                 their places — who has said yes, and who has not answered yet,
+                 which is the distinction the roster below is built on
+                 ("ASKED IS NOT JOINED"). Nothing is invented to fill a gap. */
               [String(confirmed.length), "Members", "#3B82F6"],
-              [String(entries.length), "Entered", "#F59E0B"],
-              [String(upcoming), "Upcoming", "#EC4899"],
+              [String(asked.length), "Waiting", "#F59E0B"],
             ] as Array<[string, string, string]>
           ).map(([v, l, col]) => (
             <div key={l} style={{ flex: 1, textAlign: "center", background: "var(--el)", borderRadius: 12, padding: "9px 3px", borderTop: `3px solid ${col}` }}>
@@ -109,8 +100,6 @@ export function CrewManager({ crew, members, entries, todayKey, section }: { cre
         </div>
         {error ? <div style={{ fontSize: 11.5, color: "#F87171", marginBottom: 10 }}>{error}</div> : null}
 
-        {seg === "members" ? (
-          <>
             {/* ⚠ THE SHARED ＋, ON TOP, IN THE SAME WORDS AS EVERY OTHER TEAM DESK
                 (21 Sep 2026, the user: "fix Team pages for all kinds of profile
                 types"). This was a hand-rolled `div role="button"` wearing
@@ -253,38 +242,6 @@ export function CrewManager({ crew, members, entries, todayKey, section }: { cre
                 </div>
               </div>
             ) : null}
-          </>
-        ) : null}
-
-        {seg === "battles" ? (
-          <>
-            <div style={{ fontSize: 9.5, fontWeight: 900, letterSpacing: 0.9, color: "var(--muted)", fontFamily: DOS_UI, margin: "2px 0 8px" }}>
-              BATTLE RECORD · {entries.length} event{entries.length === 1 ? "" : "s"} entered
-            </div>
-            {/* A ROW OPENS ITS EVENT, OR IT IS NOT A BUTTON — every entry here has an event behind it */}
-            {entries.map((e) => {
-              const done = e.eventStatus === "completed" || e.endDate < todayKey;
-              const col = EV_TINT[e.eventCat];
-              return (
-                <Link key={e.bookingId} href={`/e/${e.eventShareSlug}`} aria-label={`Open ${e.eventTitle}`} style={{ ...bizCard, borderLeft: `4px solid ${done ? "var(--el)" : col}`, display: "flex", alignItems: "center", gap: 11, padding: "11px 13px", color: INK, textDecoration: "none" }}>
-                  <EvIcon cat={e.eventCat} size={18} color={col} />
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontSize: 13, fontWeight: 800 }}>{e.eventTitle}</div>
-                    <div style={{ fontSize: 10.5, color: "var(--sub)", marginTop: 1 }}>
-                      {monthDay(e.startDate)} · {e.city} · {done ? "Completed" : "Entered"}
-                    </div>
-                  </div>
-                  <b style={{ fontSize: 12.5, color: done ? "var(--sub)" : "#22C55E" }}>›</b>
-                </Link>
-              );
-            })}
-            {entries.length === 0 ? <div style={{ ...bizCard, textAlign: "center", fontSize: 11.5, color: "var(--sub)", border: "1.5px dashed var(--el)" }}>No events entered yet — enter one from its page, as the crew&apos;s leader.</div> : null}
-            {/* where this crew stands among the rest (16467) — Step 25's board, crew segment */}
-            <Link href="/stats?tab=charts&seg=crew" aria-label="See crew ranking" style={{ ...bizBtn, marginTop: 4, display: "block", textDecoration: "none" }}>
-              See crew ranking
-            </Link>
-          </>
-        ) : null}
       </div>
       <Toast msg={toast} />
     </div>

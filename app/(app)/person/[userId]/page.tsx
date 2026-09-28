@@ -6,10 +6,8 @@ import { PublicPersonPage } from "@/features/profiles/components/PublicPersonPag
 import { headerMaxFor } from "@/lib/media/photo";
 import { kindOf } from "@/types/profile";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
-import { amIPlatformAdmin } from "@/repositories/admin";
 import { findPersonHeaderPhotos } from "@/repositories/headerPhotos";
 import { findMembershipsOnSale } from "@/repositories/memberships";
-import { findOrganizationsNaming } from "@/repositories/organizationTeam";
 import { findPublicPerson, isFollowingPerson } from "@/repositories/publicPerson";
 import { findPublicStudioTeam } from "@/repositories/publicProfile";
 import { ensureArtistPage, findMyMemberships as findMyTeams } from "@/repositories/tenants";
@@ -25,9 +23,9 @@ export async function generateMetadata({ params }: { params: Promise<{ userId: s
   const { userId } = await params;
   if (!UUID_RE.test(userId)) return { title: "Person — DanceOS" };
   const person = await loadPerson(userId);
-  /* an organization's name is not printed in the tab of a visitor who is about
-     to be told there is nothing here */
-  return person && person.profile.role !== "org"
+  /* ⚠ the `role !== "org"` guard went with organizations (29 Sep 2026) — every
+     profile here is a person's */
+  return person
     ? { title: `${person.profile.fullName} — DanceOS`, description: `${person.profile.fullName} on DanceOS${person.profile.city ? ` · ${person.profile.city}` : ""}.` }
     : { title: "Person — DanceOS" };
 }
@@ -43,9 +41,9 @@ export async function generateMetadata({ params }: { params: Promise<{ userId: s
  *  stranger is not sent to sign in first; RLS decides: a row comes back for an
  *  artist and for nobody else, and "not found" is the honest answer otherwise.
  *
- *  An ORGANIZATION has no page here (R9, 8 Sep 2026 — the user's rule); since
- *  18 Sep 2026 it has one at /org/{id} instead, and this address sends it there.
- *  The organization itself and a platform admin still read this one. */
+ *  ⚠ THE ORGANIZATION BRANCH IS GONE (29 Sep 2026). It sent an organization's
+ *  login on to /org/{id} and let a platform admin read the evidence here; both
+ *  went with organizations themselves. */
 export default async function PersonPage({ params }: { params: Promise<{ userId: string }> }) {
   const { userId } = await params;
   if (!UUID_RE.test(userId)) {
@@ -66,14 +64,6 @@ export default async function PersonPage({ params }: { params: Promise<{ userId:
     notFound();
   }
   const isMe = Boolean(user) && user!.id === userId;
-  const isOrg = person.profile.role === "org";
-  if (isOrg && !(user && !isMe && (await amIPlatformAdmin(supabase)))) {
-    /* an organization's public face is its own page (18 Sep 2026) — and since
-       21 Sep its OWN profile is there too, so the organization itself comes here
-       only to be sent on. A platform admin still reads this address: it is the
-       evidence behind a verification, which /org/{id} deliberately is not. */
-    redirect(`/org/${userId}`);
-  }
   /* ⚠ AN ARTIST'S PAGE IS MADE HERE TOO, NOT ONLY ON HOME (19 Sep 2026, the user:
      "some artist profiles don't have enquiry button on profile"). The page every
      ask hangs off was provisioned by Home alone, so anybody who took the plan and
@@ -98,34 +88,27 @@ export default async function PersonPage({ params }: { params: Promise<{ userId:
   if (isMe) {
     return <OwnProfileScreen userId={userId} loaded={person} />;
   }
-  /* ⚠ AN ORGANIZATION FOLLOWS SINCE 20 Sep 2026
-     (`20260920180000_an_organization_follows`), so the VIEWER's kind no longer
-     decides anything here and their profile is not read for it — one round trip
-     fewer on every person's page. What is still true is the other half: this
-     address is not where an ORGANIZATION is followed — its public face is
-     /org/{id}, which draws its own bell — and you do not follow yourself. */
-  const canAskToFollow = !isMe && !isOrg;
-  const [following, header, memberships, organizations, artistTeam] = await Promise.all([
-    canAskToFollow && user ? isFollowingPerson(supabase, userId) : Promise.resolve(false),
+  /* ⚠ THE VIEWER'S KIND DECIDES NOTHING HERE (20 Sep 2026), so their profile is
+     not read for it — one round trip fewer on every person's page. You do not
+     follow yourself, and that is the whole of the test now that the
+     organization half of it has gone (29 Sep 2026). */
+  const [following, header, memberships, artistTeam] = await Promise.all([
+    !isMe && user ? isFollowingPerson(supabase, userId) : Promise.resolve(false),
     /* THE HEADER (15 Sep 2026): their own pictures, as many as their KIND shows —
-       one for a user, five for an artist, ten for an organization (19 Sep 2026) */
-    findPersonHeaderPhotos(supabase, userId, headerMaxFor(kindOf(person.profile.role, person.isArtist))),
+       one for a user, five for an artist (19 Sep 2026) */
+    findPersonHeaderPhotos(supabase, userId, headerMaxFor(kindOf(person.isArtist))),
     /* WHAT THIS ARTIST SELLS (19 Sep 2026): the live memberships of the page
        behind them — bought from this page, exactly as a studio's are from its */
     person.artistPageId ? findMembershipsOnSale(supabase, person.artistPageId) : Promise.resolve([]),
-    /* WHICH ORGANIZATIONS NAME THEM (27 Sep 2026) — the other end of a link that
-       ran one way: an organization's page has printed these people since push 2
-       and this page said nothing back. RLS hands a stranger the PUBLIC ones
-       only, so it publishes exactly what those pages already print. */
-    findOrganizationsNaming(supabase, userId),
-    /* AND WHO WORKS WITH THEM (27 Sep 2026) — the same link in the other
-       direction again: those people's own profiles have named this artist under
-       "Artists associated with" since 20 Sep, and this page named nobody back.
+    /* AND WHO WORKS WITH THEM (27 Sep 2026) — the other end of a link that ran
+       one way: those people's own profiles have named this artist under "Artists
+       associated with" since 20 Sep, and this page named nobody back.
        `public_studio_team` answers for an artist page since `20260927120000`,
        and only while the page is LISTED, so it publishes nothing an unpaid plan
-       would have hidden. */
+       would have hidden.
+       ⚠ The organizations-that-name-them read went with organizations (29 Sep). */
     person.artistPageId ? findPublicStudioTeam(supabase, person.artistPageId).catch(() => []) : Promise.resolve([]),
   ]);
 
-  return <PublicPersonPage person={person} header={header} isMe={isMe} following={following} signedIn={Boolean(user)} memberships={memberships} organizations={organizations} artistTeam={artistTeam} />;
+  return <PublicPersonPage person={person} header={header} isMe={isMe} following={following} signedIn={Boolean(user)} memberships={memberships} artistTeam={artistTeam} />;
 }

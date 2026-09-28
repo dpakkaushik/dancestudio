@@ -27,9 +27,7 @@ export default async function EditClassPage({
     redirect("/business");
   }
   const { tenant, memberRole } = membership;
-  if (tenant.type === "org") {
-    redirect(`/business/${tenantId}/events`);
-  }
+  /* ⚠ the hosting row's redirect went with events (29 Sep 2026) */
   if (memberRole !== "owner") {
     redirect(tenant.type === "artist_page" ? "/my-classes" : `/business/${tenantId}/classes`);
   }

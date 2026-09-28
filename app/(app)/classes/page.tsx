@@ -41,7 +41,7 @@ export default async function ClassesPage({
   ]);
   /* the shelf counts what is IN the viewer's city (4787) — everywhere else, plainly */
   const city = profile?.city ?? null;
-  const noClass = actingAs && !canBookClass(actingAs) ? noBookingWords(actingAs, "class") : null;
+  const noClass = actingAs && !canBookClass(actingAs) ? noBookingWords(actingAs) : null;
 
   return (
     <div

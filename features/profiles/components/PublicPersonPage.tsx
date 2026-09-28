@@ -8,7 +8,6 @@ import { KIND_WORD, heroMetaWords, kindOf, memberNoWords } from "@/types/profile
 import { EntityBand, Figure } from "./profile-band";
 import { ActionRow, CallButton, MailButton, MessageButton, whatsappHrefOf } from "./ContactButtons";
 import type { MembershipOnSale as MembershipOnSaleRow } from "@/repositories/memberships";
-import type { PersonOrganization } from "@/repositories/organizationTeam";
 import type { PublicTeamMember } from "@/types/publicProfile";
 import { FollowToggle } from "./FollowToggle";
 import type { HeroShot } from "./HeroRail";
@@ -62,7 +61,6 @@ export function PublicPersonPage({
   following,
   signedIn,
   memberships = [],
-  organizations = [],
   artistTeam = [],
 }: {
   person: PublicPerson;
@@ -73,14 +71,14 @@ export function PublicPersonPage({
   signedIn: boolean;
   /** what this artist has ON SALE through their own page (19 Sep 2026) */
   memberships?: MembershipOnSaleRow[];
-  /** the organizations whose Team desk names them (27 Sep 2026) */
-  organizations?: PersonOrganization[];
+  /* ⚠ `organizations` — the organizations whose Team desk named them (27 Sep
+     2026) — went with organizations on 29 Sep */
   /** the people seated on this artist's own page (27 Sep 2026) */
   artistTeam?: PublicTeamMember[];
 }) {
   const { profile } = person;
-  /* the word over the name is the KIND's: an organization, an artist while the plan is live, a user */
-  const kind = kindOf(profile.role, person.isArtist);
+  /* the word over the name is the KIND's: an artist while the plan is live, a user */
+  const kind = kindOf(person.isArtist);
   const ring = ROLE_RING[kind];
   /* the one sentence every profile prints under the name (19 Sep 2026) */
   const metaLine = heroMetaWords(profile.age, profile.city);
@@ -189,7 +187,7 @@ export function PublicPersonPage({
                 /org/{id}, so a link shared from here 404s for the reader. */
             chips={
               <>
-                {isMe || kind === "org" ? null : (
+                {isMe ? null : (
                   <FollowToggle
                     target={{ kind: "person", id: profile.id }}
                     initialFollowing={following}
@@ -204,9 +202,9 @@ export function PublicPersonPage({
                 renders the owner's screen when the id is yours, so the chip no
                 longer has to know who is reading — which is the merge showing
                 its work. */}
-            <StatsChip href={`${path}/stats`} />
-                {kind === "org" ? null : <ProfileShare path={path} name={profile.fullName} />}
-                {kind === "org" ? null : <ProfileLink path={path} name={profile.fullName} />}
+                <StatsChip href={`${path}/stats`} />
+                <ProfileShare path={path} name={profile.fullName} />
+                <ProfileLink path={path} name={profile.fullName} />
               </>
             }
             styles={profile.styles}
@@ -249,9 +247,6 @@ export function PublicPersonPage({
           isMe={isMe}
           signedIn={signedIn}
           memberships={memberships}
-          /* the organizations naming them — RLS hands a stranger the PUBLIC ones
-             only, which is exactly what those organizations' own pages print */
-          organizations={organizations}
           artistTeam={artistTeam}
           /* ⚠ AND A STRANGER GETS THE SCHEDULE TOO (20 Sep 2026, found by reading
              this very page on the live site after the push). `runs` comes from

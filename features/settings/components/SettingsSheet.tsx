@@ -141,8 +141,8 @@ export type SettingsProfile =
       business: Tenant | null;
     }
   | { kind: "studio"; tenant: Tenant }
-  /* AN ORGANIZATION'S OWN SETTINGS (26 Sep 2026) — a business a person opens, with its own block */
-  | { kind: "org"; tenant: Tenant }
+  /* ⚠ `{ kind: "org" }` — an organization's own settings (26 Sep 2026) — went
+     with organizations on 29 Sep */
   | { kind: "crew"; crew: { id: string; name: string } };
 
 export function SettingsSheet({
@@ -194,10 +194,9 @@ export function SettingsSheet({
   /* ── WHAT THIS PROFILE IS, in the four shapes the sheet has to draw ── */
   const me = active.kind === "me" ? active : null;
   const studio = active.kind === "studio" ? active.tenant : null;
-  const org = active.kind === "org" ? active.tenant : null;
   /* the business whose SETTINGS these are: a person's own artist page, or the
-     studio or organization you are in. A crew is not a business and has neither. */
-  const biz: Tenant | null = studio ?? org ?? me?.business ?? null;
+     studio you are in. A crew is not a business and has neither. */
+  const biz: Tenant | null = studio ?? me?.business ?? null;
   const profile = me?.profile ?? null;
   const role: ProfileRole = me?.role ?? "user";
   const plan = me?.plan ?? null;
@@ -216,10 +215,10 @@ export function SettingsSheet({
   const desk = biz ? `/business/${biz.id}` : null;
   /* a person with no page of their own reads their OWN money screens; a studio
      always reads its desk's, which is the whole point of ask 2 */
-  const personal = !studio && !org && (isDancer || !desk);
+  const personal = !studio && (isDancer || !desk);
   /* the sheet says whose settings these are, because it is no longer always
      yours — the switcher's dot answers the same question one control away */
-  const whose = studio ? studio.name : org ? org.name : active.kind === "crew" ? active.crew.name : (profile?.fullName ?? null);
+  const whose = studio ? studio.name : active.kind === "crew" ? active.crew.name : (profile?.fullName ?? null);
 
   return (
     <div onClick={onClose} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,.55)", display: "flex", alignItems: "flex-end", justifyContent: "center", zIndex: 600, fontFamily: DOS_UI }}>
@@ -288,38 +287,10 @@ export function SettingsSheet({
           </>
         ) : null}
 
-        {/* ══ AN ORGANIZATION'S OWN SETTINGS (26 Sep 2026, the user: "separate
-            login for organization also goes away as it now gets created like
-            studios … verification process remains same for organization"). The
-            studio's block for the third kind of business a person opens: Edit,
-            then its VERIFICATION — which for an organization is its GST number,
-            on the business row, so the tile that was MONEY's for the retired
-            login is this block's now — then its Team, and its money. ══ */}
-        {org ? (
-          <>
-            <div style={head}>THIS ORGANIZATION</div>
-            <div style={grid}>
-              {/* no Edit tile (26 Sep 2026) — the pencil on the organization's own home */}
-              <Tile icon={ICONS.gst("#0EA5E9")} href={`${desk}/gst`} onNavigate={go} badge={<span style={badgeStyle(Boolean(org.gstinVerifiedAt))}>{org.gstinVerifiedAt ? "verified" : "needed"}</span>}>
-                GST number
-              </Tile>
-              <Tile icon={ICONS.team("#9A3412")} href={`${desk}/team`} onNavigate={go}>
-                Team
-              </Tile>
-              <Tile icon={ICONS.invoices("#3B82F6")} href={`${desk}/invoices`} onNavigate={go}>
-                Invoices
-              </Tile>
-              <Tile icon={ICONS.refunds("#F97316")} href={`${desk}/refunds`} onNavigate={go}>
-                Refunds
-              </Tile>
-              <Tile icon={ICONS.payments("#22C55E")} href={`${desk}/payments`} onNavigate={go}>
-                Payments
-              </Tile>
-              {/* ⚠ Enquiry types is the contact ⊕ on this organization's own
-                  home now — see the studio block above for the reason */}
-            </div>
-          </>
-        ) : null}
+        {/* ⚠⚠ THE "THIS ORGANIZATION" BLOCK WENT WITH ORGANIZATIONS (29 Sep
+            2026). It was the studio block for the third kind of business a
+            person opened: its GST number (the organization's own verification,
+            on the business row), its Team, and its money. */}
 
         {/* ── A CREW HAS ONE SETTING, AND IT IS THE SAME ONE A STUDIO HAS
             (22 Sep 2026). ⚠ THIS REVERSES C53's OWN SENTENCE, which said a crew

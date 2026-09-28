@@ -6,7 +6,7 @@ import { findMyDeck } from "@/repositories/home";
 import { findMyPendingInvites } from "@/repositories/invites";
 import { ensureArtistPage, findMyMemberships } from "@/repositories/tenants";
 import { findMyArtistPlan } from "@/repositories/plans";
-import { findMyFollowedCrews, findMyFollowedOrganizations, findMyFollowedPeople, findMyFollowing, findMyPersonFollowers } from "@/repositories/follows";
+import { findMyFollowedCrews, findMyFollowedPeople, findMyFollowing, findMyPersonFollowers } from "@/repositories/follows";
 import { findPersonHeaderPhotos } from "@/repositories/headerPhotos";
 import { ProfileLink, ProfileShare } from "@/features/profiles/components/ProfileShare";
 import { StatsChip } from "@/features/profiles/components/StatsChip";
@@ -74,12 +74,12 @@ export default async function HomePage() {
   const now = new Date();
   const nowIso = now.toISOString();
 
-  /* ⚠ `isOrg` IS GONE (26 Sep 2026): the organization LOGIN is retired — every
-     profile here is a person's, and an organization is a business they open
-     from the Organizations tile, with a Home of its own (`OrgHome`). The reads
-     that were the login's alone (`findMyOrgTenantId`, the GST card, the
-     standing card) went with it. What is still asked for is what is still
-     shown. */
+  /* ⚠ `isOrg` IS GONE (26 Sep 2026): the organization LOGIN was retired — every
+     profile here is a person's. ⚠⚠ AND ON 29 Sep 2026 THE ORGANIZATION ITSELF
+     WENT (the user: "remove Organization and Events completely"), taking
+     `OrgHome`, the standing card, the GST card and the two folds that hid this
+     page from an organization waiting on approval. What is still asked for is
+     what is still shown. */
   const [memberships, invites, plan] = await Promise.all([
     /* WITH the role (18 Sep 2026): an artist's grid needs the page they OWN, not
        the first business they belong to — a studio they teach at is not theirs */
@@ -91,15 +91,16 @@ export default async function HomePage() {
     /* ⚠ THE SUPPORT-THREADS READ WENT WITH ITS CARD (20 Sep 2026): Settings'
        Help & support tile is that door for every kind of account */
   ]);
-  const businesses = memberships.map((m) => m.tenant);
+  /* ⚠ the `businesses` list went with events (29 Sep 2026): its one reader was
+     `findMyDeck`, which asked which businesses had an event running today */
   /* what the sleeve calls you: a person is an artist while the plan is live */
   const isArtist = Boolean(plan?.active);
-  const kind = kindOf(profile.role, isArtist);
+  const kind = kindOf(isArtist);
 
   /* THE HEADER PICTURES (15 Sep 2026): what swipes across the top. THE KIND
      decides how many, here and in the database (19 Sep 2026, the user's limits):
-     a user one, an artist five, an organization ten — and a plan that lapsed
-     with five stored still draws one; the rest wait. */
+     a user one, an artist five — and a plan that lapsed with five stored still
+     draws one; the rest wait. */
   const headerMax = headerMaxFor(kind);
   /* the page a stranger reads — a person's whether or not they hold the plan (R24) */
   const publicHref = `/person/${profile.id}`;
@@ -109,56 +110,27 @@ export default async function HomePage() {
      population — the Profile tab lost the same figure earlier the same day
      (row C20), and `findMyPlace` is no longer read for either. */
 
-  /* AN ORGANIZATION'S HOME ASKS NO STUDIO'S QUESTION (17 Sep 2026, the user:
-     "organization home tab should not have classes options. classes can only be
-     created by users with artist subscription and studios"). Until today an
-     organization's deck was its FIRST studio's rooms, with Classes and Calendar
-     doors into that studio's register — one studio chosen by accident, and a
-     door to creating classes on a screen that is not a studio's. A studio's day
-     is asked on the studio's own home (7022-7060, `StudioHome`); here the deck
-     is what `findMyDeck` gives an organization — the events it hosts today, and
-     nothing a person would have, since an organization books, teaches and
-     assists nothing (`guard_person_only`). */
-  /* AN UNVERIFIED ORGANIZATION'S HOME IS THE STANDING CARD AND NOTHING ELSE
-     (10 Sep 2026, the user's ask). Until DanceOS has said yes it owns no studio
-     and cannot make one, so "Today's schedule" is always empty and every Studio
-     Tools tile is a door to an empty room — the prototype's own objection to
-     offering Manage to somebody who manages nothing (7135). The tab bar is the
-     chrome's, so Discover, Inbox and Profile are all still a tap away. */
-  /* ⚠ NOTHING IS WITHHELD FROM AN ORGANIZATION ANY MORE (11 Sep 2026). This
-     was `isOrg && !profile.verifiedAt`, and it hid the deck and Studio Tools
-     from every organization until an admin had looked at it — which was the
-     right shape when the ORGANIZATION was what got reviewed. Now a studio is
-     reviewed, after it exists, so an organization that has just signed up has
-     work to do from its first minute: open a studio, put it on the map, add
-     its photos, ask for the badge. It stays a constant so the two folds below
-     keep reading as a decision rather than as dead code. */
-  const orgAwaitingApproval = false;
   /* EVERY INDEPENDENT READ IN ONE ROUND TRIP (19 Sep 2026, "make app snappier"):
      the header pictures, today's deck, the page provisioned on first render for
      an artist (see below), and — since the figures came to Home the same day —
-     the five follow lists behind them. They used to run in sequence, and the
-     rank that was here is gone.
-     ⚠ AN ORGANIZATION ASKS FOR ALL FOUR NOW (20 Sep 2026, the user:
-     "Organization and Studio still dont have Following section in profile and
-     home"). They were skipped because R11 made an organization follow nothing;
-     `20260920180000_an_organization_follows` lifts that refusal in the three
-     doors, so these reads answer with real rows and the figure means something. */
-  /* THE GRID FOR THIS KIND OF ACCOUNT (18 Sep 2026, the user's list for all four
-     — `tilesFor` in home-kit carries it). An artist's grid opens the desks of the
-     page they OWN (Team, Students); a user's and an organization's carry no
-     desk of a business at all — a studio's desks are on the studio's own home.
+     the follow lists behind them. They used to run in sequence, and the rank
+     that was here is gone.
+     ⚠ THE ORGANIZATIONS LIST WENT ON 29 Sep 2026 with organizations themselves;
+     what a person follows is people, studios and crews. */
+  /* THE GRID FOR THIS KIND OF ACCOUNT (18 Sep 2026, the user's list — `tilesFor`
+     in home-kit carries it). An artist's grid opens the desks of the page they
+     OWN (Team, Students); a user's carries no desk of a business at all — a
+     studio's desks are on the studio's own home.
      ⚠ It is worked out HERE rather than beside the grid since 22 Sep 2026,
      because the batch below needs it: the arrangement is keyed by kind. */
   const homeKind = isArtist ? "artist" : "user";
-  const [header, deck, pageId, followers, followingPeople, followingTenants, followingOrgs, followingCrews, toolOrder] = await Promise.all([
+  const [header, deck, pageId, followers, followingPeople, followingTenants, followingCrews, toolOrder] = await Promise.all([
     findPersonHeaderPhotos(supabase, user.id, headerMax),
-    findMyDeck(supabase, user.id, nowIso, businesses),
+    findMyDeck(supabase, user.id, nowIso),
     !isArtist ? Promise.resolve(null) : ensureArtistPage(supabase, profile, memberships),
     findMyPersonFollowers(supabase).catch(() => []),
     findMyFollowedPeople(supabase).catch(() => []),
     findMyFollowing(supabase).catch(() => []),
-    findMyFollowedOrganizations(supabase).catch(() => []),
     findMyFollowedCrews(supabase).catch(() => []),
     /* ⚠ THIS PERSON'S OWN ARRANGEMENT OF THE TOOL GRID (22 Sep 2026). It rides
        the batch that is already being awaited, so Home costs no extra round
@@ -333,40 +305,21 @@ export default async function HomePage() {
             followers={followers}
             followingPeople={followingPeople}
             followingTenants={followingTenants}
-            followingOrgs={followingOrgs}
             followingCrews={followingCrews}
           />
         </IdentityHero>
 
-        {/* ── WHERE YOU STAND WITH DANCEOS (R13, 9 Sep 2026) — an organization only,
-            and on the outside screen rather than inside Studios, because it carries
-            the badge and the only door to a person about the decision.
-
-            UNTIL THE DECISION, AND NOT AFTER IT (11 Sep 2026, the user: "after
-            verification I don't need this verified organization box — the user
-            will create the studio and to make it discoverable he will subscribe,
-            then only the studio will be visible"). Once the tick is on the name
-            the card has nothing left to say that the studios hub does not say
-            better, beside each studio, with its own Subscribe button. The tick
-            on the sleeve is the whole verified state; the hub is the next step. ── */}
-        {/* ⚠ NO GST CARD ON HOME (11 Sep 2026 — the user: "GST verification step
-            is showing here at the org main screen and that['s] stupid; better
-            make it one of the options in settings"). It is a ONE-TIME errand,
-            and a permanent card for a one-time errand is clutter on the screen
-            an organization opens most. It lives at /gst now, reached from
-            Settings' own row and from the events desk, which is the only place
-            it actually stands in anybody's way. */}
-        {/* ⚠ AND THE CONVERSATION WITH DANCEOS IS GONE FROM HERE (20 Sep 2026,
-            the user: "remove your conversation with dance os … from just the home
-            tab for studio and organization profiles as already being handled from
-            settings"). It is Settings → Help & support, which every account has
-            and which is where the 10 Sep merge already put this one conversation.
-            A permanent card on the screen an organization opens most, for a door
-            that exists one tap away, is the same clutter the GST card was. */}
+        {/* ⚠ THE ORGANIZATION'S STANDING CARD, ITS GST CARD AND THE TWO FOLDS
+            THAT HID THIS PAGE FROM ONE ARE ALL GONE (29 Sep 2026, the user:
+            "remove Organization and Events completely"). Two of the three had
+            already left this screen at the user's own word (the conversation
+            with DanceOS on 20 Sep, the GST errand on 11 Sep) and the third —
+            `orgAwaitingApproval`, a `false` constant kept so the folds still
+            read as a decision — has nothing left to decide. Help & support is
+            Settings' row, which every account has. */}
 
         {/* ── THE DECK JUST SCROLLS (prototype 7106-7204): today, whole — one list, every side,
-            live first — under the one shelf head, with both doors named. An organization
-            still waiting on approval sees neither this nor the tools. ── */}
+            live first — under the one shelf head, with both doors named. ── */}
         {/* ── THE BUTTONS ABOVE THE SCHEDULE, THE SAME ROW THE PROFILE PAGE
             CARRIES (21 Sep 2026, the user: "buttons above schedule should also
             be visible on the home tab in the same way as profile"). On the
@@ -381,42 +334,34 @@ export default async function HomePage() {
             it — it re-lays out the ones beside it, and the row would be a
             different shape here from the page it is meant to match. Its
             accessible NAME becomes the reason, so a locator asking for the live
-            button cannot match the dead one.
-            ⚠ An organization still waiting on approval sees none of this, for
-            the same reason it sees no deck and no tools. ── */}
-        {orgAwaitingApproval ? null : (
-          <>
-            {/* no gap of its own — the hero's own bottom padding is it (21 Sep 2026) */}
-            <ActionRow>
-              {asksGoHere ? (
-                <EnquiryButton
-                  tenantId={asksGoHere}
-                  tenantName={profile.fullName}
-                  tenantType="artist_page"
-                  signedIn
-                  accent={ring[1]}
-                  cannotAsk="This is your own page — enquiries come to you here"
-                />
-              ) : null}
-              {/* an ARTIST's Call only while their own switch is on (push 2, 19 Sep 2026) */}
-              {profile.phone && isArtist && profile.phonePublic ? <CallButton phone={profile.phone} /> : null}
-              {!isPlainUser && profile.contactEmail ? <MailButton email={profile.contactEmail} /> : null}
-              {/* MESSAGE — the WhatsApp entry in the links, as a button (26 Sep 2026) */}
-              {!isPlainUser && whatsappHrefOf(profile.socials) ? <MessageButton href={whatsappHrefOf(profile.socials) as string} /> : null}
-              {/* ⚠ a person's row never carries a pin — the Location button was the
-                  retired organization login's (26 Sep 2026); an organization's pin
-                  is its business row's, on its own home */}
-            </ActionRow>
-            {/* the ⊕ that makes and unmakes those buttons, while the pencil is pressed (26 Sep 2026) */}
-            <ContactEditButton target={{ kind: "person", profile, isArtist }} />
-            <TodayShelf deck={deck} />
-          </>
-        )}
+            button cannot match the dead one. ── */}
+        {/* no gap of its own — the hero's own bottom padding is it (21 Sep 2026) */}
+        <ActionRow>
+          {asksGoHere ? (
+            <EnquiryButton
+              tenantId={asksGoHere}
+              tenantName={profile.fullName}
+              tenantType="artist_page"
+              signedIn
+              accent={ring[1]}
+              cannotAsk="This is your own page — enquiries come to you here"
+            />
+          ) : null}
+          {/* an ARTIST's Call only while their own switch is on (push 2, 19 Sep 2026) */}
+          {profile.phone && isArtist && profile.phonePublic ? <CallButton phone={profile.phone} /> : null}
+          {!isPlainUser && profile.contactEmail ? <MailButton email={profile.contactEmail} /> : null}
+          {/* MESSAGE — the WhatsApp entry in the links, as a button (26 Sep 2026) */}
+          {!isPlainUser && whatsappHrefOf(profile.socials) ? <MessageButton href={whatsappHrefOf(profile.socials) as string} /> : null}
+          {/* ⚠ a person's row never carries a pin — the Location button was the
+              retired organization login's (26 Sep 2026) */}
+        </ActionRow>
+        {/* the ⊕ that makes and unmakes those buttons, while the pencil is pressed (26 Sep 2026) */}
+        <ContactEditButton target={{ kind: "person", profile, isArtist }} />
+        <TodayShelf deck={deck} />
 
         {/* ── run your business — the prototype's BizSection (7342-7344, 2497-2583). It is the
             sheet that covers the deck, so it is opaque and it is above. ── */}
-        {orgAwaitingApproval ? null : (
-          <div style={{ position: "relative", zIndex: 1, background: LILAC }}>
+        <div style={{ position: "relative", zIndex: 1, background: LILAC }}>
             <BizSection kind={homeKind} pageId={pageId} order={toolOrder}>
               {/* THE PAGE COULD NOT BE MADE (18 Sep 2026): the plan is live and Home just
                   tried to provision the page the artist tools run through, and the
@@ -460,8 +405,7 @@ export default async function HomePage() {
                 </Link>
               ))}
             </BizSection>
-          </div>
-        )}
+        </div>
       </div>
     </div>
     </RecordListsProvider>

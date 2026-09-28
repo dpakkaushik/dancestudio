@@ -14,17 +14,21 @@ export const MEDIA_BUCKET = "media";
 
 /** HOW MANY HEADER PICTURES A PROFILE MAY HOLD — BY KIND (19 Sep 2026, the user:
  *  "Poster on all profiles should be swipeable with limits — Organization &
- *  Studio 10, Artist and Crews 5, User 1"). An organization holds ten, an
- *  artist FIVE (it was ten until today — nothing stored is deleted, the ceiling
- *  is what the door refuses beyond), a plain user one, a crew five. A studio's
- *  ten is its verification photos (`PROOF_MAX`). The database refuses past each
+ *  Studio 10, Artist and Crews 5, User 1"). An artist holds FIVE (it was ten
+ *  until that day — nothing stored is deleted, the ceiling is what the door
+ *  refuses beyond), a plain user one, a crew five. A studio's ten is its
+ *  verification photos (`PROOF_MAX`). The database refuses past each
  *  (`add_my_header_photo`, `add_crew_header_photo`); said here so the screens
- *  stop offering the tile at the same count. */
-export const HEADER_MAX_ORG = 10;
+ *  stop offering the tile at the same count.
+ *
+ *  ⚠ `HEADER_MAX_ORG` WENT WITH ORGANIZATIONS (29 Sep 2026). The database's own
+ *  ceiling in `add_my_header_photo` is untouched — it was only ever reachable
+ *  by a profile whose role was `org`, and no live profile has carried that since
+ *  R48 retired the login on 26 Sep. */
 export const HEADER_MAX_ARTIST = 5;
 export const HEADER_MAX_USER = 1;
 export const HEADER_MAX_CREW = 5;
-export const headerMaxFor = (kind: PersonKind): number => (kind === "org" ? HEADER_MAX_ORG : kind === "artist" ? HEADER_MAX_ARTIST : HEADER_MAX_USER);
+export const headerMaxFor = (kind: PersonKind): number => (kind === "artist" ? HEADER_MAX_ARTIST : HEADER_MAX_USER);
 
 /** what the bucket itself accepts (mirrored from the migration, so the browser
  *  can refuse a file before spending somebody's data on the upload) */
@@ -43,14 +47,14 @@ export type PhotoOwner =
    *  because a studio's header pictures ARE the photos it showed DanceOS to be
    *  verified; `orgId` is that owner */
   | { kind: "studioHeader"; id: string; orgId: string }
-  /** AN UPLOADED POSTER for a class or an event (27 Sep 2026) — `id` is the
-   *  BUSINESS, not the class and not the uploader. A studio's flyers are the
-   *  studio's: its owner and its trainers both post, and a class outlives
-   *  whoever happened to upload for it, so keying on `auth.uid()` (as
-   *  `routines/` rightly does for a person's own track) would scatter one
-   *  studio's posters across its team's folders. The storage policy asks
-   *  `is_business_member` and `set_class_poster` re-checks the same prefix. */
-  | { kind: "poster"; id: string; subject: { kind: "class" | "event"; id: string } };
+  /** AN UPLOADED POSTER for a class (27 Sep 2026; an event's went with events on
+   *  29 Sep) — `id` is the BUSINESS, not the class and not the uploader. A
+   *  studio's flyers are the studio's: its owner and its trainers both post, and
+   *  a class outlives whoever happened to upload for it, so keying on
+   *  `auth.uid()` (as `routines/` rightly does for a person's own track) would
+   *  scatter one studio's posters across its team's folders. The storage policy
+   *  asks `is_business_member` and `set_class_poster` re-checks the same prefix. */
+  | { kind: "poster"; id: string; subject: { kind: "class"; id: string } };
 
 /* ⚠ THESE ARE STORAGE FOLDERS, NOT TABLE NAMES, AND THEY ARE NEVER RENAMED (Rule
    16): objects live under them, the storage policies test them by name, and the

@@ -189,9 +189,11 @@ export const INVITABLE_ROLES: ReadonlyArray<readonly [InvitableRole, string]> = 
  *
  *  ⚠ AND A MANAGER IS A STUDIO'S ALONE (28 Sep 2026). An artist page is ONE
  *  PERSON'S public face — there is no business under it for somebody else to
- *  run, only help to be given — so it keeps the two it had. An organization's
- *  labels are its own list (`OrgTeamDesk`), not this one. */
-export const rolesFor = (type: "studio" | "artist_page" | "org"): ReadonlyArray<readonly [InvitableRole, string]> =>
+ *  run, only help to be given — so it keeps the two it had.
+ *  ⚠ The `org` arm went with organizations on 29 Sep 2026: an organization's
+ *  labels were its own list (`OrgTeamDesk`) rather than this one, so what this
+ *  function loses is a `type` value it never branched on. */
+export const rolesFor = (type: "studio" | "artist_page"): ReadonlyArray<readonly [InvitableRole, string]> =>
   type === "studio"
     ? INVITABLE_ROLES
     : ([
@@ -209,7 +211,7 @@ export const rolesFor = (type: "studio" | "artist_page" | "org"): ReadonlyArray<
  *  ALREADY on the team and already consented to be there, which is what
  *  `set_member_role` now admits. The database refuses to demote the last owner,
  *  so the desk cannot leave a studio ownerless however the chips are pressed. */
-export const labelsFor = (type: "studio" | "artist_page" | "org"): ReadonlyArray<readonly [MemberRole, string]> =>
+export const labelsFor = (type: "studio" | "artist_page"): ReadonlyArray<readonly [MemberRole, string]> =>
   [["owner", "Owner"] as const, ...rolesFor(type)];
 
 /* ⚠ `MEMBER_POWERS` — the ticked five-line permissions table — was here and is

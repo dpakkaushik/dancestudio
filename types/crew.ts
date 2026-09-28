@@ -69,31 +69,17 @@ export interface MyCrewAsk extends CrewMember {
   leaderName: string;
 }
 
-/** One line of the battle record: an event the crew entered (16437-16460) */
-export interface CrewEntry {
-  bookingId: string;
-  eventId: string;
-  eventTitle: string;
-  eventCat: "showcase" | "battle" | "tournament";
-  eventShareSlug: string;
-  startDate: string;
-  endDate: string;
-  city: string;
-  eventStatus: "draft" | "published" | "completed";
-  enteredAt: string;
-}
-
-/** A duet partner's ask (the Requests desk): somebody entered an event with you */
-export interface PartnerAsk {
-  bookingId: string;
-  /** which event — the Inbox reads it by id to draw the event's own card */
-  eventId: string;
-  status: "asked" | "confirmed" | "rejected";
-  entrantName: string;
-  entrantId: string | null;
-  partnerName: string;
-  eventTitle: string;
-  eventShareSlug: string;
-  startDate: string;
-  createdAt: string;
-}
+/** ⚠⚠ `CrewEntry` AND `PartnerAsk` WENT WITH EVENTS (29 Sep 2026, the user:
+ *  *"Remove Organization and Events completely from the system"*).
+ *
+ *  `CrewEntry` was one line of the BATTLE RECORD (16437-16460) — the events a
+ *  crew had entered, read off `event_bookings.crew_id`, drawn on the crew's own
+ *  desk and on its public page. `PartnerAsk` was the duet half: somebody entered
+ *  an event with you and you were asked to confirm, which the Inbox drew as the
+ *  app's own event card.
+ *
+ *  ⚠ Both were the only things `event_bookings` carried that were about a CREW
+ *  rather than about an event, so both had to go with it — what a crew is loses
+ *  nothing else: it still has a roster answered by consent, a leader, practices,
+ *  a public page and a board row. What it loses is a RECORD of what it competed
+ *  in, and there is nothing left in the app that could hold one. */

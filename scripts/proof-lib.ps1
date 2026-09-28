@@ -105,53 +105,19 @@ function New-Artist-Page($token, $name, $area, $city) {
 }
 
 # ---------------------------------------------------------------------------
-# AN ORGANIZATION IS A BUSINESS A PERSON OPENS (26 Sep 2026, 20260926120000).
+# !! NEW-ORG, VERIFY-ORG-GST AND SUBSCRIBE-ORG WENT WITH ORGANIZATIONS
+# (29 Sep 2026, the user: "remove Organization and Events completely").
 #
-# The separate organization login is retired. What an organization IS from here:
-# a `businesses` row of type `org`, owned through the same owner seat a studio
-# is, with a GST number OF ITS OWN and a Rs 5,000-a-month mandate. It is PUBLIC
-# (its events bookable, its page readable, its team printed, followable) only
-# while its GST number is verified AND its own subscription is live
-# (org_is_public). So a proof that hosts an event, or reads an organization as
-# a stranger, needs all three of these in order:
+# They were the three-step world a proof needed before it could host an event or
+# read an organization as a stranger (26 Sep 2026): open the `businesses` row of
+# type `org`, verify its GST number, grant it the Rs 5,000 mandate, because
+# org_is_public asked for both. Nothing in the app makes any of the three now,
+# and the RPCs behind two of them are the migration's to drop.
 #
-#   $org = New-Org $owner.token "Proof Org $stamp" "Pune"
-#   Verify-Org-Gst $owner.token ([string]$org.id) "PRF$digits"
-#   Subscribe-Org ([string]$org.id)
-#
-# Every proof's cleanup deletes the org business it made BEFORE the account, the
-# same as a studio (a business whose owner is gone is the #0aa pile).
-function New-Org($token, $name, $city) {
-  Assert-City $city
-  Sweep-Own-Leftovers $token $name
-  $h = @{ apikey = $anon; Authorization = "Bearer $token"; "Content-Type" = "application/json"; Prefer = "return=representation" }
-  return Invoke-RestMethod -Method Post -Uri "$base/rest/v1/rpc/create_business_with_owner" -Headers $h -Body (@{
-    p_name = $name; p_type = "org"; p_area = $null; p_city = $city } | ConvertTo-Json)
-}
-
-# the owner's own door for the GST number, the way the Verify button does it
-# (shape-checked: three letters then five digits). Replaces verify_gstin(text),
-# which is DROPPED - the number is the business's, not a profile's.
-function Verify-Org-Gst($token, $orgId, $gstin) {
-  $h = @{ apikey = $anon; Authorization = "Bearer $token"; "Content-Type" = "application/json"; Prefer = "return=representation" }
-  return Invoke-RestMethod -Method Post -Uri "$base/rest/v1/rpc/verify_business_gstin" -Headers $h -Body (@{
-    p_business_id = $orgId; p_gstin = $gstin } | ConvertTo-Json)
-}
-
-# the organization's own mandate, as an admin's grant - Subscribe-Studio's twin
-# for the third kind. $userId is optional: read off the owner seat when absent.
-# !! NOTHING is listed: an organization's row is never `listed`; org_is_public is
-# what makes it public, and that reads the GST number and this row.
-function Subscribe-Org($orgId, $userId = $null) {
-  if (-not $userId) {
-    $ownerRows = @(Invoke-RestMethod -Method Get -Uri "$base/rest/v1/business_members?business_id=eq.$orgId&member_role=eq.owner&deleted_at=is.null&select=user_id" -Headers $svcH)
-    $userId = [string]$ownerRows[0].user_id
-  }
-  Invoke-RestMethod -Method Post -Uri "$base/rest/v1/subscriptions" -Headers $svcH -Body (@{
-    kind = "org"; user_id = $userId; business_id = $orgId; plan_key = "org_monthly"; price_inr = 0; period = "monthly"; status = "active"
-    current_period_start = (Get-Date).ToString("yyyy-MM-dd"); current_period_end = (Get-Date).AddYears(1).ToString("yyyy-MM-dd"); granted = $true
-    note = "Granted by a proof script - nothing charged"; created_by = $userId; updated_by = $userId } | ConvertTo-Json) | Out-Null
-}
+# !! What this means for a proof that still wants an EVENT: there is no way to
+# make one, which is the point. A proof asserting an event's behaviour is
+# asserting a feature that is gone, and the honest answer is to delete the check
+# rather than to keep a helper alive so it can pass.
 
 # THE CITY VOCABULARY IS THE DATABASE'S, AND A PROOF MAY NOT INVENT ONE.
 #

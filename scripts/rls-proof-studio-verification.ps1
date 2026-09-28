@@ -1,23 +1,24 @@
-﻿# RLS proof: VERIFICATION BELONGS TO THE STUDIO, AND A GST NUMBER TO THE ORGANIZATION (11 Sep 2026).
+# RLS proof: VERIFICATION BELONGS TO THE STUDIO (11 Sep 2026).
 #
-# The user: "instead of social media use GST number ... right now bypass: a Verify button - in
-# format then verified, else reject. If a user doesn't have a GST he can still create a studio
-# but can't create an event. The earlier logic of org verification will work for the studio:
-# upload 5-10 images and social media for the studio, admin verifies it, studio gets a badge,
-# then it subscribes to go live."
+# The user: "the earlier logic of org verification will work for the studio: upload 5-10 images
+# and social media for the studio, admin verifies it, studio gets a badge, then it subscribes to
+# go live."
 #
 # What is proven, against the live database, as the PEOPLE involved (never the service role,
 # except where it stands in for an admin's hand or a screen the owner would have used):
-#   1. a PERSON nobody has verified opens a studio (26 Sep 2026: any account may - the
-#      organization login is retired, and an organization is a BUSINESS a person opens)
-#   2. the org business's GST number cannot be written by hand; only verify_business_gstin moves it
-#   3. verify_business_gstin refuses a wrong shape with the reason, accepts a right one, refuses a twin
-#      (the accepted shape is the PLACEHOLDER the user asked for: 3 letters, 5 digits)
-#   4. an event is refused without the number and allowed with it (why_no_event takes the org business)
-#   5. the studio's review: a link and five photos before the ask; only the owner asks; idempotent
-#   6. no badge, no subscription; the owner cannot stamp the badge; an admin can, and it lists
-#   7. the badge can be revoked and given again; the GST number can be cleared and the door shuts
-#   7b. a platform admin reads the unlisted studio it is reviewing; another person cannot
+#   1. a PERSON nobody has verified opens a studio (26 Sep 2026: any account may)
+#   2. the studio's review: a link and five photos before the ask; only the owner asks; idempotent
+#   3. the mandate may start before the badge (27 Sep 2026, "pay at creation, verify after") and
+#      it buys nothing public; the owner cannot stamp the badge
+#   3b. a platform admin reads the unlisted studio it is reviewing; another person cannot
+#   4. an admin approves: the badge lands, the owner is told, the sentence moves on
+#   5. the badge alone does not list the studio - the subscription is what does
+#   6. the badge can be revoked and given again
+#
+# !! THE GST HALF WENT WITH ORGANIZATIONS AND EVENTS (29 Sep 2026). It was the user's other
+# sentence - "instead of social media use GST number ... if a user doesn't have a GST he can
+# still create a studio but can't create an event" - and it was four checks, every one of them
+# on a business of type `org`. See the note above check 2.
 #
 # Reads keys from .env.local - run from the repo root:
 #   powershell -NoProfile -ExecutionPolicy Bypass -File scripts/rls-proof-studio-verification.ps1
@@ -83,10 +84,7 @@ function New-Person($email, $name) {
 
 $pass = $true
 $stamp = Get-Date -Format "HHmmss"
-$digits = (Get-Date -Format "HHmmss").Substring(1)
 $made = @()
-$orgA = $null
-$orgB = $null
 
 try {
   $a = New-Person "sv-a-$stamp@example.com" "Studio Verif A $stamp"; $made += $a.id
@@ -97,49 +95,20 @@ try {
   $ta = New-Studio $a.token "SV Studio $stamp" "Kothrud" "Pune"
   Check 1 "A person nobody has verified opens a studio (gate: '$gate'; studio: $($ta.id))" ((NoSentence $gate) -and $ta.id)
 
-  # the two org BUSINESSES the GST number belongs to (26 Sep 2026) - born without one
-  $orgA = [string](New-Org $a.token "SV Org A $stamp" "Pune").id
-  $orgB = [string](New-Org $b.token "SV Org B $stamp" "Pune").id
+  # !! CHECKS 2-5b WENT WITH ORGANIZATIONS AND EVENTS (29 Sep 2026, the user:
+  # "remove Organization and Events completely"). They were the GST NUMBER from
+  # end to end - that it cannot be written by hand (2), what `verify_business_gstin`
+  # refuses and accepts (3), that a second organization cannot claim the same one
+  # (4), that an EVENT needs it (5) and that clearing it shuts the events door
+  # again (5b). Every one of them needed a business of type `org`, which nothing
+  # makes now, and the last two needed an event on top of that.
+  #
+  # !! THE GST NUMBER IS NOT A STUDIO'S AND NEVER WAS: check 3 asserted exactly
+  # that ("a STUDIO takes none"), so there is no half of this block to keep. The
+  # RPCs - `verify_business_gstin`, `clear_business_gstin`, `why_no_event` - are
+  # the migration's to drop, along with `lib/gst/gstin.ts` and its own proof.
 
-  # ── 2. the GST number is not written by hand ──
-  $hand = Fails { Invoke-RestMethod -Method Patch -Uri "$base/rest/v1/businesses?id=eq.$orgA" -Headers (Api $a.token) -Body (@{ gstin = "HND${digits}"; gstin_verified_at = [DateTime]::UtcNow.ToString("o") } | ConvertTo-Json) }
-  $after = Get-Rows $svcH "businesses?id=eq.$orgA&select=gstin,gstin_verified_at"
-  Check 2 "The owner's own PATCH of the org business's gstin is refused or ignored ('$hand'); the column is still empty" ($null -eq $after[0].gstin)
-
-  # ── 3. verify_business_gstin: the reasons, the acceptance, the twin ──
-  $short = Fails { Verify-Org-Gst $a.token $orgA "ABC1234" }
-  $long = Fails { Verify-Org-Gst $a.token $orgA "ABC123456" }
-  $shape = Fails { Verify-Org-Gst $a.token $orgA "27ABCDE1234F1Z5" }
-  $onStudio = Fails { Verify-Org-Gst $a.token ([string]$ta.id) "PRS${digits}" }
-  $notMineGst = Fails { Verify-Org-Gst $b.token $orgA "PRX${digits}" }
-  $gstA = "PRF${digits}"
-  $when = Verify-Org-Gst $a.token $orgA " prf-${digits} "
-  $rowA = Get-Rows $svcH "businesses?id=eq.$orgA&select=gstin,gstin_verified_at"
-  Check 3 "verify_business_gstin says why: four digits ('$short'), six digits ('$long'), a real 15-character GSTIN is not the accepted shape ('$shape'); a STUDIO takes none ('$onStudio'); somebody else's organization is refused ('$notMineGst'); accepts and normalises the right one (stored: $($rowA[0].gstin))" (
-    ($short -match "three letters then five digits") -and ($long -match "three letters then five digits") -and ($shape -match "three letters then five digits") -and ($onStudio -match "belongs to an organization") -and ($notMineGst -match "owner") -and ($rowA[0].gstin -eq $gstA) -and $rowA[0].gstin_verified_at)
-  $twin = Fails { Verify-Org-Gst $b.token $orgB $gstA }
-  Check 4 "A second organization cannot claim the same number ('$twin')" ($twin -match "already on another")
-
-  # ── 4. an event needs the number ──
-  $whyB = Rpc (Api $b.token) "why_no_event" @{ p_business_id = $orgB }
-  $in10 = (Get-Date).AddDays(10).ToString("yyyy-MM-dd")
-  $ev = @{ category = "showcase"; title = "SV Showcase $stamp"; style = "All styles"; start_date = $in10; end_date = $in10; start_time = "18:00"
-    venue = "Proof Hall"; address = "Kothrud"; city = "Pune"; maps_url = "https://maps.google.com/?q=Proof+Hall"; about = "Proof event"
-    entry_format = "none"; bracket = 0; rounds = 0; prizes = @(); tickets_on = $false; entry_tiers = @(); ticket_tiers = @() }
-  $noGst = Fails { Rpc (Api $b.token) "save_event" @{ p_business_id = $orgB; p_event_id = $null; p_event = $ev } }
-  Verify-Org-Gst $b.token $orgB "PRB${digits}" | Out-Null
-  $whyB2 = Rpc (Api $b.token) "why_no_event" @{ p_business_id = $orgB }
-  $evId = Rpc (Api $b.token) "save_event" @{ p_business_id = $orgB; p_event_id = $null; p_event = $ev }
-  Check 5 "Without a GST number: why_no_event = '$whyB'; save_event refused ('$noGst'). With one: why_no_event is null and the event saves ($evId)" (
-    ($whyB -match "GST") -and ($noGst -match "GST") -and (NoSentence $whyB2) -and $evId)
-  # the number can be taken off again, and the events door closes with it
-  Rpc (Api $b.token) "clear_business_gstin" @{ p_business_id = $orgB } | Out-Null
-  $whyB3 = Rpc (Api $b.token) "why_no_event" @{ p_business_id = $orgB }
-  $rowB = Get-Rows $svcH "businesses?id=eq.$orgB&select=gstin,gstin_verified_at"
-  Verify-Org-Gst $b.token $orgB "PRB${digits}" | Out-Null
-  Check "5b" "clear_business_gstin empties both columns (gstin: '$($rowB[0].gstin)') and the door shuts again: '$whyB3'" (($null -eq $rowB[0].gstin) -and ($null -eq $rowB[0].gstin_verified_at) -and ($whyB3 -match "GST"))
-
-  # ── 5. the studio's review ──
+  # ── 2. the studio's review ──
   $noLink = Fails { Rpc (Api $a.token) "request_studio_verification" @{ p_business_id = $ta.id } }
   # the link is typed on the studio's Edit sheet; the service role stands in for that screen
   Invoke-RestMethod -Method Patch -Uri "$base/rest/v1/businesses?id=eq.$($ta.id)" -Headers $svcH -Body (@{ socials = @(@{ platform = "Instagram"; url = "https://instagram.com/svstudio" }) } | ConvertTo-Json -Depth 4) | Out-Null
@@ -151,7 +120,7 @@ try {
   $req1 = [string](Rpc (Api $a.token) "request_studio_verification" @{ p_business_id = $ta.id })
   $req2 = [string](Rpc (Api $a.token) "request_studio_verification" @{ p_business_id = $ta.id })
   $reqRow = Get-Rows $svcH "studio_verification_requests?id=eq.$req1&select=status,business_id,org_id"
-  Check 6 "No link: '$noLink'. No photos: '$noPhotos'. Another person's photo: '$notMine'. A file outside the owner's folder: '$wrongFolder'. Another person's ask: '$bAsks'. Then the ask files once ($req1) and is idempotent" (
+  Check 2 "No link: '$noLink'. No photos: '$noPhotos'. Another person's photo: '$notMine'. A file outside the owner's folder: '$wrongFolder'. Another person's ask: '$bAsks'. Then the ask files once ($req1) and is idempotent" (
     ($noLink -match "link") -and ($noPhotos -match "5 photos") -and ($notMine -match "owner") -and ($wrongFolder -match "folder") -and ($bAsks -match "owner") -and $req1 -and ($req1 -eq $req2) -and ($reqRow[0].status -eq "pending") -and ($reqRow[0].business_id -eq $ta.id))
 
   # -- 6. PAYING COMES FIRST NOW, and the badge is still DanceOS's to give.
@@ -174,7 +143,7 @@ try {
   # 11 Sep lesson. READ THE COLUMN BACK instead.
   Fails { Invoke-RestMethod -Method Patch -Uri "$base/rest/v1/businesses?id=eq.$($ta.id)" -Headers (Api $a.token) -Body (@{ visibility = "listed" } | ConvertTo-Json) } | Out-Null
   $after = Get-Rows $svcH "businesses?id=eq.$($ta.id)&select=verified_at,visibility"
-  Check 7 "An unverified studio may start its mandate (status '$(if ($subRow.Count) { $subRow[0].status } else { 'none' })'), and it buys nothing public: '$($tick0[0].visibility)' before and '$($after[0].visibility)' after its owner tried to list it; the owner's own PATCH of the badge leaves it null ('$handBadge'); the hub's sentence: '$why0'" (
+  Check 3 "An unverified studio may start its mandate (status '$(if ($subRow.Count) { $subRow[0].status } else { 'none' })'), and it buys nothing public: '$($tick0[0].visibility)' before and '$($after[0].visibility)' after its owner tried to list it; the owner's own PATCH of the badge leaves it null ('$handBadge'); the hub's sentence: '$why0'" (
     ($subRow.Count -eq 1) -and ($subRow[0].status -eq "pending_auth") -and ($subRow[0].plan_key -eq "studio_monthly") -and
     ($tick0[0].visibility -eq "unlisted") -and ($after[0].visibility -eq "unlisted") -and
     ($null -eq $after[0].verified_at) -and ($why0 -match "checking this studio"))
@@ -188,17 +157,17 @@ try {
   # over a studio that had just submitted a link and five photos.
   $adminSees = Get-Rows (Api $adm.token) "businesses?id=eq.$($ta.id)&select=id,name,visibility"
   $bSees = Get-Rows (Api $b.token) "businesses?id=eq.$($ta.id)&select=id"
-  Check "7b" "The admin reads the unlisted studio it is reviewing ($($adminSees.Count) row, visibility $($adminSees[0].visibility)); another person reads nothing ($($bSees.Count) rows)" (($adminSees.Count -eq 1) -and ($adminSees[0].visibility -eq "unlisted") -and ($bSees.Count -eq 0))
+  Check "3b" "The admin reads the unlisted studio it is reviewing ($($adminSees.Count) row, visibility $($adminSees[0].visibility)); another person reads nothing ($($bSees.Count) rows)" (($adminSees.Count -eq 1) -and ($adminSees[0].visibility -eq "unlisted") -and ($bSees.Count -eq 0))
   $bDecides = Fails { Rpc (Api $b.token) "decide_studio_verification" @{ p_business_id = $ta.id; p_approve = $true; p_note = $null } }
   Rpc (Api $adm.token) "decide_studio_verification" @{ p_business_id = $ta.id; p_approve = $true; p_note = "Floor, mirrors, a class in progress - approved." } | Out-Null
   $tick1 = Get-Rows $svcH "businesses?id=eq.$($ta.id)&select=verified_at,visibility"
   $reqDone = Get-Rows $svcH "studio_verification_requests?id=eq.$req1&select=status"
   $why1 = Rpc (Api $a.token) "why_no_studio" @{ p_business_id = $ta.id }
   $told = Get-Rows $svcH "notifications?user_id=eq.$($a.id)&select=title&order=created_at.desc&limit=3"
-  Check 8 "A non-admin cannot decide ('$bDecides'). The admin approves: the badge is on ($($tick1[0].verified_at)), the request is $($reqDone[0].status), the owner is told ('$($told[0].title)'), and the sentence moves to the subscription: '$why1'" (
+  Check 4 "A non-admin cannot decide ('$bDecides'). The admin approves: the badge is on ($($tick1[0].verified_at)), the request is $($reqDone[0].status), the owner is told ('$($told[0].title)'), and the sentence moves to the subscription: '$why1'" (
     ($bDecides -match "admin") -and $tick1[0].verified_at -and ($reqDone[0].status -eq "approved") -and ($why1 -match "subscription") -and ($told | Where-Object { $_.title -match "verified" }))
   # still not on Discover: the badge is not the listing - the subscription is
-  Check 9 "The badge alone does not list the studio (visibility: $($tick1[0].visibility))" ($tick1[0].visibility -eq "unlisted")
+  Check 5 "The badge alone does not list the studio (visibility: $($tick1[0].visibility))" ($tick1[0].visibility -eq "unlisted")
 
   # ── 7. the badge can be taken off (the Approved tab's Revoke), and given again ──
   Rpc (Api $adm.token) "decide_studio_verification" @{ p_business_id = $ta.id; p_approve = $false; p_note = "Revoked by the proof - the photos were of another floor." } | Out-Null
@@ -206,12 +175,12 @@ try {
   $why2 = Rpc (Api $a.token) "why_no_studio" @{ p_business_id = $ta.id }
   Rpc (Api $adm.token) "decide_studio_verification" @{ p_business_id = $ta.id; p_approve = $true; p_note = $null } | Out-Null
   $tick3 = Get-Rows $svcH "businesses?id=eq.$($ta.id)&select=verified_at"
-  Check 10 "Revoke takes the badge off (now: $($tick2[0].verified_at)) and the sentence goes back to the ask: '$why2'; approving again puts it on ($($tick3[0].verified_at))" (
+  Check 6 "Revoke takes the badge off (now: $($tick2[0].verified_at)) and the sentence goes back to the ask: '$why2'; approving again puts it on ($($tick3[0].verified_at))" (
     ($null -eq $tick2[0].verified_at) -and ($why2 -match "verify") -and $tick3[0].verified_at)
 }
 finally {
   # everything this proof made goes: users cascade to profiles, requests, photos, memberships;
-  # the businesses and the event are removed by hand because they hang off memberships
+  # the studio is removed by hand because it hangs off memberships
   try {
     if ($ta -and $ta.id) {
       Invoke-RestMethod -Method Delete -Uri "$base/rest/v1/subscriptions?business_id=eq.$($ta.id)" -Headers $svcH | Out-Null
@@ -219,14 +188,6 @@ finally {
       Invoke-RestMethod -Method Delete -Uri "$base/rest/v1/studio_verification_requests?business_id=eq.$($ta.id)" -Headers $svcH | Out-Null
       Invoke-RestMethod -Method Delete -Uri "$base/rest/v1/business_members?business_id=eq.$($ta.id)" -Headers $svcH | Out-Null
       Invoke-RestMethod -Method Delete -Uri "$base/rest/v1/businesses?id=eq.$($ta.id)" -Headers $svcH | Out-Null
-    }
-    if ($evId) { Invoke-RestMethod -Method Delete -Uri "$base/rest/v1/events?id=eq.$evId" -Headers $svcH | Out-Null }
-    # the two org businesses this proof opened (26 Sep 2026), BEFORE their owners
-    foreach ($o in @($orgA, $orgB)) {
-      if ($o) {
-        Invoke-RestMethod -Method Delete -Uri "$base/rest/v1/business_members?business_id=eq.$o" -Headers $svcH | Out-Null
-        Invoke-RestMethod -Method Delete -Uri "$base/rest/v1/businesses?id=eq.$o" -Headers $svcH | Out-Null
-      }
     }
   } catch { "cleanup note: $($_.Exception.Message)" }
   foreach ($id in $made) {

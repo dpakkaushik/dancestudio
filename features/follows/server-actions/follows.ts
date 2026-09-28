@@ -71,7 +71,7 @@ export async function setPersonFollowAction(input: { userId: string; on: boolean
   try {
     const state = await setPersonFollow(supabase, parsed.data.userId, parsed.data.on);
     revalidatePath(`/person/${parsed.data.userId}`);
-    revalidatePath(`/org/${parsed.data.userId}`);
+    /* ⚠ the `/org/{id}` revalidation went with organizations (29 Sep 2026) */
     revalidatePath("/profile");
     return { state, error: null };
   } catch (error: unknown) {

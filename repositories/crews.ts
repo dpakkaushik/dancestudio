@@ -1,5 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
-import type { Crew, CrewEntry, CrewMember, CrewRole, CrewSummary, MyCrewAsk, PartnerAsk } from "@/types/crew";
+import type { Crew, CrewMember, CrewRole, CrewSummary, MyCrewAsk } from "@/types/crew";
 
 /** Step 22 reads and writes. A crew is public (anyone reads the record and the
  *  CONFIRMED roster); the asked rows are the leader's and the asked person's to
@@ -43,31 +43,8 @@ interface MemberRow {
 interface MyAskRow extends MemberRow {
   crews: { name: string; city: string; leader_id: string; deleted_at: string | null; profiles: { full_name: string } | null } | null;
 }
-interface EntryRow {
-  id: string;
-  event_id: string;
-  created_at: string;
-  events: {
-    title: string;
-    category: "showcase" | "battle" | "tournament";
-    share_slug: string;
-    start_date: string;
-    end_date: string;
-    city: string;
-    status: "draft" | "published" | "completed";
-  } | null;
-}
-interface PartnerRow {
-  id: string;
-  event_id: string;
-  user_id: string | null;
-  partner_id: string | null;
-  partner_name: string | null;
-  partner_status: "asked" | "confirmed" | "rejected" | null;
-  created_at: string;
-  profiles: { full_name: string } | null;
-  events: { title: string; share_slug: string; start_date: string } | null;
-}
+/* `EntryRow` and `PartnerRow` went with the battle record and the duet asks
+   (29 Sep 2026) — see the note where those three reads used to be. */
 
 /* `crew_contacts` is one-to-one (its crew_id is the primary key), so the embed is an
    object or null — null for a reader its policy keeps the number from, which is how
@@ -269,93 +246,19 @@ export async function findAskedForMyCrews(supabase: SupabaseClient, statuses: Ar
     .map((r) => ({ ...toMember(r), crewName: r.crews!.name }));
 }
 
-/** The battle record: the events this crew entered, soonest first. Public rows
- *  (a crew's entries into published events are the crew's record). */
-export async function findCrewEntries(supabase: SupabaseClient, crewId: string): Promise<CrewEntry[]> {
-  const { data, error } = await supabase
-    .from("event_bookings")
-    .select("id, event_id, created_at, events (title, category, share_slug, start_date, end_date, city, status)")
-    .eq("crew_id", crewId)
-    .eq("status", "booked")
-    .is("deleted_at", null)
-    .order("created_at", { ascending: false })
-    .limit(MAX_LIST);
-  if (error) {
-    throw new Error(`crews.findEntries failed: ${error.message}`);
-  }
-  return ((data ?? []) as unknown as EntryRow[])
-    .filter((r) => r.events)
-    .map((r) => ({
-      bookingId: r.id,
-      eventId: r.event_id,
-      eventTitle: r.events!.title,
-      eventCat: r.events!.category,
-      eventShareSlug: r.events!.share_slug,
-      startDate: r.events!.start_date,
-      endDate: r.events!.end_date,
-      city: r.events!.city,
-      eventStatus: r.events!.status,
-      enteredAt: r.created_at,
-    }))
-    .sort((a, b) => b.startDate.localeCompare(a.startDate));
-}
-
-/* `event_id` since 27 Sep 2026: the Inbox draws the app's one EVENT CARD for a
-   duet ask now (the user: "event and class request cards should also look like
-   class and event cards on discover"), and the card needs the whole event —
-   its tiers and its counts — which the person's Inbox reads by id rather than
-   embedding two more tables into every partner ask. */
-const PARTNER_COLUMNS = "id, event_id, user_id, partner_id, partner_name, partner_status, created_at, profiles!event_bookings_user_id_fkey (full_name), events (title, share_slug, start_date)";
-const toPartnerAsk = (r: PartnerRow): PartnerAsk => ({
-  bookingId: r.id,
-  eventId: r.event_id,
-  status: r.partner_status ?? "asked",
-  entrantName: r.profiles?.full_name ?? "Someone",
-  entrantId: r.user_id,
-  partnerName: r.partner_name ?? "your partner",
-  eventTitle: r.events?.title ?? "an event",
-  eventShareSlug: r.events?.share_slug ?? "",
-  startDate: r.events?.start_date ?? "",
-  createdAt: r.created_at,
-});
-
-/** Duet entries naming the signed-in person as the partner, still unanswered. */
-export async function findMyPendingPartnerAsks(supabase: SupabaseClient, statuses: Array<"asked" | "accepted" | "declined"> = ["asked"]): Promise<PartnerAsk[]> {
-  const me = await currentUserId(supabase);
-  if (!me) return [];
-  const { data, error } = await supabase
-    .from("event_bookings")
-    .select(PARTNER_COLUMNS)
-    .eq("partner_id", me)
-    .in("partner_status", statuses)
-    .eq("status", "booked")
-    .is("deleted_at", null)
-    .order("created_at", { ascending: false })
-    .limit(50);
-  if (error) {
-    throw new Error(`crews.findMyPartnerAsks failed: ${error.message}`);
-  }
-  return ((data ?? []) as unknown as PartnerRow[]).map(toPartnerAsk);
-}
-
-/** The duet entries the signed-in person made whose partner has not answered. */
-export async function findMyUnansweredPartners(supabase: SupabaseClient, statuses: Array<"asked" | "accepted" | "declined"> = ["asked"]): Promise<PartnerAsk[]> {
-  const me = await currentUserId(supabase);
-  if (!me) return [];
-  const { data, error } = await supabase
-    .from("event_bookings")
-    .select(PARTNER_COLUMNS)
-    .eq("user_id", me)
-    .in("partner_status", statuses)
-    .eq("status", "booked")
-    .is("deleted_at", null)
-    .order("created_at", { ascending: false })
-    .limit(50);
-  if (error) {
-    throw new Error(`crews.findMyUnansweredPartners failed: ${error.message}`);
-  }
-  return ((data ?? []) as unknown as PartnerRow[]).map(toPartnerAsk);
-}
+/** ⚠⚠ THE BATTLE RECORD AND THE DUET ASKS WENT WITH EVENTS (29 Sep 2026).
+ *
+ *  `findCrewEntries` read `event_bookings.crew_id` — the events this crew had
+ *  entered, drawn on its own desk and on its public page — and
+ *  `findMyPendingPartnerAsks` / `findMyUnansweredPartners` read
+ *  `event_bookings.partner_id`, the duet half: somebody entered an event with
+ *  you and you were asked to confirm, both ends of it on the Requests desk.
+ *
+ *  ⚠ They were the last three reads in this file that touched a table outside
+ *  the crew's own, which is why a crew now reads only `crews` and
+ *  `crew_members`. What a crew LOSES is a record of what it competed in; what it
+ *  keeps is everything it is — a roster answered by consent, a leader, its
+ *  practices, its public page and its row on the board. */
 
 /* ── writes — the RPCs hold every rule ── */
 
@@ -457,9 +360,5 @@ export async function reorderCrewMembers(supabase: SupabaseClient, crewId: strin
   }
 }
 
-export async function respondToPartnerAsk(supabase: SupabaseClient, bookingId: string, accept: boolean): Promise<void> {
-  const { error } = await supabase.rpc("respond_to_partner_ask", { p_booking_id: bookingId, p_accept: accept });
-  if (error) {
-    throw new Error(error.message);
-  }
-}
+/* ⚠ `respondToPartnerAsk` went with events (29 Sep 2026) — it answered a duet
+   ask on `event_bookings`. Its RPC is the migration's to drop. */

@@ -30,7 +30,11 @@ export const DOS_TOOLS = {
   /* deepened from #0D9488 so Calendar's cyan beside it reads as another tile
      and not another shade — the two sit together on three of the four grids */
   classes: { name: "Classes", c: "#0F766E" },
-  events: { name: "Events", c: "#F59E0B" },
+  /* ⚠ `events` (bright amber #F59E0B) went with events on 29 Sep 2026 — with it
+     the warm band lost the tool that Team and Memberships were pulled apart FROM
+     by depth, so those two are darker than they now need to be. Left as they
+     are: R20's test is that no two tiles on ONE grid read alike, and darker
+     still passes it. */
   earn: { name: "Earnings", c: "#22C55E" },
   /* was #8B5CF6 — a second violet beside Stats, and they sit together on both a
      studio's grid and an artist's */
@@ -63,11 +67,8 @@ export const DOS_TOOLS = {
      paint follows it */
   calendar: { name: "Calendar", c: "#06B6D4" },
   crews: { name: "Crews", c: "#DC2626" },
-  /* AN ORGANIZATION IS A TILE A PERSON OPENS (26 Sep 2026, the user: "make
-     organization a tab on home for artist and users") — a deep plum, 24° off
-     Routines' pink and separated from it by depth, because the warm band is
-     full at the lightness Routines sits at */
-  organizations: { name: "Organizations", c: "#701A75" },
+  /* ⚠ `organizations` (the deep plum #701A75, 26 Sep 2026) went with
+     organizations on 29 Sep */
   /* SUBSCRIPTION IS ON HOME FOR EVERY PROFILE (26 Sep 2026, the user: "subscriptions
      also become an option on home tab for all profiles and is removed from
      settings for all") — a deep blue, 15° off Studios' and a full step darker,

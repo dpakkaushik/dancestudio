@@ -43,18 +43,18 @@ export const TYPE = {
  *  the tile palette. Nothing else in the app keyed a meaning on the old gold. */
 export type ProfileKind = PersonKind | "studio" | "crew";
 
+/* ⚠ THE BLUE `org` RING WENT WITH ORGANIZATIONS (29 Sep 2026). Four rings are
+   left and each still names a thing this app has. */
 export const PROFILE_RING: Record<ProfileKind, [string, string]> = {
   /* bronze */ user: ["#F0BC8A", "#8C5A2B"],
   /* silver */ artist: ["#F2F2F2", "#8E9BAE"],
   /* gold   */ studio: ["#F9E27D", "#B8860B"],
   /* red    */ crew: ["#FCA5A5", "#B91C1C"],
-  /* blue   */ org: ["#93C5FD", "#1D4ED8"],
 };
 
 /** the same registry under its old name, so the three person screens that read
  *  `ROLE_RING[kind]` keep compiling and keep meaning the same thing */
 export const ROLE_RING: Record<PersonKind, [string, string]> = {
-  org: PROFILE_RING.org,
   artist: PROFILE_RING.artist,
   user: PROFILE_RING.user,
 };
@@ -493,14 +493,20 @@ export const SchedIcon = () => (
    a building — because the prototype's ChoreoI / ArtistI / StudioI are not lifted
    and a follow of a crew does not exist yet (CrewI in crew-kit is the fourth,
    when it does). ── */
-/** the four marks are the three KINDS and a CREW: a user mid-step, an artist
- *  with an arm raised, an organization as a building, a crew as three heads
- *  (CrewI, 3146) — the fourth since a crew can be followed (19 Sep 2026) */
-export type FollowGlyph = PersonKind | "crew";
+/** the four marks: a user mid-step, an artist with an arm raised, a STUDIO as a
+ *  building, a crew as three heads (CrewI, 3146) — the fourth since a crew can
+ *  be followed (19 Sep 2026).
+ *
+ *  ⚠ THE BUILDING WAS KEYED `"org"` UNTIL 29 Sep 2026 AND ALWAYS DREW A STUDIO.
+ *  Both follow sheets passed `t.tenantType === "studio" ? "org" : "artist"`, so
+ *  the one glyph named after an organization was the one thing in this file an
+ *  organization never used. Renaming it is what let the word go without taking a
+ *  studio's own mark with it. */
+export type FollowGlyph = PersonKind | "crew" | "studio";
 export function RoleGlyph({ kind, size = 11 }: { kind: FollowGlyph; size?: number }) {
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-      {kind === "org" ? (
+      {kind === "studio" ? (
         <path d="M4 20V9l8-5 8 5v11M4 20h16M10 20v-5h4v5" />
       ) : kind === "crew" ? (
         <>
@@ -536,9 +542,7 @@ export const followTint = (kind: PersonKind | "studio-biz" | "artist-biz" | "cre
       ? PROFILE_RING.artist[1]
       : kind === "crew"
         ? PROFILE_RING.crew[1]
-        : kind === "org"
-          ? PROFILE_RING.org[1]
-          : PROFILE_RING.studio[1];
+        : PROFILE_RING.studio[1];
 
 export function RoleBadge({ kind, tint }: { kind: FollowGlyph; tint: string }) {
   return (

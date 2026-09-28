@@ -9,12 +9,11 @@ import { ProfileLink, ProfileShare } from "@/features/profiles/components/Profil
 import { StatsChip } from "@/features/profiles/components/StatsChip";
 import { HeroDot, HeroId, IdentityHero } from "@/features/profiles/components/hero-kit";
 import { memberNoWords } from "@/types/profile";
-import { Group, PeopleGroup, PersonChip, smallBox } from "@/features/profiles/components/profile-kit";
-import { DOS_UI, GOLD, INK, LILAC, LINE, MUTED, SUB } from "@/lib/design/tokens";
+import { PeopleGroup, PersonChip, smallBox } from "@/features/profiles/components/profile-kit";
+import { DOS_UI, GOLD, INK, LILAC, MUTED } from "@/lib/design/tokens";
 import { photoUrl } from "@/lib/media/photo";
 import type { HeaderPhoto } from "@/repositories/headerPhotos";
-import { CREW_GRAD, type Crew, type CrewEntry, type CrewMember } from "@/types/crew";
-import { EV_TINT } from "@/types/event";
+import { CREW_GRAD, type Crew, type CrewMember } from "@/types/crew";
 
 /** A CREW'S PUBLIC PAGE — prototype S_profiletab with `publicEntity="crew"`
  *  (10565-11060, the crew branch at 11044). SINCE 19 Sep 2026 IT STANDS ON THE
@@ -27,7 +26,8 @@ import { EV_TINT } from "@/types/event";
  *  Under the hero, in the order every public page now shares (the user's list):
  *  **Follow · Following** — a crew can be followed now (`follows.crew_id`) —
  *  the **buttons** a crew's page carries — Enquiry · Mail — then the
- *  **associations**: Crew leader, Crew members, and the battle record. NO
+ *  **associations**: Crew leader and Crew members (the battle record was the
+ *  third and went with events, 29 Sep 2026). NO
  *  FIGURES: the Members · Events pair under the name is gone. Only CONFIRMED
  *  members are printed (an unanswered ask never puts a name on a public page).
  *
@@ -36,10 +36,7 @@ import { EV_TINT } from "@/types/event";
  *  members ARE the crew, so neither is offered to them). */
 
 const joinedYear = (iso: string) => new Intl.DateTimeFormat("en-IN", { timeZone: "Asia/Kolkata", year: "numeric" }).format(new Date(iso));
-const monthDay = (iso: string) => {
-  const [y, m, d] = iso.split("-").map(Number);
-  return new Intl.DateTimeFormat("en-IN", { timeZone: "UTC", day: "numeric", month: "short", year: "numeric" }).format(new Date(Date.UTC(y, m - 1, d)));
-};
+/* ⚠ `monthDay` dated the battle record's rows and went with it (29 Sep 2026) */
 
 /** ⚠⚠ THE APP'S OWN `Row`, NOT A FOURTH ONE (27 Sep 2026, the user: *"fix team
  *  layout for all types of profiles should be clean. and the same should
@@ -63,17 +60,14 @@ function Person({ m, role, tint }: { m: CrewMember; role: string; tint: string }
 export function CrewPublicPage({
   crew,
   members,
-  entries,
   header = [],
   viewer,
   following = false,
   followers = null,
   signedIn,
-  todayKey,
 }: {
   crew: Crew;
   members: CrewMember[];
-  entries: CrewEntry[];
   /** THE HEADER PICTURES (19 Sep 2026): up to five, the leader's to add */
   header?: HeaderPhoto[];
   viewer: "leader" | "member" | "other";
@@ -82,7 +76,8 @@ export function CrewPublicPage({
   followers?: number | null;
   /** a stranger who is signed out is offered Follow and Enquiry as doors to sign in */
   signedIn: boolean;
-  todayKey: string;
+  /* ⚠ `todayKey` went with the battle record on 29 Sep 2026 — it split the
+     crew's entries into what was still to come and what was over */
 }) {
   const RG = CREW_GRAD;
   const RC = RG[1];
@@ -203,25 +198,10 @@ export function CrewPublicPage({
           {rest.length ? rest.map((m) => <Person key={m.id} m={m} role={m.role === "trainee" ? "Trainee" : "Member"} tint={RC} />) : <div style={{ gridColumn: "1 / -1", fontSize: 11.5, color: MUTED, padding: "10px 0" }}>Nobody else in the crew yet.</div>}
         </PeopleGroup>
 
-        {entries.length ? (
-          <Group title="Battle record" n={entries.length}>
-            {entries.map((e) => {
-              const done = e.eventStatus === "completed" || e.endDate < todayKey;
-              return (
-                <Link key={e.bookingId} href={`/e/${e.eventShareSlug}`} aria-label={`Open ${e.eventTitle}`} style={{ display: "flex", alignItems: "center", gap: 11, padding: "10px 4px", color: INK, textDecoration: "none" }}>
-                  <span style={{ width: 10, height: 10, borderRadius: 5, background: done ? LINE : EV_TINT[e.eventCat], flexShrink: 0 }} />
-                  <span style={{ flex: 1, minWidth: 0 }}>
-                    <span style={{ display: "block", fontSize: 13, fontWeight: 800, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{e.eventTitle}</span>
-                    <span style={{ display: "block", fontSize: 10.5, color: SUB, marginTop: 2 }}>
-                      {monthDay(e.startDate)} · {e.city} · {done ? "Completed" : "Entered"}
-                    </span>
-                  </span>
-                  <span style={{ color: MUTED }}>›</span>
-                </Link>
-              );
-            })}
-          </Group>
-        ) : null}
+        {/* ⚠ THE BATTLE RECORD WENT WITH EVENTS (29 Sep 2026) — the events this
+            crew had entered, each a door to its page, read off
+            `event_bookings.crew_id`. It was the one group on this page that was
+            not the roster, and there is nothing left that could fill it. */}
       </div>
     </div>
   );

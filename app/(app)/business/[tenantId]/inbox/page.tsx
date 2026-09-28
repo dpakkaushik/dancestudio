@@ -6,7 +6,6 @@ import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { findAskedClaimsForTenants } from "@/repositories/claims";
 import { findVenueRequestsForTenants } from "@/repositories/classes";
 import { findPendingInvites } from "@/repositories/invites";
-import { findAskedByOrganizations } from "@/repositories/organizationTeam";
 import { findMyMemberships, runsTheBusiness } from "@/repositories/tenants";
 
 const stampNowIso = (): string => new Date().toISOString();
@@ -36,14 +35,13 @@ export default async function StudioInboxPage({ params }: { params: Promise<{ te
   if (!membership || !runsTheBusiness(membership.memberRole)) {
     redirect("/business");
   }
-  const { tenant, memberRole } = membership;
-  /* ⚠ AN ORGANIZATION'S HOME WEARS THE SAME BAR (26 Sep 2026), so its Inbox
-     tab lands here too: its enquiries, and — for its owner — the team asks it
-     is waiting on. An artist page's inbox is the person's own. */
-  if (tenant.type !== "studio" && tenant.type !== "org") {
+  const { tenant } = membership;
+  /* ⚠ AN ORGANIZATION'S HOME WORE THIS BAR TOO from 26 Sep 2026, so its Inbox
+     tab landed here — its team asks, for its owner. Both went with
+     organizations on 29 Sep. An artist page's inbox is the person's own. */
+  if (tenant.type !== "studio") {
     redirect(`/business/${tenantId}`);
   }
-  const isOrg = tenant.type === "org";
 
   /* ⚠⚠ THIS DESK STOPPED READING ENQUIRIES (27 Sep 2026). They left the Inbox
      that morning for a desk of their own, and `InboxScreen desk="inbox"` draws
@@ -54,13 +52,12 @@ export default async function StudioInboxPage({ params }: { params: Promise<{ te
      kind of thing nothing fails on: the page was correct, just paying for a
      query it threw away. A studio's enquiries are the Enquiries TOOL on its own
      home, scoped to it by `?as=`. */
-  const [venueIn, claimsOut, invitesOut, orgAsked] = await Promise.all([
-    isOrg ? Promise.resolve([]) : findVenueRequestsForTenants(supabase, [tenantId]).catch(() => []),
-    isOrg ? Promise.resolve([]) : findAskedClaimsForTenants(supabase, [tenantId]),
-    isOrg ? Promise.resolve([]) : findPendingInvites(supabase, tenantId).then((rows) => rows.map((i) => ({ ...i, tenantName: tenant.name }))),
-    isOrg && memberRole === "owner" ? findAskedByOrganizations(supabase, [tenantId], ["asked", "confirmed", "rejected"]).catch(() => []) : Promise.resolve([]),
+  const [venueIn, claimsOut, invitesOut] = await Promise.all([
+    findVenueRequestsForTenants(supabase, [tenantId]).catch(() => []),
+    findAskedClaimsForTenants(supabase, [tenantId]),
+    findPendingInvites(supabase, tenantId).then((rows) => rows.map((i) => ({ ...i, tenantName: tenant.name }))),
   ]);
-  const { requestsIn, requestsOut } = buildRequests({ venueIn, claimsOut, invitesOut, orgOut: orgAsked.map((m) => ({ ...m, orgName: tenant.name })) });
+  const { requestsIn, requestsOut } = buildRequests({ venueIn, claimsOut, invitesOut });
 
   return <InboxScreen accent={gradientOf(tenant.name)[1]} requestsIn={requestsIn} requestsOut={requestsOut} enquiriesIn={[]} enquiriesOut={[]} nowIso={stampNowIso()} />;
 }

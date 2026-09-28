@@ -1,6 +1,109 @@
 # CLAUDE.md — DanceOS
 
-## LAST SESSION (28 Sep 2026) — replaced on every push (Rule 13)
+## LAST SESSION (29 Sep 2026) — replaced on every push (Rule 13)
+
+> ### ORGANIZATIONS AND EVENTS ARE GONE — THE APP SIDE, WHOLE (29 Sep 2026) — ⚠⚠ THE MIGRATION AND THE PRODUCTION SWEEP ARE **HELD** (NEXT TO DO #0ay)
+> The user: *"do as you suggested for the 2 questions. Remove Organization and
+> Events completely from the system. all mechanisms , stats , discover
+> everything related to them should be wiped out without hampering the other
+> parts of the system. remove all organization profiles as well."*
+> * **THE TWO QUESTIONS WERE READ OUT OF THE PREVIOUS TRANSCRIPT RATHER THAN
+>   REMEMBERED**, and both suggestions were *leave it as is*: a manager is NOT
+>   invitable by email (consent comes first and the seat after — the 19 Sep
+>   rule), and the app-level gate does NOT become a database one now (it is a
+>   policy change on `leads`, `attendance`, `payments` and `business_members`,
+>   which deserves its own slice rather than riding in on a removal). **Neither
+>   needs code; both are decisions, and they are recorded here.**
+> * ⚠⚠ **IT IS TWO PUSHES ON PURPOSE, AND THE SPLIT IS WHAT MAKES THE FIRST ONE
+>   SAFE.** Every screen is gone and **nothing selects a column or calls a
+>   function the migration would drop**, so this bundle runs against today's
+>   database unchanged. `gstin` / `gstin_verified_at` came out of
+>   `TENANT_COLUMNS` for exactly that reason — which is the **`poster_path`
+>   lesson of 27 Sep read FORWARDS**: that day the app asked for a column one
+>   line ahead of its migration and every class and event read answered *"column
+>   does not exist"*, surfacing as React #441 and naming no column. **A column
+>   nothing reads leaves the SELECT before it leaves the table.**
+> * ⚠ **`tsc` DROVE THE REMOVAL AND LINT FINISHED IT.** Narrowing a union is what
+>   turns "find every reader" into a compile error: `HomeKind` lost `"org"`,
+>   `SearchKind` lost `"event"`, `DOS_TINT` became a `Record<"user" | "artist">`,
+>   `PlanKind` (the settings one) lost `"org"`. Then `no-unused-vars` named the
+>   orphaned imports and locals — `EventI`, `ProfileRole`, `orgBizId`, five
+>   PowerShell variables. **Fourteen routes** are deleted with a **307 each**
+>   (Rule 14), never a 308: a 308 is cached indefinitely and revives as the same
+>   stale-URL bug if a path ever returns.
+> * ⚠⚠ **AND THE MONEY IS THE ONE THING THAT DOES NOT GO, WHICH IS WHY THE
+>   MIGRATION MUST NOT DROP THE EVENT TABLES.** Counted: **4 paid event orders
+>   with 4 captured payments** on production. `DROP TABLE events` cascades
+>   `orders.event_id` and takes those four orders and their payments with it, so
+>   the four tables stay as TOMBSTONES with their rows soft-deleted. **A ledger
+>   does not forget money** (Rule 9): `repositories/earnings.ts` KEEPS its events
+>   bucket with the reasoning in the code — without it the `else` would fold four
+>   real ticket payments into CLASSES — while `repositories/income.ts` DROPS its
+>   own, because that is a STUDIO's money-in and a studio never took ticket money
+>   (an event's `business_id` was always an org hosting row). **The same word,
+>   opposite answers, for a reason each file states.**
+> * ⚠⚠ **AND THE ADMIN DESK AND THE SEARCH BOX WENT OPPOSITE WAYS, DELIBERATELY.**
+>   The Businesses desk KEEPS its `org` rows, labelled **RETIRED**, with the name
+>   as a `<span>` rather than a link and no visibility switch — an admin's desk
+>   shows what the DATABASE holds, and hiding twenty live rows would be the tidier
+>   lie. The search box DROPS event hits before they are offered, because a row
+>   that opens a 404 is worse than no row. ⚠ The dashboard's "events live" figure
+>   went for the third reason: it is a PULSE, and a figure that can only read 0
+>   tells an admin the platform is quiet about something nobody can do.
+> * ⚠ **AND ONE MONEY CLAIM WAS STILL ON A PAYING SCREEN.** `PLAN_RIGHTS.org`
+>   sold a public page, **public events**, a named team and taking money for
+>   tickets — four lines, three of them now unkeepable, on the screen where
+>   somebody decides to pay ₹5,000 a month. It is deleted and `PlanKind` narrowed
+>   so no branch is left unrendered; ⚠ `repositories/plans.ts` keeps ITS `"org"`,
+>   because `plan_catalog` really does hold `org_monthly` and the Plans desk now
+>   labels it retired rather than hiding it.
+> * ⚠⚠ **AND THE `events` GLYPH WENT IN THE SAME PUSH AS ITS TILE**, which is the
+>   `Stats` icon of 15 Sep answered properly: that one sat in `GLYPH` unread for
+>   twelve days and was found only because a type listed the keys. A glyph whose
+>   tile no longer exists is a dead key waiting to be found by accident.
+> * **THE HARNESS, ALL OF IT**: `proof-lib.ps1` lost `New-Org` / `Verify-Org-Gst`
+>   / `Subscribe-Org`; `rls-proof-push2` was rewritten (7 checks from 12) and
+>   `classes`, `crews`, `search`, `profile-pages` and `studio-verification`
+>   re-cut with their survivors renumbered; **three proofs deleted**
+>   (`events`, `event-money`, `org-team`) and **two shoot scripts**
+>   (`shoot-org.js`, and `retire-organization-logins.js`); `stranger-smoke` is
+>   **8/8** where it was 11; `demo-data.js` lost about a fifth of itself and
+>   ⚠ **its four org enquiries were RE-POINTED at the studios rather than
+>   deleted**, because those four kinds go to a `studio` too — the demo world
+>   still shows every enquiry kind at every stage, and what changed is the
+>   subject rather than the coverage. `shoot-hero`'s page variable was renamed
+>   `org` → `owner` (211 occurrences) because it has named a PERSON since 26 Sep
+>   and names nothing else now.
+> * ⚠ **AND THE E2E LOST TWO WHOLE TESTS AND HALF OF THREE MORE**, each with a
+>   gravestone naming what it covered: the events test (Step 21 end to end), the
+>   event-ticket WEBHOOK test (⚠ money — the signed capture, the replay, the
+>   automatic refund; what survives it is the same signature check, the same
+>   exactly-once ledger and the same applier driven over a class order and a
+>   mandate), the crews test's crew entry and battle record, the Discover test's
+>   events tab, and the push-2 test's whole organization-team third.
+> * ⚠⚠ **THREE MECHANICAL-CUT LESSONS, AND TWO OF THEM COST A RUN EACH.**
+>   (1) **A post-cut check that greps the whole file matches the gravestone the
+>   same script just wrote** — `"Create event"`, `"/my-events"` and `"Add
+>   organization"` each "survived" their own removal. **A removal check looks for
+>   the CALL, not for the word.** (2) **Counting LINES is not counting
+>   OCCURRENCES**: `org.id` appeared five times over two lines and the assertion
+>   caught my own miscount before a byte was written. (3) ⚠ **`node -e` through
+>   PowerShell ate `$1` and `$2`** out of a regex replacement and wrote
+>   `onboard(, , "Pune")` into the spec — the trap this file has recorded since
+>   27 Sep, met twice more today. **The Edit tool, or a real script FILE.**
+> * **Verified:** typecheck 0 · lint 0 · **`next build` green**, with every one of
+>   the fourteen deleted routes absent from the manifest and every redirect in
+>   `next.config.ts`. ⚠ **The proofs, the shoot scripts and the e2e have NOT been
+>   run**, and that is not an omission: nine of them would fail against a database
+>   that still has the organization doors, because what they now assert is the
+>   absence of a feature the database still offers. **They run after the apply**,
+>   which is the sequence in #0ay.
+> * ⚠⚠ **NOTHING IS APPLIED AND NOTHING IS PUSHED.** The migration's list and the
+>   sweep's counts are in NEXT TO DO #0ay and go in front of the user first,
+>   which is this file's standing rule — and the sweep is production data, which
+>   is the second one.
+
+## LAST SESSION (28 Sep 2026) — history
 
 > ### ONLY THE PEOPLE WHO RUN IT (28 Sep 2026, latest) — ⚠ ONE MIGRATION APPLIED (`20260928110000`, dry run **31/31** rolled back first, read back live **13/13**)
 > The user: *"fix these 2 as well. make sure in Organization or Studio Teams are
@@ -7422,6 +7525,98 @@ summary; the report has the evidence.
 
 ## NEXT TO DO — replaced on every push (Rule 13)
 
+0ay. **⚠⚠ ORGANIZATIONS AND EVENTS: THE APP SIDE IS BUILT, AND THE MIGRATION AND
+   THE PRODUCTION SWEEP ARE HELD FOR THE USER'S WORD (29 Sep 2026).** ⚠ Rule 9:
+   it drops policies and definer functions, and the sweep soft-deletes live rows
+   on production. Nothing has been applied and nothing has been pushed.
+   * **WHAT IS ALREADY DONE AND NEEDS NO DECISION**: every screen, route,
+     repository, type and harness. Fourteen routes deleted with a 307 each
+     (Rule 14), `types/event.ts` and four repositories gone, the tool grids, the
+     calendar's third half, the Inbox's duet ask, Discover's Events tab, the
+     crews' battle record, the admin desks' event figures, `lib/gst/` and every
+     proof, shoot script and e2e segment that drove any of it. **typecheck 0 ·
+     lint 0 · `next build` green.**
+   * ⚠⚠ **THE APP IS SAFE TO RUN AGAINST TODAY'S DATABASE AND THAT IS THE WHOLE
+     POINT OF SPLITTING IT.** Nothing selects a column or calls a function the
+     migration would drop — `gstin`/`gstin_verified_at` came out of
+     `TENANT_COLUMNS` for exactly that reason, which is the `poster_path` lesson
+     of 27 Sep read FORWARDS: a column nothing reads leaves the SELECT before it
+     leaves the table.
+   * **COUNTED ON PRODUCTION RATHER THAN REMEMBERED** (read-only, over
+     PostgREST, off the `Content-Range` header so the 1,000-row cap cannot
+     mislead): **20 live org businesses** (1,362 already soft-deleted), **10
+     events** (7 published) with **204 entry tiers**, **200 ticket tiers** and
+     **68 bookings** (66 booked), **4 `organization_members`**, **6 active `org`
+     subscriptions**, **162 `kind = 'event'` notifications**, **5 enquiries** on
+     an org business, **3 follows** of one, **6 businesses with a GST number**,
+     **0 live `profiles.role = 'org'`** (52 soft-deleted), and **0 classes whose
+     VENUE is an org business** — so nothing a studio runs is entangled.
+   * ⚠⚠ **AND THE MONEY, WHICH IS WHY THE MIGRATION DOES NOT DROP THE EVENT
+     TABLES: 4 PAID EVENT ORDERS WITH 4 CAPTURED PAYMENTS** (0 refunds). A
+     `DROP TABLE events` cascades `orders.event_id` and takes those four orders
+     and their payments with it. **A ledger does not forget money** — so
+     `events`, `event_entry_tiers`, `event_ticket_tiers` and `event_bookings`
+     stay as TOMBSTONES with their rows soft-deleted, and `orders.event_id`,
+     `event_booking_id` and `apply_captured_payment`'s event branch stay
+     untouched. The four invoice rows keep their description and lost only their
+     dead href.
+   * **THE MIGRATION, AS PROPOSED** — ⚠ its exact contents will be read off the
+     **LIVE CATALOG** rather than re-typed from the .sql history, which is
+     28 Sep's own lesson (five re-typing differences in six function bodies):
+     drop the event doors (`save_event`, `publish_event`, `book_event`,
+     `cancel_event_booking`, `check_in_event_booking`, `add_event_walk_in`,
+     `delete_event`, `set_event_status`, `set_event_poster`, `event_counts`,
+     `event_blockers`, `create_event_payment_order`, `event_host_cards`,
+     `event_host_is_public`, `event_host_name`, `why_no_event`,
+     `guard_event_needs_gstin`, the slug trigger); the organization doors
+     (`ask_organization_member`, `respond_to_organization_ask`,
+     `withdraw_organization_ask`, `remove_organization_member`,
+     `set_organization_member_role`, `public_organization`,
+     `public_organization_studios`, `public_organization_team`,
+     `my_followed_organizations`, `org_is_public`, `org_subscription_active`,
+     `org_seat_follows_label`, `why_no_organization`, `verify_business_gstin`,
+     `clear_business_gstin`, `gstin_shape`, `guard_gstin`, `my_org_stats`,
+     `admin_grant_org_subscription`, `admin_end_org_subscription`); the public
+     event and organization SELECT policies; and **two edits rather than
+     drops** — `dance_chart`'s crew branch loses its event-entry term (which is
+     why `CREW_POINT_RULES` is one rule on screen already) and
+     `search_dance_os` loses its events branch (the repository already drops
+     event hits, because a row that opens a 404 is worse than no row).
+   * **THE SWEEP, AS PROPOSED**: soft-delete the 20 org businesses, the 10
+     events and everything beneath them, the 4 `organization_members`, the 6
+     `org` subscriptions, the 5 enquiries and the 3 follows. ⚠ **The 162 event
+     NOTIFICATIONS stay** — a notification is a record of something that
+     happened, `NotificationKind` keeps `"event"` for them, and nothing can
+     raise a new one. ⚠ **`profiles.role`'s CHECK keeps `'org'`** (52
+     soft-deleted rows carry it; narrowing it would refuse an UPDATE of any of
+     them for no gain), and `businesses.type`'s keeps `'org'` for the same
+     reason.
+   * ⚠ **WHAT IS DELIBERATELY NOT PROPOSED, so it is not assumed**: dropping the
+     four event tables (the money above); dropping `orders.event_id` /
+     `event_booking_id` or their CHECK (same); `admin_dashboard`'s two event
+     counts (harmless, unread, and rewriting a live function for zero visible
+     change is risk without benefit — the 28 Sep precedent); and the
+     `org_monthly` row in `plan_catalog`, which six granted mandates still name
+     and which the admin's Plans desk now labels as retired rather than hiding.
+   * ⚠ **AND ONE QUESTION THAT IS THE USER'S**: the 20 live org businesses
+     include **Deepak Kaushik's**, made on 26 Sep at their own instruction and
+     given a ₹5,000 comp on 27 Sep. The sweep takes it with the rest unless they
+     say otherwise.
+   **On their word, in this order:**
+```
+   npm i -D pg                                                                      # the dry-run client (#0ac's own lesson)
+   node dryrunRemoveOrgsEvents.js                                                   # BEGIN … the file … checks as real roles … ROLLBACK
+   powershell -NoProfile -ExecutionPolicy Bypass -File scripts/db-push.ps1 -DryRun  # must list exactly the one file
+   powershell -NoProfile -ExecutionPolicy Bypass -File scripts/db-push.ps1 2>&1 | Select-String -NotMatch 'Skipping migration|Warning: failed to cache|prerequisite for local'
+   node readbackRemoval.js                                                          # read the LIVE catalog, then notify pgrst 'reload schema'
+   node sweepOrgsEvents.js --show-kept                                              # the kept set FIRST (the standing rule)
+   node sweepOrgsEvents.js --apply
+   powershell -NoProfile -ExecutionPolicy Bypass -File scripts/run-proofs.ps1        # all 30 that remain
+   node scripts/ensure-test-phone-profiles.js                                        # after any sweep (19 Sep)
+   npm run build; npx.cmd next start -p 3100
+   $env:PLAYWRIGHT_BASE_URL="http://localhost:3100"; npx playwright test --reporter=line --workers=1
+```
+
 0ax. **~~ONE MIGRATION WRITTEN, DRY-RUN 31/31 AND HELD~~ — ✅ APPLIED 28 Sep 2026**
    (`20260928110000_a_business_has_a_manager`) on the user's *"do all then only
    push to live"*, after the whole list below had been in front of them. Dry run
@@ -9072,6 +9267,30 @@ for the database schema. **The UI is not redesigned** — see Rule 2.
 
 ### Progress tracker — update after EVERY push (Rule 11)
 
+- **ORGANIZATIONS AND EVENTS ARE GONE — 29 Sep 2026, no step number ⚠ (Rule 9:
+  the held migration drops policies and definer functions; the held sweep
+  soft-deletes production rows) — THE APP SIDE IS BUILT; THE MIGRATION AND THE
+  SWEEP ARE HELD (#0ay).** The user: *"Remove Organization and Events completely
+  from the system … without hampering the other parts."* Fourteen routes deleted
+  with a 307 each, `types/event.ts` and four repositories gone, the tool grids,
+  the calendar's third half, Discover's Events tab, the crews' battle record, the
+  duet ask, `lib/gst/`, and every proof, shoot script and e2e segment that drove
+  any of it. ⚠⚠ **Two pushes on purpose**: nothing selects a column or calls a
+  function the migration would drop, so this bundle runs against today's database
+  — `gstin` left `TENANT_COLUMNS` because a column nothing reads leaves the SELECT
+  BEFORE it leaves the table (27 Sep's `poster_path`, read forwards). ⚠⚠ **The
+  four event tables survive as tombstones**: 4 paid event orders with 4 captured
+  payments are on production and a `DROP TABLE` would cascade them away — so
+  `earnings.ts` KEEPS its events bucket while `income.ts` drops its own, each
+  saying why. ⚠ The admin's Businesses desk KEEPS its `org` rows labelled RETIRED
+  (a desk shows what the database holds) while search DROPS event hits (a row that
+  opens a 404 is worse than no row) — the same word, opposite answers, each with
+  its reason. ⚠ And one money claim was still live: `PLAN_RIGHTS.org` sold
+  "public events" on the screen where somebody pays ₹5,000 a month. Deviation
+  rows **R57** and **R58**. **typecheck 0 · lint 0 · `next build` green**, every
+  deleted route absent from the manifest. ⚠ The proofs and the e2e are NOT run
+  and that is deliberate — nine of them now assert the absence of a feature the
+  DATABASE still offers, so they run after the apply.
 - **ONLY THE PEOPLE WHO RUN IT — 28 Sep 2026, no step number ⚠ (Rule 9: who may
   act for a business, and one label now grants a real seat) — ONE MIGRATION
   APPLIED (`20260928110000`, dry run 31/31 rolled back, read back live 13/13).**
@@ -13734,6 +13953,8 @@ Home. **Do not "restore parity" on these.**
 | C81 | **Manage** on Your classes is the ARTIST PAGE's own register and nothing else (18–19 Sep 2026), so it is drawn only for somebody who owns one | **MANAGE IS WHAT YOU RUN, WHOEVER OWNS IT.** A plain user can be the person taking a studio's class — that is what `ask_class_person(kind: 'artist')` is for — and until today their own class appeared under **Assist**, labelled Teaching. **Teaching is managing and assisting is not**: the two were one list told apart by a word in the corner of a card. Manage is offered to anybody who runs something, and holds the artist's own register (when there is a page) **and then** the classes somebody else's studio put them in front of, under CLASSES YOU TAKE ELSEWHERE. ⚠ **A TILE, NOT A SECOND REGISTER** — those classes belong to another business: you may run the door and you may not publish, price or delete them, so the card opens the class, where everything you are allowed lives. ⚠ Assist's own empty state stopped claiming to hold what you teach | 28 Sep 2026, the user: *"user should also see manage tab in classes as studios can add them as the person taking the class."* ⚠⚠ **The other half of that sentence — "give rights when confirmed the invite" — is the DATABASE's and is HELD** (#0av): `check_in` asks `can_run_register_for_class`, nothing the app draws can widen it, and **a tab drawn over a refusal is worse than no tab** |
 | R55 | The profile switcher lists every business the account is on the TEAM of (C15, 18 Sep 2026; C53, 22 Sep), and every desk under `/business/{id}` admits any member — several of them saying so in their own comments ("Any member reads the desk", "what the business collected (members, by RLS)") | **ONLY A SEAT THAT RUNS THE BUSINESS — OWNER OR MANAGER.** `runsTheBusiness` in `repositories/tenants.ts` is the one question, asked by the switcher, by `settings.businesses`, by all **seventeen** desk addresses under a business, by the events manager, both event forms, the class roster and `resolveActingAs`. ⚠⚠ **`visiting_faculty` IS CREATED AUTOMATICALLY** — `respond_to_class_ask` seats an outside teacher who accepts ONE class (R19) — so this was not a hypothetical seat: anybody an artist had taught for once could switch into the studio and open its Team desk, its **Students desk with every student's phone number**, its Rooms editor, its **invoice ledger** and its **refunds**. ⚠ **A gate closed only in the menu that opens it is not closed**, which is why the addresses are driven by URL in `shoot-seats.js` rather than the switcher being checked. ⚠ **What faculty KEEP is asserted too**: their own classes, the class page's Attendance tab and register, their earnings, their row on the Team desk, and the hub's STUDIOS YOU HAVE TAUGHT AT with a door to that studio's PUBLIC page. ⚠ It costs LESS, not more: six desks read the business and then the role separately, and the seat carries both — four round trips deleted. ⚠ **`MEMBER_POWER_NOTE` is deleted** (no caller — the sentence this file twice cited as the app's own contract was shown to nobody) and its corrected words are in `MEMBER_GRANTS`, which IS drawn, on the member sheet and on the **join screen** as "You would have …" | 28 Sep 2026, the user: *"only these 2 get the right to get studio or organization in the profile switcher. that profile switcher and rights should never be given for faculty, visiting faculty , assistant , event team or other team members"*, and their own answer when asked how far: **"Clean cut — business level is Owner/Manager only"**. ⚠ `manager` itself is the HELD migration (#0ax); until it applies the test reads "owner", so nothing changes for a manager who cannot yet exist |
 | R56 | A studio's seats are Owner · Faculty · Visiting faculty · Assistant · Other team member (R37, 20 Sep 2026), and an organization's team is Owner · Event team · Other team member — all of them LABELS with no authority (R28), the one exception being the `studio_owner` label R48 deleted | **MANAGER, AND IT IS THE FIRST LABEL SINCE R36 THAT CARRIES ANYTHING** (`20260928110000`). ⚠ The rule is one line so no site is a judgement call: **wherever `trainer` may act, `manager` may; wherever only `owner` may, `manager` may not** — so a manager runs the register, the rooms, the events door and the pictures, reads the ledgers, and moves none of the money, the plan or the badge. It is INVITABLE (accepting is the consent, and managing is not owning) where `owner` still is not — Step 12b's rule kept. ⚠⚠ **And an organization's OWNER label finally means something**: R36 made the studio equivalent a real `business_members` row, R48 removed that path on 26 Sep, and the word was left granting nothing — **two people on production held it and neither could open the organization**. Owner and Manager write a real seat on the ORGANIZATION now, made when the person says yes and taken away when the label changes or they leave, with `prior_member_role` remembering what it replaced; ⚠ the seat is REVIVED rather than re-inserted, because `business_members` carries a PLAIN unique key on `(business_id, user_id)` and a soft-deleted row still holds the slot. ⚠ Event team is still a label with no seat, deliberately: `can_run_events` reads that word directly, so it needs none | 28 Sep 2026, the user: *"make sure in Organization or Studio Teams are able to add another Owner & Manger as options"*. ⚠ Nothing is backfilled — not one seat becomes a manager, and the two existing org Owners are not given seats either, because handing somebody authority over a live business is not a thing a migration should do behind its owner's back |
+| R57 | R48 (26 Sep 2026): an ORGANIZATION is a business a person opens — `businesses.type = 'org'`, its GST number on the row, public while verified and paying ₹5,000 a month, with its own home, its own team (R28, R36, R56), its own public page (R23), its own stats (R29), its own enquiries (R25) and its own Discover presence | **THERE IS NO ORGANIZATION.** The Organizations hub and tile, `/org/{id}` and its stats, the org business's own home and Team desk, `/business/{id}/gst`, `/business/stats`, `/business/earnings`, `/business/team`, `OrgHome`, `OrganizationPublicPage`, `repositories/{organizationTeam,gst,publicOrganization}.ts`, `lib/gst/` and `features/orgs/` are all gone; `HomeKind` is `"user" \| "artist"`. ⚠ **The admin's Businesses desk KEEPS its `org` rows**, labelled RETIRED with the name as a `<span>` and no visibility switch or comp — a desk shows what the DATABASE holds, and until the sweep runs it holds twenty. ⚠ `profiles.role`'s CHECK keeps `'org'` (52 soft-deleted rows carry it) and `businesses.type`'s keeps it too | 29 Sep 2026, the user: *"Remove Organization and Events completely from the system. all mechanisms , stats , discover everything related to them should be wiped out without hampering the other parts of the system. remove all organization profiles as well."* ⚠ **The MIGRATION and the production SWEEP are HELD** (#0ay): the app side needs neither, because nothing left selects a column or calls a function they would drop |
+| R58 | Step 21 (28 Aug 2026): an EVENT is a record with two sides — entries by format and ticket tiers — hosted by an organization (R15/R23), paid through the Cashfree rail (17 Sep), on Discover's Events tab, on the calendar's second half, on a crew's battle record, in the Inbox as a duet ask, and in a person's `/my-events` | **THERE IS NO EVENT.** `types/event.ts`, `repositories/events.ts`, `features/events/`, `/e/{slug}`, `/my-events`, the events desk, the manager and the two-step form, the Events tile on every grid, Discover's Events tab and its kind chips, the calendar's Events half, the crews' battle record and `CrewManager`'s `section` fork, `DOS_LINK_WHAT.partner`, and `add_event_walk_in`'s whole surface are gone. ⚠⚠ **The four event TABLES and `orders.event_id` STAY** — 4 paid event orders with 4 captured payments are on production, and a `DROP TABLE` would cascade them away. `repositories/earnings.ts` keeps its events bucket and `repositories/invoices.ts`/`refunds.ts` keep the row's description; only the dead hrefs went. ⚠ `NotificationKind` keeps `"event"` (162 rows), and `CREW_POINT_RULES` lost its "Event entered · +3 pts" line, so a crew's points are its confirmed members | Same message. ⚠ **What it costs, said rather than discovered**: the one demonstration of a `pending_payment` booking that is never captured went with the seeder's unpaid entry, and a crew's public page now shows its roster with nothing under it |
 | C82 | A room's capacity is a NUMBER in component state on the Rooms desk and in the New-studio sheet's rooms editor | **TEXT-BACKED, NORMALISED ON BLUR** — `Number("") \|\| 0` makes an emptied box a hard 0, so backspacing over `20` snapped to `0` and typing `15` gave `015`. The same defect as the class form's price and session-pay fields, in the two places that morning's fix did not reach | 28 Sep 2026, the user's *"fix these 2 as well"*. ⚠ It is a bigger lie on a room than on a price: capacity is the one field on that desk the DATABASE enforces on every booking (`assert_room_ok` caps a class by its room), so a 0 there is a room nobody can book into |
 
 ### UI parity backlog — gaps vs the prototype, tracked so none is forgotten
@@ -13754,6 +13975,7 @@ nothing to lift.
 
 | Gap | Prototype ref | Closes with |
 |-----|--------------|-------------|
+| **Organizations and events, what their removal leaves (29 Sep 2026):** ⚠⚠ **THE MIGRATION AND THE SWEEP ARE HELD** (#0ay), so until they run the DATABASE still offers every door the app stopped drawing: `save_event`, `book_event`, `ask_organization_member`, `public_organization`, `verify_business_gstin` and the rest are all still callable straight through PostgREST by anybody with a token, and the twenty live org businesses are still `org_is_public`. **What changed today is that the app stops handing it over** — which is the same sentence R44 and R55 each had to write, and it is the weakest of the three states this repo recognises. ⚠ **Nine proofs and both e2e specs now assert the ABSENCE of a feature the database still has**, so they are red until the apply and are deliberately not run. ⚠ **The four event tables, `orders.event_id`/`event_booking_id` and `apply_captured_payment`'s event branch stay for ever**, because four paid orders name them — so a reader of the schema will find an events model with no way to reach it, which is why each of them carries a tombstone comment saying so. ⚠ **`admin_dashboard` still returns `events_live` and `event_bookings_week`** and nothing draws them; **`plan_catalog` still holds `org_monthly`** and six granted mandates name it. ⚠ **A crew's public page has a roster and nothing under it** (the battle record was counted from event entries), and **the demo world lost its one `pending_payment` booking that was never captured** — the only row in it showing that state. ⚠ And **`event_bookings.crew_id` / `partner_id` exist with nothing that can write them**: Step 22 paid two of Step 21's debts and both are now unreachable | — | #0ay; the schema tombstones are permanent by design |
 | **The clean cut and Manager, what they leave (28 Sep 2026):** ⚠ **The two existing organization "Owners" on production still hold a label with no seat** — the migration deliberately backfills nobody, so each needs one relabel on the org's Team desk before they can open it; **that is the user's to do, and it is one press per person**. ⚠ **`MEMBER_GRANTS`' manager line is a claim nothing tests** — "the ledgers to read, and none of its money to move" is made true by `role === "owner"` on five desks and on every control of three more, and no check ties the sentence back to them. ⚠ **A manager cannot be invited BY EMAIL** — `invite_to_business` still offers `trainer \| staff` only, narrower than the picker's six, so somebody with no DanceOS account cannot be asked as one at all. ⚠ **An organization's Event team still carries no seat** (deliberately: `can_run_events` reads the label directly), so one of its four labels works differently from the other two — and **`studio_owner` is still in its CHECK with nothing able to write it**. ⚠⚠ **AND IT IS STILL A PRESENTATION GATE**, said plainly: the reads under these desks are RLS-bounded to every MEMBER (Step 9's payments, `leads`, `attendance`, `business_members`), so a determined faculty seat with an API client still reaches a studio's students and its takings — narrowing that is a policy change on four tables and is not this slice; what changed today is that the app stops handing it over. ⚠ **`invite_to_business` (the by-EMAIL door) still offers `trainer \| staff` only** — narrower than the picker's five and now than the six, so somebody with no DanceOS account cannot be invited as a manager at all. ⚠ **An organization's Event team still carries no seat**, deliberately: `can_run_events` has an org branch that reads the label directly, so it needs none — but it means that one label works differently from the other two. ⚠ And **`studio_owner` is still in the organization CHECK with nothing able to write it** (`set_organization_member_role` has refused it since 26 Sep); narrowing it would refuse an UPDATE of any historical row still carrying the word, for no gain | — (the prototype has one studio and one kind of seat) | one relabel each for the two org Owners (the user's); a policy change on four tables if the ceiling ever matters; the email door when somebody asks |
 | ⚠⚠ **A MEMBERSHIP CANNOT BE TAKEN OFF SALE (found 28 Sep 2026 by the dead-code sweep).** `delete_membership` exists in the database, `deleteMembership` in the repository and `deleteMembershipAction` as a server action — and **no screen offers any of them**, so once a seller creates a membership it is on their public page for ever. `total_count` counts passes SOLD rather than passes live, so it cannot be used to close one either. ⚠ The action is KEPT unused on purpose rather than swept, because deleting it would bury the gap | S_memberships 16846 | a Remove / Take off sale control on the memberships desk — one button, the door already exists all the way down |
 | **The four fixes — what they left (28 Sep 2026):** ⚠ **A class can still be backdated through the DATABASE**: the rule lives in the form and in `createClassSchema`, and `create_class_with_session` takes any instant, so a direct PostgREST caller is unaffected. It is a trigger and its own approval, not a line in the action. ⚠ **And the rule is CREATE-only server-side** — moving an existing class into the past is refused by the form alone, because a class that has already run must stay editable and the server would need an extra read to tell the two apart. ⚠ **`set_class_person_powers` has no screen for an ARTIST claim**: the migration makes the register a DEFAULT an owner may take back, and `AssistantControls` renders for `kind === 'assistant'` only — so the taking-back half exists in the database with no control on top of it. ⚠ **The same "stagnant 0" lives in the two ROOM capacity fields** (`RoomsManager`, and the New-studio sheet in `BusinessHub`): identical expression, different screen, and they hold their rooms in an ARRAY, so the one-field fix does not transfer without reshaping that state | — | a trigger when somebody asks; the artist powers chip; the room fields next time that screen is opened |

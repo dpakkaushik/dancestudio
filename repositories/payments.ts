@@ -21,8 +21,9 @@ const toOrder = (row: OrderRow): PaymentOrder => ({
   tenantId: row.business_id,
   classId: row.class_id ?? null,
   sessionId: row.session_id ?? null,
-  eventId: row.event_id ?? null,
-  eventBookingId: row.event_booking_id ?? null,
+  /* `eventId` / `eventBookingId` went with events (29 Sep 2026). The COLUMNS
+     stay and so do the 4 paid event orders on production — an order is a money
+     record — but nothing in the app reads or writes them now. */
   membershipId: row.membership_id ?? null,
   membershipPassId: row.membership_pass_id ?? null,
   amountInr: row.amount_inr,
@@ -45,22 +46,11 @@ export async function createPaymentOrder(
   return toOrder(data as OrderRow);
 }
 
-/** Start paying for a PENDING event booking — a priced ticket or entry
- *  `book_event` wrote as `pending_payment` (17 Sep 2026). The RPC re-checks
- *  the event is open and the tier still has room; the amount is the
- *  booking's, never the client's. */
-export async function createEventPaymentOrder(
-  supabase: SupabaseClient,
-  eventBookingId: string
-): Promise<PaymentOrder> {
-  const { data, error } = await supabase.rpc("create_event_payment_order", {
-    p_event_booking_id: eventBookingId,
-  });
-  if (error) {
-    throw new Error(error.message);
-  }
-  return toOrder(data as OrderRow);
-}
+/* ⚠ `createEventPaymentOrder` went with events (29 Sep 2026). It opened an
+   order against a `pending_payment` ticket or entry (17 Sep) — the one door that
+   could make a NEW one. Its RPC is the migration's to drop; the rail it fed
+   (`openRail`, the webhook route, `apply_captured_payment`) is shared with a
+   class seat and a membership and is untouched. */
 
 /** Start paying for a membership somebody has just taken (19 Sep 2026) — the
  *  `pending_payment` pass `buy_membership` wrote. The RPC re-checks it is

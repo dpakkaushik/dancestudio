@@ -1,12 +1,12 @@
 /* Screenshot the APP's screens the way shoot-proto.js shoots the prototype's: a
-   throwaway account (the e2e's admin generate_link trick) onboarded as an
-   ORGANIZATION with a studio, then every route →
-   scripts/shots/shots/app-<key>.png (gitignored).
+   throwaway account (the e2e's admin generate_link trick) onboarded as a PERSON
+   with a studio, then every route → scripts/shots/shots/app-<key>.png
+   (gitignored).
 
-   It walks the gate as a real organization meets it (R13-R16, 9 Sep 2026, and
-   per-studio subscriptions, 10 Sep 2026): who first, the logo, the links, then
-   FIVE PHOTOS OF THE SPACE — without which request_org_verification refuses and
-   nothing downstream exists. The service role then stands in for a platform
+   It walks the gate a real studio meets (per-studio subscriptions, 10 Sep 2026;
+   a person opens a studio, 26 Sep 2026): who first, the name and city, then
+   FIVE PHOTOS OF THE SPACE — without which request_studio_verification refuses
+   and nothing downstream exists. The service role then stands in for a platform
    admin twice, because a developer tool cannot wait for a human: the
    verification tick, and one granted studio subscription (₹0, nothing charged),
    which is what puts the studio on Discover.
@@ -171,8 +171,10 @@ async function signUp(page, email) {
       ["person", `/person/${userId}`],
       ["studio-public", `/studio/${tenantId}`],
       ["class-form", `/business/${tenantId}/classes/new`],
-      ["events-desk", `/business/${tenantId}/events`],
-      ["event-form", `/business/${tenantId}/events/new`],
+      /* ⚠ the events desk and the event form were shot here until 29 Sep 2026.
+         Both routes are gone and redirect to the studio's own home, so shooting
+         them would photograph a redirect — which is worse than a gap, because
+         the shot would look like a screen. */
       ["students", `/business/${tenantId}/students`],
       ["team", `/business/${tenantId}/staff`],
       ["rooms", `/business/${tenantId}/rooms`],

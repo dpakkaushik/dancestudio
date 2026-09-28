@@ -3,7 +3,7 @@ import { notFound } from "next/navigation";
 import { cache } from "react";
 import { ClassDetail } from "@/features/classes/components/ClassDetail";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
-import { findArtistPageOwner } from "@/repositories/publicOrganization";
+import { findArtistPageOwner } from "@/repositories/tenants";
 import { findPassesForSession } from "@/repositories/memberships";
 import { canBookClass, noBookingWords } from "@/types/profile";
 import { resolveActingAs } from "@/repositories/actingAs";
@@ -226,7 +226,7 @@ export default async function ClassSharePage({
          27 Sep onto the profile you are acting as — the role it tested was
          retired by R48 and the gate had been dead for a day) */
       viewerCanBook={canBookClass(actingAs)}
-      cannotBookWhy={actingAs && !canBookClass(actingAs) ? noBookingWords(actingAs, "class") : null}
+      cannotBookWhy={actingAs && !canBookClass(actingAs) ? noBookingWords(actingAs) : null}
       passes={passes}
     />
   );

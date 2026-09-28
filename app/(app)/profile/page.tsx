@@ -1,6 +1,5 @@
 import { redirect } from "next/navigation";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
-import { findProfileById } from "@/repositories/profiles";
 
 /** `/profile` IS AN ADDRESS NOW, NOT A SCREEN (21 Sep 2026).
  *
@@ -9,9 +8,11 @@ import { findProfileById } from "@/repositories/profiles";
  *  live."* Your own profile and your public page were two addresses drawing the
  *  same person from the same read — the pair this file has recorded drifting
  *  five ways (C32) and the pair whose two corners pointed at each other until
- *  C37. They are one address each now: **`/person/{me}` for a person,
- *  `/org/{me}` for an organization**, and those routes draw the owner's version
- *  when the subject is you (`OwnProfileScreen`).
+ *  C37. It is one address now — **`/person/{me}`** — and that route draws the
+ *  owner's version when the subject is you (`OwnProfileScreen`). ⚠ The second
+ *  arm, `/org/{me}`, went with organizations on 29 Sep 2026, and the profile
+ *  read that chose between the two went with it: this is one hop and no round
+ *  trip.
  *
  *  ⚠ THE ROUTE STAYS, AND MUST (Rule 14). The installed TWA reopens on the last
  *  URL it showed, the chrome's gear links `/profile?settings=1`, and a studio's
@@ -31,10 +32,6 @@ export default async function ProfilePage({ searchParams }: { searchParams: Prom
   if (!user) {
     redirect("/login");
   }
-  const profile = await findProfileById(supabase, user.id);
-  if (!profile) {
-    redirect("/onboarding");
-  }
   const settings = (await searchParams).settings === "1" ? "?settings=1" : "";
-  redirect(`${profile.role === "org" ? "/org" : "/person"}/${user.id}${settings}`);
+  redirect(`/person/${user.id}${settings}`);
 }

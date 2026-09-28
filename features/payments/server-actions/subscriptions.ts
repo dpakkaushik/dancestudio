@@ -146,9 +146,12 @@ export async function startSubscriptionAction(input: unknown): Promise<StartSubs
     const providerPlanId = await ensureCashfreePlan(admin, plan);
     const profile = await findProfileById(supabase, user.id);
     const providerSubscriptionId = providerSubscriptionIdFor(row.id, row.attempt);
-    /* the mandate window returns to the hub the business lives on — an
-       organization's is `/organizations` since 26 Sep 2026 */
-    const returnUrl = `${await siteOrigin()}${row.kind === "studio" ? "/business" : row.kind === "org" ? "/organizations" : "/subscription"}`;
+    /* the mandate window returns to the hub the business lives on. ⚠ The `org`
+       arm went with organizations (29 Sep 2026) — an `org_monthly` subscription
+       is a row nothing can start now, and its six live rows on production are
+       the sweep's; a stray one reaching here lands on the account's own plan,
+       which is a true screen rather than a dead address. */
+    const returnUrl = `${await siteOrigin()}${row.kind === "studio" ? "/business" : "/subscription"}`;
     const cfSub = await createCashfreeSubscription({
       providerSubscriptionId,
       providerPlanId,

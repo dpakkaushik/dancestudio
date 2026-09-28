@@ -14,8 +14,12 @@ const btn: React.CSSProperties = { height: 32, padding: "0 11px", borderRadius: 
 const KIND_WORDS: Record<PlanCatalogRow["kind"], { who: string; what: string; tone: string }> = {
   artist: { who: "a user", what: "unlocks the artist tools and one artist page", tone: "#EC4899" },
   studio: { who: "a person, per studio", what: "puts ONE studio on Discover — two studios need two", tone: "#0E7490" },
-  /* the third kind (26 Sep 2026): an organization is a business a person opens, with its own mandate */
-  org: { who: "a person, per organization", what: "puts ONE organization and its events in front of the public, once its GST number is verified", tone: "#0369A1" },
+  /* ⚠ RETIRED 29 Sep 2026 — organizations went, so nothing can buy this plan.
+     The ROW is still on the price list (`plan_catalog` holds `org_monthly`, and
+     six granted mandates on production still point at it), so the desk draws it
+     and says so rather than hiding a plan the database has. An admin reading
+     this screen needs the truth about the catalogue, not a tidier version. */
+  org: { who: "nobody — organizations are retired", what: "kept on the price list because granted mandates still name it; it cannot be bought", tone: "#78716C" },
 };
 
 /** PLANS (10 Sep 2026) — the user's ask, word for word: "keep the subscription

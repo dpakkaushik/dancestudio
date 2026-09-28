@@ -77,10 +77,11 @@ const asUrl = (v: string): string => {
 type Step = "profile" | "styles" | "socials" | "proof" | "done";
 
 /** ONBOARDING — the prototype's screens (3781-3943), re-cut on 8 Sep 2026 for
- *  the two kinds of account the user decided on, and again on 26 Sep 2026 when
- *  the organization kind was retired (an organization is a business a person
- *  opens now — `isOrg` below can no longer be true, and its branches are kept
- *  only so the file keeps its shape until the role itself is retired):
+ *  the two kinds of account the user decided on, again on 26 Sep 2026 when the
+ *  organization kind was retired, and finally on 29 Sep 2026 when organizations
+ *  went altogether and every `isOrg` branch here went with them — the headings,
+ *  the placeholders, the "logo" wording, the skipped styles step and the
+ *  organization's own half of the bow:
  *
  *  1. ONE name (no first and last), the city, and the photo once the row
  *     exists. No "who is here" — everybody is a person.
@@ -115,11 +116,12 @@ export function OnboardingForm({
 }) {
   /* ⚠ ALWAYS A USER (26 Sep 2026): the server refuses any other word */
   const role: ProfileRole = "user";
-  const isOrg = existing?.role === "org";
+  /* ⚠ `isOrg` went with organizations (29 Sep 2026) — it skipped the STYLES step
+     for an organization, which dances nothing; everybody here dances */
   /* RESUMING: a row already exists when the page re-renders mid-flow (every server
      action refetches the route) or when somebody comes back the next morning —
      the form picks up from what the row holds rather than asking it all again */
-  const [step, setStep] = useState<Step>(existing ? (existing.avatarPath ? (existing.role === "org" ? "socials" : "styles") : "profile") : "profile");
+  const [step, setStep] = useState<Step>(existing ? (existing.avatarPath ? "styles" : "profile") : "profile");
   const [name, setName] = useState(existing?.fullName ?? "");
   const [city, setCity] = useState(existing?.city ?? "");
   const [avatarPath, setAvatarPath] = useState<string | null>(existing?.avatarPath ?? null);
@@ -144,7 +146,7 @@ export function OnboardingForm({
 
   /* the button says what is missing (3820-3821): the reason, not a grey nothing */
   /* the city is the user's "location" (requirement 2, 9 Sep 2026): asked before the row is made, required by the database too */
-  const missing = !fullName ? (isOrg ? "Enter the organization's name" : "Enter your name") : !city.trim() ? (isOrg ? "Enter the organization's city" : "Enter your city") : saved && !avatarPath ? (isOrg ? "Add a logo or photo" : "Add your profile photo") : "";
+  const missing = !fullName ? "Enter your name" : !city.trim() ? "Enter your city" : saved && !avatarPath ? "Add your profile photo" : "";
   const ready = !missing;
 
   /* every later screen lands on the ONE record, through the Profile tab's own door */
@@ -172,30 +174,34 @@ export function OnboardingForm({
       <AuthShell toast={toast} progress={[1, total]}>
         {/* each step is a screen, so each step's title is that screen's `<h1>` —
             only one of the four is ever rendered at a time (28 Sep 2026) */}
-        <h1 style={{ fontSize: 24, fontWeight: 800, margin: "14px 0 4px", fontFamily: DOS_DISPLAY, letterSpacing: -0.5 }}>{isOrg ? "Set up your organization" : "Set up your profile"}</h1>
-        <div style={{ fontSize: 13, color: SUB, marginBottom: 18 }}>{isOrg ? "Who you are, where you are, and a logo — your studios come next." : "A photo and your basics — this is how the community sees you."}</div>
+        <h1 style={{ fontSize: 24, fontWeight: 800, margin: "14px 0 4px", fontFamily: DOS_DISPLAY, letterSpacing: -0.5 }}>Set up your profile</h1>
+        <div style={{ fontSize: 13, color: SUB, marginBottom: 18 }}>A photo and your basics — this is how the community sees you.</div>
 
         {/* ⚠ NO "I AM HERE AS…" CARDS (26 Sep 2026): the organization kind is
-            retired, and a choice with one option is not a choice */}
+            retired, and a choice with one option is not a choice.
+            ⚠⚠ AND EVERY `isOrg` BRANCH ON THIS SCREEN WENT ON 29 Sep 2026 with
+            organizations themselves — the headings, the placeholders, the "logo"
+            wording and the step that skipped styles. They had been unreachable
+            since R48 retired the role on 26 Sep; this is what removed them. */}
 
         {/* ONE NAME (8 Sep 2026) */}
-        <div style={{ fontSize: 12, color: SUB, fontWeight: 700, marginBottom: 8, letterSpacing: 0.5 }}>{isOrg ? "ORGANIZATION NAME" : "YOUR NAME"}</div>
+        <div style={{ fontSize: 12, color: SUB, fontWeight: 700, marginBottom: 8, letterSpacing: 0.5 }}>YOUR NAME</div>
         <input
           name="name"
           value={name}
-          onChange={(e) => setName(isOrg ? e.target.value : e.target.value.replace(/(^|\s)\S/g, (c) => c.toUpperCase()))}
-          placeholder={isOrg ? "e.g. EEE Dance Company" : "e.g. Rhea Kapoor"}
+          onChange={(e) => setName(e.target.value.replace(/(^|\s)\S/g, (c) => c.toUpperCase()))}
+          placeholder="e.g. Rhea Kapoor"
           autoFocus
           disabled={saved}
           style={{ ...inputStyle, opacity: saved ? 0.7 : 1 }}
         />
-        {fullName && !isOrg ? (
+        {fullName ? (
           <div style={{ fontSize: 12, color: SUB, marginTop: 10 }}>
             Your handle: <b style={{ color: PINK }}>@{handle}</b> · editable later
           </div>
         ) : null}
 
-        <div style={{ fontSize: 12, color: SUB, fontWeight: 700, margin: "16px 0 8px", letterSpacing: 0.5 }}>{isOrg ? "HEAD OFFICE CITY (OPTIONAL)" : "CITY (OPTIONAL)"}</div>
+        <div style={{ fontSize: 12, color: SUB, fontWeight: 700, margin: "16px 0 8px", letterSpacing: 0.5 }}>CITY (OPTIONAL)</div>
         {/* THE ONE CITY DROPDOWN (19 Sep 2026) — the registry, and a search behind it; `name="city"` rides as a hidden input for the post */}
         <div style={{ marginBottom: 18 }}>
           <CityPicker value={city.trim() || null} onChange={(c) => setCity(c ?? "")} label="" disabled={saved} name="city" />
@@ -205,16 +211,16 @@ export function OnboardingForm({
             own; it needs the row to exist, so before the first Continue the square explains
             that the photo comes right after the name. */}
         <div style={{ display: "flex", gap: 14, alignItems: "flex-start" }}>
-          <div aria-label={face ? (isOrg ? "Your logo" : "Your profile photo") : (isOrg ? "Your logo, not added yet" : "Your profile photo, not added yet")} style={{ width: 112, height: 112, borderRadius: 24, overflow: "hidden", background: "rgba(255,255,255,.07)", border: face ? "none" : `2px dashed ${LINE}`, display: "flex", alignItems: "center", justifyContent: "center", color: SUB, fontSize: 26, fontWeight: 800, flexShrink: 0, position: "relative" }}>
+          <div aria-label={face ? "Your profile photo" : "Your profile photo, not added yet"} style={{ width: 112, height: 112, borderRadius: 24, overflow: "hidden", background: "rgba(255,255,255,.07)", border: face ? "none" : `2px dashed ${LINE}`, display: "flex", alignItems: "center", justifyContent: "center", color: SUB, fontSize: 26, fontWeight: 800, flexShrink: 0, position: "relative" }}>
             {face ? <Image src={face} alt="" width={112} height={112} style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} /> : "📷"}
           </div>
           <div style={{ flex: 1, minWidth: 0, paddingTop: 6 }}>
             {saved ? (
-              <PhotoPicker owner={{ kind: "avatar", id: userId }} hasPhoto={Boolean(avatarPath)} label={isOrg ? "Change the logo" : "Change your photo"} cropLabel={isOrg ? "Logo" : "Profile photo"} onSaved={setAvatarPath} />
+              <PhotoPicker owner={{ kind: "avatar", id: userId }} hasPhoto={Boolean(avatarPath)} label="Change your photo" cropLabel="Profile photo" onSaved={setAvatarPath} />
             ) : (
-              <div style={{ fontSize: 11.5, color: SUB, lineHeight: 1.5 }}>{isOrg ? "The name first — the logo comes right after, on this screen." : "Your name first — the photo comes right after, on this screen."}</div>
+              <div style={{ fontSize: 11.5, color: SUB, lineHeight: 1.5 }}>Your name first — the photo comes right after, on this screen.</div>
             )}
-            <div style={{ fontSize: 11, color: SUB, margin: "8px 0 0" }}>{face ? "this is how you will look · change it any time" : isOrg ? "your logo or a photo · required" : "your profile photo · required"}</div>
+            <div style={{ fontSize: 11, color: SUB, margin: "8px 0 0" }}>{face ? "this is how you will look · change it any time" : "your profile photo · required"}</div>
           </div>
         </div>
         <div style={{ height: 22 }} />
@@ -233,12 +239,7 @@ export function OnboardingForm({
               });
               return;
             }
-            /* AN ORGANIZATION IS DONE HERE (11 Sep 2026 — the user: "org no
-               more needs social media link or images for verification"). Its
-               links were the evidence DanceOS checked; a STUDIO's links and
-               photos are what it checks now, asked for on the hub once the
-               studio exists. A person still names their styles. */
-            if (ready) setStep(isOrg ? "done" : "styles");
+            if (ready) setStep("styles");
           }}
           style={{ ...BTN_STYLE, background: ready ? PINK : LINE, color: ready ? "#fff" : SUB, marginTop: 4, transition: "all .2s" }}
         >
@@ -351,10 +352,8 @@ export function OnboardingForm({
      typed would never reach `update_my_profile` at all. */
   const leave = () =>
     start(async () => {
-      if (isOrg) {
-        const out = await updateMyProfileAction({ fullName, city: city.trim(), age: null, phone: null, styles: [], socials: [] });
-        if (out.error) return fire(out.error);
-      }
+      /* ⚠ an ORGANIZATION wrote its profile HERE (it never saw the links
+         screen); that branch went with organizations on 29 Sep 2026 */
       await finishOnboardingAction();
     });
   return (
@@ -374,37 +373,27 @@ export function OnboardingForm({
         <div style={{ position: "relative", width: 112, height: 112 }}>
           <div aria-hidden="true" style={{ position: "absolute", inset: -7, borderRadius: 63, animation: "dosOrb 3s linear infinite", background: "conic-gradient(from 0deg,#EC4899,#F59E0B,transparent 62%,#EC4899)", WebkitMask: "radial-gradient(farthest-side,transparent calc(100% - 4px),#000 calc(100% - 3px))", mask: "radial-gradient(farthest-side,transparent calc(100% - 4px),#000 calc(100% - 3px))" }} />
           <div style={{ width: 112, height: 112, borderRadius: 56, overflow: "hidden", animation: "dosGlow 2.4s ease infinite", background: "#1A1425", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 42 }}>
-            {face ? <Image src={face} alt="" width={112} height={112} style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} /> : isOrg ? "🏢" : "🕺"}
+            {face ? <Image src={face} alt="" width={112} height={112} style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} /> : "🕺"}
           </div>
         </div>
       </div>
-      <div style={{ fontSize: 30, fontWeight: 800, margin: "18px 0 4px", animation: "dosRise .5s .2s ease both", fontFamily: DOS_DISPLAY }}>{isOrg ? `Welcome, ${fullName || "team"}!` : `Take a bow, ${firstWord || "dancer"}!`}</div>
-      <div style={{ fontSize: 13.5, color: "#B7AECB", animation: "dosRise .5s .25s ease both" }}>{isOrg ? "your first studio is next" : `@${handle} · the stage is officially yours.`}</div>
-      {isOrg ? null : (
-        <>
-          <div style={{ display: "flex", justifyContent: "center", flexWrap: "wrap", gap: 8, margin: "28px 0 8px", animation: "dosRise .5s .35s ease both" }}>
-            {myStyles.map((l) => {
-              const c = dosStyleColor(l) || "#EC4899";
-              return (
-                <span key={l} style={{ padding: "9px 15px", borderRadius: 999, background: dosToolPaint(c), color: "#fff", fontWeight: 800, fontSize: 13, fontFamily: DOS_DISPLAY, letterSpacing: -0.2, boxShadow: `0 3px 12px ${c}44` }}>
-                  {l}
-                </span>
-              );
-            })}
-          </div>
-          <div style={{ fontSize: 11.5, color: "#7E7492", animation: "dosRise .5s .4s ease both" }}>your styles — already dancing</div>
-        </>
-      )}
+      <div style={{ fontSize: 30, fontWeight: 800, margin: "18px 0 4px", animation: "dosRise .5s .2s ease both", fontFamily: DOS_DISPLAY }}>{`Take a bow, ${firstWord || "dancer"}!`}</div>
+      <div style={{ fontSize: 13.5, color: "#B7AECB", animation: "dosRise .5s .25s ease both" }}>{`@${handle} · the stage is officially yours.`}</div>
+      <div style={{ display: "flex", justifyContent: "center", flexWrap: "wrap", gap: 8, margin: "28px 0 8px", animation: "dosRise .5s .35s ease both" }}>
+        {myStyles.map((l) => {
+          const c = dosStyleColor(l) || "#EC4899";
+          return (
+            <span key={l} style={{ padding: "9px 15px", borderRadius: 999, background: dosToolPaint(c), color: "#fff", fontWeight: 800, fontSize: 13, fontFamily: DOS_DISPLAY, letterSpacing: -0.2, boxShadow: `0 3px 12px ${c}44` }}>
+              {l}
+            </span>
+          );
+        })}
+      </div>
+      <div style={{ fontSize: 11.5, color: "#7E7492", animation: "dosRise .5s .4s ease both" }}>your styles — already dancing</div>
       <div style={{ fontSize: 12.5, color: "#B7AECB", marginTop: 22, background: "rgba(255,255,255,.05)", border: "1.5px solid #241B33", borderRadius: 14, padding: "11px 14px", lineHeight: 1.55, animation: "dosRise .5s .5s ease both", textAlign: "left" }}>
-        {isOrg ? (
-          <>
-            🏢 <b style={{ color: "#F5F2FA" }}>Open your first studio from Home</b> — then show DanceOS its space: a public link and 5–10 photos, and an admin gives it the badge. Subscribe a verified studio and it is on Discover. Putting on <b style={{ color: "#F5F2FA" }}>events</b> needs your GST number, which you add on Home in a minute.
-          </>
-        ) : (
-          <>
-            ⭐ Teach or get booked? Unlock <b style={{ color: "#F5F2FA" }}>Artist tools</b> any time from the Subscription tile on Home. Run a studio or an organization? Open one from Home — <b style={{ color: "#F5F2FA" }}>Studios</b> and <b style={{ color: "#F5F2FA" }}>Organizations</b> are tiles there.
-          </>
-        )}
+        {/* ⚠ the ORGANIZATION half of this card went on 29 Sep 2026, and the
+            person's half lost its "or an organization" clause with it */}
+        ⭐ Teach or get booked? Unlock <b style={{ color: "#F5F2FA" }}>Artist tools</b> any time from the Subscription tile on Home. Run a studio? Open one from Home — <b style={{ color: "#F5F2FA" }}>Studios</b> is a tile there.
       </div>
       {/* the flow ends here and nowhere else: the cookie goes with it, and Home is next */}
       <button type="button" disabled={pending} onClick={leave} style={{ marginTop: 26, padding: 16, borderRadius: 999, background: "#EC4899", color: "#fff", fontWeight: 800, fontSize: 15.5, cursor: "pointer", animation: "dosGlow 2.4s ease infinite", border: "none", width: "100%", fontFamily: "inherit" }}>

@@ -150,19 +150,17 @@ export interface SwitcherItem {
   label: string;
   /** what this is to you — "Your profile", "Owner", "Faculty", "Crew you lead" */
   sub: string;
-  /* `org` since 26 Sep 2026: an organization is a business a person owns, run from here like a studio */
-  kind: "me" | "studio" | "org" | "crew";
+  /* ⚠ `org` (26 Sep 2026) went with organizations on 29 Sep */
+  kind: "me" | "studio" | "crew";
 }
 
-const SWITCH_TINT: Record<SwitcherItem["kind"], string> = { me: "#5AC8FA", studio: "#3B82F6", org: "#1D4ED8", crew: "#DC2626" };
+const SWITCH_TINT: Record<SwitcherItem["kind"], string> = { me: "#5AC8FA", studio: "#3B82F6", crew: "#DC2626" };
 
 /* AN ENTITY'S HOME (18 Sep 2026): a studio's own home and a crew's, with their
    inboxes — the pages that wear the entity's Home · Inbox bar instead of the
    main bar. Matched on a uuid so the static /business/stats, /earnings and /team
-   (all redirects since 26 Sep 2026) are not mistaken for a studio. ⚠ An
-   ORGANIZATION's home is `/business/{uuid}` too (26 Sep 2026), so the same
-   match gives it the same bar; the chrome cannot tell the two apart from the
-   path, and does not need to — the bar's three doors are the same. */
+   are not mistaken for a studio. ⚠ An ORGANIZATION's home was `/business/{uuid}`
+   too from 26 Sep 2026 and wore the same bar; it went on 29 Sep. */
 const UUID = "[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}";
 const STUDIO_HOME_RE = new RegExp(`^/business/(${UUID})(/inbox)?$`, "i");
 const CREW_HOME_RE = new RegExp(`^/crews/(${UUID})/(manage|inbox)$`, "i");
@@ -338,10 +336,10 @@ export function AppChrome({
           business: settings.ownBusiness,
         };
         if (!hereItem) return mine;
-        if (hereItem.kind === "studio" || hereItem.kind === "org") {
-          /* the same row the switcher named — a studio's or, since 26 Sep 2026, an organization's */
+        if (hereItem.kind === "studio") {
+          /* the same row the switcher named */
           const tenant = settings.businesses.find((t) => t.id === hereItem.key);
-          return tenant ? { kind: hereItem.kind, tenant } : mine;
+          return tenant ? { kind: "studio", tenant } : mine;
         }
         if (hereItem.kind === "crew") return { kind: "crew", crew: { id: hereItem.key, name: hereItem.label } };
         return mine;
