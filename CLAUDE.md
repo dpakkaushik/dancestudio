@@ -72,7 +72,29 @@
 > * **Verified:** typecheck 0 · lint 0 · `next build` green · **`shoot-discover`
 >   43/43** (the banner measured at both ends) · **`shoot-hero` 191/191** ·
 >   **`shoot-tiles` 155/155** · the held migration's dry run **22/22, rolled
->   back**, nothing persisted.
+>   back**, nothing persisted · **the whole e2e suite 54 passed / 1 failed / 3 did
+>   not run in 12.0 min, then the happy path 20/20 alone in 9.6 min**, so all 58
+>   are green across the two and the ONLY file changed between them is this one,
+>   which no test reads and the bundle does not contain.
+>   **PUSHED AND LIVE (`63a7f17`), read back off the DEPLOYMENT rather than
+>   assumed:** Vercel's own list for THIS sha, BUILDING → READY ·
+>   **`stranger-smoke.ps1` 11/11** against `https://dancestudio-orcin.vercel.app`
+>   · **`shoot-discover.js` 43/43 ON THE DEPLOYMENT** — a real studio built in
+>   Kolkata on the live host, three real objects in the private bucket, and the
+>   banner measured on the live bundle at **352×235 on the card and 382×255 on
+>   the page**, 1.5:1 in both · **`shoot-tiles.js` 155/155 against the live
+>   host**, no page error.
+> * ⚠ **AND THE ONE RED WAS THE MACHINE, WHICH IS WHAT THE 11 Sep RULE SAYS TO
+>   ASSUME UNTIL PROVEN — AND IT IS THE SAME SEGMENT, WITH THE SAME SIGNATURE, FOR
+>   THE THIRD TIME.** `happy-path:2827` (the class form's ROOM ALREADY BUSY
+>   segment, which this slice touches nowhere) timed out at 120 s waiting for a
+>   `Continue` button, with **no "intercepts pointer events" in the call log** — so
+>   it was not a scrim, it was simply not there — and the same segment passed in
+>   the 20/20 run on the same bundle. ⚠ The tell was measured rather than assumed:
+>   **commit charge at 13.4 GB of an 18.9 GB limit**, with the user's own Chrome
+>   holding 16 processes and 1.26 GB. ⚠ A serial suite's three segments behind it
+>   did not RUN, which is why the spec had to be re-run whole rather than alone
+>   from that line.
 > * ⚠ **AND THE JSX-COMMENT TRAP FOR THE FOURTH TIME IN THIS REPO**, caught in the
 >   same minute: an Edit put `{/* … */}` inside `return (` before the root element,
 >   which is a CHILD and therefore a parse error. ⚠ The mechanical sweep beside it
