@@ -3,6 +3,7 @@ import { DOS_DISPLAY, DOS_UI, INK, LILAC, SUB } from "@/lib/design/tokens";
 import { CREW_TINT, type CrewSummary } from "@/types/crew";
 import type { CrewPractice } from "@/types/crewPractice";
 import { DeskAddButton } from "@/features/settings/components/settings-kit";
+import { SegmentedPanels } from "@/features/shell/components/SegmentedNav";
 import { MyPractices } from "./MyPractices";
 import { CrewI, dosToolPaint } from "./crew-kit";
 
@@ -39,11 +40,42 @@ function Row({ crew, own, sub }: { crew: CrewSummary; own: boolean; sub: string 
 
 const sinceWords = (iso: string) => new Intl.DateTimeFormat("en-IN", { timeZone: "Asia/Kolkata", month: "short", year: "numeric" }).format(new Date(iso));
 
+/** THE CREWS COLUMN — the two lists and the door that makes one. Pulled out of
+ *  the hub's body so the segment above can choose between it and the practices
+ *  column without either knowing about the other. */
+function CrewLists({ led, member }: { led: CrewSummary[]; member: Array<CrewSummary & { since: string }> }) {
+  return (
+    <>
+      {/* ＋ AT THE TOP, LIKE CLASSES AND EVENTS (20 Sep 2026) — it was a dashed
+          row under the list, so somebody who leads several scrolled past them
+          all to start one */}
+      {/* opens over this hub (22 Sep 2026); `/crews/new` is still the page */}
+      <DeskAddButton label="Create crew" href="?new=1" />
+      {head("CREWS YOU LEAD")}
+      {led.length ? (
+        led.map((c) => <Row key={c.id} crew={c} own sub={`${c.members} member${c.members === 1 ? "" : "s"} · ${c.style} · ${c.city}`} />)
+      ) : (
+        <div style={{ fontSize: 11.5, color: SUB, padding: "0 2px 10px" }}>You do not lead a crew yet.</div>
+      )}
+      {/* and below it, the places that are not yours to run */}
+      {member.length > 0 ? (
+        <div style={{ marginTop: 20 }}>
+          {head("CREWS YOU ARE IN")}
+          {member.map((c) => (
+            <Row key={c.id} crew={c} own={false} sub={`${c.style} · ${c.city} · member since ${sinceWords(c.since)}`} />
+          ))}
+        </div>
+      ) : null}
+    </>
+  );
+}
+
 export function CrewsHub({
   led,
   member,
   practices,
   todayIso,
+  show = "crews",
 }: {
   led: CrewSummary[];
   member: Array<CrewSummary & { since: string }>;
@@ -55,8 +87,16 @@ export function CrewsHub({
    *  `MyPractices` carries the reasoning for why it is not a tile. */
   practices: CrewPractice[];
   todayIso: string;
+  /** ⚠ WHICH COLUMN IS OPEN (28 Sep 2026, the user: "practice flow should be
+   *  managed in a seprate column in crew section for user and artist"). Practices
+   *  were a third section stacked under both crew lists, so somebody who leads
+   *  three crews scrolled past all of them to reach the thing they came for. They
+   *  are a SEGMENT now — the app's own answer to "a separate column", the same
+   *  control Booked · Manage and Train · Teach · Assist already are. */
+  show?: "crews" | "practices";
 }) {
   const accent = CREW_TINT;
+  const hasCrew = led.length > 0 || member.length > 0;
   return (
     <div style={{ background: LILAC, color: INK, maxWidth: 430, margin: "0 auto", fontFamily: DOS_UI, minHeight: "100vh", paddingBottom: 40 }}>
       <div style={{ padding: "14px 16px 0" }}>
@@ -65,31 +105,29 @@ export function CrewsHub({
           <div style={{ position: "absolute", right: -28, top: -32, width: 130, height: 130, borderRadius: 65, background: "rgba(255,255,255,.13)" }} />
           <div style={{ fontSize: 21, fontWeight: 800, letterSpacing: -0.5, position: "relative", fontFamily: DOS_DISPLAY, lineHeight: 1.18 }}>Crews</div>
         </div>
-        {/* ＋ AT THE TOP, LIKE CLASSES AND EVENTS (20 Sep 2026) — it was a dashed
-            row under the list, so somebody who leads several scrolled past them
-            all to start one */}
-        {/* opens over this hub (22 Sep 2026); `/crews/new` is still the page */}
-      <DeskAddButton label="Create crew" href="?new=1" />
-        {head("CREWS YOU LEAD")}
-        {led.length ? (
-          led.map((c) => <Row key={c.id} crew={c} own sub={`${c.members} member${c.members === 1 ? "" : "s"} · ${c.style} · ${c.city}`} />)
+        {/* ⚠ NO SEGMENTS UNTIL THERE IS A CREW. Somebody with none would
+            otherwise be offered a Practices column that can only ever say
+            "nothing arranged" — an empty state for a question they never asked,
+            which is the rule the old inline section already followed. */}
+        {hasCrew ? (
+          <SegmentedPanels
+            /* the key is the SERVER's answer, so a link carrying `?show=` wins
+               over whatever this control last showed (the my-classes note) */
+            key={show}
+            initial={show}
+            label="Show"
+            segments={[
+              { key: "crews", href: "/crews", label: "Crews", n: led.length + member.length, aria: "The crews you lead and are in" },
+              { key: "practices", href: "/crews?show=practices", label: "Practices", n: practices.length, aria: "Every practice of every crew you are on" },
+            ]}
+            panels={[
+              { key: "crews", node: <CrewLists led={led} member={member} /> },
+              { key: "practices", node: <MyPractices practices={practices} todayIso={todayIso} bare /> },
+            ]}
+          />
         ) : (
-          <div style={{ fontSize: 11.5, color: SUB, padding: "0 2px 10px" }}>You do not lead a crew yet.</div>
+          <CrewLists led={led} member={member} />
         )}
-        {/* and below it, the places that are not yours to run */}
-        {member.length > 0 ? (
-          <div style={{ marginTop: 20 }}>
-            {head("CREWS YOU ARE IN")}
-            {member.map((c) => (
-              <Row key={c.id} crew={c} own={false} sub={`${c.style} · ${c.city} · member since ${sinceWords(c.since)}`} />
-            ))}
-          </div>
-        ) : null}
-        {/* ⚠ DRAWN ONLY WHEN THERE IS A CREW TO HAVE ONE. Somebody with no crew
-            at all would otherwise read "Nothing arranged yet" under a heading
-            about a thing they have no way to be part of — an empty state for a
-            question they never asked. */}
-        {led.length || member.length ? <MyPractices practices={practices} todayIso={todayIso} /> : null}
       </div>
     </div>
   );

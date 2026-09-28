@@ -35,7 +35,12 @@ const TINT = DOS_TOOLS.practice.c;
  *  be the two-doors-to-one-subject shape this file has paid for twice. What the
  *  hub gives everybody is the same thing: what is coming, what is over, where you
  *  stand, and — for anybody who was ASKED — the answer. */
-export function MyPractices({ practices, todayIso }: { practices: CrewPractice[]; todayIso: string }) {
+/** ⚠ `bare` IS FOR THE COLUMN (28 Sep 2026). This was a section stacked under
+ *  the two crew lists, so it wore its own top margin and its own YOUR PRACTICES
+ *  head to separate it from them. As a SEGMENT it is the only thing on screen
+ *  and the pill above already names it, so both would be the heading said twice
+ *  — the `TODAY` badge lesson from this morning in a second place. */
+export function MyPractices({ practices, todayIso, bare = false }: { practices: CrewPractice[]; todayIso: string; bare?: boolean }) {
   const [toast, setToast] = useState<string | null>(null);
   const [, start] = useTransition();
   const now = new Date(todayIso).getTime();
@@ -85,8 +90,8 @@ export function MyPractices({ practices, todayIso }: { practices: CrewPractice[]
   );
 
   return (
-    <div style={{ marginTop: 20 }} data-testid="my-practices">
-      <div style={{ ...PRACTICE_HEAD, margin: "2px 0 8px" }}>YOUR PRACTICES</div>
+    <div style={{ marginTop: bare ? 0 : 20 }} data-testid="my-practices">
+      {bare ? null : <div style={{ ...PRACTICE_HEAD, margin: "2px 0 8px" }}>YOUR PRACTICES</div>}
       {coming.length === 0 && over.length === 0 ? (
         <div style={{ ...bizCard, textAlign: "center", fontSize: 12, color: "var(--sub)", border: "1.5px dashed var(--el)", lineHeight: 1.5 }}>
           Nothing arranged yet — when a crew you are on arranges one you are asked here.

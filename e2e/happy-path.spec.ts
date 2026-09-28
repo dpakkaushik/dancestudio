@@ -1120,7 +1120,14 @@ test.describe.serial("DanceOS, end to end", () => {
     const confirmSheet = learner.getByRole("dialog", { name: "Confirm — no payment" });
     await expect(confirmSheet).toBeVisible();
     await confirmSheet.getByRole("button", { name: "Confirm free trial" }).click();
-    await expect(learner.getByText(/You.re booked/)).toBeVisible();
+    /* ⚠ FIFTEEN, NOT FIVE (28 Sep 2026). Confirming writes the seat through an
+       RPC and the page re-renders on the SERVER, so this is a round trip after a
+       mutation — the one shape in this suite that outruns the default five
+       seconds on a busy machine, and it has cost a run on 27 Sep and twice on
+       28 Sep. It was never a wrong value: the seat is booked and the words are
+       simply late. The same fifteen the style chip and "Since 2016" already
+       carry, for the same reason. */
+    await expect(learner.getByText(/You.re booked/)).toBeVisible({ timeout: 15000 });
     await expect(learner.getByText("Tap the poster above for your code.")).toBeVisible();
     // and the owner's register now reads the seat's meta: a free seat
     await owner.reload();

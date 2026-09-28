@@ -8,7 +8,11 @@ import { findProfileById } from "@/repositories/profiles";
 
 /** The Crews hub — the crews you lead, then the crews you are in (S_crews 2691). */
 export default async function CrewsPage({ searchParams }: { searchParams: Promise<Record<string, string | undefined>> }) {
-  const opening = (await searchParams).new === "1";
+  const sp = await searchParams;
+  const opening = sp.new === "1";
+  /* the segment the ADDRESS asks for — the URL is the state, as on every other
+     segmented desk in the app (19 Sep 2026's rule) */
+  const show = sp.show === "practices" ? "practices" : "crews";
   const supabase = await createSupabaseServerClient();
   const {
     data: { user },
@@ -30,7 +34,7 @@ export default async function CrewsPage({ searchParams }: { searchParams: Promis
   const profile = opening ? await findProfileById(supabase, user.id).catch(() => null) : null;
   return (
     <>
-      <CrewsHub led={led} member={member} practices={practices} todayIso={new Date().toISOString()} />
+      <CrewsHub led={led} member={member} practices={practices} todayIso={new Date().toISOString()} show={show} />
       {opening && profile ? <CrewForm defaultCity={profile.city} sheet /> : null}
     </>
   );

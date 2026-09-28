@@ -2,7 +2,7 @@
 
 ## LAST SESSION (28 Sep 2026) — replaced on every push (Rule 13)
 
-> ### FOUR OF THE EIGHT, AND THE ONE THAT WAS A LIVE DEFECT WITH TWO CAUSES (28 Sep 2026, latest) — BUILT, no migration
+> ### SIX OF THE EIGHT, AND THE ONE THAT WAS A LIVE DEFECT WITH TWO CAUSES (28 Sep 2026, latest) — BUILT, no migration
 > The user's list of eight, after the audit: *"OPTION TO TAKE MEMBERSHIP OF SALE.
 > MEMBERSHIP SHOULD HAVE STUDIO OR ARTIST PHOTO WITH NAME. ROUTINES TO HAVE
 > ARTIST NAME WHO CREATED IT WITH PHOTO. WHEN GIVING ATTENDANCE AND REFUNDS RIGHT
@@ -13,8 +13,9 @@
 > EVENTS INSIDE THEIR ATTENDANCE TAB. WHEN SCANNING ANY PERSONS QR CODE … SHOULD
 > FIRST SHOW PROFILE PIC WITH 2 BUTTONS BELOW FOR VIEW PROFILE AND STATS AND
 > OPTION TO CONFIRM OR DENY"* — then *"NO NEED FOR THE LEAD PROCESS FOR WALK IN.
-> GO AHEAD AND PUSH IT LIVE."* **Four are in this push; four are named at the
-> foot of this block, one of them needing a migration nobody has approved.**
+> GO AHEAD AND PUSH IT LIVE."*, then *"CONTINUE TO [F]IX ALL AND PUSH TO LIVE"*.
+> **Six are in this push; what is left is named at the foot of this block, one of
+> it needing a migration nobody has approved.**
 > * ⚠⚠ **THE ASSISTANT'S POWERS HAD TWO CAUSES, AND THE SECOND ONE MEANS THE
 >   FEATURE HAS NEVER WORKED BY EITHER ROUTE.** R38 (20 Sep) gave an owner two
 >   grants to hand out per person on the Team desk, and the DATABASE has honoured
@@ -64,11 +65,41 @@
 >   the wordmark over it, and a tool hero there would name a tool on no grid;
 >   only `/enquiries`, a tile since C70, gets the hero. ⚠ `grad` stays for the
 >   screens that are NOT tools, Verification being the one C53 decided that for.
+> * **PRACTICE IS ITS OWN COLUMN** (*"practice flow should be managed in a
+>   seprate column in crew section"*). It was a third section stacked under both
+>   crew lists, so somebody who leads three crews scrolled past all of them to
+>   reach the thing they came for. It is a SEGMENT now — `Crews · N` /
+>   `Practices · N` — which is this app's own answer to "a separate column", the
+>   same control Booked · Manage already is, on `SegmentedPanels` so both panels
+>   render in the one server pass and the switch costs no round trip. ⚠ **No
+>   segments until there is a crew**: somebody with none would be offered a column
+>   that can only ever say "nothing arranged", which is the rule the old inline
+>   section already followed. ⚠ `MyPractices` takes `bare` — as a segment the pill
+>   above already names it, so its own YOUR PRACTICES head would be the heading
+>   said twice, which is this morning's `TODAY` badge in a second place.
+> * ⚠⚠ **AND A SCAN IS NOT A DECISION ANY MORE** (*"when scanning any persons qr
+>   code … should first show profile pic with 2 buttons below for view profile and
+>   stats and option to confirm or deny the same, after confirmation only should
+>   check them in or add them"*). A decoded code went STRAIGHT to the caller,
+>   which added the person — so the only thing between a mis-scan and somebody on
+>   a roster was the camera pointing at the right square, and a code carries an id
+>   with nothing a human can check while the person holding the phone is looking
+>   at the phone rather than at the face in front of them. `ScanSheet` resolves
+>   the id itself now and shows WHO it found — a 96px picture, the name, Artist or
+>   User and the city — with **View profile** and **Stats** beside each other and
+>   **Not them / Confirm** under. `onCode` is called from Confirm and nowhere
+>   else. ⚠ The lookup MOVED rather than being added: it is `lookupPersonAction`,
+>   the same door the picker called a moment later, and its own refusals now land
+>   where the person can scan again instead of after a decision already taken.
+>   ⚠ The two doors open in a new tab, so looking somebody up does not throw away
+>   the scan.
 > * ⚠⚠ **WHAT IS NOT IN THIS PUSH, SAID RATHER THAN LEFT TO BE FOUND:** the
->   membership's seller PHOTO (the name is already there and the public page is
->   the seller's own, so the surface that needs it is the pass you HOLD, which
->   needs a seller-photo read); the practice column on the Crews hub; the QR
->   confirm step with View profile / Stats before a check-in or an add; and
+>   membership's seller PHOTO (the name is already there and a public page is the
+>   seller's own, so the surface that needs it is the pass you HOLD — and there is
+>   no ready-made "these businesses' photos" read, so it is a new query rather
+>   than a select); **the other half of the scan ask — there is no scanner on a
+>   class or event register at all**, so "check them in" by scanning is a control
+>   that has never existed and is a build rather than a wiring; and
 >   ⚠ **the class WALK-IN, which needs a migration** — events have
 >   `add_event_walk_in` and **classes have no equivalent at all**. "Push it live"
 >   is not the word that applies a migration (this file's own standing rule), so
@@ -92,6 +123,28 @@
 >   assumed:** Vercel's own list for THIS sha, BUILDING → READY ·
 >   **`stranger-smoke.ps1` 11/11** against `https://dancestudio-orcin.vercel.app`
 >   · **`shoot-tiles.js` 155/155 against the live host**, no page error.
+> * **Verified:** typecheck 0 · lint 0 · `next build` green · **`shoot-hero`
+>   191/191** · **`shoot-tiles` 155/155** · the whole e2e suite **54 passed / 1
+>   failed / 3 did not run**, then **the happy path 20/20 ALONE in 8.1 min** — so
+>   all 58 across the two runs, and the only file changed between them is the spec.
+> * ⚠⚠ **AND THREE REDS ACROSS TWO RUNS WERE THE MACHINE, PROVEN RATHER THAN
+>   ASSUMED — AND I HAD TOUCHED THE VERY PAGE ONE OF THEM WAS ON.** `admin-support`
+>   went first (fixed above), then `happy-path:2820` — the class FORM's ROOM
+>   ALREADY BUSY segment, a 120-second TEST TIMEOUT waiting for a Continue button
+>   that never appeared, which is 27 Sep's failure verbatim — then, on the re-run,
+>   `happy-path:1060`: `You're booked` after a confirmed free trial, a **five-second
+>   wait on a server round trip after a mutation**. ⚠ **Three different tests, every
+>   one a timeout and never a wrong value**, which is this file's own criterion; and
+>   the tell was MEASURED, not asserted — **commit charge 13.6 GB of 18.9 GB with
+>   the user's own Chrome holding 16 processes**, the identical state recorded
+>   yesterday. ⚠ I did not stop at "the machine" for 1060, because `findMySeat` had
+>   replaced `findMyMembershipRole` on that very page: for a LEARNER both return
+>   null (no `business_members` row), so the booking path is byte-identical — and
+>   the re-run's 20/20 is what settled it.
+> * ⚠ **AND THAT ONE IS FIXED TOO RATHER THAN RE-DIAGNOSED NEXT WEEK**: line 1123
+>   has the fifteen seconds every other post-mutation assertion in this suite
+>   carries. It has cost a run on 27 Sep and twice on 28 Sep; the seat was always
+>   booked and the words were merely late.
 > * ⚠ **AND THE USER'S OWN ITEM 8 CLOSED A QUESTION THE SWEEP HAD LEFT OPEN**:
 >   *"walk in only for classes and events inside their attendance tab"* plus *"no
 >   need for the lead process for walk in"* means the students desk is not where a
@@ -8326,8 +8379,15 @@ for the database schema. **The UI is not redesigned** — see Rule 2.
 
 ### Progress tracker — update after EVERY push (Rule 11)
 
-- **FOUR OF THE USER'S EIGHT — 28 Sep 2026, no step number — BUILT, no
-  migration.** ⚠⚠ **The assistant's granted powers had TWO causes and the feature
+- **SIX OF THE USER'S EIGHT — 28 Sep 2026, no step number — BUILT, no
+  migration.** Also: **practice is its own COLUMN** on the Crews hub
+  (`SegmentedPanels`, both panels in one server pass, and no segments at all
+  until there is a crew to have one), and ⚠⚠ **a scan is no longer a decision** —
+  `ScanSheet` resolves the code itself and shows the picture, the name, View
+  profile and Stats, with Confirm / Not them; `onCode` fires from Confirm and
+  nowhere else, and the lookup MOVED rather than being added. ⚠ **The other half
+  of that ask is a build, not a wiring: no class or event register has a scanner
+  at all**, so checking somebody in by scanning has never existed. ⚠⚠ **The assistant's granted powers had TWO causes and the feature
   had never worked by either route**: the class page read `myClaim` alone (so the
   Team desk's STANDING grant was invisible), and the Attendance tab's real gate
   is `register !== null` while the register was fetched for `canManage` only — so
