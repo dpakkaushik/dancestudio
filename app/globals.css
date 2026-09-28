@@ -178,17 +178,22 @@ html.light .dos-invert {
 
 /* ── The phone's own furniture — safe-area insets + top-bar height, published once
    (prototype 19194-19199). Zero on desktop; real on notched phones via viewport-fit=cover. */
+/* ⚠ THE BAR IS 62px, NOT 54 (28 Sep 2026, the user: "make the top bar a bit
+   bigger as well with bigger buttons"). It is published as a VARIABLE and every
+   screen's `paddingTop` reads it, so this one number moves the bar, the space
+   under it and the toast that hangs below it together — which is the whole
+   reason the prototype published it (19194-19199) rather than repeating 54. */
 :root {
   --dos-safe-top: 0px;
   --dos-safe-bottom: 0px;
   --dos-bar: 54px;
-  --dos-top: 54px;
+  --dos-top: 62px;
 }
 @supports (top: env(safe-area-inset-top)) {
   :root {
     --dos-safe-top: env(safe-area-inset-top, 0px);
     --dos-safe-bottom: env(safe-area-inset-bottom, 0px);
-    --dos-top: calc(54px + env(safe-area-inset-top, 0px));
+    --dos-top: calc(62px + env(safe-area-inset-top, 0px));
   }
 }
 

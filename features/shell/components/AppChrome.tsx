@@ -181,109 +181,13 @@ const entityOf = (pathname: string): Entity | null => {
   return null;
 };
 
-/* drill-page titles — the top bar names where you are (prototype 19241) */
-const DRILL_TITLES: Array<[RegExp, string]> = [
-  /* the two that were tabs until 15 Sep 2026 */
-  [/^\/profile$/, "Profile"],
-  [/^\/stats$/, "Stats"],
-  [/^\/subscription$/, "Subscription"],
-  /* the Organizations tile's word (26 Sep 2026) */
-  [/^\/organizations$/, "Organizations"],
-  [/^\/classes$/, "Classes"],
-  [/^\/c\/[^/]+$/, "Class"],
-  /* the Home grid's own words (18 Sep 2026): Classes and Events are two tiles now */
-  [/^\/my-classes$/, "Your classes"],
-  [/^\/my-events$/, "Your events"],
-  [/^\/routines$/, "Routines"],
-  [/^\/memberships$/, "Memberships"],
-  [/^\/assets$/, "Assets"],
-  /* the Studios tile's word (18 Sep 2026) — it read "Your business" while a
-     person's hub still offered to open one */
-  [/^\/business$/, "Studios"],
-  /* the organization's combined figures (17 Sep 2026) — static segments, so they
-     must be matched before the studio id below swallows them */
-  [/^\/business\/stats$/, "Studios · combined"],
-  [/^\/business\/earnings$/, "Earnings · combined"],
-  [/^\/business\/team$/, "Team"],
-  [/^\/business\/[^/]+$/, "Studio"],
-  [/^\/business\/[^/]+\/inbox$/, "Inbox"],
-  [/^\/business\/[^/]+\/classes$/, "Classes"],
-  [/^\/business\/[^/]+\/classes\/new$/, "Add class"],
-  [/^\/business\/[^/]+\/classes\/[^/]+\/edit$/, "Edit class"],
-  [/^\/business\/[^/]+\/classes\/[^/]+\/roster$/, "Attendance"],
-  [/^\/business\/[^/]+\/calendar$/, "Calendar"],
-  [/^\/business\/[^/]+\/media$/, "Media"],
-  [/^\/business\/[^/]+\/events$/, "Events"],
-  [/^\/business\/[^/]+\/events\/new$/, "Add event"],
-  [/^\/business\/[^/]+\/events\/[^/]+\/edit$/, "Edit event"],
-  [/^\/business\/[^/]+\/events\/[^/]+$/, "Manage event"],
-  [/^\/business\/[^/]+\/staff$/, "Team"],
-  /* an organization's own desks (26 Sep 2026) */
-  [/^\/business\/[^/]+\/team$/, "Team"],
-  [/^\/business\/[^/]+\/gst$/, "GST number"],
-  [/^\/business\/[^/]+\/subscription$/, "Subscription"],
-  [/^\/business\/[^/]+\/memberships$/, "Memberships"],
-  [/^\/business\/[^/]+\/assets$/, "Assets"],
-  [/^\/e\/[^/]+$/, "Event"],
-  [/^\/calendar$/, "Calendar"],
-  /* somebody else's record and rank (push 2, 19 Sep 2026) — four profiles, one page shape */
-  [/^\/(person|studio|org|crew)\/[^/]+\/stats$/, "Stats"],
-  [/^\/studio\/[^/]+$/, "Studio"],
-  [/^\/artist\/[^/]+$/, "Artist"],
-  /* an organization's own public page (18 Sep 2026) */
-  [/^\/org\/[^/]+$/, "Organization"],
-  [/^\/(studio|artist)\/[^/]+\/schedule$/, "Schedule"],
-  [/^\/inbox\/enquiries\/[^/]+$/, "Enquiry"],
-  /* ⚠ THE DESK ITSELF NEEDS A TITLE AGAIN (27 Sep 2026): it was a TAB for a few
-     hours, so the chrome drew the wordmark over it; a tool tile opens a DRILL
-     page, and a drill page with no entry here falls back to the path segment —
-     which would have read "enquiries", lowercase, as its own heading. */
-  [/^\/enquiries$/, "Enquiries"],
-  [/^\/crews$/, "Crews"],
-  [/^\/crews\/new$/, "Create crew"],
-  [/^\/crews\/[^/]+\/manage$/, "Crew"],
-  /* the crew's desks (18 Sep 2026; Practice and Calendar 27 Sep) — the crew home
-     is an entity page above. ⚠ A drill page with no entry here falls back to the
-     PATH SEGMENT, so a missing line is a screen headed "practice", lowercase —
-     which is exactly what `/enquiries` was for an hour that morning. */
-  [/^\/crews\/[^/]+\/manage\/team$/, "Team"],
-  [/^\/crews\/[^/]+\/manage\/events$/, "Events"],
-  [/^\/crews\/[^/]+\/manage\/practice$/, "Practice"],
-  [/^\/crews\/[^/]+\/manage\/calendar$/, "Calendar"],
-  [/^\/crews\/[^/]+\/inbox$/, "Inbox"],
-  [/^\/crew\/[^/]+$/, "Crew"],
-  [/^\/notifications$/, "Notifications"],
-  [/^\/admin$/, "Admin"],
-  [/^\/admin\/verifications$/, "Verification queue"],
-  [/^\/admin\/support$/, "Support"],
-  [/^\/admin\/support\/[^/]+$/, "Conversation"],
-  [/^\/admin\/accounts$/, "Accounts"],
-  [/^\/admin\/businesses$/, "Businesses"],
-  [/^\/admin\/reports$/, "Reports"],
-  /* the bar says what the NAV says, not what the URL says (11 Sep 2026): the
-     money desk lives at /admin/payments — the word the panel was asked for —
-     and without these four the bar fell back to the path segment, so the desk
-     the nav calls "Money" opened with "Payments" written over it */
-  [/^\/admin\/dashboard$/, "Dashboard"],
-  [/^\/admin\/payments$/, "Money"],
-  [/^\/admin\/subscriptions$/, "Subscriptions"],
-  [/^\/admin\/plans$/, "Plans"],
-  [/^\/admin\/communication$/, "Communication"],
-  [/^\/admin\/audit$/, "Audit log"],
-  [/^\/support$/, "DanceOS support"],
-  [/^\/support\/[^/]+$/, "Conversation"],
-  [/^\/person\/[^/]+$/, "Student record"],
-  [/^\/managed$/, "What you manage"],
-  [/^\/join\/[^/]+$/, "Join the team"],
-];
-
-const titleFor = (pathname: string): string => {
-  for (const [re, title] of DRILL_TITLES) {
-    if (re.test(pathname)) return title;
-  }
-  const last = pathname.split("/").filter(Boolean).pop() ?? "";
-  return last.replace(/-/g, " ").replace(/^./, (ch) => ch.toUpperCase());
-};
+/* ⚠ `titleFor` AND `DRILL_TITLES` WENT WITH THE TITLE (28 Sep 2026). They were
+   ~90 lines mapping a path to the word the bar printed, and the bar prints the
+   wordmark now on every screen. ⚠ WHAT THAT COSTS, said rather than discovered:
+   a drill page's name is its own `<h1>` alone from here, so a page that never
+   grew one has no accessible name at all — and this repo has found exactly that
+   shape FIVE times (the desks 18 Sep, the studio Team desk 21 Sep, `EventForm`
+   and `/rooms` 22 Sep, the Inbox 27 Sep). A backlog row carries the sweep. */
 
 /* the <html> class as an external store (theme boot script + toggle both write it) */
 const subscribeToHtmlClass = (onChange: () => void): (() => void) => {
@@ -295,10 +199,14 @@ const readTheme = (): "dark" | "light" =>
   document.documentElement.className === "light" ? "light" : "dark";
 const readServerTheme = (): "dark" | "light" => "dark";
 
+/** ⚠ 40px, WAS 34 (28 Sep 2026, the user: "with bigger buttons"). These are the
+ *  bell and the gear — the two controls on every screen in the app — and 34 was
+ *  under the 44px a finger is usually given. 40 with the bar at 62 keeps 11px of
+ *  air above and below, so they are bigger without the bar feeling packed. */
 const chipStyle: React.CSSProperties = {
-  width: 34,
-  height: 34,
-  borderRadius: 17,
+  width: 40,
+  height: 40,
+  borderRadius: 20,
   flexShrink: 0,
   cursor: "pointer",
   display: "flex",
@@ -523,7 +431,48 @@ export function AppChrome({
           borderBottom: "1.5px solid var(--hdr-line)",
         }}
       >
-        <span style={{ display: "flex", alignItems: "center", gap: showMark ? 9 : 6, minWidth: 0, flex: 1 }}>
+        {/* ⚠⚠ THE BACK CHIP COMES FIRST ON A DRILL PAGE, AND THE LOGO IS ALWAYS
+            AFTER IT (28 Sep 2026, the user: "make sure not to show page name in
+            the top bar now DanceOS logo should be constant").
+            The bar used to be one of two things: the wordmark on a tab, or a
+            back chip and the PAGE'S NAME on a drill. So the brand left the
+            screen the moment anybody opened anything, which is the opposite of
+            constant. The wordmark is drawn on every screen now and the title is
+            gone. ⚠ Back is KEPT and moved to the leftmost place, where every
+            phone puts it: it is the only wayfinding a drill page has left, and
+            dropping it as well would stand somebody three taps inside Settings
+            with nothing but the system gesture. */}
+        <span style={{ display: "flex", alignItems: "center", gap: 9, minWidth: 0, flex: 1 }}>
+          {showMark ? null : (
+            <span
+              role="button"
+              tabIndex={0}
+              aria-label="Go back"
+              onClick={goBack}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" || e.key === " ") {
+                  e.preventDefault();
+                  goBack();
+                }
+              }}
+              style={{
+                width: 38,
+                height: 38,
+                flexShrink: 0,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                cursor: "pointer",
+                borderRadius: 19,
+                marginLeft: -4,
+                background: "var(--card)",
+              }}
+            >
+              <svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke={INK} strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M14.5 5.5 8 12l6.5 6.5" />
+              </svg>
+            </span>
+          )}
           {/* ⚠⚠ THE SWITCHER IS INSIDE THE MARK AGAIN, AND THE MARK IS ON EVERY
               SCREEN (21 Sep 2026, the user: "Profile switcher should be inside
               the dance os logo and should remain constant everywhere").
@@ -573,59 +522,12 @@ export function AppChrome({
               ) : null}
             </button>
           )}
-          {showMark ? (
-            <span style={{ fontSize: 19, fontWeight: 900, letterSpacing: -0.3, color: INK, fontFamily: DOS_UI }}>
-              Dance<span style={{ color: "#EC4899" }}>OS</span>
-            </span>
-          ) : (
-            <>
-              <span
-                role="button"
-                tabIndex={0}
-                aria-label="Go back"
-                onClick={goBack}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter" || e.key === " ") {
-                    e.preventDefault();
-                    goBack();
-                  }
-                }}
-                style={{
-                  width: 32,
-                  height: 32,
-                  flexShrink: 0,
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  cursor: "pointer",
-                  /* ⚠ no negative inset any more (21 Sep 2026): the mark sits
-                     before this chip on every drill page now, so pulling the
-                     chip left would tuck it under the logo. */
-                  borderRadius: 16,
-                  background: "var(--card)",
-                }}
-              >
-                <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke={INK} strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M14.5 5.5 8 12l6.5 6.5" />
-                </svg>
-              </span>
-              <span
-                style={{
-                  fontSize: 17,
-                  fontWeight: 900,
-                  letterSpacing: -0.3,
-                  minWidth: 0,
-                  color: INK,
-                  whiteSpace: "nowrap",
-                  overflow: "hidden",
-                  textOverflow: "ellipsis",
-                  fontFamily: DOS_UI,
-                }}
-              >
-                {titleFor(pathname)}
-              </span>
-            </>
-          )}
+          {/* THE WORDMARK, ON EVERY SCREEN — no longer swapped for the page's
+              name. It ellipsises rather than wrapping, so the two chips on the
+              right keep their room on a 360px phone. */}
+          <span style={{ fontSize: 21, fontWeight: 900, letterSpacing: -0.3, color: INK, fontFamily: DOS_UI, minWidth: 0, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+            Dance<span style={{ color: "#EC4899" }}>OS</span>
+          </span>
         </span>
         <span style={{ display: "flex", gap: 7, flexShrink: 0 }}>
           {/* the bell, with what is unread on it (prototype 19252-19257) — a real

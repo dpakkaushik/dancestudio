@@ -2,7 +2,72 @@
 
 ## LAST SESSION (28 Sep 2026) — replaced on every push (Rule 13)
 
-> ### SIX OF THE EIGHT, AND THE ONE THAT WAS A LIVE DEFECT WITH TWO CAUSES (28 Sep 2026, latest) — BUILT, no migration
+> ### THE LOGO IS CONSTANT AT LAST, AND THE PERSON TAKING THE CLASS WAS FILED UNDER ASSISTANTS (28 Sep 2026, latest) — BUILT, no migration
+> The user, in two messages: *"MAKE THE TOP BAR A BIT BIGGER AS WELL WITH BIGGER
+> BUTTONS, MAKE SURE NOT TO SHOW PAGE NAME IN THE TOP BAR NOW dANCE OS lOGO
+> SHOULD BE CONSTANT"*, and then a defect: *"USER SHOULD ALSO SEE MANAGE TAB IN
+> CLASSES AS STUDIOS CAN ADD THEM AS THE PERSON TAKING THE CLASS AND RIGHT NOW
+> WHEN ADDING ONE IT PUTS IT ON THE ASSISTANT LIST WHICH IT SHOULDNT DO."*
+> * ⚠⚠ **THE PERSON TAKING THE CLASS APPEARED IN THE ASSISTANTS LIST, AND THE
+>   FORM AND THE DATABASE WERE BOTH INNOCENT.** `pendingAsks` was every asked
+>   claim of ANY KIND, and the one section that renders it is headed **CLASS
+>   ASSISTANTS** — so the moment a studio named somebody as the teacher, that
+>   person showed up among the assistants reading "⏳ Asked", with nothing saying
+>   they had been asked to TEACH. The artist column above prints a CONFIRMED
+>   claim only, so until they answered there was nowhere else on the page they
+>   could be. `reconcileClassPeople` has always asked `kind: "artist"` and
+>   `ask_class_person` has always stored it; **only this page filed them under the
+>   wrong heading.** The asks are split by kind now, and the WHO column draws the
+>   ask — dimmed, marked ⏳ ASKED — which is where the person taking the class
+>   belongs. ⚠ A stranger still sees nothing unanswered: `askedArtist` is null
+>   unless `isMember`.
+> * **THE TOP BAR IS 62px WITH 40px CHIPS, AND THE WORDMARK IS ON EVERY SCREEN.**
+>   The bar used to be one of two things — the wordmark on a tab, or a back chip
+>   and the PAGE'S NAME on a drill — so the brand left the screen the moment
+>   anybody opened anything, which is the opposite of constant. ⚠ **Back is KEPT**
+>   and moved to the leftmost place every phone puts it: it is the only wayfinding
+>   a drill page has left, and dropping it too would strand somebody three taps
+>   inside Settings with the system gesture. The chips were 34px, under the 44 a
+>   finger is usually given; 40 in a 62 bar keeps 11px of air. ⚠ `--dos-top` is a
+>   VARIABLE every screen's padding reads, so one number moved the bar, the space
+>   under it and the toast beneath it together.
+> * ⚠ **AND `DRILL_TITLES` + `titleFor` WENT WITH IT — ~96 LINES — WITH THE COST
+>   SAID RATHER THAN DISCOVERED:** a drill page's name is now its own `<h1>`
+>   alone, so a page that never grew one has no accessible name at all, and this
+>   repo has found exactly that shape **five times**. A backlog row carries the
+>   sweep.
+> * ⚠⚠ **AND I BROKE RULE 17 ON MYSELF, WHICH IS THE THIRD TIME THIS FILE HAS
+>   RECORDED IT AND THE FIRST TIME I HAVE DONE IT.** Deleting those 96 lines with
+>   `Get-Content … | Set-Content -Encoding utf8` added a **BOM** and mojibaked
+>   **every em dash in the file** — 49 of them — because PowerShell 5.1 reads a
+>   BOM-less UTF-8 file as ANSI. The tells the rule names are what caught it in
+>   one minute: `git diff --stat` read **372 lines changed** for an edit that
+>   should have moved ~100, and a grep for `â€` found 49. `git checkout` on the
+>   one file, then the same deletion through `[IO.File]::ReadAllLines` /
+>   `WriteAllLines` with an explicit **BOM-less** `UTF8Encoding($false)` and both
+>   anchors asserted before a byte was written: **0 mojibake, no BOM, 52 em dashes
+>   intact, 62 insertions / 160 deletions.** The Edit tool did the other four
+>   changes, which is what the rule actually asks for.
+> * **Verified:** typecheck 0 · lint 0 · `next build` green · **`shoot-hero`
+>   191/191** and **`shoot-tiles` 155/155** — unchanged tallies through a top-bar
+>   re-cut, which is what says the chrome moved without anything else moving ·
+>   **the whole e2e suite 58/58 in ONE run, 11.6 min on one worker, no red at any
+>   point**, which is also the first clean whole-suite run of the day and says the
+>   two post-mutation timeouts fixed earlier were the right diagnosis.
+> * ⚠ **WHAT IS NOT DONE AND IS NOT PRETENDED TO BE:** the **Manage tab for a
+>   user** — that segment is specifically the artist's OWN PAGE's register
+>   (`findClassesByTenant(myPage.id)`), and a user teaching a studio's class does
+>   not own it, so they see it under **Assist** labelled Teaching today; making
+>   Manage mean "everything you are down to teach, whoever owns it" is a read
+>   change rather than a gate change. And the whole **poster-geometry** message
+>   (rectangle with squircle sides on home and profile, the Discover tile to
+>   match, the cropper, and the lightbox showing the cropped view) is untouched —
+>   ⚠ every upload in this app is cut **1:1** (`HERO_HEAD_W === HERO_HEAD_H ===
+>   206`) and the 28 Sep card work rests on there being *no second aspect ratio
+>   anywhere in that path*, so it is its own slice with existing pictures to keep
+>   looking right.
+
+> ### SIX OF THE EIGHT, AND THE ONE THAT WAS A LIVE DEFECT WITH TWO CAUSES (28 Sep 2026, earlier) — BUILT, no migration
 > The user's list of eight, after the audit: *"OPTION TO TAKE MEMBERSHIP OF SALE.
 > MEMBERSHIP SHOULD HAVE STUDIO OR ARTIST PHOTO WITH NAME. ROUTINES TO HAVE
 > ARTIST NAME WHO CREATED IT WITH PHOTO. WHEN GIVING ATTENDANCE AND REFUNDS RIGHT

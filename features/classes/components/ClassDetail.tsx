@@ -286,7 +286,23 @@ export function ClassDetail({
      the page only prints unconfirmed rows to people who can act on them. */
   const artist = claims.find((cl) => cl.kind === "artist" && cl.status === "confirmed") ?? null;
   const assistants = claims.filter((cl) => cl.kind === "assistant" && cl.status === "confirmed");
-  const pendingAsks = isMember ? claims.filter((cl) => cl.status === "asked") : [];
+  /** ⚠⚠ THE ASKS ARE SPLIT BY KIND, AND NOT SPLITTING THEM WAS THE BUG (28 Sep
+   *  2026, the user: "right now when adding one it puts it on the assistant list
+   *  which it shouldnt do").
+   *
+   *  `pendingAsks` was every asked claim of ANY kind, and the one section that
+   *  rendered it is headed CLASS ASSISTANTS — so the moment a studio named
+   *  somebody as the person TAKING the class, that person appeared in the
+   *  assistants list, reading "⏳ Asked" with nothing to say they had been asked
+   *  to teach it. The artist column above prints a CONFIRMED claim only, so
+   *  until they answered there was nowhere else on the page they could be. The
+   *  form was always right (`reconcileClassPeople` asks `kind: "artist"`) and
+   *  the database was always right; only this page filed them under the wrong
+   *  heading. */
+  const askedArtist = isMember ? claims.find((cl) => cl.kind === "artist" && cl.status === "asked") ?? null : null;
+  const pendingAssistants = isMember ? claims.filter((cl) => cl.kind === "assistant" && cl.status === "asked") : [];
+  /** who is down to take it — confirmed if they have answered, the ask if not */
+  const whoTakes = artist ?? askedArtist;
   const posterItem = { title: c.title, style: c.style, styleColor: col, posterUrl: photoUrl(c.posterPath) };
   /* the team's own reading of the page (11822): a confirmed assistant who does not
      RUN the class sees what is theirs to do, and the register / refunds tabs say so */
@@ -581,19 +597,27 @@ export function ClassDetail({
             </div>
 
             {/* the artist column — who is taking it, beside when it runs (11900-11920).
-                Only a CONFIRMED claim is ever printed here; the face is a door to them. */}
-            {artist && (
+                A stranger is still shown a CONFIRMED claim only; the face is a door.
+                ⚠ THE STUDIO'S OWN PEOPLE ALSO SEE THE ASK (28 Sep 2026), dimmed and
+                marked, because this is where the person taking the class belongs —
+                they used to appear under CLASS ASSISTANTS instead, which is the
+                bug this splits. Nobody outside the team sees an unanswered ask:
+                `askedArtist` is null unless `isMember`. */}
+            {whoTakes && (
               <div style={{ position: "relative", width: 96, flexShrink: 0, boxSizing: "border-box", padding: "11px 6px", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 6, background: ground }}>
                 <span aria-hidden="true" style={{ position: "absolute", inset: 0, background: weave, opacity: 0.5 }} />
                 <span aria-hidden="true" style={{ position: "absolute", right: 0, top: 8, bottom: 8, borderRight: `1.5px dashed ${col}80` }} />
                 <Link
-                  href={`/person/${artist.userId}`}
-                  aria-label={`Open ${artist.personName}`}
-                  style={{ position: "relative", width: 62, height: 62, borderRadius: 17, overflow: "hidden", display: "inline-flex", alignItems: "center", justifyContent: "center", background: "linear-gradient(150deg,#2E86DE,#3498DB)", color: "#fff", fontSize: 22, fontWeight: 900, letterSpacing: 0.5, fontFamily: DOS_DISPLAY, textDecoration: "none", boxShadow: `0 4px 14px -3px rgba(0,0,0,.55), 0 0 0 2px ${col}44` }}
+                  href={`/person/${whoTakes.userId}`}
+                  aria-label={`Open ${whoTakes.personName}`}
+                  style={{ position: "relative", width: 62, height: 62, borderRadius: 17, overflow: "hidden", display: "inline-flex", alignItems: "center", justifyContent: "center", background: "linear-gradient(150deg,#2E86DE,#3498DB)", color: "#fff", fontSize: 22, fontWeight: 900, letterSpacing: 0.5, fontFamily: DOS_DISPLAY, textDecoration: "none", boxShadow: `0 4px 14px -3px rgba(0,0,0,.55), 0 0 0 2px ${col}44`, opacity: artist ? 1 : 0.55 }}
                 >
-                  {photoUrl(artist.avatarPath) ? <Image src={photoUrl(artist.avatarPath)!} alt="" width={62} height={62} style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} /> : initialsOf(artist.personName)}
+                  {photoUrl(whoTakes.avatarPath) ? <Image src={photoUrl(whoTakes.avatarPath)!} alt="" width={62} height={62} style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} /> : initialsOf(whoTakes.personName)}
                 </Link>
-                <span style={{ position: "relative", width: "100%", fontSize: 10.5, fontWeight: 800, lineHeight: 1.2, height: 25, color: "var(--text)", textAlign: "center", display: "block", overflow: "hidden" }}>{artist.personName}</span>
+                <span style={{ position: "relative", width: "100%", fontSize: 10.5, fontWeight: 800, lineHeight: 1.2, height: 25, color: "var(--text)", textAlign: "center", display: "block", overflow: "hidden" }}>{whoTakes.personName}</span>
+                {artist ? null : (
+                  <span style={{ position: "relative", fontSize: 8.5, fontWeight: 900, letterSpacing: 0.4, color: GOLD, marginTop: -4 }}>⏳ ASKED</span>
+                )}
               </div>
             )}
 
@@ -1217,8 +1241,10 @@ export function ClassDetail({
               </svg>
             }
           >
-            {[...assistants, ...pendingAsks].map((cl) => {
-              const job = cl.kind === "artist" ? "TAKING THE CLASS" : [cl.canAttendance ? "Attendance" : null, cl.canRefunds ? "Refunds" : null].filter(Boolean).join(" · ") || "Assisting";
+            {[...assistants, ...pendingAssistants].map((cl) => {
+              /* every row here is an assistant now — the artist's own ask is
+                 drawn in the WHO column above, where it belongs */
+              const job = [cl.canAttendance ? "Attendance" : null, cl.canRefunds ? "Refunds" : null].filter(Boolean).join(" · ") || "Assisting";
               const face = photoUrl(cl.avatarPath);
               return (
                 <div key={cl.id} style={{ display: "flex", alignItems: "center", gap: 10, padding: "7px 0" }}>
@@ -1249,7 +1275,7 @@ export function ClassDetail({
                 </div>
               );
             })}
-            {assistants.length === 0 && pendingAsks.length === 0 && !canAddAssistant ? <div style={{ fontSize: 11, color: "var(--muted)", padding: "6px 0" }}>No assistants on this class.</div> : null}
+            {assistants.length === 0 && pendingAssistants.length === 0 && !canAddAssistant ? <div style={{ fontSize: 11, color: "var(--muted)", padding: "6px 0" }}>No assistants on this class.</div> : null}
             {/* the owner, or the person taking the class, asks somebody — from here,
                 not from the form (18 Sep 2026) */}
             {canAddAssistant ? <AddAssistant classId={c.id} col={col} exclude={claims.filter((cl) => cl.status !== "rejected").map((cl) => cl.userId)} /> : null}
