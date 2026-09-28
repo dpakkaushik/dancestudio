@@ -98,10 +98,19 @@
 >   that still has the organization doors, because what they now assert is the
 >   absence of a feature the database still offers. **They run after the apply**,
 >   which is the sequence in #0ay.
-> * ⚠⚠ **NOTHING IS APPLIED AND NOTHING IS PUSHED.** The migration's list and the
->   sweep's counts are in NEXT TO DO #0ay and go in front of the user first,
->   which is this file's standing rule — and the sweep is production data, which
->   is the second one.
+> * ⚠⚠ **NOTHING IS APPLIED AND NOTHING IS PUSHED.** The migration and the sweep
+>   are now WRITTEN, DRY-RUN and COMMITTED (`0594f67`) — **33/33 rolled back**
+>   and **528 rows rolled back** respectively — and they still go in front of the
+>   user first, which is this file's standing rule; the sweep is production data,
+>   which is the second one. The corrected list is NEXT TO DO #0ay.
+> * ⚠⚠ **AND WRITING THE MIGRATION OFF THE LIVE CATALOG IS WHAT SAVED IT: THE
+>   PROPOSAL WOULD HAVE BROKEN STUDIO CREATION.** Seven of the functions it named
+>   do not exist, and five more have surviving callers — `why_no_organization` is
+>   called by `create_business_with_owner`, the door every studio creation goes
+>   through, and `org_is_public` has SEVEN callers including `set_follow` and
+>   `admin_grant_subscription`. A drop list assembled from a session's own memory
+>   of what a feature "was" is a list of names, not a list of dependencies; only
+>   `pg_proc` knows which of them something still stands on.
 
 ## LAST SESSION (28 Sep 2026) — history
 
@@ -7525,10 +7534,17 @@ summary; the report has the evidence.
 
 ## NEXT TO DO — replaced on every push (Rule 13)
 
-0ay. **⚠⚠ ORGANIZATIONS AND EVENTS: THE APP SIDE IS BUILT, AND THE MIGRATION AND
-   THE PRODUCTION SWEEP ARE HELD FOR THE USER'S WORD (29 Sep 2026).** ⚠ Rule 9:
-   it drops policies and definer functions, and the sweep soft-deletes live rows
-   on production. Nothing has been applied and nothing has been pushed.
+0ay. **⚠⚠ ORGANIZATIONS AND EVENTS: EVERYTHING IS BUILT, PROVEN AND COMMITTED —
+   THE MIGRATION AND THE PRODUCTION SWEEP ARE HELD FOR THE USER'S WORD
+   (29 Sep 2026).** ⚠ Rule 9: it drops policies and definer functions, and the
+   sweep soft-deletes live rows on production. **Nothing is applied and nothing
+   is pushed.** Two commits sit on local `main`: `e556eef` (the app side, 173
+   files) and `0594f67` (the migration and the sweep, both HELD).
+   **Verified:** typecheck 0 · lint 0 · `next build` green · the migration's dry
+   run **33/33 rolled back, nothing persisted** · the sweep's dry run **528 rows,
+   rolled back** · `db-push -DryRun` lists **exactly `20260929090000`** and
+   nothing else, so no second file can ride in on the apply (the trap this file
+   has recorded twice).
    * **WHAT IS ALREADY DONE AND NEEDS NO DECISION**: every screen, route,
      repository, type and harness. Fourteen routes deleted with a 307 each
      (Rule 14), `types/event.ts` and four repositories gone, the tool grids, the
@@ -7560,37 +7576,70 @@ summary; the report has the evidence.
      `event_booking_id` and `apply_captured_payment`'s event branch stay
      untouched. The four invoice rows keep their description and lost only their
      dead href.
-   * **THE MIGRATION, AS PROPOSED** — ⚠ its exact contents will be read off the
-     **LIVE CATALOG** rather than re-typed from the .sql history, which is
-     28 Sep's own lesson (five re-typing differences in six function bodies):
-     drop the event doors (`save_event`, `publish_event`, `book_event`,
-     `cancel_event_booking`, `check_in_event_booking`, `add_event_walk_in`,
-     `delete_event`, `set_event_status`, `set_event_poster`, `event_counts`,
-     `event_blockers`, `create_event_payment_order`, `event_host_cards`,
-     `event_host_is_public`, `event_host_name`, `why_no_event`,
-     `guard_event_needs_gstin`, the slug trigger); the organization doors
-     (`ask_organization_member`, `respond_to_organization_ask`,
-     `withdraw_organization_ask`, `remove_organization_member`,
-     `set_organization_member_role`, `public_organization`,
-     `public_organization_studios`, `public_organization_team`,
-     `my_followed_organizations`, `org_is_public`, `org_subscription_active`,
-     `org_seat_follows_label`, `why_no_organization`, `verify_business_gstin`,
-     `clear_business_gstin`, `gstin_shape`, `guard_gstin`, `my_org_stats`,
-     `admin_grant_org_subscription`, `admin_end_org_subscription`); the public
-     event and organization SELECT policies; and **two edits rather than
-     drops** — `dance_chart`'s crew branch loses its event-entry term (which is
-     why `CREW_POINT_RULES` is one rule on screen already) and
-     `search_dance_os` loses its events branch (the repository already drops
-     event hits, because a row that opens a 404 is worse than no row).
-   * **THE SWEEP, AS PROPOSED**: soft-delete the 20 org businesses, the 10
-     events and everything beneath them, the 4 `organization_members`, the 6
-     `org` subscriptions, the 5 enquiries and the 3 follows. ⚠ **The 162 event
-     NOTIFICATIONS stay** — a notification is a record of something that
-     happened, `NotificationKind` keeps `"event"` for them, and nothing can
-     raise a new one. ⚠ **`profiles.role`'s CHECK keeps `'org'`** (52
-     soft-deleted rows carry it; narrowing it would refuse an UPDATE of any of
-     them for no gain), and `businesses.type`'s keeps `'org'` for the same
-     reason.
+   * ✅ **THE MIGRATION IS WRITTEN AND DRY-RUN 33/33, ROLLED BACK** —
+     `20260929090000_organizations_and_events_are_gone.sql` (committed `0594f67`,
+     NOT applied). ⚠⚠ **AND READING THE LIVE CATALOG IS WHAT MADE IT CORRECT,
+     BECAUSE THE PROPOSAL ABOVE WAS WRONG IN TWO WAYS THAT WOULD HAVE COST A
+     LIVE SITE.** (1) **SEVEN OF THE FUNCTIONS IT NAMED DO NOT EXIST** —
+     `public_organization_studios`, `org_subscription_active`,
+     `admin_grant_org_subscription`, `admin_end_org_subscription`,
+     `my_org_business`, `admin_org_standing`, `set_my_place`: dropped by earlier
+     migrations, or never carrying those names (`why_no_studio`'s org branch
+     calls `org_plan_active`, which is why the second one reads as missing).
+     ⚠⚠ (2) **FIVE MORE WOULD HAVE BROKEN THE APP IF DROPPED**, and the
+     dependency scan is the only thing that could have said so:
+     **`org_is_public` has SEVEN surviving callers** (`person_follower_counts`,
+     `business_pictures_are_public`, `business_header_photos`,
+     `set_person_follow`, `set_follow`, `admin_grant_subscription`, plus a
+     policy) — dropping it breaks follows and header photos;
+     **`why_no_organization` is called by `create_business_with_owner`**, the
+     door EVERY studio creation goes through, so dropping it makes it impossible
+     to open a studio; **`event_host_is_public` is called by `send_enquiry``**;
+     **`gstin_shape` is pinned by two CHECK constraints**; **`guard_gstin` is a
+     trigger on `profiles`**. All five are KEPT, each with its reason written
+     beside it, and each answers "no" once the sweep has run — which is the
+     correct answer, and the same call the 28 Sep migration made about the eight
+     dead readers of `profiles.role = 'org'`.
+     **What it actually does:** drops **35 doors** (the event RPCs, the
+     organization RPCs, `can_run_events`, `public_host_ids`, and four trigger
+     functions with their triggers); drops the **five ANON read policies** and
+     keeps the member/own-row ones, so somebody who bought a ticket can still
+     read the booking their invoice names; and makes **two edits rather than
+     drops** — ⚠ the crew-points edit lands in **`dance_chart_all`, NOT
+     `dance_chart`** (push 2 split them on 19 Sep and the arithmetic is in the
+     core, not the wrapper — the proposal named the wrapper), and
+     `search_dance_os` loses its `events` CTE and the `hosts` CTE that existed
+     only to feed it. Both are `create or replace` with unchanged signatures, so
+     **not one ACL moves**. ⚠ **It drops NO TABLE and narrows NO CHECK**, and
+     every tombstone carries a `comment on` saying why it is still there.
+     **Dry run: `anon 45 → 39`, public policies `108 → 103`, storage `21`
+     unchanged, functions `291 → 256`, the 4 event orders and their 4 captured
+     payments untouched, and a stranger reading 0 rows from all three tables.**
+     ⚠ Its first run failed loudly and usefully: removing the FIRST CTE of a
+     `with` chain also removes the `with` that led it, and the rewrite's own
+     asserted anchor caught it inside the transaction.
+   * ✅ **THE SWEEP IS WRITTEN AND DRY-RUN, ROLLED BACK** —
+     `scripts/retire-organizations-and-events.js` (committed `0594f67`, NOT
+     applied). A DRY RUN unless `--apply`; `--show-kept` prints what stays, which
+     is the standing rule. **528 rows soft-deleted**: 68 event_bookings, 204
+     entry tiers, 200 ticket tiers, 10 events, 4 `organization_members`, 5
+     enquiries, 2 quotes, 3 follows, 6 `business_members` seats, 6 subscriptions,
+     20 organizations. ⚠ **The 162 event NOTIFICATIONS stay** — a notification is
+     a record of something that happened, `NotificationKind` keeps `"event"` for
+     them, and nothing can raise a new one. ⚠ **The 4 orders and 4 payments
+     stay** (the money). ⚠ **No auth account is touched** — an organization is a
+     business a PERSON owns since 26 Sep, and those people keep their accounts,
+     their studios and their artist pages. ⚠ **`profiles.role`'s CHECK keeps
+     `'org'`** (52 soft-deleted rows carry it) and `businesses.type`'s keeps it
+     too. **After it: 50 people, 93 studios, 7 artist pages, 25 classes, 11
+     crews, 6 memberships — none of them touched.**
+   * ⚠⚠ **AND THE SWEEP'S REAL SHAPE IS SHARPER THAN THE COUNT: OF THE 20 LIVE
+     ORGANIZATIONS, 14 ARE PROOF/TEST LEFTOVERS WITH NO OWNER AT ALL** (`Mod Org
+     *`, `Panel Org *`, `Panel Bystander *`, `Earn Org *`, `Shot Owner *`). **Six
+     are real and paying**: Deepak Kaushik's (Gurugram), Proof Owner Org (the
+     test-phone account), and the demo world's four — Rhythm Collective, EEE
+     Dance Company, Bounce Dance Academy, Namma Dance Co., which
+     `scripts/demo-data.js` recreates on a re-seed.
    * ⚠ **WHAT IS DELIBERATELY NOT PROPOSED, so it is not assumed**: dropping the
      four event tables (the money above); dropping `orders.event_id` /
      `event_booking_id` or their CHECK (same); `admin_dashboard`'s two event
@@ -7604,15 +7653,17 @@ summary; the report has the evidence.
      say otherwise.
    **On their word, in this order:**
 ```
-   npm i -D pg                                                                      # the dry-run client (#0ac's own lesson)
-   node dryrunRemoveOrgsEvents.js                                                   # BEGIN … the file … checks as real roles … ROLLBACK
-   powershell -NoProfile -ExecutionPolicy Bypass -File scripts/db-push.ps1 -DryRun  # must list exactly the one file
+   # `pg` is the dry-run client and is NOT a project dependency; it lives in the
+   # session scratchpad, so point NODE_PATH at it for the two node scripts.
+   $env:NODE_PATH = "<scratchpad>\node_modules"
+
+   powershell -NoProfile -ExecutionPolicy Bypass -File scripts/db-push.ps1 -DryRun  # must list exactly 20260929090000
    powershell -NoProfile -ExecutionPolicy Bypass -File scripts/db-push.ps1 2>&1 | Select-String -NotMatch 'Skipping migration|Warning: failed to cache|prerequisite for local'
-   node readbackRemoval.js                                                          # read the LIVE catalog, then notify pgrst 'reload schema'
-   node sweepOrgsEvents.js --show-kept                                              # the kept set FIRST (the standing rule)
-   node sweepOrgsEvents.js --apply
-   powershell -NoProfile -ExecutionPolicy Bypass -File scripts/run-proofs.ps1        # all 30 that remain
-   node scripts/ensure-test-phone-profiles.js                                        # after any sweep (19 Sep)
+   node scripts/readback-removal.js                                                  # the LIVE catalog, then notify pgrst 'reload schema'
+   node scripts/retire-organizations-and-events.js --show-kept                        # the kept set FIRST (the standing rule)
+   node scripts/retire-organizations-and-events.js --apply
+   node scripts/ensure-test-phone-profiles.js                                         # after any sweep (19 Sep)
+   powershell -NoProfile -ExecutionPolicy Bypass -File scripts/run-proofs.ps1         # the 30 that remain
    npm run build; npx.cmd next start -p 3100
    $env:PLAYWRIGHT_BASE_URL="http://localhost:3100"; npx playwright test --reporter=line --workers=1
 ```
