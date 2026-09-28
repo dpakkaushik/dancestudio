@@ -3,6 +3,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
+
 import { Portal } from "@/components/ui/Portal";
 import { lookupPersonAction } from "@/features/people/server-actions/people";
 import { DOS_UI } from "@/lib/design/tokens";
@@ -53,7 +54,36 @@ export const personIdFromText = (text: string): string | null => {
 
 type Status = "starting" | "scanning" | "unsupported" | "denied";
 
-export function ScanSheet({ onClose, onCode, busy = false, error = null }: { onClose: () => void; onCode: (personId: string) => void; busy?: boolean; error?: string | null }) {
+/** WHAT THE CALLER DID WITH THE PERSON THE SCAN FOUND (28 Sep 2026).
+ *
+ *  A caller that returns nothing owns the sheet and closes it itself — which is
+ *  what the people picker does, because scanning somebody onto a class or a crew
+ *  ends the errand. A caller that returns an outcome hands the sheet back: on
+ *  `ok` the camera resumes with the message under it, ready for the NEXT person,
+ *  and on a refusal the confirm card stays up wearing the reason. That second
+ *  shape is what a DOOR needs — a register is a queue, not one decision. */
+export interface ScanOutcome {
+  ok: boolean;
+  message?: string | null;
+}
+
+export function ScanSheet({
+  onClose,
+  onCode,
+  busy = false,
+  error = null,
+  heading,
+  confirmLabel = "Confirm",
+}: {
+  onClose: () => void;
+  onCode: (personId: string) => void | ScanOutcome | Promise<void | ScanOutcome>;
+  busy?: boolean;
+  error?: string | null;
+  /** what this scan is FOR — "Check somebody in" on a register, the default on a picker */
+  heading?: string;
+  /** the word on the button that acts, so a door says what pressing it does */
+  confirmLabel?: string;
+}) {
   useCloseOnBack(onClose, true);
   const video = useRef<HTMLVideoElement | null>(null);
   /* decided once, on the client, at mount — the sheet only ever mounts from a press */
@@ -84,10 +114,34 @@ export function ScanSheet({ onClose, onCode, busy = false, error = null }: { onC
   const [found, setFound] = useState<(Profile & { isArtist: boolean }) | null>(null);
   const [looking, setLooking] = useState(false);
   const [lookErr, setLookErr] = useState<string | null>(null);
+  /* the caller's own answer to the last confirm — see `ScanOutcome` */
+  const [working, setWorking] = useState(false);
+  const [note, setNote] = useState<string | null>(null);
+  const [outErr, setOutErr] = useState<string | null>(null);
+
+  /** ⚠⚠ WHETHER THE CAMERA IS STILL LOOKING — A REF, NOT A CLOSURE VARIABLE
+   *  (28 Sep 2026). It was `let found = false` inside the effect, and the effect
+   *  is mounted once for the sheet's whole life: so the FIRST decode set it and
+   *  nothing could ever clear it. Pressing **Not them** put the camera back on
+   *  screen with the detector permanently disarmed — the picture moved, the
+   *  scanning line said "point the camera", and only the paste field still
+   *  worked. Nothing caught it because until today one scan ended the errand.
+   *  A register is a QUEUE, so the loop has to re-arm, and a ref is the only
+   *  thing both the interval and a button can reach. */
+  const armed = useRef(true);
+  /** back to the camera, looking again */
+  const rearm = (message: string | null) => {
+    setNote(message);
+    setOutErr(null);
+    setLookErr(null);
+    setFound(null);
+    armed.current = true;
+  };
 
   const resolve = useCallback(async (id: string) => {
     setLooking(true);
     setLookErr(null);
+    setNote(null);
     const out = await lookupPersonAction({ userId: id });
     setLooking(false);
     if (!out.person) {
@@ -96,6 +150,23 @@ export function ScanSheet({ onClose, onCode, busy = false, error = null }: { onC
     }
     setFound(out.person);
   }, []);
+
+  /** the one place `onCode` is called. A caller that answers with an outcome
+      keeps the sheet open — the camera comes back for the next person — and one
+      that answers with nothing has taken the sheet over. */
+  const act = async () => {
+    if (!found || working) return;
+    setOutErr(null);
+    setWorking(true);
+    const out = await onCode(found.id);
+    setWorking(false);
+    if (!out || typeof out !== "object") return;
+    if (out.ok) {
+      rearm(out.message ?? null);
+    } else {
+      setOutErr(out.message ?? "That did not work");
+    }
+  };
 
   /* the camera and the detector live exactly as long as the sheet does; every
      state write below happens in an async callback, never in the effect body */
@@ -106,7 +177,6 @@ export function ScanSheet({ onClose, onCode, busy = false, error = null }: { onC
     let live = true;
     let stream: MediaStream | null = null;
     let timer: ReturnType<typeof setInterval> | null = null;
-    let found = false;
     const detector = new Ctor({ formats: ["qr_code"] });
     navigator.mediaDevices
       .getUserMedia({ video: { facingMode: "environment" }, audio: false })
@@ -124,15 +194,15 @@ export function ScanSheet({ onClose, onCode, busy = false, error = null }: { onC
         setStatus("scanning");
         timer = setInterval(async () => {
           const el = video.current;
-          if (!el || found || el.readyState < 2) return;
+          if (!el || !armed.current || el.readyState < 2) return;
           try {
             const codes = await detector.detect(el);
             const id = codes.map((c) => personIdFromText(c.rawValue)).find(Boolean);
-            if (id && live && !found) {
+            if (id && live && armed.current) {
               /* ⚠ ONE decode wins and the camera stops mattering: the sheet
                  moves to the confirm card, and nothing is written until the
                  person holding the phone says so. */
-              found = true;
+              armed.current = false;
               void resolve(id);
             }
           } catch {
@@ -175,7 +245,7 @@ export function ScanSheet({ onClose, onCode, busy = false, error = null }: { onC
         <div role="dialog" aria-modal="true" aria-label="Scan a profile" onClick={(e) => e.stopPropagation()} style={{ background: "var(--solid)", color: "var(--text)", borderRadius: "24px 24px 0 0", padding: "16px 16px 26px", width: "100%", maxWidth: 430, boxSizing: "border-box", animation: "dosSheetUp .28s cubic-bezier(.22,.9,.34,1)" }}>
           <div style={{ width: 40, height: 4, borderRadius: 2, background: "var(--el)", margin: "0 auto 12px" }} />
           <div style={{ fontSize: 10.5, fontWeight: 900, letterSpacing: 1.2, color: "var(--muted)" }}>SCAN A PROFILE</div>
-          <div style={{ fontSize: 17, fontWeight: 900, marginBottom: 10 }}>{found ? "Is this them?" : "Their DanceOS code"}</div>
+          <div style={{ fontSize: 17, fontWeight: 900, marginBottom: 10 }}>{found ? "Is this them?" : (heading ?? "Their DanceOS code")}</div>
 
           {/* ── WHO THE CODE FOUND, BEFORE ANYTHING IS WRITTEN ── */}
           {found ? (
@@ -204,25 +274,25 @@ export function ScanSheet({ onClose, onCode, busy = false, error = null }: { onC
                   Stats
                 </Link>
               </div>
-              {error ? <div role="alert" style={{ fontSize: 11, color: "#F87171", marginBottom: 10, fontWeight: 700 }}>{error}</div> : null}
+              {error || outErr ? <div role="alert" style={{ fontSize: 11, color: "#F87171", marginBottom: 10, fontWeight: 700 }}>{error ?? outErr}</div> : null}
               <div style={{ display: "flex", gap: 8 }}>
                 <button
                   type="button"
-                  onClick={() => { setFound(null); setLookErr(null); }}
-                  disabled={busy}
+                  onClick={() => rearm(null)}
+                  disabled={busy || working}
                   aria-label="Not them — scan again"
-                  style={{ flex: 1, padding: 13, borderRadius: 999, background: "var(--card)", color: "var(--text)", fontWeight: 900, fontSize: 13.5, cursor: busy ? "not-allowed" : "pointer", border: "1.5px solid var(--el)", fontFamily: "inherit" }}
+                  style={{ flex: 1, padding: 13, borderRadius: 999, background: "var(--card)", color: "var(--text)", fontWeight: 900, fontSize: 13.5, cursor: busy || working ? "not-allowed" : "pointer", border: "1.5px solid var(--el)", fontFamily: "inherit" }}
                 >
                   Not them
                 </button>
                 <button
                   type="button"
-                  onClick={() => onCode(found.id)}
-                  disabled={busy}
-                  aria-label={`Confirm ${found.fullName}`}
-                  style={{ flex: 1, padding: 13, borderRadius: 999, background: "var(--text)", color: "var(--solid)", fontWeight: 900, fontSize: 13.5, cursor: busy ? "not-allowed" : "pointer", border: "none", fontFamily: "inherit", opacity: busy ? 0.6 : 1 }}
+                  onClick={() => void act()}
+                  disabled={busy || working}
+                  aria-label={`${confirmLabel} ${found.fullName}`}
+                  style={{ flex: 1, padding: 13, borderRadius: 999, background: "var(--text)", color: "var(--solid)", fontWeight: 900, fontSize: 13.5, cursor: busy || working ? "not-allowed" : "pointer", border: "none", fontFamily: "inherit", opacity: busy || working ? 0.6 : 1 }}
                 >
-                  {busy ? "Confirming…" : "Confirm"}
+                  {busy || working ? "Working…" : confirmLabel}
                 </button>
               </div>
               <button type="button" onClick={onClose} style={{ marginTop: 10, textAlign: "center", padding: 11, borderRadius: 999, background: "transparent", color: "var(--sub)", fontWeight: 800, fontSize: 12, cursor: "pointer", border: "none", fontFamily: "inherit", width: "100%" }}>
@@ -236,6 +306,15 @@ export function ScanSheet({ onClose, onCode, busy = false, error = null }: { onC
               {/* the camera's own picture; muted and inline so a phone does not open a player */}
               <video ref={video} muted playsInline style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
               <div aria-hidden="true" style={{ position: "absolute", inset: "14%", border: "2px solid rgba(255,255,255,.85)", borderRadius: 18, boxShadow: "0 0 0 999px rgba(0,0,0,.28)" }} />
+            </div>
+          ) : null}
+          {/* ⚠ WHAT THE LAST SCAN DID, WHILE THE CAMERA LOOKS FOR THE NEXT ONE
+              (28 Sep 2026). A door scans a queue, so the sheet stays open and
+              says "✓ Asha checked in" here rather than closing and toasting —
+              the person holding the phone never looks away from the camera. */}
+          {note ? (
+            <div role="status" style={{ fontSize: 12, fontWeight: 800, color: "#22C55E", background: "rgba(34,197,94,.12)", border: "1.5px solid rgba(34,197,94,.3)", borderRadius: 12, padding: "9px 11px", marginBottom: 10 }}>
+              {note}
             </div>
           ) : null}
           <div role="status" style={{ fontSize: 11.5, color: looking ? "var(--text)" : "var(--sub)", marginBottom: 12 }}>

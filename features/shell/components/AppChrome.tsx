@@ -187,7 +187,16 @@ const entityOf = (pathname: string): Entity | null => {
    a drill page's name is its own `<h1>` alone from here, so a page that never
    grew one has no accessible name at all — and this repo has found exactly that
    shape FIVE times (the desks 18 Sep, the studio Team desk 21 Sep, `EventForm`
-   and `/rooms` 22 Sep, the Inbox 27 Sep). A backlog row carries the sweep. */
+   and `/rooms` 22 Sep, the Inbox 27 Sep).
+   ⚠⚠ THE SWEEP RAN THE SAME DAY, AND IT WAS TWENTY-FOUR SCREENS: the whole admin
+   panel, the class page, the event page, both registers, the calendar's three
+   routes and both public schedules, the class listing, the roster, the enquiry
+   detail, the join page, notifications, both support screens, the Crews and
+   Studios hubs, the events desk, the welcome screen and onboarding's three
+   steps. Nothing is drawn differently — the element that already WAS each page's
+   visible name is the heading now. `shoot-tiles` ASSERTS a heading on every tile
+   page from here, which is the check that would have caught this: it had been
+   printing " NO h1" in its own label and judging on the status alone. */
 
 /* the <html> class as an external store (theme boot script + toggle both write it) */
 const subscribeToHtmlClass = (onChange: () => void): (() => void) => {

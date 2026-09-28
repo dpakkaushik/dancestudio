@@ -110,8 +110,10 @@ export function JoinInvite({ code, preview }: { code: string; preview: InvitePre
       <div style={{ fontSize: 10, fontWeight: 900, letterSpacing: 1.2, color: SUB, marginBottom: 2 }}>
         AN INVITATION
       </div>
-      <div
+      {/* the page's own `<h1>` — the chrome no longer prints a drill page's name (28 Sep 2026) */}
+      <h1
         style={{
+          margin: 0,
           fontSize: 21,
           fontWeight: 800,
           fontFamily: DOS_DISPLAY,
@@ -120,7 +122,7 @@ export function JoinInvite({ code, preview }: { code: string; preview: InvitePre
         }}
       >
         Join {preview.tenantName}
-      </div>
+      </h1>
 
       <div
         style={{

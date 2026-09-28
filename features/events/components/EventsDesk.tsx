@@ -91,7 +91,8 @@ export function EventsDesk({
     <div style={{ background: LILAC, maxWidth: 430, margin: "0 auto", color: INK, fontFamily: DOS_UI, minHeight: "100vh", paddingBottom: 40 }}>
       <div style={{ margin: "12px 16px 0", borderRadius: 22, padding: "15px 17px 14px", color: "#fff", position: "relative", overflow: "hidden", background: toolPaint(TOOL_COLOUR) }}>
         <div style={{ position: "absolute", right: -28, top: -32, width: 130, height: 130, borderRadius: 65, background: "rgba(255,255,255,.13)" }} />
-        <div style={{ fontSize: 21, fontWeight: 800, letterSpacing: -0.5, position: "relative", fontFamily: DOS_DISPLAY, lineHeight: 1.18 }}>Events</div>
+        {/* the page's own `<h1>` — the chrome no longer prints a drill page's name (28 Sep 2026) */}
+        <h1 style={{ margin: 0, fontSize: 21, fontWeight: 800, letterSpacing: -0.5, position: "relative", fontFamily: DOS_DISPLAY, lineHeight: 1.18 }}>Events</h1>
       </div>
       <div style={{ padding: "12px 16px 0" }}>
         {whyNoEvent ? (

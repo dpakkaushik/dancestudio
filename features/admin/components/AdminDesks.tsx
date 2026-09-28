@@ -87,9 +87,13 @@ export function AdminDesksScreen({ pulse, badges = {}, nowIso }: { pulse: Pulse;
           </span>
           <div style={{ flex: 1, minWidth: 0 }}>
             <div style={{ fontSize: 9.5, fontWeight: 900, letterSpacing: 1.2, opacity: 0.85 }}>DANCEOS · ADMIN</div>
-            <div style={{ fontSize: 21, fontWeight: 800, letterSpacing: -0.5, fontFamily: DOS_DISPLAY, lineHeight: 1.18, marginTop: 2 }}>
+            {/* ⚠ the page's own `<h1>` (28 Sep 2026): the chrome stopped printing a
+                drill page's name when the wordmark became constant, so this line
+                is the only thing naming the screen. The eyebrow above carries the
+                desk's steady name; this carries what is true right now. */}
+            <h1 style={{ margin: 0, fontSize: 21, fontWeight: 800, letterSpacing: -0.5, fontFamily: DOS_DISPLAY, lineHeight: 1.18, marginTop: 2 }}>
               {todo > 0 ? `${todo} thing${todo === 1 ? "" : "s"} need you` : "Nothing is waiting"}
-            </div>
+            </h1>
             <div style={{ fontSize: 11, opacity: 0.9, marginTop: 2 }}>{day}</div>
           </div>
         </div>

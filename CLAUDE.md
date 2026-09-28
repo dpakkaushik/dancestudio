@@ -2,7 +2,93 @@
 
 ## LAST SESSION (28 Sep 2026) — replaced on every push (Rule 13)
 
-> ### A POSTER IS A BANNER, AND THE PERSON TAKING A CLASS RUNS IT (28 Sep 2026, latest) — BUILT; ⚠⚠ ONE MIGRATION WRITTEN, DRY-RUN **22/22** AND **HELD FOR THE USER'S WORD** (NEXT TO DO #0av)
+> ### THE THREE THINGS THE LAST PUSH SAID IT HAD NOT BUILT (28 Sep 2026, latest) — BUILT, no migration
+> The user: *"solve all options which are not built from previous chat. give me
+> suggestions for the point related to classes. dont touch the 4 sandbox items."*
+> So: the three things the 28 Sep records named as NOT done, and the class one is
+> a migration, so it is a proposal rather than a push (NEXT TO DO #0aw).
+> * ⚠⚠ **A REGISTER HAD NO SCANNER AT ALL, SO "CHECK THEM IN" HAD NOWHERE TO
+>   HAPPEN.** The morning's slice built the CONFIRM half of the user's own
+>   sentence — *"should first show profile pic with 2 buttons … after
+>   confirmation only should check them in"* — and said plainly that the other
+>   half was a build. It is on both registers now, and it writes nothing the
+>   row's own button could not: the scan FINDS the row and
+>   `can_run_register_for_class` / `is_tenant_member` still decide. ⚠ **A SCAN IS
+>   AN ARRIVAL, NEVER A DEPARTURE** — scanning the same code twice says so and
+>   leaves them IN, because a door that toggles would check somebody out for
+>   scanning twice. ⚠ **And it tells the three "no"s apart**, because a door needs
+>   three different sentences: on the waitlist (give them a spot first — a
+>   decision a scan must not take), not booked, or already in. `WaitlistRow`
+>   gained `userId` for exactly that: without it those are one silence.
+> * ⚠⚠ **AND DRIVING IT FOUND A DEFECT IN MY OWN CODE THAT NOTHING TYPED COULD
+>   SEE.** `register` is a PROP; it only moves when `router.refresh()` lands, and
+>   a door scanning two codes in a second beats that round trip — so the second
+>   scan read `checkedIn: false`, called the RPC again (harmless, it has been
+>   idempotent since Step 10) and said **"✓ checked in"** a second time. The
+>   behaviour was right and the SENTENCE was a race. A `useRef` set of who THIS
+>   sheet has checked in answers instead, ⚠ cleared on every OPEN rather than on
+>   close, so somebody checked out on their row afterwards does not stay "already
+>   in" for ever.
+> * ⚠⚠ **AND A PRE-EXISTING BUG IN THE SCAN SHEET, SHIPPED THAT MORNING: "NOT
+>   THEM" KILLED THE CAMERA.** The detector was disarmed by `let found = false`
+>   INSIDE the effect, and the effect mounts once for the sheet's whole life — so
+>   the first decode set it and nothing could ever clear it. Pressing **Not them**
+>   put the camera back on screen permanently deaf; only the paste field still
+>   worked. Nothing caught it because until today one scan ended the errand. It is
+>   a ref the button can reach, and the sheet is a QUEUE now: a successful
+>   check-in returns to the camera with "✓ Asha checked in" under it, ready for
+>   the next person, instead of closing.
+> * **A MEMBERSHIP SAYS WHO SOLD IT, WITH THEIR FACE.** The name has ridden on
+>   `my_memberships` all along and the photo does not — ⚠ and widening that
+>   RETURNS TABLE is a drop-and-recreate for a picture, so it is **one** second
+>   query over the businesses the passes name (`findTenantCardFacts`, Discover's
+>   own shelf read), never one per row. ⚠ It **degrades rather than failing**: a
+>   seller whose row the holder may not read draws initials, the rule the Faculty
+>   list has followed since Step 15. ⚠ The squircle is `DISC_RADIUS`, not a number
+>   typed here.
+> * ⚠⚠ **AND THE `<h1>` SWEEP, WHICH WAS BIGGER THAN THE BACKLOG ROW SAID.**
+>   `DRILL_TITLES` went that morning, so a drill page's own heading is the only
+>   thing naming it — and **twenty-four screens had none**: the whole admin panel
+>   (one shared hero names ten of them), the class page, the event page, both
+>   registers, the calendar's three routes and both public schedules, the class
+>   listing, the roster, the Inbox's enquiry detail, the join page,
+>   notifications, both support screens, the Crews hub, the Studios hub, the
+>   events desk, the welcome screen and onboarding's three steps. **Nothing is
+>   drawn differently** — the element that already WAS each page's visible name
+>   becomes the heading, with `margin: 0` where a browser would otherwise add
+>   one. ⚠ `EventCard` takes `as="h1"` **on the event's own page and nowhere
+>   else**, because every other caller is a shelf and a heading per card is a
+>   page of headings and no page name at all — `DeskHero`'s own shape.
+> * ⚠⚠ **AND THE CHECK THAT SHOULD HAVE CAUGHT IT HAD BEEN PRINTING THE ANSWER
+>   AND NOT JUDGING IT.** `shoot-tiles` has read each tile page's `<h1>` since it
+>   was written and asserted on the STATUS alone, so a page whose own label said
+>   **" NO h1"** still passed — which is how twenty-four screens lost their
+>   accessible name with nothing going red. It asserts the heading now. ⚠ **A
+>   fact a check prints but does not judge is a fact nobody is checking**, and
+>   turning it on immediately found **three more** pages my static scan had
+>   called fine (the Crews hub, the Studios hub, the events desk) — the import
+>   graph contains an `<h1>` that the page does not render, which is precisely
+>   the blind spot a browser does not have.
+> * **Verified:** typecheck 0 · lint 0 · `next build` green · **a new
+>   `shoot-register` 23/23** — a real studio, a real class live on the clock, a
+>   real booking, and the scanner driven through the sheet's paste field, which
+>   is the same path the camera takes: checked in, scanned again, refused for
+>   somebody not booked, the row read back as ✓ In and **the database asked
+>   directly for exactly one live attendance row** · **`shoot-tiles` 155/155**,
+>   the same tally with a strictly stronger check · **`shoot-hero` 191/191** ·
+>   **`shoot-discover` 43/43** · **the whole e2e suite 58/58 in ONE run, 14.7 min
+>   on one worker, no red at any point.**
+> * ⚠ **A stale `next start` from 18:14 was holding :3100 — the TENTH time** — and
+>   was stopped before anything was measured against it.
+> * ⚠⚠ **WHAT IS NOT BUILT AND IS A PROPOSAL, NOT AN OMISSION: THE CLASS
+>   WALK-IN.** It needs a migration, and this file's standing rule is that the
+>   list goes in front of the user first. ⚠ The measurement that makes the case:
+>   **29 of 66 live event bookings on production are walk-ins — 44%** — so where
+>   a door HAS the control it is used nearly half the time, and classes have 59
+>   bookings and no way to record anybody at the door at all. NEXT TO DO #0aw
+>   carries the two shapes and the four decisions that are the user's.
+
+> ### A POSTER IS A BANNER, AND THE PERSON TAKING A CLASS RUNS IT (28 Sep 2026, earlier) — BUILT; ⚠⚠ ONE MIGRATION WRITTEN, DRY-RUN **22/22** AND **HELD FOR THE USER'S WORD** (NEXT TO DO #0av)
 > The user, in two messages: *"MAKE THE POSTER ON BOTH HOME AND PROFILE A
 > RECTANGLE WITH SQUIRCLE FROM SIDES. MAKE SURE TO CHANGE STUDIO DISCOVER TILE
 > ACCORDINGLY. CHECK THE CROP AND VIEW FIX FOR THIS AS WELL. WHEN CLICKING ON ANY
@@ -7098,6 +7184,54 @@ summary; the report has the evidence.
 
 ## NEXT TO DO — replaced on every push (Rule 13)
 
+0aw. **⚠⚠ A CLASS HAS NO WALK-IN, AND IT NEEDS A MIGRATION — THE TWO SHAPES AND
+   THE FOUR DECISIONS, IN FRONT OF THE USER RATHER THAN GUESSED (28 Sep 2026).**
+   Events have `add_event_walk_in`; classes have **no equivalent at all**, so the
+   register's new scanner can only ever say "not booked" to somebody standing at
+   the door. ⚠ **The measurement that makes the case rather than an opinion: 29
+   of 66 live event bookings on production are walk-ins — 44%.** Where a door has
+   the control it is used nearly half the time; classes have 59 bookings and no
+   control.
+   * ⚠⚠ **WHY IT IS NOT ONE LINE.** `class_bookings.user_id` is **NOT NULL
+     references profiles**, and so is **`attendance.user_id`** — so a person with
+     no DanceOS account can be neither booked nor marked present. And
+     `profiles.id` references `auth.users`, so "just make them a profile" is not
+     a smaller change, it is a bigger one.
+   * **SHAPE 1 — BOOK AN EXISTING PERSON FROM THE REGISTER (small, and it is what
+     the scanner already wants).** One RPC, `book_for_person(session, user)`,
+     gated on `can_run_register_for_class`. **No column changes, no nullable, no
+     reader changes, no RLS change** — the row is an ordinary booking, so the
+     register, the roster, the students desk, stats and memberships all keep
+     working untouched. The door scans somebody, the sheet says "Not booked —
+     book them in?", one press. ⚠ **It reverses a deliberate decision** (Step 12,
+     25 Aug: *"a studio cannot book a seat for somebody… faking an enrollment
+     would put a name on a roster that never agreed to it"*) — the counter-
+     argument is that at a door the person is standing there and has handed over
+     their own code, which is consent in person. **That reversal is the user's to
+     make, not mine.**
+   * **SHAPE 2 — A TRUE WALK-IN BY NAME (mirrors events, and costs more).**
+     `class_bookings.user_id` nullable + `attendee_name text` + a CHECK that
+     exactly one is set; the same on `attendance`; and
+     `add_class_walk_in(session, name)`. ⚠ **The blast radius, listed rather than
+     discovered:** `findClassRegister` and the roster need a name fallback; six
+     more reads in `repositories/{enrollments,calendar,leads,students}.ts` read
+     `class_bookings.user_id` and would need `is not null` where they mean "a
+     person's own"; `my_dance_stats`, `my_session_history`, `passes_for_session`,
+     `book_with_membership` and the two notify triggers all assume a person.
+     ⚠ RLS is SAFE either way — `user_id = auth.uid()` is never true for NULL —
+     and the live-unique index is safe too, because Postgres treats NULLs as
+     distinct. ⚠ **And a consequence worth deciding rather than discovering: a
+     walk-in would NOT appear on the Students desk**, which R44 defines through
+     `attendance.user_id`.
+   * **THE FOUR DECISIONS THAT ARE THE USER'S:** (1) shape 1, shape 2, or both —
+     **a real door wants both**, and shape 1 alone closes the commonest case at a
+     fraction of the risk; (2) may a walk-in exceed the room's capacity, or is
+     the class full when it is full? (3) is a paid class's walk-in recorded as
+     money collected at the desk, or ₹0 with "collect at the door" the way an
+     event walk-in is? (4) does a walk-in become a student on the Students desk?
+   * ⚠ **Nothing is written until they answer**, and then the migration's own
+     list goes in front of them before `db push`, as always.
+
 0av. **⚠⚠ ONE MIGRATION WRITTEN, DRY-RUN 22/22 AND HELD FOR THE USER'S WORD —
    `20260928100000_the_person_taking_a_class_holds_its_register`.** ⚠ Rule 9:
    it widens who may run a class's door. **It is the only pending file** (checked:
@@ -8611,6 +8745,33 @@ for the database schema. **The UI is not redesigned** — see Rule 2.
 
 ### Progress tracker — update after EVERY push (Rule 11)
 
+- **THE THREE THINGS THE LAST PUSH SAID IT HAD NOT BUILT — 28 Sep 2026, no step
+  number — BUILT, no migration.** The user: *"solve all options which are not
+  built from previous chat."* ⚠⚠ **A register had no scanner at all**, so the
+  confirm step built that morning had nowhere to lead: it is on the class
+  register and the event register now, finding the row and letting
+  `can_run_register_for_class` / `is_tenant_member` still decide — ⚠ **a scan is
+  an arrival, never a departure** (the same code twice says so and leaves them
+  in), and it tells "on the waitlist" from "not booked" from "already in",
+  which is why `WaitlistRow` gained `userId`. ⚠⚠ **Driving it found a race in my
+  own code** — `register` is a prop, so a second scan beat `router.refresh()`
+  and said "✓ checked in" twice for one check-in; a ref of who THIS sheet has
+  done answers instead, cleared on every open. ⚠⚠ **And a bug shipped that
+  morning: "Not them" killed the camera** — the detector was disarmed by a
+  closure variable inside an effect that mounts once, so only the paste field
+  worked afterwards; the sheet is a QUEUE now and returns to the camera with
+  "✓ Asha checked in" under it. **A membership says who sold it, with their
+  face** (one second query for the whole list, initials where the seller's row
+  is unreadable). ⚠⚠ **And the `<h1>` sweep: twenty-four screens had no
+  accessible name** once `DRILL_TITLES` went — nothing is drawn differently, the
+  element that already WAS each page's visible name becomes the heading. ⚠⚠ **The
+  check that should have caught it had been printing "NO h1" and judging on the
+  status alone**; it asserts the heading now, and turning it on found three more
+  my static scan had called fine. **typecheck 0 · lint 0 · build green · a new
+  `shoot-register` 23/23 · `shoot-tiles` 155/155 · `shoot-hero` 191/191 ·
+  `shoot-discover` 43/43 · the whole e2e suite 58/58 in one run, 14.7 min.**
+  ⚠ The **class walk-in** is a migration and therefore a proposal, not an
+  omission (#0aw) — measured: **29 of 66 live event bookings are walk-ins**.
 - **A POSTER IS A BANNER, AND THE PERSON TAKING A CLASS RUNS IT — 28 Sep 2026,
   no step number ⚠ (Rule 9: the held migration widens who may run a class's
   door) — BUILT; ONE MIGRATION WRITTEN, DRY-RUN 22/22 AND HELD (#0av).**
@@ -13204,6 +13365,7 @@ nothing to lift.
 | Gap | Prototype ref | Closes with |
 |-----|--------------|-------------|
 | ⚠⚠ **A MEMBERSHIP CANNOT BE TAKEN OFF SALE (found 28 Sep 2026 by the dead-code sweep).** `delete_membership` exists in the database, `deleteMembership` in the repository and `deleteMembershipAction` as a server action — and **no screen offers any of them**, so once a seller creates a membership it is on their public page for ever. `total_count` counts passes SOLD rather than passes live, so it cannot be used to close one either. ⚠ The action is KEPT unused on purpose rather than swept, because deleting it would bury the gap | S_memberships 16846 | a Remove / Take off sale control on the memberships desk — one button, the door already exists all the way down |
+| **The scanner, the seller's face and the `<h1>` sweep — what they left (28 Sep 2026):** ⚠ **the seller's photo is on the pass you HOLD and nowhere else** — the class page's "which pass pays for this" row still names the business in words, because a face there is a second read on the class page for a row seen only while booking; the membership's own usage page and a studio's desk are the SELLER's, so the page is already theirs. ⚠ **`PeoplePicker.onScanned` looks the person up a SECOND time** — the sheet resolved them a moment earlier and `onCode` hands back only the id; harmless (it also re-checks the exclusion list) and one round trip that need not happen. ⚠ **Two screens no probe drives**: `/e/{slug}`'s heading and the event manager's — `EventCard as="h1"` and the manager's own `<h1>` are covered by typecheck, lint and the build alone, because building a published event needs an organization with a live ₹5,000 mandate, which is more set-up than the check is worth today. ⚠ **The scanner has no walk-in to offer** — see the row above and #0aw. ⚠ And **`shoot-register` drives the PASTE field, not the camera**: `BarcodeDetector` does not exist in headless Chromium (nor in Chromium on Windows at all), so the decode itself is still proven only by a real phone — the path after the decode is identical and is what this measures | — | #0aw; a face on the pass picker if anybody asks |
 | ⚠⚠ **A STUDIO CANNOT ADD A WALK-IN STUDENT (R44's own leftover, re-confirmed 28 Sep 2026).** The students desk is a CONSEQUENCE — checked in here, or holding a pass — so a person who is not on DanceOS cannot be recorded at all. `createLeadAction`, `updateLeadAction`, `LEAD_STAGES`, `LEAD_TINT` and `LEAD_SOURCES` all survive with no caller; the `leads` rows, columns and both write doors are intact. ⚠ Kept unused on purpose, for the same reason as the row above | S_people 17293 | put the add form back (R44 says it is one screen), or delete the half that is pretending to be there — the user's call |
 | **The doorless routes, recorded so a sweep does not take them (28 Sep 2026):** six routes nothing in the app links to — `/managed`, `/business/{id}/media`, `/business/{id}/classes/new`, `/business/{id}/events/new`, `/business/earnings` and the org tombstones. ⚠ **All correct under Rule 14** (a handed-out link is a promise, and the installed TWA reopens on its last URL); `/media` and both `…/new` forms are driven BY URL by `shoot-hero` / `shoot-tiles` so they cannot rot. Each now carries a `⚠ NO DOOR` header with the date and the reason | — | nothing; the markers are the fix |
 | **The contact row's top edge, what the fix left (28 Sep 2026):** ⚠ **the 6px OVERLAP is still there** — `marginTop: -6` is what puts the row 8px under the links, and all the fix changed is which of the two paints on top, so the buttons now sit over the hero's last 6px of wash (`LILAC` at that stop, the page's own ground, so nothing is covered that anybody can see). If that tail of the gradient is ever made dark or busy, the buttons will be standing ON it rather than clear of it. ⚠ **The row is a positioned element now**, so anything absolutely positioned inside a cell would position against the ROW rather than the page — nothing does today, and `EnquirySheet`'s scrim is `position: fixed`, which `position: relative` does not capture. ⚠ **Only a studio's home is CHECKED** (`shoot-hero`, five buttons at 430 and 360); the other seven surfaces are right by construction — one component — rather than by a check of their own | ContactButtons.tsx `ActionRow` | a wider check only if a caller ever stops using the shared row |
@@ -13282,7 +13444,7 @@ nothing to lift.
 | Staff & permissions: per-person permission grants (the prototype's "enquiries ✓ scanner ✓ classes ✓" are per-role words today, not individually toggled) | settings 18428-18429 | later slice |
 | Leads: the event-enquiry desk (celebrations/corporate/judge/collab types, quotes, in vs out) — the STUDENT pipeline ships | ENQ_TYPES 4902, S_enqdetail 5380 | later slice |
 | Pay sheet: pass + cash methods, POLICY Memberships row; invoice Download PDF | S_class 12471-12507 + 12401, InvoiceSheet 6249 | passes (Phase 2/3), PDF with Step 13 |
-| Register: walk-in add + the QR scanner (needs the student pool); the pass QR is drawn, not scannable yet | attend 12104-12116, PassSheet 6209 | Steps 11-12 (people); real scanning later |
+| ~~Register: the QR scanner~~ **BUILT 28 Sep 2026** — on the class register and the event register, with the confirm card in front of it; the pass QR became a real code on 21 Sep (C41). ⚠ **Register: the class WALK-IN is still the gap**, and it needs a migration — `class_bookings.user_id` AND `attendance.user_id` are both NOT NULL references to `profiles`, so a person with no account can be neither booked nor marked present. Two shapes and four decisions are in front of the user (#0aw); measured: **29 of 66 live event bookings are walk-ins**. ⚠ Until then the scanner says so in words rather than pretending | attend 12104-12116, WalkIn 13904 | #0aw — the user's word, then a migration |
 | Class form: DosDatePick calendar (the native date input ships), searchable style dropdown, refund-cutoff + memberships toggles | S_classform 15317, 15336-15360, 15520-15528 | Step 13 (money policy) |
 | **The class card's teacher is invisible to a signed-out reader** (18 Sep 2026). The card wears the confirmed teacher's face in its centre now, from `findClassArtists` — but `profiles` is signed-in-only (Step 1), so for anon the name and photo come back null, the row is dropped rather than drawn as "Someone", and the card falls back to the style square. Discover and `/classes` are public, so a logged-out visitor sees style squares where everyone else sees faces. Closing it means a definer RPC returning name + photo for the confirmed artist of a PUBLISHED class of a LISTED business — the same facts the class page already shows a signed-in stranger — which is a migration AND a decision about publishing someone's face. ⚠ The class PAGE has the same limit today for the same reason | Step 1 profiles policy; Step 11 claims policy | one definer RPC, once the user says teacher faces may be public |
 | Class card: poster art on the tile (the pass sheet draws one), the share action on a home-deck card (the deck's card opens the **pass**, which is where Share lives — 12001), undo toasts. The **live chip and the role chip landed 29 Aug 2026** (parity slice 6, set only by Home's deck) | BookingCard 7969, 8414-8440 | posters slice; the share action is decision (c) — the pass carries it |

@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState, useTransition, type CSSProperties } from "react";
@@ -7,7 +8,8 @@ import { confirmCheckoutAction, startMembershipCheckoutAction } from "@/features
 import { openCashfreeCheckout } from "@/lib/cashfree/checkout-client";
 import { DeskHero } from "@/features/tenants/components/biz-kit";
 import { DeskAddButton } from "@/features/settings/components/settings-kit";
-import { DOS_UI, INK, LILAC, SUB } from "@/lib/design/tokens";
+import { DISC_RADIUS, DOS_UI, INK, LILAC, SUB } from "@/lib/design/tokens";
+import { photoUrl } from "@/lib/media/photo";
 import { money as rupees } from "@/features/payouts/components/earnings-kit";
 import type { MembershipWithUsage, MyPass } from "@/repositories/memberships";
 
@@ -51,11 +53,53 @@ export function ProgressBar({ used, total, tint = "#22C55E", testId }: { used: n
 
 const unitWord = (unit: "classes" | "hours", n: number) => (unit === "hours" ? `${n} ${n === 1 ? "hour" : "hours"}` : `${n} ${n === 1 ? "class" : "classes"}`);
 
+/** WHO SOLD IT — the seller's face beside their name (28 Sep 2026, the user:
+ *  "membership should have studio or artist photo with name"). A pass is a
+ *  relationship with a studio or an artist, and until now that side of it was a
+ *  line of grey text; a face is how every other person and business in this app
+ *  is recognised at a glance.
+ *
+ *  ⚠ THE SQUIRCLE IS `DISC_RADIUS`, not a number typed here — the same share of
+ *  the side the 96px disc, the hub's 42px face and the cropper's frame all use
+ *  (18 Sep 2026), so this face cannot drift into a different shape.
+ *  ⚠ NO PHOTO MEANS INITIALS, never an empty box: the seller may be a business
+ *  this person cannot read, and a pass is still a pass without a face on it. */
+function SellerFace({ name, photo }: { name: string; photo: string | null }) {
+  const src = photoUrl(photo);
+  const size = 34;
+  return (
+    <span
+      aria-hidden="true"
+      style={{
+        width: size,
+        height: size,
+        borderRadius: size * DISC_RADIUS,
+        flexShrink: 0,
+        overflow: "hidden",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        background: "var(--el)",
+        color: SUB,
+        fontSize: 11,
+        fontWeight: 900,
+      }}
+    >
+      {src ? (
+        <Image src={src} alt="" width={size} height={size} style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
+      ) : (
+        name.split(" ").filter(Boolean).map((w) => w[0]).slice(0, 2).join("").toUpperCase()
+      )}
+    </span>
+  );
+}
+
 export function MembershipsScreen({
   passes,
   selling,
   canSell,
   business = null,
+  sellerPhotos = {},
 }: {
   /** what this person HOLDS */
   passes: MyPass[];
@@ -67,6 +111,11 @@ export function MembershipsScreen({
    *  to — a studio holds no passes, because a business is not a person
    *  (`guard_person_only`) — so the segments go and the page says whose it is. */
   business?: { id: string; name: string } | null;
+  /** the seller's picture, keyed by business id — read once for the whole list by
+   *  the page (28 Sep 2026). A business missing from this map draws initials, and
+   *  a STUDIO's own desk passes none at all, because that side sells rather than
+   *  holds and the page it is on already says whose it is. */
+  sellerPhotos?: Record<string, string | null>;
   /* ⚠ NO `sellerId` / `sellerName` ANY MORE (21 Sep 2026): the form left this
      desk for `/memberships/new`, which resolves whose membership it is on the
      server rather than taking it from a prop. A dead prop is a lie. */
@@ -134,7 +183,13 @@ export function MembershipsScreen({
         <>
           {passes.map((p) => (
             <div key={p.passId} style={card} data-testid="my-pass">
-              <div style={{ display: "flex", alignItems: "baseline", gap: 8 }}>
+              {/* ⚠ THE SELLER'S FACE LEADS THE ROW (28 Sep 2026) — a pass is a
+                  relationship with a studio or an artist, and the name alone
+                  made that the quietest thing on the card. It is `alignItems:
+                  center` now rather than `baseline`, because a 34px face and a
+                  text baseline have nothing to line up on. */}
+              <div style={{ display: "flex", alignItems: "center", gap: 9 }}>
+                <SellerFace name={p.businessName} photo={sellerPhotos[p.businessId] ?? null} />
                 <span style={{ flex: 1, minWidth: 0 }}>
                   <span style={{ display: "block", fontSize: 13.5, fontWeight: 900 }}>{p.name}</span>
                   <Link href={p.businessType === "studio" ? `/studio/${p.businessId}` : "/memberships"} style={{ display: "block", fontSize: 10.5, color: SUB, marginTop: 2, textDecoration: "none" }}>

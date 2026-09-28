@@ -91,9 +91,10 @@ export default async function RosterPage({
       <div style={{ margin: "10px 0 2px", fontSize: 10, fontWeight: 900, letterSpacing: 1.2, color: SUB }}>
         ROSTER
       </div>
-      <div style={{ fontSize: 21, fontWeight: 800, fontFamily: DOS_DISPLAY, letterSpacing: -0.5 }}>
+      {/* the page's own `<h1>` — the chrome no longer prints a drill page's name (28 Sep 2026) */}
+      <h1 style={{ margin: 0, fontSize: 21, fontWeight: 800, fontFamily: DOS_DISPLAY, letterSpacing: -0.5 }}>
         {danceClass.title}
-      </div>
+      </h1>
 
       <div style={{ fontSize: 9.5, fontWeight: 900, letterSpacing: 1, color: "#707070", margin: "18px 0 4px" }}>
         ENROLLED · {enrolled.length}/{danceClass.capacity}

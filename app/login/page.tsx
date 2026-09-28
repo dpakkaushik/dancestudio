@@ -45,7 +45,9 @@ export default function LoginWelcomePage() {
           </span>
         ))}
       </div>
-      <div
+      {/* the screen's own `<h1>` (28 Sep 2026) — the welcome screen wears no
+          chrome at all, so this display line is the only thing naming it */}
+      <h1
         style={{
           fontSize: 46,
           fontWeight: 800,
@@ -59,7 +61,7 @@ export default function LoginWelcomePage() {
         The stage
         <br />
         is yours.
-      </div>
+      </h1>
       <div
         style={{
           fontSize: 16.5,

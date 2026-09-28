@@ -80,9 +80,10 @@ export function SupportThreads({
       <div style={{ padding: "14px 16px 0" }}>
         <div style={{ borderRadius: 22, padding: "15px 17px 14px", marginBottom: 14, position: "relative", overflow: "hidden", color: "#fff", background: "linear-gradient(135deg,#64748B,#0EA5E9)" }}>
           <div style={{ position: "absolute", right: -28, top: -32, width: 130, height: 130, borderRadius: 65, background: "rgba(255,255,255,.13)" }} />
-          <div style={{ fontSize: 21, fontWeight: 800, letterSpacing: -0.5, position: "relative", fontFamily: DOS_DISPLAY, lineHeight: 1.18 }}>
+          {/* the page's own `<h1>` — the chrome no longer prints a drill page's name (28 Sep 2026) */}
+          <h1 style={{ margin: 0, fontSize: 21, fontWeight: 800, letterSpacing: -0.5, position: "relative", fontFamily: DOS_DISPLAY, lineHeight: 1.18 }}>
             {isAdmin ? "Support" : "DanceOS support"}
-          </div>
+          </h1>
           <div style={{ fontSize: 11, opacity: 0.9, marginTop: 2, position: "relative" }}>
             {threads.length === 0
               ? isAdmin ? "nothing waiting on you" : "no conversations yet"

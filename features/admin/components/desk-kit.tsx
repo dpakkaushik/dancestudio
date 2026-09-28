@@ -44,6 +44,14 @@ const qs = (params: Record<string, string | number | null | undefined>): string 
   return s ? `?${s}` : "";
 };
 
+/** ⚠ THE TITLE IS AN `<h1>` (28 Sep 2026). The chrome used to print a drill
+ *  page's name in the top bar off `DRILL_TITLES`; that table went when the
+ *  wordmark became constant, so a page's own heading is the only thing naming
+ *  it now — and every admin desk's title was a `<div>`. One declaration here
+ *  names ten screens (Accounts · Businesses · Verifications · Reports ·
+ *  Support · Dashboard and the rest), which is why it is fixed at the hero
+ *  rather than ten times over. Nothing moves on screen: `margin: 0` is what a
+ *  browser's own `<h1>` margin would otherwise add. */
 export function DeskHero({ eyebrow, title, sub, tint, icon, right }: { eyebrow: string; title: string; sub: string; tint: string; icon?: ReactNode; right?: ReactNode }) {
   return (
     <div style={{ borderRadius: 22, padding: "15px 17px 14px", marginBottom: 12, position: "relative", overflow: "hidden", color: "#fff", background: `linear-gradient(135deg, ${tint}cc, ${tint})` }}>
@@ -56,7 +64,7 @@ export function DeskHero({ eyebrow, title, sub, tint, icon, right }: { eyebrow: 
         ) : null}
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ fontSize: 9.5, fontWeight: 900, letterSpacing: 1.2, opacity: 0.85 }}>{eyebrow}</div>
-          <div style={{ fontSize: 21, fontWeight: 800, letterSpacing: -0.5, fontFamily: DOS_DISPLAY, lineHeight: 1.18, marginTop: 2 }}>{title}</div>
+          <h1 style={{ margin: 0, fontSize: 21, fontWeight: 800, letterSpacing: -0.5, fontFamily: DOS_DISPLAY, lineHeight: 1.18, marginTop: 2 }}>{title}</h1>
           <div style={{ fontSize: 11, opacity: 0.9, marginTop: 2 }}>{sub}</div>
         </div>
         {right}

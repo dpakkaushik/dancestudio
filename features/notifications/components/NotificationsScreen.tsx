@@ -84,7 +84,8 @@ export function NotificationsScreen({ notifications, prefs, nowIso }: { notifica
         <div style={{ display: "flex", alignItems: "flex-start", gap: 10, position: "relative" }}>
           <div style={{ flex: 1, minWidth: 0 }}>
             <div style={{ fontSize: 9, fontWeight: 900, letterSpacing: 1.4, textTransform: "uppercase", opacity: 0.85 }}>Notifications</div>
-            <div style={{ fontSize: 21, fontWeight: 800, fontFamily: DOS_DISPLAY, letterSpacing: -0.5, lineHeight: 1.18, marginTop: 3 }}>What needs you</div>
+            {/* the page's own `<h1>` — the chrome no longer prints a drill page's name (28 Sep 2026) */}
+            <h1 style={{ margin: 0, fontSize: 21, fontWeight: 800, fontFamily: DOS_DISPLAY, letterSpacing: -0.5, lineHeight: 1.18, marginTop: 3 }}>What needs you</h1>
             <div style={{ fontSize: 11.5, opacity: 0.9, marginTop: 3 }} data-testid="notif-counts">
               {unreadTotal} unread · {notifications.length} total
             </div>

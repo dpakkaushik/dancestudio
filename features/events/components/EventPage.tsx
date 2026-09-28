@@ -379,7 +379,10 @@ export function EventPage({ event: ev, isSignedIn, isMember, canManage, mine, le
       {/* ── THE CARD ITSELF, ON THE PAGE (12928-12951) ── */}
       <div style={{ padding: "0 16px 10px", position: "relative", zIndex: 1, background: "var(--bg)" }}>
         <div style={{ height: 1, background: "var(--el)", margin: "16px 0 20px" }} />
-        <EventCard event={ev} host={hostCard} />
+        {/* ⚠ `as="h1"` HERE AND NOWHERE ELSE — this card IS the page's name, and
+            the chrome stopped printing one when the wordmark became constant
+            (28 Sep 2026). Every other caller draws a shelf. */}
+        <EventCard event={ev} host={hostCard} as="h1" />
         {liveNow ? (
           <div style={{ display: "flex", justifyContent: "flex-end", marginTop: 2 }}>
             <span style={{ fontSize: 9.5, fontWeight: 900, letterSpacing: 0.5, padding: "4px 11px", borderRadius: 999, background: GREEN, color: "#fff" }}>● LIVE NOW</span>

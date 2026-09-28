@@ -16,6 +16,11 @@ export interface RegisterRow {
 export interface WaitlistRow {
   enrollmentId: string;
   learnerName: string;
+  /** ⚠ WHO THIS IS (28 Sep 2026). The register's scanner has to tell "waiting for
+   *  a spot" from "not booked at all" — two different sentences to say at a door,
+   *  and without the id they are the same silence. The column was already in the
+   *  query; only the row shape had dropped it. */
+  userId: string;
 }
 
 export interface ClassRegister {
@@ -62,6 +67,7 @@ export async function findClassRegister(
     .map((r) => ({
       enrollmentId: r.id,
       learnerName: r.profiles?.full_name ?? "Learner",
+      userId: r.user_id,
     }));
   return {
     rows,

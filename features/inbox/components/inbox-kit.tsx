@@ -114,7 +114,10 @@ export function DosHero({
         ) : null}
         <div style={{ display: "flex", alignItems: "flex-start", gap: 10 }}>
           <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={{ fontSize: 21, fontWeight: 800, letterSpacing: -0.5, fontFamily: DOS_DISPLAY, lineHeight: 1.18, marginTop: 1 }}>{title}</div>
+            {/* ⚠ the page's own `<h1>` (28 Sep 2026). The chrome stopped printing a
+                drill page's name when the wordmark became constant, and this hero
+                is the only heading `/inbox/enquiries/{id}` has. */}
+            <h1 style={{ margin: 0, fontSize: 21, fontWeight: 800, letterSpacing: -0.5, fontFamily: DOS_DISPLAY, lineHeight: 1.18, marginTop: 1 }}>{title}</h1>
             {sub ? <div style={{ fontSize: 10.5, opacity: 0.9, marginTop: 3, fontFamily: DOS_UI }}>{sub}</div> : null}
           </div>
           {right ?? null}

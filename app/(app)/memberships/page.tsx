@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { MembershipForm } from "@/features/memberships/components/MembershipForm";
 import { MembershipsScreen } from "@/features/memberships/components/MembershipsScreen";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { findTenantCardFacts } from "@/repositories/discovery";
 import { findBusinessMemberships, findMyMemberships } from "@/repositories/memberships";
 import { findMyMemberships as findMyTeams } from "@/repositories/tenants";
 
@@ -36,6 +37,24 @@ export default async function MembershipsPage({ searchParams }: { searchParams: 
   /* an organization's hosting row sells nothing — a membership is spent on classes */
   const owned = teams.find((m) => m.memberRole === "owner" && m.tenant.type === "artist_page")?.tenant ?? null;
   const selling = owned ? await findBusinessMemberships(supabase, owned.id).catch(() => []) : [];
+
+  /** ⚠ WHO SOLD YOU THIS PASS, WITH THEIR FACE (28 Sep 2026, the user:
+   *  "membership should have studio or artist photo with name"). The NAME has
+   *  ridden on `my_memberships` all along; the photo does not, and widening that
+   *  RETURNS TABLE would be a drop-and-recreate for a picture — so it is ONE
+   *  second query over the businesses the passes name, exactly the shape
+   *  Discover's own shelf uses (`findTenantCardFacts`), never one read per row.
+   *
+   *  ⚠ It degrades rather than failing: a seller whose row this person may not
+   *  read (an unlisted studio under "anyone reads listed businesses") comes back
+   *  with no photo and the row draws initials — the rule the Faculty list has
+   *  followed since Step 15. A pass is still a pass without a face on it. */
+  const sellerIds = [...new Set(passes.map((p) => p.businessId))];
+  const sellerFacts = sellerIds.length > 0 ? await findTenantCardFacts(supabase, sellerIds).catch(() => new Map()) : new Map();
+  const sellerPhotos: Record<string, string | null> = {};
+  sellerIds.forEach((id) => {
+    sellerPhotos[id] = sellerFacts.get(id)?.photoPath ?? null;
+  });
   /* ⚠ `?new=1` opens the form over this desk (22 Sep 2026), and WHOSE membership
      it is comes from the same `owned` the desk itself is drawn from — so the
      seller is decided by the server on both paths, and the pointer that
@@ -43,7 +62,7 @@ export default async function MembershipsPage({ searchParams }: { searchParams: 
      gate is re-checked because a query param is a thing anybody can type. */
   return (
     <>
-      <MembershipsScreen passes={passes} selling={selling} canSell={Boolean(owned)} />
+      <MembershipsScreen passes={passes} selling={selling} canSell={Boolean(owned)} sellerPhotos={sellerPhotos} />
       {opening && owned ? <MembershipForm sellerId={owned.id} sellerName={owned.name} backTo="/memberships" sheet /> : null}
     </>
   );

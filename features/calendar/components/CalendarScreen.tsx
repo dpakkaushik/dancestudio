@@ -614,11 +614,17 @@ export function CalendarScreen({ mode, months, todayKey, entries, events = [], p
       >
         {/* a public schedule draws no hero (9065) — it is somebody's page, not
             your calendar — so it says whose it is in one quiet line instead */}
+        {/* ⚠ EACH BRANCH CARRIES THE PAGE'S OWN `<h1>` (28 Sep 2026). The chrome
+            stopped printing a drill page's name when the wordmark became
+            constant, so this line and the hero below are the only things naming
+            these five routes (a person's calendar, a studio's, a crew's, and the
+            two public schedules). Nothing is drawn differently — `margin` keeps
+            what each already had, and a quiet line stays a quiet line. */}
         {isPublic ? (
           pageTitle ? (
-            <div style={{ fontSize: 9.5, fontWeight: 900, letterSpacing: 1.2, color: MUTED, margin: "6px 0 10px", textTransform: "uppercase" }}>
+            <h1 style={{ fontSize: 9.5, fontWeight: 900, letterSpacing: 1.2, color: MUTED, margin: "6px 0 10px", textTransform: "uppercase" }}>
               {pageTitle} · schedule
-            </div>
+            </h1>
           ) : null
         ) : (
           <div
@@ -647,9 +653,9 @@ export function CalendarScreen({ mode, months, todayKey, entries, events = [], p
               }}
             />
             <div style={{ flex: 1, minWidth: 0, position: "relative" }}>
-              <div style={{ fontSize: 21, fontWeight: 800, letterSpacing: -0.5, fontFamily: DOS_DISPLAY, lineHeight: 1.18 }}>
+              <h1 style={{ margin: 0, fontSize: 21, fontWeight: 800, letterSpacing: -0.5, fontFamily: DOS_DISPLAY, lineHeight: 1.18 }}>
                 Calendar
-              </div>
+              </h1>
             </div>
             {/* ⚠ NO HISTORY CHIP (19 Sep 2026, the user's list). It opened
                 `/stats?tab=history`, which the Stats chip on every hero already

@@ -3,7 +3,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useActionState, useState, useSyncExternalStore, type ReactNode } from "react";
+import { useActionState, useRef, useState, useSyncExternalStore, type ReactNode } from "react";
 import {
   checkInAction,
   giveSpotAction,
@@ -39,6 +39,7 @@ import type { EnrollmentStatus } from "@/types/enrollment";
 import type { ClassMoney, PaidReceipt } from "@/types/payment";
 import type { RefundRequest } from "@/types/refund";
 import { AddAssistant, AssistantControls } from "./ClassTeamControls";
+import { ScanSheet, type ScanOutcome } from "@/features/people/components/ScanSheet";
 import { PassSheet } from "./PassSheet";
 import { DOS_POSTERS, DOS_SLEEVE, DosPosterSleeve, PosterBlock, dosPosterAuto, useDosFold } from "./poster";
 import { dosKey } from "./ShareSheet";
@@ -260,6 +261,18 @@ export function ClassDetail({
   const [ownerSeg, setOwnerSeg] = useState<"details" | "att" | "money" | "ref">("details");
   /* one register op at a time — the row that is busy shows it */
   const [opPending, setOpPending] = useState<string | null>(null);
+  /* the register's own scanner (28 Sep 2026) — see `scanCheckIn` */
+  const [scanOpen, setScanOpen] = useState(false);
+  /** ⚠⚠ WHO THIS SHEET HAS ALREADY CHECKED IN, found by DRIVING it (28 Sep 2026).
+   *  `register` is a PROP: it only changes when `router.refresh()` lands, and a
+   *  door scanning the same code twice in a second beats that round trip. So the
+   *  second scan read `checkedIn: false`, called the RPC again — harmless, the
+   *  RPC has been idempotent since Step 10 — and said "✓ checked in" a second
+   *  time, which tells the person at the door that something happened when
+   *  nothing did. The behaviour was right and the SENTENCE was a race. This set
+   *  answers from what this sheet itself has done, so the words are true whether
+   *  or not the server has caught up. */
+  const scannedIn = useRef<Set<string>>(new Set());
   const host = useSyncExternalStore(subscribeNever, readHost, readServerHost);
 
   const [enrollState, enrollForm, enrollPending] = useActionState(enrollAction, initialState);
@@ -401,6 +414,49 @@ export function ClassDetail({
     setOpPending(null);
     fire(out.error ?? (accept ? "You’re on this class" : "Declined — they’ve been told"));
     router.refresh();
+  };
+
+  /** ⚠⚠ CHECK SOMEBODY IN BY SCANNING THEIR CODE (28 Sep 2026, the other half of
+   *  the user's own ask: "when scanning any persons qr code for entry for a class
+   *  or event … after confirmation only should check them in").
+   *
+   *  The confirm step landed with the scan sheet; what did not exist anywhere was
+   *  a scanner ON a register, so "check them in" had no door at all. This is it,
+   *  and it writes nothing the row's own Check in button could not: the scan
+   *  RESOLVES a person and the register decides what that person is to this
+   *  class. Everything the RPC refuses it still refuses — the scan is a way of
+   *  finding the row, never a way past `can_run_register_for_class`.
+   *
+   *  ⚠ A SCAN IS AN ARRIVAL, NEVER A DEPARTURE. Scanning somebody already in
+   *  says so and leaves them in — the row's button is how somebody is checked
+   *  OUT. A door that scans the same code twice must not undo the first scan.
+   *
+   *  ⚠ AND IT TELLS THE THREE "NO"s APART, because they need three different
+   *  answers at a door: on the waitlist (give them a spot first — a decision,
+   *  not something a scan should take), booked for a DIFFERENT class, or not
+   *  booked at all. The last one is where a class walk-in would go, and classes
+   *  have no walk-in: `add_event_walk_in` exists for events and has no class
+   *  equivalent, so the sentence says what can actually be done instead. */
+  const scanCheckIn = async (personId: string): Promise<ScanOutcome> => {
+    if (!register) return { ok: false, message: "This register is not open." };
+    const row = register.rows.find((r) => r.userId === personId);
+    if (!row) {
+      const waiting = register.waitlist.find((w) => w.userId === personId);
+      if (waiting) {
+        return { ok: false, message: `${waiting.learnerName} is on the waitlist — give them a spot first, then scan again.` };
+      }
+      return { ok: false, message: "Not booked for this class. They can book it on the class page; a class has no walk-in yet." };
+    }
+    if (row.checkedIn || scannedIn.current.has(personId)) {
+      return { ok: true, message: `${row.learnerName} was already checked in` };
+    }
+    const out = await checkInAction({ enrollmentId: row.enrollmentId });
+    if (out.error) {
+      return { ok: false, message: out.error };
+    }
+    scannedIn.current.add(personId);
+    router.refresh();
+    return { ok: true, message: `✓ ${row.learnerName} checked in` };
   };
 
   const runRegisterOp = async (
@@ -634,10 +690,16 @@ export function ClassDetail({
               }}
             >
               <div style={{ display: "flex", alignItems: "center", gap: 7, minWidth: 0 }}>
-                <span
+                {/* ⚠ THE PAGE'S OWN `<h1>` (28 Sep 2026). The chrome stopped
+                    printing a drill page's name when the wordmark became
+                    constant, and the headline on the card IS this page's name —
+                    so it is the heading rather than a span. Nothing moves:
+                    `margin: 0` replaces the browser's own `<h1>` margin. */}
+                <h1
                   style={{
                     flex: 1,
                     minWidth: 0,
+                    margin: 0,
                     fontSize: 23,
                     fontWeight: 900,
                     letterSpacing: -0.9,
@@ -650,7 +712,7 @@ export function ClassDetail({
                   }}
                 >
                   {c.style}
-                </span>
+                </h1>
                 {liveNow && !done && (
                   <span
                     style={{
@@ -1347,7 +1409,10 @@ export function ClassDetail({
         )}
 
         {/* ── ATTENDANCE — the register and the queue (prototype 12043-12138).
-            Walk-ins and the QR scanner arrive with the people work (backlog). ── */}
+            The QR scanner is the pill on the register's head since 28 Sep 2026;
+            a class WALK-IN still has no door, and needs a migration (`class_bookings`
+            has no nullable `user_id` and no name column — events have
+            `add_event_walk_in` and classes have no equivalent at all). ── */}
         {ownerTabs && ownerSeg === "att" && register && (
           <>
             {/* the clock starts the session, not a button (12050-12063) */}
@@ -1394,6 +1459,55 @@ export function ClassDetail({
                 </span>
               )}
             </div>
+
+            {/* ⚠ SCAN TO CHECK IN — the door's own control (28 Sep 2026). Only
+                while check-in is OPEN: `check_in` refuses a session that has
+                ended, and a button that can only ever be refused is not a
+                button. A register with nobody on it has nothing to scan
+                against, so it says so rather than opening a camera. */}
+            {sessionPhase !== "ended" && (
+              <button
+                type="button"
+                onClick={() => {
+                  if (register.rows.length === 0) {
+                    fire("Nobody has booked yet — there is nothing to scan against");
+                    return;
+                  }
+                  /* ⚠ CLEARED ON EVERY OPEN, not on close: the set is only ever
+                     right for ONE sitting at the door. Somebody checked in by a
+                     scan and then checked OUT on their row would otherwise still
+                     be "already checked in" to the next scan. Nothing can check
+                     out while the sheet is up, because the sheet is modal. */
+                  scannedIn.current.clear();
+                  setScanOpen(true);
+                }}
+                aria-label="Scan a code to check somebody in"
+                data-testid="scan-check-in"
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  gap: 8,
+                  width: "100%",
+                  padding: "12px",
+                  marginBottom: 10,
+                  borderRadius: 999,
+                  border: "1.5px solid var(--el)",
+                  background: "var(--card)",
+                  color: "var(--text)",
+                  fontWeight: 900,
+                  fontSize: 12.5,
+                  fontFamily: "inherit",
+                  cursor: "pointer",
+                }}
+              >
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                  <path d="M3.5 8.5v-3a2 2 0 0 1 2-2h3M15.5 3.5h3a2 2 0 0 1 2 2v3M20.5 15.5v3a2 2 0 0 1-2 2h-3M8.5 20.5h-3a2 2 0 0 1-2-2v-3" />
+                  <path d="M7 12h10" />
+                </svg>
+                Scan to check in
+              </button>
+            )}
 
             {/* the waitlist is a queue of real people — the owner hands a freed
                 spot to the next one (12080-12099) */}
@@ -1838,6 +1952,16 @@ export function ClassDetail({
         </div>
       )}
 
+      {/* the register's scanner — the sheet resolves the code and shows WHO it
+          found, and `scanCheckIn` decides what that person is to this class */}
+      {scanOpen && register && (
+        <ScanSheet
+          heading="Check somebody in"
+          confirmLabel="Check in"
+          onCode={scanCheckIn}
+          onClose={() => setScanOpen(false)}
+        />
+      )}
       {passOpen && (
         <PassSheet
           posterItem={posterItem}

@@ -392,9 +392,14 @@ export function ClassesManager({
           }}
         >
           <div style={{ position: "absolute", right: -28, top: -32, width: 130, height: 130, borderRadius: 65, background: "rgba(255,255,255,.13)" }} />
-          <div style={{ fontSize: 21, fontWeight: 800, letterSpacing: -0.5, position: "relative", fontFamily: DOS_DISPLAY, lineHeight: 1.18 }}>
+          {/* ⚠ the page's own `<h1>` (28 Sep 2026) — the chrome stopped printing a
+              drill page's name when the wordmark became constant. It is safe to
+              be the heading because this hero is drawn only when the register is
+              NOT `embedded`: inside the artist's Manage segment the page above it
+              already has one, and two `<h1>`s on a screen name it twice. */}
+          <h1 style={{ margin: 0, fontSize: 21, fontWeight: 800, letterSpacing: -0.5, position: "relative", fontFamily: DOS_DISPLAY, lineHeight: 1.18 }}>
             Classes
-          </div>
+          </h1>
         </div>
       ) : null}
 

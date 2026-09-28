@@ -81,7 +81,10 @@ export function SupportConversation({
           <div style={{ fontSize: 9.5, fontWeight: 900, letterSpacing: 1.2, opacity: 0.85, position: "relative" }}>
             {isAdmin ? thread.accountName.toUpperCase() : "DANCEOS SUPPORT"}
           </div>
-          <div style={{ fontSize: 19, fontWeight: 800, letterSpacing: -0.4, position: "relative", fontFamily: DOS_DISPLAY, lineHeight: 1.2, marginTop: 2 }}>{thread.subject}</div>
+          {/* the page's own `<h1>` — the chrome no longer prints a drill page's name
+              (28 Sep 2026). A conversation's name IS its subject, which is why the
+              subject is the heading rather than the word "Conversation". */}
+          <h1 style={{ margin: 0, fontSize: 19, fontWeight: 800, letterSpacing: -0.4, position: "relative", fontFamily: DOS_DISPLAY, lineHeight: 1.2, marginTop: 2 }}>{thread.subject}</h1>
           <div style={{ fontSize: 11, opacity: 0.9, marginTop: 3, position: "relative" }}>
             {closed ? "closed" : "open"} · started {agoWords(thread.createdAt, nowIso)}
             {thread.kind === "verification" ? " · about your verification" : ""}

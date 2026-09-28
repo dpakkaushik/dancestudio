@@ -455,8 +455,10 @@ export function BusinessHub({
               background: "rgba(255,255,255,.13)",
             }}
           />
-          <div
+          {/* the page's own `<h1>` — the chrome no longer prints a drill page's name (28 Sep 2026) */}
+          <h1
             style={{
+              margin: 0,
               fontSize: 21,
               fontWeight: 800,
               letterSpacing: -0.5,
@@ -466,7 +468,7 @@ export function BusinessHub({
             }}
           >
             {DOS_TOOLS.studios.name}
-          </div>
+          </h1>
         </div>
         {/* THE PRICE, ONCE, FROM THE PRICE LIST (26 Sep 2026) — the one fact the
             cards cannot say until there is one; the Organizations hub prints

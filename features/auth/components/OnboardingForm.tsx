@@ -170,7 +170,9 @@ export function OnboardingForm({
   if (step === "profile") {
     return (
       <AuthShell toast={toast} progress={[1, total]}>
-        <div style={{ fontSize: 24, fontWeight: 800, margin: "14px 0 4px", fontFamily: DOS_DISPLAY, letterSpacing: -0.5 }}>{isOrg ? "Set up your organization" : "Set up your profile"}</div>
+        {/* each step is a screen, so each step's title is that screen's `<h1>` —
+            only one of the four is ever rendered at a time (28 Sep 2026) */}
+        <h1 style={{ fontSize: 24, fontWeight: 800, margin: "14px 0 4px", fontFamily: DOS_DISPLAY, letterSpacing: -0.5 }}>{isOrg ? "Set up your organization" : "Set up your profile"}</h1>
         <div style={{ fontSize: 13, color: SUB, marginBottom: 18 }}>{isOrg ? "Who you are, where you are, and a logo — your studios come next." : "A photo and your basics — this is how the community sees you."}</div>
 
         {/* ⚠ NO "I AM HERE AS…" CARDS (26 Sep 2026): the organization kind is
@@ -253,7 +255,7 @@ export function OnboardingForm({
         <button type="button" aria-label="Back" onClick={() => setStep("profile")} style={{ fontSize: 20, cursor: "pointer", background: "none", border: "none", color: INK, padding: 0, fontFamily: "inherit" }}>
           ←
         </button>
-        <div style={{ fontSize: 24, fontWeight: 800, margin: "14px 0 4px", fontFamily: DOS_DISPLAY, letterSpacing: -0.5 }}>Your dance styles</div>
+        <h1 style={{ fontSize: 24, fontWeight: 800, margin: "14px 0 4px", fontFamily: DOS_DISPLAY, letterSpacing: -0.5 }}>Your dance styles</h1>
         <div style={{ fontSize: 13, color: SUB, marginBottom: 18 }}>Everyone starts as a dancer — this shapes your feed &amp; recommendations.</div>
         <div style={{ fontSize: 12, fontWeight: 800, letterSpacing: 1.2, color: SUB, marginBottom: 8 }}>
           🕺 STYLES YOU DANCE <span style={{ fontWeight: 600, letterSpacing: 0 }}>· how you&apos;d describe yourself</span>
@@ -309,7 +311,7 @@ export function OnboardingForm({
         <button type="button" aria-label="Back" onClick={() => setStep("styles")} style={{ fontSize: 20, cursor: "pointer", background: "none", border: "none", color: INK, padding: 0, fontFamily: "inherit" }}>
           ←
         </button>
-        <div style={{ fontSize: 24, fontWeight: 800, margin: "14px 0 4px", fontFamily: DOS_DISPLAY, letterSpacing: -0.5 }}>Your social links</div>
+        <h1 style={{ fontSize: 24, fontWeight: 800, margin: "14px 0 4px", fontFamily: DOS_DISPLAY, letterSpacing: -0.5 }}>Your social links</h1>
         <div style={{ fontSize: 13, color: SUB, marginBottom: 16 }}>Optional now — worth adding if you take the Artist plan later.</div>
         <Soc ic={<span style={{ background: "linear-gradient(45deg,#F56040,#C13584)", WebkitBackgroundClip: "text", color: "transparent", fontWeight: 900 }}>◎</span>} ph="Instagram profile URL" label="Instagram profile URL" val={ig} set={setIg} color="#C13584" />
         <Soc ic={<span style={{ color: "#FF0000", fontWeight: 900 }}>▶</span>} ph="YouTube channel URL" label="YouTube channel URL" val={yt} set={setYt} color="#FF0000" />

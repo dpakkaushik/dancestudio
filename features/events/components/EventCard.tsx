@@ -6,7 +6,7 @@
 import Image from "next/image";
 import { photoUrl } from "@/lib/media/photo";
 import Link from "next/link";
-import type { ReactNode } from "react";
+import type { CSSProperties, ReactNode } from "react";
 import { PosterBlock, dosPosterAuto } from "@/features/classes/components/poster";
 import { DOS_DISPLAY, DOS_UI } from "@/lib/design/tokens";
 import {
@@ -57,18 +57,28 @@ export function EventCard({
   compact = false,
   host = null,
   actions,
+  as = "div",
 }: {
   event: DanceEvent;
   href?: string;
   compact?: boolean;
   host?: EventCardHost | null;
   actions?: ReactNode;
+  /** ⚠ `as="h1"` ON THE EVENT'S OWN PAGE, AND NOWHERE ELSE (28 Sep 2026). The
+   *  chrome stopped printing a drill page's name when the wordmark became
+   *  constant, and `/e/{slug}` draws its name through this card — so the card's
+   *  title is that page's heading. Every other caller is a SHELF (Discover, the
+   *  desk, the calendar), where a heading per card would be a page of headings
+   *  and no page name at all. Same shape as `DeskHero`'s own `as`. */
+  as?: "div" | "h1";
 }) {
   const tint = EV_TINT[e.cat];
   const price = eventPriceLabel(e);
   const isFree = price === "Free";
   const fmt = entryLabelOf(e);
   const size = compact ? 68 : 80;
+  /* `margin: 0` because an `<h1>` would otherwise bring the browser's own */
+  const titleStyle: CSSProperties = { margin: 0, fontSize: 14.5, fontWeight: 800, letterSpacing: -0.4, lineHeight: 1.15, marginTop: 2, fontFamily: DOS_DISPLAY, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" };
   const bars: Array<[string, number, number, string]> = [
     ["Participants", entriesOf(e), entryCapacityOf(e), tint],
     ["Spectators", seatsSoldOf(e), seatCapacityOf(e), "#3B82F6"],
@@ -105,9 +115,10 @@ export function EventCard({
             </span>
             <span style={{ flexShrink: 0, fontSize: 12.5, fontWeight: 800, fontFamily: DOS_MONO, letterSpacing: -0.3, color: isFree ? "#22C55E" : tint }}>{price}</span>
           </div>
-          <div style={{ fontSize: 14.5, fontWeight: 800, letterSpacing: -0.4, lineHeight: 1.15, marginTop: 2, fontFamily: DOS_DISPLAY, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-            {e.title}
-          </div>
+          {/* one style object, two elements — `DeskHero`'s own shape, and the reason
+              it is a ternary rather than a `const T = as` is this repo's lint:
+              a component may not be created during render. */}
+          {as === "h1" ? <h1 style={titleStyle}>{e.title}</h1> : <div style={titleStyle}>{e.title}</div>}
           <div style={{ fontSize: 9.5, color: "var(--sub)", marginTop: 2, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
             {e.venue}
             {e.city ? ` · ${e.city}` : ""}

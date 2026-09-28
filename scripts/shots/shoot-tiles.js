@@ -90,7 +90,13 @@ async function pressEveryTile(page, who, expectedNames, startPath = "/") {
     const h1 = await page.locator("h1").first().innerText().catch(() => "");
     const body = (await page.locator("body").innerText().catch(() => "")).slice(0, 4000);
     const blank = body.replace(/\s+/g, "").length < 40;
-    check(status < 400 && !blank, `${who} · ${t.name} -> ${landed} (${status})${h1 ? ` h1="${h1.split("\n")[0]}"` : " NO h1"}${blank ? " ⚠ BLANK" : ""}`);
+    /** ⚠⚠ THE `<h1>` IS ASSERTED NOW, NOT MERELY PRINTED (28 Sep 2026). This line
+     *  has read the heading since the script was written and judged on the status
+     *  alone, so a page with " NO h1" in its own label still passed — and when
+     *  `DRILL_TITLES` went and the chrome stopped naming drill pages, about twenty
+     *  screens lost their accessible name with nothing going red. A fact a check
+     *  prints but does not judge is a fact nobody is checking. */
+    check(status < 400 && !blank && h1.trim().length > 0, `${who} · ${t.name} -> ${landed} (${status})${h1 ? ` h1="${h1.split("\n")[0]}"` : " NO h1"}${blank ? " ⚠ BLANK" : ""}`);
   }
 }
 

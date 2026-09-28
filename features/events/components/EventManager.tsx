@@ -3,12 +3,13 @@
 import Link from "next/link";
 import { photoUrl } from "@/lib/media/photo";
 import { useRouter } from "next/navigation";
-import { useState, useSyncExternalStore, type ReactNode } from "react";
+import { useRef, useState, useSyncExternalStore, type ReactNode } from "react";
 import { PassSheet } from "@/features/classes/components/PassSheet";
 import { DOS_SLEEVE, DosPosterSleeve, dosPosterAuto, useDosFold } from "@/features/classes/components/poster";
 import { PhotoPicker } from "@/features/media/components/PhotoPicker";
 import { dosKey } from "@/features/classes/components/ShareSheet";
 import { addWalkInAction, checkInEventBookingAction } from "@/features/events/server-actions/events";
+import { ScanSheet, type ScanOutcome } from "@/features/people/components/ScanSheet";
 import { DOS_DISPLAY, DOS_UI, GOLD } from "@/lib/design/tokens";
 import {
   EVENT_CRITERIA,
@@ -129,6 +130,13 @@ export function EventManager({ tenantId, event: ev, bookings, canRun, todayKey }
   const [seg, setSeg] = useState<Seg>("details");
   const [opPending, setOpPending] = useState<string | null>(null);
   const [linkOpen, setLinkOpen] = useState(false);
+  /* the register's own scanner (28 Sep 2026) — see `scanCheckIn` */
+  const [scanOpen, setScanOpen] = useState(false);
+  /** ⚠ WHO THIS SHEET HAS ALREADY CHECKED IN — `bookings` is a PROP and only
+   *  moves when `router.refresh()` lands, which a door scanning two codes in a
+   *  second beats. Found by driving the class register's twin; the same race
+   *  lives here, and the same set settles it. */
+  const scannedIn = useRef<Set<string>>(new Set());
   /* the add panels' own fields (WalkIn 13904) */
   const [wq, setWq] = useState("");
   const [wFmt, setWFmt] = useState<EntryFormat>(ev.entryTiers[0]?.format ?? "solo");
@@ -183,7 +191,68 @@ export function EventManager({ tenantId, event: ev, bookings, canRun, todayKey }
     router.refresh();
   };
 
+  /** ⚠⚠ CHECK SOMEBODY IN BY SCANNING THEIR CODE (28 Sep 2026, the other half of
+   *  the user's own ask). The confirm step landed with the scan sheet and there
+   *  was no scanner on a register anywhere, so "after confirmation only should
+   *  check them in" had nowhere to happen. This is the door, and it writes
+   *  nothing a row's own toggle could not: `check_in_event_booking` still asks
+   *  `is_tenant_member`, so the scan finds the row and never gets past the rule.
+   *
+   *  ⚠ ONE PERSON CAN HOLD TWO THINGS — a ticket AND an entry — so a scan checks
+   *  in every booking of theirs that is not already in, and says how many. The
+   *  alternative is asking the door to scan the same code twice.
+   *
+   *  ⚠ A SCAN IS AN ARRIVAL, NEVER A DEPARTURE: somebody already in is told so
+   *  and left in. The row's own toggle is how somebody is checked OUT.
+   *
+   *  ⚠ A WALK-IN IS NEVER MATCHED, and that is right — `add_event_walk_in`
+   *  records a name with `user_id` null, so there is no code to scan. The
+   *  refusal points at the panel that CAN record them. */
+  const scanCheckIn = async (personId: string): Promise<ScanOutcome> => {
+    const theirs = bookings.filter((b) => b.userId === personId);
+    if (theirs.length === 0) {
+      return { ok: false, message: "Not booked for this event — add them as a walk-in on the register instead." };
+    }
+    const out = theirs.filter((b) => !b.checkedInAt);
+    if (out.length === 0 || scannedIn.current.has(personId)) {
+      return { ok: true, message: `${theirs[0].name} was already in` };
+    }
+    for (const b of out) {
+      const res = await checkInEventBookingAction({ tenantId, bookingId: b.id, on: true });
+      if (res.error) {
+        return { ok: false, message: res.error };
+      }
+    }
+    scannedIn.current.add(personId);
+    router.refresh();
+    const what = out.length > 1 ? ` · ${out.length} bookings` : out[0].kind === "spectator" ? " · ticket" : " · entry";
+    return { ok: true, message: `✓ ${out[0].name} checked in${what}` };
+  };
+
   const pill: React.CSSProperties = { fontSize: 10.5, fontWeight: 800, padding: "6px 11px", borderRadius: 999, background: "var(--el)", color: "var(--text)", textDecoration: "none", display: "inline-flex", alignItems: "center", cursor: "pointer", border: "none", fontFamily: "inherit" };
+
+  /** the scan pill, on both registers — one control, two places (28 Sep 2026) */
+  const scanPill = (
+    <button
+      type="button"
+      onClick={() => {
+        /* cleared on every open — the set is only right for one sitting at the
+           door; somebody checked out on their row afterwards must not still read
+           as "already in" the next time the sheet is opened */
+        scannedIn.current.clear();
+        setScanOpen(true);
+      }}
+      aria-label="Scan a code to check somebody in"
+      data-testid="scan-check-in"
+      style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8, width: "100%", padding: "11px", marginBottom: 10, borderRadius: 999, border: "1.5px solid var(--el)", background: "var(--card)", color: "var(--text)", fontWeight: 900, fontSize: 12.5, fontFamily: "inherit", cursor: "pointer" }}
+    >
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+        <path d="M3.5 8.5v-3a2 2 0 0 1 2-2h3M15.5 3.5h3a2 2 0 0 1 2 2v3M20.5 15.5v3a2 2 0 0 1-2 2h-3M8.5 20.5h-3a2 2 0 0 1-2-2v-3" />
+        <path d="M7 12h10" />
+      </svg>
+      Scan to check in
+    </button>
+  );
 
   return (
     <div style={{ background: "var(--bg)", maxWidth: 430, margin: "0 auto", color: "var(--text)", fontFamily: DOS_UI, paddingBottom: 40, minHeight: "100vh" }}>
@@ -193,7 +262,8 @@ export function EventManager({ tenantId, event: ev, bookings, canRun, todayKey }
         <div aria-hidden="true" style={{ position: "absolute", right: -28, top: -32, width: 130, height: 130, borderRadius: 65, background: "rgba(255,255,255,.13)" }} />
         <div style={{ display: "flex", alignItems: "flex-start", gap: 10, position: "relative" }}>
           <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={{ fontSize: 21, fontWeight: 800, letterSpacing: -0.5, fontFamily: DOS_DISPLAY, lineHeight: 1.18 }}>{ev.title}</div>
+            {/* the page's own `<h1>` — the chrome no longer prints a drill page's name (28 Sep 2026) */}
+            <h1 style={{ margin: 0, fontSize: 21, fontWeight: 800, letterSpacing: -0.5, fontFamily: DOS_DISPLAY, lineHeight: 1.18 }}>{ev.title}</h1>
             <div style={{ fontSize: 11, opacity: 0.9, marginTop: 3 }}>
               {TYPE_LABEL[cat]} · {eventWhen(ev.startDate, ev.endDate)} · {ev.venue}
             </div>
@@ -394,6 +464,7 @@ export function EventManager({ tenantId, event: ev, bookings, canRun, todayKey }
                 </button>
               </div>
             </div>
+            {participants.length > 0 ? scanPill : null}
             {/* WHICH KIND OF ENTRY: a count per format above the list */}
             <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", margin: "2px 0 6px" }}>
               <span style={micro}>
@@ -488,6 +559,7 @@ export function EventManager({ tenantId, event: ev, bookings, canRun, todayKey }
             <div style={{ ...micro, margin: "12px 0 6px" }}>
               GATE LIST · {aIn}/{aAll} arrived
             </div>
+            {audience.length > 0 ? scanPill : null}
             {audience.map((b) => (
               <AttendeeRow key={b.id} name={b.name} meta={`${b.ticketTierName ?? "Ticket"}${b.qty > 1 ? ` × ${b.qty}` : ""} · ${b.userId ? (b.amountInr > 0 ? `paid ₹${b.amountInr}` : "booked free") : "walk-in · at the gate"}`} inState={Boolean(b.checkedInAt)} tint={BLUE} busy={opPending === b.id} onToggle={() => void toggle(b)} />
             ))}
@@ -497,6 +569,10 @@ export function EventManager({ tenantId, event: ev, bookings, canRun, todayKey }
       </div>
 
       {linkOpen ? <PassSheet posterItem={posterItem} posterK={posterK} col={col} title={ev.title} styleName={ev.style} levelWord={TYPE_LABEL[cat]} pass={pass} slug={ev.shareSlug} path="e" ariaLabel="Event pass" fire={fire} onClose={() => setLinkOpen(false)} /> : null}
+
+      {/* the door's scanner — the sheet resolves the code and shows WHO it found,
+          and `scanCheckIn` decides what that person holds on this event */}
+      {scanOpen ? <ScanSheet heading="Check somebody in" confirmLabel="Check in" onCode={scanCheckIn} onClose={() => setScanOpen(false)} /> : null}
 
       {toast ? (
         <div role="status" aria-live="polite" style={{ position: "fixed", bottom: 26, left: "50%", transform: "translateX(-50%)", background: "var(--solid)", border: "1.5px solid #0EA5E9", boxShadow: "0 6px 24px rgba(0,0,0,.45)", color: "var(--text)", padding: "11px 18px", borderRadius: 999, fontSize: 13, fontWeight: 700, maxWidth: 360, textAlign: "center", zIndex: 650 }}>

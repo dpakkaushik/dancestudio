@@ -103,7 +103,8 @@ export function CrewsHub({
         {/* the same paint, and the same word, as the tile you pressed to get here */}
         <div style={{ borderRadius: 22, padding: "15px 17px 14px", marginBottom: 12, position: "relative", overflow: "hidden", color: "#fff", background: dosToolPaint(accent) }}>
           <div style={{ position: "absolute", right: -28, top: -32, width: 130, height: 130, borderRadius: 65, background: "rgba(255,255,255,.13)" }} />
-          <div style={{ fontSize: 21, fontWeight: 800, letterSpacing: -0.5, position: "relative", fontFamily: DOS_DISPLAY, lineHeight: 1.18 }}>Crews</div>
+          {/* the page's own `<h1>` — the chrome no longer prints a drill page's name (28 Sep 2026) */}
+          <h1 style={{ margin: 0, fontSize: 21, fontWeight: 800, letterSpacing: -0.5, position: "relative", fontFamily: DOS_DISPLAY, lineHeight: 1.18 }}>Crews</h1>
         </div>
         {/* ⚠ NO SEGMENTS UNTIL THERE IS A CREW. Somebody with none would
             otherwise be offered a Practices column that can only ever say

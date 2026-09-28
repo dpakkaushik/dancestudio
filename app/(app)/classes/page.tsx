@@ -64,10 +64,13 @@ export default async function ClassesPage({
           padding: "8px 0 10px",
         }}
       >
-        {/* DosShelfHead (3446-3450): 17px display, sentence case, the count small and muted at the right */}
-        <div style={{ fontSize: 17, fontWeight: 900, fontFamily: DOS_DISPLAY, letterSpacing: -0.5, lineHeight: 1.2 }}>
+        {/* DosShelfHead (3446-3450): 17px display, sentence case, the count small and muted at the right.
+            ⚠ AND IT IS THE PAGE'S `<h1>` (28 Sep 2026) — the chrome stopped printing a drill page's
+            name when the wordmark became constant, and this shelf head is the only thing naming
+            this screen. The size stays the shelf head's; only the element changes. */}
+        <h1 style={{ margin: 0, fontSize: 17, fontWeight: 900, fontFamily: DOS_DISPLAY, letterSpacing: -0.5, lineHeight: 1.2 }}>
           Upcoming classes
-        </div>
+        </h1>
         <div style={{ fontSize: 10, fontWeight: 800, color: "var(--muted)" }}>{city ? `${classes.length} in ${city}` : `${classes.length} listed`}</div>
       </div>
 
