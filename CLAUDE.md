@@ -121,6 +121,15 @@
 >   on one worker, no red at any point** — on the bundle carrying the applied
 >   migration AND the Manager option, which is what makes the fifteen minutes
 >   worth spending.
+>   **PUSHED AND LIVE (`3508415`), read back off the DEPLOYMENT rather than
+>   assumed:** Vercel's own list for THIS sha, BUILDING → READY in ~50 s ·
+>   **`stranger-smoke.ps1` 11/11** against `https://dancestudio-orcin.vercel.app`
+>   · **`shoot-seats.js` 21/21 ON THE DEPLOYMENT** — a real faculty seat made
+>   through the real invite door on the live host, bounced off all seventeen
+>   desks, then relabelled **Manager** through the live Team desk and let into the
+>   twelve it runs, with the five that stay the owner's still sending it home and
+>   the Payments switches refusing it in words. **The seat, the word and the gate
+>   are all proven on the bundle a real person will open.**
 > * ⚠ **AND THE PROOFS' TWO REDS WERE BOTH THE RIGHT KIND, one of them squarely.**
 >   `rls-proof-media` pinned the whole of a refusal's sentence and the sentence
 >   moved — it named *"the studio's owner or a trainer"*, which would now be a
