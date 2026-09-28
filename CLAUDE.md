@@ -88,6 +88,10 @@
 >   19 Sep, "Since 2016" 18 Sep). ⚠ The two tests after it were never findings:
 >   the spec is not `describe.serial`, so a red restarts the worker with a fresh
 >   stamp and everything later hunts names that no longer exist.
+>   **PUSHED AND LIVE (`425d250`), read back off the DEPLOYMENT rather than
+>   assumed:** Vercel's own list for THIS sha, BUILDING → READY ·
+>   **`stranger-smoke.ps1` 11/11** against `https://dancestudio-orcin.vercel.app`
+>   · **`shoot-tiles.js` 155/155 against the live host**, no page error.
 > * ⚠ **AND THE USER'S OWN ITEM 8 CLOSED A QUESTION THE SWEEP HAD LEFT OPEN**:
 >   *"walk in only for classes and events inside their attendance tab"* plus *"no
 >   need for the lead process for walk in"* means the students desk is not where a
