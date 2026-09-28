@@ -6,7 +6,12 @@ import type { MemberRole } from "@/repositories/tenants";
  *  18 Sep (an outside teacher who accepts a class gets it) and the Team desk
  *  could not hand it out, which made "label them according to what profile I am
  *  in" impossible to satisfy for a studio. */
-export type InvitableRole = "trainer" | "staff" | "visiting_faculty" | "assistant";
+/** ⚠ `manager` JOINED THE LIST ON 28 Sep 2026, and `owner` still has not.
+ *  Ownership is handed over on the desk to somebody who has already said yes —
+ *  Step 12b's rule, and `invite_person_to_business` still refuses it in words.
+ *  A MANAGER may be invited, because accepting the invite IS the consent and
+ *  managing is not owning. */
+export type InvitableRole = "manager" | "trainer" | "staff" | "visiting_faculty" | "assistant";
 export type InviteStatus = "pending" | "accepted" | "declined" | "revoked";
 
 export interface TenantInvite {
@@ -50,14 +55,39 @@ export interface InvitePreview {
 }
 
 /** and the line under the name — what this role may actually do (18428-18429).
- *  18 Sep 2026: classes are the OWNER's to create and edit; faculty teach them,
- *  run the register and see their students. */
+ *  18 Sep 2026: classes are the OWNER's to create and edit; faculty teach them
+ *  and run the register.
+ *
+ *  ⚠⚠ RE-WRITTEN 28 Sep 2026, AND IT IS A CORRECTION RATHER THAN A POLISH.
+ *  These are not decoration: this map is printed in the member sheet an owner
+ *  reads before handing out a seat (StaffDesk:832) and on the JOIN screen, as
+ *  "You would have {…}" — the sentence somebody is agreeing to. `trainer` said
+ *  "students ✓" and `staff` said "students ✓", and the user's rule this day is
+ *  that neither gets the business at all: no home, no Students desk, no Team, no
+ *  Rooms, no money. So both lines promised a door that had just been shut, to
+ *  the one person who is deciding whether to accept a seat on the strength of
+ *  them. ⚠ What they KEEP is said out loud, because it is not nothing — their
+ *  own classes, the register on them, and their earnings.
+ *
+ *  ⚠ `manager` CANNOT BE HANDED OUT YET (`business_members_member_role_check`
+ *  admits five values and this is not one of them), so this line describes a
+ *  seat nothing can create until the held migration applies. It is here so the
+ *  vocabulary is one thing rather than two, and so the compiler refuses a map
+ *  that has forgotten it. */
 export const MEMBER_GRANTS: Record<MemberRole, string> = {
-  owner: "everything, including classes and payouts",
-  trainer: "register ✓ students ✓ teaches the classes they accept",
-  staff: "students ✓ register when asked ✓",
-  visiting_faculty: "teaches the class they accepted · register on it",
-  assistant: "assists on the classes they accept · register when asked ✓",
+  owner: "everything, including the money, the subscription and who else runs it",
+  /* ⚠ WHAT A MANAGER READS AND WHAT THEY MOVE ARE TWO DIFFERENT THINGS, and the
+     first cut of this line said "except its money", which is not what the gates
+     do. Invoices, Payments and Refunds were readable by ANY member until 28 Sep
+     2026 — a manager reading them is a NARROWING that stops short of the owner,
+     not a widening — while every CONTROL on them is still `role === "owner"`:
+     settling a refund, the accepted-methods switches, Earnings, the
+     subscription, the verification, the GST number and handing out seats. */
+  manager: "the business and every desk on it — its ledgers to read, and none of its money to move, its plan or its badge",
+  trainer: "the classes they accept — the register on them, and what they are paid",
+  staff: "a place on the team, and a register on a class they are asked onto",
+  visiting_faculty: "the class they accepted · the register on that one",
+  assistant: "the classes they assist on · a register when it is handed to them",
 };
 
 /** THE WORDS ON THE TEAM DESK (18 Sep 2026, the user: "add Faculty, Assistants and
@@ -70,6 +100,7 @@ export const MEMBER_GRANTS: Record<MemberRole, string> = {
  *  became the honest last one, and `assistant` is its own seat. */
 export const MEMBER_ROLE_WORD: Record<MemberRole, string> = {
   owner: "Owner",
+  manager: "Manager",
   trainer: "Faculty",
   staff: "Other team member",
   visiting_faculty: "Visiting faculty",
@@ -115,8 +146,15 @@ export interface MemberLabel {
   assist?: boolean;
 }
 
+/** ⚠ MANAGER'S COLOUR IS A ROSE, AND IT IS CHECKED RATHER THAN PICKED. The five
+ *  that existed sit at hue 42° (gold), 175° (teal), 217° (blue), 258° (violet)
+ *  and 215° (slate) — so the widest empty band on this dial is the warm side
+ *  past violet, and `#BE123C` lands at 348°, more than 60° from every one of
+ *  them. ⚠ It is deliberately NOT a second amber: Manager sits beside Owner in
+ *  meaning, which is exactly why the two must not be told apart by brightness. */
 export const MEMBER_LABEL: Record<MemberRole, MemberLabel> = {
   owner: { short: "Owners", colour: "#F2C14E" },
+  manager: { short: "Managers", colour: "#BE123C" },
   trainer: { short: "Faculty", colour: "#0D9488", teach: true, assist: true },
   visiting_faculty: { short: "Visiting faculty", colour: "#8B5CF6", teach: true, assist: true },
   assistant: { short: "Class assistants", colour: "#3B82F6", assist: true },
@@ -125,9 +163,10 @@ export const MEMBER_LABEL: Record<MemberRole, MemberLabel> = {
 
 /** the order the groups are drawn in — the prototype's own `order` (2131-2141):
  *  who runs it, who teaches, who assists, then everybody else */
-export const MEMBER_LABEL_ORDER: ReadonlyArray<MemberRole> = ["owner", "trainer", "visiting_faculty", "assistant", "staff"];
+export const MEMBER_LABEL_ORDER: ReadonlyArray<MemberRole> = ["owner", "manager", "trainer", "visiting_faculty", "assistant", "staff"];
 
 export const INVITABLE_ROLES: ReadonlyArray<readonly [InvitableRole, string]> = [
+  ["manager", "Manager"],
   ["trainer", "Faculty"],
   ["visiting_faculty", "Visiting faculty"],
   ["assistant", "Assistant"],
@@ -146,7 +185,12 @@ export const INVITABLE_ROLES: ReadonlyArray<readonly [InvitableRole, string]> = 
  *  since this migration — it used to be `staff` wearing that word on an artist's
  *  page only), and an ARTIST PAGE offers exactly what their list gave it,
  *  "1. Assistant, 2. Other Team Members" — so Faculty comes OFF an artist page:
- *  a person's own page has no faculty, it has help. */
+ *  a person's own page has no faculty, it has help.
+ *
+ *  ⚠ AND A MANAGER IS A STUDIO'S ALONE (28 Sep 2026). An artist page is ONE
+ *  PERSON'S public face — there is no business under it for somebody else to
+ *  run, only help to be given — so it keeps the two it had. An organization's
+ *  labels are its own list (`OrgTeamDesk`), not this one. */
 export const rolesFor = (type: "studio" | "artist_page" | "org"): ReadonlyArray<readonly [InvitableRole, string]> =>
   type === "studio"
     ? INVITABLE_ROLES
@@ -169,16 +213,17 @@ export const labelsFor = (type: "studio" | "artist_page" | "org"): ReadonlyArray
   [["owner", "Owner"] as const, ...rolesFor(type)];
 
 /* ⚠ `MEMBER_POWERS` — the ticked five-line permissions table — was here and is
-   gone (28 Sep 2026). It was the data behind the PERMISSIONS block the Team
-   desk stopped drawing on 20 Sep ("NO PERMISSIONS BLOCK", StaffDesk:606), so it
-   had been a table nothing rendered for eight days. The sentence below is what
-   the desk actually prints; the rules themselves are the database's, unchanged. */
+   gone (28 Sep 2026, the dead-code sweep). It was the data behind the
+   PERMISSIONS block the Team desk stopped drawing on 20 Sep ("NO PERMISSIONS
+   BLOCK", StaffDesk:606), so it had been a table nothing rendered for eight days.
 
-/** the one line under a label — what this seat may do, in the desk's own words */
-export const MEMBER_POWER_NOTE: Record<InvitableRole | "owner", string> = {
-  owner: "The owner's seat cannot be given away.",
-  trainer: "Runs the register on this business's classes and sees its students.",
-  visiting_faculty: "Teaches the class they accepted, and runs the register on that one only.",
-  assistant: "Assists on the classes they are asked onto, and runs a register when it is handed to them.",
-  staff: "Sees the students desk, and runs a register on a class they are asked onto.",
-};
+   ⚠⚠ AND `MEMBER_POWER_NOTE` WENT THE SAME WAY LATER THE SAME DAY, for the same
+   reason and with a sharper lesson. It read as the app's own permissions sheet —
+   this file has cited it TWICE as the thing that was RIGHT while the code was
+   wrong (21 Sep, the students desk; 28 Sep, this row) — and a grep for its name
+   found it in CLAUDE.md and nowhere else in `app/`, `features/` or `components/`.
+   **So the sentence this repo twice held up as the promise the code had broken
+   was itself being shown to nobody.** What a person actually reads before
+   accepting a seat is `MEMBER_GRANTS`, on the member sheet and on the join
+   screen, and that is where the corrected words now are. The rules themselves
+   are the database's, unchanged. */

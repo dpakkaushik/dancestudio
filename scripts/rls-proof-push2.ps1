@@ -175,7 +175,13 @@ try {
   #    perfectly good team member. What replaces it: somebody who does not OWN the
   #    business cannot ask on its behalf (the lead asks, and is refused as not the owner).
   $again = Fails { Rpc (Api $org.token) "ask_organization_member" @{ p_org_id = $hostRow; p_user_id = $lead.id; p_role = "member" } }
-  $userAsks = Fails { Rpc (Api $lead.token) "ask_organization_member" @{ p_org_id = $hostRow; p_user_id = $fan.id; p_role = "member" } }
+  # !! 28 Sep 2026: THE LEAD IS NOT A BYSTANDER ANY MORE, and that is the point of
+  # 20260928110000. Check 2 above confirms them as the organization's OWNER, and
+  # until today that label granted NOTHING -- two people on production held it and
+  # neither could open the organization. It writes a real business_members seat
+  # now, so `is_business_owner` is true for them and they MAY ask on its behalf.
+  # The bystander this check is about is somebody with no seat at all.
+  $userAsks = Fails { Rpc (Api $fan.token) "ask_organization_member" @{ p_org_id = $hostRow; p_user_id = $lead.id; p_role = "member" } }
   $badRole = Fails { Rpc (Api $org.token) "ask_organization_member" @{ p_org_id = $hostRow; p_user_id = $fan.id; p_role = "boss" } }
   $selfAsk = Fails { Rpc (Api $org.token) "ask_organization_member" @{ p_org_id = $hostRow; p_user_id = $org.id; p_role = "member" } }
   Check 3 "Asking twice ($again); somebody who is not the owner asking ($userAsks); an invented role ($badRole); the owner asking themselves ($selfAsk)" (
@@ -183,6 +189,19 @@ try {
     # refuses studio_owner, which is a seat granted after a yes - so the sentence
     # is longer than "an owner or a member". It still names what may be asked.
     ($again -match "already") -and ($userAsks -match "owner") -and ($badRole -match "event team") -and ($selfAsk -match "own this organization"))
+
+  # 3b. AND THE OTHER HALF OF IT: THE OWNER LABEL CARRIES A REAL SEAT (28 Sep 2026)
+  # !! THE DEFECT 20260928110000 FIXED. `owner` has been a word on this team since
+  # 19 Sep and granted nothing: R36 made the studio equivalent a real seat, R48
+  # took that path away, and the label was left meaning nothing at all. The lead
+  # is confirmed Owner above, so they hold a business_members seat on the ORG and
+  # may run it -- which is the whole of "only these 2 get the right to get the
+  # organization in the profile switcher".
+  $leadSeat = @(Get-Rows $svcH "business_members?business_id=eq.$hostRow&user_id=eq.$($lead.id)&deleted_at=is.null&select=member_role")
+  $leadAsk = Rpc (Api $lead.token) "ask_organization_member" @{ p_org_id = $hostRow; p_user_id = $fan.id; p_role = "member" }
+  Rpc (Api $lead.token) "withdraw_organization_ask" @{ p_member_id = [string]$leadAsk.id } | Out-Null
+  Check "3b" "The confirmed OWNER label holds a real seat on the organization ($($leadSeat.Count) row, $($leadSeat[0].member_role)) and may ask on its behalf (status $($leadAsk.status))" (
+    ($leadSeat.Count -eq 1) -and ($leadSeat[0].member_role -eq "owner") -and ($leadAsk.status -eq "asked"))
 
   # 4. a PRIVATE organization's confirmed team is nobody else's
   $privAsk = Rpc (Api $private.token) "ask_organization_member" @{ p_org_id = $hostPriv; p_user_id = $lead.id; p_role = "member" }

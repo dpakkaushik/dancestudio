@@ -33,19 +33,28 @@ export const VENUE_WORDS = { what: "the room for a class", verb: "hold a class i
    group and `JOIN_KINDS` leaves it out by omission (C61's split). */
 export const PRACTICE_WORDS = { what: "at the practice", verb: "have you at a practice of" } as const;
 /* push 2 (19 Sep 2026): an organization names a person on its public page — as its owner, or on its team */
-/* ⚠ THREE LABELS SINCE 26 Sep 2026: `studio_owner` went with the studios an
-   organization no longer runs, and the database refuses the word. */
+/* ⚠ FOUR LABELS SINCE 28 Sep 2026: `manager` joined, and `studio_owner` is still
+   gone with the studios an organization no longer runs. */
 export const ORG_TEAM_WORDS: Record<OrgTeamRole, { what: string; verb: string }> = {
   owner: { what: "an owner", verb: "name you as an owner of" },
+  manager: { what: "its manager", verb: "have you manage" },
   event_team: { what: "its event team", verb: "put you on the event team of" },
   member: { what: "a team member", verb: "add you to the team of" },
 };
 
 /** What saying yes actually means, label by label — the one sentence somebody
  *  reads before consenting, so each says what its own label does. ⚠ A plain
- *  `member` is NOT published (`public_organization_team` leaves it out). */
+ *  `member` is NOT published (`public_organization_team` leaves it out).
+ *
+ *  ⚠⚠ THE OWNER LINE SAID "a label, not a login" AND THAT STOPPED BEING TRUE
+ *  TODAY (28 Sep 2026). `20260928110000` makes Owner and Manager write a real
+ *  `business_members` seat on the organization the moment somebody says yes — it
+ *  had to, because two people on production held that label and neither could
+ *  open the organization. This is the sentence they read WHILE consenting, so it
+ *  is the last place in the app that may still describe the old rule. */
 const ORG_ASK_NOTE: Record<OrgTeamRole, string> = {
-  owner: "You would be shown as this organization's OWNER on its public page — a label, not a login.",
+  owner: "You would be shown as this organization's OWNER on its public page, and able to open and run it from your own profile switcher.",
+  manager: "You would run this organization from your own profile switcher, and be shown as its MANAGER on its public page. Its money, its plan and its badge stay the owner's.",
   event_team: "You would be shown on this organization's public page under EVENT TEAM, and could run its events — not a login.",
   member: "You would be on this organization's own list. Other team members are not shown on its public page.",
 };

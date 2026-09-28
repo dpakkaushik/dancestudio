@@ -14,7 +14,8 @@ import {
   setMemberRole,
 } from "@/repositories/invites";
 import { recordTeamPayment } from "@/repositories/payouts";
-import { reorderTenantMembers, setTenantMemberPowers } from "@/repositories/tenants";
+import { reorderTenantMembers, setTenantMemberPowers, type MemberRole } from "@/repositories/tenants";
+import { INVITABLE_ROLES, MEMBER_LABEL_ORDER, type InvitableRole } from "@/types/staff";
 
 /** Step 12b staff actions. Authorization is NOT here — it is in the RPCs, which
  *  is the only place that can be trusted (owner-only to ask, and only the person
@@ -27,8 +28,19 @@ export interface StaffActionResult {
 /* VISITING FACULTY IS A SEAT THE DESK CAN HAND OUT (19 Sep 2026) — `set_member_role`
    has admitted it since 18 Sep and only this list kept it out. ⚠ ASSISTANT joined
    it on 20 Sep (the user's list E): an artist page hands out Faculty and
-   Assistant, a studio all four. The RPC and both CHECKs decide; this is shape. */
-const ROLE = z.enum(["trainer", "staff", "visiting_faculty", "assistant"]);
+   Assistant, a studio all four. The RPC and both CHECKs decide; this is shape.
+
+   ⚠⚠ AND THESE TWO ARE DERIVED NOW RATHER THAN TYPED (28 Sep 2026), because
+   `manager` found the third copy of this vocabulary the hard way. It lives in
+   `business_members_member_role_check`, in `business_invites_member_role_check`
+   — THE PAIR that 19 Sep missed — in `set_member_role`'s own guard, and HERE.
+   The migration moved the first three and the desk offered the word, so the
+   button appeared, the RPC would have taken it, and this enum refused it before
+   the request ever left the server: 19 Sep's bug exactly, one layer further out.
+   Reading them off `INVITABLE_ROLES` and `MEMBER_LABEL_ORDER` means a sixth
+   label cannot be forgotten here again. */
+const INVITABLE = INVITABLE_ROLES.map(([k]) => k) as [InvitableRole, ...InvitableRole[]];
+const ROLE = z.enum(INVITABLE);
 
 const inviteSchema = z.object({
   tenantId: z.string().uuid(),
@@ -46,7 +58,7 @@ const roleSchema = memberSchema.extend({ role: ROLE });
    studio's desk may promote somebody already on the team, which is what
    `set_member_role` now admits. Widening the one schema both used would have
    quietly let an invite offer the owner seat; typecheck caught it. */
-const relabelSchema = memberSchema.extend({ role: z.enum(["owner", "trainer", "staff", "visiting_faculty", "assistant"]) });
+const relabelSchema = memberSchema.extend({ role: z.enum([...MEMBER_LABEL_ORDER] as [MemberRole, ...MemberRole[]]) });
 const powersSchema = memberSchema.extend({ canAttendance: z.boolean(), canRefunds: z.boolean() });
 const codeSchema = z.object({ code: z.string().trim().min(8).max(24) });
 

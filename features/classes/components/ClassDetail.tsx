@@ -755,6 +755,19 @@ export function ClassDetail({
                   </Link>
                 </div>
               ) : null}
+              {/* ⚠⚠ THE OWNER'S TWO JOB CHIPS ON THE PERSON TAKING THE CLASS
+                  (28 Sep 2026). `20260928100000` made the register a DEFAULT they
+                  are born with and an owner may take back, and
+                  `set_class_person_powers` has always accepted an artist claim —
+                  but this control lived inside the ASSISTANTS section, so the
+                  taking-back half had no door and could only be reached by a
+                  hand-written API call. Confirmed claims only: an ask has nothing
+                  to grant yet. */}
+              {isOwner && !done && artist ? (
+                <div style={{ marginTop: 5, minWidth: 0 }}>
+                  <AssistantControls claim={artist} isOwner={isOwner} col={col} remove={false} />
+                </div>
+              ) : null}
             </div>
           </div>
           <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "6px 12px 8px", borderTop: `1.5px solid ${col}33` }}>

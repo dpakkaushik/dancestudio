@@ -6,7 +6,7 @@ import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { findDiscoverCities } from "@/repositories/cities";
 import { findEventsByTenant } from "@/repositories/events";
 import { findWhyNoEvent } from "@/repositories/gst";
-import { findMyMembershipRole, findMyTenants } from "@/repositories/tenants";
+import { findMyMemberships, runsTheBusiness } from "@/repositories/tenants";
 
 const stampNowIso = (): string => new Date().toISOString();
 
@@ -25,8 +25,10 @@ export default async function TenantEventsPage({ params, searchParams }: { param
   if (!user) {
     redirect("/login");
   }
-  const businesses = await findMyTenants(supabase);
-  if (!businesses.some((t) => t.id === tenantId)) {
+  /* ⚠ the seat has to RUN the business (28 Sep 2026): this admitted any member,
+     and an organization's Event team is a LABEL that never carried a seat here */
+  const seat = (await findMyMemberships(supabase)).find((m) => m.tenant.id === tenantId);
+  if (!seat || !runsTheBusiness(seat.memberRole)) {
     redirect("/business");
   }
   /* AN EVENT NEEDS THE ORGANIZATION'S OWN GST NUMBER (11 Sep 2026; keyed on
@@ -45,8 +47,10 @@ export default async function TenantEventsPage({ params, searchParams }: { param
      (Rule 14: a link handed out is a promise). */
   let cityCentres: Awaited<ReturnType<typeof findDiscoverCities>> = [];
   if (opening) {
-    const role = await findMyMembershipRole(supabase, tenantId);
-    if (role !== "owner" && role !== "trainer") {
+    /* ⚠ `can_run_events` admits an owner or a trainer (and an organization's
+       confirmed `event_team`); the seat read above is the one this page has, and
+       a trainer no longer reaches this desk at all, so the test is the guard's */
+    if (!runsTheBusiness(seat.memberRole)) {
       redirect(`/business/${tenantId}/events`);
     }
     if (whyNoEvent) {

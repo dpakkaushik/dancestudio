@@ -130,7 +130,12 @@ try {
   $bizSet = Rpc (Api $owner.token) "set_business_profile_photo" @{ p_business_id = $ta.id; p_path = $bizPath }
   $bizSetByOther = Fails { Rpc (Api $me.token) "set_business_profile_photo" @{ p_business_id = $ta.id; p_path = $bizPath } }
   Check 5 "The owner writes the business folder and records it ('$bizSet'); a bystander cannot write there ($bizSneak) or record one ($bizSetByOther)" (
-    ($bizSet -eq $bizPath) -and ($bizSneak -ne "") -and ($bizSetByOther -match "owner"))
+    # !! 28 Sep 2026: the refusal used to read "only the studio's owner or a
+    # trainer can change its photo" and this matched on the word "owner". With
+    # `manager` admitted, naming two of the three roles would have been a message
+    # that lies, so it reads "only the studio's own people" -- and the match is on
+    # the stable end of the sentence rather than on a list that can grow again.
+    ($bizSet -eq $bizPath) -and ($bizSneak -ne "") -and ($bizSetByOther -match "change its photo"))
 
   # 6. A CREW'S FOLDER: its leader writes, nobody else
   $crewPath = "crews/$($crew.id)/proof-$stamp.png"

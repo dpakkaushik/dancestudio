@@ -3,13 +3,16 @@ import { EventManager } from "@/features/events/components/EventManager";
 import { dayKeyOf } from "@/lib/format/month";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { findEventBookings, findEventById } from "@/repositories/events";
-import { findMyMembershipRole, findMyTenants } from "@/repositories/tenants";
+import { findMyMemberships, runsTheBusiness } from "@/repositories/tenants";
 
 const stampNowIso = (): string => new Date().toISOString();
 
 /** The event manager (prototype S_eventmanage 13946): Details, Participants,
- *  Spectators. Any member of the organiser reads it and runs the door — the
- *  RPCs say so too (`is_business_member`); editing stays with owners and trainers. */
+ *  Spectators, and the door — the gate list and the scanner.
+ *  ⚠ A SEAT THAT RUNS THE BUSINESS (28 Sep 2026). This read "any member of the
+ *  organiser", which since that morning means the gate list of a paid event was
+ *  readable by anybody the organization had ever named. The RPCs underneath are
+ *  still `is_business_member`, so this is a presentation gate over a wider one. */
 export default async function EventManagePage({ params }: { params: Promise<{ tenantId: string; eventId: string }> }) {
   const { tenantId, eventId } = await params;
   const supabase = await createSupabaseServerClient();
@@ -19,14 +22,14 @@ export default async function EventManagePage({ params }: { params: Promise<{ te
   if (!user) {
     redirect("/login");
   }
-  const businesses = await findMyTenants(supabase);
-  if (!businesses.some((t) => t.id === tenantId)) {
+  const seat = (await findMyMemberships(supabase)).find((m) => m.tenant.id === tenantId);
+  if (!seat || !runsTheBusiness(seat.memberRole)) {
     redirect("/business");
   }
-  const [role, event] = await Promise.all([findMyMembershipRole(supabase, tenantId), findEventById(supabase, eventId)]);
+  const event = await findEventById(supabase, eventId);
   if (!event || event.tenantId !== tenantId) {
     notFound();
   }
   const bookings = await findEventBookings(supabase, eventId);
-  return <EventManager tenantId={tenantId} event={event} bookings={bookings} canRun={role === "owner" || role === "trainer"} todayKey={dayKeyOf(stampNowIso())} />;
+  return <EventManager tenantId={tenantId} event={event} bookings={bookings} canRun={runsTheBusiness(seat.memberRole)} todayKey={dayKeyOf(stampNowIso())} />;
 }

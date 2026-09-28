@@ -88,7 +88,9 @@ export async function findPublicOrganization(supabase: SupabaseClient, orgId: st
 export interface PublicOrganizationTeamMember {
   memberId: string;
   userId: string;
-  role: "owner" | "event_team";
+  /** ⚠ `manager` joined on 28 Sep 2026, and it is the one of the four that also
+   *  carries a real seat on the organization — see `org_seat_follows_label`. */
+  role: "owner" | "manager" | "event_team";
   name: string;
   photoPath: string | null;
   city: string | null;
@@ -101,12 +103,16 @@ export async function findPublicOrganizationTeam(supabase: SupabaseClient, orgId
     throw new Error(`publicOrganization.team failed: ${error.message}`);
   }
   return ((data ?? []) as Array<{ member_id: string; user_id: string; role: string; full_name: string; photo_path: string | null; city: string | null; is_artist: boolean }>)
-    /* a word the page has no group for is dropped rather than drawn under the wrong one */
-    .filter((r) => r.role === "owner" || r.role === "event_team")
+    /* a word the page has no group for is dropped rather than drawn under the
+       wrong one — ⚠ which is why `manager` had to be added HERE as well as to the
+       page on 28 Sep 2026: the definer read publishes every confirmed non-member
+       row, so without this line a manager came back and was thrown away in
+       silence, and the page's own group would never have drawn anybody */
+    .filter((r) => r.role === "owner" || r.role === "manager" || r.role === "event_team")
     .map((r) => ({
       memberId: r.member_id,
       userId: r.user_id,
-      role: r.role as "owner" | "event_team",
+      role: r.role as "owner" | "manager" | "event_team",
       name: r.full_name,
       photoPath: r.photo_path,
       city: r.city,

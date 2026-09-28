@@ -36,7 +36,15 @@ export function RoomsManager({
   const [error, setError] = useState<string | null>(null);
   const [toast, setToast] = useState<string | null>(null);
   /* the row being typed in — committed on blur, so every keystroke is not a write */
-  const [draft, setDraft] = useState<{ id: string; name: string; capacity: number } | null>(null);
+  /** ⚠ THE CAPACITY IS TEXT WHILE IT IS BEING TYPED (28 Sep 2026, the same
+   *  "stagnant 0" the class form had). Holding it as a NUMBER made the field
+   *  impossible to clear: backspace it to nothing and `Number("") || 1` is 1, so
+   *  React put the 1 straight back and the only way to type 30 over it was to
+   *  leave the 1 in front. The number is derived at COMMIT, where it is the only
+   *  thing that matters, and the floor is applied there rather than on every
+   *  keystroke. */
+  const [draft, setDraft] = useState<{ id: string; name: string; capacity: string } | null>(null);
+  const capacityOf = (text: string) => Math.max(1, Math.min(500, Math.trunc(Number(text) || 0)));
 
   const fire = (m: string) => {
     setToast(m);
@@ -59,7 +67,7 @@ export function RoomsManager({
   const commit = (room: Room) => {
     if (!draft || draft.id !== room.id) return;
     const name = draft.name.trim();
-    const capacity = draft.capacity;
+    const capacity = capacityOf(draft.capacity);
     setDraft(null);
     if (!name || (name === room.name && capacity === room.capacity)) return;
     void run(
@@ -151,7 +159,7 @@ export function RoomsManager({
                   value={editing ? draft.name : r.name}
                   aria-label={`${r.name} name`}
                   onChange={(e) =>
-                    setDraft({ id: r.id, name: e.target.value, capacity: editing ? draft.capacity : r.capacity })
+                    setDraft({ id: r.id, name: e.target.value, capacity: editing ? draft.capacity : String(r.capacity) })
                   }
                   onBlur={() => commit(r)}
                   readOnly={!canEdit}
@@ -171,13 +179,13 @@ export function RoomsManager({
                 <input
                   type="number"
                   min={1}
-                  value={editing ? draft.capacity : r.capacity}
+                  value={editing ? draft.capacity : String(r.capacity)}
                   aria-label={`${r.name} capacity`}
                   onChange={(e) =>
                     setDraft({
                       id: r.id,
                       name: editing ? draft.name : r.name,
-                      capacity: Math.max(1, Number(e.target.value) || 1),
+                      capacity: e.target.value,
                     })
                   }
                   onBlur={() => commit(r)}

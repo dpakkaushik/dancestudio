@@ -3,7 +3,7 @@ import { redirect } from "next/navigation";
 import { InvoicesScreen } from "@/features/settings/components/InvoicesScreen";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { findTenantInvoices } from "@/repositories/invoices";
-import { findMyTenants } from "@/repositories/tenants";
+import { findMyMemberships, runsTheBusiness } from "@/repositories/tenants";
 
 export const metadata: Metadata = { title: "Invoices — DanceOS" };
 
@@ -15,8 +15,11 @@ export default async function TenantInvoicesPage({ params }: { params: Promise<{
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) redirect("/login");
-  const businesses = await findMyTenants(supabase);
-  if (!businesses.some((t) => t.id === tenantId)) redirect("/business");
+  /* ⚠ THE SEAT HAS TO RUN THE BUSINESS (28 Sep 2026). This read "members, by
+     RLS" — so a visiting teacher who had accepted one class could open a
+     studio's whole invoice ledger by typing the address. */
+  const seat = (await findMyMemberships(supabase)).find((m) => m.tenant.id === tenantId);
+  if (!seat || !runsTheBusiness(seat.memberRole)) redirect("/business");
   const rows = await findTenantInvoices(supabase, tenantId);
   return <InvoicesScreen rows={rows} side="tenant" />;
 }

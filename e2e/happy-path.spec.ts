@@ -1082,7 +1082,12 @@ test.describe.serial("DanceOS, end to end", () => {
       owner.getByRole("link", { name: /See it beside everything else you earn/ })
     ).toBeVisible();
     // the register rows carry the seat's money meta (12126) — this class is free
-    await owner.getByRole("button", { name: "Attendance" }).click();
+    /* ⚠ `exact` (28 Sep 2026): a bare string here is a case-insensitive
+       SUBSTRING match, and the class page gained the artist's powers switch the
+       same day — "{name} holds Attendance" — so this matched the TAB and the
+       SWITCH and Playwright refused with a strict-mode violation. The product
+       was right; the locator was loose. This repo's fourth time. */
+    await owner.getByRole("button", { name: "Attendance", exact: true }).click();
     await expect(owner.getByText("Nobody has booked yet.")).toBeVisible();
     // back to Details so the share step below finds the poster
     await owner.getByRole("button", { name: "Details" }).click();
@@ -1135,7 +1140,7 @@ test.describe.serial("DanceOS, end to end", () => {
     await expect(learner.getByText("Tap the poster above for your code.")).toBeVisible();
     // and the owner's register now reads the seat's meta: a free seat
     await owner.reload();
-    await owner.getByRole("button", { name: "Attendance" }).click();
+    await owner.getByRole("button", { name: "Attendance", exact: true }).click();
     await expect(owner.getByText("free seat")).toBeVisible();
     await owner.getByRole("button", { name: "Details" }).click();
 
@@ -2166,16 +2171,35 @@ test.describe.serial("DanceOS, end to end", () => {
     await expect(profiles.getByRole("menuitem", { name: /Log out/ })).toBeVisible();
     /* the menu closes on its scrim or on a navigation, never on Escape — and the
        next line navigates anyway, which is what takes it down */
-    // on the STUDIO's desk the trainer is not the owner — the switches are drawn but refuse to move
-    await trainer.goto(`/business/${tenantId}/payments`);
-    await expect(trainer.getByText("ACCEPTED FROM STUDENTS")).toBeVisible();
-    await trainer.getByRole("switch", { name: "Bank transfer" }).click();
-    await expect(trainer.getByText("Only the owner changes what the business accepts")).toBeVisible();
-    await trainer.getByRole("button", { name: "Verification" }).click();
+    /* ⚠⚠ THE TRAINER IS BOUNCED OFF THE STUDIO'S DESKS NOW (28 Sep 2026, the
+       user: "that profile switcher and rights should never be given for faculty,
+       visiting faculty, assistant, event team or other team members").
+       This segment used to open the studio's Payments desk AS THE TRAINER and
+       read its takings — and the same seat could reach its Students desk with
+       every student's phone number, its invoice ledger and its refunds. The
+       switcher stopped offering the studio, and a gate closed only in the menu
+       that opens it is not closed, so the ADDRESSES are what is driven here. */
+    for (const desk of ["payments", "students", "invoices", "refunds", "staff"]) {
+      await trainer.goto(`/business/${tenantId}/${desk}`);
+      await expect(trainer).toHaveURL(/\/business$/);
+    }
+    /* ⚠ and what they KEEP, because that is half the decision: the studio is
+       still on their hub under the taught-at list, with a door to its PUBLIC
+       page rather than its manage home */
+    await expect(trainer.getByText("STUDIOS YOU HAVE TAUGHT AT")).toBeVisible();
+
+    /* …and the two things this block used to prove ride the OWNER now, which is
+       who they were always about. ⚠ The non-owner refusal ("Only the owner
+       changes what the business accepts") is UNREACHABLE through the UI until
+       `manager` exists — it is the server's guard either way, and the held
+       migration is what gives it a person again. */
+    await owner.goto(`/business/${tenantId}/payments`);
+    await expect(owner.getByText("ACCEPTED FROM STUDENTS")).toBeVisible();
+    await owner.getByRole("button", { name: "Verification" }).click();
     /* 14 Sep 2026: the badge is the STUDIO's now, and an admin gave this studio
        its badge in the first segment — so the tab reads verified, and it would
        be a bug if it did not */
-    await expect(trainer.getByText("Verified studio")).toBeVisible();
+    await expect(owner.getByText("Verified studio")).toBeVisible();
     // Artist tools is the Artist PLAN's switch (8855), and the plan has been live
     // since the trainer got it on day one — so the strip reads PRO ACTIVE, and
     // pressing it ENDS the plan
@@ -2686,10 +2710,13 @@ test.describe.serial("DanceOS, end to end", () => {
 
     /* ⚠ THE OWNER'S ALONE, and the database says so too (`is_business_owner` is
        the only SELECT policy on `assets`) — so the trainer, who is on this
-       studio's team, is sent back to the studio rather than reading what its
-       floor cost. A presentation gate over a real one, not instead of one. */
+       studio's team, never reads what its floor cost. A presentation gate over a
+       real one, not instead of one.
+       ⚠ THE LANDING MOVED ON 28 Sep 2026: it was the studio's own home, and a
+       trainer cannot open that either now, so the bounce goes all the way out to
+       the hub. Two gates in a row, and the outer one answers first. */
     await trainer.goto(`/business/${tenantId}/assets`);
-    await expect(trainer).toHaveURL(new RegExp(`/business/${tenantId}$`), { timeout: 15_000 });
+    await expect(trainer).toHaveURL(/\/business$/, { timeout: 15_000 });
   });
 
   test("the team is asked by name, labelled, ordered and paid — and a student is a person", async () => {
@@ -2786,7 +2813,12 @@ test.describe.serial("DanceOS, end to end", () => {
     await owner.goto(`/business/${tenantId}/staff`);
     await owner.getByRole("button", { name: `Move ${learnerName} up` }).click();
     await expect(owner.getByRole("button", { name: `Move ${learnerName} up` })).toBeDisabled({ timeout: 20_000 });
+    /* ⚠⚠ AND SINCE 28 Sep 2026 THE TRAINER DOES NOT REACH THE DESK AT ALL. This
+       line read `toHaveCount(0)` on the Move buttons, which would now pass on the
+       HUB it lands on instead — true, and for the wrong reason, which is the one
+       kind of green worth nothing. The URL is what is asserted. */
     await trainer.goto(`/business/${tenantId}/staff`);
+    await expect(trainer).toHaveURL(/\/business$/, { timeout: 15_000 });
     await expect(trainer.getByRole("button", { name: /^Move / })).toHaveCount(0);
 
     /* ── A STUDENT IS NOT A LEAD ANY MORE (21 Sep 2026, the user: "Students
@@ -3197,20 +3229,48 @@ test.describe.serial("DanceOS, end to end", () => {
     await trainer.goto(`/org/${eventsHostId}`);
     await expect(trainer.getByText("Studio owners", { exact: true })).toHaveCount(0);
 
-    // ── 4. THE STUDIO IS A HOME THEY CAN SWITCH TO. They are on this studio's team
-    // as Faculty (segment 1's invite), so the row is in their switcher — what the
-    // seat decides is what they may DO once there.
+    /* ── 4. ⚠⚠ THE STUDIO IS A HOME ONLY WHILE THE SEAT RUNS IT (28 Sep 2026, the
+       user: "only these 2 get the right to get studio or organization in the
+       profile switcher. that profile switcher and rights should never be given
+       for faculty, visiting faculty, assistant, event team or other team
+       members").
+
+       This block used to prove the opposite — that Faculty gets the row, and
+       "what the seat decides is what they may DO once there". It is the same
+       person read twice now, which is the strongest version of the check the
+       segment can make: they were made an Owner above and put back to Faculty a
+       few lines later, so BOTH ends are the same human and the same studio, and
+       the only thing that moved is the word on their seat. */
+    const studioRow = () => learner.getByRole("menuitem", { name: new RegExp(studioName) });
+
     await learner.goto("/");
     await learner.getByRole("button", { name: "Switch profile" }).click();
     /* ⚠ a MENUITEM, not a link: the switcher is a menu (`aria-haspopup="menu"`),
-       so its rows carry that role however they are rendered. Read off the trace's
-       own DOM snapshot rather than guessed — the row was there all along. */
-    const studioRow = learner.getByRole("menuitem", { name: new RegExp(studioName) });
-    await expect(studioRow).toBeVisible({ timeout: 15_000 });
-    await expect(studioRow).toHaveAttribute("href", `/business/${tenantId}`);
-    await studioRow.click();
+       so its rows carry that role however they are rendered. */
+    await expect(studioRow()).toHaveCount(0, { timeout: 15_000 });
+    await learner.goto(`/business/${tenantId}`);
+    await expect(learner).toHaveURL(/\/business$/, { timeout: 20_000 });
+
+    /* …and made an Owner again, both come back — so the gate is the SEAT and not
+       something that merely happened to this account once */
+    await owner.goto(`/business/${tenantId}/staff`);
+    await owner.getByRole("button", { name: `Manage ${learnerName}` }).click();
+    await owner.getByRole("dialog", { name: learnerName }).getByRole("button", { name: `Make ${learnerName} Owner` }).click();
+    await expect(owner.getByRole("status")).toContainText("Owner", { timeout: 15_000 });
+
+    await learner.goto("/");
+    await learner.getByRole("button", { name: "Switch profile" }).click();
+    await expect(studioRow()).toBeVisible({ timeout: 15_000 });
+    await expect(studioRow()).toHaveAttribute("href", `/business/${tenantId}`);
+    await studioRow().click();
     await learner.waitForURL(`**/business/${tenantId}`, { timeout: 20_000 });
     await expect(learner.getByRole("heading", { name: studioName })).toBeVisible({ timeout: 15_000 });
+
+    /* ⚠ and back to Faculty, because the rest of this segment is written against
+       that seat — an OWNER's row carries no "Manage …" control at all (above), so
+       block 6 would have nothing to press */
+    await owner.getByRole("dialog", { name: learnerName }).getByRole("button", { name: `Make ${learnerName} Faculty` }).click();
+    await expect(owner.getByRole("status")).toContainText("Faculty", { timeout: 15_000 });
 
     // ── 5. A SEAT IS NOT A CLASS TAUGHT — the user's answer 5. Two groups, two
     // different facts: where somebody is on the team, and where they have published.

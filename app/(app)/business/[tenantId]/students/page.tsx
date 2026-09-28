@@ -2,7 +2,7 @@ import { redirect } from "next/navigation";
 import { StudentsDesk } from "@/features/leads/components/StudentsDesk";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { findStudents } from "@/repositories/students";
-import { findMyMembershipRole, findMyTenants } from "@/repositories/tenants";
+import { findMyMemberships, runsTheBusiness } from "@/repositories/tenants";
 
 /** THE STUDENTS DESK (21 Sep 2026, re-cut from the leads pipeline).
  *
@@ -26,31 +26,27 @@ export default async function TenantStudentsPage({
     redirect("/login");
   }
 
-  const businesses = await findMyTenants(supabase);
-  const tenant = businesses.find((t) => t.id === tenantId);
-  if (!tenant) {
-    redirect("/business");
-  }
-
   /* ⚠⚠ NOT EVERY SEAT SEES THE STUDENTS (21 Sep 2026, the user's answer on
-     whether a visiting teacher or an assistant should: *"No"*).
+     whether a visiting teacher or an assistant should: *"No"*; WIDENED to every
+     seat that does not run the business, 28 Sep 2026).
      This was membership-only, so ANY seat read the whole roster — every
      student's name, their PHONE NUMBER and what they hold. ⚠ The app's own
-     permissions text never claimed that: `MEMBER_POWER_NOTE` gives students to
-     `staff` ("Sees the students desk") and to `trainer` ("sees its students"),
-     and says of `visiting_faculty` only "Teaches the class they accepted, and
-     runs the register on that one only". So the SHEET an owner reads before
+     permissions text never claimed that, so the SHEET an owner reads before
      handing out a seat and the CODE disagreed, and the sheet was right — which
-     is why this is a gate rather than a new rule.
+     is why this is a gate rather than a new rule. On 21 Sep the two most obvious
+     seats were named; what the named list could not say is that `trainer` and
+     `staff` lost the BUSINESS itself this week, so the test is now the one
+     question the switcher asks — does this seat run the place.
      ⚠ SAID PLAINLY: this is a PRESENTATION gate. The rows underneath are
      ordinary RLS-bounded reads that admit every member, so a determined seat can
      still reach them through the API — narrowing that is a policy change on
      `leads` and `attendance`, not a redirect, and it is not this slice. What
      changes today is that the app stops handing it over. */
-  const myRole = await findMyMembershipRole(supabase, tenantId);
-  if (myRole === "visiting_faculty" || myRole === "assistant") {
-    redirect(`/business/${tenantId}`);
+  const seat = (await findMyMemberships(supabase)).find((m) => m.tenant.id === tenantId);
+  if (!seat || !runsTheBusiness(seat.memberRole)) {
+    redirect("/business");
   }
+  const tenant = seat.tenant;
 
   /* fails soft: a studio's own list of people must draw even when one of the
      four reads under it is refused */

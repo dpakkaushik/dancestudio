@@ -98,6 +98,14 @@ const scanLink = async (page, personId) => {
   await page.getByRole("button", { name: "Use link" }).click();
 };
 
+/* ⚠ EVERY "Attendance" LOCATOR IN THIS FILE IS `exact` (28 Sep 2026), and the
+   reason is worth keeping: a bare string in `getByRole({ name })` is a
+   case-insensitive SUBSTRING match — this repo's own lesson, met for the fourth
+   time. The class page gained the artist's powers switch the same day, whose
+   accessible name is "{their name} holds Attendance", so the TAB and the SWITCH
+   both matched and Playwright refused with a strict-mode violation. The product
+   is right — an owner has both — and the check was the thing that was loose. */
+
 /** the app's one dropdown, an in-app sheet since 27 Sep — the e2e's own helper */
 const pick = async (page, label, option) => {
   await page.getByRole("button", { name: label, exact: true }).first().click();
@@ -191,7 +199,7 @@ const valueOf = (page, label) => page.getByLabel(label).inputValue();
     check(classHead.text === "Hip-Hop", `and it is the class's own name — "${classHead.text}"`);
 
     /* ── 2. SCAN TO CHECK IN ────────────────────────────────────────────────── */
-    await page.getByRole("button", { name: "Attendance" }).click();
+    await page.getByRole("button", { name: "Attendance", exact: true }).click();
     const scanBtn = page.getByTestId("scan-check-in");
     await scanBtn.waitFor({ timeout: 20000 });
     check(true, "the register offers Scan to check in while the session is live");
@@ -230,7 +238,7 @@ const valueOf = (page, label) => page.getByLabel(label).inputValue();
 
     /* ── 3. THE REGISTER ITSELF, READ BACK ──────────────────────────────────── */
     await page.reload({ waitUntil: "networkidle" });
-    await page.getByRole("button", { name: "Attendance" }).click();
+    await page.getByRole("button", { name: "Attendance", exact: true }).click();
     const outRow = page.getByRole("button", { name: `Check ${learner.name} out` });
     await outRow.waitFor({ timeout: 20000 });
     check(true, "⚠ the register row reads ✓ In afterwards — the scan wrote a real attendance row");
@@ -355,7 +363,7 @@ const valueOf = (page, label) => page.getByLabel(label).inputValue();
     await sPage.getByRole("button", { name: "Sign in" }).click();
     await sPage.waitForURL((u) => !/\/login/.test(u.pathname), { timeout: 30000 });
     await sPage.goto(`${BASE}/c/${slug2}`, { waitUntil: "networkidle" });
-    const attTab = sPage.getByRole("button", { name: "Attendance" });
+    const attTab = sPage.getByRole("button", { name: "Attendance", exact: true });
     await attTab.waitFor({ timeout: 20000 });
     check(true, "⚠⚠ and the TEACHER sees the Attendance tab on the class they confirmed — which is the whole of the ask");
     await attTab.click();

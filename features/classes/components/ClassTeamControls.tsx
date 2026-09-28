@@ -81,9 +81,21 @@ export function AddAssistant({ classId, col, exclude }: { classId: string; col: 
   );
 }
 
-/** the owner's controls on one assistant: the two jobs, and Remove; a teacher
- *  who asked them gets Remove alone */
-export function AssistantControls({ claim, isOwner, col }: { claim: ClassClaim; isOwner: boolean; col: string }) {
+/** the owner's controls on one person on the class: the two jobs, and Remove; a
+ *  teacher who asked them gets Remove alone.
+ *
+ *  ⚠⚠ IT IS NOT ONLY AN ASSISTANT'S ANY MORE (28 Sep 2026). `20260928100000` made
+ *  the register a DEFAULT the person taking the class is born with and an owner
+ *  may take back — and `set_class_person_powers` has always accepted an ARTIST
+ *  claim, while this control was rendered inside the assistants section alone. So
+ *  half of that rule existed in the database with no control on top of it: the
+ *  only way an owner could take the register back off a teacher was a
+ *  hand-written API call. The chips are drawn on the artist's own row now.
+ *
+ *  ⚠ `remove` IS OFF THERE, on purpose: the artist column already carries
+ *  **Change**, which is the owner's door to swapping who takes the class, and two
+ *  buttons for one job is what this repo keeps paying for. */
+export function AssistantControls({ claim, isOwner, col, remove = true }: { claim: ClassClaim; isOwner: boolean; col: string; remove?: boolean }) {
   const router = useRouter();
   const [pending, start] = useTransition();
   const [err, setErr] = useState<string | null>(null);
@@ -128,9 +140,11 @@ export function AssistantControls({ claim, isOwner, col }: { claim: ClassClaim; 
             );
           })
         : null}
-      <button type="button" disabled={pending} aria-label={`Remove ${claim.personName} from this class`} onClick={() => run(() => withdrawClaimAction({ claimId: claim.id }))} style={{ ...pill(false, col), color: "#F87171" }}>
-        Remove
-      </button>
+      {remove ? (
+        <button type="button" disabled={pending} aria-label={`Remove ${claim.personName} from this class`} onClick={() => run(() => withdrawClaimAction({ claimId: claim.id }))} style={{ ...pill(false, col), color: "#F87171" }}>
+          Remove
+        </button>
+      ) : null}
       {err ? <span role="alert" style={{ fontSize: 10.5, color: "#F87171", flexBasis: "100%", textAlign: "right" }}>{err}</span> : null}
     </div>
   );

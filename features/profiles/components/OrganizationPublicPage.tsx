@@ -86,9 +86,14 @@ export function OrganizationPublicPage({
      `ActionRow` sizes its grid by how many cells it gets, so dropping this one
      re-laid out the three beside it. */
   const asksGoHere = enquiryTypesFor("org").length > 0;
-  /* ⚠ TWO PUBLISHED LABELS SINCE 26 Sep 2026: Owner and Event team. The definer
-     read leaves a plain `member` out, so there is no third group to draw. */
+  /* ⚠⚠ THREE PUBLISHED LABELS SINCE 28 Sep 2026: Owner, Manager and Event team.
+     The definer read leaves a plain `member` out, so there is still no fourth
+     group — but it does NOT leave a manager out, so filtering for the two this
+     page knew would have published somebody and drawn them nowhere. This page is
+     the reason `ORG_ROLE_WORD` exists: three screens each had their own idea of
+     the word, and a new label is what makes that kind of drift visible. */
   const owners = team.filter((m) => m.role === "owner");
+  const managers = team.filter((m) => m.role === "manager");
   const eventTeam = team.filter((m) => m.role === "event_team");
   /* the Location button opens the organization's own pin once it has placed itself (push 2) */
   const pinHref = org.lat != null && org.lng != null ? mapsPinHref(org.lat, org.lng) : null;
@@ -181,6 +186,13 @@ export function OrganizationPublicPage({
           <PeopleGroup title="Owner" n={owners.length}>
             {owners.map((m) => (
               <PersonChip key={m.memberId} href={`/person/${m.userId}`} name={m.name} role="Owner" roleColour={tint} photo={photoUrl(m.photoPath)} />
+            ))}
+          </PeopleGroup>
+        ) : null}
+        {managers.length ? (
+          <PeopleGroup title="Managers" n={managers.length}>
+            {managers.map((m) => (
+              <PersonChip key={m.memberId} href={`/person/${m.userId}`} name={m.name} role="Manager" roleColour={tint} photo={photoUrl(m.photoPath)} />
             ))}
           </PeopleGroup>
         ) : null}

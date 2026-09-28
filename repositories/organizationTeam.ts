@@ -14,10 +14,34 @@ import type { SupabaseClient } from "@supabase/supabase-js";
  *  `studio_owner` label is GONE with it: an organization runs no studios. Every
  *  write is an RPC; `user_id` embeds through its named key (the 28 Aug lesson). */
 
-export type OrgTeamRole = "owner" | "event_team" | "member";
-/** what the ask may offer — the same three, since there is no seat label any more */
+/** ⚠⚠ `manager` JOINED ON 28 Sep 2026, AND WITH IT THE OWNER LABEL FINALLY MEANS
+ *  SOMETHING. Owner and Event team have been words on a public page since 19 Sep
+ *  — R36 made the studio equivalent a real `business_members` seat on 20 Sep and
+ *  R48 removed that path on 26 Sep, leaving `owner` here granting NOTHING. Two
+ *  people on production held it and neither could open the organization.
+ *  `20260928110000` makes Owner and Manager write a real seat on the
+ *  ORGANIZATION itself (`org_seat_follows_label`), made when the person says yes
+ *  and taken away when the label changes or they leave. ⚠ Event team and member
+ *  are still LABELS: `can_run_events` reads the event-team word directly, so it
+ *  needs no seat, and a member is a name on a page. */
+export type OrgTeamRole = "owner" | "manager" | "event_team" | "member";
+/** what the ask may offer — the same four */
 export type OrgAskRole = OrgTeamRole;
 export type OrgTeamStatus = "asked" | "confirmed" | "rejected";
+
+/** ⚠ THE WORD ON THE SCREEN, IN ONE PLACE (28 Sep 2026). The desk, the
+ *  organization's public page and a person's own page each had their own idea of
+ *  it — and adding `manager` is what showed that: a person's page printed
+ *  `role === "owner" ? "Owner" : "Event team"`, so a manager would have read as
+ *  Event team, and the public page filtered the two it knew and drew a manager
+ *  NOWHERE though the definer read publishes them. A `Record` here is what makes
+ *  a fifth label fail to compile rather than fail quietly. */
+export const ORG_ROLE_WORD: Record<OrgTeamRole, string> = {
+  owner: "Owner",
+  manager: "Manager",
+  event_team: "Event team",
+  member: "Other team member",
+};
 
 export interface OrgTeamMember {
   id: string;

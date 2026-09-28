@@ -6,7 +6,7 @@ import { findClassArtists } from "@/repositories/claims";
 import { findClassPublishState, findClassesByTenant, findWhyNoClass } from "@/repositories/classes";
 import { countEnrolledBySession } from "@/repositories/enrollments";
 import { findRoomsByTenant } from "@/repositories/rooms";
-import { findMyMembershipRole, findMyTenants } from "@/repositories/tenants";
+import { findMyMemberships, runsTheBusiness } from "@/repositories/tenants";
 
 /* the clock lives outside the component (react-hooks/purity) — the register's
    LIVE filter is arithmetic over the moment the page was served */
@@ -35,12 +35,16 @@ export default async function TenantClassesPage({
     redirect("/login");
   }
 
-  // membership check: RLS only returns businesses the user belongs to
-  const businesses = await findMyTenants(supabase);
-  const tenant = businesses.find((t) => t.id === tenantId);
-  if (!tenant) {
+  /* membership check: RLS only returns businesses the user belongs to — and the
+     seat has to be one that RUNS the place (28 Sep 2026). The switcher stopped
+     listing a business a faculty seat is on, and a door closed only in the menu
+     that opens it is not closed. ⚠ The role rides the query that was already
+     being made: `findMyMemberships` is `findMyTenants` with the seat on it. */
+  const seat = (await findMyMemberships(supabase)).find((m) => m.tenant.id === tenantId);
+  if (!seat || !runsTheBusiness(seat.memberRole)) {
     redirect("/business");
   }
+  const tenant = seat.tenant;
   /* an organization's hosting row (R15) runs events, never classes (17 Sep 2026) */
   if (tenant.type === "org") {
     redirect(`/business/${tenantId}/events`);
@@ -51,8 +55,10 @@ export default async function TenantClassesPage({
 
   /* ⚠ creating a class is the OWNER's since 18 Sep 2026 — `whyNoClass` asks
      whether this BUSINESS may carry one, never whether YOU may make one, so the
-     seat has to be read separately or every member gets a refused button */
-  const myRole = await findMyMembershipRole(supabase, tenantId);
+     seat decides the button. ⚠ It is the seat READ ABOVE (28 Sep 2026), not a
+     second `findMyMembershipRole` round trip: the guard had to know the role
+     anyway, so asking twice was a query this page stopped needing. */
+  const myRole = seat.memberRole;
   const classes = await findClassesByTenant(supabase, tenantId);
   const sessionIds = classes.map((c) => c.session?.id).filter(Boolean) as string[];
   const [counts, state, artists, whyNoClass] = await Promise.all([

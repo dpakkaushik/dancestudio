@@ -3,7 +3,7 @@ import { EventForm } from "@/features/events/components/EventForm";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { findDiscoverCities } from "@/repositories/cities";
 import { findEventById } from "@/repositories/events";
-import { findMyMembershipRole, findMyTenants } from "@/repositories/tenants";
+import { findMyMemberships, runsTheBusiness } from "@/repositories/tenants";
 
 /** Edit event — every section pre-filled, the kind fixed (S_eventform 15803). */
 export default async function EditEventPage({ params }: { params: Promise<{ tenantId: string; eventId: string }> }) {
@@ -15,16 +15,15 @@ export default async function EditEventPage({ params }: { params: Promise<{ tena
   if (!user) {
     redirect("/login");
   }
-  const businesses = await findMyTenants(supabase);
-  if (!businesses.some((t) => t.id === tenantId)) {
+  /* ⚠ the seat has to RUN the business (28 Sep 2026) — one read where this made
+     two, and it is the same question both of the old tests were asking */
+  const seat = (await findMyMemberships(supabase)).find((m) => m.tenant.id === tenantId);
+  if (!seat || !runsTheBusiness(seat.memberRole)) {
     redirect("/business");
   }
-  const [role, event] = await Promise.all([findMyMembershipRole(supabase, tenantId), findEventById(supabase, eventId)]);
+  const event = await findEventById(supabase, eventId);
   if (!event || event.tenantId !== tenantId) {
     notFound();
-  }
-  if (role !== "owner" && role !== "trainer") {
-    redirect(`/business/${tenantId}/events`);
   }
   const cityCentres = await findDiscoverCities(supabase);
   return <EventForm tenantId={tenantId} existing={event} cityCentres={cityCentres} />;

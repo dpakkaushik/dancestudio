@@ -2,7 +2,149 @@
 
 ## LAST SESSION (28 Sep 2026) — replaced on every push (Rule 13)
 
-> ### FOUR THINGS, AND THE ONE THAT NEEDED BOTH HALVES (28 Sep 2026, latest) — ⚠ ONE MIGRATION APPLIED (`20260928100000`, dry-run 22/22 this morning, read back live **10/10**)
+> ### ONLY THE PEOPLE WHO RUN IT (28 Sep 2026, latest) — ⚠ ONE MIGRATION APPLIED (`20260928110000`, dry run **31/31** rolled back first, read back live **13/13**)
+> The user: *"fix these 2 as well. make sure in Organization or Studio Teams are
+> able to add another Owner & Manger as options and only these 2 get the right to
+> get studio or organization in the profile switcher. that profile switcher and
+> rights should never be given for faculty, visiting faculty , assistant , event
+> team or other team members."* Asked how far to take it they chose **"Clean cut —
+> business level is Owner/Manager only"** and **"Yes — Owner/Manager is a real
+> seat"** on an organization.
+> * ⚠⚠ **THE SWITCHER WAS EVERY BUSINESS THE ACCOUNT HELD ANY SEAT ON, AND THAT
+>   IS HOW A VISITING TEACHER GOT A STUDIO'S STUDENTS.** `visiting_faculty` is
+>   created AUTOMATICALLY by `respond_to_class_ask` — accepting one class seats
+>   you (R19) — so anybody an artist had taught for once could switch INTO the
+>   studio and land on its home, with its Team desk, its **Students desk (every
+>   name and PHONE NUMBER)**, its Rooms editor, its **invoice ledger** and its
+>   **refunds** one tap away. Nothing in the app ever claimed that; nothing
+>   failed either, because what it hands over is a SCREEN.
+> * ⚠⚠ **AND A GATE CLOSED ONLY IN THE MENU THAT OPENS IT IS NOT CLOSED**, which
+>   is the half that took the work: the switcher is one line, and then
+>   **SEVENTEEN desk addresses** had to answer the same question — the home,
+>   classes, calendar, rooms, staff, students, earnings, events, invoices,
+>   payments, refunds, media, inbox, memberships, assets, subscription,
+>   verification — plus the events manager, the event edit form, the events `new`
+>   page and the class roster. `runsTheBusiness` is that question, written once.
+> * ⚠ **AND IT MADE THE APP FASTER, WHICH IS NOT A COINCIDENCE**: six desks asked
+>   `findMyTenants` for the business and then `findMyMembershipRole` for the role
+>   in a second round trip — the seat carries both, so the guard that had to know
+>   the role anyway is now the only read. **Four round trips deleted.**
+> * ⚠ **WHAT FACULTY KEEP IS ASSERTED, NOT ASSUMED**, because it is half the
+>   decision: their own classes at `/my-classes`, the class page's Attendance tab
+>   and its register, their earnings, their row on the studio's Team desk, and the
+>   hub's **STUDIOS YOU HAVE TAUGHT AT** with a door to that studio's **public**
+>   page. They lose the business, not their work.
+> * ⚠⚠ **AND `MEMBER_POWER_NOTE` — THE SENTENCE THIS FILE HAS TWICE HELD UP AS THE
+>   PROMISE THE CODE HAD BROKEN — HAD NO CALLER AT ALL.** It is cited on 21 Sep
+>   ("the app's own permissions sheet never claimed that") and again on 28 Sep, and
+>   a grep for its name finds CLAUDE.md and **nothing** in `app/`, `features/` or
+>   `components/`. So the thing the repo kept calling its own contract was being
+>   shown to nobody. It is deleted, and the corrected words went into
+>   **`MEMBER_GRANTS`**, which IS drawn — on the member sheet and, more to the
+>   point, on the **JOIN screen as "You would have …"**, the sentence somebody
+>   reads while deciding whether to accept a seat. It promised Faculty and Other
+>   team member **"students ✓"** until today, which is the door this push shut.
+>   ⚠ The probe asserts that string is gone rather than that the new one is there.
+> * **AND THE TWO LEFTOVERS FROM THE MORNING.** The artist's own **powers switch**
+>   is on the class page beside the assistants' (`AssistantControls remove={false}`
+>   — the seat cannot be withdrawn from the person taking the class, only its
+>   powers moved), so `20260928100000`'s default is now a default an owner can
+>   actually change. And **room capacity stopped snapping back to 0**:
+>   `RoomsManager` and `BusinessHub` held it as a NUMBER, so `Number("") || 0` made
+>   an empty box a hard 0 — the same defect as the class form's two money fields,
+>   in the two places the morning's fix did not reach. Text-backed, normalised on
+>   blur.
+> * ⚠⚠ **THE MIGRATION IS HELD, AND WRITING IT IS WHERE THE REAL LESSONS ARE.**
+>   `20260928110000_a_business_has_a_manager` — `manager` in three CHECKs, eight
+>   functions, four policies, and the org-label defect. **Dry run 31/31, rolled
+>   back, nothing persisted**, and it caught FOUR things before anybody saw them:
+>   ⚠ **(1) I RE-TYPED SIX LIVE FUNCTION BODIES AND GOT FIVE OF THEM WRONG** — a
+>   `returns text` written as void, two path checks that are a strict REGEX live
+>   and became a loose LIKE, four error messages reworded, and **`can_run_register_for_class`
+>   silently losing its join back to `business_members`**, which is the 25 Aug
+>   hardening that stops a claim outliving the seat behind it. Every body is the
+>   catalog's own now, edited by hand, and the dry run asserts the five that
+>   should differ ONLY by the word do, and PRINTS every other changed line to be
+>   agreed to. **A re-typed function is one that can differ** — five ways, here.
+>   ⚠ **(2) TWO RETURNS TABLE SHAPES WERE INVENTED** and Postgres refused the
+>   whole file with *"cannot change return type"* — which is the good outcome: the
+>   only way past it is `drop function`, and `public_studio_team` is
+>   ANON-executable, so that would have been a policy change in disguise.
+>   ⚠⚠ **(3) A REAL DEFECT IN MY OWN HELPER: `business_members` carries a PLAIN
+>   unique key on `(business_id, user_id)`, not the partial one this codebase uses
+>   nearly everywhere else** — so a soft-deleted seat still holds the slot, and
+>   relabelling somebody manager → member → manager came back `23505` on the third
+>   press, for every organization. The seat is REVIVED rather than re-inserted.
+>   ⚠ **(4) And three harness traps, all of them already in this file**: an
+>   expected refusal needs its own SAVEPOINT (19 Sep) — and worse, `asUser`'s own
+>   `finally` ran `reset role` on the aborted transaction and its *"current
+>   transaction is aborted"* **replaced the refusal's real message**, so five
+>   checks lied about why; and `auth.uid()` parses an unset `request.jwt.claims`
+>   as the empty string, so `'{}'` is what nobody looks like (19 Sep, and it still
+>   cost a run).
+> * ⚠⚠ **AND THE WORD FOUND A THIRD COPY OF THE VOCABULARY, WHICH IS 19 Sep'S BUG
+>   ONE LAYER FURTHER OUT.** The offer went in the SAME push as the apply, on that
+>   day's own rule — and it still did not work: the button appeared, the CHECK
+>   took the word, the RPC would have taken it, and **the server action's own Zod
+>   enum refused it before the request left the server**. `set_member_role`'s
+>   vocabulary lives in `business_members`' CHECK, in `business_invites`' CHECK,
+>   in the RPC's guard **and in `features/staff/server-actions/staff.ts`**; the
+>   organization's lives in three places and a fourth. ⚠ Both enums are **DERIVED**
+>   now — off `INVITABLE_ROLES` / `MEMBER_LABEL_ORDER` and off `ORG_ROLE_WORD` — so
+>   a sixth label cannot be forgotten there again. **It took the probe to find it:
+>   typecheck, lint and the build were green on a button that did nothing.**
+> * ⚠⚠ **AND ADDING ONE LABEL SHOWED THAT THREE SCREENS EACH HAD THEIR OWN IDEA OF
+>   THE WORD.** A person's page read `role === "owner" ? "Owner" : "Event team"`,
+>   so a manager would have printed as Event team; the organization's public page
+>   filtered for the two labels it knew, and `public_organization_team` publishes
+>   every confirmed non-member — so a manager came back and was **thrown away in
+>   silence**, with the group that should have drawn them never drawn. `ORG_ROLE_WORD`
+>   is that word in one place now, as a `Record` so a fifth label fails to compile.
+> * ⚠ **AND ONE SENTENCE OF MINE WAS OVER-PROMISING AND IS CORRECTED**: `MEMBER_GRANTS`
+>   first said a manager gets everything "except its money", and the gates let
+>   them READ Invoices, Payments and Refunds — which is not a widening, because
+>   those three admitted ANY member until this morning, and every CONTROL on them
+>   is still `role === "owner"`. The line says what is true: the ledgers to read,
+>   and none of the money to move.
+> * **Verified:** typecheck 0 · lint 0 · `next build` green · the dry run **31/31
+>   rolled back**, then applied on the user's *"do all then only push to live"*,
+>   `db-push -DryRun` listing exactly the one file · read back off the **LIVE
+>   catalog 13/13** (three CHECKs, fourteen doors, four policies, anon still 45,
+>   public 108 and storage 21, and **nothing backfilled**) · **all 33 proofs
+>   green** · a new **`scripts/shots/shoot-seats.js` 21/21** — a real seat through
+>   `invite_person_to_business` → `accept_business_invite`, **all 17 desks
+>   bouncing it and all 17 opening for the owner**, then the SAME person
+>   relabelled Manager and the switcher, the twelve desks they run, the five that
+>   stay the owner's and the refusal in words all measured by URL rather than by
+>   the menu · **`shoot-tiles` 155/155** · **`shoot-hero` 191/191** ·
+>   **`shoot-register` 41/41** · **the whole e2e suite 58/58 in ONE run, 15.0 min
+>   on one worker, no red at any point** — on the bundle carrying the applied
+>   migration AND the Manager option, which is what makes the fifteen minutes
+>   worth spending.
+> * ⚠ **AND THE PROOFS' TWO REDS WERE BOTH THE RIGHT KIND, one of them squarely.**
+>   `rls-proof-media` pinned the whole of a refusal's sentence and the sentence
+>   moved — it named *"the studio's owner or a trainer"*, which would now be a
+>   message that lies, so it reads *"the studio's own people"* and the match is on
+>   its stable end. ⚠⚠ **And `rls-proof-push2` went red because its "somebody who
+>   is not the owner" HAD BECOME ONE**: that person is confirmed **Owner** of the
+>   organization two checks earlier, and this migration is what finally makes that
+>   label carry a seat. The check now uses somebody with no seat at all, and a new
+>   **3b** asserts the other half — the Owner label holds a real
+>   `business_members` row and may act. ⚠ `rls-proof-org-team` gained a **4b** for
+>   the same reason, and needed its world put back afterwards: it left the subject
+>   a plain `member`, which is deliberately not published, so a LATER check failed
+>   for a reason that had nothing to do with it. **A proof that moves the world has
+>   to move it back, or the next check is measuring this one.**
+> * ⚠ **AND THE ONE RED ON THE WAY WAS THE SUBSTRING TRAP, FOR THE FOURTH TIME IN
+>   THIS REPO.** `getByRole("button", { name: "Attendance" })` is a
+>   case-insensitive SUBSTRING match, and the artist powers switch added the same
+>   hour is named *"{name} holds Attendance"* — so the TAB and the SWITCH both
+>   matched and Playwright refused with a strict-mode violation, in
+>   `shoot-register` and then in the happy path. **The product was right and the
+>   locator was loose**; five sites are `exact: true` now, with the reason written
+>   beside them.
+
+> ### FOUR THINGS, AND THE ONE THAT NEEDED BOTH HALVES (28 Sep 2026, earlier) — ⚠ ONE MIGRATION APPLIED (`20260928100000`, dry-run 22/22 this morning, read back live **10/10**)
 > The user: *"1. should not be able to create a class in backdate 2. as soon as
 > the teacher confirms the class they should get access to attendance. 3. save &
 > ask button in add class form to be changed to send request. 4. fix both what a
@@ -7271,6 +7413,77 @@ summary; the report has the evidence.
 
 ## NEXT TO DO — replaced on every push (Rule 13)
 
+0ax. **~~ONE MIGRATION WRITTEN, DRY-RUN 31/31 AND HELD~~ — ✅ APPLIED 28 Sep 2026**
+   (`20260928110000_a_business_has_a_manager`) on the user's *"do all then only
+   push to live"*, after the whole list below had been in front of them. Dry run
+   **31/31 rolled back**, `db-push -DryRun` listed exactly the one file, the apply
+   printed it on the FIRST try, and it was **read back off the LIVE catalog 13/13**
+   rather than off the apply's own output. ⚠ Its own read-back had ONE red and it
+   was the CHECK: two of the fourteen doors never name `manager` — they call
+   `org_seat_follows_label`, which does — so asserting the word for all fourteen
+   was a number carried forward without its scope, for the fourth time in this
+   file. ⚠ Rule 9: it widens who may act for a business, and it grants a real
+   seat. The list is kept below as the record of what was approved.
+   * **THE ASK.** The user: *"in Organization or Studio Teams are able to add
+     another Owner & Manger as options"*. The SECOND half of that sentence — only
+     those two get the business in the switcher — **is built and needs no schema**;
+     this is the word `manager` itself, which **no CHECK in this database will
+     accept today**.
+   * ⚠ **THE RULE, ONE LINE, SO NO SITE IS A JUDGEMENT CALL: wherever `trainer`
+     may act, `manager` may; wherever only `owner` may, `manager` may not.** So a
+     manager runs the place — the register, the rooms, the events door, the
+     pictures — and **never touches its money, its plan or its badge**. Earnings,
+     refunds, the subscription, the verification, the GST number, taking a
+     membership off sale and handing out seats all stay the owner's, untouched.
+   * **WHAT MOVES, measured off the LIVE catalog rather than the .sql history
+     (migrations supersede each other):** three CHECKs (`business_members`,
+     **`business_invites` — THE PAIR that 19 Sep missed**, `organization_members`);
+     **eight functions**, of which five are re-stated VERBATIM with one word added
+     (`can_run_register`, `can_run_events`, `set_class_poster`, `set_event_poster`,
+     `person_associations`) and three change a little more (`can_run_register_for_class`,
+     `set_business_profile_photo`, `public_studio_team` — whose ORDER BY puts a
+     manager second, after the owner); **four policies** (two on `rooms`, two on
+     `storage.objects`); and the four doors that hand a word out. ⚠ Every function
+     is `create or replace` with an UNCHANGED signature, so **not one ACL moves**
+     and anon's executable set stays 45 — asserted, not assumed.
+   * ⚠⚠ **AND ONE DEFECT IS FIXED, because the ask cannot be true without it: AN
+     ORGANIZATION'S "OWNER" LABEL GRANTS NOTHING TODAY.** R36 made the equivalent
+     studio label write a real `business_members` row on 20 Sep; R48 removed that
+     path on 26 Sep when an organization stopped running studios, leaving the
+     label meaning nothing. **Counted on production: TWO people are confirmed
+     "Owner" of an organization and NEITHER can open it.** An organization Owner
+     or Manager gets a real seat from here — made when they **say yes**, never
+     when they are asked, and taken away when the label changes or they leave.
+   * **NOTHING IS BACKFILLED.** No seat becomes a manager; the two existing org
+     Owners are NOT given seats either — handing somebody authority over a live
+     business is not a thing a migration should do behind its owner's back. The
+     organization's owner relabels them on the Team desk and the seat follows.
+   * **Dry run `dryrunManager.js` (scratchpad) — BEGIN, the whole file, 31 checks
+     as real roles, ROLLBACK: 31 ok, 0 failed, nothing persisted.** Including the
+     ones that are the point: the five verbatim bodies differ ONLY by the word,
+     every OTHER changed line is printed to be agreed to, **anon 45 → 45**, no
+     existing ACL moved, exactly one function added (the helper, executable by no
+     client role), **public policies 108 → 108 and storage 21 → 21** (so the two
+     on `storage.objects` really can be dropped and re-made), not one seat
+     rewritten, a manager running a register and the events door but **refused
+     seats, invites and ownership**, **visiting faculty still refused by the rooms
+     policy**, the last owner unable to make themselves a manager, and the org
+     seat made on yes / removed on relabel / **revived on relabel back**.
+   * ⚠ **NOTHING IN THE APP OFFERS THE WORD YET** — `labelsFor` and `rolesFor` are
+     untouched, so no dropdown can send a value the CHECK refuses. **The offer is
+     one line in each and goes in the SAME push as the apply**, which is 19 Sep's
+     lesson rather than a second errand.
+   **On your word:**
+```
+   node dryrunManager.js                                                            # scratchpad — 31 checks, rolled back
+   powershell -NoProfile -ExecutionPolicy Bypass -File scripts/db-push.ps1 -DryRun  # must list exactly 20260928110000
+   powershell -NoProfile -ExecutionPolicy Bypass -File scripts/db-push.ps1 2>&1 | Select-String -NotMatch 'Skipping migration|Warning: failed to cache|prerequisite for local'
+   powershell -NoProfile -ExecutionPolicy Bypass -File scripts/run-proofs.ps1 staff rooms-people classes events org-team studio-verification
+```
+   ⚠ No PostgREST reload is needed (no column, no table). Then Manager goes into
+   `rolesFor`/`labelsFor` and the organization Team desk's list, and
+   `shoot-seats.js` grows the manager's own half.
+
 0aw. **⚠⚠ A CLASS HAS NO WALK-IN, AND IT NEEDS A MIGRATION — THE TWO SHAPES AND
    THE FOUR DECISIONS, IN FRONT OF THE USER RATHER THAN GUESSED (28 Sep 2026).**
    Events have `add_event_walk_in`; classes have **no equivalent at all**, so the
@@ -8849,6 +9062,41 @@ pan-India. The prototype's `__DOS*` localStorage shapes are the source material
 for the database schema. **The UI is not redesigned** — see Rule 2.
 
 ### Progress tracker — update after EVERY push (Rule 11)
+
+- **ONLY THE PEOPLE WHO RUN IT — 28 Sep 2026, no step number ⚠ (Rule 9: who may
+  act for a business, and one label now grants a real seat) — ONE MIGRATION
+  APPLIED (`20260928110000`, dry run 31/31 rolled back, read back live 13/13).**
+  ⚠⚠ **The profile switcher was every business the account held ANY
+  seat on**, and `visiting_faculty` is created automatically by accepting one
+  class (R19) — so anybody an artist had taught for once could switch INTO the
+  studio and reach its Team desk, its Students desk with every phone number, its
+  Rooms editor, its invoice ledger and its refunds. ⚠ **A gate closed only in the
+  menu that opens it is not closed**, so `runsTheBusiness` is asked on all
+  seventeen desk ADDRESSES as well, plus the events manager, both event forms,
+  the class roster and `?as=`. ⚠ It made the app faster rather than slower: six
+  desks were reading the business and then the role in a second round trip, and
+  the seat carries both — **four round trips deleted**. ⚠⚠ **And
+  `MEMBER_POWER_NOTE` — the sentence this file has TWICE held up as the promise
+  the code had broken — had no caller at all**; the corrected words went into
+  `MEMBER_GRANTS`, which is drawn on the JOIN screen as "You would have …" and
+  promised Faculty "students ✓" until today. Plus the morning's two leftovers:
+  the artist's own powers switch on the class page, and room capacity no longer
+  snapping to 0. And **MANAGER** — the migration's own word — is offered on a
+  studio's and an organization's Team desk, ⚠⚠ **which fixed a defect the ask
+  could not have been true without: an organization's "Owner" label granted
+  NOTHING**, and two people on production held it with no way to open the
+  organization. Deviation rows **R55**, **R56** and **C82**. **typecheck 0 ·
+  lint 0 · build green · dry run 31/31 rolled back, applied, read back live
+  13/13 · all 33 proofs green · a new `shoot-seats` 21/21 · `shoot-tiles`
+  155/155 · `shoot-hero` 191/191 · `shoot-register` 41/41 · the whole e2e suite
+  58/58 in ONE run, 15.0 min on one worker, no red at any point.** ⚠ The dry run caught
+  five re-typing differences in six live function bodies, two invented RETURNS
+  TABLE shapes, a real `23505` on a plain unique key, and three harness traps
+  this file had already recorded. ⚠⚠ **And the word found a THIRD copy of the
+  vocabulary in a server action's Zod enum — the button appeared, the database
+  took the word, and the enum refused it before the request left the server**;
+  both are derived now. ⚠ Two reds on the way were the substring trap for the
+  fourth time, and a check that pinned a whole refusal sentence.
 
 - **FOUR THINGS, AND THE ONE THAT NEEDED BOTH HALVES — 28 Sep 2026, no step
   number ⚠ (Rule 9: the migration widens who may run a class's door) — ONE
@@ -13475,6 +13723,9 @@ Home. **Do not "restore parity" on these.**
 | C79 | Every "today" marker on the calendar is `PINK` — the controls row's `TODAY` badge, the schedule's divider, the day gutter's filled circle, the month's badge and the picker's ring — and the picked day is `PINK` too | **TODAY IS INK, SAID ONCE, AND THE DAY YOU PICKED IS THE FILLED ONE.** The controls row's badge is **deleted**: it sat immediately beside the `Today` button, so one line held the word twice saying two different things (*you are on it* / *go to it*), and the schedule's divider said it a third time. What survives is the **divider**, the only one of the three that marks a POSITION, and the **button**, which is a control rather than a label. And every marker is off blue: **the day you PICKED is a filled ink circle, today-you-have-not-picked is an ink ring** | 28 Sep 2026, the user: *"should not repeat today teice it appears in blue which it should not on all profile schedules and calendar"* — both halves true on the calendar AND on a public schedule, which is the same component. ⚠ `PINK` has been **`#5AC8FA`, a cyan**, since the palette swap (backlog #16), and the calendar's own tool colour `#06B6D4` is no escape from it. ⚠ `SIDES.hosting` keeps its tint, because Teach is not today. **The e2e counts the LEAF elements whose whole text is the word: 2 before, 1 now**, and asserts none is painted `rgb(90, 200, 250)` |
 | C80 | The header rail is a **206px SQUARE** (15 Sep 2026), and `object-fit: cover` cuts every upload 1:1 — the Discover card's rail, the cropper's frame and the Edit sheet's tiles all say `1 / 1` (C73, 27 Sep) | **A BANNER: `HERO_HEAD_W / HERO_HEAD_H` IS A RATIO, 3:2, AND THE SLIDE IS AS WIDE AS THE PHONE** — 382×255 on a studio's page where a 206 square stood, 352×235 on the Discover card, with `HERO_HEAD_RADIUS` rounding the corners and a 16px hold-back on each side so those corners are visible at all. ⚠ **One ratio reaches six surfaces** — the hero rail, the card's rail, the CROPPER's frame, the Edit sheet's tiles, the admin's verification strip and the lightbox all read the same two tokens, so **there is no second aspect ratio anywhere in that path** and C73's promise survived a change of shape without a number being typed twice. ⚠⚠ **The cropper assumed its frame was square in seven places** (`fitOf`, `fillOf`, `clampOff`, the preview box, the canvas, the backfill, the scale — `W` was doing duty as both dimensions), so a rectangle would have been cut wrong in a way nothing but an eye would catch; every one takes a width AND a height now, and the frame key is **`banner`**, not `square`. ⚠ **The lightbox shows the CROP and nothing else**: `contain` on the raw file was right while every upload was 1:1 and is wrong the moment two generations exist, because a legacy 760² picture would open as MORE than the thing you tapped; a profile picture passes `frame="disc"`. ⚠ **Every existing upload is still a 1:1 crop and that is fine by design** — a square in a 3:2 frame under `cover` keeps its middle, nothing is re-cut, the stored object is untouched, and changing this ratio again re-frames everything with no migration | 28 Sep 2026, the user: *"make the poster on both home and profile a rectangle with squircle from sides. make sure to change studio discover tile accordingly. check the crop and view fix for this as well. when clicking on any profile pic or poster from discover to any profile should view the pic in the cropped way only."* ⚠ The tokens' own comment predicted this change on 15 Sep — *"make `HERO_HEAD_W` the screen's width and `HERO_HEAD_H` shorter and the header is a banner"* — and exactly one component read the pair |
 | C81 | **Manage** on Your classes is the ARTIST PAGE's own register and nothing else (18–19 Sep 2026), so it is drawn only for somebody who owns one | **MANAGE IS WHAT YOU RUN, WHOEVER OWNS IT.** A plain user can be the person taking a studio's class — that is what `ask_class_person(kind: 'artist')` is for — and until today their own class appeared under **Assist**, labelled Teaching. **Teaching is managing and assisting is not**: the two were one list told apart by a word in the corner of a card. Manage is offered to anybody who runs something, and holds the artist's own register (when there is a page) **and then** the classes somebody else's studio put them in front of, under CLASSES YOU TAKE ELSEWHERE. ⚠ **A TILE, NOT A SECOND REGISTER** — those classes belong to another business: you may run the door and you may not publish, price or delete them, so the card opens the class, where everything you are allowed lives. ⚠ Assist's own empty state stopped claiming to hold what you teach | 28 Sep 2026, the user: *"user should also see manage tab in classes as studios can add them as the person taking the class."* ⚠⚠ **The other half of that sentence — "give rights when confirmed the invite" — is the DATABASE's and is HELD** (#0av): `check_in` asks `can_run_register_for_class`, nothing the app draws can widen it, and **a tab drawn over a refusal is worse than no tab** |
+| R55 | The profile switcher lists every business the account is on the TEAM of (C15, 18 Sep 2026; C53, 22 Sep), and every desk under `/business/{id}` admits any member — several of them saying so in their own comments ("Any member reads the desk", "what the business collected (members, by RLS)") | **ONLY A SEAT THAT RUNS THE BUSINESS — OWNER OR MANAGER.** `runsTheBusiness` in `repositories/tenants.ts` is the one question, asked by the switcher, by `settings.businesses`, by all **seventeen** desk addresses under a business, by the events manager, both event forms, the class roster and `resolveActingAs`. ⚠⚠ **`visiting_faculty` IS CREATED AUTOMATICALLY** — `respond_to_class_ask` seats an outside teacher who accepts ONE class (R19) — so this was not a hypothetical seat: anybody an artist had taught for once could switch into the studio and open its Team desk, its **Students desk with every student's phone number**, its Rooms editor, its **invoice ledger** and its **refunds**. ⚠ **A gate closed only in the menu that opens it is not closed**, which is why the addresses are driven by URL in `shoot-seats.js` rather than the switcher being checked. ⚠ **What faculty KEEP is asserted too**: their own classes, the class page's Attendance tab and register, their earnings, their row on the Team desk, and the hub's STUDIOS YOU HAVE TAUGHT AT with a door to that studio's PUBLIC page. ⚠ It costs LESS, not more: six desks read the business and then the role separately, and the seat carries both — four round trips deleted. ⚠ **`MEMBER_POWER_NOTE` is deleted** (no caller — the sentence this file twice cited as the app's own contract was shown to nobody) and its corrected words are in `MEMBER_GRANTS`, which IS drawn, on the member sheet and on the **join screen** as "You would have …" | 28 Sep 2026, the user: *"only these 2 get the right to get studio or organization in the profile switcher. that profile switcher and rights should never be given for faculty, visiting faculty , assistant , event team or other team members"*, and their own answer when asked how far: **"Clean cut — business level is Owner/Manager only"**. ⚠ `manager` itself is the HELD migration (#0ax); until it applies the test reads "owner", so nothing changes for a manager who cannot yet exist |
+| R56 | A studio's seats are Owner · Faculty · Visiting faculty · Assistant · Other team member (R37, 20 Sep 2026), and an organization's team is Owner · Event team · Other team member — all of them LABELS with no authority (R28), the one exception being the `studio_owner` label R48 deleted | **MANAGER, AND IT IS THE FIRST LABEL SINCE R36 THAT CARRIES ANYTHING** (`20260928110000`). ⚠ The rule is one line so no site is a judgement call: **wherever `trainer` may act, `manager` may; wherever only `owner` may, `manager` may not** — so a manager runs the register, the rooms, the events door and the pictures, reads the ledgers, and moves none of the money, the plan or the badge. It is INVITABLE (accepting is the consent, and managing is not owning) where `owner` still is not — Step 12b's rule kept. ⚠⚠ **And an organization's OWNER label finally means something**: R36 made the studio equivalent a real `business_members` row, R48 removed that path on 26 Sep, and the word was left granting nothing — **two people on production held it and neither could open the organization**. Owner and Manager write a real seat on the ORGANIZATION now, made when the person says yes and taken away when the label changes or they leave, with `prior_member_role` remembering what it replaced; ⚠ the seat is REVIVED rather than re-inserted, because `business_members` carries a PLAIN unique key on `(business_id, user_id)` and a soft-deleted row still holds the slot. ⚠ Event team is still a label with no seat, deliberately: `can_run_events` reads that word directly, so it needs none | 28 Sep 2026, the user: *"make sure in Organization or Studio Teams are able to add another Owner & Manger as options"*. ⚠ Nothing is backfilled — not one seat becomes a manager, and the two existing org Owners are not given seats either, because handing somebody authority over a live business is not a thing a migration should do behind its owner's back |
+| C82 | A room's capacity is a NUMBER in component state on the Rooms desk and in the New-studio sheet's rooms editor | **TEXT-BACKED, NORMALISED ON BLUR** — `Number("") \|\| 0` makes an emptied box a hard 0, so backspacing over `20` snapped to `0` and typing `15` gave `015`. The same defect as the class form's price and session-pay fields, in the two places that morning's fix did not reach | 28 Sep 2026, the user's *"fix these 2 as well"*. ⚠ It is a bigger lie on a room than on a price: capacity is the one field on that desk the DATABASE enforces on every booking (`assert_room_ok` caps a class by its room), so a 0 there is a room nobody can book into |
 
 ### UI parity backlog — gaps vs the prototype, tracked so none is forgotten
 
@@ -13494,6 +13745,7 @@ nothing to lift.
 
 | Gap | Prototype ref | Closes with |
 |-----|--------------|-------------|
+| **The clean cut and Manager, what they leave (28 Sep 2026):** ⚠ **The two existing organization "Owners" on production still hold a label with no seat** — the migration deliberately backfills nobody, so each needs one relabel on the org's Team desk before they can open it; **that is the user's to do, and it is one press per person**. ⚠ **`MEMBER_GRANTS`' manager line is a claim nothing tests** — "the ledgers to read, and none of its money to move" is made true by `role === "owner"` on five desks and on every control of three more, and no check ties the sentence back to them. ⚠ **A manager cannot be invited BY EMAIL** — `invite_to_business` still offers `trainer \| staff` only, narrower than the picker's six, so somebody with no DanceOS account cannot be asked as one at all. ⚠ **An organization's Event team still carries no seat** (deliberately: `can_run_events` reads the label directly), so one of its four labels works differently from the other two — and **`studio_owner` is still in its CHECK with nothing able to write it**. ⚠⚠ **AND IT IS STILL A PRESENTATION GATE**, said plainly: the reads under these desks are RLS-bounded to every MEMBER (Step 9's payments, `leads`, `attendance`, `business_members`), so a determined faculty seat with an API client still reaches a studio's students and its takings — narrowing that is a policy change on four tables and is not this slice; what changed today is that the app stops handing it over. ⚠ **`invite_to_business` (the by-EMAIL door) still offers `trainer \| staff` only** — narrower than the picker's five and now than the six, so somebody with no DanceOS account cannot be invited as a manager at all. ⚠ **An organization's Event team still carries no seat**, deliberately: `can_run_events` has an org branch that reads the label directly, so it needs none — but it means that one label works differently from the other two. ⚠ And **`studio_owner` is still in the organization CHECK with nothing able to write it** (`set_organization_member_role` has refused it since 26 Sep); narrowing it would refuse an UPDATE of any historical row still carrying the word, for no gain | — (the prototype has one studio and one kind of seat) | one relabel each for the two org Owners (the user's); a policy change on four tables if the ceiling ever matters; the email door when somebody asks |
 | ⚠⚠ **A MEMBERSHIP CANNOT BE TAKEN OFF SALE (found 28 Sep 2026 by the dead-code sweep).** `delete_membership` exists in the database, `deleteMembership` in the repository and `deleteMembershipAction` as a server action — and **no screen offers any of them**, so once a seller creates a membership it is on their public page for ever. `total_count` counts passes SOLD rather than passes live, so it cannot be used to close one either. ⚠ The action is KEPT unused on purpose rather than swept, because deleting it would bury the gap | S_memberships 16846 | a Remove / Take off sale control on the memberships desk — one button, the door already exists all the way down |
 | **The four fixes — what they left (28 Sep 2026):** ⚠ **A class can still be backdated through the DATABASE**: the rule lives in the form and in `createClassSchema`, and `create_class_with_session` takes any instant, so a direct PostgREST caller is unaffected. It is a trigger and its own approval, not a line in the action. ⚠ **And the rule is CREATE-only server-side** — moving an existing class into the past is refused by the form alone, because a class that has already run must stay editable and the server would need an extra read to tell the two apart. ⚠ **`set_class_person_powers` has no screen for an ARTIST claim**: the migration makes the register a DEFAULT an owner may take back, and `AssistantControls` renders for `kind === 'assistant'` only — so the taking-back half exists in the database with no control on top of it. ⚠ **The same "stagnant 0" lives in the two ROOM capacity fields** (`RoomsManager`, and the New-studio sheet in `BusinessHub`): identical expression, different screen, and they hold their rooms in an ARRAY, so the one-field fix does not transfer without reshaping that state | — | a trigger when somebody asks; the artist powers chip; the room fields next time that screen is opened |
 | **The scanner, the seller's face and the `<h1>` sweep — what they left (28 Sep 2026):** ⚠ **the seller's photo is on the pass you HOLD and nowhere else** — the class page's "which pass pays for this" row still names the business in words, because a face there is a second read on the class page for a row seen only while booking; the membership's own usage page and a studio's desk are the SELLER's, so the page is already theirs. ⚠ **`PeoplePicker.onScanned` looks the person up a SECOND time** — the sheet resolved them a moment earlier and `onCode` hands back only the id; harmless (it also re-checks the exclusion list) and one round trip that need not happen. ⚠ **Two screens no probe drives**: `/e/{slug}`'s heading and the event manager's — `EventCard as="h1"` and the manager's own `<h1>` are covered by typecheck, lint and the build alone, because building a published event needs an organization with a live ₹5,000 mandate, which is more set-up than the check is worth today. ⚠ **The scanner has no walk-in to offer** — see the row above and #0aw. ⚠ And **`shoot-register` drives the PASTE field, not the camera**: `BarcodeDetector` does not exist in headless Chromium (nor in Chromium on Windows at all), so the decode itself is still proven only by a real phone — the path after the decode is identical and is what this measures | — | #0aw; a face on the pass picker if anybody asks |

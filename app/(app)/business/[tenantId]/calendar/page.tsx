@@ -3,7 +3,7 @@ import { CalendarScreen } from "@/features/calendar/components/CalendarScreen";
 import { dayKeyOf, monthStartIso, monthsWindow, shiftMonthKey } from "@/lib/format/month";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { findTenantCalendar } from "@/repositories/calendar";
-import { findMyTenants } from "@/repositories/tenants";
+import { findMyMemberships, runsTheBusiness } from "@/repositories/tenants";
 
 const stampNowIso = (): string => new Date().toISOString();
 const MONTHS_BACK = 2;
@@ -27,11 +27,12 @@ export default async function TenantCalendarPage({
     redirect("/login");
   }
 
-  const businesses = await findMyTenants(supabase);
-  const tenant = businesses.find((t) => t.id === tenantId);
-  if (!tenant) {
+  /* ⚠ the seat has to RUN the business (28 Sep 2026) — see the layout's switcher */
+  const seat = (await findMyMemberships(supabase)).find((m) => m.tenant.id === tenantId);
+  if (!seat || !runsTheBusiness(seat.memberRole)) {
     redirect("/business");
   }
+  const tenant = seat.tenant;
 
   const now = stampNowIso();
   const months = monthsWindow(now, MONTHS_BACK, MONTHS_AHEAD);

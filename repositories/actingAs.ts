@@ -1,6 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { findMyLedCrews } from "@/repositories/crews";
-import { findMyMemberships } from "@/repositories/tenants";
+import { findMyMemberships, runsTheBusiness } from "@/repositories/tenants";
 import type { ActingAs } from "@/types/profile";
 
 /** ⚠⚠ WHICH PROFILE AM I ACTING AS — the question `profiles.role` used to
@@ -50,6 +50,13 @@ export async function resolveActingAs(supabase: SupabaseClient, raw: string | nu
   const mine = await findMyMemberships(supabase).catch(() => []);
   const m = mine.find((x) => x.tenant.id === v);
   if (!m) return null;
+  /* ⚠ AND THE SEAT HAS TO RUN IT (28 Sep 2026). Acting AS a business is exactly
+     the identity the switcher hands out, and the switcher stopped offering it to
+     a faculty seat — so admitting one here would be a second answer to one
+     question. Nothing can produce the link any more, which is why this is
+     tidiness rather than a hole: the value only ever REMOVES a button (the rule
+     above), and the Enquiries desk it also scopes narrows rather than widens. */
+  if (!runsTheBusiness(m.memberRole)) return null;
   /* an ARTIST PAGE is the person's own public face, not a profile they switch
      into — they book as themselves there, so it is not a business for this */
   if (m.tenant.type === "artist_page") return null;

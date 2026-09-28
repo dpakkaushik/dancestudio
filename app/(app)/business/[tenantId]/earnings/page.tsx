@@ -7,7 +7,7 @@ import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { findBusinessEarnings } from "@/repositories/earnings";
 import { findTenantIncome } from "@/repositories/income";
 import { findTenantPayLedger } from "@/repositories/payouts";
-import { findMyMembershipRole, findMyTenants } from "@/repositories/tenants";
+import { findMyMemberships, runsTheBusiness } from "@/repositories/tenants";
 
 /* the clock lives outside the component — this repo's lint refuses an impure
    call during render (react-hooks/purity), even in a server component */
@@ -30,11 +30,13 @@ export default async function TenantEarningsPage({
     redirect("/login");
   }
 
-  const businesses = await findMyTenants(supabase);
-  const tenant = businesses.find((t) => t.id === tenantId);
-  if (!tenant) {
+  /* ⚠ the seat has to RUN the business before any of this is even reachable
+     (28 Sep 2026) — and the role rides that read, so the separate one is gone */
+  const seat = (await findMyMemberships(supabase)).find((m) => m.tenant.id === tenantId);
+  if (!seat || !runsTheBusiness(seat.memberRole)) {
     redirect("/business");
   }
+  const tenant = seat.tenant;
 
   /* ⚠ owner-only, checked on the server and not merely hidden in the UI: the
      prototype's settings footnote is explicit that payout approval is the
@@ -42,10 +44,12 @@ export default async function TenantEarningsPage({
      screen itself on `isMine`. RLS backs the pay half up — the payouts table
      admits the owner and the person paid, nobody else. The income half is a
      PRESENTATION gate only: Step 9 admits every member of the tenant to the
-     payments and refunds it sums, which the proof script asserts on purpose. */
-  const role = await findMyMembershipRole(supabase, tenantId);
+     payments and refunds it sums, which the proof script asserts on purpose.
+     ⚠ A MANAGER IS DELIBERATELY NOT ADMITTED: running the place is not the same
+     as being handed its money, and the footnote says so of the owner's alone. */
+  const role = seat.memberRole;
   if (role !== "owner") {
-    redirect(`/business/${tenantId}/classes`);
+    redirect(`/business/${tenantId}`);
   }
 
   const now = stampNowIso();

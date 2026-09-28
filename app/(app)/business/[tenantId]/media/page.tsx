@@ -2,7 +2,7 @@ import { redirect } from "next/navigation";
 import { StudioMediaDesk } from "@/features/tenants/components/StudioMediaDesk";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { findStudioProofPhotos } from "@/repositories/studioVerification";
-import { findMyMemberships } from "@/repositories/tenants";
+import { findMyMemberships, runsTheBusiness } from "@/repositories/tenants";
 
 /** /business/{tenantId}/media — THE MEDIA DESK (15 Sep 2026): a studio's
  *  profile picture and its header pictures, for its team. Only a studio has
@@ -27,7 +27,8 @@ export default async function StudioMediaPage({ params }: { params: Promise<{ te
   // membership is the spine — findMyMemberships says user_id = auth.uid() out loud
   const memberships = await findMyMemberships(supabase);
   const membership = memberships.find((m) => m.tenant.id === tenantId);
-  if (!membership) {
+  /* ⚠ and the seat has to RUN the business (28 Sep 2026) */
+  if (!membership || !runsTheBusiness(membership.memberRole)) {
     redirect("/business");
   }
   const { tenant, memberRole } = membership;
@@ -42,7 +43,9 @@ export default async function StudioMediaPage({ params }: { params: Promise<{ te
     <StudioMediaDesk
       tenant={tenant}
       ownerId={isOwner ? user.id : null}
-      canEditPhoto={isOwner || memberRole === "trainer"}
+      /* `set_business_profile_photo` admits an owner or a trainer; a trainer no
+         longer reaches this page, so whoever does may edit (28 Sep 2026) */
+      canEditPhoto={runsTheBusiness(memberRole)}
       photos={photos}
     />
   );

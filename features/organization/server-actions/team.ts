@@ -10,6 +10,7 @@ import {
   respondToOrganizationAsk,
   setOrganizationMemberRole,
   withdrawOrganizationAsk,
+  ORG_ROLE_WORD,
   type OrgAskRole,
   type OrgTeamRole,
 } from "@/repositories/organizationTeam";
@@ -25,9 +26,15 @@ export interface OrgTeamActionResult {
 }
 
 const uuid = z.string().uuid();
-/* ⚠ THREE LABELS SINCE 26 Sep 2026: `studio_owner` is refused by the database
-   now — an organization runs no studios, so there is no seat to grant */
-const role = z.enum(["owner", "event_team", "member"]);
+/* ⚠ FOUR LABELS SINCE 28 Sep 2026 (`manager` joined; `studio_owner` is still
+   refused by the database — an organization runs no studios).
+   ⚠⚠ DERIVED, NOT TYPED, and for a reason measured minutes earlier: the studio
+   desk's twin of this line was the THIRD copy of that vocabulary, after two
+   CHECKs and an RPC guard, and it refused `manager` on the server after the
+   migration had gone in and the button had appeared. `ORG_ROLE_WORD` is the one
+   place an organization's labels are written down, so a fifth cannot be
+   forgotten here. */
+const role = z.enum(Object.keys(ORG_ROLE_WORD) as [OrgTeamRole, ...OrgTeamRole[]]);
 
 async function requireUser() {
   const supabase = await createSupabaseServerClient();

@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { MembershipsOnSale } from "@/features/memberships/components/MembershipsOnSale";
 import type { MembershipOnSale } from "@/repositories/memberships";
-import type { PersonOrganization } from "@/repositories/organizationTeam";
+import { ORG_ROLE_WORD, type PersonOrganization } from "@/repositories/organizationTeam";
 import type { PublicTeamMember } from "@/types/publicProfile";
 import type { PublicPerson } from "@/repositories/publicPerson";
 import { photoUrl } from "@/lib/media/photo";
@@ -272,7 +272,9 @@ export function PersonBody({
               href={`/org/${o.orgId}`}
               name={o.name}
               photo={o.photoPath ? photoUrl(o.photoPath) : null}
-              role={o.role === "owner" ? "Owner" : "Event team"}
+              /* ⚠ one word map since 28 Sep 2026 — this was a ternary, so the
+                 moment a third published label existed it read as the second */
+              role={ORG_ROLE_WORD[o.role]}
               roleColour={accent}
             />
           ))}

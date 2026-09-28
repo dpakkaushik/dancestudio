@@ -3,7 +3,7 @@ import { DOS_DISPLAY, DOS_UI, INK, LILAC, SUB } from "@/lib/design/tokens";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { findClassById } from "@/repositories/classes";
 import { findRosterByClass } from "@/repositories/enrollments";
-import { findMyTenants } from "@/repositories/tenants";
+import { findMyMemberships, runsTheBusiness } from "@/repositories/tenants";
 import type { RosterEntry } from "@/types/enrollment";
 
 const EL = "var(--el)";
@@ -62,7 +62,11 @@ export default async function RosterPage({
     redirect("/login");
   }
 
-  const businesses = await findMyTenants(supabase);
+  /* ⚠ THE STUDIO'S OWN ROSTER DESK, so the seat has to RUN the business (28 Sep
+     2026). Its only door is the register's Roster pill, which is owner/manager
+     now — and a TEACHER's register is the class page's own Attendance tab,
+     which is untouched and reached from `/c/{slug}` rather than from here. */
+  const businesses = (await findMyMemberships(supabase)).filter((m) => runsTheBusiness(m.memberRole)).map((m) => m.tenant);
   if (!businesses.some((t) => t.id === tenantId)) {
     redirect("/business");
   }

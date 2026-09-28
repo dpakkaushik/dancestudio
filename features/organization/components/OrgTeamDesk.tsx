@@ -40,11 +40,15 @@ import type { OrgAskRole, OrgTeamMember, OrgTeamRole } from "@/repositories/orga
  *  hand out and the dropdown that named a studio is deleted rather than left
  *  empty. The desk is the crew desk's shape (S_crewmanage 16318, one section). */
 
-/* ⚠ THREE LABELS SINCE 26 Sep 2026 (Owner · Event team · Other team member) */
-const ROLE_TINT: Record<OrgTeamRole, string> = { owner: "#F59E0B", event_team: "#8B5CF6", member: "#3B82F6" };
-const ROLE_WORD: Record<OrgTeamRole, string> = { owner: "Owner", event_team: "Event team", member: "Other team member" };
+/* ⚠ FOUR LABELS SINCE 28 Sep 2026 (Owner · Manager · Event team · Other team
+   member), and the first two are the only ones that carry anything: they write a
+   real seat on the organization, so those two people can switch into it. The
+   rose is `MEMBER_LABEL.manager`'s, so Manager is one colour across the app. */
+const ROLE_TINT: Record<OrgTeamRole, string> = { owner: "#F59E0B", manager: "#BE123C", event_team: "#8B5CF6", member: "#3B82F6" };
+const ROLE_WORD: Record<OrgTeamRole, string> = { owner: "Owner", manager: "Manager", event_team: "Event team", member: "Other team member" };
 const ASK_ROLES: ReadonlyArray<readonly [OrgAskRole, string]> = [
   ["owner", "As owner"],
+  ["manager", "As manager"],
   ["event_team", "As event team"],
   ["member", "As team member"],
 ];
@@ -52,7 +56,7 @@ const ASK_ROLES: ReadonlyArray<readonly [OrgAskRole, string]> = [
    "…to be named other team member" is not English, and the accessible name is
    what a screen reader says and what the e2e presses; deriving it from the chip
    broke both (20 Sep 2026). */
-const ASK_PHRASE: Record<OrgAskRole, string> = { owner: "an owner", event_team: "on the event team", member: "on the team" };
+const ASK_PHRASE: Record<OrgAskRole, string> = { owner: "an owner", manager: "a manager", event_team: "on the event team", member: "on the team" };
 
 export function OrgTeamDesk({ orgId, orgName, members }: { /** the ORGANIZATION BUSINESS this desk is (26 Sep 2026) */ orgId: string; orgName: string; members: OrgTeamMember[] }) {
   const router = useRouter();
@@ -109,7 +113,14 @@ export function OrgTeamDesk({ orgId, orgName, members }: { /** the ORGANIZATION 
         ))}
       </div>
       {/* the one fact the screen cannot show: what these labels are NOT */}
-      <div style={{ fontSize: 10.5, color: "var(--muted)", lineHeight: 1.45, margin: "0 2px 12px" }}>Event team may run this organization&apos;s events. No label here is a login, or a seat on a studio.</div>
+      {/* ⚠ REWRITTEN 28 Sep 2026: it said "no label here is a login, or a seat",
+          which stopped being true the moment Owner and Manager started writing
+          one. This is the one fact the screen cannot show — what each label
+          actually carries — and it is the sentence somebody reads before handing
+          one out, so it has to be right. */}
+      <div style={{ fontSize: 10.5, color: "var(--muted)", lineHeight: 1.45, margin: "0 2px 12px" }}>
+        An owner or a manager can open this organization and run it — a manager moves none of its money, its plan or its badge. Event team may run its events. Nobody here gets a login of their own, or a seat on a studio.
+      </div>
       {error ? (
         <div role="alert" style={{ fontSize: 11.5, color: "#F87171", marginBottom: 10 }}>
           {error}
@@ -177,6 +188,7 @@ export function OrgTeamDesk({ orgId, orgName, members }: { /** the ORGANIZATION 
                   value={m.role}
                   rows={[
                     { value: "owner", label: "Owner" },
+                    { value: "manager", label: "Manager" },
                     { value: "event_team", label: "Event team" },
                     { value: "member", label: "Other team member" },
                   ]}

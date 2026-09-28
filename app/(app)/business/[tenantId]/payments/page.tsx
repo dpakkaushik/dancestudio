@@ -3,7 +3,7 @@ import { redirect } from "next/navigation";
 import { PaymentsScreen } from "@/features/settings/components/PaymentsScreen";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { findTenantInvoices, methodUsesOf } from "@/repositories/invoices";
-import { findMyMembershipRole, findMyTenants } from "@/repositories/tenants";
+import { findMyMemberships, runsTheBusiness } from "@/repositories/tenants";
 
 export const metadata: Metadata = { title: "Payments & verification — DanceOS" };
 
@@ -18,9 +18,11 @@ export default async function TenantPaymentsPage({ params }: { params: Promise<{
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) redirect("/login");
-  const [role, businesses] = await Promise.all([findMyMembershipRole(supabase, tenantId), findMyTenants(supabase)]);
-  const tenant = businesses.find((t) => t.id === tenantId);
-  if (!role || !tenant) redirect("/business");
+  /* ⚠ the seat has to RUN the business (28 Sep 2026) — one read, not two: the
+     seat carries the business AND the role this page was fetching separately */
+  const seat = (await findMyMemberships(supabase)).find((m) => m.tenant.id === tenantId);
+  if (!seat || !runsTheBusiness(seat.memberRole)) redirect("/business");
+  const { tenant, memberRole: role } = seat;
   const rows = await findTenantInvoices(supabase, tenantId);
   return <PaymentsScreen side="tenant" methods={methodUsesOf(rows)} tenant={tenant} canEdit={role === "owner"} />;
 }

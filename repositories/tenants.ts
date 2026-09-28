@@ -184,7 +184,28 @@ interface MembershipRow {
  *  this role, so the register they teach opens for them the way it opens for any
  *  live member with the job (can_run_register_for_class). Never invited into
  *  directly; it is what accepting a class makes you. */
-export type MemberRole = "owner" | "trainer" | "staff" | "visiting_faculty" | "assistant";
+export type MemberRole = "owner" | "manager" | "trainer" | "staff" | "visiting_faculty" | "assistant";
+
+/** ⚠⚠ WHO MAY ACT AS THE BUSINESS (28 Sep 2026, the user: "only these 2 get the
+ *  right to get studio or organization in the profile switcher. that profile
+ *  switcher and rights should never be given for faculty, visiting faculty,
+ *  assistant, event team or other team members").
+ *
+ *  Until today the profile switcher listed every business the account held ANY
+ *  seat on, so a visiting teacher who accepted one class could switch into the
+ *  studio and open its Team desk, its Students desk, its Rooms editor and its
+ *  Media. This is the one test behind the switcher, the business's home and every
+ *  desk under it — declared once, because a rule about who may act as a business
+ *  that is written out five times is a rule that will be four places out of date.
+ *
+ *  ⚠ `manager` CANNOT EXIST YET: `business_members_member_role_check` admits five
+ *  values and this is not one of them, so today this reads "owner". The seat, the
+ *  Team desks that hand it out and the rest of its powers are one migration away
+ *  and its list is in front of the user (NEXT TO DO #0ax). The test is written for
+ *  both now so that landing the migration changes a CHECK and not this rule. */
+export const RUNS_THE_BUSINESS: ReadonlyArray<MemberRole> = ["owner", "manager"];
+export const runsTheBusiness = (role: MemberRole | null | undefined): boolean =>
+  role != null && RUNS_THE_BUSINESS.includes(role);
 
 export interface MyMembership {
   tenant: Tenant;

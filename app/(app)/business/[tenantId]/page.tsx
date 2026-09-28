@@ -14,7 +14,7 @@ import { findPublicStudioTeam, findPublicTenant } from "@/repositories/publicPro
 import { findPersonFollowerCounts } from "@/repositories/publicPerson";
 import { countRoomsByTenants } from "@/repositories/rooms";
 import { findStudioProofPhotos } from "@/repositories/studioVerification";
-import { findMyMemberships } from "@/repositories/tenants";
+import { findMyMemberships, runsTheBusiness } from "@/repositories/tenants";
 
 /* the clock lives outside the component (react-hooks/purity) — the deck's one
    Live badge is arithmetic over the moment the page was served */
@@ -44,7 +44,22 @@ export default async function StudioHomePage({ params, searchParams }: { params:
   // membership is the spine — findMyMemberships says user_id = auth.uid() out loud
   const memberships = await findMyMemberships(supabase);
   const membership = memberships.find((m) => m.tenant.id === tenantId);
-  if (!membership) {
+  /** ⚠⚠ AND THE SEAT HAS TO BE ONE THAT RUNS THE PLACE (28 Sep 2026, the user:
+   *  "that profile switcher and rights should never be given for faculty,
+   *  visiting faculty, assistant, event team or other team members").
+   *
+   *  The switcher stopped listing a business a faculty seat is on, and a door
+   *  closed only in the menu that opens it is not closed — this page is where the
+   *  tool grid lives, and every desk under it is reached from here. A seat that
+   *  may not act as the business lands back on the hub, which is the screen that
+   *  tells them what they DO have.
+   *
+   *  ⚠ SAID PLAINLY: this is a PRESENTATION gate, like the students desk's own
+   *  (21 Sep). RLS still admits every live member to the rows underneath, so a
+   *  determined seat with an API client reads them; narrowing THAT is a policy
+   *  change on several tables and is not this slice. What changes today is that
+   *  the app stops handing it over. */
+  if (!membership || !runsTheBusiness(membership.memberRole)) {
     redirect("/business");
   }
   const { tenant, memberRole } = membership;

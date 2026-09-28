@@ -7,7 +7,7 @@ import { findAskedClaimsForTenants } from "@/repositories/claims";
 import { findVenueRequestsForTenants } from "@/repositories/classes";
 import { findPendingInvites } from "@/repositories/invites";
 import { findAskedByOrganizations } from "@/repositories/organizationTeam";
-import { findMyMemberships } from "@/repositories/tenants";
+import { findMyMemberships, runsTheBusiness } from "@/repositories/tenants";
 
 const stampNowIso = (): string => new Date().toISOString();
 
@@ -30,7 +30,10 @@ export default async function StudioInboxPage({ params }: { params: Promise<{ te
   }
   const memberships = await findMyMemberships(supabase);
   const membership = memberships.find((m) => m.tenant.id === tenantId);
-  if (!membership) {
+  /* ⚠ and the seat has to RUN the business (28 Sep 2026) — this is the Inbox TAB
+     of a home a faculty seat can no longer open, so admitting it here would be a
+     door into a house whose front door is shut */
+  if (!membership || !runsTheBusiness(membership.memberRole)) {
     redirect("/business");
   }
   const { tenant, memberRole } = membership;

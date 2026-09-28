@@ -3,7 +3,7 @@ import { EventForm } from "@/features/events/components/EventForm";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { findDiscoverCities } from "@/repositories/cities";
 import { findWhyNoEvent } from "@/repositories/gst";
-import { findMyMembershipRole, findMyTenants } from "@/repositories/tenants";
+import { findMyMemberships, runsTheBusiness } from "@/repositories/tenants";
 
 /** Add event (prototype S_eventform). Owners and trainers create; the RPC
  *  enforces it too.
@@ -21,13 +21,12 @@ export default async function NewEventPage({ params }: { params: Promise<{ tenan
   if (!user) {
     redirect("/login");
   }
-  const businesses = await findMyTenants(supabase);
-  if (!businesses.some((t) => t.id === tenantId)) {
+  /* ⚠ the seat has to RUN the business (28 Sep 2026) — one read for both tests,
+     where this made two: `can_run_events` still admits a trainer, and a trainer
+     no longer reaches this business at all */
+  const seat = (await findMyMemberships(supabase)).find((m) => m.tenant.id === tenantId);
+  if (!seat || !runsTheBusiness(seat.memberRole)) {
     redirect("/business");
-  }
-  const role = await findMyMembershipRole(supabase, tenantId);
-  if (role !== "owner" && role !== "trainer") {
-    redirect(`/business/${tenantId}/events`);
   }
   /* AN EVENT NEEDS THE ORGANIZATION'S GST NUMBER (11 Sep 2026 — the user: "when
      a user goes in even without verification of GST it should redirect the user

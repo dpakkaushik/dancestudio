@@ -154,8 +154,35 @@ try {
   $memberWithStudio = Fails { Rpc (Api $org.token) "set_organization_member_role" @{ p_member_id = $memberId; p_role = "member"; p_business_id = $studioId } }
   $after = (Owners $studioId)
   $seated = @($after | Where-Object { [string]$_.user_id -eq $boss.id }).Count
+  # !! 28 Sep 2026: the refusal's own sentence gained ", a manager," so the match
+  # is on the stable end of it. A check that pins a whole sentence goes red every
+  # time somebody adds a word to a correct message.
   Check 4 "studio_owner is refused ($studioOwner); a label WITH a studio is refused ($memberWithStudio); the studio's owners are still $($after.Count) of $before and the boss is seated $seated times" (
-    ($studioOwner -match "owner, event team or a member") -and ($memberWithStudio -match "studio") -and ($after.Count -eq $before) -and ($seated -eq 0))
+    ($studioOwner -match "event team or a member") -and ($memberWithStudio -match "studio") -and ($after.Count -eq $before) -and ($seated -eq 0))
+
+  # -- 4b. MANAGER IS A LABEL THAT CARRIES A REAL SEAT ON THE ORGANIZATION -------
+  # 28 Sep 2026, the user: "in Organization or Studio Teams are able to add
+  # another Owner & Manger as options and only these 2 get the right to get
+  # studio or organization in the profile switcher".
+  # !! THIS IS THE DEFECT THE MIGRATION FIXED. `owner` has been a label here since
+  # 19 Sep and granted NOTHING: R36 made the studio equivalent a real seat, R48
+  # removed that path, and two people on production held the word with no way to
+  # open the organization. Owner and manager write a real business_members row on
+  # the ORG itself now -- and only when the person has said yes.
+  $orgSeats = { param($uid) @(Get-Rows $svcH "business_members?business_id=eq.$orgId&user_id=eq.$uid&deleted_at=is.null&select=member_role") }
+  Rpc (Api $org.token) "set_organization_member_role" @{ p_member_id = $memberId; p_role = "manager"; p_business_id = $null } | Out-Null
+  $asManager = & $orgSeats $boss.id
+  Rpc (Api $org.token) "set_organization_member_role" @{ p_member_id = $memberId; p_role = "member"; p_business_id = $null } | Out-Null
+  $asMember = & $orgSeats $boss.id
+  # and the studio is untouched throughout -- an organization runs none
+  $studioStill = (Owners $studioId).Count
+  Check "4b" "Manager writes a REAL seat on the ORGANIZATION ($($asManager.Count) row, $($asManager[0].member_role)); relabelling to member takes it away ($($asMember.Count) rows); the studio is untouched ($studioStill of $before)" (
+    ($asManager.Count -eq 1) -and ($asManager[0].member_role -eq "manager") -and ($asMember.Count -eq 0) -and ($studioStill -eq $before))
+  # !! AND THE WORLD IS PUT BACK. Check 6 reads what a STRANGER sees, and a plain
+  # `member` is deliberately not published -- so leaving the boss as one made a
+  # later check fail for a reason that had nothing to do with it. A proof that
+  # moves the world has to move it back, or the next check is measuring this one.
+  Rpc (Api $org.token) "set_organization_member_role" @{ p_member_id = $memberId; p_role = "event_team"; p_business_id = $null } | Out-Null
 
   # -- 5. DELETED 26 Sep 2026: "the grant writes a REAL OWNER SEAT, idempotently" -
   #       there is no grant; an organization runs no studios. Check 4 is its inverse.

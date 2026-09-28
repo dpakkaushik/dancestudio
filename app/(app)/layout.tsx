@@ -6,7 +6,7 @@ import { findMyLedCrews } from "@/repositories/crews";
 import { findMyUnreadCount } from "@/repositories/notifications";
 import { findMyArtistPlan } from "@/repositories/plans";
 import { findProfileById } from "@/repositories/profiles";
-import { findMyMemberships } from "@/repositories/tenants";
+import { findMyMemberships, runsTheBusiness } from "@/repositories/tenants";
 
 /** Every signed-in surface lives in this group and wears the app chrome (top bar +
  *  tab bar). Auth screens (/login, /onboarding, /auth) stay outside it.
@@ -54,10 +54,30 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
      its whole app. */
   const adminOnly = Boolean(user) && !profile && isAdmin;
 
+  /** ⚠⚠ ONLY AN OWNER OR A MANAGER MAY ACT AS A BUSINESS (28 Sep 2026, the user:
+   *  "only these 2 get the right to get studio or organization in the profile
+   *  switcher. that profile switcher and rights should never be given for
+   *  faculty, visiting faculty, assistant, event team or other team members").
+   *
+   *  This list was every business the account held ANY seat on — so a visiting
+   *  teacher who accepted a single class could switch INTO the studio and land on
+   *  its home, with its Team desk, its Students desk, its Rooms editor and its
+   *  Media one tap away. The switcher is what grants that identity, so this is
+   *  where the rule belongs. Measured before it was changed: 22 owner seats and
+   *  11 non-owner seats held by 7 people, every one of them on a studio.
+   *
+   *  ⚠ WHAT FACULTY KEEP, because it is not nothing: their own classes at
+   *  `/my-classes` (with the Manage register since 28 Sep), the class page's
+   *  Attendance tab and its register, and their earnings. What they lose is the
+   *  BUSINESS — its home and the desks under it. `MEMBER_POWER_NOTE` was rewritten
+   *  in the same breath, so the app no longer promises a trainer "sees its
+   *  students" when it no longer gives them a door to it. */
+  const runsA = memberships.filter((m) => runsTheBusiness(m.memberRole));
+
   const switcher: SwitcherItem[] = [];
   if (profile) {
     switcher.push({ key: "me", href: "/", label: profile.fullName, sub: plan?.active ? "Artist" : "User", kind: "me" });
-    for (const m of memberships) {
+    for (const m of runsA) {
       if (m.tenant.type === "studio") {
         switcher.push({ key: m.tenant.id, href: `/business/${m.tenant.id}`, label: m.tenant.name, sub: "Studio", kind: "studio" });
       } else if (m.tenant.type === "org") {
@@ -85,7 +105,13 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
         plan,
         isAdmin,
         ownBusiness: memberships.find((m) => m.memberRole === "owner" && m.tenant.type === "artist_page")?.tenant ?? null,
-        businesses: memberships.filter((m) => m.tenant.type === "studio" || m.tenant.type === "org").map((m) => m.tenant),
+        /* ⚠ THE SAME RULE AS THE SWITCHER, and it has to be: the Settings sheet's
+           subject is `hereItem`, which is what the switcher marks HERE (C53). A
+           business the switcher no longer names could never be the subject, so a
+           wider list here would only be a list nothing can reach — and the THIS
+           STUDIO block it feeds carries Verification, the Subscription and the
+           money desks, which are the last things a visiting teacher should meet. */
+        businesses: runsA.filter((m) => m.tenant.type === "studio" || m.tenant.type === "org").map((m) => m.tenant),
       }
     : null;
 

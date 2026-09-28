@@ -3,7 +3,7 @@ import { RoomForm } from "@/features/rooms/components/RoomForm";
 import { RoomsManager } from "@/features/rooms/components/RoomsManager";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { findRoomsByTenant } from "@/repositories/rooms";
-import { findMyMembershipRole, findMyTenants } from "@/repositories/tenants";
+import { findMyMemberships, runsTheBusiness } from "@/repositories/tenants";
 
 export default async function TenantRoomsPage({
   params,
@@ -25,23 +25,26 @@ export default async function TenantRoomsPage({
     redirect("/login");
   }
 
-  // membership is the spine — findMyTenants filters to the caller's own rows
-  const businesses = await findMyTenants(supabase);
-  const tenant = businesses.find((t) => t.id === tenantId);
-  if (!tenant) {
+  /* membership is the spine — and the seat has to RUN the business (28 Sep 2026) */
+  const seat = (await findMyMemberships(supabase)).find((m) => m.tenant.id === tenantId);
+  if (!seat || !runsTheBusiness(seat.memberRole)) {
     redirect("/business");
   }
+  const tenant = seat.tenant;
 
-  /* ⚠ EVERY MEMBER READS THE ROOMS, AN OWNER OR A TRAINER EDITS THEM — which is
-     what the two policies on `rooms` admit ("rooms are plain studio config, not
-     a seat ledger"). Until 21 Sep the desk took no role at all, so the ＋, the ✕
-     and every amenity toggle were drawn for a visiting teacher, an assistant and
-     the front desk, and each press came back an RLS refusal in silence. */
-  const [rooms, myRole] = await Promise.all([
-    findRoomsByTenant(supabase, tenantId),
-    findMyMembershipRole(supabase, tenantId),
-  ]);
-  const canEdit = myRole === "owner" || myRole === "trainer";
+  /* ⚠ THE TWO POLICIES ON `rooms` ADMIT AN OWNER OR A TRAINER to write ("rooms
+     are plain studio config, not a seat ledger"), and until 21 Sep the desk took
+     no role at all — so the ＋, the ✕ and every amenity toggle were drawn for a
+     visiting teacher, an assistant and the front desk, and each press came back
+     an RLS refusal in silence.
+     ⚠ SINCE 28 Sep 2026 ONLY A SEAT THAT RUNS THE BUSINESS REACHES THIS PAGE, so
+     the trainer half of that test is unreachable from here and `canEdit` is the
+     same question the guard above already answered. The seat is read once.
+     ⚠ A MANAGER IS NOT IN THE `rooms` POLICIES YET — that is the held migration's
+     to add; today the value cannot exist, so nobody meets the gap. */
+  const myRole = seat.memberRole;
+  const rooms = await findRoomsByTenant(supabase, tenantId);
+  const canEdit = runsTheBusiness(myRole);
   return (
     <>
       <RoomsManager

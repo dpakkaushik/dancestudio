@@ -52,11 +52,18 @@ const initialState: TenantActionState = { error: null };
 
 interface RoomDraft {
   name: string;
-  capacity: number;
+  /** ⚠ TEXT, not a number — see `capacityOf`. It becomes a number once, on the way out. */
+  capacity: string;
 }
 /* the sheet opens with one room already in it (2639) — a studio is a place with
    at least one floor; the Rooms desk names the next ones "Room N" the same way */
-const seedRooms = (): RoomDraft[] => [{ name: "Room 1", capacity: 20 }];
+/** ⚠ THE CAPACITY IS TEXT WHILE IT IS BEING TYPED (28 Sep 2026, the same
+ *  "stagnant 0" the class form had). Holding it as a NUMBER made the field
+ *  impossible to clear — `Number("") || 1` is 1, so React put the 1 straight back
+ *  and the only way to type 30 over it was to leave the 1 in front. The number is
+ *  derived once, where it is sent, and the floor is applied there. */
+const capacityOf = (text: string) => Math.max(1, Math.min(500, Math.trunc(Number(text) || 0)));
+const seedRooms = (): RoomDraft[] => [{ name: "Room 1", capacity: "20" }];
 
 const inp: React.CSSProperties = {
   width: "100%",
@@ -252,7 +259,7 @@ export function BusinessHub({
      up, so what a person opens is a STUDIO — the same form, the same gate, the
      same badge and mandate afterwards. */
   const isStudio = true;
-  const roomsOk = rooms.length > 0 && rooms.every((r) => r.name.trim().length > 0 && r.capacity > 0);
+  const roomsOk = rooms.length > 0 && rooms.every((r) => r.name.trim().length > 0 && r.capacity.trim().length > 0);
   const phoneOk = /^\+?[0-9][0-9 ]{7,17}$/.test(phone.trim());
   const emailOk = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim());
   const ok = name.trim().length > 0 && phoneOk && emailOk && (!isStudio || (area.trim().length > 0 && city.length > 0 && roomsOk && styles.length > 0));
@@ -616,7 +623,8 @@ export function BusinessHub({
             <div style={{ fontSize: 11.5, color: SUB, margin: "3px 0 14px", lineHeight: 1.5 }}>{isStudio ? "One studio = one location. It stays private until it is verified and subscribed." : "One page, and your classes and earnings live behind it."}</div>
 
             <form action={formAction}>
-              <input type="hidden" name="rooms" value={JSON.stringify(isStudio ? rooms : [])} />
+              {/* ⚠ THE ONE PLACE THE TEXT BECOMES A NUMBER — the payload the action parses */}
+              <input type="hidden" name="rooms" value={JSON.stringify(isStudio ? rooms.map((r) => ({ name: r.name, capacity: capacityOf(r.capacity) })) : [])} />
 
               <div style={{ fontSize: 12, color: SUB, margin: "0 0 4px" }}>
                 {isStudio ? "Studio name" : "Page name"}
@@ -763,7 +771,8 @@ export function BusinessHub({
                         min={1}
                         value={r.capacity}
                         aria-label={`Room ${i + 1} capacity`}
-                        onChange={(e) => setRoom(i, { capacity: Math.max(1, Number(e.target.value) || 1) })}
+                        onChange={(e) => setRoom(i, { capacity: e.target.value })}
+                        onBlur={() => setRoom(i, { capacity: String(capacityOf(r.capacity)) })}
                         style={{ ...inp, flex: 1, minWidth: 0 }}
                       />
                       {rooms.length > 1 && (
@@ -784,7 +793,7 @@ export function BusinessHub({
                     role="button"
                     tabIndex={0}
                     onKeyDown={dosKey}
-                    onClick={() => setRooms((rs) => [...rs, { name: `Room ${rs.length + 1}`, capacity: 20 }])}
+                    onClick={() => setRooms((rs) => [...rs, { name: `Room ${rs.length + 1}`, capacity: "20" }])}
                     style={{
                       textAlign: "center",
                       padding: "10px",
