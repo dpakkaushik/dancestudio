@@ -74,8 +74,15 @@
 >   blur, the button and the sheet reading Send request with **nothing anywhere
 >   still saying Save & ask**, and then the teacher confirming and seeing the
 >   Attendance tab and the register open) · **`shoot-tiles` 155/155** ·
->   **`shoot-hero` 191/191** · **the whole e2e suite 58/58 in ONE run on one
->   worker, no red at any point.**
+>   **`shoot-hero` 191/191** · **the whole e2e suite 58/58 in ONE run, 16.9 min on
+>   one worker, no red at any point.**
+>   **PUSHED AND LIVE (`06cad31`), read back off the DEPLOYMENT rather than
+>   assumed:** Vercel's own list for THIS sha, BUILDING → READY in ~70 s ·
+>   **`stranger-smoke.ps1` 11/11** against `https://dancestudio-orcin.vercel.app`
+>   · and **`shoot-register.js` 41/41 ON THE DEPLOYMENT** — the backdate refused,
+>   both number fields cleared and typed into, the button and the sheet reading
+>   Send request, and a real teacher confirming a real class and opening its
+>   register, all on the live bundle against production.
 > * ⚠ **AND THE JSX-COMMENT TRAP FOR THE FIFTH TIME, IN A NEW VARIANT.** The
 >   attribute-position comment was right (a bare `/* … */`, not a braced child) —
 >   and its own TEXT contained the closing sequence, which ended the comment early
@@ -8864,8 +8871,10 @@ for the database schema. **The UI is not redesigned** — see Rule 2.
   and the number is derived, with `onBlur` writing back what will be saved.
   **typecheck 0 · lint 0 · build green · 10/10 read-back · 3/3 proofs ·
   `shoot-register` 41/41 · `shoot-tiles` 155/155 · `shoot-hero` 191/191 · the
-  whole e2e suite 58/58 in one run.** ⚠ The JSX-comment trap for the FIFTH time,
-  in a new variant: the comment's own text contained the closing sequence.
+  whole e2e suite 58/58 in one run. PUSHED AND LIVE (`06cad31`) — Vercel's own
+  list read for the sha, `stranger-smoke` 11/11 and `shoot-register` 41/41
+  against the deployment.** ⚠ The JSX-comment trap for the FIFTH time, in a new
+  variant: the comment's own text contained the closing sequence.
 - **THE THREE THINGS THE LAST PUSH SAID IT HAD NOT BUILT — 28 Sep 2026, no step
   number — BUILT, no migration.** The user: *"solve all options which are not
   built from previous chat."* ⚠⚠ **A register had no scanner at all**, so the
