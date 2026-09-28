@@ -62,6 +62,18 @@ const toDateInput = (iso: string) => istDatePart(iso, { year: "numeric", month: 
 const toTimeInput = (iso: string) =>
   istDatePart(iso, { hour: "2-digit", minute: "2-digit", hour12: false }).replace("24", "00");
 
+/** ⚠⚠ NO BACKDATING (28 Sep 2026, the user: "should not be able to create a class
+ *  in backdate"). Both of these read the clock, which is why they are MODULE-LEVEL
+ *  helpers: `Date.now()` may not be called in a component body under this repo's
+ *  `react-hooks/purity` rule, and this file has paid for that lesson twice. */
+/** today in IST, in the shape `<input type="date">` wants — the floor on the picker */
+const istToday = () => istDatePart(new Date(Date.now()).toISOString(), { year: "numeric", month: "2-digit", day: "2-digit" });
+/** ⚠ THE START INSTANT, NOT THE DATE: a class at 19:00 today is already gone at
+ *  20:00, and a date-only test waves that through. The same minute of slack the
+ *  server's own rule carries, so the form and the action cannot disagree by a
+ *  second and leave somebody with a button that does nothing. */
+const startHasGone = (date: string, time: string) => new Date(`${date}T${time}:00+05:30`).getTime() <= Date.now() - 60_000;
+
 const POSTER_DESIGNS: Array<[PosterChoice, string]> = [
   ["bold", "Bold"],
   ["split", "Split"],
@@ -238,8 +250,28 @@ export function ClassForm({
   const [endTime, setEndTime] = useState(existing?.session ? toTimeInput(existing.session.endsAt) : "20:00");
   const [roomId, setRoomId] = useState<string | null>(existing?.roomId ?? null);
   const [poster, setPoster] = useState<PosterChoice | null>(existing?.poster ?? null);
-  const [priceInr, setPriceInr] = useState(existing?.priceInr ?? 300);
-  const [capacityInput, setCapacityInput] = useState(existing?.capacity ?? 16);
+  /** ⚠⚠ A NUMBER FIELD YOU CAN ACTUALLY CLEAR (28 Sep 2026, the user: "fix both
+   *  what a session pays them and price fields while typing 0 becomes stagnant").
+   *
+   *  These were NUMBER state — `value={priceInr}` against
+   *  `onChange={… Number(e.target.value) || 0}` — and a number state can never be
+   *  empty. Backspace the field to nothing and `Number("")` is 0, so React put the
+   *  0 straight back on the next render: the field could not be cleared, and the
+   *  only way to type 300 over it was to leave the 0 sitting in front. That is the
+   *  "stagnant 0".
+   *
+   *  THE TEXT IS THE STATE WHILE SOMEBODY IS TYPING and the number is derived from
+   *  it, so an empty field stays empty for exactly as long as it takes to type the
+   *  next digit. ⚠ `onBlur` writes back what will ACTUALLY be saved, so a field
+   *  left empty settles at its floor rather than showing nothing and meaning zero.
+   *  ⚠ And the bounds are the SERVER'S own (`classFields` in the action: price
+   *  ≤ 1,000,000, capacity 1–500, pay ≤ 200,000), so the form cannot hand over a
+   *  number Zod would refuse. */
+  const numberOf = (text: string, min: number, max: number) => Math.min(max, Math.max(min, Math.trunc(Number(text) || 0)));
+  const [priceText, setPriceText] = useState(String(existing?.priceInr ?? 300));
+  const priceInr = numberOf(priceText, 0, 1000000);
+  const [capacityText, setCapacityText] = useState(String(existing?.capacity ?? 16));
+  const capacityInput = numberOf(capacityText, 1, 500);
   /* ── WHICH MEMBERSHIPS PAY FOR A SEAT HERE (19 Sep 2026, the user: "from form
      should be able toggle whether studio and artist memberships are allowed or
      not"). Two booleans on the class; the database is what enforces them when a
@@ -286,7 +318,8 @@ export function ClassForm({
   /* ── WHO IS TAKING IT, for a studio (18 Sep 2026): anyone on DanceOS, asked ── */
   const artistClaim = claims.find((c) => c.kind === "artist");
   const [teacher, setTeacher] = useState<{ id: string; name: string } | null>(artistClaim ? { id: artistClaim.userId, name: artistClaim.personName } : null);
-  const [artistPayInr, setArtistPayInr] = useState(artistClaim?.payPerSessionInr ?? 0);
+  const [artistPayText, setArtistPayText] = useState(String(artistClaim?.payPerSessionInr ?? 0));
+  const artistPayInr = numberOf(artistPayText, 0, 200000);
 
   const [state, formAction, isPending] = useActionState(isEdit ? updateClassAction : createClassAction, initialState);
 
@@ -327,14 +360,32 @@ export function ClassForm({
 
   const basicsOk = style.length > 0 && date.length > 0 && endTime > startTime;
   /* the first missing answer, in the words the button will wear (15573-15578) */
+  /** ⚠ EDITING AN OLD CLASS IS NOT BACKDATING. A class that has already run may
+   *  still have its price, its poster or its people corrected, so the rule bites
+   *  only when the start has MOVED from what this class already had — the form is
+   *  the one place that knows that, which is why the server enforces it on CREATE
+   *  and leaves UPDATE to this. */
+  const keptItsOwnStart = Boolean(
+    existing?.session && date === toDateInput(existing.session.startsAt) && startTime === toTimeInput(existing.session.startsAt)
+  );
+  const startsInThePast = Boolean(date) && !keptItsOwnStart && startHasGone(date, startTime);
+
+  /** ⚠ DOES THIS SAVE ASK ANYBODY? (28 Sep 2026) — an artist wanting a studio's
+   *  room, or a studio naming somebody other than itself as the teacher. Both are
+   *  a REQUEST; a class with nobody to wait for is only a draft, and the button
+   *  and the confirm sheet both read off this one answer so they cannot disagree. */
+  const asksSomebody = (atStudio && !ownVenue) || (!isArtist && teacher !== null && !selfTeacher);
+
   const stepOneErr = !style
     ? "Pick a dance style"
     : !level
       ? "Pick a level"
       : !date
         ? "Pick a date"
-        : endTime <= startTime
-          ? "End after the start"
+        : startsInThePast
+          ? "That start has already gone — pick a time ahead"
+          : endTime <= startTime
+            ? "End after the start"
           : !isArtist && rooms.length > 0 && !roomId
             ? "Pick a room"
             : atStudio && !venue
@@ -413,7 +464,12 @@ export function ClassForm({
           <>
             <div style={labelStyle}>1 · CLASS DATE &amp; TIME</div>
             <div style={{ fontSize: 12, color: SUB, marginBottom: 4 }}>Date</div>
-            <input type="date" value={date} onChange={(e) => setDate(e.target.value)} aria-label="Class date" style={{ ...inputStyle, colorScheme: "dark" }} />
+            {/* ⚠ `min` IS THE PICKER'S OWN FLOOR (28 Sep 2026) — it stops the
+                commonest backdate before it is typed, and `startsInThePast` is
+                the rule, because a date alone cannot tell you that 19:00 today
+                has already gone. An EXISTING class keeps whatever date it has;
+                the floor only limits what can be picked next. */}
+            <input type="date" min={istToday()} value={date} onChange={(e) => setDate(e.target.value)} aria-label="Class date" style={{ ...inputStyle, colorScheme: "dark" }} />
             <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div style={{ fontSize: 12, color: SUB, marginBottom: 4 }}>Starts</div>
@@ -651,7 +707,7 @@ export function ClassForm({
                 {isOwner && teacher && !selfTeacher && (
                   <>
                     <div style={labelStyle}>WHAT A SESSION PAYS THEM</div>
-                    <input type="number" min={0} max={200000} step={50} value={artistPayInr} aria-label="What a session pays the artist" onChange={(e) => setArtistPayInr(Math.max(0, Number(e.target.value) || 0))} style={inputStyle} />
+                    <input type="number" min={0} max={200000} step={50} value={artistPayText} aria-label="What a session pays the artist" onChange={(e) => setArtistPayText(e.target.value)} onBlur={() => setArtistPayText(String(artistPayInr))} style={inputStyle} />
                     {/* ⚠ ONE CLAUSE KEPT, AND IT IS A MONEY CLAIM — Step 13's own
                         limit, which nothing else on this screen states: the number
                         is a record, not a transfer. The rest of the paragraph said
@@ -676,14 +732,14 @@ export function ClassForm({
                 </div>
               </div>
             ) : (
-              <input type="number" min={1} value={capacityInput} onChange={(e) => setCapacityInput(Math.max(1, Number(e.target.value) || 1))} aria-label="Capacity" style={inputStyle} />
+              <input type="number" min={1} max={500} value={capacityText} onChange={(e) => setCapacityText(e.target.value)} onBlur={() => setCapacityText(String(capacityInput))} aria-label="Capacity" style={inputStyle} />
             )}
 
             <div style={labelStyle}>{isArtist ? "6" : "7"} · PRICE</div>
             <div style={{ fontSize: 12, color: SUB, marginBottom: 4 }}>
               ₹ / session <span style={{ color: "var(--muted)" }}>· 0 = free</span>
             </div>
-            <input type="number" min={0} value={priceInr} onChange={(e) => setPriceInr(Math.max(0, Number(e.target.value) || 0))} aria-label="Price per session" style={inputStyle} />
+            <input type="number" min={0} max={1000000} value={priceText} onChange={(e) => setPriceText(e.target.value)} onBlur={() => setPriceText(String(priceInr))} aria-label="Price per session" style={inputStyle} />
             {priceInr === 0 && <div style={{ fontSize: 12, color: "#22C55E", fontWeight: 700, marginTop: 6 }}>This session is free.</div>}
 
             {/* ── MEMBERSHIPS (19 Sep 2026) — the two switches the user asked the
@@ -789,7 +845,15 @@ export function ClassForm({
                     }}
                     style={{ flex: canPublishHere ? 1 : 1.6, padding: "14px", borderRadius: 999, border: "none", background: canPublishHere ? CARD : INK, color: !ok ? "var(--muted)" : canPublishHere ? INK : LILAC, fontWeight: 700, fontSize: 14, cursor: ok ? "pointer" : "default", fontFamily: "inherit" }}
                   >
-                    {isPending ? "Saving…" : atStudio && !ownVenue ? "Save & ask the studio" : !isArtist ? (teacher && !selfTeacher ? "Save & ask them" : "Save draft") : "Save draft"}
+                    {/* ⚠ "SEND REQUEST", NOT "SAVE & ASK" (28 Sep 2026, the user's own
+                        word). The old label named the two things the press does in
+                        the order the CODE does them — it saves a draft, then asks
+                        somebody — and what the person pressing it is doing is
+                        asking. The draft is the mechanism, not the act. The word
+                        is the same whether the ask goes to a teacher or to a
+                        studio, because from here they are one thing: somebody
+                        else has to say yes. */}
+                    {isPending ? (asksSomebody ? "Sending…" : "Saving…") : asksSomebody ? "Send request" : "Save draft"}
                   </button>
                   {canPublishHere ? (
                     <button
@@ -813,8 +877,15 @@ export function ClassForm({
 
       {confirm && !isEdit && !state.ok ? (
         <FormConfirm
-          label={confirm === "publish" ? "Publish this class?" : "Save as draft?"}
-          title={confirm === "publish" ? "Publish this class?" : "Save as draft?"}
+          /* ⚠ THE SHEET ASKS THE QUESTION THE BUTTON ASKED (28 Sep 2026). Where the
+             press sends a request the heading says so; where it only files a draft
+             it still says "Save as draft?", because those are two different acts and
+             one word for both is how the old label misled. ⚠ A braced JSX comment
+             here would be a CHILD, and a child in an attribute list is a parse
+             error — and writing the braced form INSIDE this comment closed it
+             early, which is the same trap one layer down. */
+          label={confirm === "publish" ? "Publish this class?" : asksSomebody ? "Send this request?" : "Save as draft?"}
+          title={confirm === "publish" ? "Publish this class?" : asksSomebody ? "Send this request?" : "Save as draft?"}
           sub={
             confirm === "publish"
               ? "It'll be added to your calendar and go live on Discover."
@@ -828,7 +899,7 @@ export function ClassForm({
                       ? `${teacher.name} will be asked to take it. Only you can see the draft until they say yes and you publish.`
                       : "Only you can see drafts — edit anytime from the register's Drafts tab."
           }
-          confirmWord={confirm === "publish" ? "Publish it" : atStudio && !ownVenue ? "Save & ask" : teacher && !isArtist && !selfTeacher ? "Save & ask" : "Save draft"}
+          confirmWord={confirm === "publish" ? "Publish it" : asksSomebody ? "Send request" : "Save draft"}
           busy={isPending}
           spend={false}
           onCancel={() => setConfirm(null)}

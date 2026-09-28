@@ -2,7 +2,87 @@
 
 ## LAST SESSION (28 Sep 2026) — replaced on every push (Rule 13)
 
-> ### THE THREE THINGS THE LAST PUSH SAID IT HAD NOT BUILT (28 Sep 2026, latest) — BUILT, no migration
+> ### FOUR THINGS, AND THE ONE THAT NEEDED BOTH HALVES (28 Sep 2026, latest) — ⚠ ONE MIGRATION APPLIED (`20260928100000`, dry-run 22/22 this morning, read back live **10/10**)
+> The user: *"1. should not be able to create a class in backdate 2. as soon as
+> the teacher confirms the class they should get access to attendance. 3. save &
+> ask button in add class form to be changed to send request. 4. fix both what a
+> session pays them and price fields while typing 0 becomes stagnant. fix these
+> first and push to live."*
+> * ⚠⚠ **2 WAS THE HELD MIGRATION, AND ASKING FOR THE BEHAVIOUR IS ASKING FOR
+>   IT.** `check_in` asks `can_run_register_for_class`, so no line the app draws
+>   could widen it — `20260928100000` was written this morning, dry-run 22/22 and
+>   held with its whole list in NEXT TO DO #0av. It is applied: one definer
+>   function, one `before insert or update **of kind**` trigger, and the backfill.
+>   ⚠ **The catalog was re-read before the apply rather than remembered** — 29
+>   rows to flip, all 29 confirmed, exactly what the dry run predicted — and read
+>   back off the LIVE catalog afterwards, **10/10**: all 55 live artist claims
+>   hold it, **assistants untouched at 5**, **refunds untouched at 12** (running
+>   the door is not deciding money), a new assistant claim still born WITHOUT it,
+>   becoming the artist granting it, an owner still able to switch it OFF, and
+>   re-saving an unchanged kind not switching it back on. ⚠ Its first probe run
+>   met `class_people_one_live_artist` on a class that already had a teacher —
+>   the harness, not the product, and **the row it left was cleared off
+>   production** by the re-run's first check.
+> * ⚠⚠ **AND THE MIGRATION WAS ONLY HALF OF IT — THE PAGE WAS NARROWING TOO, AND
+>   ONLY DRIVING IT FOUND THAT.** With the trigger live, `can_run_register_for_class`
+>   answered **true** for the confirmed teacher and the class page still drew **no
+>   Attendance tab**: `mayRunRegister` in `/c/[slug]` read
+>   `myClaim.kind === "assistant"` — a narrowing the DATABASE has never had, which
+>   reads a confirmed row holding `can_attendance` whatever its kind. ⚠ **It is
+>   the 28 Sep fix in a second coat**: that line was written to give an assistant
+>   the tab and it shut out the one person the class is named after. A green
+>   migration and a green typecheck were both true while the feature did nothing.
+> * **1 · NO BACKDATING, AND THE TEST IS THE START INSTANT.** A date alone cannot
+>   say that 19:00 today has already gone, so the rule compares the moment the
+>   session begins, in IST, with now — ⚠ with a minute of slack on both sides, so
+>   the form's clock and the action's cannot disagree by a second and leave
+>   somebody with a button that does nothing. The picker carries `min` (today in
+>   IST) and the button NAMES the refusal, which is this form's own grammar.
+>   ⚠ **CREATE only, server-side, and that is a decision**: a class that has
+>   already RUN stays editable — its price and its people are still somebody's to
+>   correct — so what stops a class MOVING backwards is the form, the one place
+>   that knows what the session used to be. ⚠ **And the DATABASE still allows it**:
+>   `create_class_with_session` takes any instant, so a direct PostgREST caller can
+>   still backdate. Said out loud rather than implied; it is a migration and a
+>   separate approval. ⚠ The two clock helpers are MODULE-LEVEL, because
+>   `Date.now()` may not be called in a component body under this repo's
+>   `react-hooks/purity` rule.
+> * **3 · "SEND REQUEST", NOT "SAVE & ASK".** The old label named the two things
+>   the press does in the order the CODE does them — it saves a draft, then asks
+>   somebody — and what the person pressing it is DOING is asking. The draft is
+>   the mechanism, not the act. ⚠ The confirm sheet moved with it (**"Send this
+>   request?"**), and a save that asks NOBODY still says "Save as draft?", because
+>   those are two different acts and one word for both is how the old label misled.
+>   `asksSomebody` is declared once so the button and the sheet cannot disagree.
+> * ⚠⚠ **4 · THE "STAGNANT 0" WAS A NUMBER STATE, AND A NUMBER STATE CAN NEVER BE
+>   EMPTY.** `value={priceInr}` against `Number(e.target.value) || 0`: backspace
+>   the field to nothing and `Number("")` is 0, so React put the 0 straight back
+>   on the next render. The field could not be cleared, and the only way to type
+>   300 over it was to leave the 0 sitting in front. **The TEXT is the state while
+>   somebody is typing and the number is derived**, so an empty field stays empty
+>   for as long as it takes to type the next digit; ⚠ `onBlur` writes back what
+>   will actually be SAVED, so a field left empty settles at its floor rather than
+>   showing nothing and meaning zero. ⚠ The bounds are the SERVER'S own, so the
+>   form cannot hand over a number Zod would refuse. Capacity went with them —
+>   identical expression, one line away, and fixing two of three would have been
+>   arbitrary.
+> * **Verified:** typecheck 0 · lint 0 · `next build` green · the live read-back
+>   **10/10** · **3/3 proofs** (`attendance`, `classes`, `rooms-people`) ·
+>   **`shoot-register` 41/41** (23 before — the eighteen new ones drive all four
+>   asks on the real form: the picker's floor, a class dated three days ago
+>   refused BY NAME, both number fields cleared and typed into and settled on
+>   blur, the button and the sheet reading Send request with **nothing anywhere
+>   still saying Save & ask**, and then the teacher confirming and seeing the
+>   Attendance tab and the register open) · **`shoot-tiles` 155/155** ·
+>   **`shoot-hero` 191/191** · **the whole e2e suite 58/58 in ONE run on one
+>   worker, no red at any point.**
+> * ⚠ **AND THE JSX-COMMENT TRAP FOR THE FIFTH TIME, IN A NEW VARIANT.** The
+>   attribute-position comment was right (a bare `/* … */`, not a braced child) —
+>   and its own TEXT contained the closing sequence, which ended the comment early
+>   and gave seven parse errors from one line. **A comment about a comment has to
+>   avoid writing the thing it is about.**
+
+> ### THE THREE THINGS THE LAST PUSH SAID IT HAD NOT BUILT (28 Sep 2026, earlier) — BUILT, no migration
 > The user: *"solve all options which are not built from previous chat. give me
 > suggestions for the point related to classes. dont touch the 4 sandbox items."*
 > So: the three things the 28 Sep records named as NOT done, and the class one is
@@ -7232,7 +7312,25 @@ summary; the report has the evidence.
    * ⚠ **Nothing is written until they answer**, and then the migration's own
      list goes in front of them before `db push`, as always.
 
-0av. **⚠⚠ ONE MIGRATION WRITTEN, DRY-RUN 22/22 AND HELD FOR THE USER'S WORD —
+0av. **~~ONE MIGRATION WRITTEN, DRY-RUN 22/22 AND HELD~~ — ✅ APPLIED 28 Sep 2026**
+   on the user's *"as soon as the teacher confirms the class they should get
+   access to attendance … fix these first and push to live"*, which is the
+   behaviour this migration and only this migration provides. ⚠ The catalog was
+   re-read before the apply rather than trusted from the morning: **29 rows to
+   flip, all 29 confirmed**, exactly what the dry run predicted. `db-push -DryRun`
+   listed exactly the one file; read back off the LIVE catalog **10/10**
+   (`readback2.js`, scratchpad). ⚠⚠ **AND THE MIGRATION WAS ONLY HALF OF IT** —
+   `mayRunRegister` in `/c/[slug]` still read `myClaim.kind === "assistant"`, a
+   narrowing the database has never had, so the RPC answered true and the page
+   drew no tab; found by driving it, and the whole reason `shoot-register` now
+   ends with a teacher confirming and opening the register. ⚠ **What is left and
+   is NOT owed to anybody: `set_class_person_powers` still cannot be reached for
+   an ARTIST claim from any screen** — `AssistantControls` renders for
+   `kind === 'assistant'` alone — so the "an owner may take it back" half of this
+   rule is true in the database and has no control on top of it. A backlog row
+   carries it. The list as it went to the user is kept below.
+
+0av-old. **⚠⚠ ONE MIGRATION WRITTEN, DRY-RUN 22/22 AND HELD FOR THE USER'S WORD —
    `20260928100000_the_person_taking_a_class_holds_its_register`.** ⚠ Rule 9:
    it widens who may run a class's door. **It is the only pending file** (checked:
    every other local migration has a remote counterpart), and `db-push` applies
@@ -8745,6 +8843,29 @@ for the database schema. **The UI is not redesigned** — see Rule 2.
 
 ### Progress tracker — update after EVERY push (Rule 11)
 
+- **FOUR THINGS, AND THE ONE THAT NEEDED BOTH HALVES — 28 Sep 2026, no step
+  number ⚠ (Rule 9: the migration widens who may run a class's door) — ONE
+  MIGRATION APPLIED (`20260928100000`), read back live 10/10.** The user's list
+  of four. ⚠⚠ **Item 2 WAS the held migration** — nothing the app draws can widen
+  `can_run_register_for_class` — so asking for the behaviour is asking for it;
+  the catalog was re-read before the apply (29 rows, all confirmed, exactly what
+  the dry run predicted) and read back after. ⚠⚠ **And the migration was only
+  half: `mayRunRegister` on the class page read `kind === "assistant"`**, a
+  narrowing the database never had, so the RPC answered TRUE for the confirmed
+  teacher while the page drew no tab — the 28 Sep fix in a second coat, found
+  only by driving it. **No backdating**: the test is the START INSTANT, not the
+  date, with a minute of slack so the form and the action cannot disagree —
+  ⚠ CREATE only server-side, because a class that has already run stays
+  editable, and ⚠ the DATABASE still allows it, which is said rather than
+  implied. **"Send request", not "Save & ask"** — the old label named the
+  mechanism, not the act — with the confirm sheet moved to match and a save that
+  asks nobody still reading "Save as draft?". ⚠⚠ **And the "stagnant 0" was a
+  NUMBER state, which can never be empty**: the text is the state while typing
+  and the number is derived, with `onBlur` writing back what will be saved.
+  **typecheck 0 · lint 0 · build green · 10/10 read-back · 3/3 proofs ·
+  `shoot-register` 41/41 · `shoot-tiles` 155/155 · `shoot-hero` 191/191 · the
+  whole e2e suite 58/58 in one run.** ⚠ The JSX-comment trap for the FIFTH time,
+  in a new variant: the comment's own text contained the closing sequence.
 - **THE THREE THINGS THE LAST PUSH SAID IT HAD NOT BUILT — 28 Sep 2026, no step
   number — BUILT, no migration.** The user: *"solve all options which are not
   built from previous chat."* ⚠⚠ **A register had no scanner at all**, so the
@@ -13365,6 +13486,7 @@ nothing to lift.
 | Gap | Prototype ref | Closes with |
 |-----|--------------|-------------|
 | ⚠⚠ **A MEMBERSHIP CANNOT BE TAKEN OFF SALE (found 28 Sep 2026 by the dead-code sweep).** `delete_membership` exists in the database, `deleteMembership` in the repository and `deleteMembershipAction` as a server action — and **no screen offers any of them**, so once a seller creates a membership it is on their public page for ever. `total_count` counts passes SOLD rather than passes live, so it cannot be used to close one either. ⚠ The action is KEPT unused on purpose rather than swept, because deleting it would bury the gap | S_memberships 16846 | a Remove / Take off sale control on the memberships desk — one button, the door already exists all the way down |
+| **The four fixes — what they left (28 Sep 2026):** ⚠ **A class can still be backdated through the DATABASE**: the rule lives in the form and in `createClassSchema`, and `create_class_with_session` takes any instant, so a direct PostgREST caller is unaffected. It is a trigger and its own approval, not a line in the action. ⚠ **And the rule is CREATE-only server-side** — moving an existing class into the past is refused by the form alone, because a class that has already run must stay editable and the server would need an extra read to tell the two apart. ⚠ **`set_class_person_powers` has no screen for an ARTIST claim**: the migration makes the register a DEFAULT an owner may take back, and `AssistantControls` renders for `kind === 'assistant'` only — so the taking-back half exists in the database with no control on top of it. ⚠ **The same "stagnant 0" lives in the two ROOM capacity fields** (`RoomsManager`, and the New-studio sheet in `BusinessHub`): identical expression, different screen, and they hold their rooms in an ARRAY, so the one-field fix does not transfer without reshaping that state | — | a trigger when somebody asks; the artist powers chip; the room fields next time that screen is opened |
 | **The scanner, the seller's face and the `<h1>` sweep — what they left (28 Sep 2026):** ⚠ **the seller's photo is on the pass you HOLD and nowhere else** — the class page's "which pass pays for this" row still names the business in words, because a face there is a second read on the class page for a row seen only while booking; the membership's own usage page and a studio's desk are the SELLER's, so the page is already theirs. ⚠ **`PeoplePicker.onScanned` looks the person up a SECOND time** — the sheet resolved them a moment earlier and `onCode` hands back only the id; harmless (it also re-checks the exclusion list) and one round trip that need not happen. ⚠ **Two screens no probe drives**: `/e/{slug}`'s heading and the event manager's — `EventCard as="h1"` and the manager's own `<h1>` are covered by typecheck, lint and the build alone, because building a published event needs an organization with a live ₹5,000 mandate, which is more set-up than the check is worth today. ⚠ **The scanner has no walk-in to offer** — see the row above and #0aw. ⚠ And **`shoot-register` drives the PASTE field, not the camera**: `BarcodeDetector` does not exist in headless Chromium (nor in Chromium on Windows at all), so the decode itself is still proven only by a real phone — the path after the decode is identical and is what this measures | — | #0aw; a face on the pass picker if anybody asks |
 | ⚠⚠ **A STUDIO CANNOT ADD A WALK-IN STUDENT (R44's own leftover, re-confirmed 28 Sep 2026).** The students desk is a CONSEQUENCE — checked in here, or holding a pass — so a person who is not on DanceOS cannot be recorded at all. `createLeadAction`, `updateLeadAction`, `LEAD_STAGES`, `LEAD_TINT` and `LEAD_SOURCES` all survive with no caller; the `leads` rows, columns and both write doors are intact. ⚠ Kept unused on purpose, for the same reason as the row above | S_people 17293 | put the add form back (R44 says it is one screen), or delete the half that is pretending to be there — the user's call |
 | **The doorless routes, recorded so a sweep does not take them (28 Sep 2026):** six routes nothing in the app links to — `/managed`, `/business/{id}/media`, `/business/{id}/classes/new`, `/business/{id}/events/new`, `/business/earnings` and the org tombstones. ⚠ **All correct under Rule 14** (a handed-out link is a promise, and the installed TWA reopens on its last URL); `/media` and both `…/new` forms are driven BY URL by `shoot-hero` / `shoot-tiles` so they cannot rot. Each now carries a `⚠ NO DOOR` header with the date and the reason | — | nothing; the markers are the fix |

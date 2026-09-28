@@ -70,12 +70,41 @@ const endsAfterStart = {
   message: "The class has to end after it starts",
 };
 
+/** India-only for now — a picked date + time means IST. */
+const toIst = (date: string, time: string): string => `${date}T${time}:00+05:30`;
+
+/** ⚠⚠ NO BACKDATING (28 Sep 2026, the user: "should not be able to create a class
+ *  in backdate").
+ *
+ *  ⚠ THE TEST IS THE START INSTANT, NOT THE DATE. A class at 19:00 today is
+ *  already gone at 20:00, and a date-only rule waves that straight through — so
+ *  this compares the moment the session begins, in IST, with now.
+ *
+ *  ⚠ A MINUTE OF SLACK, on purpose: the form reads the clock when it renders and
+ *  this action reads it when the press lands, and somebody saving a class for
+ *  "in a moment" must not be refused for being three seconds late.
+ *
+ *  ⚠ CREATE ONLY, AND THAT IS A DECISION. A class that has already RUN stays
+ *  editable — its price, its poster and its people are all still somebody's to
+ *  correct — so refusing every past start on UPDATE would trap anybody fixing an
+ *  old class. What stops a class MOVING backwards is the form, which is the only
+ *  place that knows what the session used to be.
+ *
+ *  ⚠ AND THE DATABASE STILL ALLOWS IT: `create_class_with_session` takes any
+ *  instant, so a direct PostgREST caller can still backdate. That is a migration
+ *  and a separate approval, not a line here — said out loud rather than implied. */
+const startsInFuture = {
+  check: (d: { date: string; startTime: string }) => new Date(toIst(d.date, d.startTime)).getTime() > Date.now() - 60_000,
+  message: "That start has already gone — pick a date and time ahead",
+};
+
 const createClassSchema = classFields
   .extend({
     tenantId: z.string().uuid(),
     status: z.enum(["draft", "published"]),
   })
-  .refine(endsAfterStart.check, { message: endsAfterStart.message });
+  .refine(endsAfterStart.check, { message: endsAfterStart.message })
+  .refine(startsInFuture.check, { message: startsInFuture.message });
 
 const updateClassSchema = classFields
   .extend({
@@ -83,9 +112,6 @@ const updateClassSchema = classFields
     classId: z.string().uuid(),
   })
   .refine(endsAfterStart.check, { message: endsAfterStart.message });
-
-/** India-only for now — a picked date + time means IST. */
-const toIst = (date: string, time: string): string => `${date}T${time}:00+05:30`;
 
 /** Who the form says is on this class. Parsed separately from the class fields
  *  because a bad people payload must never stop the class itself saving. */

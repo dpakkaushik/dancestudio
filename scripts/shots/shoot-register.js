@@ -98,6 +98,20 @@ const scanLink = async (page, personId) => {
   await page.getByRole("button", { name: "Use link" }).click();
 };
 
+/** the app's one dropdown, an in-app sheet since 27 Sep — the e2e's own helper */
+const pick = async (page, label, option) => {
+  await page.getByRole("button", { name: label, exact: true }).first().click();
+  const row = page.getByRole("option", { name: option, exact: true });
+  await row.or(page.getByRole("button", { name: option, exact: true })).first().click();
+};
+
+/** a date in IST, `n` days from now, in the shape the date input wants */
+const istDay = (n) =>
+  new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Kolkata", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date(Date.now() + n * 86400000));
+
+/** what a number field actually holds right now */
+const valueOf = (page, label) => page.getByLabel(label).inputValue();
+
 (async () => {
   const stamp = Date.now().toString(36);
   const made = { users: [], businesses: [] };
@@ -245,6 +259,108 @@ const scanLink = async (page, personId) => {
       const h = await headingOf(page);
       check(h.count === 1 && h.text.length > 0, `${what} (${route}) has exactly one named <h1> — ${h.count === 1 ? `"${h.text}"` : `found ${h.count}`}`);
     }
+
+    /* ── 5. THE CLASS FORM: NO BACKDATING, THE NUMBER FIELDS, AND THE WORD ──
+       28 Sep 2026, the user: "should not be able to create a class in backdate …
+       save & ask button in add class form to be changed to send request … fix
+       both what a session pays them and price fields while typing 0 becomes
+       stagnant." All three are drivable here, on the real form. */
+    await page.goto(`${BASE}/business/${studio.id}/classes/new`, { waitUntil: "networkidle" });
+
+    /* the picker's own floor — today in IST, so yesterday cannot be chosen at all */
+    check((await page.getByLabel("Class date").getAttribute("min")) === istDay(0), `the date picker's floor is today in IST (${istDay(0)})`);
+
+    /* ⚠ AND THE RULE IS THE START INSTANT, not the date: a date alone cannot say
+       that 19:00 today has already gone. A past date is refused BY NAME — the
+       button wears the missing answer, which is this form's own grammar. */
+    await page.getByLabel("Class date").fill(istDay(-3));
+    await page.getByLabel("Dance style", { exact: true }).click();
+    await page.getByRole("button", { name: "Hip-Hop", exact: true }).click();
+    const backdatedBtn = page.getByRole("button", { name: /already gone/ });
+    await backdatedBtn.waitFor({ timeout: 20000 });
+    check(true, "⚠ a class dated three days ago cannot go on — the button names the refusal");
+
+    await page.getByLabel("Class date").fill(istDay(4));
+    await page.getByRole("button", { name: "Continue", exact: true }).waitFor({ timeout: 20000 });
+    check(true, "…and a date ahead lets it through");
+    await page.getByRole("button", { name: "Continue", exact: true }).click();
+
+    /* ⚠⚠ THE NUMBER FIELDS (the "stagnant 0"). Holding these as numbers made the
+       field impossible to empty — `Number("")` is 0, so React put the 0 straight
+       back and the only way to type over it was to leave it in front. The test is
+       the one a person actually does: clear it, then type. */
+    const price = page.getByLabel("Price per session");
+    await price.fill("");
+    check((await valueOf(page, "Price per session")) === "", "⚠ the price field can be CLEARED — the 0 no longer snaps back");
+    await price.fill("300");
+    check((await valueOf(page, "Price per session")) === "300", `the price reads exactly 300, not 0300 (read "${await valueOf(page, "Price per session")}")`);
+    await price.blur();
+    check((await valueOf(page, "Price per session")) === "300", "and it still says 300 after leaving the field");
+    await price.fill("");
+    await price.blur();
+    check((await valueOf(page, "Price per session")) === "0", "⚠ a field left empty settles at its floor on blur — it never means one thing and says another");
+    await price.fill("0");
+
+    /* ⚠ THE PAY FIELD ONLY EXISTS ONCE THERE IS SOMEBODY TO PAY — it is drawn
+       inside the teacher block, so the person is picked first. Found by running
+       this: the field simply was not on the page yet. */
+    await page.getByLabel("Search DanceOS for who takes this class").fill(stranger.name);
+    await page.getByRole("button", { name: `${stranger.name} takes this class` }).click();
+
+    const pay = page.getByLabel("What a session pays the artist");
+    await pay.waitFor({ timeout: 20000 });
+    await pay.fill("");
+    check((await valueOf(page, "What a session pays the artist")) === "", "⚠ the session-pay field can be CLEARED too");
+    await pay.fill("900");
+    check((await valueOf(page, "What a session pays the artist")) === "900", `the pay reads exactly 900 (read "${await valueOf(page, "What a session pays the artist")}")`);
+    await pay.fill("0");
+    await pay.blur();
+
+    /* ⚠ THE WORD: "Send request", not "Save & ask" — what the person pressing it
+       is DOING is asking somebody; the draft is the mechanism, not the act. */
+    const sendBtn = page.getByRole("button", { name: "Send request", exact: true });
+    await sendBtn.waitFor({ timeout: 20000 });
+    check(true, "the form's own button reads Send request");
+    check((await page.getByRole("button", { name: /Save & ask/ }).count()) === 0, "…and nothing anywhere still says Save & ask");
+    await sendBtn.click();
+    const confirmSheet = page.getByRole("dialog", { name: "Send this request?" });
+    await confirmSheet.waitFor({ timeout: 20000 });
+    check(true, "the confirm sheet asks the same question the button asked");
+    await confirmSheet.getByRole("button", { name: "Send request", exact: true }).click();
+    await page.waitForURL(/\/classes$/, { timeout: 30000 });
+    check(true, "the request is sent and the register is underneath it");
+
+    /* ── 6. AS SOON AS THE TEACHER CONFIRMS, THEY HOLD THE REGISTER ──────────
+       28 Sep 2026, the user: "as soon as the teacher confirms the class they
+       should get access to attendance." This is the half the app cannot do:
+       `check_in` asks `can_run_register_for_class`, which reads the claim's
+       `can_attendance` — false by default until the migration applied today. */
+    const asked = (await rows(owner.h, `class_people?business_id=eq.${studio.id}&user_id=eq.${stranger.id}&kind=eq.artist&deleted_at=is.null&select=id,class_id,can_attendance,status`))[0];
+    check(Boolean(asked), "the studio's request reached the person by name");
+    check(asked.can_attendance === true, "⚠⚠ the claim is BORN holding attendance — the rule is on the row, so every door that makes one gets it");
+    await rpc(stranger.h, "respond_to_class_ask", { p_class_person_id: asked.id, p_accept: true });
+    await patch(owner.h, `classes?id=eq.${asked.class_id}`, { status: "published" });
+    const slug2 = (await rows(owner.h, `classes?id=eq.${asked.class_id}&select=share_slug`))[0].share_slug;
+
+    /* the database's own answer first, then the screen's */
+    const mayRun = await rpc(stranger.h, "can_run_register_for_class", { p_class_id: asked.class_id });
+    check(mayRun === true, "⚠ the DATABASE says the person taking the class may run its register");
+
+    const sCtx = await browser.newContext({ viewport: { width: 430, height: 932 } });
+    const sPage = await sCtx.newPage();
+    sPage.on("pageerror", (e) => errs.push(`PAGEERROR ${e.message}`));
+    await sPage.goto(`${BASE}/login/email`, { waitUntil: "networkidle" });
+    await sPage.locator('input[name="email"]').fill(stranger.email);
+    await sPage.locator('input[name="password"]').fill(PASSWORD);
+    await sPage.getByRole("button", { name: "Sign in" }).click();
+    await sPage.waitForURL((u) => !/\/login/.test(u.pathname), { timeout: 30000 });
+    await sPage.goto(`${BASE}/c/${slug2}`, { waitUntil: "networkidle" });
+    const attTab = sPage.getByRole("button", { name: "Attendance" });
+    await attTab.waitFor({ timeout: 20000 });
+    check(true, "⚠⚠ and the TEACHER sees the Attendance tab on the class they confirmed — which is the whole of the ask");
+    await attTab.click();
+    await sPage.getByText("LIVE REGISTER", { exact: false }).waitFor({ timeout: 20000 });
+    check(true, "…and the register itself opens for them, not a refusal");
 
     check(errs.length === 0, `no page or console error anywhere${errs.length ? ` — ${errs.slice(0, 3).join(" · ")}` : ""}`);
   } finally {

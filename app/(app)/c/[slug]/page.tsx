@@ -121,11 +121,21 @@ export default async function ClassSharePage({
      with the job either PER CLASS (`myClaim`) or STANDING on the Team desk
      (`seat`) — the same OR `can_run_register_for_class` applies, so the tab
      appears exactly where the RPC would answer. The RPC re-checks every row. */
+  /* ⚠⚠ AND `kind === "assistant"` WENT (28 Sep 2026, the user: "as soon as the
+     teacher confirms the class they should get access to attendance").
+     `can_run_register_for_class` has never cared which kind the claim is — it
+     reads a CONFIRMED row holding `can_attendance`, full stop — so that clause
+     was a narrowing the database never had, and it shut out the one person the
+     class is named after. It is the same mistake as the line above it in a
+     second coat: the fix was written for the kind that was complained about
+     (assistants) and not for the other kind that shares the rule. Found by
+     driving it: `can_run_register_for_class` answered TRUE for the confirmed
+     teacher while the page drew no tab at all.
+     ⚠ `20260928100000` is what makes this reachable — an artist claim is born
+     holding attendance now — and this is the half no migration could do. */
   const mayRunRegister =
     canManage ||
-    (myClaim?.status === "confirmed" &&
-      myClaim.kind === "assistant" &&
-      (myClaim.canAttendance || Boolean(seat?.canAttendance)));
+    (myClaim?.status === "confirmed" && (myClaim.canAttendance || Boolean(seat?.canAttendance)));
 
   /* ONE ROUND TRIP FOR THE FIVE INDEPENDENT READS (19 Sep 2026, the user: "make
      app snappier") — they used to run one after another, four serial waits on

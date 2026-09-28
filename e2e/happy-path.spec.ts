@@ -944,8 +944,12 @@ test.describe.serial("DanceOS, end to end", () => {
     // Publish at all for a studio, and says what the save will do.
     await expect(owner.getByRole("button", { name: "Publish class" })).toHaveCount(0);
     await expect(owner.getByText(new RegExp(`Saved as a draft\\. ${trainerName} is asked`))).toBeVisible();
-    await owner.getByRole("button", { name: "Save & ask them" }).click();
-    await owner.getByRole("dialog", { name: "Save as draft?" }).getByRole("button", { name: "Save & ask" }).click();
+    // ⚠ "SEND REQUEST", NOT "SAVE & ASK" (28 Sep 2026, the user's own word). The
+    // old label named the two things the press does in the order the CODE does
+    // them; what the person pressing it is doing is asking somebody. The confirm
+    // sheet moved with it — a save that asks nobody still says "Save as draft?".
+    await owner.getByRole("button", { name: "Send request" }).click();
+    await owner.getByRole("dialog", { name: "Send this request?" }).getByRole("button", { name: "Send request" }).click();
 
     // back on the register, and the class is a DRAFT waiting on the person asked
     await owner.waitForURL(/\/business\/[0-9a-f-]+\/classes$/);
@@ -2876,8 +2880,8 @@ test.describe.serial("DanceOS, end to end", () => {
     await owner.getByLabel("Search DanceOS for who takes this class").fill(learnerName);
     await owner.getByRole("button", { name: `${learnerName} takes this class` }).click();
     await owner.getByLabel("Price per session").fill("0");
-    await owner.getByRole("button", { name: "Save & ask them" }).click();
-    await owner.getByRole("dialog", { name: "Save as draft?" }).getByRole("button", { name: "Save & ask" }).click();
+    await owner.getByRole("button", { name: "Send request" }).click();
+    await owner.getByRole("dialog", { name: "Send this request?" }).getByRole("button", { name: "Send request" }).click();
     await owner.waitForURL(/\/business\/[0-9a-f-]+\/classes$/);
 
     // the person asked reads the ask in their own Inbox, naming the studio that
