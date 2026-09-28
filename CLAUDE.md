@@ -183,6 +183,33 @@
 >   does not read its own status is not a cleanup** — this file's own 20 Sep
 >   lesson, and here it cost thirteen days of accumulating admin rights nobody
 >   knew existed.
+> * ⚠⚠ **AND 97 SUBSCRIPTIONS WERE `active` FOR A BUSINESS THAT NO LONGER
+>   EXISTED — TWO OF THEM WITH A LIVE CASHFREE MANDATE.** Found on the way to
+>   deleting the last retired login. 95 were `₹0 granted` comps on proof studios,
+>   untrue but harmless; **two were real**, `granted = false` at ₹1,200/mo, for
+>   `7ft Down` and `Dance Hall` — studios the **26 Sep organization-login
+>   retirement** soft-deleted, so a mandate had been billing for deleted studios
+>   for three days. ⚠ **CASHFREE DOES NOT KNOW WE DELETED ANYTHING**: ending our
+>   row stops nothing, because the mandate is theirs. Both were cancelled at
+>   Cashfree FIRST and the rows brought into line after
+>   (`scripts/end-subscriptions-on-deleted-businesses.js`, dry run first, 2
+>   cancelled / 0 refused, 95 comps expired, **0 left**). ⚠ `CASHFREE_ENV` is
+>   `sandbox`, so this was test money — **the sequence is what matters**, and
+>   getting it backwards on the day the live keys go in is how money keeps
+>   leaving an account nobody is watching. ⚠ The app's own
+>   `admin_end_subscription` was deliberately NOT used: it is gated on
+>   `is_platform_admin()`, which answers the service role with EMPTINESS rather
+>   than an error (10 Sep), and it would have raised ninety-odd notifications to
+>   a test account about studios that do not exist.
+> * ⚠⚠ **AND I TOLD THE USER THAT ACCOUNT WAS EMPTY, WHICH IS WHY THEY SAID
+>   "DO IT" — AND IT WAS NOT.** NEXT TO DO #0az said *"it owns nothing … leaving
+>   it costs nothing but a row"*, reasoned from its organization having been
+>   swept and from nothing else. It held two live mandates, two captured
+>   payments, twelve photos, a verification request and an open support thread,
+>   **all `on delete cascade`** — so the delete would have succeeded silently and
+>   taken them. **A decision the user makes on a premise I supplied is my
+>   premise to check before it is executed**, and the check belonged before the
+>   summary rather than after the instruction.
 > * ⚠ **AND MY OWN SECURITY CHECK AIMED AT THE WRONG ACCOUNT ON ITS FIRST RUN.**
 >   It picked its target with `find(sv-admin) || sample[0]`, and the fallback
 >   resolved to **`ai@eeetaxi.com` — the owner's own real admin address**, the
@@ -7635,27 +7662,34 @@ summary; the report has the evidence.
 
 ## NEXT TO DO — replaced on every push (Rule 13)
 
-0az. **⚠ ONE AUTH ACCOUNT IS HELD BACK, AND IT IS THE USER'S WORD (29 Sep 2026).**
-   The organization/event removal is finished and everything else about it is
-   done. What is left is a single, **irreversible** decision:
-   **`jishnu.nanda@gmail.com` ("Dancing Curve")** is the last auth account still
-   sitting on a soft-deleted `role = 'org'` profile. The other 51 were
-   `@example.com` and are deleted.
-   ⚠ **It is NOT deleted because it is a real address that signed in on 28 Sep**
-   — the day before the sweep — and because the same user, asked about this same
-   set on 27 Sep, answered *"test addresses only"*. Deleting an auth account is
-   the one step in this whole removal with no way back: `auth.users` has no
-   `deleted_at`, so the person simply stops being able to sign in with that
-   address, for ever.
-   ⚠ **What it can still do today:** its PROFILE is soft-deleted, so signing in
-   lands on onboarding and makes a fresh USER profile. It owns nothing — its
-   organization went with the sweep. So leaving it costs nothing but a row.
-   **On their word:**
-```
-   node scripts/delete-retired-org-logins.js            # dry run — names what it would skip
-   # then, to include it, widen DELETABLE in that file (the rail is in the CODE
-   # on purpose) or delete the one account from the Supabase dashboard.
-```
+0az. **~~ONE AUTH ACCOUNT IS HELD BACK~~ — ✅ ENDED AND DELETED 29 Sep 2026**, on
+   the user's *"End the subscriptions, then delete"*. **0 auth accounts remain on
+   a soft-deleted `role = 'org'` profile.**
+   ⚠⚠ **AND THE REASON IT TOOK A SECOND ASK IS THE LESSON: I HAD TOLD THEM THE
+   ACCOUNT WAS EMPTY, AND IT WAS NOT.** This row said *"it owns nothing … so
+   leaving it costs nothing but a row"*, written off the fact that its
+   organization had been swept and without looking at anything else. Checking
+   before the irreversible step found **two Cashfree subscriptions still
+   `status = active` at ₹1,200/mo, `granted = false`, each with a live
+   `provider_subscription_id`**, two captured payment rows, twelve studio
+   photos, a verification request and an OPEN support thread — every one of them
+   `on delete cascade`, so the delete would have succeeded and taken the lot.
+   **The user's "do it" rested on a premise I had supplied and got wrong**, so
+   the right move was to stop and say so rather than to execute it.
+   ⚠ **The order mattered more than the deletion: CASHFREE DOES NOT KNOW WE
+   DELETED ANYTHING.** Marking our row ended stops nothing — the mandate is
+   Cashfree's. Both were cancelled THERE first
+   (`POST /subscriptions/{id}/manage`, action CANCEL), then the rows were
+   brought into line, then the account went. ⚠ `CASHFREE_ENV=sandbox`, so this
+   was test money — **and the sequence is the thing to keep**, because on the
+   day the live keys go in, getting it backwards is how money keeps leaving an
+   account nobody is watching. ⚠ Both studios (`7ft Down`, `Dance Hall`) had
+   been soft-deleted on **26 Sep at 14:47 by the organization-login
+   retirement**, not by anything run today — so a real mandate had been billing
+   for deleted studios for three days before anybody looked.
+   ⚠ **And the rail got a door rather than a hole**: `--also <email>` takes ONE
+   address, matched in full, with no pattern and no `--all`. Widening it has to
+   be a decision about one account, typed out, every time.
 
 0ay. **~~ORGANIZATIONS AND EVENTS: THE MIGRATION AND THE SWEEP ARE HELD~~ — ✅
    APPLIED, SWEPT AND PUSHED 29 Sep 2026**, on the user's *"All of it"* after the

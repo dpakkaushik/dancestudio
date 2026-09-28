@@ -37,6 +37,21 @@ const APPLY = process.argv.includes("--apply");
 /** ⚠ THE RAIL. Only an address matching this is ever deleted. */
 const DELETABLE = /@example\.com$/i;
 
+/** ⚠ THE ONLY WAY PAST THE RAIL, and it must NAME the address.
+ *
+ *  `--also <email>` adds exactly one address, matched in full. There is
+ *  deliberately no pattern, no list file and no "--all": widening the rail has
+ *  to be a decision about one account, typed out, every time. On 29 Sep 2026
+ *  this was used once, for jishnu.nanda@gmail.com, after its two live Cashfree
+ *  mandates had been cancelled — the account looked empty and was not, so the
+ *  flag exists to make that check deliberate rather than habitual. */
+const ALSO = (() => {
+  const i = process.argv.indexOf("--also");
+  return i > -1 && process.argv[i + 1] ? process.argv[i + 1].trim().toLowerCase() : null;
+})();
+const deletable = (email) =>
+  DELETABLE.test(email || "") || (ALSO !== null && (email || "").toLowerCase() === ALSO);
+
 function env() {
   const raw = fs.readFileSync(path.join(__dirname, "..", ".env.local"), "utf8");
   const out = {};
@@ -70,12 +85,21 @@ catch { console.error("This script needs the `pg` client:  npm i -D pg"); proces
       where p.role = 'org' and p.deleted_at is not null
       order by u.email nulls last`);
 
-    const go = rows.filter((r) => DELETABLE.test(r.email || ""));
-    const hold = rows.filter((r) => !DELETABLE.test(r.email || ""));
+    const go = rows.filter((r) => deletable(r.email));
+    const hold = rows.filter((r) => !deletable(r.email));
+    const named = ALSO ? go.filter((r) => (r.email || "").toLowerCase() === ALSO) : [];
 
     console.log(APPLY ? "=== APPLYING — THIS CANNOT BE UNDONE ===\n" : "=== DRY RUN (nothing is deleted) ===\n");
     console.log(`candidates (auth accounts on a soft-deleted 'org' profile): ${rows.length}`);
-    console.log(`  to delete (@example.com)                               : ${go.length}`);
+    console.log(`  to delete (@example.com)                               : ${go.length - named.length}`);
+    if (ALSO) {
+      console.log(`  ⚠ NAMED BY --also (past the rail, deliberately)        : ${named.length}`);
+      for (const n of named) {
+        console.log(`       ${n.email}  "${n.full_name}"  last sign-in ` +
+          `${n.last_sign_in_at ? new Date(n.last_sign_in_at).toISOString().slice(0, 10) : "never"}`);
+      }
+      if (!named.length) console.log(`       ⚠ --also ${ALSO} matched NOTHING in the candidate set`);
+    }
     console.log(`  ⚠ HELD BACK — not a test address                       : ${hold.length}\n`);
 
     for (const h of hold) {
