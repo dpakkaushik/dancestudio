@@ -2,7 +2,92 @@
 
 ## LAST SESSION (28 Sep 2026) — replaced on every push (Rule 13)
 
-> ### THE LOGO IS CONSTANT AT LAST, AND THE PERSON TAKING THE CLASS WAS FILED UNDER ASSISTANTS (28 Sep 2026, latest) — BUILT, no migration
+> ### A POSTER IS A BANNER, AND THE PERSON TAKING A CLASS RUNS IT (28 Sep 2026, latest) — BUILT; ⚠⚠ ONE MIGRATION WRITTEN, DRY-RUN **22/22** AND **HELD FOR THE USER'S WORD** (NEXT TO DO #0av)
+> The user, in two messages: *"MAKE THE POSTER ON BOTH HOME AND PROFILE A
+> RECTANGLE WITH SQUIRCLE FROM SIDES. MAKE SURE TO CHANGE STUDIO DISCOVER TILE
+> ACCORDINGLY. CHECK THE CROP AND VIEW FIX FOR THIS AS WELL. WHEN CLICKING ON ANY
+> PROFILE PIC OR POSTER FROM DISCOVER TO ANY PROFILE SHOULD VIEW THE PIC IN THE
+> CROPPED WAY ONLY"*, and *"USER SHOULD ALSO SEE MANAGE TAB IN CLASSES AS STUDIOS
+> CAN ADD THEM AS THE PERSON TAKING THE CLASS … AND GIVE RIGHTS WHEN CONFIRMED
+> THE INVITE."*
+> * ⚠⚠ **THE TOKENS WERE BUILT FOR THIS, AND SAID SO IN THEIR OWN COMMENT.**
+>   `HERO_HEAD_W`/`HERO_HEAD_H` have been 206 × 206 since 15 Sep with the line
+>   *"make `HERO_HEAD_W` the screen's width and `HERO_HEAD_H` shorter and the
+>   header is a banner"* written beside them — so this is the change that file
+>   predicted, and **exactly one component read the pair**. They are a **RATIO**
+>   now (3:2) rather than a pixel box: the slide takes the rail's whole width and
+>   `aspectRatio` gives it its height, so the banner is **382×255 on the studio's
+>   page** where it was a 206 square, and **352×235 on the Discover card** —
+>   measured, in a browser, not asserted. `HERO_HEAD_RADIUS` is the squircle, and
+>   the 16px the slide holds back on each side is what makes those corners
+>   VISIBLE at all: a full-bleed banner rounds off the edge of the screen, where
+>   nobody can see it.
+> * ⚠⚠ **AND ONE RATIO REACHES SIX SURFACES, WHICH IS THE WHOLE OF "THEY SHOULD BE
+>   THE SAME".** The hero rail, the Discover card's rail, the CROPPER's frame, the
+>   Edit sheet's tiles, the admin's verification strip and the lightbox all read
+>   the same two tokens — **there is no second aspect ratio anywhere in that
+>   path**, so the 27 Sep promise survived a change of shape without a number
+>   being typed twice. ⚠ `shoot-discover` reads **1.5 on the page and 1.5 on the
+>   card**, and the check that the two agree with EACH OTHER is untouched.
+> * ⚠⚠ **THE CROPPER ASSUMED ITS FRAME WAS SQUARE IN SEVEN PLACES.** `W` was doing
+>   duty as both dimensions — `fitOf`, `fillOf`, `clampOff`, the preview box, the
+>   canvas, the backfill and the scale — so a rectangle would have been cut wrong
+>   in a way nothing but an eye would catch. Every one takes a **width and a
+>   height** now. ⚠ **And the frame key is `banner`, not `square`**: a key that
+>   names the wrong shape is the lie this repo keeps paying for.
+> * ⚠ **EVERY PICTURE ALREADY UPLOADED IS A 1:1 CROP, and that is fine BY DESIGN
+>   rather than by luck.** A square drawn into a 3:2 frame under `object-fit:
+>   cover` keeps its middle and loses a little top and bottom, which is what a
+>   cover photo does everywhere. **Nothing is re-cut and nothing is lost** — the
+>   stored object is untouched, so changing this ratio again re-frames every
+>   existing picture with no migration.
+> * ⚠⚠ **THE LIGHTBOX SHOWS THE CROP AND NOTHING ELSE**, which is the user's own
+>   sentence twice over. `contain` on the raw file was right while every upload
+>   was 1:1 and is wrong the moment two generations of crop exist: a legacy 760²
+>   picture is drawn by the page as its middle and would have opened as the whole
+>   square, so the enlarged view would show **more** than the thing you tapped. It
+>   frames to the page's own shape and covers it. ⚠ **The price is said rather
+>   than hidden**: a legacy picture's top and bottom are not reachable from the
+>   viewer. A profile picture passes `frame="disc"` at its three call sites, so
+>   the squircle is still a squircle.
+> * ⚠⚠ **AND THE MANAGE TAB WAS ONLY EVER "DO YOU HAVE AN ARTIST PAGE".** A plain
+>   user CAN be the person taking a studio's class — that is what
+>   `ask_class_person(kind: 'artist')` is for — and their own class appeared under
+>   **Assist**, labelled Teaching. **Teaching is managing and assisting is not**:
+>   the two were one list told apart by a word in the corner of a card. Manage is
+>   offered to anybody who runs something now, and carries the artist's own
+>   register **plus** the classes somebody else's studio put them in front of. ⚠ A
+>   TILE, not a second register: those classes are somebody else's business's, and
+>   you may run the door without being able to publish, price or delete them.
+> * ⚠⚠ **AND THE OTHER HALF IS THE DATABASE'S, SO IT IS HELD — AND COUNTING
+>   PRODUCTION IS WHAT TURNED A COMPLAINT INTO A NUMBER.** `check_in` asks
+>   `can_run_register_for_class`, which admits an owner, a trainer, a standing
+>   grant, or a confirmed claim **holding `can_attendance`** — and
+>   `ask_class_person` defaults that to FALSE while an accepted outside teacher is
+>   seated `visiting_faculty`, which is neither owner nor trainer. **Live today:
+>   54 artist claims, 49 confirmed, 20 holding attendance — so 29 people are down
+>   to take a class whose register they cannot open.** ⚠ Nothing the app draws can
+>   widen that, and **a tab drawn over a refusal is worse than no tab**, so the
+>   fix is a migration and the list goes in front of the user first.
+> * **Verified:** typecheck 0 · lint 0 · `next build` green · **`shoot-discover`
+>   43/43** (the banner measured at both ends) · **`shoot-hero` 191/191** ·
+>   **`shoot-tiles` 155/155** · the held migration's dry run **22/22, rolled
+>   back**, nothing persisted.
+> * ⚠ **AND THE JSX-COMMENT TRAP FOR THE FOURTH TIME IN THIS REPO**, caught in the
+>   same minute: an Edit put `{/* … */}` inside `return (` before the root element,
+>   which is a CHILD and therefore a parse error. ⚠ The mechanical sweep beside it
+>   was done in **Node with `IO.File` and a BOM-less `UTF8Encoding(false)`**, both
+>   anchors asserted and the count checked before a byte was written — **0
+>   mojibake, no BOM, 11 em dashes intact** — which is Rule 17 followed rather
+>   than re-learnt.
+> * ⚠ **Three dry-run reds on the way were all the harness**, and each is a real
+>   constraint doing its job: `without` is a reserved word in Postgres;
+>   `class_people_one_live_per_person` refused my seed (I had reused somebody who
+>   already held a claim on that class); and `class_people_one_live_artist`
+>   refused the next one. The seed picks a class with no live artist and a second
+>   person for the assistant check.
+>
+> ### THE LOGO IS CONSTANT AT LAST, AND THE PERSON TAKING THE CLASS WAS FILED UNDER ASSISTANTS (28 Sep 2026, earlier) — BUILT, no migration
 > The user, in two messages: *"MAKE THE TOP BAR A BIT BIGGER AS WELL WITH BIGGER
 > BUTTONS, MAKE SURE NOT TO SHOW PAGE NAME IN THE TOP BAR NOW dANCE OS lOGO
 > SHOULD BE CONSTANT"*, and then a defect: *"USER SHOULD ALSO SEE MANAGE TAB IN
@@ -6991,6 +7076,58 @@ summary; the report has the evidence.
 
 ## NEXT TO DO — replaced on every push (Rule 13)
 
+0av. **⚠⚠ ONE MIGRATION WRITTEN, DRY-RUN 22/22 AND HELD FOR THE USER'S WORD —
+   `20260928100000_the_person_taking_a_class_holds_its_register`.** ⚠ Rule 9:
+   it widens who may run a class's door. **It is the only pending file** (checked:
+   every other local migration has a remote counterpart), and `db-push` applies
+   EVERY pending file — so a `db push` for anything else takes this with it.
+   **THE WHOLE OF IT, so it is read before it is applied:**
+   * **THE DEFECT, COUNTED RATHER THAN ASSERTED.** The user: *"give rights when
+     confirmed the invite."* `can_run_register_for_class` (`20260920130000`)
+     admits an owner or trainer of the business, a CONFIRMED `class_people` row
+     holding `can_attendance` whatever its kind, or a standing
+     `business_members.can_attendance`. `ask_class_person` defaults
+     `can_attendance` to **false** and lets only an owner pass true, and an
+     outside teacher who accepts is seated **`visiting_faculty`** — neither owner
+     nor trainer. **Live on production: 54 artist claims, 49 confirmed, 20
+     holding attendance — 29 people are down to take a class whose register they
+     cannot open.**
+   * **ONE NEW FUNCTION AND ONE TRIGGER.** `artist_starts_with_attendance()`,
+     definer, executable by NO client role, bound `before insert or update **of
+     kind**` on `class_people`: a row that BECOMES `kind = 'artist'` is born with
+     `can_attendance = true`.
+   * ⚠ **IT IS A DEFAULT, NOT A GRANT** — the same reading of the same word the
+     assistant got on 20 Sep. Admitting `kind = 'artist'` inside
+     `can_run_register_for_class` would make the power ungrantable-away, which is
+     what R38 refused for an owner. `set_class_person_powers` sets the powers and
+     never `kind`, so an owner switching it off is **not** overruled a moment
+     later — proven by the dry run, both ways round.
+   * ⚠ **ATTENDANCE ONLY, NEVER REFUNDS.** Running the door is what taking the
+     class IS; deciding refunds is money and stays the owner's to hand out.
+   * ⚠⚠ **AND IT BACKFILLS THE 29, which is a DECISION rather than housekeeping.**
+     It is safe for one measurable reason: `false` on an artist row can only mean
+     "never granted" here, never "taken away" — **no screen has ever offered an
+     owner the two power chips for an ARTIST claim** (`AssistantControls` renders
+     for `kind === 'assistant'` alone). Without it the fix would reach the next
+     class asked and none of the ones people are already teaching. ⚠ **Say the
+     word if you would rather it did NOT backfill** — that is one statement to
+     delete, and then only new asks get it.
+   * **NOTHING ELSE MOVES**: no table, no column, no policy, no grant, no
+     function's signature or ACL, and `can_run_register_for_class` is not touched
+     at all. Asserted by the dry run, not assumed — **289 → 290 functions, 108
+     policies unchanged, anon's executable set 45 → 45, every existing function's
+     ACL byte-identical**.
+   **On your word:**
+```
+   node dryrunArtistReg.js                                                          # scratchpad — BEGIN … the file … 22 checks … ROLLBACK
+   powershell -NoProfile -ExecutionPolicy Bypass -File scripts/db-push.ps1 -DryRun  # must list exactly 20260928100000
+   powershell -NoProfile -ExecutionPolicy Bypass -File scripts/db-push.ps1 2>&1 | Select-String -NotMatch 'Skipping migration|Warning: failed to cache|prerequisite for local'
+   powershell -NoProfile -ExecutionPolicy Bypass -File scripts/run-proofs.ps1 attendance rooms-people classes
+```
+   ⚠ No PostgREST reload is needed (no column, no table) and no rebuild — the app
+   already reads the register gate; the database simply starts answering it for
+   the person taking the class.
+
 0au. **✅ APPLIED 28 Sep 2026 — `20260928090000_a_role_nobody_has_guards_nobody`**
    (dry run **21/21**, rolled back first; live read-back **10/10**), on the user's
    *"fix the other 2 you mentioned as well and push to live directlt"*. ⚠ The
@@ -8452,6 +8589,47 @@ for the database schema. **The UI is not redesigned** — see Rule 2.
 
 ### Progress tracker — update after EVERY push (Rule 11)
 
+- **A POSTER IS A BANNER, AND THE PERSON TAKING A CLASS RUNS IT — 28 Sep 2026,
+  no step number ⚠ (Rule 9: the held migration widens who may run a class's
+  door) — BUILT; ONE MIGRATION WRITTEN, DRY-RUN 22/22 AND HELD (#0av).**
+  `HERO_HEAD_W`/`HERO_HEAD_H` are a RATIO now (3:2) rather than a 206 pixel box —
+  the change the tokens' own comment predicted on 15 Sep — so the header is a
+  full-width banner with squircle corners: **382×255 on a studio's page and
+  352×235 on the Discover card, measured in a browser.** ⚠⚠ **One ratio reaches
+  six surfaces** (the hero rail, the card's rail, the cropper's frame, the Edit
+  sheet's tiles, the admin's verification strip, the lightbox), so there is no
+  second aspect ratio in that path and C73's promise survived a change of shape.
+  ⚠⚠ **The cropper assumed its frame was square in seven places** and would have
+  cut a rectangle wrong invisibly. ⚠ **The lightbox shows the CROP and nothing
+  else**, which is the user's sentence twice over — `contain` on the raw file
+  becomes wrong the moment two generations of crop exist. ⚠ **Every existing
+  upload stays a 1:1 crop and is fine by design**: a square in a 3:2 frame keeps
+  its middle, nothing is re-cut, no migration. And **Manage means what you RUN**,
+  not "do you own an artist page" — a user a studio put in front of a class had
+  it filed under Assist. ⚠⚠ **Its other half is the DATABASE's and is HELD:
+  counted on production, 49 confirmed artists and only 20 can open their own
+  register**, because `ask_class_person` defaults `can_attendance` to false and
+  an accepted outside teacher is seated `visiting_faculty`. Deviation rows
+  **C80** and **C81**. **typecheck 0 · lint 0 · build green · `shoot-discover`
+  43/43 · `shoot-hero` 191/191 · `shoot-tiles` 155/155 · the dry run 22/22
+  rolled back.** ⚠ The JSX-comment trap for the fourth time, caught in the same
+  minute; the mechanical sweep beside it went through Node with a BOM-less
+  encoding and both anchors asserted — 0 mojibake, no BOM.
+- **THE LOGO IS CONSTANT, AND THE PERSON TAKING THE CLASS WAS FILED UNDER
+  ASSISTANTS — 28 Sep 2026, no step number — BUILT, no migration.** The top bar
+  is 62px with 40px chips and the wordmark on EVERY screen; `DRILL_TITLES` and
+  `titleFor` are deleted (~96 lines), and the back chip moves to the leftmost
+  place every phone puts it. ⚠⚠ **`pendingAsks` was every asked claim of any
+  kind and the one section that rendered it is headed CLASS ASSISTANTS**, so a
+  person named as the one TAKING the class appeared among the assistants — the
+  form and the database were both innocent, and the asks are split by kind now
+  with the WHO column drawing the ask, dimmed and marked ASKED. ⚠ **A drill
+  page's name is its own `<h1>` alone from here**, so a page that never grew one
+  has no accessible name — a backlog row carries the sweep. ⚠ And Rule 17 was
+  broken on myself and caught by its own tells: a `Get-Content | Set-Content`
+  added a BOM and mojibaked 49 em dashes, `git diff --stat` read 372 lines for a
+  ~100-line edit, and the repair went through `IO.File` with both anchors
+  asserted.
 - **SIX OF THE USER'S EIGHT — 28 Sep 2026, no step number — BUILT, no
   migration.** Also: **practice is its own COLUMN** on the Crews hub
   (`SegmentedPanels`, both panels in one server pass, and no segments at all
@@ -12982,6 +13160,8 @@ Home. **Do not "restore parity" on these.**
 | C77 | C74 (28 Sep 2026, that morning): "Dance near you" is the 34px heading over a 9.5px DISCOVER eyebrow, with the place chip on its own line under it | **"DISCOVER" IS THE HEADING AND "DANCE NEAR YOU" SHARES THE CHIP'S LINE.** The eyebrow is gone; `Discover` is **the page's own `<h1>`** at `DOS_TYPE.display` (34px) — ⚠ **the first `<h1>` this page has ever had**, `AppChrome` drawing the wordmark over a TAB and no heading, which is the FIFTH time this repo has found that shape (the desks 18 Sep, the studio Team desk 21 Sep, `EventForm` and `/rooms` 22 Sep, the Inbox 27 Sep) — and "Dance near you" is 12.5px beside the chip, ellipsising rather than pushing it off. ⚠ **C45's refusal has stopped applying**: *"a display heading and a chip cannot share a line on a 430px phone"* is true of a 34px heading and not of a 12.5px sub-line. **Measured in both themes: the row is 34px against a tallest child of 32px**, which is what side-by-side looks like and stacked does not | 28 Sep 2026, the user: *"Discover should be the bigger heading like other pages and dancer near you smaller and in same line as the location dropdown"* |
 | C78 | The calendar draws every session as the app's own card — `ClassTile`, `EventCard` + a role chip, and a practice row card — on all four views and on the public schedule alike | **THE CALENDAR DRAWS PILLS; THE PUBLIC SCHEDULE KEEPS ITS CARDS.** One rounded row: a dot in the thing's own colour, the time, the name, and one chip saying what it is to you — four sessions where one card stood. ⚠ **The boundary is the user's own, given twice in the same breath**: *"pills should only be in calendar not on schedule on profiles visible through discover"*, then *"or any public profile page"* — which is exactly `mode === "public"`, since `PublicSchedulePage` is its only caller, it is what every public profile's Schedule button opens, and it is the one surface a stranger reaches from Discover. ⚠ **Why a card is right THERE and a pill here**: a stranger is deciding whether to come and needs the price, the seats left and the teacher's face; you, on your own calendar, are reading WHEN. ⚠ **ONE CLOCK** (`timeOf`) for all three kinds, where the practice card had its own (`practiceClock`) — two grammars for one fact on one screen. ⚠ The class pill keeps **`Open {title}`**, the same accessible name `ClassTile` gives the same class, so one control name serves one act | 28 Sep 2026, the user: *"calendar should only have pills with infor instead of cards"* plus the two narrowings above. ⚠ **What it costs, said rather than discovered**: the Train row's `EnrollButton` is no longer on the calendar, so cancelling a booking is one tap further (the class page, which the pill opens, and Home's deck both still carry it) |
 | C79 | Every "today" marker on the calendar is `PINK` — the controls row's `TODAY` badge, the schedule's divider, the day gutter's filled circle, the month's badge and the picker's ring — and the picked day is `PINK` too | **TODAY IS INK, SAID ONCE, AND THE DAY YOU PICKED IS THE FILLED ONE.** The controls row's badge is **deleted**: it sat immediately beside the `Today` button, so one line held the word twice saying two different things (*you are on it* / *go to it*), and the schedule's divider said it a third time. What survives is the **divider**, the only one of the three that marks a POSITION, and the **button**, which is a control rather than a label. And every marker is off blue: **the day you PICKED is a filled ink circle, today-you-have-not-picked is an ink ring** | 28 Sep 2026, the user: *"should not repeat today teice it appears in blue which it should not on all profile schedules and calendar"* — both halves true on the calendar AND on a public schedule, which is the same component. ⚠ `PINK` has been **`#5AC8FA`, a cyan**, since the palette swap (backlog #16), and the calendar's own tool colour `#06B6D4` is no escape from it. ⚠ `SIDES.hosting` keeps its tint, because Teach is not today. **The e2e counts the LEAF elements whose whole text is the word: 2 before, 1 now**, and asserts none is painted `rgb(90, 200, 250)` |
+| C80 | The header rail is a **206px SQUARE** (15 Sep 2026), and `object-fit: cover` cuts every upload 1:1 — the Discover card's rail, the cropper's frame and the Edit sheet's tiles all say `1 / 1` (C73, 27 Sep) | **A BANNER: `HERO_HEAD_W / HERO_HEAD_H` IS A RATIO, 3:2, AND THE SLIDE IS AS WIDE AS THE PHONE** — 382×255 on a studio's page where a 206 square stood, 352×235 on the Discover card, with `HERO_HEAD_RADIUS` rounding the corners and a 16px hold-back on each side so those corners are visible at all. ⚠ **One ratio reaches six surfaces** — the hero rail, the card's rail, the CROPPER's frame, the Edit sheet's tiles, the admin's verification strip and the lightbox all read the same two tokens, so **there is no second aspect ratio anywhere in that path** and C73's promise survived a change of shape without a number being typed twice. ⚠⚠ **The cropper assumed its frame was square in seven places** (`fitOf`, `fillOf`, `clampOff`, the preview box, the canvas, the backfill, the scale — `W` was doing duty as both dimensions), so a rectangle would have been cut wrong in a way nothing but an eye would catch; every one takes a width AND a height now, and the frame key is **`banner`**, not `square`. ⚠ **The lightbox shows the CROP and nothing else**: `contain` on the raw file was right while every upload was 1:1 and is wrong the moment two generations exist, because a legacy 760² picture would open as MORE than the thing you tapped; a profile picture passes `frame="disc"`. ⚠ **Every existing upload is still a 1:1 crop and that is fine by design** — a square in a 3:2 frame under `cover` keeps its middle, nothing is re-cut, the stored object is untouched, and changing this ratio again re-frames everything with no migration | 28 Sep 2026, the user: *"make the poster on both home and profile a rectangle with squircle from sides. make sure to change studio discover tile accordingly. check the crop and view fix for this as well. when clicking on any profile pic or poster from discover to any profile should view the pic in the cropped way only."* ⚠ The tokens' own comment predicted this change on 15 Sep — *"make `HERO_HEAD_W` the screen's width and `HERO_HEAD_H` shorter and the header is a banner"* — and exactly one component read the pair |
+| C81 | **Manage** on Your classes is the ARTIST PAGE's own register and nothing else (18–19 Sep 2026), so it is drawn only for somebody who owns one | **MANAGE IS WHAT YOU RUN, WHOEVER OWNS IT.** A plain user can be the person taking a studio's class — that is what `ask_class_person(kind: 'artist')` is for — and until today their own class appeared under **Assist**, labelled Teaching. **Teaching is managing and assisting is not**: the two were one list told apart by a word in the corner of a card. Manage is offered to anybody who runs something, and holds the artist's own register (when there is a page) **and then** the classes somebody else's studio put them in front of, under CLASSES YOU TAKE ELSEWHERE. ⚠ **A TILE, NOT A SECOND REGISTER** — those classes belong to another business: you may run the door and you may not publish, price or delete them, so the card opens the class, where everything you are allowed lives. ⚠ Assist's own empty state stopped claiming to hold what you teach | 28 Sep 2026, the user: *"user should also see manage tab in classes as studios can add them as the person taking the class."* ⚠⚠ **The other half of that sentence — "give rights when confirmed the invite" — is the DATABASE's and is HELD** (#0av): `check_in` asks `can_run_register_for_class`, nothing the app draws can widen it, and **a tab drawn over a refusal is worse than no tab** |
 
 ### UI parity backlog — gaps vs the prototype, tracked so none is forgotten
 

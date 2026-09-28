@@ -6,13 +6,13 @@ import { ClassTile } from "@/features/classes/components/ClassTile";
 import { EnrollButton } from "@/features/enrollments/components/EnrollButton";
 import { SegmentedPanels } from "@/features/shell/components/SegmentedNav";
 import { DeskHero } from "@/features/tenants/components/biz-kit";
-import { DOS_UI, INK, LILAC, SUB } from "@/lib/design/tokens";
+import { DOS_UI, INK, LILAC, MUTED, SUB } from "@/lib/design/tokens";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { findClassArtists, findMyConfirmedClaims } from "@/repositories/claims";
 import { findClassPublishState, findClassesByTenant, findWhyNoClass } from "@/repositories/classes";
 import { countEnrolledBySession, findMyEnrollments } from "@/repositories/enrollments";
 import { findMyMemberships } from "@/repositories/tenants";
-import { askToTileClass, type MyClaimAsk } from "@/types/claim";
+import { askToTileClass } from "@/types/claim";
 import type { DanceClass } from "@/types/class";
 import type { MyEnrollment } from "@/types/enrollment";
 
@@ -62,19 +62,26 @@ const toTileClass = (e: MyEnrollment): DanceClass => ({
 type Show = "booked" | "assist" | "manage";
 const SHOWS: Record<Show, { label: string; aria: string }> = {
   booked: { label: "Booked", aria: "Show the classes you booked" },
-  assist: { label: "Assist", aria: "Show the classes you teach or assist on" },
+  assist: { label: "Assist", aria: "Show the classes you assist on" },
   /* MANAGE, IN PLACE (18 Sep 2026, the user: "Manage class should not take to a
      separate page for artist — should be handled from within the same page"):
      the artist's own register, drawn here as a third segment */
-  manage: { label: "Manage", aria: "Manage the classes on your artist page" },
+  manage: { label: "Manage", aria: "Manage the classes you run" },
 };
 
 /** ⚠ THE ORDER IS THE ACCOUNT'S (19 Sep 2026, the user: "Manage should be first
- *  section for Artist"). An artist opens this page to run their own classes;
- *  somebody without a page opens it to see what they booked, and never sees
- *  Manage at all. `?show=` is unchanged either way, so every link out in the
- *  world still lands where it always did (Rule 14). */
-const showsFor = (hasPage: boolean): Show[] => (hasPage ? ["manage", "booked", "assist"] : ["booked", "assist"]);
+ *  section for Artist"). Somebody who runs nothing opens this page to see what
+ *  they booked, and never sees Manage at all. `?show=` is unchanged either way,
+ *  so every link out in the world still lands where it always did (Rule 14).
+ *
+ *  ⚠⚠ "RUNS SOMETHING" IS NO LONGER "HAS AN ARTIST PAGE" (28 Sep 2026, the user:
+ *  "user should also see manage tab in classes as studios can add them as the
+ *  person taking the class"). A plain user CAN be the person taking a studio's
+ *  class — that is what `ask_class_person(kind: 'artist')` is for — and until
+ *  today the only thing Manage could mean was your own page's register, so their
+ *  own class appeared under **Assist**, labelled Teaching. A tab called Assist is
+ *  the wrong place for a class you are the teacher of. */
+const showsFor = (runs: boolean): Show[] => (runs ? ["manage", "booked", "assist"] : ["booked", "assist"]);
 
 const when = (iso: string | null): string =>
   iso
@@ -112,17 +119,30 @@ export default async function MyClassesPage({ searchParams }: { searchParams: Pr
      the segment you LAND on, so an artist opening their own tile still arrived
      at other people's classes they had booked. A URL that names a segment still
      wins, so every existing link keeps landing where it always did (Rule 14). */
+  /* ⚠⚠ TEACHING IS MANAGING, AND ASSISTING IS NOT (28 Sep 2026). A confirmed
+     `artist` claim means you are the person taking that class — you run its
+     register — so it belongs in Manage beside your own page's classes; an
+     `assistant` claim is somebody helping on somebody else's class, which is
+     what Assist has always meant. They were one list until today, told apart
+     only by a word in the corner of each card.
+     ⚠ Your OWN page's classes are excluded here rather than listed twice: you
+     are every one of their confirmed teachers by construction, and the register
+     below already draws them in full. */
+  const teaching = artistOn
+    .filter((c) => !myPage || c.tenantName !== myPage.name)
+    .sort((a, b) => (a.startsAt ?? "9").localeCompare(b.startsAt ?? "9"));
+  const assisting = [...assistantOn].sort((a, b) => (a.startsAt ?? "9").localeCompare(b.startsAt ?? "9"));
+  /* somebody with a page, or somebody a studio has put in front of a class */
+  const runs = Boolean(myPage) || teaching.length > 0;
   const show: Show =
-    rawShow === "assist" ? "assist" : rawShow === "manage" && myPage ? "manage" : rawShow === "booked" ? "booked" : myPage ? "manage" : "booked";
-  /* the teacher's own classes are theirs to manage, not to "assist on": an
-     artist page's owner is its every class's confirmed teacher by construction */
-  const jobs: Array<MyClaimAsk & { job: "Teaching" | "Assisting" }> = [
-    ...artistOn.filter((c) => !myPage || c.tenantName !== myPage.name).map((c) => ({ ...c, job: "Teaching" as const })),
-    ...assistantOn.map((c) => ({ ...c, job: "Assisting" as const })),
-  ].sort((a, b) => (a.startsAt ?? "9").localeCompare(b.startsAt ?? "9"));
+    rawShow === "assist" ? "assist" : rawShow === "manage" && runs ? "manage" : rawShow === "booked" ? "booked" : runs ? "manage" : "booked";
   const booked = class_bookings.filter((e) => e.status === "enrolled").length;
-  /* the teacher each card wears in its centre (18 Sep 2026) — one read for both segments */
-  const bookedArtists = await findClassArtists(supabase, [...class_bookings.map((e) => e.classId), ...jobs.map((c) => c.classId)]);
+  /* the teacher each card wears in its centre (18 Sep 2026) — one read for every segment */
+  const bookedArtists = await findClassArtists(supabase, [
+    ...class_bookings.map((e) => e.classId),
+    ...teaching.map((c) => c.classId),
+    ...assisting.map((c) => c.classId),
+  ]);
 
   /* ⚠ THE PAGE'S CLASSES ARE READ ONCE, WHICHEVER SEGMENT IS OPEN (19 Sep 2026):
      the Manage pill carries a COUNT now, so the number has to be true from the
@@ -194,22 +214,62 @@ export default async function MyClassesPage({ searchParams }: { searchParams: Pr
            different `?show=` must win over whatever this control last showed */
         key={show}
         initial={show}
-        segments={showsFor(Boolean(myPage)).map((k) => ({
+        segments={showsFor(runs).map((k) => ({
           key: k,
           href: k === "booked" ? "/my-classes" : `/my-classes?show=${k}`,
           label: SHOWS[k].label,
           aria: SHOWS[k].aria,
-          n: k === "booked" ? booked : k === "assist" ? jobs.length : myPageClasses.length,
+          n: k === "booked" ? booked : k === "assist" ? assisting.length : myPageClasses.length + teaching.length,
         }))}
         panels={[
-          ...(myPage && manage
+          ...(runs
             ? [
                 {
                   key: "manage",
                   /* the artist's register, in place: Create, Draft · Published ·
-                     Completed, each row wearing the request it waits on */
+                     Completed, each row wearing the request it waits on — and
+                     then the classes somebody ELSE's studio put you in front of */
                   node: (
-                    <ClassesManager embedded tenantId={myPage.id} classes={manage.classes} filledBySession={manage.filled} artists={manage.artists} publishState={manage.state} whyNoClass={manage.whyNoClass} nowIso={new Date().toISOString()} />
+                    <>
+                      {myPage && manage ? (
+                        <ClassesManager embedded tenantId={myPage.id} classes={manage.classes} filledBySession={manage.filled} artists={manage.artists} publishState={manage.state} whyNoClass={manage.whyNoClass} nowIso={new Date().toISOString()} />
+                      ) : null}
+                      {teaching.length > 0 ? (
+                        <div style={{ marginTop: myPage ? 22 : 0 }}>
+                          {/* ⚠ A TILE, NOT A SECOND REGISTER (28 Sep 2026). These
+                              classes belong to somebody else's business: you may
+                              run the door, and you may not publish, price or
+                              delete them. The card opens the class, where the
+                              register and everything else you are allowed lives —
+                              the same door `ClassesManager`'s own rows open. */}
+                          {myPage ? (
+                            <div style={{ fontSize: 9.5, fontWeight: 900, letterSpacing: 1, color: MUTED, margin: "0 0 9px" }}>CLASSES YOU TAKE ELSEWHERE</div>
+                          ) : null}
+                          {teaching.map((c) => (
+                            <ClassTile
+                              key={c.id}
+                              danceClass={askToTileClass(c)}
+                              artist={bookedArtists.get(c.classId) ?? null}
+                              city={c.tenantCity}
+                              href={`/c/${c.classShareSlug}`}
+                              actions={
+                                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
+                                  <span style={{ fontSize: 10.5, color: SUB }}>
+                                    {c.tenantName} · {when(c.startsAt)}
+                                  </span>
+                                  <span style={{ flexShrink: 0, fontSize: 9.5, fontWeight: 900, letterSpacing: 0.6, textTransform: "uppercase", color: "#F59E0B" }}>Teaching</span>
+                                </div>
+                              }
+                            />
+                          ))}
+                        </div>
+                      ) : null}
+                      {myPageClasses.length === 0 && teaching.length === 0 ? (
+                        <div style={{ textAlign: "center", padding: "40px 20px", color: SUB, border: "1.5px dashed var(--el)", borderRadius: 20, fontSize: 13, lineHeight: 1.5 }}>
+                          Nothing to run yet. A studio asks you onto a class as the person taking it, you say yes in your Inbox, and it appears here.
+                        </div>
+                      ) : null}
+                    </>
                   ),
                 },
               ]
@@ -247,7 +307,7 @@ export default async function MyClassesPage({ searchParams }: { searchParams: Pr
                job you hold on it where a booked card carries its booking action */
             node: (
               <>
-                {jobs.map((c) => (
+                {assisting.map((c) => (
                   <ClassTile
                     key={c.id}
                     danceClass={askToTileClass(c)}
@@ -259,14 +319,14 @@ export default async function MyClassesPage({ searchParams }: { searchParams: Pr
                         <span style={{ fontSize: 10.5, color: SUB }}>
                           {c.tenantName} · {when(c.startsAt)}
                         </span>
-                        <span style={{ flexShrink: 0, fontSize: 9.5, fontWeight: 900, letterSpacing: 0.6, textTransform: "uppercase", color: c.job === "Teaching" ? "#F59E0B" : "#8B5CF6" }}>{c.job}</span>
+                        <span style={{ flexShrink: 0, fontSize: 9.5, fontWeight: 900, letterSpacing: 0.6, textTransform: "uppercase", color: "#8B5CF6" }}>Assisting</span>
                       </div>
                     }
                   />
                 ))}
-                {jobs.length === 0 && (
+                {assisting.length === 0 && (
                   <div style={{ textAlign: "center", padding: "40px 20px", color: SUB, border: "1.5px dashed var(--el)", borderRadius: 20, fontSize: 13, lineHeight: 1.5 }}>
-                    Nothing you teach or assist on yet. A studio asks you onto a class, you say yes in your Inbox, and it appears here.
+                    Nothing you assist on yet. A studio asks you onto a class, you say yes in your Inbox, and it appears here.
                   </div>
                 )}
               </>

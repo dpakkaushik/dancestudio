@@ -217,6 +217,7 @@ export function PicturesButton({
       {viewing && avatar ? (
         <PhotoLightbox
           shots={[{ key: "avatar", src: avatar, alt: `${profile.fullName} — profile picture`, signed: false }]}
+          frame="disc"
           index={0}
           onIndex={() => {}}
           onClose={() => setViewing(false)}

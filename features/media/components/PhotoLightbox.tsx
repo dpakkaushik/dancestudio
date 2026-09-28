@@ -4,7 +4,7 @@ import Image from "next/image";
 import { useCallback, useEffect } from "react";
 import { createPortal } from "react-dom";
 import { useCloseOnBack } from "@/lib/hooks/useCloseOnBack";
-import { DOS_UI } from "@/lib/design/tokens";
+import { DISC_RADIUS, DOS_UI, HERO_HEAD_H, HERO_HEAD_RADIUS, HERO_HEAD_W } from "@/lib/design/tokens";
 
 /** A PICTURE, FULL SIZE (16 Sep 2026, the user: "show the header picture
  *  section as an image gallery where user can click over a picture and expand
@@ -14,9 +14,20 @@ import { DOS_UI } from "@/lib/design/tokens";
  *  11440-11447): a near-black backdrop, a round ✕ at the top right, the picture,
  *  and a caption under it. Three things depart from it, and each is deliberate:
  *
- *   1. THE FRAME IS RECTANGULAR. The prototype's viewer exists to enlarge an
- *      AVATAR, so it draws a circle. A header picture is not round and cropping
- *      one into a circle to look at it closely would defeat the point.
+ *   1. THE FRAME IS THE PAGE'S OWN FRAME. The prototype's viewer exists to
+ *      enlarge an AVATAR, so it draws a circle whatever it is given.
+ *      ⚠⚠ THIS ONE SHOWS THE CROP AND NOTHING ELSE (28 Sep 2026, the user: "when
+ *      clicking on any profile pic or poster from discover to any profile should
+ *      view the pic in the cropped way only", and on 27 Sep "view photo should be
+ *      same as how it was cut"). So it frames to the SAME ratio the page frames
+ *      to — the banner's 3:2, or the disc's squircle — and covers it.
+ *      ⚠ `contain` on the raw file was right while every upload was 1:1 and is
+ *      wrong the moment two generations of crop exist: a 760² picture uploaded
+ *      before 28 Sep is drawn by the page as its middle third and would have
+ *      opened here as the whole square, so the enlarged view would show MORE than
+ *      the thing you tapped. The price is that a legacy picture's top and bottom
+ *      are not reachable from the viewer — which is the user's own instruction,
+ *      twice, and the stored object is untouched either way.
  *   2. IT OPENS FROM A GRID TILE. The prototype's photo tiles have no onClick
  *      at all — it declares the viewer's state as `null | "avatar" | "cover"`
  *      (8705) and never renders the `"cover"` branch. So this completes a stub
@@ -85,12 +96,17 @@ export function PhotoLightbox({
   onIndex,
   onClose,
   label,
+  frame = "banner",
 }: {
   shots: LightboxShot[];
   index: number;
   onIndex: (i: number) => void;
   onClose: () => void;
   label: string;
+  /** the shape the PAGE draws this picture in, so the viewer shows the same crop.
+   *  Defaults to the banner, which is every poster, header and proof photo; a
+   *  profile picture passes "disc". */
+  frame?: "banner" | "disc";
 }) {
   useCloseOnBack(onClose);
   const many = shots.length > 1;
@@ -157,14 +173,21 @@ export function PhotoLightbox({
           </button>
         ) : null}
         {shot.src ? (
-          <Image
-            src={shot.src}
-            alt={shot.alt}
-            width={1200}
-            height={1200}
-            unoptimized={shot.signed}
-            style={{ width: "auto", maxWidth: "100%", height: "auto", maxHeight: "74vh", objectFit: "contain", display: "block", borderRadius: 14, boxShadow: "0 20px 60px rgba(0,0,0,.5)" }}
-          />
+          <div
+            style={{
+              position: "relative",
+              overflow: "hidden",
+              flexShrink: 1,
+              boxShadow: "0 20px 60px rgba(0,0,0,.5)",
+              /* the disc is as tall as it is wide, so it is the one that has to
+                 watch the viewport's height as well */
+              width: frame === "disc" ? "min(86vw, 68vh, 420px)" : "min(86vw, 520px)",
+              aspectRatio: frame === "disc" ? "1 / 1" : `${HERO_HEAD_W} / ${HERO_HEAD_H}`,
+              borderRadius: frame === "disc" ? `${DISC_RADIUS * 100}%` : HERO_HEAD_RADIUS,
+            }}
+          >
+            <Image src={shot.src} alt={shot.alt} fill sizes="86vw" unoptimized={shot.signed} style={{ objectFit: "cover" }} />
+          </div>
         ) : (
           <div style={{ padding: "40px 28px", color: "rgba(255,255,255,.7)", fontSize: 12.5, textAlign: "center" }}>
             This picture could not be loaded. Close and reopen the page to sign it again.

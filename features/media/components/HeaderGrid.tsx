@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import { useState } from "react";
-import { LINE, MUTED, SUB } from "@/lib/design/tokens";
+import { HERO_HEAD_H, HERO_HEAD_W, LINE, MUTED, SUB } from "@/lib/design/tokens";
 import { PHOTO_TYPES, whyNotAPhoto } from "@/lib/media/photo";
 import { PhotoCropper } from "./PhotoCropper";
 
@@ -78,12 +78,16 @@ export function HeaderGrid({
     if (bad) return;
     setCropping(files);
   };
+  /* ⚠ the tiles are the BANNER's shape (28 Sep 2026), not squares: this grid is
+     where somebody checks what they just cropped, so a tile that is a different
+     shape from the frame they cropped in is the one place it must not be. The
+     column floor grew with it — a 3:2 tile at 72px wide is 48px tall. */
   return (
-    <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(72px, 1fr))", gap: 7 }}>
+    <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(104px, 1fr))", gap: 7 }}>
       {cropping && onFiles ? (
         <PhotoCropper
           files={cropping}
-          frame="square"
+          frame="banner"
           label="Header picture"
           onCancel={() => setCropping(null)}
           onDone={(files) => {
@@ -104,7 +108,7 @@ export function HeaderGrid({
             key={t.key}
             style={{
               position: "relative",
-              aspectRatio: "1 / 1",
+              aspectRatio: `${HERO_HEAD_W} / ${HERO_HEAD_H}`,
               borderRadius: 11,
               overflow: "hidden",
               background: "var(--el)",
@@ -180,7 +184,7 @@ export function HeaderGrid({
         <label
           aria-disabled={busy}
           style={{
-            aspectRatio: "1 / 1",
+            aspectRatio: `${HERO_HEAD_W} / ${HERO_HEAD_H}`,
             borderRadius: 11,
             border: `1.5px dashed ${LINE}`,
             display: "flex",

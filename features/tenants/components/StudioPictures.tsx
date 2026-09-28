@@ -199,6 +199,7 @@ export function StudioPicturesButton({
       {viewing && avatar ? (
         <PhotoLightbox
           shots={[{ key: "avatar", src: avatar, alt: `${tenantName} — profile picture`, signed: false }]}
+          frame="disc"
           index={0}
           onIndex={() => {}}
           onClose={() => setViewing(false)}

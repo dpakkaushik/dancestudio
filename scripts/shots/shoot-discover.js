@@ -155,6 +155,13 @@ const measureHead = (page) =>
  *  shape the photo is shown in. A check that measures the wrong box reports a
  *  bug that is not there — this file has recorded that once already (the 27 Sep
  *  gap probe finding a crew's STYLES row and calling 52.6px a crew bug). */
+/** ⚠ THE SHAPE EVERY POSTER IS CUT AND DRAWN IN — `HERO_HEAD_W / HERO_HEAD_H` in
+ *  `lib/design/tokens.ts`, 3:2 since 28 Sep 2026 (it was 1:1 before). Kept here as
+ *  a number rather than imported because this is a plain .js probe; the check
+ *  below that the CARD and the PAGE agree with each OTHER is the one that cannot
+ *  drift, and this one pins the absolute shape so a change is deliberate. */
+const POSTER_RATIO = 1.5;
+
 const measureRail = (page, selector) =>
   page.evaluate((sel) => {
     const rail = document.querySelector(sel);
@@ -282,7 +289,7 @@ const measureRail = (page, selector) =>
     check(Boolean(cardRail), "the card's top section is a rail");
     if (cardRail) {
       check(cardRail.count === POSTERS, `the rail swipes through all ${POSTERS} posters — it has ${cardRail.count}`);
-      check(cardRail.slides.every((s) => s.ratio >= 0.97 && s.ratio <= 1.03), `every slide is SQUARE — the shape the cropper cut (${cardRail.slides.map((s) => `${s.w}x${s.h}`).join(", ")})`);
+      check(cardRail.slides.every((s) => Math.abs(s.ratio - POSTER_RATIO) <= 0.05), `every slide is the BANNER's shape, ${POSTER_RATIO}:1 — the shape the cropper cut (${cardRail.slides.map((s) => `${s.w}x${s.h}`).join(", ")})`);
       check(cardRail.slides.every((s) => s.loaded), "and every picture really LOADED — a signed URL that 404s fails here rather than passing as 'an img exists'");
     }
     const faceImg = await card.locator("span img").count();
@@ -299,7 +306,7 @@ const measureRail = (page, selector) =>
     check(Boolean(heroRail), "the studio's own page draws its poster rail");
     if (heroRail && cardRail) {
       check(heroRail.count === cardRail.count, `the poster rail and the Discover card hold the SAME number of pictures (${heroRail.count} and ${cardRail.count})`);
-      check(heroRail.slides.every((s) => s.ratio >= 0.97 && s.ratio <= 1.03), `the poster rail's pictures are square too (${heroRail.slides.map((s) => `${s.w}x${s.h}`).join(", ")})`);
+      check(heroRail.slides.every((s) => Math.abs(s.ratio - POSTER_RATIO) <= 0.05), `the poster rail's pictures are the same ${POSTER_RATIO}:1 banner (${heroRail.slides.map((s) => `${s.w}x${s.h}`).join(", ")})`);
       check(
         Math.abs((heroRail.slides[0]?.ratio ?? 0) - (cardRail.slides[0]?.ratio ?? 1)) < 0.05,
         `⚠ THE SAME ASPECT RATIO IN BOTH PLACES — the whole of "they should be the same". The SIZE differs on purpose (${heroRail.slides[0]?.w}px on the page, ${cardRail.slides[0]?.w}px on the card): a hero is a hero and a card is a card. What must not differ is the SHAPE, because that is what the cropper cut.`

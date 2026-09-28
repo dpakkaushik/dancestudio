@@ -162,7 +162,7 @@ export function CrewPicturesButton({ crewId, crewName, grad, avatar, canEdit }: 
         </button>
       ) : null}
       {viewing && avatar ? (
-        <PhotoLightbox shots={[{ key: "avatar", src: avatar, alt: `${crewName} — crew photo`, signed: false }]} index={0} onIndex={() => {}} onClose={() => setViewing(false)} label={crewName} />
+        <PhotoLightbox shots={[{ key: "avatar", src: avatar, alt: `${crewName} — crew photo`, signed: false }]} frame="disc" index={0} onIndex={() => {}} onClose={() => setViewing(false)} label={crewName} />
       ) : null}
       {editing ? <CrewPictureSheet crewId={crewId} crewName={crewName} hasPhoto={Boolean(avatar)} onClose={() => setEditing(false)} /> : null}
     </div>

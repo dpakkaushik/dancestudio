@@ -62,8 +62,29 @@ export const HERO_SQ_SHADOW = "0 0 52px 20px rgba(0,0,0,.30), 0 26px 60px -4px r
  *  tweak"). So its box is these two numbers and nothing else reads HERO_SQ for
  *  it: make HERO_HEAD_W the screen's width and HERO_HEAD_H shorter and the
  *  header is a banner, with the disc already sitting where a banner's would. */
-export const HERO_HEAD_W = HERO_SQ;
-export const HERO_HEAD_H = HERO_SQ;
+/** ⚠⚠ THE HEADER IS A RECTANGLE NOW (28 Sep 2026, the user: "make the poster on
+ *  both home and profile a rectangle with squircle from sides. make sure to
+ *  change studio discover tile accordingly").
+ *
+ *  3:2 landscape, which is what a poster or a cover actually is, and what the
+ *  comment above always said this change would be: the two numbers are the whole
+ *  of it, and nothing else reads `HERO_SQ` for the header. They are a RATIO from
+ *  here rather than a pixel box — the rail gives each slide the full width and
+ *  takes its height from `aspectRatio`, so the banner is as wide as the phone
+ *  instead of a fixed 206.
+ *
+ *  ⚠ EVERY PICTURE ALREADY UPLOADED IS A 1:1 CROP, and that is fine BY DESIGN
+ *  rather than by luck: a square drawn into a 3:2 frame under `object-fit:
+ *  cover` keeps its middle and loses a little top and bottom, which is the same
+ *  thing a cover photo does everywhere. Nothing is re-cut and nothing is lost —
+ *  the stored object is untouched, so widening or narrowing this ratio later
+ *  re-frames every existing picture again without a migration. */
+export const HERO_HEAD_W = 3;
+export const HERO_HEAD_H = 2;
+/** the rounded corner the banner wears — "squircle from sides". A fixed radius
+ *  rather than a share of the side, because a share of a 3:2 box rounds the
+ *  short edge far harder than the long one and the corners stop matching. */
+export const HERO_HEAD_RADIUS = 24;
 /** the disc's diameter, the ring the page draws round it, and how far it drops
  *  below the header's bottom edge */
 /** ⚠ 96 → 112 on 19 Sep 2026, the user: "Align profile pic and make a bit

@@ -3,7 +3,7 @@
 import NextImage from "next/image";
 import { useEffect, useMemo, useRef, useState, type CSSProperties, type MouseEvent, type TouchEvent } from "react";
 import { Portal } from "@/components/ui/Portal";
-import { DISC_RADIUS, DOS_UI } from "@/lib/design/tokens";
+import { DISC_RADIUS, DOS_UI, HERO_HEAD_H, HERO_HEAD_RADIUS, HERO_HEAD_W } from "@/lib/design/tokens";
 import { useCloseOnBack } from "@/lib/hooks/useCloseOnBack";
 import type { PhotoOwner } from "@/lib/media/photo";
 
@@ -11,15 +11,24 @@ import type { PhotoOwner } from "@/lib/media/photo";
  *  (18 Sep 2026, the user: "every photo uploaded in the app should have a way to
  *  crop and preview it according to the layout of the photo in the app").
  *
- *  Every upload in this app is one of TWO shapes, and both are 1:1 — the
- *  profile picture (a squircle since today) and the square a header picture or
- *  a crew's photo lands in — so this is one cropper with two frames, and the
- *  frame IS the preview: it is masked to the shape the picture will be drawn in,
- *  so what you see inside it is exactly what the page will show. Zoom with the
- *  slider, drag to choose what stays, or press "Fill the frame" / "Whole
- *  picture". The output is a JPEG at the prototype's own sizes (640 for a disc,
- *  760 for a square), which also means a 5 MB phone photo goes up as a few
- *  hundred kilobytes.
+ *  Every upload in this app is one of TWO shapes — the profile picture, a 1:1
+ *  squircle, and the BANNER a header picture, a poster or a crew's photo lands in
+ *  — so this is one cropper with two frames, and the frame IS the preview: it is
+ *  masked to the shape the picture will be drawn in, so what you see inside it is
+ *  exactly what the page will show. Zoom with the slider, drag to choose what
+ *  stays, or press "Fill the frame" / "Whole picture". The output is a JPEG
+ *  (640² for a disc, 1080×720 for a banner), which also means a 5 MB phone photo
+ *  goes up as a few hundred kilobytes.
+ *
+ *  ⚠⚠ THE BANNER IS NOT SQUARE ANY MORE (28 Sep 2026), and the frame is where
+ *  that had to be said: it reads `HERO_HEAD_W / HERO_HEAD_H` — the same two
+ *  tokens the hero rail and the Discover card read — so the cut and the three
+ *  places it is DRAWN are one ratio by construction rather than by three numbers
+ *  agreeing. The key was called `square` until today and is `banner` now, because
+ *  a key that names the wrong shape is the lie this repo keeps paying for.
+ *  ⚠ Every geometry helper here therefore takes a WIDTH AND A HEIGHT: `W` used to
+ *  be both, and a cropper that assumes its frame is square cuts a rectangle
+ *  wrong in a way nothing but an eye would catch.
  *
  *  Three things the prototype learned the hard way are kept on purpose:
  *  * IT WILL NOT CUT BEFORE THE PICTURE HAS DECODED. The picture is loaded
@@ -40,13 +49,18 @@ import type { PhotoOwner } from "@/lib/media/photo";
  *  place in the queue, so a new picture starts from fresh state rather than being
  *  reset in an effect (this repo's lint refuses setState in an effect body). */
 
-export type CropFrame = "disc" | "square";
+export type CropFrame = "disc" | "banner";
 
-const FRAME: Record<CropFrame, { w: number; out: number; round: string | number; name: string }> = {
+/** the banner's preview box and its output, both at the hero's own ratio */
+const BANNER_W = 320;
+const BANNER_OUT_W = 1080;
+const ratio = (w: number) => Math.round((w * HERO_HEAD_H) / HERO_HEAD_W);
+
+const FRAME: Record<CropFrame, { w: number; h: number; outW: number; outH: number; round: string | number; name: string }> = {
   /* the squircle the ProfileDisc draws — the crop shows the picture in it */
-  disc: { w: 262, out: 640, round: `${DISC_RADIUS * 100}%`, name: "Profile photo" },
-  /* the header tile's own corners, scaled to the frame */
-  square: { w: 272, out: 760, round: 18, name: "Photo" },
+  disc: { w: 262, h: 262, outW: 640, outH: 640, round: `${DISC_RADIUS * 100}%`, name: "Profile photo" },
+  /* the banner's own corners and its own shape, both read from the tokens */
+  banner: { w: BANNER_W, h: ratio(BANNER_W), outW: BANNER_OUT_W, outH: ratio(BANNER_OUT_W), round: HERO_HEAD_RADIUS, name: "Photo" },
 };
 
 const JPEG_QUALITY = 0.88;
@@ -90,39 +104,41 @@ const canvasToBlob = (c: HTMLCanvasElement): Promise<Blob | null> =>
  *  the picture drawn into a thumbnail of a few dozen pixels, then that thumbnail
  *  drawn back up with smoothing on. What the eye sees is the same soft wash. */
 const BACKFILL_PX = 28;
-const drawBackfill = (g: CanvasRenderingContext2D, img: HTMLImageElement, nat: Size, out: number, scale: number) => {
+const drawBackfill = (g: CanvasRenderingContext2D, img: HTMLImageElement, nat: Size, out: Size, scale: number) => {
   const tiny = document.createElement("canvas");
   tiny.width = BACKFILL_PX;
-  tiny.height = BACKFILL_PX;
+  tiny.height = Math.max(1, Math.round((BACKFILL_PX * out.h) / out.w));
   const tg = tiny.getContext("2d");
   if (!tg) return;
-  /* cover the tiny square with the picture, centred, the way the fill would */
-  const s = Math.max(BACKFILL_PX / nat.w, BACKFILL_PX / nat.h) * scale;
-  tg.drawImage(img, (BACKFILL_PX - nat.w * s) / 2, (BACKFILL_PX - nat.h * s) / 2, nat.w * s, nat.h * s);
+  /* cover the tiny frame with the picture, centred, the way the fill would */
+  const s = Math.max(tiny.width / nat.w, tiny.height / nat.h) * scale;
+  tg.drawImage(img, (tiny.width - nat.w * s) / 2, (tiny.height - nat.h * s) / 2, nat.w * s, nat.h * s);
   g.imageSmoothingEnabled = true;
   g.imageSmoothingQuality = "low";
-  g.drawImage(tiny, 0, 0, out, out);
+  g.drawImage(tiny, 0, 0, out.w, out.h);
   /* a touch of the ground so the wash reads as behind the picture, not as it */
   g.fillStyle = "rgba(11,11,12,.35)";
-  g.fillRect(0, 0, out, out);
+  g.fillRect(0, 0, out.w, out.h);
 };
 
 /* the whole geometry, in one place: fit = the picture entirely inside the frame,
-   fill = the picture covering it; the preview, the clamp and the canvas all read it */
-const fitOf = (nat: Size | null, W: number) => (nat ? Math.min(W / nat.w, W / nat.h) : 1);
-const fillOf = (nat: Size | null, W: number) => (nat ? Math.max(W / nat.w, W / nat.h) : 1);
+   fill = the picture covering it; the preview, the clamp and the canvas all read it.
+   ⚠ W and H are two numbers (28 Sep 2026) — they were one until the banner stopped
+   being square, and every one of these would have cut the wrong rectangle. */
+const fitOf = (nat: Size | null, W: number, H: number) => (nat ? Math.min(W / nat.w, H / nat.h) : 1);
+const fillOf = (nat: Size | null, W: number, H: number) => (nat ? Math.max(W / nat.w, H / nat.h) : 1);
 
 /** you may move the picture anywhere that keeps it touching the frame — far
  *  enough to put any corner under the crop, never so far the frame sees nothing */
-const clampOff = (o: Pt, z: number, nat: Size | null, W: number): Pt => {
+const clampOff = (o: Pt, z: number, nat: Size | null, W: number, H: number): Pt => {
   if (!nat) return o;
-  const s = fitOf(nat, W) * z;
+  const s = fitOf(nat, W, H) * z;
   const w = nat.w * s;
   const h = nat.h * s;
   const lx = Math.max(0, (w - W) / 2);
-  const ly = Math.max(0, (h - W) / 2);
+  const ly = Math.max(0, (h - H) / 2);
   const fx = w < W ? (W - w) / 2 : 0;
-  const fy = h < W ? (W - h) / 2 : 0;
+  const fy = h < H ? (H - h) / 2 : 0;
   return { x: Math.max(-lx - fx, Math.min(lx + fx, o.x)), y: Math.max(-ly - fy, Math.min(ly + fy, o.y)) };
 };
 
@@ -208,6 +224,7 @@ export function PhotoCropper({
 function Stage({ file, frame, onCancel, onUse }: { file: File; frame: CropFrame; onCancel: () => void; onUse: (f: File) => void }) {
   const S = FRAME[frame];
   const W = S.w;
+  const H = S.h;
 
   /* one object URL per picture, revoked when the stage goes */
   const src = useMemo(() => URL.createObjectURL(file), [file]);
@@ -252,17 +269,17 @@ function Stage({ file, frame, onCancel, onUse }: { file: File; frame: CropFrame;
     };
   }, [src]);
 
-  const fit = fitOf(nat, W);
-  const fill = fillOf(nat, W);
+  const fit = fitOf(nat, W, H);
+  const fill = fillOf(nat, W, H);
   const maxZ = nat ? Math.max(MAX_ZOOM_FLOOR, (fill / fit) * 2.5) : MAX_ZOOM_FLOOR;
   const s = fit * z;
-  const P = { w: (nat ? nat.w : W) * s, h: (nat ? nat.h : W) * s, x: 0, y: 0 };
+  const P = { w: (nat ? nat.w : W) * s, h: (nat ? nat.h : H) * s, x: 0, y: 0 };
   P.x = (W - P.w) / 2 + off.x;
-  P.y = (W - P.h) / 2 + off.y;
+  P.y = (H - P.h) / 2 + off.y;
 
   const zoomTo = (nz: number, reset = false) => {
     setZ(nz);
-    setOff((o) => (reset ? { x: 0, y: 0 } : clampOff(o, nz, nat, W)));
+    setOff((o) => (reset ? { x: 0, y: 0 } : clampOff(o, nz, nat, W, H)));
   };
   const down = (e: MouseEvent | TouchEvent) => {
     drag.current = { p: pointOf(e), o: { ...off } };
@@ -271,7 +288,7 @@ function Stage({ file, frame, onCancel, onUse }: { file: File; frame: CropFrame;
     const d = drag.current;
     if (!d) return;
     const p = pointOf(e);
-    setOff(clampOff({ x: d.o.x + (p.x - d.p.x), y: d.o.y + (p.y - d.p.y) }, z, nat, W));
+    setOff(clampOff({ x: d.o.x + (p.x - d.p.x), y: d.o.y + (p.y - d.p.y) }, z, nat, W, H));
   };
   const up = () => {
     drag.current = null;
@@ -288,20 +305,21 @@ function Stage({ file, frame, onCancel, onUse }: { file: File; frame: CropFrame;
     setSaving(true);
     try {
       const c = document.createElement("canvas");
-      c.width = S.out;
-      c.height = S.out;
+      c.width = S.outW;
+      c.height = S.outH;
       const g = c.getContext("2d");
       if (!g) {
         onUse(file);
         return;
       }
-      const k = S.out / W;
+      /* the preview and the output are the same shape, so one scale carries both */
+      const k = S.outW / W;
       /* whatever the frame is not covering gets the picture itself, blown up and
          blurred, rather than a black bar — the prototype's own trick */
       g.fillStyle = "#0B0B0C";
       g.fillRect(0, 0, c.width, c.height);
       try {
-        drawBackfill(g, img, nat, S.out, 1.25);
+        drawBackfill(g, img, nat, { w: S.outW, h: S.outH }, 1.25);
       } catch {
         /* the picture on the plain ground is fine; the wash is decoration */
       }
@@ -350,7 +368,7 @@ function Stage({ file, frame, onCancel, onUse }: { file: File; frame: CropFrame;
           aria-label="Drag to choose the crop"
           style={{
             width: W,
-            height: W,
+            height: H,
             position: "relative",
             overflow: "hidden",
             flexShrink: 0,
@@ -442,4 +460,4 @@ function Stage({ file, frame, onCancel, onUse }: { file: File; frame: CropFrame;
 
 /** which frame an owner's picture is drawn in — the disc for a person's or a
  *  business's profile picture, a square for everything else */
-export const frameForOwnerKind = (kind: PhotoOwner["kind"]): CropFrame => (kind === "avatar" || kind === "tenant" ? "disc" : "square");
+export const frameForOwnerKind = (kind: PhotoOwner["kind"]): CropFrame => (kind === "avatar" || kind === "tenant" ? "disc" : "banner");

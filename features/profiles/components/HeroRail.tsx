@@ -4,7 +4,7 @@ import Image from "next/image";
 import { useState, type CSSProperties, type ReactNode } from "react";
 import { PhotoLightbox } from "@/features/media/components/PhotoLightbox";
 import { initialsOf } from "@/features/profiles/components/profile-kit";
-import { DISC_RADIUS, DOS_DISPLAY, HERO_DISC, HERO_DISC_RING, HERO_HEAD_H, HERO_HEAD_W, HERO_SQ_SHADOW, LILAC } from "@/lib/design/tokens";
+import { DISC_RADIUS, DOS_DISPLAY, HERO_DISC, HERO_DISC_RING, HERO_HEAD_H, HERO_HEAD_RADIUS, HERO_HEAD_W, HERO_SQ_SHADOW, LILAC } from "@/lib/design/tokens";
 
 /** One picture in the header rail. */
 export interface HeroShot {
@@ -45,9 +45,14 @@ type Slide = { key: string; src: string | null; alt: string; signed?: boolean };
  *  decoration on a swipe a thumb already understands, hidden from the
  *  accessibility tree; the rail itself says how many pictures there are.
  *
- *  The box is HERO_HEAD_W × HERO_HEAD_H — the 206 square today, by the user's
- *  choice; those two tokens are the whole of what changes if it ever goes
- *  wide. */
+ *  ⚠⚠ THE BOX IS A RECTANGLE, AS WIDE AS THE PHONE (28 Sep 2026, the user: "make
+ *  the poster on both home and profile a rectangle with squircle from sides").
+ *  `HERO_HEAD_W` × `HERO_HEAD_H` is a RATIO now, not a pixel box: the slide takes
+ *  the rail's whole width and `aspectRatio` gives it its height, so the banner is
+ *  360px wide on a 360px phone and 398 on the app's own 430 instead of a fixed
+ *  206 island. The 16px the slide holds back on each side is what makes the
+ *  rounded corners visible at all — a full-bleed banner rounds off the edge of
+ *  the screen, where nobody can see it. */
 export function HeroRail({
   name,
   grad,
@@ -79,8 +84,9 @@ export function HeroRail({
   const many = slides.length > 1;
 
   const square: CSSProperties = {
-    width: HERO_HEAD_W,
-    height: HERO_HEAD_H,
+    width: "100%",
+    aspectRatio: `${HERO_HEAD_W} / ${HERO_HEAD_H}`,
+    borderRadius: HERO_HEAD_RADIUS,
     position: "relative",
     overflow: "hidden",
     display: "flex",
@@ -130,7 +136,7 @@ export function HeroRail({
                   src={s.src}
                   alt=""
                   fill
-                  sizes={`${HERO_HEAD_W}px`}
+                  sizes="(max-width: 430px) 100vw, 430px"
                   style={{ objectFit: "cover" }}
                   unoptimized={Boolean(s.signed)}
                   onError={() => setBroken((b) => ({ ...b, [s.key]: true }))}
@@ -139,7 +145,7 @@ export function HeroRail({
             </div>
           );
           return (
-            <div key={s.key} style={{ flex: "0 0 100%", scrollSnapAlign: "center", display: "flex", justifyContent: "center", padding: "24px 0 14px" }}>
+            <div key={s.key} style={{ flex: "0 0 100%", minWidth: 0, scrollSnapAlign: "center", display: "flex", justifyContent: "center", padding: "24px 16px 14px" }}>
               {/* a picture with nothing behind it is not a button — an empty
                   header square opens nothing rather than an empty viewer */}
               {s.src && !broken[s.key] ? (
@@ -147,7 +153,7 @@ export function HeroRail({
                   type="button"
                   aria-label={`${s.alt} — open`}
                   onClick={() => setOpen(i)}
-                  style={{ padding: 0, border: "none", background: "none", cursor: "pointer", lineHeight: 0, fontFamily: "inherit" }}
+                  style={{ display: "block", width: "100%", padding: 0, border: "none", background: "none", cursor: "pointer", lineHeight: 0, fontFamily: "inherit" }}
                 >
                   {pic}
                 </button>

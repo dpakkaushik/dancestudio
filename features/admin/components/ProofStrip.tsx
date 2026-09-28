@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import { useState } from "react";
-import { SUB } from "@/lib/design/tokens";
+import { HERO_HEAD_H, HERO_HEAD_W, SUB } from "@/lib/design/tokens";
 import { PROOF_MIN, type ProofPhoto } from "@/lib/media/proof";
 
 const MUTED = "var(--muted)";
@@ -63,7 +63,10 @@ export function ProofStrip({ photos, orgName }: { photos: ProofPhoto[]; orgName:
             type="button"
             onClick={() => setOpen(open === p.path ? null : p.path)}
             aria-label={`Open photo ${i + 1} of ${orgName}'s space`}
-            style={{ position: "relative", aspectRatio: "1 / 1", padding: 0, borderRadius: 9, overflow: "hidden", border: `1.5px solid ${open === p.path ? "var(--text)" : EL}`, background: EL, cursor: "zoom-in" }}
+            /* the studio's own crop, in the studio's own shape (28 Sep 2026) —
+               an admin judging a photograph should see the frame the studio
+               framed it in, not a second crop of it */
+            style={{ position: "relative", aspectRatio: `${HERO_HEAD_W} / ${HERO_HEAD_H}`, padding: 0, borderRadius: 9, overflow: "hidden", border: `1.5px solid ${open === p.path ? "var(--text)" : EL}`, background: EL, cursor: "zoom-in" }}
           >
             {p.url ? (
               <Image src={p.url} alt="" fill sizes="70px" style={{ objectFit: "cover" }} unoptimized />

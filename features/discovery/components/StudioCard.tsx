@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useState } from "react";
 import { gradientOf } from "@/features/profiles/components/profile-kit";
 import { VerifiedTick } from "@/features/settings/components/settings-kit";
-import { DISC_RADIUS, DOS_DISPLAY, INK } from "@/lib/design/tokens";
+import { DISC_RADIUS, DOS_DISPLAY, HERO_HEAD_H, HERO_HEAD_W, INK } from "@/lib/design/tokens";
 import { photoUrl } from "@/lib/media/photo";
 import { publicProfilePath } from "@/lib/routes/publicProfile";
 import type { NearbyTenant } from "@/repositories/discovery";
@@ -17,6 +17,9 @@ const EL = "var(--el)";
  *  face in the app is cut to (`DISC_RADIUS`), so one picture is one shape at
  *  every size */
 const FACE = 56;
+/** the card's poster rail is the crop's own shape — one ratio, read from the
+ *  tokens the cropper and the hero rail read (28 Sep 2026) */
+const SHOT_RATIO = `${HERO_HEAD_W} / ${HERO_HEAD_H}`;
 
 /** One picture on a card, already signed by the server. */
 export interface CardShot {
@@ -34,17 +37,18 @@ export interface CardShot {
  * should contain profile pic and other details. view photo should be same as how
  * it was cut."*
  *
- * ⚠⚠ THE TOP IS THE POSTERS, AND IT IS SQUARE BECAUSE THE CROP IS SQUARE. Until
- * today this card drew the studio's PROFILE PICTURE — one photo — stretched
- * across a 150px-tall full-width strip, and put INITIALS in the face below it.
- * So the one picture on the card was the wrong picture, shown in the wrong shape:
- * every upload in this app is cut 1:1 by `PhotoCropper` (`HERO_HEAD_W` ===
- * `HERO_HEAD_H` === 206), and `object-fit: cover` into a 2.6:1 strip threw away
- * the top and bottom of what somebody had carefully framed. The rail is
- * `aspectRatio: 1 / 1` now, which is the crop exactly — what you see here is what
- * you saw in the cropper and what the studio's own poster rail (`HeroRail`)
- * shows. ⚠ There is no second crop and no second aspect ratio anywhere in this
- * path; that is the whole of "they should be the same".
+ * ⚠⚠ THE TOP IS THE POSTERS, AND ITS SHAPE IS THE CROP'S SHAPE. Until 27 Sep this
+ * card drew the studio's PROFILE PICTURE — one photo — stretched across a 150px
+ * full-width strip, and put INITIALS in the face below it. So the one picture on
+ * the card was the wrong picture, shown in the wrong shape, and `object-fit:
+ * cover` into a 2.6:1 strip threw away the top and bottom of what somebody had
+ * carefully framed.
+ *
+ * ⚠ THE RAIL READS `HERO_HEAD_W / HERO_HEAD_H` — the same two tokens the poster
+ * rail and the cropper read, so it followed the square to the 3:2 rectangle of
+ * 28 Sep without a number being typed here. **There is no second crop and no
+ * second aspect ratio anywhere in this path**, which is the whole of "they should
+ * be the same"; a card is simply a smaller frame than a hero.
  *
  * ⚠ AND THE BOTTOM IS THE PROFILE PICTURE, drawn rather than described. It rode
  * the cover's edge on a negative margin before and only ever showed initials.
@@ -106,10 +110,10 @@ export function StudioCard({ tenant, followers = 0, shots = [] }: { tenant: Near
             /* nothing put up yet: the studio's own two colours, and no initials —
                the face on the line below already says who this is, and the same
                letters twice is a stutter (`HeroRail`'s own rule) */
-            <div style={{ flex: "0 0 100%", aspectRatio: "1 / 1", background: `linear-gradient(140deg, ${grad[0]}55, ${grad[1]}33), var(--el)` }} />
+            <div style={{ flex: "0 0 100%", aspectRatio: SHOT_RATIO, background: `linear-gradient(140deg, ${grad[0]}55, ${grad[1]}33), var(--el)` }} />
           ) : (
             live.map((s) => (
-              <div key={s.key} style={{ flex: "0 0 100%", scrollSnapAlign: "center", position: "relative", aspectRatio: "1 / 1", background: `linear-gradient(140deg, ${grad[0]}55, ${grad[1]}33), var(--el)` }}>
+              <div key={s.key} style={{ flex: "0 0 100%", scrollSnapAlign: "center", position: "relative", aspectRatio: SHOT_RATIO, background: `linear-gradient(140deg, ${grad[0]}55, ${grad[1]}33), var(--el)` }}>
                 <Image
                   src={s.src}
                   alt=""
