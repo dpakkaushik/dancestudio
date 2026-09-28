@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState, useTransition, type CSSProperties } from "react";
@@ -69,6 +70,25 @@ export function ClassRoutines({
             </span>
             <span style={{ flex: 1, minWidth: 0 }}>
               <span style={{ display: "block", fontSize: 12.5, fontWeight: 800, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{r.title}</span>
+              {/* ⚠ WHOSE WORK IT IS (28 Sep 2026, the user: "routines to have
+                  artist name who created it with photo"). A routine belongs to a
+                  PERSON and travels with them between studios, so the class it is
+                  taught from credits them. ⚠ Drawn only when there IS a name:
+                  `profiles` is signed-in-only, so a signed-out visitor to a
+                  public class gets null and no half-credit is printed — the same
+                  rule the class card already follows for its teacher. */}
+              {r.ownerName ? (
+                <span style={{ display: "flex", alignItems: "center", gap: 5, marginTop: 3 }}>
+                  <span aria-hidden="true" style={{ width: 16, height: 16, borderRadius: 5, overflow: "hidden", flexShrink: 0, background: `linear-gradient(135deg,${col},#7C3AED)`, color: "#fff", fontSize: 7.5, fontWeight: 900, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                    {photoUrl(r.ownerPhotoPath) ? (
+                      <Image src={photoUrl(r.ownerPhotoPath) as string} alt="" width={16} height={16} style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
+                    ) : (
+                      r.ownerName.split(" ").filter(Boolean).map((w) => w[0]).slice(0, 2).join("").toUpperCase()
+                    )}
+                  </span>
+                  <span style={{ fontSize: 10, fontWeight: 700, color: SUB, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{r.ownerName}</span>
+                </span>
+              ) : null}
               <span style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 3, flexWrap: "wrap" }}>
                 {songHref ? (
                   <a href={songHref} target="_blank" rel="noreferrer" aria-label={`Open the song for ${r.title}`} style={chipLink("#22C55E")}>

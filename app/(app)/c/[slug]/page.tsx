@@ -15,7 +15,7 @@ import { countEnrolledBySession, findMyEnrolledSessionIds } from "@/repositories
 import { findClassMoney, findPaidReceiptByEnrollment, findPaidUserIdsBySession } from "@/repositories/payments";
 import { findRefundsByClass } from "@/repositories/refunds";
 import { findRoomById } from "@/repositories/rooms";
-import { findMyMembershipRole } from "@/repositories/tenants";
+import { findMySeat } from "@/repositories/tenants";
 import type { EnrollmentStatus } from "@/types/enrollment";
 
 /** The class detail page at its booking link — /c/{slug} (prototype S_class; the
@@ -85,12 +85,20 @@ export default async function ClassSharePage({
   } = await supabase.auth.getUser();
 
   const sessionId = danceClass.session?.id ?? null;
-  const [counts, mine, role] = await Promise.all([
+  /* ⚠ CLAIMS MOVED UP INTO THIS BATCH (28 Sep 2026), and it costs nothing: it
+     depends only on the class's id, so it was always parallelisable. What it
+     BUYS is that the viewer's own claim is known BEFORE the batch that decides
+     whether to fetch the register — see `mayRunRegister` below. */
+  const [counts, mine, seat, claims] = await Promise.all([
     sessionId ? countEnrolledBySession(supabase, [sessionId]) : Promise.resolve(new Map<string, number>()),
     user
       ? findMyEnrolledSessionIds(supabase)
       : Promise.resolve(new Map<string, { id: string; status: EnrollmentStatus }>()),
-    user ? findMyMembershipRole(supabase, danceClass.tenantId) : Promise.resolve(null),
+    /* ⚠ THE SEAT, NOT JUST ITS ROLE (28 Sep 2026) — the same one row, with the
+       two STANDING grants on it, so the page can offer the register to somebody
+       the Team desk gave Attendance to. Same query, no extra round trip. */
+    user ? findMySeat(supabase, danceClass.tenantId) : Promise.resolve(null),
+    findClaimsByClass(supabase, danceClass.id),
   ]);
 
   const filled = sessionId ? counts.get(sessionId) ?? 0 : 0;
@@ -98,7 +106,26 @@ export default async function ClassSharePage({
     ? isLiveNow(danceClass.session.startsAt, danceClass.session.endsAt)
     : false;
   const myBooking = sessionId ? mine.get(sessionId) ?? null : null;
+  const role = seat?.role ?? null;
   const canManage = role === "owner" || role === "trainer";
+  const myClaim = user ? claims.find((cl) => cl.userId === user.id) ?? null : null;
+
+  /* ⚠⚠ WHO THE REGISTER IS FETCHED FOR, AND WHY THIS IS THE REAL FIX (28 Sep
+     2026, the user: "when giving attendance and refunds right to assistants it
+     doesnt show up when viewing the class as an assistant after confirmation").
+     The Attendance TAB is drawn only when `register !== null` (ClassDetail:733),
+     and this read was `canManage` alone — so an assistant holding the attendance
+     job saw no tab whichever way the job had been granted, and the page's own
+     `canAtt` had nothing to switch on. It is now everybody the DATABASE would
+     let run it: the owner and trainers by their seat, and a confirmed assistant
+     with the job either PER CLASS (`myClaim`) or STANDING on the Team desk
+     (`seat`) — the same OR `can_run_register_for_class` applies, so the tab
+     appears exactly where the RPC would answer. The RPC re-checks every row. */
+  const mayRunRegister =
+    canManage ||
+    (myClaim?.status === "confirmed" &&
+      myClaim.kind === "assistant" &&
+      (myClaim.canAttendance || Boolean(seat?.canAttendance)));
 
   /* ONE ROUND TRIP FOR THE FIVE INDEPENDENT READS (19 Sep 2026, the user: "make
      app snappier") — they used to run one after another, four serial waits on
@@ -110,11 +137,10 @@ export default async function ClassSharePage({
      published classes only); and, for an artist's class, WHOSE profile the
      place row opens — the person behind the artist page, so the link never
      goes through the /artist redirect. */
-  const [receipt, register, paidUserIds, claims, room, ownerId, routines, myRoutines, canSetRoutines, passes, actingAs] = await Promise.all([
+  const [receipt, register, paidUserIds, room, ownerId, routines, myRoutines, canSetRoutines, passes, actingAs] = await Promise.all([
     myBooking && danceClass.priceInr > 0 ? findPaidReceiptByEnrollment(supabase, myBooking.id) : Promise.resolve(null),
-    canManage ? findClassRegister(supabase, danceClass.id) : Promise.resolve(null),
-    canManage && sessionId && danceClass.priceInr > 0 ? findPaidUserIdsBySession(supabase, sessionId) : Promise.resolve(new Set<string>()),
-    findClaimsByClass(supabase, danceClass.id),
+    mayRunRegister ? findClassRegister(supabase, danceClass.id) : Promise.resolve(null),
+    mayRunRegister && sessionId && danceClass.priceInr > 0 ? findPaidUserIdsBySession(supabase, sessionId) : Promise.resolve(new Set<string>()),
     danceClass.roomId ? findRoomById(supabase, danceClass.roomId) : Promise.resolve(null),
     danceClass.tenantType === "artist_page" ? findArtistPageOwner(supabase, danceClass.tenantId).catch(() => null) : Promise.resolve(null),
     /* WHAT THIS CLASS IS TAUGHT FROM (19 Sep 2026): the routines on it — RLS
@@ -133,16 +159,20 @@ export default async function ClassSharePage({
        holders and the gate silently open) */
     user ? resolveActingAs(supabase, as) : Promise.resolve(null),
   ]);
-  const myClaim = user ? claims.find((cl) => cl.userId === user.id) ?? null : null;
 
   /* Who may answer a refund request: the owner, or somebody holding the refunds
      job on this class (prototype 12710). Deliberately NOT every trainer — the
      job is grantable per class precisely because settling money is not implied
      by being a trainer. The RPCs re-check all of this server-side; this only
      decides whether the tab is worth drawing. */
+  /* ⚠ AND THE STANDING GRANT COUNTS HERE TOO (28 Sep 2026). `can_settle_refunds_for_class`
+     admits the owner, the per-class job AND `business_members.can_refunds`; this
+     test knew only the first two, so a seat given Refunds on the Team desk could
+     settle one through the RPC and had no tab to do it from. */
   const canSettleRefunds =
     role === "owner" ||
-    (myClaim?.status === "confirmed" && myClaim.canRefunds && danceClass.priceInr > 0);
+    (danceClass.priceInr > 0 &&
+      ((myClaim?.status === "confirmed" && myClaim.canRefunds) || Boolean(seat?.canRefunds)));
   /* What the class made is the OWNER's figure alone — the prototype puts the
      Earnings segment behind `isMine` (SEGS 11757) while Attendance and Refunds
      ride the grantable jobs beside it. A trainer running the register has no
@@ -167,6 +197,8 @@ export default async function ClassSharePage({
       register={register}
       claims={claims}
       myClaim={myClaim}
+      standingAttendance={Boolean(seat?.canAttendance)}
+      standingRefunds={Boolean(seat?.canRefunds)}
       roomAmenities={room?.amenities ?? []}
       refunds={refunds}
       canSettleRefunds={canSettleRefunds}

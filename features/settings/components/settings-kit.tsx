@@ -1,6 +1,7 @@
 import Link from "next/link";
 import type { CSSProperties, ReactNode } from "react";
 import { DOS_DISPLAY, DOS_UI, INK, LILAC } from "@/lib/design/tokens";
+import { DeskHero, type DosToolKey } from "@/features/tenants/components/biz-kit";
 
 /** The pieces the settings screens share, lifted from the prototype's BizShell
  *  (2950-2984): the tool card that heads every business page — a 22px-radius
@@ -61,14 +62,38 @@ export const rupees = (n: number) => `₹${Math.round(n).toLocaleString("en-IN")
 export const dayWords = (iso: string) => new Intl.DateTimeFormat("en-IN", { timeZone: "Asia/Kolkata", day: "numeric", month: "short" }).format(new Date(iso));
 export const dateWords = (iso: string) => new Intl.DateTimeFormat("en-IN", { timeZone: "Asia/Kolkata", day: "numeric", month: "short", year: "numeric" }).format(new Date(iso.length === 10 ? `${iso}T00:00:00+05:30` : iso));
 
-export function BizPage({ title, sub, grad, children }: { title: string; sub?: string; grad: string; children: ReactNode }) {
+/** ⚠ A TOOL'S PAGE IS HEADED BY ITS TOOL (28 Sep 2026, the user: "all tools
+ *  heading should be done in the same way like classes and events, not
+ *  happening for subscriptions, enquiries").
+ *
+ *  `BizPage` drew its own gradient header, so a screen behind a TILE could wear
+ *  any colour its author picked — and Subscription wore amber→pink while its own
+ *  tile on every grid is `DOS_TOOLS.subscription`'s blue. Pass `tool` and the
+ *  header IS `DeskHero`, the same object the Classes and Events desks wear, so
+ *  the tile and the page it opens read one vocabulary by construction.
+ *  `grad` stays for the screens that are NOT tools — Verification is the one
+ *  that matters (C53: a desk hero titles itself from `DOS_TOOLS`, and inventing
+ *  a tool colour for something on nobody's grid is what that decision refused). */
+export function BizPage({ title, sub, grad, tool, children }: { title: string; sub?: string; grad?: string; tool?: DosToolKey; children: ReactNode }) {
   return (
     <div style={{ background: LILAC, color: INK, maxWidth: 430, margin: "0 auto", fontFamily: DOS_UI, minHeight: "100vh", padding: "8px 16px 40px", boxSizing: "border-box" }}>
-      <div style={{ borderRadius: 22, padding: "15px 17px 14px", marginBottom: 12, position: "relative", overflow: "hidden", color: "#fff", background: grad }}>
-        <div aria-hidden="true" style={{ position: "absolute", right: -28, top: -32, width: 130, height: 130, borderRadius: 65, background: "rgba(255,255,255,.13)" }} />
-        <h1 style={{ fontSize: 21, fontWeight: 800, letterSpacing: -0.5, position: "relative", fontFamily: DOS_DISPLAY, lineHeight: 1.18, margin: 0 }}>{title}</h1>
-        {sub ? <div style={{ fontSize: 11, opacity: 0.9, marginTop: 3, position: "relative" }}>{sub}</div> : null}
-      </div>
+      {tool ? (
+        /* ⚠ THE SUB-LINE SURVIVES THE SWAP, and it has to: `DeskHero` names the
+           TOOL and an organization runs several businesses, so "whose
+           subscription is this" would otherwise leave the screen — the same
+           reason every other tool hero in the app carries the business's name
+           under it (C49). */
+        <>
+          <DeskHero tool={tool} as="h1" margin={sub ? "0" : "0 0 12px"} />
+          {sub ? <div style={{ fontSize: 11, fontWeight: 700, color: "var(--sub)", margin: "5px 2px 12px" }}>{sub}</div> : null}
+        </>
+      ) : (
+        <div style={{ borderRadius: 22, padding: "15px 17px 14px", marginBottom: 12, position: "relative", overflow: "hidden", color: "#fff", background: grad }}>
+          <div aria-hidden="true" style={{ position: "absolute", right: -28, top: -32, width: 130, height: 130, borderRadius: 65, background: "rgba(255,255,255,.13)" }} />
+          <h1 style={{ fontSize: 21, fontWeight: 800, letterSpacing: -0.5, position: "relative", fontFamily: DOS_DISPLAY, lineHeight: 1.18, margin: 0 }}>{title}</h1>
+          {sub ? <div style={{ fontSize: 11, opacity: 0.9, marginTop: 3, position: "relative" }}>{sub}</div> : null}
+        </div>
+      )}
       {children}
     </div>
   );

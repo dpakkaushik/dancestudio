@@ -91,7 +91,7 @@ export function SubscriptionScreen({
   const orgs = businesses.filter((b) => b.kind === "org");
 
   return (
-    <BizPage title="Subscription" sub="DanceOS Pro · Artist — one profile, more tools" grad="linear-gradient(135deg,#F59E0B,#EC4899)">
+    <BizPage title="Subscription" tool="subscription">
       {live ? (
         <>
           {(() => {

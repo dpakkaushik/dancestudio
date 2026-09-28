@@ -6,6 +6,7 @@ import { money as rupees } from "@/features/payouts/components/earnings-kit";
 import { photoUrl } from "@/lib/media/photo";
 import type { MembershipClassUse, MembershipHolder, MembershipWithUsage } from "@/repositories/memberships";
 import { ProgressBar } from "./MembershipsScreen";
+import { MembershipOffSale } from "./MembershipOffSale";
 
 /** ONE MEMBERSHIP AND ITS USAGE (19 Sep 2026, the user: "make sure able to track
  *  memberships usage for class and student wise with progress bar for
@@ -20,7 +21,7 @@ import { ProgressBar } from "./MembershipsScreen";
 const card = { background: "var(--card)", border: "1.5px solid var(--el)", borderRadius: 16, padding: "13px 14px", marginBottom: 10 } as const;
 const unitWord = (unit: "classes" | "hours", n: number) => (unit === "hours" ? `${n} ${n === 1 ? "hour" : "hours"}` : `${n} ${n === 1 ? "class" : "classes"}`);
 
-export function MembershipUsagePage({ membership, holders, classes }: { membership: MembershipWithUsage; holders: MembershipHolder[]; classes: MembershipClassUse[] }) {
+export function MembershipUsagePage({ membership, holders, classes, canManage = false }: { membership: MembershipWithUsage; holders: MembershipHolder[]; classes: MembershipClassUse[]; canManage?: boolean }) {
   const m = membership;
   return (
     <div style={{ background: LILAC, color: INK, maxWidth: 430, margin: "0 auto", fontFamily: DOS_UI, minHeight: "100vh", padding: "14px 16px 40px", boxSizing: "border-box" }}>
@@ -98,6 +99,12 @@ export function MembershipUsagePage({ membership, holders, classes }: { membersh
           })
         )}
       </div>
+
+      {/* ⚠ THE OWNER'S ALONE — `delete_membership` refuses anybody else in so
+          many words ("only an owner removes a membership"), and a door that
+          would be refused is not offered (21 Sep 2026's rule, and the reason the
+          Memberships and Assets tiles stopped being drawn for non-owners). */}
+      {canManage ? <MembershipOffSale membershipId={m.id} name={m.name} active={m.active} /> : null}
     </div>
   );
 }

@@ -11,6 +11,7 @@ import { respondToOrganizationAskAction, withdrawOrganizationAskAction } from "@
 import { acceptInviteAction, declineInviteAction, revokeInviteAction } from "@/features/staff/server-actions/staff";
 import { ClassTile } from "@/features/classes/components/ClassTile";
 import { EventCard } from "@/features/events/components/EventCard";
+import { DeskHero } from "@/features/tenants/components/biz-kit";
 import { DOS_DISPLAY, DOS_UI, LILAC, PINK } from "@/lib/design/tokens";
 import type { DanceClass } from "@/types/class";
 import type { DanceEvent } from "@/types/event";
@@ -782,8 +783,20 @@ export function InboxScreen({
           21 Sep, `EventForm` and `/rooms` 22 Sep), and the one thing a screen
           reader has to move by. Discover's own head is the model: a display
           heading with the count as its sub-line. */}
+      {/* ⚠ AND ENQUIRIES IS A TOOL, SO IT IS HEADED LIKE ONE (28 Sep 2026, the
+          user: "all tools heading should be done in the same way like classes
+          and events, not happening for subscriptions, enquiries"). Enquiries
+          stopped being a tab and became a tile on all four grids on 27 Sep
+          (C70), and a tile's page wears `DeskHero` — the same object Classes and
+          Events wear — so the tile and the screen it opens agree. ⚠ THE INBOX
+          KEEPS ITS OWN `<h1>`: it is a TAB, the chrome draws the wordmark over
+          it, and a tool hero there would name a tool that is on no grid. */}
       <div style={{ padding: "12px 16px 0", position: "relative" }}>
-        <h1 style={{ margin: 0, fontFamily: DOS_DISPLAY, fontSize: 27, fontWeight: 900, letterSpacing: -0.6, lineHeight: 1.08 }}>{onEnq ? "Enquiries" : "Inbox"}</h1>
+        {onEnq ? (
+          <DeskHero tool="enquiries" as="h1" margin="0 0 2px" />
+        ) : (
+          <h1 style={{ margin: 0, fontFamily: DOS_DISPLAY, fontSize: 27, fontWeight: 900, letterSpacing: -0.6, lineHeight: 1.08 }}>Inbox</h1>
+        )}
         {/* ⚠ WHOSE DESK, when a tool tile named one (27 Sep 2026). A list
             narrowed to one studio with nothing on screen saying so reads as a
             list that has lost rows — the same reason every tool hero names the

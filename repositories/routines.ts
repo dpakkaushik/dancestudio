@@ -22,6 +22,18 @@ export interface Routine {
   videoUrl: string | null;
   status: "live" | "draft";
   createdAt: string;
+  /** WHO MADE IT (28 Sep 2026, the user: "routines to have artist name who
+   *  created it with photo"). A routine belongs to a PERSON — it travels with
+   *  them from studio to studio, which is why the tile is on a person's Home —
+   *  so the class it is taught from should say whose work it is.
+   *  ⚠ Null for a reader who cannot see the person: `routines.owner_id`
+   *  references `profiles`, so PostgREST embeds it, but `profiles` is
+   *  signed-in-only (Step 1) — a SIGNED-OUT visitor to a public class page gets
+   *  null here and the credit is simply not drawn, exactly as the class card's
+   *  teacher is not drawn for them. Publishing a name to the logged-out world is
+   *  a privacy decision and a migration, not a select. */
+  ownerName: string | null;
+  ownerPhotoPath: string | null;
 }
 
 /** a routine with what it has been used for — the desk's row */
@@ -66,6 +78,9 @@ interface RoutineRow {
   video_url: string | null;
   status: "live" | "draft";
   created_at: string;
+  /** the embed through `routines.owner_id` → `profiles`; absent on the reads
+   *  that do not ask for it, and null for a reader `profiles` does not admit */
+  profiles?: { full_name: string | null; profile_photo_path: string | null } | null;
 }
 
 const toRoutine = (r: RoutineRow): Routine => ({
@@ -79,6 +94,8 @@ const toRoutine = (r: RoutineRow): Routine => ({
   videoUrl: r.video_url,
   status: r.status,
   createdAt: r.created_at,
+  ownerName: r.profiles?.full_name ?? null,
+  ownerPhotoPath: r.profiles?.profile_photo_path ?? null,
 });
 
 /** The desk: every routine of the caller's own, newest first, with its usage. */
@@ -135,7 +152,7 @@ export async function findRoutineStudents(supabase: SupabaseClient, routineId: s
 export async function findClassRoutines(supabase: SupabaseClient, classId: string): Promise<Routine[]> {
   const { data, error } = await supabase
     .from("class_routines")
-    .select("routines (id, title, style, level, song_title, song_url, song_is_file, video_url, status, created_at)")
+    .select("routines (id, title, style, level, song_title, song_url, song_is_file, video_url, status, created_at, profiles (full_name, profile_photo_path))")
     .eq("class_id", classId)
     .is("deleted_at", null)
     .limit(20);

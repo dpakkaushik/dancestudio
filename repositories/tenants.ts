@@ -263,6 +263,51 @@ export async function findMyMembershipRole(
   return (data?.member_role as MemberRole | undefined) ?? null;
 }
 
+/** THE SEAT AND WHAT IT WAS GRANTED — the same one row as `findMyMembershipRole`
+ *  above, with the two STANDING powers on it (28 Sep 2026).
+ *
+ *  ⚠ WHY THIS EXISTS AT ALL. R38 (20 Sep 2026) gave an owner two grants to hand
+ *  out per person on the Team desk — `business_members.can_attendance` and
+ *  `can_refunds` — and the DATABASE has honoured them ever since:
+ *  `can_run_register_for_class` and `can_settle_refunds_for_class` each carry a
+ *  branch for the standing grant beside the per-class claim and the owner. The
+ *  CLASS PAGE never read them: it asked `myClaim` alone, which is the OTHER
+ *  grant path. So an assistant given Attendance on the Team desk could run the
+ *  register as far as the database was concerned and **saw no tab to run it
+ *  from** — the user's own report, and eight days old.
+ *
+ *  It is a sibling rather than a widening of `findMyMembershipRole` because that
+ *  function has other callers that want a role and nothing else; this one costs
+ *  the same single query, so the page that needs both makes no extra round trip. */
+export interface MySeat {
+  role: MemberRole;
+  canAttendance: boolean;
+  canRefunds: boolean;
+}
+export async function findMySeat(supabase: SupabaseClient, tenantId: string): Promise<MySeat | null> {
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) {
+    return null;
+  }
+
+  const { data, error } = await supabase
+    .from("business_members")
+    .select("member_role, can_attendance, can_refunds")
+    .eq("business_id", tenantId)
+    .eq("user_id", user.id)
+    .is("deleted_at", null)
+    .maybeSingle();
+
+  if (error) {
+    throw new Error(`businesses.mySeat failed: ${error.message}`);
+  }
+  if (!data) return null;
+  const row = data as { member_role: MemberRole; can_attendance?: boolean; can_refunds?: boolean };
+  return { role: row.member_role, canAttendance: Boolean(row.can_attendance), canRefunds: Boolean(row.can_refunds) };
+}
+
 /** Tenants the signed-in user belongs to.
  *  RLS policies OR together — since discovery made listed businesses publicly
  *  readable, selecting from `businesses` directly returns EVERY listed tenant.

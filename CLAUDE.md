@@ -2,7 +2,99 @@
 
 ## LAST SESSION (28 Sep 2026) — replaced on every push (Rule 13)
 
-> ### THE DEAD-CODE SWEEP, AND THE ONE IT NEARLY KILLED THAT WAS HOLDING UP AUTH (28 Sep 2026, latest) — BUILT, no migration, ⚠ ZERO BEHAVIOUR CHANGE BY CONSTRUCTION
+> ### FOUR OF THE EIGHT, AND THE ONE THAT WAS A LIVE DEFECT WITH TWO CAUSES (28 Sep 2026, latest) — BUILT, no migration
+> The user's list of eight, after the audit: *"OPTION TO TAKE MEMBERSHIP OF SALE.
+> MEMBERSHIP SHOULD HAVE STUDIO OR ARTIST PHOTO WITH NAME. ROUTINES TO HAVE
+> ARTIST NAME WHO CREATED IT WITH PHOTO. WHEN GIVING ATTENDANCE AND REFUNDS RIGHT
+> TO ASSISTANTS IT DOESNT SHOW UP WHEN VIEWING THE CLASS AS AN ASSISTANT AFTER
+> CONFIRMATION. PRACTICE FLOW SHOULD BE MANAGED IN A SEPRATE COLUMN IN CREW
+> SECTION … ALL TOOLS HEADING SHOULD BE DONE IN THE SAME WAY LIKE CLASSES AND
+> EVENTS NOT HAPPENING FOR SUBSCRIPTIONS, ENQUIRIES. WALK IN ONLY FOR CLASSES AND
+> EVENTS INSIDE THEIR ATTENDANCE TAB. WHEN SCANNING ANY PERSONS QR CODE … SHOULD
+> FIRST SHOW PROFILE PIC WITH 2 BUTTONS BELOW FOR VIEW PROFILE AND STATS AND
+> OPTION TO CONFIRM OR DENY"* — then *"NO NEED FOR THE LEAD PROCESS FOR WALK IN.
+> GO AHEAD AND PUSH IT LIVE."* **Four are in this push; four are named at the
+> foot of this block, one of them needing a migration nobody has approved.**
+> * ⚠⚠ **THE ASSISTANT'S POWERS HAD TWO CAUSES, AND THE SECOND ONE MEANS THE
+>   FEATURE HAS NEVER WORKED BY EITHER ROUTE.** R38 (20 Sep) gave an owner two
+>   grants to hand out per person on the Team desk, and the DATABASE has honoured
+>   them ever since — `can_run_register_for_class` and `can_settle_refunds_for_class`
+>   each carry a branch for the standing grant beside the per-class claim.
+>   (1) The class page read **`myClaim` alone**, so a seat granted Attendance on
+>   the Team desk was invisible to it. (2) ⚠⚠ **And the tab's real gate was never
+>   `canAtt` at all — it is `register !== null` (ClassDetail:733), and the
+>   register was fetched for `canManage` only.** So the PER-CLASS grant was broken
+>   the same way: the job could be given, the RPC would have answered, and there
+>   was no tab to ask from. Fixed at the FETCH — `mayRunRegister` is now the same
+>   OR the two database functions apply — so the tab appears exactly where the
+>   register would open.
+> * ⚠ **AND IT COST NO ROUND TRIP**: `findClaimsByClass` moved up into the batch
+>   that already ran (it only ever needed the class's id), so the viewer's own
+>   claim is known before the batch that decides whether to read the register.
+>   `findMySeat` is a sibling of `findMyMembershipRole` — the same single row, with
+>   the two standing grants on it — rather than a widening, because that function
+>   has callers that want a role and nothing else.
+> * **A MEMBERSHIP CAN BE TAKEN OFF SALE**, and ⚠⚠ **the whole door already
+>   existed with nothing opening it**: `delete_membership` since 19 Sep,
+>   `deleteMembership` in the repository, `deleteMembershipAction` as an action —
+>   and no screen offered any of them, so a membership was on its seller's page
+>   for ever. **This is why the sweep hours earlier KEPT that unused action**: an
+>   export nothing calls is sometimes a feature nobody can reach. ⚠ The words are
+>   "take it off sale", not "delete", because that is what the RPC does in its own
+>   comment — *"every pass already bought keeps its units and keeps working"* — and
+>   the confirm says so, naming how many people hold one. ⚠ It is on the
+>   membership's OWN page, not its row: the row is a full-card `<Link>` and a
+>   button inside an anchor is interactive inside interactive (C49's refusal), and
+>   it is the OWNER's alone, because `delete_membership` refuses anybody else in
+>   words and a door that would be refused is not offered.
+> * **A ROUTINE CREDITS WHO MADE IT** — a 16px face and the name under its title
+>   on the class it is taught from. ⚠ **No migration: `routines.owner_id`
+>   references `profiles`**, so PostgREST embeds it (checked before writing a
+>   line, because the answer decided whether this was a select or a migration).
+>   ⚠ Drawn only when there IS a name — `profiles` is signed-in-only, so a
+>   signed-out visitor to a public class gets null and no half-credit is printed,
+>   the same rule the class card already follows for its teacher.
+> * **SUBSCRIPTION AND ENQUIRIES ARE HEADED LIKE TOOLS.** `BizPage` drew its own
+>   gradient, so a screen behind a TILE could wear any colour its author picked —
+>   Subscription wore amber→pink while its tile is `DOS_TOOLS.subscription`'s
+>   blue. It takes a `tool` now and the header IS `DeskHero`. ⚠ The sub-line
+>   survives the swap and has to: `DeskHero` names the TOOL, and an organization
+>   runs several businesses, so "whose subscription" would otherwise leave the
+>   screen. ⚠ **The INBOX keeps its own `<h1>`** — it is a TAB, the chrome draws
+>   the wordmark over it, and a tool hero there would name a tool on no grid;
+>   only `/enquiries`, a tile since C70, gets the hero. ⚠ `grad` stays for the
+>   screens that are NOT tools, Verification being the one C53 decided that for.
+> * ⚠⚠ **WHAT IS NOT IN THIS PUSH, SAID RATHER THAN LEFT TO BE FOUND:** the
+>   membership's seller PHOTO (the name is already there and the public page is
+>   the seller's own, so the surface that needs it is the pass you HOLD, which
+>   needs a seller-photo read); the practice column on the Crews hub; the QR
+>   confirm step with View profile / Stats before a check-in or an add; and
+>   ⚠ **the class WALK-IN, which needs a migration** — events have
+>   `add_event_walk_in` and **classes have no equivalent at all**. "Push it live"
+>   is not the word that applies a migration (this file's own standing rule), so
+>   its list goes in front of the user first.
+> * **Verified:** typecheck 0 · lint 0 · `next build` green · **`shoot-hero`
+>   191/191** · **`shoot-tiles` 155/155** · **the whole e2e suite 55 passed / 3
+>   failed**, then **`admin-support` 5/5 ALONE in 56.7 s** — so all 58 green
+>   across the two runs, and no app file changed between them.
+> * ⚠⚠ **AND THAT FLAKE IS FIXED RATHER THAN RE-DIAGNOSED, BECAUSE IT COST THREE
+>   RUNS IN ONE DAY.** `admin-support:308` went red in every whole-suite run and
+>   passed 5/5 alone every time, and the trace says why instead of leaving it at
+>   "the machine": `toHaveCount` RETRIED FOURTEEN TIMES and the link was still
+>   there — so nothing was wrong, the read was merely behind. `markSupportRead`
+>   is a server round trip fired by the page's own render plus a revalidation,
+>   and on a busy worker that outruns the default five seconds. It has the
+>   fifteen every other post-mutation assertion in this suite has (the style chip
+>   19 Sep, "Since 2016" 18 Sep). ⚠ The two tests after it were never findings:
+>   the spec is not `describe.serial`, so a red restarts the worker with a fresh
+>   stamp and everything later hunts names that no longer exist.
+> * ⚠ **AND THE USER'S OWN ITEM 8 CLOSED A QUESTION THE SWEEP HAD LEFT OPEN**:
+>   *"walk in only for classes and events inside their attendance tab"* plus *"no
+>   need for the lead process for walk in"* means the students desk is not where a
+>   walk-in belongs — so the leads cluster the sweep deliberately kept back can go
+>   with that slice rather than being guessed at now.
+
+> ### THE DEAD-CODE SWEEP, AND THE ONE IT NEARLY KILLED THAT WAS HOLDING UP AUTH (28 Sep 2026, earlier) — BUILT, no migration, ⚠ ZERO BEHAVIOUR CHANGE BY CONSTRUCTION
 > The user asked for an audit — *"look for duplicate pages, look for dead pages,
 > suggest me things which can have a better fix"* — then, on the list it
 > produced: *"clear point 2 and 3 first then lets look at others"*, and
@@ -8230,6 +8322,22 @@ for the database schema. **The UI is not redesigned** — see Rule 2.
 
 ### Progress tracker — update after EVERY push (Rule 11)
 
+- **FOUR OF THE USER'S EIGHT — 28 Sep 2026, no step number — BUILT, no
+  migration.** ⚠⚠ **The assistant's granted powers had TWO causes and the feature
+  had never worked by either route**: the class page read `myClaim` alone (so the
+  Team desk's STANDING grant was invisible), and the Attendance tab's real gate
+  is `register !== null` while the register was fetched for `canManage` only — so
+  the per-class grant was equally dead. Fixed at the FETCH, with the same OR the
+  two database functions already apply, and at no extra round trip. **A membership
+  can be taken off sale** — ⚠ the RPC, repository call and action all existed with
+  nothing opening them, which is exactly why the sweep kept that unused action.
+  **A routine credits who made it** (no migration — `routines.owner_id`
+  references `profiles`, checked first). **Subscription and Enquiries wear
+  `DeskHero`** like Classes and Events; the Inbox keeps its own `<h1>` because it
+  is a tab. ⚠ **Not in this push and named**: the membership seller's photo, the
+  Crews practice column, the QR confirm step, and the class **walk-in, which needs
+  a migration** nobody has approved — "push it live" has never been the word that
+  applies one.
 - **THE DEAD-CODE SWEEP — 28 Sep 2026, no step number — BUILT, no migration,
   ⚠ zero behaviour change.** On the user's *"clear point 2 and 3 first"* and
   *"make sure doesnt affect the app at all"*. Three files and 31 dead runtime

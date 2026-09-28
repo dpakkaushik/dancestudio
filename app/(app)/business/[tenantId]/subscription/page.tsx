@@ -51,7 +51,7 @@ export default async function BusinessSubscriptionPage({ params }: { params: Pro
   const verified = isOrg ? Boolean(tenant.gstinVerifiedAt) : Boolean(tenant.verifiedAt);
 
   return (
-    <BizPage title="Subscription" sub={`${tenant.name} · ${isOrg ? "an organization's own mandate" : "one studio, one mandate"}`} grad="linear-gradient(135deg,#0369A1,#22D3EE)">
+    <BizPage title="Subscription" tool="subscription" sub={`${tenant.name} · ${isOrg ? "an organization's own mandate" : "one studio, one mandate"}`}>
       {state ? (
         <StudioSubscriptionStrip tenantId={tenantId} tenantName={tenant.name} state={state} studioPrice={price} heading={tenant.name} />
       ) : (

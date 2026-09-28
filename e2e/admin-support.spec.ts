@@ -305,7 +305,19 @@ test.describe("the admin panel: support, trust, accountability", () => {
        one — the count in the database is right either way. */
     await org.goto("/support");
     await org.reload();
-    await expect(main.getByRole("link", { name: /unread$/ })).toHaveCount(0);
+    /* ⚠ FIFTEEN SECONDS, AND IT WAS EARNED (28 Sep 2026). This one assertion
+       went red in three whole-suite runs in one day and passed 5/5 alone every
+       time — and the trace says why rather than leaving it to "the machine":
+       `toHaveCount` retried fourteen times and the link was still there, so
+       nothing was WRONG, the read was merely behind. `markSupportRead` is a
+       server round trip fired by the page's own render and then a revalidation,
+       which on a busy worker outruns the default five seconds; the count in the
+       database is right either way (the same shape as every other fifteen in
+       this suite — the style chip 19 Sep, "Since 2016" 18 Sep). ⚠ And the two
+       tests after this one are not findings when it fails: this spec is NOT
+       `describe.serial`, so a red restarts the worker with a fresh stamp and
+       everything later hunts names that no longer exist. */
+    await expect(main.getByRole("link", { name: /unread$/ })).toHaveCount(0, { timeout: 15000 });
     await expect(main.getByRole("link", { name: /^Open / })).toBeVisible();
   });
 

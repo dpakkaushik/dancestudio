@@ -153,6 +153,19 @@ export interface ClassDetailProps {
   claims: ClassClaim[];
   /** An ask waiting for the signed-in viewer's own answer. */
   myClaim: ClassClaim | null;
+  /** THE STANDING GRANTS ON THE VIEWER'S SEAT (28 Sep 2026, the user: "when
+   *  giving attendance and refunds right to assistants it doesnt show up when
+   *  viewing the class as an assistant after confirmation").
+   *
+   *  ⚠ There are TWO grant paths and this page only ever read one. A power can
+   *  be given PER CLASS on the class's own team controls (it rides `myClaim`),
+   *  or STANDING for the whole business on the Team desk (R38, 20 Sep 2026 —
+   *  `business_members.can_attendance` / `can_refunds`). `can_run_register_for_class`
+   *  and `can_settle_refunds_for_class` have honoured both since that day; this
+   *  page asked the claim alone, so the standing grant worked everywhere except
+   *  on the screen that is supposed to offer it. */
+  standingAttendance?: boolean;
+  standingRefunds?: boolean;
   /** Refund requests against this class — fetched only for a viewer who may
    *  settle them (owner, or a confirmed claim holding the refunds job). */
   refunds?: RefundRequest[];
@@ -209,6 +222,8 @@ export function ClassDetail({
   register,
   claims,
   myClaim,
+  standingAttendance = false,
+  standingRefunds = false,
   roomAmenities,
   refunds = [],
   canSettleRefunds = false,
@@ -275,9 +290,16 @@ export function ClassDetail({
   const posterItem = { title: c.title, style: c.style, styleColor: col, posterUrl: photoUrl(c.posterPath) };
   /* the team's own reading of the page (11822): a confirmed assistant who does not
      RUN the class sees what is theirs to do, and the register / refunds tabs say so */
+  /* ⚠ EITHER GRANT PATH COUNTS (28 Sep 2026). `assisting` is still what decides
+     whether this viewer reads the page as a helper rather than as its manager;
+     what it may NOT decide is where the power came from. A power is theirs if
+     the class gave it to them (`myClaim`) OR if the Team desk did
+     (`standing…`) — which is exactly the OR the two database functions have
+     been applying all along, so the tab now appears wherever the register would
+     actually open. Both are re-checked server-side; this only draws the tab. */
   const assisting = !canManage && myClaim?.status === "confirmed" && myClaim.kind === "assistant";
-  const canAtt = assisting && Boolean(myClaim?.canAttendance);
-  const canRef = assisting && Boolean(myClaim?.canRefunds);
+  const canAtt = assisting && (Boolean(myClaim?.canAttendance) || standingAttendance);
+  const canRef = assisting && (Boolean(myClaim?.canRefunds) || standingRefunds);
   const paidSet = new Set(paidUserIds);
   const [posterOpen, setPosterOpen] = useState(false);
   const [posterBusy, setPosterBusy] = useState(false);
