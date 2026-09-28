@@ -71,6 +71,9 @@
 >   INLINE at `adminGuard.ts:44`, **which is precisely why `countSupportUnread`
 >   was dead in the first place**. Nothing deleted feeds it, and `markSupportRead`
 >   — the repository function the two routes call directly — was never touched.
+>   **PUSHED AND LIVE (`da963d1`), read back off the DEPLOYMENT rather than
+>   assumed:** Vercel's own list for THIS sha, BUILDING → READY ·
+>   **`stranger-smoke.ps1` 11/11** against `https://dancestudio-orcin.vercel.app`.
 
 > ### THE TOP OF EVERY CONTACT BUTTON WAS PAINTED OVER, AND EVERY RECT IN THE PLACE SAID IT WAS FINE (28 Sep 2026, earlier) — BUILT, no migration
 > The user, hours after the row below stopped clipping its LABELS: *"the top part
