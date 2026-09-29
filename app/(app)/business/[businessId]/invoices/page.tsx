@@ -3,7 +3,7 @@ import { redirect } from "next/navigation";
 import { InvoicesScreen } from "@/features/settings/components/InvoicesScreen";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { findTenantInvoices } from "@/repositories/invoices";
-import { findMyMemberships, runsTheBusiness } from "@/repositories/tenants";
+import { findMyMemberships, runsTheBusiness } from "@/repositories/businesses";
 
 export const metadata: Metadata = { title: "Invoices — DanceOS" };
 

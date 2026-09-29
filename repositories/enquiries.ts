@@ -1,6 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Enquiry, EnquiryQuote, EnquiryStatus, EnquiryTypeKey, QuoteStatus } from "@/types/enquiry";
-import type { BusinessType } from "@/types/tenant";
+import type { BusinessType } from "@/types/business";
 
 /** Step 18 reads and the RPC wrappers. Both ends of an enquiry read it under
  *  RLS — the sender and the business's members — and every "mine" query says

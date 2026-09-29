@@ -3,7 +3,7 @@ import { RoomForm } from "@/features/rooms/components/RoomForm";
 import { RoomsManager } from "@/features/rooms/components/RoomsManager";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { findRoomsByTenant } from "@/repositories/rooms";
-import { findMyMemberships, runsTheBusiness } from "@/repositories/tenants";
+import { findMyMemberships, runsTheBusiness } from "@/repositories/businesses";
 
 export default async function TenantRoomsPage({
   params,

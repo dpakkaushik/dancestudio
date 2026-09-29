@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
-import { claimPerson, respondToClaim, setClaimPowers, withdrawClaim } from "@/repositories/claims";
+import { claimPerson, respondToClaim, setClaimPowers, withdrawClaim } from "@/repositories/classPeople";
 
 /** Step 11 people actions. Consent is the whole point: the studio ASKS (only
  *  its own team, owner/trainer only) and the person asked is the only one who

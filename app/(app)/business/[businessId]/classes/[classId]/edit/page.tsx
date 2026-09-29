@@ -1,10 +1,10 @@
 import { redirect } from "next/navigation";
 import { ClassForm } from "@/features/classes/components/ClassForm";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
-import { findClaimsByClass } from "@/repositories/claims";
+import { findClaimsByClass } from "@/repositories/classPeople";
 import { findClassById } from "@/repositories/classes";
 import { findRoomsByTenant } from "@/repositories/rooms";
-import { findBusinessName, findMyMemberships } from "@/repositories/tenants";
+import { findBusinessName, findMyMemberships } from "@/repositories/businesses";
 
 /** Edit class — the owner alone (18 Sep 2026), like Add class. */
 export default async function EditClassPage({

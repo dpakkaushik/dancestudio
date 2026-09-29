@@ -1,4 +1,4 @@
-import type { BusinessType } from "@/types/tenant";
+import type { BusinessType } from "@/types/business";
 
 /** Step 18 — the enquiry system, lifted from the prototype's ENQ_TYPES
  *  (DanceOSApp.jsx:4900-4923): five types, each with its own fields, each

@@ -2,7 +2,7 @@
 
 ## LAST SESSION (29 Sep 2026) — replaced on every push (Rule 13)
 
-> ### THE APP SPEAKS THE DATABASE'S LANGUAGE AT LAST — #0y STAGE 1 (29 Sep 2026, latest) — no migration, ⚠ ZERO BEHAVIOUR CHANGE BY CONSTRUCTION
+> ### THE APP SPEAKS THE DATABASE'S LANGUAGE AT LAST — #0y STAGES 1 AND 2 (29 Sep 2026, latest) — no migration, ⚠ ZERO BEHAVIOUR CHANGE BY CONSTRUCTION
 > The user: *"fix all of them and ask me questions with suggestions to solve
 > them"*, and, asked how to take the rename the 16 Sep session deferred
 > (*"strings now, identifiers next"*), they chose **two stages**. This is stage 1:
@@ -61,11 +61,46 @@
 >   186/186**, **`shoot-register` 57/57** — ⚠ **the same tallies as before the
 >   rename, which is what "zero behaviour change" looks like when it is measured
 >   rather than asserted** — and the whole e2e suite.
-> * ⚠ **WHAT STAGE 1 LEAVES, SAID RATHER THAN DISCOVERED:** the repo is
->   deliberately inconsistent for one push — `repositories/tenants.ts` exports
->   `findMyBusinesses`, `features/enrollments/` holds class-booking actions, and
->   `types/claim.ts` defines `ClassPerson`. **Stage 2 is the files and folders**
->   (#0y), and it is a `git mv` plus an import-path rewrite with nothing else in it.
+> * **AND STAGE 2, THE FILES AND FOLDERS THAT CARRIED THOSE NAMES:** 13 `git mv`s and 161
+>   import specifiers in 110 files — `repositories/{tenants,claims,enrollments}.ts`,
+>   `features/{tenants,claims,enrollments}/`, `types/{tenant,claim,enrollment}.ts`
+>   and `scripts/rls-proof-tenants.ps1`, all moved to the names the database has
+>   used since 16 Sep. ⚠ **`git mv`, so history follows the file**; the proof
+>   runner globs `rls-proof-*.ps1` and picked the renamed one up unchanged, though
+>   its own header comment — and `proof-lib.ps1` — told the reader to run a path
+>   that no longer exists, both corrected. ⚠ **The same diff audit proves it pure:
+>   21 strings gone, 21 born, EVERY ONE a module path** and not one testid, route
+>   literal, RPC name or `p_*` key. ⚠ `tsc` caught three relative siblings the
+>   list missed (`./claims`, `./enrollments`, `./tenants` inside `repositories/`)
+>   and **nothing else could have** — a relative specifier names no folder, so
+>   there is no prefix for a rule to notice. ⚠ There is **no dynamic import of any
+>   moved module** in the tree, so every path here was resolved by the compiler
+>   rather than at runtime.
+> * ⚠⚠ **AND STAGE 3 IS REAL, MEASURED, AND DELIBERATELY NOT DONE — BECAUSE THE
+>   DRY RUN PROVED IT IS NOT A REGEX JOB.** Stage 1 swept on `\b<word>\b`, which
+>   is right against false positives and **wrong for camelCase**: `\bTenant\b`
+>   cannot match `findTenantFollowers`, because the `F` is a word character. So
+>   **122 distinct identifiers survived** a pass that reported 1,898 rewrites and
+>   a green typecheck. ⚠ **Found by reading a file head after stage 2, by no
+>   check** — a word-boundary sweep declares itself complete on a camelCase
+>   codebase. The dry run is what stopped it: `claimed → classPersoned` and
+>   `claiming → classPersoning` are **English words**; `claimPerson →
+>   classPersonPerson` and `ClassClaim → ClassClassPerson` are **stutters**, and
+>   the second needs a real decision since `ClassPerson` is taken;
+>   `findAskedClaimsForTenants` renames only its FIRST noun, because one
+>   identifier can carry two. ⚠ And `disclaimer` and `reclaims` are **PROSE**
+>   containing "claim", while `enrolled` is a **live database value**. **Shipping
+>   `classPersonPersonAction` would be worse than the inconsistency it fixes**, so
+>   it is recorded in #0y with its measurement rather than guessed at.
+> * ⚠⚠ **AND THREE STRING GUARDS WERE TRIED ON THAT PASS AND ALL THREE CRIED
+>   WOLF**, which is its own lesson and a new one for this file: **a regex cannot
+>   tell code from a comment.** `'` is an apostrophe in *"the studio's calendar"*
+>   and `` ` `` is MARKDOWN in *"`findMyMemberships` is `findMyTenants`"*, and this
+>   codebase writes both everywhere — so each guard fired on correct input, and a
+>   check that cries wolf is worse than none, because the next person switches it
+>   off. **The check that works is the DIFF AUDIT**: extract every quoted string
+>   the diff changed and read the list, which is short precisely because a diff
+>   holds only changed lines.
 
 > ### PINK IS SKY, THE BINARIES LEAVE GIT, AND THE LEFTOVERS ARE SWEPT (29 Sep 2026, earlier) — no migration, PUSHED (`2bd74c7`)
 > Three open backlog rows, none needing schema.
@@ -9781,14 +9816,47 @@ summary; the report has the evidence.
    ⚠ The `"tenant"` literal stays everywhere it is a VALUE (`PhotoOwner`'s kind,
    `admin_audit.subject_kind`'s 161 immutable rows, the `side` prop) and is
    deliberately NOT frozen in `BusinessHub.tsx`, whose five are type indexes.
-   **⚠ WHAT IS LEFT — STAGE 2, and the repo is knowingly inconsistent until it
-   lands:** `repositories/tenants.ts` exports `findMyBusinesses`,
-   `features/enrollments/` holds class-booking actions, `types/claim.ts` defines
-   `ClassPerson`. The moves: `repositories/{tenants,claims,enrollments}.ts`,
-   `features/{tenants,claims,enrollments}/`, `types/{tenant,claim,enrollment}.ts`,
-   `scripts/rls-proof-tenants.ps1` — a `git mv` plus an import-path rewrite,
-   **and nothing else in the push.** ⚠ Stage 1's sweep froze every module
-   specifier whole precisely so stage 2 is the only thing that ever moves one.
+   **✅ STAGE 2 — the files and folders: 13 `git mv`s and 161 import specifiers
+   in 110 files.** `repositories/{tenants,claims,enrollments}.ts` →
+   `{businesses,classPeople,classBookings}.ts`, `features/{tenants,claims,enrollments}/`
+   → `features/{businesses,classPeople,classBookings}/`,
+   `types/{tenant,claim,enrollment}.ts` → `{business,classPerson,classBooking}.ts`,
+   `scripts/rls-proof-tenants.ps1` → `rls-proof-businesses.ps1` (the runner globs
+   `rls-proof-*.ps1`, so it is picked up unchanged). ⚠ **`git mv`, not
+   write-and-delete**, so history follows the file. ⚠ **Proven pure**: the diff
+   audit says 21 strings gone, 21 born, **every one a module path and not one
+   anything else**. ⚠ `tsc` caught three relative siblings the specifier list
+   missed (`./claims`, `./enrollments`, `./tenants` inside `repositories/`) —
+   **nothing else could have**, because a relative specifier names no folder and
+   so has no prefix to notice.
+   **⚠⚠ WHAT IS STILL LEFT — STAGE 3, AND IT IS NOT A REGEX JOB.** Stage 1 swept
+   on `\b<word>\b`, which is right against false positives and **wrong for
+   camelCase**: `\bTenant\b` matches the standalone word and cannot match
+   `findTenantFollowers`, because the `F` is a word character. So **122 distinct
+   identifiers survived** a pass that reported 1,898 rewrites and a green
+   typecheck — `findTenantFollowers`, `PublicTenantPage`, `myClaim`,
+   `MyEnrollment`, `updateTenantProfileAction`, `findPublicTenantProfile` …
+   **A word-boundary sweep declares itself complete on a camelCase codebase.**
+   Found by READING A FILE HEAD after stage 2, by no check.
+   ⚠ **It was dry-run and deliberately NOT applied, because the dry run proved it
+   needs a person to NAME things rather than a rule:**
+   `claimed → classPersoned` and `claiming → classPersoning` (**English words**),
+   `claimPerson → classPersonPerson` and `ClassClaim → ClassClassPerson`
+   (**stutters** — the first wants to be `askClassPerson`, and the second needs a
+   decision, since `ClassPerson` is already taken), and
+   `findAskedClaimsForTenants → findAskedClaimsForBusinesses` with the `Claims`
+   left behind, because an identifier can carry TWO of these nouns.
+   ⚠ **And three names must never be touched**: `disclaimer` and `reclaims` are
+   PROSE containing "claim", and `enrolled` is a **live database value**
+   (`class_bookings.status`), which is also why every `enroll` VERB form
+   (`EnrollButton`, `enrollAction`) is a separate question about the app's
+   vocabulary rather than this row's noun swap.
+   ⚠ **Three string guards were tried and all three cried wolf**, which is its own
+   lesson: a regex cannot tell code from a comment — `'` is an apostrophe in
+   *"the studio's calendar"* and `` ` `` is MARKDOWN in *"`findMyMemberships` is
+   `findMyTenants`"*, and this codebase writes both everywhere. The check that
+   works is the **diff audit**: extract every quoted string the diff changed and
+   read the list, which is short because a diff holds only changed lines.
    Every record in this file below the top block uses the OLD names — the map
    at the top is how to read them; do not rewrite history.
 
@@ -10062,6 +10130,27 @@ for the database schema. **The UI is not redesigned** — see Rule 2.
 
 ### Progress tracker — update after EVERY push (Rule 11)
 
+- **THE FILES FOLLOW THE NAMES — #0y STAGE 2 — 29 Sep 2026, no step number — no
+  migration.** 13 `git mv`s and 161 import specifiers in 110 files:
+  `repositories/{tenants,claims,enrollments}.ts`, `features/{tenants,claims,enrollments}/`,
+  `types/{tenant,claim,enrollment}.ts` and `scripts/rls-proof-tenants.ps1` all
+  move to the names the database has used since 16 Sep. ⚠ `git mv`, so history
+  follows the file. ⚠ **Proven pure by the same diff audit: 21 strings gone, 21
+  born, every one a module path** — no testid, route literal, RPC name or `p_*`
+  key moved. ⚠ `tsc` caught three relative siblings the list missed and **nothing
+  else could have** (a relative specifier names no folder, so there is no prefix
+  to notice). ⚠⚠ **And it turned up STAGE 3, which is real and deliberately NOT
+  done**: stage 1's `\b<word>\b` cannot match a camelCase compound, so **122
+  identifiers survived** (`findTenantFollowers`, `PublicTenantPage`, `myClaim`) —
+  found by reading a file head, by no check. The dry run is what stopped it:
+  `claimed → classPersoned` is an English word, `claimPerson → classPersonPerson`
+  is a stutter, `disclaimer` and `reclaims` are prose, and `enrolled` is a live
+  database value. **It needs a person to name things, not a rule**, so it is
+  recorded in #0y with the measurement. ⚠ Three string guards were tried and all
+  three cried wolf — **a regex cannot tell code from a comment**, since `'` is an
+  apostrophe in prose and `` ` `` is markdown in a doc comment. **Verified:**
+  typecheck 0 · lint 0 · build green · `shoot-tiles` 130/130 · `shoot-hero`
+  186/186 · the whole e2e suite.
 - **THE APP SPEAKS THE DATABASE'S LANGUAGE — #0y STAGE 1 — 29 Sep 2026, no step
   number — no migration, ⚠ ZERO BEHAVIOUR CHANGE BY CONSTRUCTION.** The half the
   16 Sep rename deferred at the user's own word (*"strings now, identifiers

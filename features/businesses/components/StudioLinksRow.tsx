@@ -5,7 +5,7 @@ import { updateTenantProfileAction } from "@/features/settings/server-actions/pl
 import { LinksRowEditor } from "@/features/profiles/components/LinksRowEditor";
 import { useRecordLists } from "@/features/profiles/components/RecordLists";
 import type { SocialLink } from "@/types/profile";
-import type { BusinessType } from "@/types/tenant";
+import type { BusinessType } from "@/types/business";
 
 /** A STUDIO'S LINKS, EDITED WHERE A PERSON'S ARE (20 Sep 2026, the user: "edit
  *  profile for studio not consistent with how its done for Artist and users. for

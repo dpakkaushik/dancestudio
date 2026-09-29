@@ -4,7 +4,7 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { FORM_INPUT, FORM_LABEL, FormBar, FormConfirm, FormPage, FormSummary, FormToast, formPrimary, formSecondary } from "@/components/ui/FormPage";
 import { saveCrewPracticeAction } from "@/features/crews/server-actions/practices";
-import { DOS_TOOLS } from "@/features/tenants/components/biz-kit";
+import { DOS_TOOLS } from "@/features/businesses/components/biz-kit";
 import type { CrewPractice } from "@/types/crewPractice";
 
 /** ARRANGE A PRACTICE (27 Sep 2026) — ONE PAGE, as a SHEET over the desk that

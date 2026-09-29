@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
-import { setTenantLocation } from "@/repositories/tenants";
+import { setTenantLocation } from "@/repositories/businesses";
 
 /** SAVING A PLACE (11 Sep 2026).
  *

@@ -2,7 +2,7 @@ import type { RequestItem } from "@/features/inbox/components/InboxScreen";
 import { sessionDayLabel } from "@/lib/format/session";
 import type { VenueRequest } from "@/repositories/classes";
 import type { findMyPendingInvites, findPendingInvites } from "@/repositories/invites";
-import { askToTileClass, type MyClaimAsk } from "@/types/claim";
+import { askToTileClass, type MyClaimAsk } from "@/types/classPerson";
 import type { CrewMember, MyCrewAsk } from "@/types/crew";
 import { practiceWhen, type CrewPractice } from "@/types/crewPractice";
 

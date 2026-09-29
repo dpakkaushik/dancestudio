@@ -2,7 +2,7 @@ import { notFound, redirect } from "next/navigation";
 import { PersonPayments } from "@/features/staff/components/PersonPayments";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { findPersonPayHistory } from "@/repositories/payouts";
-import { findMyMemberships, findTenantTeam, runsTheBusiness } from "@/repositories/tenants";
+import { findMyMemberships, findTenantTeam, runsTheBusiness } from "@/repositories/businesses";
 
 /** EVERY TRANSACTION WITH ONE PERSON (29 Sep 2026, the user: "Team payment
  *  history to be a button called History which should show all transactions

@@ -4,7 +4,7 @@ import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { findProfileById } from "@/repositories/profiles";
 import { findMyDeck } from "@/repositories/home";
 import { findMyPendingInvites } from "@/repositories/invites";
-import { ensureArtistPage, findMyMemberships } from "@/repositories/tenants";
+import { ensureArtistPage, findMyMemberships } from "@/repositories/businesses";
 import { findMyArtistPlan } from "@/repositories/plans";
 import { findMyFollowedCrews, findMyFollowedPeople, findMyFollowing, findMyPersonFollowers } from "@/repositories/follows";
 import { findPersonHeaderPhotos } from "@/repositories/headerPhotos";

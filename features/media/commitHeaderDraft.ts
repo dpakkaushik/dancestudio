@@ -1,7 +1,7 @@
 "use client";
 
 import { addCrewHeaderPhotoAction, addMyGalleryPhotoAction, removeCrewHeaderPhotoAction, removeMyGalleryPhotoAction } from "@/features/media/server-actions/photos";
-import { addStudioProofPhotoAction, removeStudioProofPhotoAction } from "@/features/tenants/server-actions/studioVerification";
+import { addStudioProofPhotoAction, removeStudioProofPhotoAction } from "@/features/businesses/server-actions/studioVerification";
 import { HEADER_MAX_CREW, MEDIA_BUCKET, photoPath, photoUrl } from "@/lib/media/photo";
 import { PROOF_BUCKET, PROOF_MAX, proofPath } from "@/lib/media/proof";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";

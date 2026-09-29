@@ -1,7 +1,7 @@
-import type { ClassArtist } from "@/types/claim";
+import type { ClassArtist } from "@/types/classPerson";
 import type { PracticeStanding } from "@/types/crewPractice";
 import type { ClassLevel, ClassStatus } from "@/types/class";
-import type { EnrollmentStatus } from "@/types/enrollment";
+import type { EnrollmentStatus } from "@/types/classBooking";
 
 /** Step 14 — the calendar. Nothing new is stored: a calendar entry is a class
  *  session seen from one side. The prototype's three sides are what the person

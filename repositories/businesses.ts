@@ -1,7 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { findArtistIds } from "@/repositories/profiles";
 import type { ProfileRole } from "@/types/profile";
-import type { AcceptedMethods, Business, BusinessType } from "@/types/tenant";
+import type { AcceptedMethods, Business, BusinessType } from "@/types/business";
 import type { SocialLink } from "@/types/profile";
 
 export interface TenantRow {

@@ -2,9 +2,9 @@ import { redirect } from "next/navigation";
 import { DOS_DISPLAY, DOS_UI, INK, LILAC, SUB } from "@/lib/design/tokens";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { findClassById } from "@/repositories/classes";
-import { findRosterByClass } from "@/repositories/enrollments";
-import { findMyMemberships, runsTheBusiness } from "@/repositories/tenants";
-import type { RosterEntry } from "@/types/enrollment";
+import { findRosterByClass } from "@/repositories/classBookings";
+import { findMyMemberships, runsTheBusiness } from "@/repositories/businesses";
+import type { RosterEntry } from "@/types/classBooking";
 
 const EL = "var(--el)";
 

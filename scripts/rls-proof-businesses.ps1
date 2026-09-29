@@ -1,5 +1,5 @@
-﻿# RLS proof for Step 2 (businesses): two owners, each sees ONLY their own tenant.
-# Reads keys from .env.local — run from the repo root: pwsh scripts/rls-proof-tenants.ps1
+﻿# RLS proof for Step 2 (businesses): two owners, each sees ONLY their own business.
+# Reads keys from .env.local — run from the repo root: pwsh scripts/rls-proof-businesses.ps1
 $ErrorActionPreference = "Stop"
 # Supabase refuses a secret (sb_secret_...) key from anything that looks like a
 # browser, and PowerShell's default user agent starts with "Mozilla/5.0". Name

@@ -1,5 +1,5 @@
 import type { ProfileRole } from "@/types/profile";
-import type { BusinessType } from "@/types/tenant";
+import type { BusinessType } from "@/types/business";
 
 /** Step 15 — follows. A person follows a business; the count is public, the
  *  list is the business's own (prototype: DOS_FOLLOWERS pill on Discover 4277,

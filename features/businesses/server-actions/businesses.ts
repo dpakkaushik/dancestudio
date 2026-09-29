@@ -6,8 +6,8 @@ import { z } from "zod";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { findProfileById } from "@/repositories/profiles";
 import { createRoom } from "@/repositories/rooms";
-import { createTenantWithOwner, setTenantLocation, updateTenantProfile } from "@/repositories/tenants";
-import type { BusinessType } from "@/types/tenant";
+import { createTenantWithOwner, setTenantLocation, updateTenantProfile } from "@/repositories/businesses";
+import type { BusinessType } from "@/types/business";
 
 export interface TenantActionState {
   error: string | null;

@@ -2,7 +2,7 @@ import { redirect } from "next/navigation";
 import { ClassForm } from "@/features/classes/components/ClassForm";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { findRoomsByTenant } from "@/repositories/rooms";
-import { findMyMemberships } from "@/repositories/tenants";
+import { findMyMemberships } from "@/repositories/businesses";
 
 /** Add class. THE OWNER ALONE (18 Sep 2026, the user: "an artist should not
  *  create form on behalf of a studio"; asked who creates and edits: "Owner

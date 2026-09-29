@@ -1,7 +1,7 @@
 import Link from "next/link";
 import type { CSSProperties, ReactNode } from "react";
 import { DOS_DISPLAY, DOS_UI, INK, LILAC } from "@/lib/design/tokens";
-import { DeskHero, type DosToolKey } from "@/features/tenants/components/biz-kit";
+import { DeskHero, type DosToolKey } from "@/features/businesses/components/biz-kit";
 
 /** The pieces the settings screens share, lifted from the prototype's BizShell
  *  (2950-2984): the tool card that heads every business page — a 22px-radius

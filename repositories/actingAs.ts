@@ -1,6 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { findMyLedCrews } from "@/repositories/crews";
-import { findMyMemberships, runsTheBusiness } from "@/repositories/tenants";
+import { findMyMemberships, runsTheBusiness } from "@/repositories/businesses";
 import type { ActingAs } from "@/types/profile";
 
 /** ⚠⚠ WHICH PROFILE AM I ACTING AS — the question `profiles.role` used to

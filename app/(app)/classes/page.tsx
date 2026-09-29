@@ -1,15 +1,15 @@
 import { ClassTile } from "@/features/classes/components/ClassTile";
-import { EnrollButton } from "@/features/enrollments/components/EnrollButton";
+import { EnrollButton } from "@/features/classBookings/components/EnrollButton";
 import { DOS_DISPLAY, DOS_UI, INK, LILAC, SUB } from "@/lib/design/tokens";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
-import { findClassArtists } from "@/repositories/claims";
+import { findClassArtists } from "@/repositories/classPeople";
 import { findPublishedClasses } from "@/repositories/classes";
 import { findProfileById } from "@/repositories/profiles";
 import {
   countEnrolledBySession,
   findMyEnrolledSessionIds,
-} from "@/repositories/enrollments";
-import type { EnrollmentStatus } from "@/types/enrollment";
+} from "@/repositories/classBookings";
+import type { EnrollmentStatus } from "@/types/classBooking";
 import { canBookClass, noBookingWords } from "@/types/profile";
 import { resolveActingAs } from "@/repositories/actingAs";
 

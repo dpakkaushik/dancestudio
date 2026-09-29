@@ -1,4 +1,4 @@
-import type { AcceptedMethods, BusinessType } from "@/types/tenant";
+import type { AcceptedMethods, BusinessType } from "@/types/business";
 
 /** A business as a stranger sees it (prototype S_profiletab with
  *  `publicEntity="studio"|"trainer"`, PUB presets 8641-8646). Everything here is

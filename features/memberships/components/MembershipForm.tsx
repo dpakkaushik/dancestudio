@@ -15,7 +15,7 @@ import {
   formPrimary,
 } from "@/components/ui/FormPage";
 import { saveMembershipAction } from "@/features/memberships/server-actions/memberships";
-import { DOS_TOOLS } from "@/features/tenants/components/biz-kit";
+import { DOS_TOOLS } from "@/features/businesses/components/biz-kit";
 import { INK, LILAC, SUB } from "@/lib/design/tokens";
 
 /** NEW MEMBERSHIP — a page now, wearing the ADD CLASS anatomy (21 Sep 2026, the

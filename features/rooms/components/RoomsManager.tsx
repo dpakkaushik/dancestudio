@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { dosKey } from "@/features/classes/components/ShareSheet";
 import { deleteRoomAction, updateRoomAction } from "@/features/rooms/server-actions/rooms";
-import { DeskHero } from "@/features/tenants/components/biz-kit";
+import { DeskHero } from "@/features/businesses/components/biz-kit";
 import { DOS_AMENITIES } from "@/lib/constants/amenities";
 import { DOS_UI } from "@/lib/design/tokens";
 import type { Room } from "@/types/room";

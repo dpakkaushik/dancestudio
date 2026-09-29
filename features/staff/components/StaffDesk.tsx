@@ -22,13 +22,13 @@ import {
 } from "@/features/staff/server-actions/staff";
 import Link from "next/link";
 import { DeskAddButton } from "@/features/settings/components/settings-kit";
-import { DOS_TOOLS, DeskHero, SheetHandle, sheetBody, sheetWrap } from "@/features/tenants/components/biz-kit";
+import { DOS_TOOLS, DeskHero, SheetHandle, sheetBody, sheetWrap } from "@/features/businesses/components/biz-kit";
 import { DOS_DISPLAY, DOS_UI, INK, LILAC, MUTED, SKY, SUB } from "@/lib/design/tokens";
 import { useCloseOnBack } from "@/lib/hooks/useCloseOnBack";
 import { photoUrl } from "@/lib/media/photo";
-import type { MemberRole, TeamMember } from "@/repositories/tenants";
+import type { MemberRole, TeamMember } from "@/repositories/businesses";
 import type { PayoutMethod, PayoutRecord, PayoutStatus } from "@/types/payout";
-import type { BusinessType } from "@/types/tenant";
+import type { BusinessType } from "@/types/business";
 import {
   MEMBER_GRANTS,
   MEMBER_LABEL,

@@ -2,11 +2,11 @@ import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { PlanRights } from "@/features/settings/components/PlanRights";
 import { BizPage } from "@/features/settings/components/settings-kit";
-import { StudioSubscriptionStrip } from "@/features/tenants/components/StudioSubscriptionStrip";
+import { StudioSubscriptionStrip } from "@/features/businesses/components/StudioSubscriptionStrip";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { findPlanCatalog, pickPlan } from "@/repositories/plans";
 import { findMyStudioSubscriptions, type StudioSubscriptionState } from "@/repositories/subscriptions";
-import { findMyMemberships } from "@/repositories/tenants";
+import { findMyMemberships } from "@/repositories/businesses";
 
 export const metadata: Metadata = { title: "Subscription — DanceOS" };
 

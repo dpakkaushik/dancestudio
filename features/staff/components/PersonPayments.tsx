@@ -1,6 +1,6 @@
 import Link from "next/link";
 
-import { DeskHero } from "@/features/tenants/components/biz-kit";
+import { DeskHero } from "@/features/businesses/components/biz-kit";
 import { PayHistoryExport } from "./PayHistoryExport";
 import { DOS_DISPLAY, DOS_UI, GREEN, SUB } from "@/lib/design/tokens";
 import { photoUrl } from "@/lib/media/photo";

@@ -6,9 +6,9 @@ import {
   cancelEnrollmentAction,
   enrollAction,
   type EnrollActionState,
-} from "@/features/enrollments/server-actions/enrollments";
+} from "@/features/classBookings/server-actions/classBookings";
 import { GOLD, GREEN, INK, SOLID } from "@/lib/design/tokens";
-import type { EnrollmentStatus } from "@/types/enrollment";
+import type { EnrollmentStatus } from "@/types/classBooking";
 
 const EL = "var(--el)";
 const initialState: EnrollActionState = { error: null, outcome: null };

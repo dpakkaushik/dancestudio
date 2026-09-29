@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useState, useTransition } from "react";
 import { respondToPracticeAction } from "@/features/crews/server-actions/practices";
-import { DOS_TOOLS } from "@/features/tenants/components/biz-kit";
+import { DOS_TOOLS } from "@/features/businesses/components/biz-kit";
 import type { CrewPractice } from "@/types/crewPractice";
 import { Toast, bizCard } from "./crew-kit";
 import { PRACTICE_HEAD, PracticeCard, splitPractices } from "./practice-card";

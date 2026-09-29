@@ -24,7 +24,7 @@
 # in one file, and nobody has to point a regex at 31 scripts to find the callers.
 #
 # Self-contained on purpose: it calls Invoke-RestMethod directly rather than the
-# proof's own Rpc/Api helpers, because not every proof defines them (rls-proof-tenants
+# proof's own Rpc/Api helpers, because not every proof defines them (rls-proof-businesses
 # has no Rpc at all). All it needs is $base and $anon, which every proof has before
 # it dot-sources this file.
 #

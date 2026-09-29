@@ -5,9 +5,9 @@ import { dosClassLabel } from "@/lib/constants/styles";
 import { dayKeyOf, hourOf } from "@/lib/format/month";
 import type { CalendarEntry, CalendarSide } from "@/types/calendar";
 import type { ClassLevel, ClassStatus } from "@/types/class";
-import type { EnrollmentStatus } from "@/types/enrollment";
-import { findClassArtists } from "./claims";
-import { countEnrolledBySession } from "./enrollments";
+import type { EnrollmentStatus } from "@/types/classBooking";
+import { findClassArtists } from "./classPeople";
+import { countEnrolledBySession } from "./classBookings";
 
 /** Step 14 reads. No table, no RPC, no policy: a calendar is class sessions
  *  read through rows that already exist — a person's bookings and confirmed

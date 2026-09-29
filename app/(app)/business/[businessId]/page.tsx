@@ -1,8 +1,8 @@
 import { redirect } from "next/navigation";
 import type { Tile } from "@/features/home/components/home-kit";
 import { toolsLayoutKey } from "@/features/home/toolOrder";
-import { DOS_TOOLS } from "@/features/tenants/components/biz-kit";
-import { StudioHome } from "@/features/tenants/components/StudioHome";
+import { DOS_TOOLS } from "@/features/businesses/components/biz-kit";
+import { StudioHome } from "@/features/businesses/components/StudioHome";
 import { photoUrl } from "@/lib/media/photo";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { findPublishedStylesByTenant } from "@/repositories/classes";
@@ -13,7 +13,7 @@ import { findPublicStudioTeam, findPublicTenant } from "@/repositories/publicPro
 import { findPersonFollowerCounts } from "@/repositories/publicPerson";
 import { countRoomsByTenants } from "@/repositories/rooms";
 import { findStudioProofPhotos } from "@/repositories/studioVerification";
-import { findMyMemberships, runsTheBusiness } from "@/repositories/tenants";
+import { findMyMemberships, runsTheBusiness } from "@/repositories/businesses";
 
 /* the clock lives outside the component (react-hooks/purity) — the deck's one
    Live badge is arithmetic over the moment the page was served */

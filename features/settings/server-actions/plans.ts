@@ -5,7 +5,7 @@ import { redirect } from "next/navigation";
 import { z } from "zod";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { activateArtistPlan } from "@/repositories/plans";
-import { updateTenantProfile } from "@/repositories/tenants";
+import { updateTenantProfile } from "@/repositories/businesses";
 
 /** DanceOS Pro · Artist (S_subscr 16935): the plan's two doors, and the
  *  business profile's one (About / Since / phone / links / enquiry types / the

@@ -3,7 +3,7 @@ import { redirect } from "next/navigation";
 import { RefundsLedger } from "@/features/settings/components/RefundsLedger";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { findRefundsByTenant } from "@/repositories/refunds";
-import { findMyMemberships, runsTheBusiness } from "@/repositories/tenants";
+import { findMyMemberships, runsTheBusiness } from "@/repositories/businesses";
 
 export const metadata: Metadata = { title: "Refunds — DanceOS" };
 

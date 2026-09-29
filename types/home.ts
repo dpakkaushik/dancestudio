@@ -1,6 +1,6 @@
-import type { ClassArtist } from "@/types/claim";
+import type { ClassArtist } from "@/types/classPerson";
 import type { DanceClass } from "@/types/class";
-import type { EnrollmentStatus } from "@/types/enrollment";
+import type { EnrollmentStatus } from "@/types/classBooking";
 
 /** Parity slice H10 — Home's PassDeck (prototype 6863-7204). Nothing new is
  *  stored: a deck row is a class session seen on ONE day from the side you are

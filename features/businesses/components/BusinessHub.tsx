@@ -5,14 +5,14 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useActionState, useState } from "react";
 import { SubscribeButton } from "@/features/payments/components/SubscribeButton";
-import { StudioVerificationStrip } from "@/features/tenants/components/StudioVerificationStrip";
+import { StudioVerificationStrip } from "@/features/businesses/components/StudioVerificationStrip";
 import type { StudioVerificationState } from "@/repositories/studioVerification";
 import { DeskAddButton, VerifiedTick } from "@/features/settings/components/settings-kit";
 import { photoUrl } from "@/lib/media/photo";
 import { dosKey } from "@/features/classes/components/ShareSheet";
 import { CityPicker } from "@/features/geo/components/CityPicker";
 import { LocationPicker } from "@/features/geo/components/LocationPicker";
-import { createTenantAction, type TenantActionState } from "@/features/tenants/server-actions/tenants";
+import { createTenantAction, type TenantActionState } from "@/features/businesses/server-actions/businesses";
 import { centreOf } from "@/repositories/cities";
 import { DosStylePicker } from "@/components/ui/DosStyleKit";
 import { dosStyleColor } from "@/lib/constants/styles";
@@ -22,7 +22,7 @@ import { useCloseOnBack } from "@/lib/hooks/useCloseOnBack";
 import { publicProfilePath } from "@/lib/routes/publicProfile";
 import { priceWords, type PlanCatalogRow } from "@/repositories/plans";
 import type { StudioSubscriptionState } from "@/repositories/subscriptions";
-import type { MyMembership } from "@/repositories/tenants";
+import type { MyMembership } from "@/repositories/businesses";
 import { DOS_TOOLS, SHEET_ANIMATION, dosToolPaint } from "./biz-kit";
 
 /* Icons lifted from the prototype (DanceOSApp.jsx:3136-3142). */

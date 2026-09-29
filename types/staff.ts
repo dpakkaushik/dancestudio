@@ -1,4 +1,4 @@
-import type { MemberRole } from "@/repositories/tenants";
+import type { MemberRole } from "@/repositories/businesses";
 
 /** Step 12b. An invite offers a seat, never the owner's — that one is not
  *  grantable (the prototype's settings footnote, DanceOSApp.jsx:18434).

@@ -5,7 +5,7 @@ import { publicProfilePath, publicSchedulePath } from "@/lib/routes/publicProfil
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { findPublicTenantSchedule } from "@/repositories/calendar";
 import { findPublicTenant } from "@/repositories/publicProfile";
-import type { BusinessType } from "@/types/tenant";
+import type { BusinessType } from "@/types/business";
 
 const stampNowIso = (): string => new Date().toISOString();
 

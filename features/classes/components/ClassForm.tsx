@@ -29,10 +29,10 @@ import {
 } from "@/components/ui/FormPage";
 import { DOS_LEVELS, DOS_LEVEL_LABEL, dosClassLabel, dosStyleColor } from "@/lib/constants/styles";
 import { INK, LILAC, SUB } from "@/lib/design/tokens";
-import type { ClassClaim } from "@/types/claim";
+import type { ClassClaim } from "@/types/classPerson";
 import type { ClassLevel, DanceClass, PosterChoice } from "@/types/class";
 import type { Room } from "@/types/room";
-import type { BusinessType } from "@/types/tenant";
+import type { BusinessType } from "@/types/business";
 
 const CARD = "var(--card)";
 const EL = "var(--el)";

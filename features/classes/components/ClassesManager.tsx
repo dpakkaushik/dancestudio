@@ -16,7 +16,7 @@ import { DeskAddButton } from "@/features/settings/components/settings-kit";
 import { useCloseOnBack } from "@/lib/hooks/useCloseOnBack";
 import { DOS_DISPLAY, DOS_UI, INK, LILAC, SUB } from "@/lib/design/tokens";
 import type { ClassPublishState } from "@/repositories/classes";
-import type { ClassArtist } from "@/types/claim";
+import type { ClassArtist } from "@/types/classPerson";
 import type { ClassStatus, DanceClass } from "@/types/class";
 
 /* the IST date and clock of a session, in the shape the clash check takes */

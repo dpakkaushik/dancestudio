@@ -6,7 +6,7 @@ import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { resolveActingAs } from "@/repositories/actingAs";
 import { findMyLedCrews } from "@/repositories/crews";
 import { findReceivedEnquiries, findReceivedEnquiriesForCrews, findSentEnquiries } from "@/repositories/enquiries";
-import { findMyMemberships } from "@/repositories/tenants";
+import { findMyMemberships } from "@/repositories/businesses";
 import { findMyArtistPlan } from "@/repositories/plans";
 import { kindOf } from "@/types/profile";
 

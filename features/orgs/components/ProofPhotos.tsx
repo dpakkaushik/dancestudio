@@ -4,7 +4,7 @@ import { useEffect, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { HeaderGrid, type GridTile } from "@/features/media/components/HeaderGrid";
 import { PhotoLightbox } from "@/features/media/components/PhotoLightbox";
-import { addStudioProofPhotoAction, removeStudioProofPhotoAction } from "@/features/tenants/server-actions/studioVerification";
+import { addStudioProofPhotoAction, removeStudioProofPhotoAction } from "@/features/businesses/server-actions/studioVerification";
 import { GOLD, GREEN, INK, MUTED, SUB } from "@/lib/design/tokens";
 import { whyNotAPhoto } from "@/lib/media/photo";
 import { PROOF_BUCKET, PROOF_MAX, PROOF_MIN, proofPath, type ProofPhoto } from "@/lib/media/proof";

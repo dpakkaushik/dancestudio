@@ -19,14 +19,14 @@ import { EnquiryButton } from "@/features/enquiries/components/EnquirySheet";
 import { ProfileLink, ProfileShare } from "./ProfileShare";
 import { StatsChip } from "./StatsChip";
 import type { ArtistPlan } from "@/repositories/plans";
-import type { Business } from "@/types/tenant";
+import type { Business } from "@/types/business";
 import type { PublicTeamMember } from "@/types/publicProfile";
 import type { HeaderPhoto } from "@/repositories/headerPhotos";
 import type { HeroShot } from "./HeroRail";
 import { HeroId, HeroPlace, IdentityHero } from "./hero-kit";
 import { EntityBand, figureLabel, figureNum } from "./profile-band";
 import { Group, ROLE_RING, RoleBadge, Row, Sheet, followTint, initialsOf, type FollowGlyph } from "./profile-kit";
-import type { BusinessType } from "@/types/tenant";
+import type { BusinessType } from "@/types/business";
 
 /** What each kind of thing you run is CALLED on the "What you run" group
  *  (27 Sep 2026). ⚠ `satisfies`, so a fourth `BusinessType` cannot be added

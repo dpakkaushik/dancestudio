@@ -3,12 +3,12 @@ import { InboxScreen } from "@/features/inbox/components/InboxScreen";
 import { buildRequests } from "@/features/inbox/requestItems";
 import { DOS_TINT } from "@/lib/design/tokens";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
-import { findAskedClaimsForTenants, findMyPendingClaims } from "@/repositories/claims";
+import { findAskedClaimsForTenants, findMyPendingClaims } from "@/repositories/classPeople";
 import { findMyVenueAsks, findVenueRequestsForTenants } from "@/repositories/classes";
 import { findAskedForMyCrews, findMyPendingCrewAsks } from "@/repositories/crews";
 import { findMyCrewPractices } from "@/repositories/crewPractices";
 import { findMyPendingInvites, findPendingInvites } from "@/repositories/invites";
-import { findMyMemberships } from "@/repositories/tenants";
+import { findMyMemberships } from "@/repositories/businesses";
 import { findMyArtistPlan } from "@/repositories/plans";
 import { kindOf } from "@/types/profile";
 

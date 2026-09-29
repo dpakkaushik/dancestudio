@@ -3,7 +3,7 @@ import { MembershipForm } from "@/features/memberships/components/MembershipForm
 import { MembershipsScreen } from "@/features/memberships/components/MembershipsScreen";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { findBusinessMemberships } from "@/repositories/memberships";
-import { findMyMemberships as findMyTeams } from "@/repositories/tenants";
+import { findMyMemberships as findMyTeams } from "@/repositories/businesses";
 
 /** /business/{businessId}/memberships — THE STUDIO'S OWN MEMBERSHIPS DESK.
  *

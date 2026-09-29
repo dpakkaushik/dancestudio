@@ -6,7 +6,7 @@ import type {
   PendingInvite,
   TenantInvite,
 } from "@/types/staff";
-import type { MemberRole } from "@/repositories/tenants";
+import type { MemberRole } from "@/repositories/businesses";
 
 /** Step 12b invites. The table is business-private (members read their own desk,
  *  nobody else reads it at all), and every write goes through a security-definer

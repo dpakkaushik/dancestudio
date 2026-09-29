@@ -2,7 +2,7 @@ import { notFound, redirect } from "next/navigation";
 import { MembershipUsagePage } from "@/features/memberships/components/MembershipUsagePage";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { findBusinessMemberships, findMembershipClassUsage, findMembershipHolders } from "@/repositories/memberships";
-import { findMyMemberships as findMyTeams } from "@/repositories/tenants";
+import { findMyMemberships as findMyTeams } from "@/repositories/businesses";
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 

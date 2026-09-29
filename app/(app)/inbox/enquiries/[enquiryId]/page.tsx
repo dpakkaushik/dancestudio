@@ -3,7 +3,7 @@ import { EnquiryDetail } from "@/features/enquiries/components/EnquiryDetail";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { findMyLedCrews } from "@/repositories/crews";
 import { findEnquiryById } from "@/repositories/enquiries";
-import { findMyTenants } from "@/repositories/tenants";
+import { findMyTenants } from "@/repositories/businesses";
 
 const stampNowIso = (): string => new Date().toISOString();
 

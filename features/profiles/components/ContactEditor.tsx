@@ -7,7 +7,7 @@ import { Portal } from "@/components/ui/Portal";
 import { setCrewSocialsAction, updateCrewAction } from "@/features/crews/server-actions/crews";
 import { updateTenantProfileAction } from "@/features/settings/server-actions/plans";
 import { updateMyProfileAction } from "@/features/profiles/server-actions/profile";
-import type { StudioLinkTarget } from "@/features/tenants/components/StudioLinksRow";
+import type { StudioLinkTarget } from "@/features/businesses/components/StudioLinksRow";
 import { INK, MUTED, SUB } from "@/lib/design/tokens";
 import type { Crew } from "@/types/crew";
 import type { Profile, SocialLink } from "@/types/profile";

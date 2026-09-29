@@ -3,7 +3,7 @@ import { StaffDesk } from "@/features/staff/components/StaffDesk";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { findPendingInvites } from "@/repositories/invites";
 import { findTenantPayLedger } from "@/repositories/payouts";
-import { findMyMemberships, findTenantTeam, runsTheBusiness } from "@/repositories/tenants";
+import { findMyMemberships, findTenantTeam, runsTheBusiness } from "@/repositories/businesses";
 
 /* the clock, stamped once outside render (react-hooks/purity) */
 const stampNowIso = (): string => new Date().toISOString();

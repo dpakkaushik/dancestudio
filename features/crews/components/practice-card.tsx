@@ -2,7 +2,7 @@
 
 import type { ReactNode } from "react";
 import { PRACTICE_TINT, PRACTICE_WORD, practiceClock, practiceWhen, type CrewPractice } from "@/types/crewPractice";
-import { DOS_TOOLS } from "@/features/tenants/components/biz-kit";
+import { DOS_TOOLS } from "@/features/businesses/components/biz-kit";
 import { bizBtn, bizCard } from "./crew-kit";
 
 const TINT = DOS_TOOLS.practice.c;

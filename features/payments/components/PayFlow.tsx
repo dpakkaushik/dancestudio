@@ -7,7 +7,7 @@ import { dosKey } from "@/features/classes/components/ShareSheet";
 import {
   enrollAction,
   type EnrollActionState,
-} from "@/features/enrollments/server-actions/enrollments";
+} from "@/features/classBookings/server-actions/classBookings";
 import {
   confirmCheckoutAction,
   startCheckoutAction,

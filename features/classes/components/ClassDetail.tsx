@@ -13,14 +13,14 @@ import {
   removeWalkInAction,
   undoCheckInAction,
 } from "@/features/attendance/server-actions/attendance";
-import { respondToClaimAction } from "@/features/claims/server-actions/claims";
+import { respondToClaimAction } from "@/features/classPeople/server-actions/classPeople";
 import { setClassPosterAction } from "@/features/classes/server-actions/classes";
 import { PhotoPicker } from "@/features/media/components/PhotoPicker";
 import {
   cancelEnrollmentAction,
   enrollAction,
   type EnrollActionState,
-} from "@/features/enrollments/server-actions/enrollments";
+} from "@/features/classBookings/server-actions/classBookings";
 import { ClassEarnings } from "@/features/payments/components/ClassEarnings";
 import { InvoiceSheet, bookingCodeOf } from "@/features/payments/components/InvoiceSheet";
 import { PayFlow } from "@/features/payments/components/PayFlow";
@@ -36,9 +36,9 @@ import { ClassRoutines } from "@/features/routines/components/ClassRoutines";
 import type { Routine } from "@/repositories/routines";
 import { bookWithMembershipAction } from "@/features/memberships/server-actions/memberships";
 import type { PassForSession } from "@/repositories/memberships";
-import type { ClassClaim } from "@/types/claim";
+import type { ClassClaim } from "@/types/classPerson";
 import type { PublicClassListing } from "@/types/class";
-import type { EnrollmentStatus } from "@/types/enrollment";
+import type { EnrollmentStatus } from "@/types/classBooking";
 import type { ClassMoney, PaidReceipt } from "@/types/payment";
 import type { RefundRequest } from "@/types/refund";
 import { AddAssistant, AssistantControls } from "./ClassTeamControls";

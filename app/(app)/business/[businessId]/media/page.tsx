@@ -1,8 +1,8 @@
 import { redirect } from "next/navigation";
-import { StudioMediaDesk } from "@/features/tenants/components/StudioMediaDesk";
+import { StudioMediaDesk } from "@/features/businesses/components/StudioMediaDesk";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { findStudioProofPhotos } from "@/repositories/studioVerification";
-import { findMyMemberships, runsTheBusiness } from "@/repositories/tenants";
+import { findMyMemberships, runsTheBusiness } from "@/repositories/businesses";
 
 /** /business/{businessId}/media — THE MEDIA DESK (15 Sep 2026): a studio's
  *  profile picture and its header pictures, for its team. Only a studio has

@@ -7,7 +7,7 @@ import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { findBusinessEarnings } from "@/repositories/earnings";
 import { findTenantIncome } from "@/repositories/income";
 import { findTenantPayLedger } from "@/repositories/payouts";
-import { findMyMemberships, runsTheBusiness } from "@/repositories/tenants";
+import { findMyMemberships, runsTheBusiness } from "@/repositories/businesses";
 
 /* the clock lives outside the component — this repo's lint refuses an impure
    call during render (react-hooks/purity), even in a server component */

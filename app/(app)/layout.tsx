@@ -6,7 +6,7 @@ import { findMyLedCrews } from "@/repositories/crews";
 import { findMyUnreadCount } from "@/repositories/notifications";
 import { findMyArtistPlan } from "@/repositories/plans";
 import { findProfileById } from "@/repositories/profiles";
-import { findMyMemberships, runsTheBusiness } from "@/repositories/tenants";
+import { findMyMemberships, runsTheBusiness } from "@/repositories/businesses";
 
 /** Every signed-in surface lives in this group and wears the app chrome (top bar +
  *  tab bar). Auth screens (/login, /onboarding, /auth) stay outside it.

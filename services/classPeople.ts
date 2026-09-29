@@ -1,5 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { claimPerson, findClaimsByClass, setClaimPay, withdrawClaim } from "@/repositories/claims";
+import { claimPerson, findClaimsByClass, setClaimPay, withdrawClaim } from "@/repositories/classPeople";
 
 /** What the class form says about WHO IS TAKING IT. Since 18 Sep 2026 that is
  *  the only person the form names: the teacher, anyone on DanceOS (the RPC

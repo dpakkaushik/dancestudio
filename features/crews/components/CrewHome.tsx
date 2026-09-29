@@ -17,7 +17,7 @@ import { EditDetailsChip, EditModeButton, EditModeProvider } from "@/features/pr
 import { RecordListsProvider } from "@/features/profiles/components/RecordLists";
 import { EnquiryButton } from "@/features/enquiries/components/EnquirySheet";
 import { CrewLinksRow, CrewStylesRow } from "./CrewBand";
-import { DOS_TOOLS } from "@/features/tenants/components/biz-kit";
+import { DOS_TOOLS } from "@/features/businesses/components/biz-kit";
 import { DOS_UI, INK, LILAC } from "@/lib/design/tokens";
 import { photoUrl } from "@/lib/media/photo";
 import type { HeaderPhoto } from "@/repositories/headerPhotos";

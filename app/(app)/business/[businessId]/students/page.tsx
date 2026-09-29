@@ -2,7 +2,7 @@ import { redirect } from "next/navigation";
 import { StudentsDesk } from "@/features/leads/components/StudentsDesk";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { findStudents } from "@/repositories/students";
-import { findMyMemberships, runsTheBusiness } from "@/repositories/tenants";
+import { findMyMemberships, runsTheBusiness } from "@/repositories/businesses";
 
 /** THE STUDENTS DESK (21 Sep 2026, re-cut from the leads pipeline).
  *

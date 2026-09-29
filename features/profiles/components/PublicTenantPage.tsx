@@ -6,8 +6,8 @@ import { findTenantHeaderPhotos } from "@/repositories/headerPhotos";
 import { findMembershipsOnSale } from "@/repositories/memberships";
 import { findPublicTenantProfile } from "@/repositories/publicProfile";
 import { findPersonFollowerCounts } from "@/repositories/publicPerson";
-import { findMyMembershipRole } from "@/repositories/tenants";
-import type { BusinessType } from "@/types/tenant";
+import { findMyMembershipRole } from "@/repositories/businesses";
+import type { BusinessType } from "@/types/business";
 import { PublicProfile } from "./PublicProfile";
 
 /** The public page of a business, for anybody — a stranger, a follower, or its

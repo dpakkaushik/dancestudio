@@ -4,7 +4,7 @@ import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import { updateTenantProfileAction } from "@/features/settings/server-actions/plans";
 import type { MethodUse } from "@/repositories/invoices";
-import type { AcceptedMethods, Business } from "@/types/tenant";
+import type { AcceptedMethods, Business } from "@/types/business";
 import { BizPage, BizToast, bizBtn, bizCard, dayWords, eyebrow, rupees } from "./settings-kit";
 
 /** S_payments (16531-16620): "Payments" for a person, "Payments & verification"

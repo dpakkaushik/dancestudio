@@ -7,7 +7,7 @@ import { fieldLabel } from "@/features/profiles/components/profile-kit";
 import { updateTenantProfileAction } from "@/features/settings/server-actions/plans";
 import { MUTED, SUB } from "@/lib/design/tokens";
 import { enquiryTypesFor } from "@/types/enquiry";
-import type { Business } from "@/types/tenant";
+import type { Business } from "@/types/business";
 
 /** ⚠⚠ THE ENQUIRY SETTINGS LIVE ON THE ENQUIRIES DESK (27 Sep 2026, the user:
  *  *"enquiries should not be on navbar a tab in tools for all"*, and then *"with

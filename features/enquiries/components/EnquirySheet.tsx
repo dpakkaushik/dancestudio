@@ -9,7 +9,7 @@ import { CONTACT_BOX, CONTACT_LABEL } from "@/features/profiles/components/Conta
 import { DOS_UI } from "@/lib/design/tokens";
 import { useCloseOnBack } from "@/lib/hooks/useCloseOnBack";
 import { enquiryTypesFor, enquiryTypesForCrew, type EnquiryField, type EnquiryType } from "@/types/enquiry";
-import type { BusinessType } from "@/types/tenant";
+import type { BusinessType } from "@/types/business";
 import { pressKey } from "@/features/inbox/components/inbox-kit";
 
 /** The sender's sheet, lifted from the prototype's EnquirySheet (5051-5193):

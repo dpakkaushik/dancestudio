@@ -1,9 +1,9 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { dosClassLabel } from "@/lib/constants/styles";
 import type { ClassLevel, ClassStatus } from "@/types/class";
-import type { EnrollmentStatus, MyEnrollment, RosterEntry } from "@/types/enrollment";
-import type { Business } from "@/types/tenant";
-import { TENANT_COLUMNS, toTenant, type TenantRow } from "./tenants";
+import type { EnrollmentStatus, MyEnrollment, RosterEntry } from "@/types/classBooking";
+import type { Business } from "@/types/business";
+import { TENANT_COLUMNS, toTenant, type TenantRow } from "./businesses";
 
 interface MyEnrollmentRow {
   id: string;

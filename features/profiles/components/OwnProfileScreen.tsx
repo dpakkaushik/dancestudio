@@ -8,7 +8,7 @@ import { findMembershipsOnSale } from "@/repositories/memberships";
 import { findPublicStudioTeam } from "@/repositories/publicProfile";
 import { findPublicPerson, type PublicPerson } from "@/repositories/publicPerson";
 import { findMyArtistPlan } from "@/repositories/plans";
-import { findMyMemberships } from "@/repositories/tenants";
+import { findMyMemberships } from "@/repositories/businesses";
 import { kindOf } from "@/types/profile";
 
 /** YOUR OWN PROFILE, WHEREVER ITS ADDRESS IS (21 Sep 2026).

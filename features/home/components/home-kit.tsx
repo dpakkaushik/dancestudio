@@ -3,7 +3,7 @@ import { FigureHead } from "@/components/ui/FigureHead";
 import { ArrangeTools } from "@/features/home/components/ArrangeTools";
 import { ToolGlyph, ToolGrid, ToolsHead, ToolsPanel, TOOLS_HEADING, type Tile, type ToolsKind } from "@/features/home/components/tool-grid";
 import { arrangeTiles, orderOf, toolsLayoutKey } from "@/features/home/toolOrder";
-import { DOS_TOOLS } from "@/features/tenants/components/biz-kit";
+import { DOS_TOOLS } from "@/features/businesses/components/biz-kit";
 import { DOS_DISPLAY, INK, MUTED } from "@/lib/design/tokens";
 
 /** Home's small parts, lifted from the prototype: the type scale a shelf is

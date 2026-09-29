@@ -6,7 +6,7 @@ import { DOS_LEVEL_LABEL, dosStyleColor } from "@/lib/constants/styles";
 import { DOS_UI, INK, LILAC, SUB } from "@/lib/design/tokens";
 import { photoUrl } from "@/lib/media/photo";
 import type { LearnedRoutine, RoutineWithUsage } from "@/repositories/routines";
-import { DeskHero } from "@/features/tenants/components/biz-kit";
+import { DeskHero } from "@/features/businesses/components/biz-kit";
 import { DeskAddButton } from "@/features/settings/components/settings-kit";
 
 /** ROUTINES (19 Sep 2026, the user: "Routines are just a combination of Music —

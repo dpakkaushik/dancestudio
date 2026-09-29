@@ -3,13 +3,13 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState, type ReactNode } from "react";
-import { respondToClaimAction, withdrawClaimAction } from "@/features/claims/server-actions/claims";
+import { respondToClaimAction, withdrawClaimAction } from "@/features/classPeople/server-actions/classPeople";
 import { respondToVenueRequestAction } from "@/features/classes/server-actions/classes";
 import { respondToCrewAskAction, withdrawCrewAskAction } from "@/features/crews/server-actions/crews";
 import { respondToPracticeAction } from "@/features/crews/server-actions/practices";
 import { acceptInviteAction, declineInviteAction, revokeInviteAction } from "@/features/staff/server-actions/staff";
 import { ClassTile } from "@/features/classes/components/ClassTile";
-import { DeskHero } from "@/features/tenants/components/biz-kit";
+import { DeskHero } from "@/features/businesses/components/biz-kit";
 import { DOS_DISPLAY, DOS_UI, LILAC, SKY } from "@/lib/design/tokens";
 import type { DanceClass } from "@/types/class";
 import {

@@ -3,7 +3,7 @@
 import Image from "next/image";
 import { useState, useTransition } from "react";
 import { DeskAddButton } from "@/features/settings/components/settings-kit";
-import { DOS_TOOLS, DeskHero } from "@/features/tenants/components/biz-kit";
+import { DOS_TOOLS, DeskHero } from "@/features/businesses/components/biz-kit";
 import { cancelCrewPracticeAction, respondToPracticeAction, setPracticeAttendanceAction } from "@/features/crews/server-actions/practices";
 import { findPracticePeopleAction } from "@/features/crews/server-actions/practicePeople";
 import { photoUrl } from "@/lib/media/photo";

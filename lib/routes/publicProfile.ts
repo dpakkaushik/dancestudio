@@ -1,4 +1,4 @@
-import type { BusinessType } from "@/types/tenant";
+import type { BusinessType } from "@/types/business";
 
 /** Where a business's public page lives (Step 15): studios at /studio/{id},
  *  artist businesses at /artist/{id} — the prototype's PubStudio / PubTrainer

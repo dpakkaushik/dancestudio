@@ -4,7 +4,7 @@ import { MembershipsScreen } from "@/features/memberships/components/Memberships
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { findTenantCardFacts } from "@/repositories/discovery";
 import { findBusinessMemberships, findMyMemberships } from "@/repositories/memberships";
-import { findMyMemberships as findMyTeams } from "@/repositories/tenants";
+import { findMyMemberships as findMyTeams } from "@/repositories/businesses";
 
 /** /memberships — the Memberships tile (18 Sep 2026's grid), built 19 Sep 2026.
  *  Two sides on one page, because an ARTIST is the account that has both (the

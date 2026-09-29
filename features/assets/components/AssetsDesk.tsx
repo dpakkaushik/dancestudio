@@ -4,7 +4,7 @@ import { useRouter } from "next/navigation";
 import { useState, useTransition, type CSSProperties } from "react";
 import { FigureHead } from "@/components/ui/FigureHead";
 import { removeAssetAction, saveAssetAction } from "@/features/assets/server-actions/assets";
-import { DeskHero, BizToast } from "@/features/tenants/components/biz-kit";
+import { DeskHero, BizToast } from "@/features/businesses/components/biz-kit";
 import { DeskAddButton, eyebrow, rupees } from "@/features/settings/components/settings-kit";
 import { DOS_UI, INK, LILAC, SUB } from "@/lib/design/tokens";
 import { ASSET_CATEGORIES, type Asset } from "@/repositories/assets";

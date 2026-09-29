@@ -2,11 +2,11 @@ import { redirect } from "next/navigation";
 import { ClassForm } from "@/features/classes/components/ClassForm";
 import { ClassesManager } from "@/features/classes/components/ClassesManager";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
-import { findClassArtists } from "@/repositories/claims";
+import { findClassArtists } from "@/repositories/classPeople";
 import { findClassPublishState, findClassesByTenant, findWhyNoClass } from "@/repositories/classes";
-import { countEnrolledBySession } from "@/repositories/enrollments";
+import { countEnrolledBySession } from "@/repositories/classBookings";
 import { findRoomsByTenant } from "@/repositories/rooms";
-import { findMyMemberships, runsTheBusiness } from "@/repositories/tenants";
+import { findMyMemberships, runsTheBusiness } from "@/repositories/businesses";
 
 /* the clock lives outside the component (react-hooks/purity) — the register's
    LIVE filter is arithmetic over the moment the page was served */

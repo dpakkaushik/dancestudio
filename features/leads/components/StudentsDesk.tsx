@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useState } from "react";
 import { deleteLeadAction } from "@/features/leads/server-actions/leads";
 import { DeskAddButton } from "@/features/settings/components/settings-kit";
-import { DeskHero } from "@/features/tenants/components/biz-kit";
+import { DeskHero } from "@/features/businesses/components/biz-kit";
 import { FigureHead } from "@/components/ui/FigureHead";
 import { DOS_UI, INK, LILAC, SUB } from "@/lib/design/tokens";
 import { useCloseOnBack } from "@/lib/hooks/useCloseOnBack";

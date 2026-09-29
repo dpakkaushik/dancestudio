@@ -14,7 +14,7 @@ import {
   setMemberRole,
 } from "@/repositories/invites";
 import { recordTeamPayment } from "@/repositories/payouts";
-import { reorderTenantMembers, setTenantMemberPowers, type MemberRole } from "@/repositories/tenants";
+import { reorderTenantMembers, setTenantMemberPowers, type MemberRole } from "@/repositories/businesses";
 import { INVITABLE_ROLES, MEMBER_LABEL_ORDER, type InvitableRole } from "@/types/staff";
 
 /** Step 12b staff actions. Authorization is NOT here — it is in the RPCs, which

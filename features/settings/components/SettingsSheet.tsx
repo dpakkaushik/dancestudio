@@ -6,7 +6,7 @@ import { useState, type CSSProperties, type ReactNode } from "react";
 import { DOS_UI, INK, MUTED, RED, SUB } from "@/lib/design/tokens";
 import type { ArtistPlan } from "@/repositories/plans";
 import type { Profile, ProfileRole } from "@/types/profile";
-import type { Business } from "@/types/tenant";
+import type { Business } from "@/types/business";
 
 /** THE SETTINGS SHEET — prototype S_profiletab 11402-11440, opened by the top
  *  bar's gear (19263: "if you are on the Profile tab, open settings now; else go

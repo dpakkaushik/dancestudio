@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
-import { findMyMemberships as findMyTeams } from "@/repositories/tenants";
+import { findMyMemberships as findMyTeams } from "@/repositories/businesses";
 
 /** /assets — kept as an ADDRESS, not a page (21 Sep 2026, Rule 14: a link handed
  *  out is a promise, and the installed TWA reopens on the last URL it showed).

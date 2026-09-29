@@ -6,11 +6,11 @@ import { ProofPhotos } from "@/features/orgs/components/ProofPhotos";
 import { ProfileDisc } from "@/features/profiles/components/HeroRail";
 import { gradientOf } from "@/features/profiles/components/profile-kit";
 import { BizPage, bizCard, eyebrow } from "@/features/settings/components/settings-kit";
-import { DOS_TOOLS, dosToolPaint } from "@/features/tenants/components/biz-kit";
+import { DOS_TOOLS, dosToolPaint } from "@/features/businesses/components/biz-kit";
 import { INK, SUB } from "@/lib/design/tokens";
 import { photoUrl } from "@/lib/media/photo";
 import { PROOF_MAX, PROOF_MIN, type ProofPhoto } from "@/lib/media/proof";
-import type { Business } from "@/types/tenant";
+import type { Business } from "@/types/business";
 
 const MUTED = "var(--muted)";
 

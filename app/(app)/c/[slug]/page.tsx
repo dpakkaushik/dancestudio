@@ -3,20 +3,20 @@ import { notFound } from "next/navigation";
 import { cache } from "react";
 import { ClassDetail } from "@/features/classes/components/ClassDetail";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
-import { findArtistPageOwner } from "@/repositories/tenants";
+import { findArtistPageOwner } from "@/repositories/businesses";
 import { findPassesForSession } from "@/repositories/memberships";
 import { canBookClass, noBookingWords } from "@/types/profile";
 import { resolveActingAs } from "@/repositories/actingAs";
 import { canSetClassRoutines, findClassRoutines, findMyRoutines } from "@/repositories/routines";
 import { findClassRegister } from "@/repositories/attendance";
-import { findClaimsByClass } from "@/repositories/claims";
+import { findClaimsByClass } from "@/repositories/classPeople";
 import { findClassBySlug } from "@/repositories/classes";
-import { countEnrolledBySession, findMyEnrolledSessionIds } from "@/repositories/enrollments";
+import { countEnrolledBySession, findMyEnrolledSessionIds } from "@/repositories/classBookings";
 import { findClassMoney, findPaidReceiptByEnrollment, findPaidUserIdsBySession } from "@/repositories/payments";
 import { findRefundsByClass } from "@/repositories/refunds";
 import { findRoomById } from "@/repositories/rooms";
-import { findMySeat } from "@/repositories/tenants";
-import type { EnrollmentStatus } from "@/types/enrollment";
+import { findMySeat } from "@/repositories/businesses";
+import type { EnrollmentStatus } from "@/types/classBooking";
 
 /** The class detail page at its booking link — /c/{slug} (prototype S_class; the
  *  link grammar is shareRecOf's danceos.in/c/{slug}). Works signed out: RLS shows

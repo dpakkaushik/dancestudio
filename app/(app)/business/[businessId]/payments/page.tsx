@@ -3,7 +3,7 @@ import { redirect } from "next/navigation";
 import { PaymentsScreen } from "@/features/settings/components/PaymentsScreen";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { findTenantInvoices, methodUsesOf } from "@/repositories/invoices";
-import { findMyMemberships, runsTheBusiness } from "@/repositories/tenants";
+import { findMyMemberships, runsTheBusiness } from "@/repositories/businesses";
 
 export const metadata: Metadata = { title: "Payments & verification — DanceOS" };
 

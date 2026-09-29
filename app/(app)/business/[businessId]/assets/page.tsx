@@ -3,7 +3,7 @@ import { AssetForm } from "@/features/assets/components/AssetForm";
 import { AssetsDesk } from "@/features/assets/components/AssetsDesk";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { findBusinessAssets } from "@/repositories/assets";
-import { findMyMemberships as findMyTeams } from "@/repositories/tenants";
+import { findMyMemberships as findMyTeams } from "@/repositories/businesses";
 
 /** /business/{businessId}/assets — ONE DESK FOR ALL THREE KINDS (21 Sep 2026, the
  *  user: "Fix assets for both artist, studio and organization").

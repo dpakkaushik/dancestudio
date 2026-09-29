@@ -3,18 +3,18 @@ import { redirect } from "next/navigation";
 import { ClassForm } from "@/features/classes/components/ClassForm";
 import { ClassesManager } from "@/features/classes/components/ClassesManager";
 import { ClassTile } from "@/features/classes/components/ClassTile";
-import { EnrollButton } from "@/features/enrollments/components/EnrollButton";
+import { EnrollButton } from "@/features/classBookings/components/EnrollButton";
 import { SegmentedPanels } from "@/features/shell/components/SegmentedNav";
-import { DeskHero } from "@/features/tenants/components/biz-kit";
+import { DeskHero } from "@/features/businesses/components/biz-kit";
 import { DOS_UI, INK, LILAC, MUTED, SUB } from "@/lib/design/tokens";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
-import { findClassArtists, findMyConfirmedClaims } from "@/repositories/claims";
+import { findClassArtists, findMyConfirmedClaims } from "@/repositories/classPeople";
 import { findClassPublishState, findClassesByTenant, findWhyNoClass } from "@/repositories/classes";
-import { countEnrolledBySession, findMyEnrollments } from "@/repositories/enrollments";
-import { findMyMemberships } from "@/repositories/tenants";
-import { askToTileClass } from "@/types/claim";
+import { countEnrolledBySession, findMyEnrollments } from "@/repositories/classBookings";
+import { findMyMemberships } from "@/repositories/businesses";
+import { askToTileClass } from "@/types/classPerson";
 import type { DanceClass } from "@/types/class";
-import type { MyEnrollment } from "@/types/enrollment";
+import type { MyEnrollment } from "@/types/classBooking";
 
 const toTileClass = (e: MyEnrollment): DanceClass => ({
   id: e.classId,

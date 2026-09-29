@@ -3,7 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useRef, useState } from "react";
 import { addMyGalleryPhotoAction, setCrewPhotoAction, setMyAvatarAction, setPosterAction, setTenantPhotoAction, type PhotoActionResult } from "@/features/media/server-actions/photos";
-import { addStudioProofPhotoAction } from "@/features/tenants/server-actions/studioVerification";
+import { addStudioProofPhotoAction } from "@/features/businesses/server-actions/studioVerification";
 import { PHOTO_TYPES, photoPath, whyNotAPhoto, type PhotoOwner, MEDIA_BUCKET } from "@/lib/media/photo";
 import { PROOF_BUCKET } from "@/lib/media/proof";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";

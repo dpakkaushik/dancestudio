@@ -1,6 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { PublicTeamMember, PublicBusiness, PublicBusinessProfile } from "@/types/publicProfile";
-import type { BusinessType } from "@/types/tenant";
+import type { BusinessType } from "@/types/business";
 import { findFollowerCounts } from "./follows";
 
 /** Step 15 — a business's public page, assembled from what the public may

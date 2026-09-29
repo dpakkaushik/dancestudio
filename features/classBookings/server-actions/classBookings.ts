@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
-import { cancelEnrollment, bookClassSession } from "@/repositories/enrollments";
+import { cancelEnrollment, bookClassSession } from "@/repositories/classBookings";
 
 export interface EnrollActionState {
   error: string | null;

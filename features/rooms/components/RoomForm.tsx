@@ -14,7 +14,7 @@ import {
   formPrimary,
 } from "@/components/ui/FormPage";
 import { createRoomAction } from "@/features/rooms/server-actions/rooms";
-import { DOS_TOOLS } from "@/features/tenants/components/biz-kit";
+import { DOS_TOOLS } from "@/features/businesses/components/biz-kit";
 import { SUB } from "@/lib/design/tokens";
 
 /** ADD ROOM — the form, on the app's one form anatomy (22 Sep 2026, the user:

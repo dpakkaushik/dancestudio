@@ -7,12 +7,12 @@ import { ProofPhotos } from "@/features/orgs/components/ProofPhotos";
 import { PlatformIcon, Sheet } from "@/features/profiles/components/profile-kit";
 import { dateWords } from "@/features/settings/components/settings-kit";
 import { updateTenantProfileAction } from "@/features/settings/server-actions/plans";
-import { requestStudioVerificationAction } from "@/features/tenants/server-actions/studioVerification";
+import { requestStudioVerificationAction } from "@/features/businesses/server-actions/studioVerification";
 import { INK, LILAC, SUB } from "@/lib/design/tokens";
 import { PROOF_MAX, PROOF_MIN } from "@/lib/media/proof";
 import type { StudioVerificationState } from "@/repositories/studioVerification";
 import type { SocialLink } from "@/types/profile";
-import type { Business } from "@/types/tenant";
+import type { Business } from "@/types/business";
 
 const CARD = "var(--card)";
 const EL = "var(--el)";

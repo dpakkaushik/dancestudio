@@ -14,7 +14,7 @@ import {
 } from "@/features/crews/server-actions/crews";
 import { PeoplePicker } from "@/features/people/components/PeoplePicker";
 import { DeskAddButton } from "@/features/settings/components/settings-kit";
-import { DeskHero, SheetHandle, sheetBody, sheetWrap } from "@/features/tenants/components/biz-kit";
+import { DeskHero, SheetHandle, sheetBody, sheetWrap } from "@/features/businesses/components/biz-kit";
 import { photoUrl } from "@/lib/media/photo";
 import { DOS_DISPLAY, DOS_UI, INK, LILAC } from "@/lib/design/tokens";
 import { CREW_ROLE_TINT, CREW_ROLE_WORD, type Crew, type CrewMember } from "@/types/crew";

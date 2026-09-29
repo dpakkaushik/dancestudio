@@ -3,10 +3,10 @@ import { InboxScreen } from "@/features/inbox/components/InboxScreen";
 import { buildRequests } from "@/features/inbox/requestItems";
 import { gradientOf } from "@/features/profiles/components/profile-kit";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
-import { findAskedClaimsForTenants } from "@/repositories/claims";
+import { findAskedClaimsForTenants } from "@/repositories/classPeople";
 import { findVenueRequestsForTenants } from "@/repositories/classes";
 import { findPendingInvites } from "@/repositories/invites";
-import { findMyMemberships, runsTheBusiness } from "@/repositories/tenants";
+import { findMyMemberships, runsTheBusiness } from "@/repositories/businesses";
 
 const stampNowIso = (): string => new Date().toISOString();
 

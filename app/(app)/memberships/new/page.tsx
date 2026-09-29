@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
 import { MembershipForm } from "@/features/memberships/components/MembershipForm";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
-import { findMyMemberships as findMyTeams } from "@/repositories/tenants";
+import { findMyMemberships as findMyTeams } from "@/repositories/businesses";
 
 /** /memberships/new — the form left the desk for a page of its own (21 Sep 2026,
  *  the user: "same should be for new routine and new membership").

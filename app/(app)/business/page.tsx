@@ -1,15 +1,15 @@
 import { redirect } from "next/navigation";
-import { BusinessHub } from "@/features/tenants/components/BusinessHub";
+import { BusinessHub } from "@/features/businesses/components/BusinessHub";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { findMyArtistPlan, findPlanCatalog, pickPlan } from "@/repositories/plans";
 import { findProfileById } from "@/repositories/profiles";
 import { findDiscoverCities } from "@/repositories/cities";
 import { findWhyNoStudio } from "@/repositories/orgStanding";
 import { countRoomsByTenants } from "@/repositories/rooms";
-import { findStudiosAttended } from "@/repositories/enrollments";
+import { findStudiosAttended } from "@/repositories/classBookings";
 import { findStudioVerificationStates } from "@/repositories/studioVerification";
 import { findMyStudioSubscriptions } from "@/repositories/subscriptions";
-import { findMyMemberships } from "@/repositories/tenants";
+import { findMyMemberships } from "@/repositories/businesses";
 
 /** /business — the Studios hub: the studios this account RUNS, and for a person
  *  the studios they teach at and learn at.

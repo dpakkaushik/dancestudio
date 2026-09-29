@@ -6,7 +6,7 @@ import { SubscribeButton } from "@/features/payments/components/SubscribeButton"
 import { cancelSubscriptionAction } from "@/features/payments/server-actions/subscriptions";
 import { PlanRights } from "@/features/settings/components/PlanRights";
 import { activateArtistPlanAction } from "@/features/settings/server-actions/plans";
-import { StudioSubscriptionStrip } from "@/features/tenants/components/StudioSubscriptionStrip";
+import { StudioSubscriptionStrip } from "@/features/businesses/components/StudioSubscriptionStrip";
 import { priceWords, type PlanCatalogRow } from "@/repositories/plans";
 import type { StudioSubscriptionState, Subscription } from "@/repositories/subscriptions";
 import { BizPage, BizToast, bizBtn, bizCard, dateWords } from "./settings-kit";

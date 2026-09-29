@@ -2,7 +2,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { findArtistIds } from "@/repositories/profiles";
 import type { ProfileRole } from "@/types/profile";
 import type { FollowState, FollowedTenant, TenantFollower } from "@/types/follow";
-import type { BusinessType } from "@/types/tenant";
+import type { BusinessType } from "@/types/business";
 
 /** Step 15 reads and the one write. Rows are private (the follower's own, and
  *  the followed business's members'); the COUNT is public through the

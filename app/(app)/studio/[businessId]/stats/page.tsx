@@ -3,7 +3,7 @@ import { notFound, redirect } from "next/navigation";
 import { gradientOf } from "@/features/profiles/components/profile-kit";
 import { EntityStatsPage, type Standing } from "@/features/stats/components/EntityStatsPage";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
-import { findArtistPageOwner } from "@/repositories/tenants";
+import { findArtistPageOwner } from "@/repositories/businesses";
 import { findPublicTenant } from "@/repositories/publicProfile";
 import { findEntityChartRow } from "@/repositories/stats";
 

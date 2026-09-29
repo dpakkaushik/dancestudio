@@ -9,7 +9,7 @@ import { SettingsSheet, type SettingsProfile } from "@/features/settings/compone
 import { DOS_UI, INK, RED } from "@/lib/design/tokens";
 import type { ArtistPlan } from "@/repositories/plans";
 import type { Profile, ProfileRole } from "@/types/profile";
-import type { Business } from "@/types/tenant";
+import type { Business } from "@/types/business";
 
 /** App shell lifted from the prototype's root (DanceOSApp.jsx:19171-19397): the
  *  fixed top bar (wordmark on a tab, back chip + title on a drill page, round

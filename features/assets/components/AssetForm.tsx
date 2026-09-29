@@ -15,7 +15,7 @@ import {
 } from "@/components/ui/FormPage";
 import { Pick } from "@/components/ui/PickSheet";
 import { saveAssetAction } from "@/features/assets/server-actions/assets";
-import { DOS_TOOLS } from "@/features/tenants/components/biz-kit";
+import { DOS_TOOLS } from "@/features/businesses/components/biz-kit";
 import { rupees } from "@/features/settings/components/settings-kit";
 import { INK, SUB } from "@/lib/design/tokens";
 import { ASSET_CATEGORIES } from "@/repositories/assets";

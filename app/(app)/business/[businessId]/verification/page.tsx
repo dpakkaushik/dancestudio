@@ -1,9 +1,9 @@
 import { redirect } from "next/navigation";
 import { BizPage } from "@/features/settings/components/settings-kit";
-import { StudioVerificationStrip } from "@/features/tenants/components/StudioVerificationStrip";
+import { StudioVerificationStrip } from "@/features/businesses/components/StudioVerificationStrip";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { findStudioVerificationStates, type StudioVerificationState } from "@/repositories/studioVerification";
-import { findMyMemberships } from "@/repositories/tenants";
+import { findMyMemberships } from "@/repositories/businesses";
 
 /** GETTING THIS STUDIO VERIFIED — a page of its own (21 Sep 2026, the user:
  *  "Studio-Invoices subscription and refunds to be managed from settings", and

@@ -3,7 +3,7 @@ import { addDays, dayKeyOf } from "@/lib/format/month";
 import type { CalendarEntry } from "@/types/calendar";
 import type { DanceClass } from "@/types/class";
 import type { DeckClassItem, DeckItem, DeckRole } from "@/types/home";
-import type { Business } from "@/types/tenant";
+import type { Business } from "@/types/business";
 import { findMyCalendar, findTenantCalendar } from "./calendar";
 import { findPaidReceiptsByEnrollments } from "./payments";
 

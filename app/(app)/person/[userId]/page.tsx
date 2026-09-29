@@ -10,7 +10,7 @@ import { findPersonHeaderPhotos } from "@/repositories/headerPhotos";
 import { findMembershipsOnSale } from "@/repositories/memberships";
 import { findPublicPerson, isFollowingPerson } from "@/repositories/publicPerson";
 import { findPublicStudioTeam } from "@/repositories/publicProfile";
-import { ensureArtistPage, findMyMemberships as findMyTeams } from "@/repositories/tenants";
+import { ensureArtistPage, findMyMemberships as findMyTeams } from "@/repositories/businesses";
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 

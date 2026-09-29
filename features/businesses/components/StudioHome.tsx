@@ -25,7 +25,7 @@ import { DOS_UI, INK, LILAC, SUB } from "@/lib/design/tokens";
 import type { ProofPhoto } from "@/lib/media/proof";
 import type { DeckItem } from "@/types/home";
 import type { PublicBusiness } from "@/types/publicProfile";
-import type { Business } from "@/types/tenant";
+import type { Business } from "@/types/business";
 
 /** ONE STUDIO'S OWN HOME (14 Sep 2026) — what a studio row on the hub opens.
  *

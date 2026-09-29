@@ -1,6 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { dosClassLabel } from "@/lib/constants/styles";
-import type { ClassPersonKind, ClassArtist, ClassClaim, MyClaimAsk } from "@/types/claim";
+import type { ClassPersonKind, ClassArtist, ClassClaim, MyClaimAsk } from "@/types/classPerson";
 
 /** ClassPeople move only through the RPCs: the studio asks, and only the person asked
  *  can answer. Reads are RLS-shaped — the public sees confirmed classPeople on

@@ -4,7 +4,7 @@ import { SubscriptionScreen } from "@/features/settings/components/SubscriptionS
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { findPlanCatalog, pickPlan } from "@/repositories/plans";
 import { findMyArtistSubscription, findMyStudioSubscriptions, type StudioSubscriptionState } from "@/repositories/subscriptions";
-import { findMyMemberships } from "@/repositories/tenants";
+import { findMyMemberships } from "@/repositories/businesses";
 
 export const metadata: Metadata = { title: "Subscription — DanceOS" };
 

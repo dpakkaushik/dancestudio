@@ -2,9 +2,9 @@
 
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
-import { claimPersonAction, setClaimPowersAction, withdrawClaimAction } from "@/features/claims/server-actions/claims";
+import { claimPersonAction, setClaimPowersAction, withdrawClaimAction } from "@/features/classPeople/server-actions/classPeople";
 import { PeoplePicker } from "@/features/people/components/PeoplePicker";
-import type { ClassClaim } from "@/types/claim";
+import type { ClassClaim } from "@/types/classPerson";
 
 /** THE CLASS TEAM, EDITED ON THE CLASS PAGE (18 Sep 2026). Assistants left the
  *  class form — the user: "Assistants should be removed from form and should be
