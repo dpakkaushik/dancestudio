@@ -2,7 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useRef, useState } from "react";
-import { addMyGalleryPhotoAction, setCrewPhotoAction, setMyAvatarAction, setPosterAction, setTenantPhotoAction, type PhotoActionResult } from "@/features/media/server-actions/photos";
+import { addMyGalleryPhotoAction, setCrewPhotoAction, setMyAvatarAction, setPosterAction, setBusinessPhotoAction, type PhotoActionResult } from "@/features/media/server-actions/photos";
 import { addStudioProofPhotoAction } from "@/features/businesses/server-actions/studioVerification";
 import { PHOTO_TYPES, photoPath, whyNotAPhoto, type PhotoOwner, MEDIA_BUCKET } from "@/lib/media/photo";
 import { PROOF_BUCKET } from "@/lib/media/proof";
@@ -43,8 +43,8 @@ const setter = (owner: PhotoOwner, path: string | null): Promise<PhotoActionResu
   switch (owner.kind) {
     case "avatar":
       return setMyAvatarAction({ path });
-    case "tenant":
-      return setTenantPhotoAction({ businessId: owner.id, path });
+    case "business":
+      return setBusinessPhotoAction({ businessId: owner.id, path });
     case "crew":
       return setCrewPhotoAction({ crewId: owner.id, path });
     case "gallery":
@@ -174,7 +174,7 @@ export function PhotoPicker({
     <PhotoCropper
       files={[cropping]}
       frame={frameForOwnerKind(owner.kind)}
-      label={cropLabel ?? (owner.kind === "crew" ? "Crew photo" : owner.kind === "tenant" ? "Profile picture" : "Profile photo")}
+      label={cropLabel ?? (owner.kind === "crew" ? "Crew photo" : owner.kind === "business" ? "Profile picture" : "Profile photo")}
       onCancel={() => setCropping(null)}
       onDone={([f]) => {
         setCropping(null);

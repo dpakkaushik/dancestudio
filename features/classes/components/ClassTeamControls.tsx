@@ -2,9 +2,9 @@
 
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
-import { claimPersonAction, setClaimPowersAction, withdrawClaimAction } from "@/features/classPeople/server-actions/classPeople";
+import { askClassPersonAction, setClassPersonPowersAction, withdrawClassAskAction } from "@/features/classPeople/server-actions/classPeople";
 import { PeoplePicker } from "@/features/people/components/PeoplePicker";
-import type { ClassClaim } from "@/types/classPerson";
+import type { ClassPerson } from "@/types/classPerson";
 
 /** THE CLASS TEAM, EDITED ON THE CLASS PAGE (18 Sep 2026). Assistants left the
  *  class form — the user: "Assistants should be removed from form and should be
@@ -62,7 +62,7 @@ export function AddAssistant({ classId, col, exclude }: { classId: string; col: 
             onPick={(p) =>
               start(async () => {
                 setErr(null);
-                const res = await claimPersonAction({ classId, userId: p.id, kind: "assistant" });
+                const res = await askClassPersonAction({ classId, userId: p.id, kind: "assistant" });
                 if (res.error) setErr(res.error);
                 else {
                   setOpen(false);
@@ -95,7 +95,7 @@ export function AddAssistant({ classId, col, exclude }: { classId: string; col: 
  *  ⚠ `remove` IS OFF THERE, on purpose: the artist column already carries
  *  **Change**, which is the owner's door to swapping who takes the class, and two
  *  buttons for one job is what this repo keeps paying for. */
-export function AssistantControls({ classPerson, isOwner, col, remove = true }: { classPerson: ClassClaim; isOwner: boolean; col: string; remove?: boolean }) {
+export function AssistantControls({ classPerson, isOwner, col, remove = true }: { classPerson: ClassPerson; isOwner: boolean; col: string; remove?: boolean }) {
   const router = useRouter();
   const [pending, start] = useTransition();
   const [err, setErr] = useState<string | null>(null);
@@ -125,7 +125,7 @@ export function AssistantControls({ classPerson, isOwner, col, remove = true }: 
                 aria-label={`${classPerson.personName} holds ${word}`}
                 onClick={() =>
                   run(() =>
-                    setClaimPowersAction({
+                    setClassPersonPowersAction({
                       classPersonId: classPerson.id,
                       canAttendance: job === "canAttendance" ? !classPerson.canAttendance : classPerson.canAttendance,
                       canRefunds: job === "canRefunds" ? !classPerson.canRefunds : classPerson.canRefunds,
@@ -141,7 +141,7 @@ export function AssistantControls({ classPerson, isOwner, col, remove = true }: 
           })
         : null}
       {remove ? (
-        <button type="button" disabled={pending} aria-label={`Remove ${classPerson.personName} from this class`} onClick={() => run(() => withdrawClaimAction({ classPersonId: classPerson.id }))} style={{ ...pill(false, col), color: "#F87171" }}>
+        <button type="button" disabled={pending} aria-label={`Remove ${classPerson.personName} from this class`} onClick={() => run(() => withdrawClassAskAction({ classPersonId: classPerson.id }))} style={{ ...pill(false, col), color: "#F87171" }}>
           Remove
         </button>
       ) : null}

@@ -168,7 +168,7 @@ interface ReceiptRow {
 }
 
 /** The captured payment behind a booking — RLS admits the payer and the business. */
-export async function findPaidReceiptByEnrollment(
+export async function findPaidReceiptByClassBooking(
   supabase: SupabaseClient,
   classBookingId: string
 ): Promise<PaidReceipt | null> {
@@ -392,19 +392,19 @@ interface DeckReceiptRow {
 
 /** The captured payments behind several bookings at once — Home's deck asks for
  *  a day's worth in one read rather than one per card. Same rows, same RLS as
- *  `findPaidReceiptByEnrollment`: the payer and the business's members. */
-export async function findPaidReceiptsByEnrollments(
+ *  `findPaidReceiptByClassBooking`: the payer and the business's members. */
+export async function findPaidReceiptsByClassBookings(
   supabase: SupabaseClient,
-  enrollmentIds: string[]
+  classBookingIds: string[]
 ): Promise<Map<string, PaidReceipt>> {
   const out = new Map<string, PaidReceipt>();
-  if (enrollmentIds.length === 0) {
+  if (classBookingIds.length === 0) {
     return out;
   }
   const { data, error } = await supabase
     .from("orders")
     .select("class_booking_id, status, payments (provider_payment_id, amount_inr, method, status, created_at)")
-    .in("class_booking_id", enrollmentIds)
+    .in("class_booking_id", classBookingIds)
     .in("status", ["paid", "refund_pending", "refunded"])
     .is("deleted_at", null)
     .order("created_at", { ascending: false })

@@ -5,15 +5,15 @@ import { monthLabelOf } from "@/lib/format/session";
 import { asPeriod } from "@/lib/format/period";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { findBusinessEarnings } from "@/repositories/earnings";
-import { findTenantIncome } from "@/repositories/income";
-import { findTenantPayLedger } from "@/repositories/payouts";
+import { findBusinessIncome } from "@/repositories/income";
+import { findBusinessPayLedger } from "@/repositories/payouts";
 import { findMyMemberships, runsTheBusiness } from "@/repositories/businesses";
 
 /* the clock lives outside the component — this repo's lint refuses an impure
    call during render (react-hooks/purity), even in a server component */
 const stampNowIso = (): string => new Date().toISOString();
 
-export default async function TenantEarningsPage({
+export default async function BusinessEarningsPage({
   params,
   searchParams,
 }: {
@@ -55,8 +55,8 @@ export default async function TenantEarningsPage({
   const now = stampNowIso();
   const [report, ledger, income] = await Promise.all([
     findBusinessEarnings(supabase, [businessId], period, now),
-    findTenantPayLedger(supabase, businessId, now),
-    findTenantIncome(supabase, businessId, now),
+    findBusinessPayLedger(supabase, businessId, now),
+    findBusinessIncome(supabase, businessId, now),
   ]);
 
   /* ⚠ THE SUMMARY IS THE SHARED SCREEN NOW (21 Sep 2026, the user: "lets fix

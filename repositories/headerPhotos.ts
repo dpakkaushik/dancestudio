@@ -52,7 +52,7 @@ export async function findPersonHeaderPhotos(supabase: SupabaseClient, userId: s
  *  an artist page's are its owner's own header pictures (the public bucket).
  *  One RPC decides which and whether the caller may see them at all, so the
  *  page never has to know whose folder anything is in. */
-export async function findTenantHeaderPhotos(supabase: SupabaseClient, businessId: string): Promise<HeaderPhoto[]> {
+export async function findBusinessHeaderPhotos(supabase: SupabaseClient, businessId: string): Promise<HeaderPhoto[]> {
   const { data, error } = await supabase.rpc("business_header_photos", { p_business_id: businessId });
   if (error) {
     return [];
@@ -83,7 +83,7 @@ export async function findTenantHeaderPhotos(supabase: SupabaseClient, businessI
  *  posters … view photo should be same as how it was cut"*).
  *
  *  ⚠ ONE QUERY AND ONE SIGNING CALL FOR THE PAGE, never one per card. Discover's
- *  Studios shelf draws up to fifty of them, so `findTenantHeaderPhotos`'s per-
+ *  Studios shelf draws up to fifty of them, so `findBusinessHeaderPhotos`'s per-
  *  business RPC would be fifty round trips plus fifty signings — the shape
  *  `findClassArtists` exists to avoid and the reason the class shelf is one read.
  *

@@ -4,7 +4,7 @@ import type { ProfileRole } from "@/types/profile";
 import type { AcceptedMethods, Business, BusinessType } from "@/types/business";
 import type { SocialLink } from "@/types/profile";
 
-export interface TenantRow {
+export interface BusinessRow {
   profile_photo_path?: string | null;
   id: string;
   type: BusinessType;
@@ -46,7 +46,7 @@ const toSocials = (raw: unknown): SocialLink[] =>
         .filter((x) => x.platform && x.url)
     : [];
 
-export const toTenant = (row: TenantRow): Business => ({
+export const toBusiness = (row: BusinessRow): Business => ({
   id: row.id,
   type: row.type,
   name: row.name,
@@ -95,7 +95,7 @@ export interface BusinessProfileInput {
 /** What a business says about itself and the switches it sets (S_payments 16612,
  *  the enquiry-types sheet 9000, the public page's About / Since / Call / links):
  *  one owner-only door, validated inside. */
-export async function updateTenantProfile(supabase: SupabaseClient, businessId: string, input: BusinessProfileInput): Promise<void> {
+export async function updateBusinessProfile(supabase: SupabaseClient, businessId: string, input: BusinessProfileInput): Promise<void> {
   const { error } = await supabase.rpc("update_business_profile", {
     p_business_id: businessId,
     p_founded_year: input.foundedYear,
@@ -122,7 +122,7 @@ export async function updateTenantProfile(supabase: SupabaseClient, businessId: 
 }
 
 /** Atomic create: business + owner membership via the create_business_with_owner RPC. */
-export async function createTenantWithOwner(
+export async function createBusinessWithOwner(
   supabase: SupabaseClient,
   input: { name: string; type: BusinessType; area?: string | null; city?: string | null; styles?: string[] }
 ): Promise<Business> {
@@ -139,7 +139,7 @@ export async function createTenantWithOwner(
   if (error) {
     throw new Error(`businesses.create failed: ${error.message}`);
   }
-  return toTenant(data as TenantRow);
+  return toBusiness(data as BusinessRow);
 }
 
 /** THE ARTIST PAGE IS PROVISIONED, NEVER "SET UP" (18 Sep 2026, the user: "there
@@ -162,7 +162,7 @@ export async function ensureArtistPage(
   const have = memberships.find((m) => m.memberRole === "owner" && m.business.type === "artist_page");
   if (have) return have.business.id;
   try {
-    const page = await createTenantWithOwner(supabase, { name: profile.fullName, type: "artist_page", area: null, city: profile.city });
+    const page = await createBusinessWithOwner(supabase, { name: profile.fullName, type: "artist_page", area: null, city: profile.city });
     return page.id;
   } catch {
     return null;
@@ -181,7 +181,7 @@ export async function findBusinessName(supabase: SupabaseClient, businessId: str
 }
 
 interface MembershipRow {
-  businesses: TenantRow | null;
+  businesses: BusinessRow | null;
 }
 
 /** VISITING FACULTY (18 Sep 2026): a person from outside the team who accepted a
@@ -219,7 +219,7 @@ export interface MyMembership {
 
 interface MembershipWithRoleRow {
   member_role: MemberRole;
-  businesses: TenantRow | null;
+  businesses: BusinessRow | null;
 }
 
 /** The signed-in user's businesses WITH the relationship — because there are two
@@ -228,7 +228,7 @@ interface MembershipWithRoleRow {
  *  them under separate headings and sends them to different places, so it needs
  *  the role beside the business.
  *
- *  Says `user_id = auth.uid()` OUT LOUD, like findMyTenants below: since Step 11
+ *  Says `user_id = auth.uid()` OUT LOUD, like findMyBusinesses below: since Step 11
  *  a business's members can read each other's membership rows, so leaning on RLS
  *  to mean "mine" would list one row per teammate. RLS is a ceiling, not a
  *  scoping mechanism. */
@@ -252,8 +252,8 @@ export async function findMyMemberships(supabase: SupabaseClient): Promise<MyMem
     throw new Error(`businesses.findMyMemberships failed: ${error.message}`);
   }
   return (data as unknown as MembershipWithRoleRow[])
-    .filter((row): row is MembershipWithRoleRow & { businesses: TenantRow } => row.businesses !== null)
-    .map((row) => ({ business: toTenant(row.businesses), memberRole: row.member_role }));
+    .filter((row): row is MembershipWithRoleRow & { businesses: BusinessRow } => row.businesses !== null)
+    .map((row) => ({ business: toBusiness(row.businesses), memberRole: row.member_role }));
 }
 
 /** The signed-in user's role on one business, or null when they are not a member.
@@ -263,7 +263,7 @@ export async function findMyMemberships(supabase: SupabaseClient): Promise<MyMem
  *  business's members read each other, so on any studio with two people it started
  *  matching several rows and maybeSingle() threw ("multiple (or no) rows
  *  returned"), taking the public class page down with it. Same lesson as
- *  findMyTenants below: RLS is a ceiling, not a scoping mechanism. */
+ *  findMyBusinesses below: RLS is a ceiling, not a scoping mechanism. */
 export async function findMyMembershipRole(
   supabase: SupabaseClient,
   businessId: string
@@ -297,7 +297,7 @@ export async function findMyMembershipRole(
  *  `can_refunds` — and the DATABASE has honoured them ever since:
  *  `can_run_register_for_class` and `can_settle_refunds_for_class` each carry a
  *  branch for the standing grant beside the per-class classPerson and the owner. The
- *  CLASS PAGE never read them: it asked `myClaim` alone, which is the OTHER
+ *  CLASS PAGE never read them: it asked `myClassPerson` alone, which is the OTHER
  *  grant path. So an assistant given Attendance on the Team desk could run the
  *  register as far as the database was concerned and **saw no tab to run it
  *  from** — the user's own report, and eight days old.
@@ -341,7 +341,7 @@ export async function findMySeat(supabase: SupabaseClient, businessId: string): 
  *  wants OUT LOUD: since Step 11 a business's members can read each other, so
  *  leaning on the policy to mean "mine" would list one row per teammate. RLS is
  *  a ceiling, not a scoping mechanism. */
-export async function findMyTenants(supabase: SupabaseClient): Promise<Business[]> {
+export async function findMyBusinesses(supabase: SupabaseClient): Promise<Business[]> {
   const {
     data: { user },
   } = await supabase.auth.getUser();
@@ -362,8 +362,8 @@ export async function findMyTenants(supabase: SupabaseClient): Promise<Business[
   }
   return (data as unknown as MembershipRow[])
     .map((row) => row.businesses)
-    .filter((business): business is TenantRow => business !== null)
-    .map(toTenant);
+    .filter((business): business is BusinessRow => business !== null)
+    .map(toBusiness);
 }
 
 export interface TeamMember {
@@ -395,7 +395,7 @@ export interface TeamMember {
  *
  *  Two queries on purpose: business_members.user_id references auth.users, not
  *  profiles, so PostgREST has no relationship to embed the name through. */
-export async function findTenantTeam(
+export async function findBusinessTeam(
   supabase: SupabaseClient,
   businessId: string
 ): Promise<TeamMember[]> {
@@ -461,7 +461,7 @@ export async function findTenantTeam(
 /** THE OWNER GRANTS THE TWO STANDING POWERS (20 Sep 2026). Owner-only inside the
  *  RPC, refused for an owner (who already holds both), and the seat is still the
  *  ceiling — the grant dies with it. */
-export async function setTenantMemberPowers(
+export async function setBusinessMemberPowers(
   supabase: SupabaseClient,
   businessId: string,
   userId: string,
@@ -482,7 +482,7 @@ export async function setTenantMemberPowers(
 /** THE ORDER THE TEAM IS SHOWN IN (19 Sep 2026) — the owner's alone, and the
  *  crew desk's `reorder_crew_members` in a different coat. Whoever is left out
  *  of the list keeps their place after it, so a partial list is safe. */
-export async function reorderTenantMembers(
+export async function reorderBusinessMembers(
   supabase: SupabaseClient,
   businessId: string,
   userIds: string[]
@@ -503,7 +503,7 @@ export async function reorderTenantMembers(
  *  replaces the guess with an address the owner chose. The RPC re-checks
  *  ownership, refuses a point outside India, and will only write a city that is
  *  on the app's closed list. */
-export async function setTenantLocation(
+export async function setBusinessLocation(
   supabase: SupabaseClient,
   input: { businessId: string; lat: number; lng: number; area: string | null; city: string | null }
 ): Promise<void> {

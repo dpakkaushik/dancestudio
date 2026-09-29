@@ -1,7 +1,7 @@
 import type { ClassArtist } from "@/types/classPerson";
 import type { PracticeStanding } from "@/types/crewPractice";
 import type { ClassLevel, ClassStatus } from "@/types/class";
-import type { EnrollmentStatus } from "@/types/classBooking";
+import type { ClassBookingStatus } from "@/types/classBooking";
 
 /** Step 14 — the calendar. Nothing new is stored: a calendar entry is a class
  *  session seen from one side. The prototype's three sides are what the person
@@ -29,10 +29,10 @@ export interface CalendarEntry {
   /** the IST hour it starts — the day view's rail */
   hour: number;
   businessName: string;
-  tenantCity: string | null;
+  businessCity: string | null;
   side: CalendarSide;
   /** the viewer's own booking, when the side is Train */
-  classBooking: { id: string; status: EnrollmentStatus } | null;
+  classBooking: { id: string; status: ClassBookingStatus } | null;
   /** seats taken, for the tile's "N spots left" */
   filled: number;
   /** the confirmed teacher, whose face the card's centre column wears (18 Sep

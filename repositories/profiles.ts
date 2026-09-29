@@ -143,7 +143,7 @@ export async function updateMyProfile(supabase: SupabaseClient, input: MyProfile
 }
 
 /* ⚠ `setMyPlace` LEFT on 26 Sep 2026 with `set_my_place` (`20260926120000`): an
-   organization's pin is its business row's now — `setTenantLocation`. */
+   organization's pin is its business row's now — `setBusinessLocation`. */
 
 /** WHO, AMONG THESE PEOPLE, IS AN ARTIST RIGHT NOW. The plan is a row on
  *  artist_plans_legacy, own-rows under RLS, so the badge beside somebody ELSE's name

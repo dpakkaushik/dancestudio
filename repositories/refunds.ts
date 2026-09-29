@@ -74,7 +74,7 @@ const toLedger = (r: LedgerRow): RefundLedgerRow => ({
 });
 
 /** every refund against a business's classes, newest first — members read it (Step 9) */
-export async function findRefundsByTenant(supabase: SupabaseClient, businessId: string): Promise<RefundLedgerRow[]> {
+export async function findRefundsByBusiness(supabase: SupabaseClient, businessId: string): Promise<RefundLedgerRow[]> {
   const { data, error } = await supabase
     .from("refunds")
     .select(REFUND_SELECT)
@@ -83,7 +83,7 @@ export async function findRefundsByTenant(supabase: SupabaseClient, businessId: 
     .order("created_at", { ascending: false })
     .limit(300);
   if (error) {
-    throw new Error(`refunds.findByTenant failed: ${error.message}`);
+    throw new Error(`refunds.findByBusiness failed: ${error.message}`);
   }
   return (data as unknown as LedgerRow[]).map(toLedger);
 }

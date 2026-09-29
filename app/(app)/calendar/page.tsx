@@ -21,7 +21,7 @@ const MONTHS_AHEAD = 3;
  *  Events completely"). It was R21 (18 Sep): the tickets you held, the entries
  *  you had made and the events run by a business you were on, one row per day an
  *  event covered, behind the Classes · Events switch. With it went
- *  `findMyCalendarEvents` and the `findMyTenants` read that fed it — so this
+ *  `findMyCalendarEvents` and the `findMyBusinesses` read that fed it — so this
  *  page makes two round trips where it made three. */
 export default async function CalendarPage() {
   const supabase = await createSupabaseServerClient();

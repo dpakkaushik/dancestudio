@@ -9,7 +9,7 @@ import {
   countEnrolledBySession,
   findMyEnrolledSessionIds,
 } from "@/repositories/classBookings";
-import type { EnrollmentStatus } from "@/types/classBooking";
+import type { ClassBookingStatus } from "@/types/classBooking";
 import { canBookClass, noBookingWords } from "@/types/profile";
 import { resolveActingAs } from "@/repositories/actingAs";
 
@@ -33,7 +33,7 @@ export default async function ClassesPage({
     countEnrolledBySession(supabase, sessionIds),
     user
       ? findMyEnrolledSessionIds(supabase)
-      : Promise.resolve(new Map<string, { id: string; status: EnrollmentStatus }>()),
+      : Promise.resolve(new Map<string, { id: string; status: ClassBookingStatus }>()),
     user ? findProfileById(supabase, user.id) : Promise.resolve(null),
     /* the teacher each card wears in its centre — one read for the whole shelf */
     findClassArtists(supabase, classes.map((c) => c.id)),
@@ -82,7 +82,7 @@ export default async function ClassesPage({
             danceClass={c}
             filled={filled}
             artist={artists.get(c.id) ?? null}
-            city={c.tenantCity}
+            city={c.businessCity}
             href={`/c/${c.shareSlug}`}
             actions={
               c.session ? (

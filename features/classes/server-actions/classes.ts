@@ -14,7 +14,7 @@ import {
   respondToVenueRequest,
   updateClassStatus,
 } from "@/repositories/classes";
-import { findRoomsByTenant } from "@/repositories/rooms";
+import { findRoomsByBusiness } from "@/repositories/rooms";
 import { searchEverything } from "@/repositories/search";
 import { reconcileClassPeople } from "@/services/classPeople";
 
@@ -412,7 +412,7 @@ export async function venueRoomsAction(businessId: unknown): Promise<Array<{ id:
   if (!parsed.success) return [];
   const supabase = await requireUser();
   try {
-    return (await findRoomsByTenant(supabase, parsed.data)).map((r) => ({ id: r.id, name: r.name, capacity: r.capacity, amenities: r.amenities }));
+    return (await findRoomsByBusiness(supabase, parsed.data)).map((r) => ({ id: r.id, name: r.name, capacity: r.capacity, amenities: r.amenities }));
   } catch {
     return [];
   }

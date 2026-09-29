@@ -6,13 +6,13 @@ import { findMyMemberships, runsTheBusiness } from "@/repositories/businesses";
 
 /** THE STUDENTS DESK (21 Sep 2026, re-cut from the leads pipeline).
  *
- *  ⚠ NO LEAD READS LEFT HERE. The desk used to compose `findLeadsByTenant` +
+ *  ⚠ NO LEAD READS LEFT HERE. The desk used to compose `findLeadsByBusiness` +
  *  `findStudentStats` + every published class (for the trial picker); it now
  *  makes ONE call, `findStudents`, which is where the word "student" is defined:
  *  checked in here, or holding a pass this business sold, or a walk-in the desk
  *  typed in itself. The stages, the funnel and the trial class are gone — the
  *  user: "Students section dont need to track a lead". */
-export default async function TenantStudentsPage({
+export default async function BusinessStudentsPage({
   params,
 }: {
   params: Promise<{ businessId: string }>;

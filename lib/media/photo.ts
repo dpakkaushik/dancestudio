@@ -38,7 +38,7 @@ export const PHOTO_MAX_WORDS = "5 MB";
 
 export type PhotoOwner =
   | { kind: "avatar"; id: string }
-  | { kind: "tenant"; id: string }
+  | { kind: "business"; id: string }
   | { kind: "crew"; id: string }
   /** one more header picture for a person — `id` is the person */
   | { kind: "gallery"; id: string }
@@ -64,8 +64,15 @@ export type PhotoOwner =
    storage policy ("new row violates row-level security policy", a 400) from
    16 to 19 Sep 2026, and nothing typed could see it. Found by shoot-hero.js.
    A CREW's header pictures (19 Sep 2026) share the crew's own `crews/{id}/`
-   folder with its disc: the leader is the one writer of both. */
-const FOLDER: Record<Exclude<PhotoOwner["kind"], "studioHeader">, string> = { avatar: "avatars", tenant: "tenants", crew: "crews", gallery: "gallery", poster: "posters" };
+   folder with its disc: the leader is the one writer of both.
+   ⚠⚠ SO READ THE NEXT LINE AS TWO DIFFERENT KINDS OF WORD. The KEY `business` is
+   a `PhotoOwner` union member — an in-memory TypeScript value, stored nowhere,
+   and renamed from `tenant` on 29 Sep 2026 with the rest of the app's
+   vocabulary. The VALUE `"tenants"` is the FOLDER, and it is the thing above
+   this comment: it does not move, ever, whatever the table is called. They sat
+   on one line spelled the same way for three months, which is precisely how the
+   16 Sep sweep took the folder with the type. */
+const FOLDER: Record<Exclude<PhotoOwner["kind"], "studioHeader">, string> = { avatar: "avatars", business: "tenants", crew: "crews", gallery: "gallery", poster: "posters" };
 
 const extOf = (file: { type: string }): string => (file.type === "image/png" ? "png" : file.type === "image/webp" ? "webp" : "jpg");
 const randomName = (): string => (typeof crypto !== "undefined" && "randomUUID" in crypto ? crypto.randomUUID() : `${Date.now()}`);

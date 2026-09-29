@@ -3,8 +3,8 @@ import { InboxScreen } from "@/features/inbox/components/InboxScreen";
 import { buildRequests } from "@/features/inbox/requestItems";
 import { gradientOf } from "@/features/profiles/components/profile-kit";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
-import { findAskedClaimsForTenants } from "@/repositories/classPeople";
-import { findVenueRequestsForTenants } from "@/repositories/classes";
+import { findAskedClassPeopleForBusinesses } from "@/repositories/classPeople";
+import { findVenueRequestsForBusinesses } from "@/repositories/classes";
 import { findPendingInvites } from "@/repositories/invites";
 import { findMyMemberships, runsTheBusiness } from "@/repositories/businesses";
 
@@ -52,12 +52,12 @@ export default async function StudioInboxPage({ params }: { params: Promise<{ bu
      kind of thing nothing fails on: the page was correct, just paying for a
      query it threw away. A studio's enquiries are the Enquiries TOOL on its own
      home, scoped to it by `?as=`. */
-  const [venueIn, claimsOut, invitesOut] = await Promise.all([
-    findVenueRequestsForTenants(supabase, [businessId]).catch(() => []),
-    findAskedClaimsForTenants(supabase, [businessId]),
+  const [venueIn, classPeopleOut, invitesOut] = await Promise.all([
+    findVenueRequestsForBusinesses(supabase, [businessId]).catch(() => []),
+    findAskedClassPeopleForBusinesses(supabase, [businessId]),
     findPendingInvites(supabase, businessId).then((rows) => rows.map((i) => ({ ...i, businessName: business.name }))),
   ]);
-  const { requestsIn, requestsOut } = buildRequests({ venueIn, claimsOut, invitesOut });
+  const { requestsIn, requestsOut } = buildRequests({ venueIn, classPeopleOut, invitesOut });
 
   return <InboxScreen accent={gradientOf(business.name)[1]} requestsIn={requestsIn} requestsOut={requestsOut} enquiriesIn={[]} enquiriesOut={[]} nowIso={stampNowIso()} />;
 }

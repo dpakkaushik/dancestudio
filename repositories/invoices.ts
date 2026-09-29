@@ -73,7 +73,7 @@ const SUBSCRIPTION_SELECT = "id, amount_inr, method, status, created_at, kind, s
 
 const numberOf = (id: string, iso: string) => `INV-${new Date(iso).getFullYear()}-${id.replace(/-/g, "").slice(-4).toUpperCase()}`;
 
-const toOrderRow = (r: OrderPaymentRow, side: "mine" | "tenant"): InvoiceRow => {
+const toOrderRow = (r: OrderPaymentRow, side: "mine" | "business"): InvoiceRow => {
   const cls = r.orders?.classes ?? null;
   const ev = r.orders?.events ?? null;
   return {
@@ -154,7 +154,7 @@ export async function findMyInvoices(supabase: SupabaseClient): Promise<InvoiceR
 /** the payments a business took — its ledger (members, by RLS). Seats, and the
  *  historical tickets an organization's hosting row took (29 Sep 2026); never
  *  its own subscription, which is money it paid, not money it took. */
-export async function findTenantInvoices(supabase: SupabaseClient, businessId: string): Promise<InvoiceRow[]> {
+export async function findBusinessInvoices(supabase: SupabaseClient, businessId: string): Promise<InvoiceRow[]> {
   const { data, error } = await supabase
     .from("payments")
     .select(ORDER_SELECT)
@@ -167,7 +167,7 @@ export async function findTenantInvoices(supabase: SupabaseClient, businessId: s
   if (error) {
     throw new Error(`invoices.business failed: ${error.message}`);
   }
-  return ((data ?? []) as unknown as OrderPaymentRow[]).map((r) => toOrderRow(r, "tenant"));
+  return ((data ?? []) as unknown as OrderPaymentRow[]).map((r) => toOrderRow(r, "business"));
 }
 
 /** How the money moved, per method (S_payments' YOUR METHODS 16594): counted

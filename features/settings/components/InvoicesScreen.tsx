@@ -14,7 +14,7 @@ import { BizPage, bizCard, chip, dayWords, ghostBtn, rupees } from "./settings-k
 
 const TONE: Record<string, string> = { paid: "#22C55E", refunded: "#F59E0B" };
 
-export function InvoicesScreen({ rows, side }: { rows: InvoiceRow[]; side: "mine" | "tenant" }) {
+export function InvoicesScreen({ rows, side }: { rows: InvoiceRow[]; side: "mine" | "business" }) {
   const [f, setF] = useState<"all" | "paid" | "refunded">("all");
   const shown = f === "all" ? rows : rows.filter((r) => r.status === f);
   const csv = () => {

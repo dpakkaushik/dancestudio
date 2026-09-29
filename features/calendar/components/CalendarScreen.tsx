@@ -524,7 +524,7 @@ export function CalendarScreen({ mode, months, todayKey, entries, practices = []
   const publicCard = (r: Row) => {
     if (r.k !== "class") return pill(r);
     const e = r.e;
-    return <ClassTile key={r.id} danceClass={toTileClass(e)} filled={e.filled} artist={e.artist} city={e.tenantCity} href={`/c/${e.shareSlug}`} />;
+    return <ClassTile key={r.id} danceClass={toTileClass(e)} filled={e.filled} artist={e.artist} city={e.businessCity} href={`/c/${e.shareSlug}`} />;
   };
 
   const card = (r: Row) => (isPublic ? publicCard(r) : pill(r));

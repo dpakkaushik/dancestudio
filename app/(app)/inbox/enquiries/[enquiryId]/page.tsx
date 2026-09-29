@@ -3,7 +3,7 @@ import { EnquiryDetail } from "@/features/enquiries/components/EnquiryDetail";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { findMyLedCrews } from "@/repositories/crews";
 import { findEnquiryById } from "@/repositories/enquiries";
-import { findMyTenants } from "@/repositories/businesses";
+import { findMyBusinesses } from "@/repositories/businesses";
 
 const stampNowIso = (): string => new Date().toISOString();
 
@@ -21,7 +21,7 @@ export default async function EnquiryPage({ params }: { params: Promise<{ enquir
     redirect("/login");
   }
 
-  const [enquiry, businesses, ledCrews] = await Promise.all([findEnquiryById(supabase, enquiryId), findMyTenants(supabase), findMyLedCrews(supabase).catch(() => [])]);
+  const [enquiry, businesses, ledCrews] = await Promise.all([findEnquiryById(supabase, enquiryId), findMyBusinesses(supabase), findMyLedCrews(supabase).catch(() => [])]);
   if (!enquiry) {
     notFound();
   }

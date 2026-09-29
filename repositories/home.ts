@@ -4,8 +4,8 @@ import type { CalendarEntry } from "@/types/calendar";
 import type { DanceClass } from "@/types/class";
 import type { DeckClassItem, DeckItem, DeckRole } from "@/types/home";
 import type { Business } from "@/types/business";
-import { findMyCalendar, findTenantCalendar } from "./calendar";
-import { findPaidReceiptsByEnrollments } from "./payments";
+import { findMyCalendar, findBusinessCalendar } from "./calendar";
+import { findPaidReceiptsByClassBookings } from "./payments";
 
 /** Home's PassDeck reads (prototype 6863-7104). No table, no RPC, no policy: the
  *  deck is TODAY's slice of rows that already exist — the calendar's three sides
@@ -17,7 +17,7 @@ import { findPaidReceiptsByEnrollments } from "./payments";
  *  ⚠ THE EVENT HALF WENT ON 29 Sep 2026 (the user: *"Remove Organization and
  *  Events completely"*) — the tickets you held, the entries you had made and the
  *  events your businesses ran. It took THREE reads with it (`findMyEventBookings`,
- *  `findEventsByTenants`, and a `findEventBySlug` PER EVENT HELD), so a person's
+ *  `findEventsByBusinesses`, and a `findEventBySlug` PER EVENT HELD), so a person's
  *  Home is materially cheaper than it was: what is left is one calendar read and
  *  one receipts read for the whole day. */
 
@@ -71,7 +71,7 @@ const classItem = (e: CalendarEntry, roleLabel: DeckRole, host: boolean, receipt
   danceClass: classOf(e),
   filled: e.filled,
   businessName: e.businessName,
-  tenantCity: e.tenantCity,
+  businessCity: e.businessCity,
   artist: e.artist,
   classBooking: e.classBooking,
   receipt,
@@ -107,7 +107,7 @@ export async function findMyDeck(supabase: SupabaseClient, userId: string, nowIs
 
   const live = entries.filter((e) => e.classStatus !== "draft");
   // one read for every paid seat on the day, not one per card
-  const receipts = await findPaidReceiptsByEnrollments(
+  const receipts = await findPaidReceiptsByClassBookings(
     supabase,
     live.filter((e) => e.classBooking?.status === "enrolled").map((e) => e.classBooking!.id)
   );
@@ -127,7 +127,7 @@ export async function findMyDeck(supabase: SupabaseClient, userId: string, nowIs
  *  else's. */
 export async function findStudioDeck(supabase: SupabaseClient, business: Business, nowIso: string): Promise<DeckItem[]> {
   const { from, to } = todayWindow(nowIso);
-  const entries = await findTenantCalendar(supabase, business.id, { name: business.name, city: business.city }, from, to);
+  const entries = await findBusinessCalendar(supabase, business.id, { name: business.name, city: business.city }, from, to);
   const rows: DeckItem[] = entries.filter((e) => e.classStatus !== "draft").map((e) => classItem(e, "At your studio", true, null));
   return settle(rows, new Date(nowIso).getTime());
 }

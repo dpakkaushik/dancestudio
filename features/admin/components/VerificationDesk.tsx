@@ -71,9 +71,9 @@ const TABS: Array<{ key: VerificationTab; label: string }> = [
 const subjectOf = (r: VerificationRequest) => ({
   id: r.businessId ?? r.orgId,
   name: r.businessName ?? r.orgName,
-  city: r.tenantCity,
-  socials: r.tenantSocials,
-  verifiedAt: r.tenantVerifiedAt,
+  city: r.businessCity,
+  socials: r.businessSocials,
+  verifiedAt: r.businessVerifiedAt,
 });
 
 /** THE VERIFICATION DESK, SECOND CUT (11 Sep 2026) — the user's words: "how am

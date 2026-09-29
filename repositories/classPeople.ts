@@ -1,12 +1,12 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { dosClassLabel } from "@/lib/constants/styles";
-import type { ClassPersonKind, ClassArtist, ClassClaim, MyClaimAsk } from "@/types/classPerson";
+import type { ClassPersonKind, ClassArtist, ClassPerson, MyClassPersonAsk } from "@/types/classPerson";
 
 /** ClassPeople move only through the RPCs: the studio asks, and only the person asked
  *  can answer. Reads are RLS-shaped — the public sees confirmed classPeople on
  *  published classes, a member sees their business's, and you always see your own. */
 
-interface ClaimRow {
+interface ClassPersonRow {
   id: string;
   class_id: string;
   user_id: string;
@@ -22,7 +22,7 @@ interface ClaimRow {
 const CLAIM_COLUMNS =
   "id, class_id, user_id, kind, status, can_attendance, can_refunds, pay_per_session_inr, created_at, profiles (full_name, city, profile_photo_path)";
 
-const toClaim = (row: ClaimRow): ClassClaim => ({
+const toClassPerson = (row: ClassPersonRow): ClassPerson => ({
   id: row.id,
   classId: row.class_id,
   userId: row.user_id,
@@ -38,10 +38,10 @@ const toClaim = (row: ClaimRow): ClassClaim => ({
 });
 
 /** Everybody on one class — what the viewer may see is decided by RLS. */
-export async function findClaimsByClass(
+export async function findClassPeopleByClass(
   supabase: SupabaseClient,
   classId: string
-): Promise<ClassClaim[]> {
+): Promise<ClassPerson[]> {
   const { data, error } = await supabase
     .from("class_people")
     .select(CLAIM_COLUMNS)
@@ -53,7 +53,7 @@ export async function findClaimsByClass(
   if (error) {
     throw new Error(`classPeople.findByClass failed: ${error.message}`);
   }
-  return (data as unknown as ClaimRow[]).map(toClaim);
+  return (data as unknown as ClassPersonRow[]).map(toClassPerson);
 }
 
 /** THE TEACHER ON EACH OF THESE CLASSES (18 Sep 2026, the user: "class cards
@@ -140,7 +140,7 @@ export async function findClassesWithArtist(
   return out;
 }
 
-interface MyAskRow extends ClaimRow {
+interface MyAskRow extends ClassPersonRow {
   classes: {
     id: string;
     style: string;
@@ -161,10 +161,10 @@ interface MyAskRow extends ClaimRow {
  *  still be listed in the Inbox ("enquiries and requests don't get removed
  *  after accepting"). */
 const ASK_SELECT = `${CLAIM_COLUMNS}, classes (id, style, level, share_slug, room, price_inr, capacity, status, businesses!classes_business_id_fkey (name, city), class_sessions (id, starts_at, ends_at))`;
-const toAsk = (r: MyAskRow): MyClaimAsk => {
+const toAsk = (r: MyAskRow): MyClassPersonAsk => {
   const first = [...(r.classes!.class_sessions ?? [])].sort((a, b) => a.starts_at.localeCompare(b.starts_at))[0] ?? null;
   return {
-    ...toClaim(r),
+    ...toClassPerson(r),
     classTitle: dosClassLabel(r.classes!.style, r.classes!.level),
     classStyle: r.classes!.style,
     classShareSlug: r.classes!.share_slug,
@@ -177,7 +177,7 @@ const toAsk = (r: MyAskRow): MyClaimAsk => {
     classStatus: r.classes!.status,
     sessionId: first?.id ?? null,
     endsAt: first?.ends_at ?? null,
-    tenantCity: r.classes!.businesses?.city ?? null,
+    businessCity: r.classes!.businesses?.city ?? null,
   };
 };
 export type AskStatus = "asked" | "confirmed" | "rejected";
@@ -190,7 +190,7 @@ export type AskStatus = "asked" | "confirmed" | "rejected";
  *  asks waiting for the owner. The fourth time this lesson has surfaced: RLS is
  *  a ceiling, not a scoping mechanism. (No caller hit it yet; fixed at Step 14
  *  while the calendar was reading the same table.) */
-export async function findMyPendingClaims(supabase: SupabaseClient, statuses: AskStatus[] = ["asked"]): Promise<MyClaimAsk[]> {
+export async function findMyPendingClassPeople(supabase: SupabaseClient, statuses: AskStatus[] = ["asked"]): Promise<MyClassPersonAsk[]> {
   const {
     data: { user },
   } = await supabase.auth.getUser();
@@ -216,8 +216,8 @@ export async function findMyPendingClaims(supabase: SupabaseClient, statuses: As
  *  person's Classes tile is "Booked, Assist"). Confirmed classPeople of one kind for
  *  the signed-in person, with the class behind each — the same row shape the
  *  Inbox's asks use, so the tile draws them with the same card. Says
- *  `user_id = auth.uid()` out loud for the reason findMyPendingClaims does. */
-export async function findMyConfirmedClaims(supabase: SupabaseClient, kind: ClassPersonKind): Promise<MyClaimAsk[]> {
+ *  `user_id = auth.uid()` out loud for the reason findMyPendingClassPeople does. */
+export async function findMyConfirmedClassPeople(supabase: SupabaseClient, kind: ClassPersonKind): Promise<MyClassPersonAsk[]> {
   const {
     data: { user },
   } = await supabase.auth.getUser();
@@ -240,7 +240,7 @@ export async function findMyConfirmedClaims(supabase: SupabaseClient, kind: Clas
   return (data as unknown as MyAskRow[]).filter((r) => r.classes).map(toAsk);
 }
 
-export async function claimPerson(
+export async function askClassPerson(
   supabase: SupabaseClient,
   input: {
     classId: string;
@@ -265,8 +265,8 @@ export async function claimPerson(
 }
 
 /** What a session pays is the OWNER's call alone — separate from the jobs an
- *  owner or trainer hands out, which is why this is not part of setClaimPowers. */
-export async function setClaimPay(
+ *  owner or trainer hands out, which is why this is not part of setClassPersonPowers. */
+export async function setClassPersonPay(
   supabase: SupabaseClient,
   classPersonId: string,
   payPerSessionInr: number
@@ -280,7 +280,7 @@ export async function setClaimPay(
   }
 }
 
-export async function respondToClaim(
+export async function respondToClassAsk(
   supabase: SupabaseClient,
   classPersonId: string,
   accept: boolean
@@ -294,14 +294,14 @@ export async function respondToClaim(
   }
 }
 
-export async function withdrawClaim(supabase: SupabaseClient, classPersonId: string): Promise<void> {
+export async function withdrawClassAsk(supabase: SupabaseClient, classPersonId: string): Promise<void> {
   const { error } = await supabase.rpc("withdraw_class_ask", { p_class_person_id: classPersonId });
   if (error) {
     throw new Error(error.message);
   }
 }
 
-export async function setClaimPowers(
+export async function setClassPersonPowers(
   supabase: SupabaseClient,
   classPersonId: string,
   canAttendance: boolean,
@@ -322,7 +322,7 @@ export async function setClaimPowers(
  *  the reason a class of yours is still a draft, so it says so"). Says which
  *  businesses out loud: members read their business's classPeople under RLS, and a person
  *  on two teams would otherwise see both as one list. */
-export async function findAskedClaimsForTenants(supabase: SupabaseClient, businessIds: string[], statuses: AskStatus[] = ["asked"]): Promise<MyClaimAsk[]> {
+export async function findAskedClassPeopleForBusinesses(supabase: SupabaseClient, businessIds: string[], statuses: AskStatus[] = ["asked"]): Promise<MyClassPersonAsk[]> {
   if (businessIds.length === 0) {
     return [];
   }
@@ -336,7 +336,7 @@ export async function findAskedClaimsForTenants(supabase: SupabaseClient, busine
     .limit(100);
 
   if (error) {
-    throw new Error(`classPeople.findAskedForTenants failed: ${error.message}`);
+    throw new Error(`classPeople.findAskedForBusinesses failed: ${error.message}`);
   }
   return (data as unknown as MyAskRow[]).filter((r) => r.classes).map(toAsk);
 }

@@ -3,12 +3,12 @@
 import Link from "next/link";
 import { useActionState } from "react";
 import {
-  cancelEnrollmentAction,
+  cancelClassBookingAction,
   enrollAction,
   type EnrollActionState,
 } from "@/features/classBookings/server-actions/classBookings";
 import { GOLD, GREEN, INK, SOLID } from "@/lib/design/tokens";
-import type { EnrollmentStatus } from "@/types/classBooking";
+import type { ClassBookingStatus } from "@/types/classBooking";
 
 const EL = "var(--el)";
 const initialState: EnrollActionState = { error: null, outcome: null };
@@ -74,7 +74,7 @@ export function EnrollButton({
   sessionId: string;
   isFull: boolean;
   isSignedIn: boolean;
-  mine: { id: string; status: EnrollmentStatus } | null;
+  mine: { id: string; status: ClassBookingStatus } | null;
   priceInr: number;
   shareSlug: string;
   /** ⚠ THE REASON, NOT A BOOLEAN (27 Sep 2026). It was `canBook`, a test on
@@ -86,7 +86,7 @@ export function EnrollButton({
   cannotBookWhy?: string | null;
 }) {
   const [enrollState, enrollForm, enrollPending] = useActionState(enrollAction, initialState);
-  const [cancelState, cancelForm, cancelPending] = useActionState(cancelEnrollmentAction, initialState);
+  const [cancelState, cancelForm, cancelPending] = useActionState(cancelClassBookingAction, initialState);
   const error = enrollState.error || cancelState.error;
   const isPaid = priceInr > 0;
 

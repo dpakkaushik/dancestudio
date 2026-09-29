@@ -125,7 +125,7 @@ export async function voidPayoutAction(input: { payoutId: string }): Promise<Pay
   }
 }
 
-/* ⚠ `setClaimPayAction` was here and is gone (28 Sep 2026): it was a SECOND
-   door onto `setClaimPay`, and the live one is `services/classPeople.ts`, which
+/* ⚠ `setClassPersonPayAction` was here and is gone (28 Sep 2026): it was a SECOND
+   door onto `setClassPersonPay`, and the live one is `services/classPeople.ts`, which
    reconciles the class form's intent against the people on record. Nothing
    called this; the rate is still set, on every path that sets it. */

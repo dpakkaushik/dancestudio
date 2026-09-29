@@ -2,7 +2,7 @@ import { redirect } from "next/navigation";
 import { CalendarScreen } from "@/features/calendar/components/CalendarScreen";
 import { dayKeyOf, monthStartIso, monthsWindow, shiftMonthKey } from "@/lib/format/month";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
-import { findTenantCalendar } from "@/repositories/calendar";
+import { findBusinessCalendar } from "@/repositories/calendar";
 import { findMyMemberships, runsTheBusiness } from "@/repositories/businesses";
 
 const stampNowIso = (): string => new Date().toISOString();
@@ -13,7 +13,7 @@ const MONTHS_AHEAD = 3;
  *  (prototype `StudioCalPage`, S_profiletab calendarOnly in studio mode). Any
  *  member of the studio may read it: RLS admits members to their business's
  *  classes, drafts included, and nobody else to the drafts. */
-export default async function TenantCalendarPage({
+export default async function BusinessCalendarPage({
   params,
 }: {
   params: Promise<{ businessId: string }>;
@@ -38,7 +38,7 @@ export default async function TenantCalendarPage({
   const months = monthsWindow(now, MONTHS_BACK, MONTHS_AHEAD);
   const fromIso = monthStartIso(months[0].key);
   const toIso = monthStartIso(shiftMonthKey(months[months.length - 1].key, -1));
-  const entries = await findTenantCalendar(
+  const entries = await findBusinessCalendar(
     supabase,
     businessId,
     { name: business.name, city: business.city },

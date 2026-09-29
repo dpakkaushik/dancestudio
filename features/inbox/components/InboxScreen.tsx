@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState, type ReactNode } from "react";
-import { respondToClaimAction, withdrawClaimAction } from "@/features/classPeople/server-actions/classPeople";
+import { respondToClassAskAction, withdrawClassAskAction } from "@/features/classPeople/server-actions/classPeople";
 import { respondToVenueRequestAction } from "@/features/classes/server-actions/classes";
 import { respondToCrewAskAction, withdrawCrewAskAction } from "@/features/crews/server-actions/crews";
 import { respondToPracticeAction } from "@/features/crews/server-actions/practices";
@@ -279,7 +279,7 @@ export function InboxScreen({
   /* one answer per kind — the RPC behind each decides who may give it */
   const answer = (r: RequestItem, accept: boolean) =>
     r.kind === "classPerson"
-      ? respondToClaimAction({ classPersonId: r.classPersonId!, accept })
+      ? respondToClassAskAction({ classPersonId: r.classPersonId!, accept })
       : r.kind === "invite"
         ? accept
           ? acceptInviteAction({ code: r.inviteCode! })
@@ -291,7 +291,7 @@ export function InboxScreen({
             : respondToPracticeAction({ practiceId: r.practiceId!, accept, crewId: r.crewId });
   const withdraw = (r: RequestItem) =>
     r.kind === "classPerson"
-      ? withdrawClaimAction({ classPersonId: r.classPersonId! })
+      ? withdrawClassAskAction({ classPersonId: r.classPersonId! })
       : r.kind === "invite"
         ? revokeInviteAction({ businessId: r.businessId!, inviteId: r.inviteId! })
         : r.kind === "crew"

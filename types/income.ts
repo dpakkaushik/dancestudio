@@ -36,7 +36,7 @@ export interface MonthIncome {
   byMethod: MethodShare[];
 }
 
-export interface TenantIncome {
+export interface BusinessIncome {
   /** the month the clock is in */
   current: MonthIncome;
   /** the three months before it, most recent first — the period chips */

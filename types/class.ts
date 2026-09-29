@@ -69,8 +69,8 @@ export interface PublicClassListing extends DanceClass {
   businessName: string;
   /** which public page the studio row opens: /studio or /artist */
   businessType: "studio" | "artist_page";
-  tenantArea: string | null;
-  tenantCity: string | null;
+  businessArea: string | null;
+  businessCity: string | null;
   /** THE VENUE (19 Sep 2026, the user: "right Studio inside the class section"):
    *  an artist's class held in a studio's room names THAT studio under AT THE
    *  STUDIO, not the artist page that owns the class. Null when the class is at

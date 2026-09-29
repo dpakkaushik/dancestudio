@@ -4,7 +4,7 @@ import { gradientOf } from "@/features/profiles/components/profile-kit";
 import { EntityStatsPage, type Standing } from "@/features/stats/components/EntityStatsPage";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { findArtistPageOwner } from "@/repositories/businesses";
-import { findPublicTenant } from "@/repositories/publicProfile";
+import { findPublicBusiness } from "@/repositories/publicProfile";
 import { findEntityChartRow } from "@/repositories/stats";
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -21,7 +21,7 @@ export default async function StudioStatsPage({ params }: { params: Promise<{ bu
     notFound();
   }
   const supabase = await createSupabaseServerClient();
-  const business = await findPublicTenant(supabase, businessId);
+  const business = await findPublicBusiness(supabase, businessId);
   if (!business) {
     notFound();
   }

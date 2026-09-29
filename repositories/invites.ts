@@ -4,7 +4,7 @@ import type {
   InvitePreview,
   InviteStatus,
   PendingInvite,
-  TenantInvite,
+  BusinessInvite,
 } from "@/types/staff";
 import type { MemberRole } from "@/repositories/businesses";
 
@@ -26,7 +26,7 @@ interface InviteRow {
 
 const INVITE_COLUMNS = "id, business_id, name, email, user_id, member_role, code, status, created_at";
 
-const toInvite = (row: InviteRow): TenantInvite => ({
+const toInvite = (row: InviteRow): BusinessInvite => ({
   id: row.id,
   businessId: row.business_id,
   name: row.name,
@@ -43,7 +43,7 @@ const toInvite = (row: InviteRow): TenantInvite => ({
 export async function findPendingInvites(
   supabase: SupabaseClient,
   businessId: string
-): Promise<TenantInvite[]> {
+): Promise<BusinessInvite[]> {
   const { data, error } = await supabase
     .from("business_invites")
     .select(INVITE_COLUMNS)
@@ -59,10 +59,10 @@ export async function findPendingInvites(
   return (data as InviteRow[]).map(toInvite);
 }
 
-export async function inviteToTenant(
+export async function inviteToBusiness(
   supabase: SupabaseClient,
   input: { businessId: string; name: string; email: string; role: InvitableRole }
-): Promise<TenantInvite> {
+): Promise<BusinessInvite> {
   const { data, error } = await supabase.rpc("invite_to_business", {
     p_business_id: input.businessId,
     p_name: input.name,
@@ -79,10 +79,10 @@ export async function inviteToTenant(
  *  member by typing name, number, email or scan"). The people picker hands back
  *  a USER ID — a profile carries no address, so an invite has to be able to name
  *  a person. Consent is unchanged: they still accept it themselves. */
-export async function invitePersonToTenant(
+export async function invitePersonToBusiness(
   supabase: SupabaseClient,
   input: { businessId: string; userId: string; role: InvitableRole }
-): Promise<TenantInvite> {
+): Promise<BusinessInvite> {
   const { data, error } = await supabase.rpc("invite_person_to_business", {
     p_business_id: input.businessId,
     p_user_id: input.userId,

@@ -1,9 +1,9 @@
 import { redirect } from "next/navigation";
 import { ClassForm } from "@/features/classes/components/ClassForm";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
-import { findClaimsByClass } from "@/repositories/classPeople";
+import { findClassPeopleByClass } from "@/repositories/classPeople";
 import { findClassById } from "@/repositories/classes";
-import { findRoomsByTenant } from "@/repositories/rooms";
+import { findRoomsByBusiness } from "@/repositories/rooms";
 import { findBusinessName, findMyMemberships } from "@/repositories/businesses";
 
 /** Edit class — the owner alone (18 Sep 2026), like Add class. */
@@ -41,8 +41,8 @@ export default async function EditClassPage({
      it centred a map this form no longer draws. One round trip fewer on every
      edit. */
   const [rooms, classPeople, venueName] = await Promise.all([
-    business.type === "studio" ? findRoomsByTenant(supabase, businessId) : Promise.resolve([]),
-    findClaimsByClass(supabase, classId),
+    business.type === "studio" ? findRoomsByBusiness(supabase, businessId) : Promise.resolve([]),
+    findClassPeopleByClass(supabase, classId),
     /* the studio an artist asked for a room, BY NAME — the form used to reopen on
        "the studio you asked" because only the id was on the row (18 Sep 2026) */
     danceClass.venueBusinessId ? findBusinessName(supabase, danceClass.venueBusinessId).catch(() => null) : Promise.resolve(null),

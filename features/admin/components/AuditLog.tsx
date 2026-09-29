@@ -86,8 +86,14 @@ export function AuditLog({ entries, nowIso, filter }: { entries: AuditEntry[]; n
                   <div style={{ fontSize: 11, color: SUB, marginTop: 4, lineHeight: 1.5, borderLeft: `2px solid ${EL}`, paddingLeft: 8 }}>{e.reason}</div>
                 ) : null}
                 <div style={{ fontSize: 10, color: MUTED, marginTop: 5, fontVariantNumeric: "tabular-nums" }}>
-                  {/* admin_audit is immutable: rows written before 16 Sep 2026 say
-                      `business` for what is now `business`, and are read as such */}
+                  {/* ⚠⚠ admin_audit is INSERT-ONLY and immutable by trigger — for
+                      everybody, the service role included — so its 161 rows written
+                      before 16 Sep 2026 say `tenant` for what is now a `business`,
+                      for ever. THIS LINE IS THE TRANSLATION, and it is the only one.
+                      ⚠ The 29 Sep identifier sweep rewrote both halves of it, leaving
+                      `=== "business" ? "business"` — a comparison of the new word with
+                      itself, which typechecks perfectly and would have printed the raw
+                      word `tenant` on every historical row. Do not "tidy" it. */}
                   {agoWords(e.createdAt, nowIso)} · {e.action} · {e.subjectKind === "tenant" ? "business" : e.subjectKind}
                 </div>
               </div>

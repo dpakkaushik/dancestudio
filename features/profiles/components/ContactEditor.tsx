@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import { Portal } from "@/components/ui/Portal";
 import { setCrewSocialsAction, updateCrewAction } from "@/features/crews/server-actions/crews";
-import { updateTenantProfileAction } from "@/features/settings/server-actions/plans";
+import { updateBusinessProfileAction } from "@/features/settings/server-actions/plans";
 import { updateMyProfileAction } from "@/features/profiles/server-actions/profile";
 import type { StudioLinkTarget } from "@/features/businesses/components/StudioLinksRow";
 import { INK, MUTED, SUB } from "@/lib/design/tokens";
@@ -171,7 +171,7 @@ function ContactSheet({ target, onClose }: { target: ContactTarget; onClose: () 
         error = out.error;
       } else if (target.kind === "business") {
         const t = target.business;
-        const out = await updateTenantProfileAction({ businessId: t.id, styles: lists.styles, socials: nextSocials, foundedYear: t.foundedYear, phone, contactEmail: email, accepts: t.accepts, enquiryTypes: enqNext() });
+        const out = await updateBusinessProfileAction({ businessId: t.id, styles: lists.styles, socials: nextSocials, foundedYear: t.foundedYear, phone, contactEmail: email, accepts: t.accepts, enquiryTypes: enqNext() });
         error = out.error;
       } else {
         const c = target.crew;

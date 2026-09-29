@@ -5,7 +5,7 @@ import type { AdminBusiness } from "@/repositories/adminPanel";
  *  re-cut 26 Sep), plus the removal of a proof photo and the figures the admin
  *  accounts desk draws per owner.
  *
- *  ⚠ `findMyOrgTenantId` LEFT ON 26 Sep 2026 with the organization LOGIN it
+ *  ⚠ `findMyOrgBusinessId` LEFT ON 26 Sep 2026 with the organization LOGIN it
  *  served, and the organization itself went on 29 Sep. ⚠ THE FILE KEEPS ITS
  *  NAME deliberately: `removeProofPhoto` and `findWhyNoStudio` are a STUDIO's —
  *  the name was already wrong on 14 Sep, when only a studio started being

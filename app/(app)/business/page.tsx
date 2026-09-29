@@ -5,7 +5,7 @@ import { findMyArtistPlan, findPlanCatalog, pickPlan } from "@/repositories/plan
 import { findProfileById } from "@/repositories/profiles";
 import { findDiscoverCities } from "@/repositories/cities";
 import { findWhyNoStudio } from "@/repositories/orgStanding";
-import { countRoomsByTenants } from "@/repositories/rooms";
+import { countRoomsByBusinesses } from "@/repositories/rooms";
 import { findStudiosAttended } from "@/repositories/classBookings";
 import { findStudioVerificationStates } from "@/repositories/studioVerification";
 import { findMyStudioSubscriptions } from "@/repositories/subscriptions";
@@ -57,7 +57,7 @@ export default async function BusinessPage() {
   const owned = memberships.filter((m) => m.memberRole === "owner").map((m) => m.business);
   const studioIds = owned.filter((t) => t.type === "studio").map((t) => t.id);
   const [roomCounts, studioSubscriptions, studioVerification, attended] = await Promise.all([
-    countRoomsByTenants(supabase, owned.map((t) => t.id)),
+    countRoomsByBusinesses(supabase, owned.map((t) => t.id)),
     findMyStudioSubscriptions(supabase, studioIds).catch(() => ({})),
     /* WHERE EACH STUDIO STANDS WITH DANCEOS (11 Sep 2026): its badge, its
        photos, whether an admin is looking — one pair of reads for all of them.

@@ -2,7 +2,7 @@ import type { RequestItem } from "@/features/inbox/components/InboxScreen";
 import { sessionDayLabel } from "@/lib/format/session";
 import type { VenueRequest } from "@/repositories/classes";
 import type { findMyPendingInvites, findPendingInvites } from "@/repositories/invites";
-import { askToTileClass, type MyClaimAsk } from "@/types/classPerson";
+import { askToTileClass, type MyClassPersonAsk } from "@/types/classPerson";
 import type { CrewMember, MyCrewAsk } from "@/types/crew";
 import { practiceWhen, type CrewPractice } from "@/types/crewPractice";
 
@@ -48,11 +48,11 @@ type SentInvite = Awaited<ReturnType<typeof findPendingInvites>>[number] & { bus
 
 export interface RequestSources {
   venueIn?: VenueRequest[];
-  claimsIn?: MyClaimAsk[];
+  classPeopleIn?: MyClassPersonAsk[];
   invitesIn?: MyPendingInvite[];
   crewIn?: MyCrewAsk[];
   venueOut?: VenueRequest[];
-  claimsOut?: MyClaimAsk[];
+  classPeopleOut?: MyClassPersonAsk[];
   invitesOut?: SentInvite[];
   crewOut?: Array<CrewMember & { crewName: string }>;
   /** the practices this person has been asked to and not answered (27 Sep 2026).
@@ -94,7 +94,7 @@ export function buildRequests(s: RequestSources): { requestsIn: RequestItem[]; r
       status: askStatus(v.venueStatus),
       danceClass: v.danceClass,
     })),
-    ...(s.claimsIn ?? []).map((c): RequestItem => ({
+    ...(s.classPeopleIn ?? []).map((c): RequestItem => ({
       kind: "classPerson",
       id: c.id,
       dir: "in",
@@ -185,7 +185,7 @@ export function buildRequests(s: RequestSources): { requestsIn: RequestItem[]; r
       status: askStatus(v.venueStatus),
       danceClass: v.danceClass,
     })),
-    ...(s.claimsOut ?? []).map((c): RequestItem => ({
+    ...(s.classPeopleOut ?? []).map((c): RequestItem => ({
       kind: "classPerson",
       id: c.id,
       dir: "out",

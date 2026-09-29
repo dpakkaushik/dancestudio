@@ -8,7 +8,7 @@ import { updateMyProfileAction } from "@/features/profiles/server-actions/profil
 import { CARD, INK, MUTED, SKY, SUB } from "@/lib/design/tokens";
 import { photoUrl } from "@/lib/media/photo";
 import type { FollowedCrew, PersonFollowRow } from "@/repositories/follows";
-import type { FollowedTenant } from "@/types/follow";
+import type { FollowedBusiness } from "@/types/follow";
 import { kindOf, type Profile, type SocialLink } from "@/types/profile";
 import { LinksRowEditor } from "./LinksRowEditor";
 import { CHIP_ROW, FIGURE_ROW, figureLabel, figureNum } from "./profile-band";
@@ -48,7 +48,7 @@ export function HomeBand({
   chips = null,
   followers,
   followingPeople,
-  followingTenants,
+  followingBusinesses,
   followingCrews,
 }: {
   profile: Profile;
@@ -58,7 +58,7 @@ export function HomeBand({
   chips?: ReactNode;
   followers: PersonFollowRow[];
   followingPeople: PersonFollowRow[];
-  followingTenants: FollowedTenant[];
+  followingBusinesses: FollowedBusiness[];
   followingCrews: FollowedCrew[];
 }) {
   const router = useRouter();
@@ -66,7 +66,7 @@ export function HomeBand({
   const [followList, setFollowList] = useState<"followers" | "following" | null>(null);
   const [followSeg, setFollowSeg] = useState<FollowSeg>("All");
 
-  const followingN = followingPeople.length + followingTenants.length + followingCrews.length;
+  const followingN = followingPeople.length + followingBusinesses.length + followingCrews.length;
 
   /* ONE RECORD, ONE DOOR — the very action the Profile tab called for these
      fields; everything not named here rides through unchanged. ⚠ The database
@@ -96,7 +96,7 @@ export function HomeBand({
           /* ⚠ `face` was hard-coded null until 29 Sep 2026 — the one row in this
              sheet that could not show a picture, beside people and crews that
              could. The read simply never selected the column. */
-          ...followingTenants.map((t) => ({ key: t.followId, href: `/${t.businessType === "studio" ? "studio" : "artist"}/${t.businessId}`, name: t.businessName, kind: t.businessType === "studio" ? "studio" : "artist", glyph: (t.businessType === "studio" ? "studio" : "artist") as FollowGlyph, tint: followTint(t.businessType === "studio" ? "studio-biz" : "artist-biz"), face: photoUrl(t.tenantPhotoPath), initials: initialsOf(t.businessName) })),
+          ...followingBusinesses.map((t) => ({ key: t.followId, href: `/${t.businessType === "studio" ? "studio" : "artist"}/${t.businessId}`, name: t.businessName, kind: t.businessType === "studio" ? "studio" : "artist", glyph: (t.businessType === "studio" ? "studio" : "artist") as FollowGlyph, tint: followTint(t.businessType === "studio" ? "studio-biz" : "artist-biz"), face: photoUrl(t.businessPhotoPath), initials: initialsOf(t.businessName) })),
           ...followingCrews.map((c) => ({ key: c.followId, href: `/crew/${c.crewId}`, name: c.name, kind: "crew", glyph: "crew" as FollowGlyph, tint: followTint("crew"), face: photoUrl(c.photo), initials: initialsOf(c.name) })),
         ];
   const segOf = (kind: string): FollowSeg => (kind === "user" ? "Users" : kind === "artist" ? "Artists" : kind === "crew" ? "Crews" : "Studios");

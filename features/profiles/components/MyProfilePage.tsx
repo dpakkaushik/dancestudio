@@ -8,7 +8,7 @@ import { photoUrl } from "@/lib/media/photo";
 import type { MembershipOnSale } from "@/repositories/memberships";
 import type { PublicPerson } from "@/repositories/publicPerson";
 import type { FollowedCrew, PersonFollowRow } from "@/repositories/follows";
-import type { FollowedTenant } from "@/types/follow";
+import type { FollowedBusiness } from "@/types/follow";
 import { KIND_WORD, heroMetaWords, kindOf, memberNoWords } from "@/types/profile";
 import { PersonBody } from "./PersonBody";
 /* ⚠ `LocationButton` and `mapsPinHref` were the retired organization login's
@@ -71,7 +71,7 @@ export function MyProfilePage({
   header = [],
   followers,
   followingPeople,
-  followingTenants,
+  followingBusinesses,
   followingCrews = [],
   scheduleHref,
   owned = [],
@@ -88,7 +88,7 @@ export function MyProfilePage({
   headerMax?: number;
   followers: PersonFollowRow[];
   followingPeople: PersonFollowRow[];
-  followingTenants: FollowedTenant[];
+  followingBusinesses: FollowedBusiness[];
   /** the crews this person follows (19 Sep 2026) — one more segment of the
    *  Following sheet. ⚠ `followingOrgs` sat beside it and went on 29 Sep 2026. */
   followingCrews?: FollowedCrew[];
@@ -130,7 +130,7 @@ export function MyProfilePage({
   const shots: HeroShot[] = header
     .filter((h) => h.url)
     .map((h, i) => ({ key: h.id, src: h.url as string, alt: `Header picture ${i + 1} of ${profile.fullName}` }));
-  const followingN = followingPeople.length + followingTenants.length + followingCrews.length;
+  const followingN = followingPeople.length + followingBusinesses.length + followingCrews.length;
   /* ⚠ `isOrg` went with organizations (29 Sep 2026) — every account is a person */
   /* the button row's three questions, asked exactly as `/person/{id}` asks them
      (21 Sep 2026): an artist's Call is their own switch, a plain user's row is
@@ -162,7 +162,7 @@ export function MyProfilePage({
       : [
           ...followingPeople.map((f) => ({ key: f.followId, href: `/person/${f.userId}`, name: f.name, kind: kindOf(f.isArtist), glyph: kindOf(f.isArtist) as FollowGlyph, tint: followTint(kindOf(f.isArtist)), face: photoUrl(f.avatarPath), initials: initialsOf(f.name) })),
           /* ⚠ `face: null` until 29 Sep 2026 — see the same line in `HomeBand` */
-          ...followingTenants.map((t) => ({ key: t.followId, href: `/${t.businessType === "studio" ? "studio" : "artist"}/${t.businessId}`, name: t.businessName, kind: t.businessType === "studio" ? "studio" : "artist", glyph: (t.businessType === "studio" ? "studio" : "artist") as FollowGlyph, tint: followTint(t.businessType === "studio" ? "studio-biz" : "artist-biz"), face: photoUrl(t.tenantPhotoPath), initials: initialsOf(t.businessName) })),
+          ...followingBusinesses.map((t) => ({ key: t.followId, href: `/${t.businessType === "studio" ? "studio" : "artist"}/${t.businessId}`, name: t.businessName, kind: t.businessType === "studio" ? "studio" : "artist", glyph: (t.businessType === "studio" ? "studio" : "artist") as FollowGlyph, tint: followTint(t.businessType === "studio" ? "studio-biz" : "artist-biz"), face: photoUrl(t.businessPhotoPath), initials: initialsOf(t.businessName) })),
           /* the crews (19 Sep 2026) — each row opens its own page. ⚠ The
              organizations followed sat here and went on 29 Sep 2026. */
           ...followingCrews.map((c) => ({ key: c.followId, href: `/crew/${c.crewId}`, name: c.name, kind: "crew", glyph: "crew" as FollowGlyph, tint: followTint("crew"), face: photoUrl(c.photo), initials: initialsOf(c.name) })),

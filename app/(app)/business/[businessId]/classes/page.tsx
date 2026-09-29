@@ -3,9 +3,9 @@ import { ClassForm } from "@/features/classes/components/ClassForm";
 import { ClassesManager } from "@/features/classes/components/ClassesManager";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { findClassArtists } from "@/repositories/classPeople";
-import { findClassPublishState, findClassesByTenant, findWhyNoClass } from "@/repositories/classes";
+import { findClassPublishState, findClassesByBusiness, findWhyNoClass } from "@/repositories/classes";
 import { countEnrolledBySession } from "@/repositories/classBookings";
-import { findRoomsByTenant } from "@/repositories/rooms";
+import { findRoomsByBusiness } from "@/repositories/rooms";
 import { findMyMemberships, runsTheBusiness } from "@/repositories/businesses";
 
 /* the clock lives outside the component (react-hooks/purity) — the register's
@@ -18,7 +18,7 @@ const stampNowIso = (): string => new Date().toISOString();
  *  of its own any more: it is the Manage segment of Your classes (the user:
  *  "Manage class should not take to a separate page for artist"), so an artist
  *  page's address lands there (Rule 14). */
-export default async function TenantClassesPage({
+export default async function BusinessClassesPage({
   params,
   searchParams,
 }: {
@@ -39,7 +39,7 @@ export default async function TenantClassesPage({
      seat has to be one that RUNS the place (28 Sep 2026). The switcher stopped
      listing a business a faculty seat is on, and a door closed only in the menu
      that opens it is not closed. ⚠ The role rides the query that was already
-     being made: `findMyMemberships` is `findMyTenants` with the seat on it. */
+     being made: `findMyMemberships` is `findMyBusinesses` with the seat on it. */
   const seat = (await findMyMemberships(supabase)).find((m) => m.business.id === businessId);
   if (!seat || !runsTheBusiness(seat.memberRole)) {
     redirect("/business");
@@ -56,7 +56,7 @@ export default async function TenantClassesPage({
      second `findMyMembershipRole` round trip: the guard had to know the role
      anyway, so asking twice was a query this page stopped needing. */
   const myRole = seat.memberRole;
-  const classes = await findClassesByTenant(supabase, businessId);
+  const classes = await findClassesByBusiness(supabase, businessId);
   const sessionIds = classes.map((c) => c.session?.id).filter(Boolean) as string[];
   const [counts, state, artists, whyNoClass] = await Promise.all([
     countEnrolledBySession(supabase, sessionIds),
@@ -74,7 +74,7 @@ export default async function TenantClassesPage({
      — so the register costs exactly what it did before on every other visit, and
      the owner-only rule is re-checked here because a query param is a thing
      anybody can type. `/business/{id}/classes/new` still renders it full-page. */
-  const rooms = opening && myRole === "owner" && !whyNoClass ? await findRoomsByTenant(supabase, businessId).catch(() => []) : [];
+  const rooms = opening && myRole === "owner" && !whyNoClass ? await findRoomsByBusiness(supabase, businessId).catch(() => []) : [];
   return (
     <>
       <ClassesManager

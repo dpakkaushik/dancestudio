@@ -1,11 +1,11 @@
 import type { ClassLevel, ClassStatus } from "@/types/class";
 
-export type EnrollmentStatus = "enrolled" | "waitlisted" | "cancelled";
+export type ClassBookingStatus = "enrolled" | "waitlisted" | "cancelled";
 
 /** A learner's booking with everything the "My classes" tile needs. */
-export interface MyEnrollment {
+export interface MyClassBooking {
   id: string;
-  status: EnrollmentStatus;
+  status: ClassBookingStatus;
   sessionId: string;
   classId: string;
   title: string;
@@ -20,13 +20,13 @@ export interface MyEnrollment {
   startsAt: string;
   endsAt: string;
   businessName: string;
-  tenantCity: string | null;
+  businessCity: string | null;
 }
 
 /** One roster row — the studio's view of a booking. */
 export interface RosterEntry {
   id: string;
-  status: EnrollmentStatus;
+  status: ClassBookingStatus;
   enrolledAt: string;
   learnerName: string;
   learnerCity: string | null;

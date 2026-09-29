@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { PaymentsScreen } from "@/features/settings/components/PaymentsScreen";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
-import { findTenantInvoices, methodUsesOf } from "@/repositories/invoices";
+import { findBusinessInvoices, methodUsesOf } from "@/repositories/invoices";
 import { findMyMemberships, runsTheBusiness } from "@/repositories/businesses";
 
 export const metadata: Metadata = { title: "Payments & verification — DanceOS" };
@@ -11,7 +11,7 @@ export const metadata: Metadata = { title: "Payments & verification — DanceOS"
  *  students paid, the ACCEPTED FROM STUDENTS switches (the owner's to flip,
  *  through the one owner-only door), and the Verification tab reading
  *  `verified_at`. Members read it; the switches move for the owner alone. */
-export default async function TenantPaymentsPage({ params }: { params: Promise<{ businessId: string }> }) {
+export default async function BusinessPaymentsPage({ params }: { params: Promise<{ businessId: string }> }) {
   const { businessId } = await params;
   const supabase = await createSupabaseServerClient();
   const {
@@ -23,6 +23,6 @@ export default async function TenantPaymentsPage({ params }: { params: Promise<{
   const seat = (await findMyMemberships(supabase)).find((m) => m.business.id === businessId);
   if (!seat || !runsTheBusiness(seat.memberRole)) redirect("/business");
   const { business, memberRole: role } = seat;
-  const rows = await findTenantInvoices(supabase, businessId);
-  return <PaymentsScreen side="tenant" methods={methodUsesOf(rows)} business={business} canEdit={role === "owner"} />;
+  const rows = await findBusinessInvoices(supabase, businessId);
+  return <PaymentsScreen side="business" methods={methodUsesOf(rows)} business={business} canEdit={role === "owner"} />;
 }

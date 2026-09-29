@@ -15,7 +15,7 @@ export interface ClassArtist {
   userId: string;
 }
 
-export interface ClassClaim {
+export interface ClassPerson {
   id: string;
   classId: string;
   userId: string;
@@ -39,7 +39,7 @@ export interface ClassClaim {
 
 /** An ask waiting for the signed-in person's answer, with enough of the class
  *  to decide (prototype: "They want you on the schedule as the artist"). */
-export interface MyClaimAsk extends ClassClaim {
+export interface MyClassPersonAsk extends ClassPerson {
   classTitle: string;
   classStyle: string;
   classShareSlug: string;
@@ -54,7 +54,7 @@ export interface MyClaimAsk extends ClassClaim {
   classStatus: "draft" | "published" | "completed";
   sessionId: string | null;
   endsAt: string | null;
-  tenantCity: string | null;
+  businessCity: string | null;
 }
 
 /** THE CLASS BEHIND AN ASK, AS A CARD DRAWS IT — written ONCE (27 Sep 2026).
@@ -70,7 +70,7 @@ export interface MyClaimAsk extends ClassClaim {
  *  and the card draws its own poster from the title. The two membership flags
  *  are the column defaults, because whose pass pays is the CLASS's answer, read
  *  on its own page, and a card must not invent one. */
-export const askToTileClass = (c: MyClaimAsk): DanceClass => ({
+export const askToTileClass = (c: MyClassPersonAsk): DanceClass => ({
   id: c.classId,
   businessId: "",
   title: c.classTitle,

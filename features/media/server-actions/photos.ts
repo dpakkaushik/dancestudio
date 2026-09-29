@@ -48,7 +48,7 @@ export async function setMyAvatarAction(input: { path: string | null }): Promise
   return { error: null, path: (data as string | null) ?? null };
 }
 
-export async function setTenantPhotoAction(input: { businessId: string; path: string | null }): Promise<PhotoActionResult> {
+export async function setBusinessPhotoAction(input: { businessId: string; path: string | null }): Promise<PhotoActionResult> {
   const parsed = z.object({ businessId: z.string().uuid(), path }).safeParse(input);
   if (!parsed.success) return { error: "Invalid photo" };
   const supabase = await requireUser();

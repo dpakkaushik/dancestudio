@@ -5,8 +5,8 @@ import { useState, useTransition } from "react";
 import { Pick } from "@/components/ui/PickSheet";
 import { Portal } from "@/components/ui/Portal";
 import { LocationPicker, type PickedLocation } from "@/features/geo/components/LocationPicker";
-import { setTenantLocationAction } from "@/features/geo/server-actions/location";
-import { updateTenantProfileAction } from "@/features/settings/server-actions/plans";
+import { setBusinessLocationAction } from "@/features/geo/server-actions/location";
+import { updateBusinessProfileAction } from "@/features/settings/server-actions/plans";
 /* the style registry left with the styles block on 21 Sep — the value is still
    carried through this sheet's save, it is just not edited here any more */
 import { SUB } from "@/lib/design/tokens";
@@ -97,7 +97,7 @@ export function BusinessEditSheet({
   const savePlace = (picked: PickedLocation) =>
     start(async () => {
       setPlaceNote("Saving the pin…");
-      const out = await setTenantLocationAction({
+      const out = await setBusinessLocationAction({
         businessId: business.id,
         lat: picked.lat,
         lng: picked.lng,
@@ -131,7 +131,7 @@ export function BusinessEditSheet({
         return;
       }
       const yr = founded ? Number(founded) : null;
-      const out = await updateTenantProfileAction({
+      const out = await updateBusinessProfileAction({
         businessId: business.id,
         styles,
         name: name.trim() !== business.name ? name.trim() : undefined,

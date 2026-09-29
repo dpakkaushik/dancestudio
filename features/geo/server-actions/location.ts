@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
-import { setTenantLocation } from "@/repositories/businesses";
+import { setBusinessLocation } from "@/repositories/businesses";
 
 /** SAVING A PLACE (11 Sep 2026).
  *
@@ -33,7 +33,7 @@ export interface LocationActionResult {
   error: string | null;
 }
 
-export async function setTenantLocationAction(input: {
+export async function setBusinessLocationAction(input: {
   businessId: string;
   lat: number;
   lng: number;
@@ -55,7 +55,7 @@ export async function setTenantLocationAction(input: {
   }
 
   try {
-    await setTenantLocation(supabase, parsed.data);
+    await setBusinessLocation(supabase, parsed.data);
     revalidatePath(`/studio/${parsed.data.businessId}`);
     revalidatePath(`/artist/${parsed.data.businessId}`);
     /* the point is what Discover measures from, so its lists are now stale */

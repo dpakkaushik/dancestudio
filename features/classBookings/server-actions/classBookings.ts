@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
-import { cancelEnrollment, bookClassSession } from "@/repositories/classBookings";
+import { cancelClassBooking, bookClassSession } from "@/repositories/classBookings";
 
 export interface EnrollActionState {
   error: string | null;
@@ -52,7 +52,7 @@ export async function enrollAction(
   }
 }
 
-export async function cancelEnrollmentAction(
+export async function cancelClassBookingAction(
   _prev: EnrollActionState,
   formData: FormData
 ): Promise<EnrollActionState> {
@@ -63,7 +63,7 @@ export async function cancelEnrollmentAction(
 
   const supabase = await requireUser();
   try {
-    await cancelEnrollment(supabase, parsed.data.classBookingId);
+    await cancelClassBooking(supabase, parsed.data.classBookingId);
     revalidatePath("/classes");
     revalidatePath("/my-classes");
     revalidatePath("/discover");

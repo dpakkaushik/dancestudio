@@ -15,7 +15,7 @@ import { CARD, INK, LINE, SUB } from "@/lib/design/tokens";
  *  could not reorder, could not remove, and did not say what the database
  *  refuses. Rather than write this editor a second time, it is one component
  *  and both call it: a person passes `updateMyProfileAction`, a studio passes
- *  `updateTenantProfileAction`, and the sheet itself knows nothing about either.
+ *  `updateBusinessProfileAction`, and the sheet itself knows nothing about either.
  *
  *  ⚠ THE FLOOR IS THE DATABASE'S AND THE CALLER STATES IT. `update_my_profile`
  *  refuses a person with no style and `update_business_profile` refuses a studio

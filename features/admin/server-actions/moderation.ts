@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
-import { decideReport, setTenantVisibility } from "@/repositories/adminPanel";
+import { decideReport, setBusinessVisibility } from "@/repositories/adminPanel";
 
 /** Phase 2's two admin decisions (10 Sep 2026). ⚠ Rule 9: both RPCs check
  *  `is_platform_admin()` themselves, tell the person affected in words they
@@ -38,14 +38,14 @@ const refresh = () => {
   revalidatePath("/discover");
 };
 
-export async function setTenantVisibilityAction(input: unknown): Promise<{ error: string | null }> {
+export async function setBusinessVisibilityAction(input: unknown): Promise<{ error: string | null }> {
   const parsed = visibilitySchema.safeParse(input);
   if (!parsed.success) {
     return { error: parsed.error.issues[0]?.message ?? "Invalid input" };
   }
   const supabase = await createSupabaseServerClient();
   try {
-    await setTenantVisibility(supabase, parsed.data.businessId, parsed.data.visibility, parsed.data.reason ?? null);
+    await setBusinessVisibility(supabase, parsed.data.businessId, parsed.data.visibility, parsed.data.reason ?? null);
   } catch (e) {
     return { error: e instanceof Error ? e.message : "Could not change that" };
   }

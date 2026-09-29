@@ -15,7 +15,7 @@ import { findFollowerCounts } from "./follows";
 
 const MAX_CLASSES = 500;
 
-interface TenantRow {
+interface BusinessRow {
   id: string;
   type: BusinessType;
   name: string;
@@ -55,7 +55,7 @@ interface TeamRow {
 
 /** The business as the caller may see it — null when it is unlisted and the
  *  caller is not a member (RLS decides, the query does not). */
-export async function findPublicTenant(supabase: SupabaseClient, businessId: string): Promise<PublicBusiness | null> {
+export async function findPublicBusiness(supabase: SupabaseClient, businessId: string): Promise<PublicBusiness | null> {
   const { data, error } = await supabase
     .from("businesses")
     .select("id, type, name, area, city, lat, lng, location_set_at, created_at, profile_photo_path, founded_year, phone, contact_email, socials, enquiry_types, accepts_upi, accepts_cards, accepts_cash, accepts_bank, verified_at, styles, member_no")
@@ -68,7 +68,7 @@ export async function findPublicTenant(supabase: SupabaseClient, businessId: str
   if (!data) {
     return null;
   }
-  const row = data as TenantRow;
+  const row = data as BusinessRow;
   const socials = Array.isArray(row.socials) ? (row.socials as Array<{ platform?: unknown; url?: unknown }>).map((x) => ({ platform: String(x.platform ?? ""), url: String(x.url ?? "") })).filter((x) => x.platform && x.url) : [];
   return {
     id: row.id,
@@ -106,8 +106,8 @@ export async function findPublicStudioTeam(supabase: SupabaseClient, businessId:
   return ((data ?? []) as TeamRow[]).map((r) => ({ userId: r.user_id, role: r.member_role, name: r.full_name, photoPath: r.photo_path, isOrg: Boolean(r.is_org) }));
 }
 
-export async function findPublicTenantProfile(supabase: SupabaseClient, businessId: string): Promise<PublicBusinessProfile | null> {
-  const business = await findPublicTenant(supabase, businessId);
+export async function findPublicBusinessProfile(supabase: SupabaseClient, businessId: string): Promise<PublicBusinessProfile | null> {
+  const business = await findPublicBusiness(supabase, businessId);
   if (!business) {
     return null;
   }

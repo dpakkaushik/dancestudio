@@ -2,10 +2,10 @@ import { redirect } from "next/navigation";
 import { RoomForm } from "@/features/rooms/components/RoomForm";
 import { RoomsManager } from "@/features/rooms/components/RoomsManager";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
-import { findRoomsByTenant } from "@/repositories/rooms";
+import { findRoomsByBusiness } from "@/repositories/rooms";
 import { findMyMemberships, runsTheBusiness } from "@/repositories/businesses";
 
-export default async function TenantRoomsPage({
+export default async function BusinessRoomsPage({
   params,
   searchParams,
 }: {
@@ -43,14 +43,14 @@ export default async function TenantRoomsPage({
      ⚠ A MANAGER IS NOT IN THE `rooms` POLICIES YET — that is the held migration's
      to add; today the value cannot exist, so nobody meets the gap. */
   const myRole = seat.memberRole;
-  const rooms = await findRoomsByTenant(supabase, businessId);
+  const rooms = await findRoomsByBusiness(supabase, businessId);
   const canEdit = runsTheBusiness(myRole);
   return (
     <>
       <RoomsManager
         businessId={businessId}
         businessName={business.name}
-        tenantWhere={[business.area, business.city].filter(Boolean).join(", ") || "Your studio"}
+        businessWhere={[business.area, business.city].filter(Boolean).join(", ") || "Your studio"}
         rooms={rooms}
         canEdit={canEdit}
       />

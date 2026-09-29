@@ -25,7 +25,7 @@ const toRoom = (row: RoomRow): Room => ({
 });
 
 /** A business's live rooms, oldest first (the order they were added). */
-export async function findRoomsByTenant(
+export async function findRoomsByBusiness(
   supabase: SupabaseClient,
   businessId: string
 ): Promise<Room[]> {
@@ -38,7 +38,7 @@ export async function findRoomsByTenant(
     .limit(100);
 
   if (error) {
-    throw new Error(`rooms.findByTenant failed: ${error.message}`);
+    throw new Error(`rooms.findByBusiness failed: ${error.message}`);
   }
   return (data as RoomRow[]).map(toRoom);
 }
@@ -46,7 +46,7 @@ export async function findRoomsByTenant(
 /** How many live rooms each of several businesses has — the hub's "{area, city} ·
  *  N rooms" sub-line (prototype 2655). One query for all of them, grouped here;
  *  a business with no rooms is simply absent from the map (read it as 0). */
-export async function countRoomsByTenants(
+export async function countRoomsByBusinesses(
   supabase: SupabaseClient,
   businessIds: string[]
 ): Promise<Record<string, number>> {
@@ -61,7 +61,7 @@ export async function countRoomsByTenants(
     .limit(1000);
 
   if (error) {
-    throw new Error(`rooms.countByTenants failed: ${error.message}`);
+    throw new Error(`rooms.countByBusinesses failed: ${error.message}`);
   }
   const counts: Record<string, number> = {};
   for (const row of data as Array<{ id: string; business_id: string }>) {

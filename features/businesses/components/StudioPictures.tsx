@@ -53,7 +53,7 @@ export function StudioPictureSheet({ businessId, businessName, hasPhoto, onClose
         <div style={{ marginTop: 14 }}>
           {/* the owner OR a trainer, which is the pair the storage policy on
               `businesses/{id}` admits and `set_business_profile_photo` re-checks */}
-          <PhotoPicker owner={{ kind: "tenant", id: businessId }} hasPhoto={hasPhoto} label="Change the photo" />
+          <PhotoPicker owner={{ kind: "business", id: businessId }} hasPhoto={hasPhoto} label="Change the photo" />
         </div>
         <div style={{ display: "flex", gap: 8, marginTop: 20 }}>
           <button type="button" onClick={onClose} style={sheetBtn(true)}>Done</button>

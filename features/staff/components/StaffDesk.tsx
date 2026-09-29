@@ -12,7 +12,7 @@ import { PeoplePicker } from "@/features/people/components/PeoplePicker";
 import { money as rupees } from "@/features/payouts/components/earnings-kit";
 import {
   invitePersonAction,
-  inviteToTenantAction,
+  inviteToBusinessAction,
   payTeamMemberAction,
   removeMemberAction,
   reorderMembersAction,
@@ -37,7 +37,7 @@ import {
   labelsFor,
   rolesFor,
   type InvitableRole,
-  type TenantInvite,
+  type BusinessInvite,
 } from "@/types/staff";
 
 /** Staff & permissions — lifted from the prototype's settings segment
@@ -161,7 +161,7 @@ export function StaffDesk({
   /** which labels this profile has to give (19 Sep 2026) */
   businessType: BusinessType;
   team: TeamMember[];
-  invites: TenantInvite[];
+  invites: BusinessInvite[];
   /** everything this business has paid its people — the history, filtered per row */
   payments?: PayoutRecord[];
   isOwner: boolean;
@@ -177,7 +177,7 @@ export function StaffDesk({
   const publicHref = businessType === "artist_page" ? (ownerUserId ? `/person/${ownerUserId}` : "/business") : `/studio/${businessId}`;
   const [addOpen, setAddOpen] = useState(false);
   const [openMember, setOpenMember] = useState<TeamMember | null>(null);
-  const [shareInvite, setShareInvite] = useState<TenantInvite | null>(null);
+  const [shareInvite, setShareInvite] = useState<BusinessInvite | null>(null);
   /* the add sheet's two ways in: pick somebody on DanceOS, or ask an address */
   /* ⚠ ONE WAY IN SINCE 20 SEP 2026 — the picker. "By email" is gone at the
      user's word; this stays a constant so the email FORM below (and the RPC,
@@ -674,7 +674,7 @@ export function StaffDesk({
                     if (!canInvite) return;
                     const done = await run(
                       () =>
-                        inviteToTenantAction({
+                        inviteToBusinessAction({
                           businessId,
                           name: form.name,
                           email: form.email,

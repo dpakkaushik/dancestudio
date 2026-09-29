@@ -8,15 +8,15 @@ import { SegmentedPanels } from "@/features/shell/components/SegmentedNav";
 import { DeskHero } from "@/features/businesses/components/biz-kit";
 import { DOS_UI, INK, LILAC, MUTED, SUB } from "@/lib/design/tokens";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
-import { findClassArtists, findMyConfirmedClaims } from "@/repositories/classPeople";
-import { findClassPublishState, findClassesByTenant, findWhyNoClass } from "@/repositories/classes";
-import { countEnrolledBySession, findMyEnrollments } from "@/repositories/classBookings";
+import { findClassArtists, findMyConfirmedClassPeople } from "@/repositories/classPeople";
+import { findClassPublishState, findClassesByBusiness, findWhyNoClass } from "@/repositories/classes";
+import { countEnrolledBySession, findMyClassBookings } from "@/repositories/classBookings";
 import { findMyMemberships } from "@/repositories/businesses";
 import { askToTileClass } from "@/types/classPerson";
 import type { DanceClass } from "@/types/class";
-import type { MyEnrollment } from "@/types/classBooking";
+import type { MyClassBooking } from "@/types/classBooking";
 
-const toTileClass = (e: MyEnrollment): DanceClass => ({
+const toTileClass = (e: MyClassBooking): DanceClass => ({
   id: e.classId,
   businessId: "",
   title: e.title,
@@ -110,9 +110,9 @@ export default async function MyClassesPage({ searchParams }: { searchParams: Pr
   const opening = (Array.isArray(params.new) ? params.new[0] : params.new) === "1";
 
   const [class_bookings, artistOn, assistantOn, memberships] = await Promise.all([
-    findMyEnrollments(supabase),
-    findMyConfirmedClaims(supabase, "artist"),
-    findMyConfirmedClaims(supabase, "assistant"),
+    findMyClassBookings(supabase),
+    findMyConfirmedClassPeople(supabase, "artist"),
+    findMyConfirmedClassPeople(supabase, "assistant"),
     findMyMemberships(supabase),
   ]);
   const myPage = memberships.find((m) => m.memberRole === "owner" && m.business.type === "artist_page")?.business ?? null;
@@ -151,7 +151,7 @@ export default async function MyClassesPage({ searchParams }: { searchParams: Pr
      the Manage pill carries a COUNT now, so the number has to be true from the
      Booked segment too. It replaces the read the register used to make for
      itself, so Manage costs one query fewer than it did. */
-  const myPageClasses = myPage ? await findClassesByTenant(supabase, myPage.id).catch(() => []) : [];
+  const myPageClasses = myPage ? await findClassesByBusiness(supabase, myPage.id).catch(() => []) : [];
 
   /* THE REGISTER, WHETHER OR NOT MANAGE IS THE OPEN SEGMENT (20 Sep 2026, the
      user: "CLASSES LAG ISSUE IS THERE WHEN SWITCHING COLUMNS").
@@ -253,7 +253,7 @@ export default async function MyClassesPage({ searchParams }: { searchParams: Pr
                               key={c.id}
                               danceClass={askToTileClass(c)}
                               artist={bookedArtists.get(c.classId) ?? null}
-                              city={c.tenantCity}
+                              city={c.businessCity}
                               href={`/c/${c.classShareSlug}`}
                               actions={
                                 <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
@@ -286,7 +286,7 @@ export default async function MyClassesPage({ searchParams }: { searchParams: Pr
                     key={e.id}
                     danceClass={toTileClass(e)}
                     artist={bookedArtists.get(e.classId) ?? null}
-                    city={e.tenantCity}
+                    city={e.businessCity}
                     href={`/c/${e.shareSlug}`}
                     actions={<EnrollButton sessionId={e.sessionId} isFull={false} isSignedIn mine={{ id: e.id, status: e.status }} priceInr={e.priceInr} shareSlug={e.shareSlug} />}
                   />
@@ -315,7 +315,7 @@ export default async function MyClassesPage({ searchParams }: { searchParams: Pr
                     key={c.id}
                     danceClass={askToTileClass(c)}
                     artist={bookedArtists.get(c.classId) ?? null}
-                    city={c.tenantCity}
+                    city={c.businessCity}
                     href={`/c/${c.classShareSlug}`}
                     actions={
                       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>

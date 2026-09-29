@@ -8,7 +8,7 @@ import { VerifiedTick } from "@/features/settings/components/settings-kit";
 import { DISC_RADIUS, DOS_DISPLAY, HERO_HEAD_H, HERO_HEAD_W, INK } from "@/lib/design/tokens";
 import { photoUrl } from "@/lib/media/photo";
 import { publicProfilePath } from "@/lib/routes/publicProfile";
-import type { NearbyTenant } from "@/repositories/discovery";
+import type { NearbyBusiness } from "@/repositories/discovery";
 import { DosFollowers, DosWhere, initialsOf, kmLabel } from "./discover-kit";
 
 const CARD = "var(--card)";
@@ -63,7 +63,7 @@ export interface CardShot {
  * photo and no way to say there were more, and the dots under a real rail are
  * that fact told properly.
  */
-export function StudioCard({ business, followers = 0, shots = [] }: { business: NearbyTenant; followers?: number; shots?: CardShot[] }) {
+export function StudioCard({ business, followers = 0, shots = [] }: { business: NearbyBusiness; followers?: number; shots?: CardShot[] }) {
   const grad = gradientOf(business.name);
   const photo = photoUrl(business.photoPath);
   const place = business.city ?? business.area ?? "—";

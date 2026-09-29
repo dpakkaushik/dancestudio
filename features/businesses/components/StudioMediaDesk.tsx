@@ -58,7 +58,7 @@ export function StudioMediaDesk({
               The round picture on {business.name}&rsquo;s page and Discover card — a logo, or the front of the studio.
             </div>
             {canEditPhoto ? (
-              <PhotoPicker owner={{ kind: "tenant", id: business.id }} hasPhoto={Boolean(business.photoPath)} label="Change the photo" />
+              <PhotoPicker owner={{ kind: "business", id: business.id }} hasPhoto={Boolean(business.photoPath)} label="Change the photo" />
             ) : (
               <div style={{ fontSize: 10.5, color: MUTED }}>The owner or a trainer changes this.</div>
             )}

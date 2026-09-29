@@ -4,7 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
-import { setTenantVisibilityAction } from "@/features/admin/server-actions/moderation";
+import { setBusinessVisibilityAction } from "@/features/admin/server-actions/moderation";
 import { endSubscriptionAction, grantSubscriptionAction } from "@/features/admin/server-actions/subscriptions";
 import { dateWords } from "@/features/settings/components/settings-kit";
 import { VerifiedTick } from "@/features/settings/components/settings-kit";
@@ -104,7 +104,7 @@ export function BusinessesDesk({
 
   const move = (b: AdminBusiness, visibility: "listed" | "unlisted", why?: string) =>
     start(async () => {
-      const out = await setTenantVisibilityAction({ businessId: b.id, visibility, reason: why ?? null });
+      const out = await setBusinessVisibilityAction({ businessId: b.id, visibility, reason: why ?? null });
       if (out.error) return fire(out.error);
       setUnlisting(null);
       setReason("");

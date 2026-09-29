@@ -2,7 +2,7 @@ import { redirect } from "next/navigation";
 import { MembershipForm } from "@/features/memberships/components/MembershipForm";
 import { MembershipsScreen } from "@/features/memberships/components/MembershipsScreen";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
-import { findTenantCardFacts } from "@/repositories/discovery";
+import { findBusinessCardFacts } from "@/repositories/discovery";
 import { findBusinessMemberships, findMyMemberships } from "@/repositories/memberships";
 import { findMyMemberships as findMyTeams } from "@/repositories/businesses";
 
@@ -43,14 +43,14 @@ export default async function MembershipsPage({ searchParams }: { searchParams: 
    *  ridden on `my_memberships` all along; the photo does not, and widening that
    *  RETURNS TABLE would be a drop-and-recreate for a picture — so it is ONE
    *  second query over the businesses the passes name, exactly the shape
-   *  Discover's own shelf uses (`findTenantCardFacts`), never one read per row.
+   *  Discover's own shelf uses (`findBusinessCardFacts`), never one read per row.
    *
    *  ⚠ It degrades rather than failing: a seller whose row this person may not
    *  read (an unlisted studio under "anyone reads listed businesses") comes back
    *  with no photo and the row draws initials — the rule the Faculty list has
    *  followed since Step 15. A pass is still a pass without a face on it. */
   const sellerIds = [...new Set(passes.map((p) => p.businessId))];
-  const sellerFacts = sellerIds.length > 0 ? await findTenantCardFacts(supabase, sellerIds).catch(() => new Map()) : new Map();
+  const sellerFacts = sellerIds.length > 0 ? await findBusinessCardFacts(supabase, sellerIds).catch(() => new Map()) : new Map();
   const sellerPhotos: Record<string, string | null> = {};
   sellerIds.forEach((id) => {
     sellerPhotos[id] = sellerFacts.get(id)?.photoPath ?? null;

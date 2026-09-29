@@ -1,7 +1,7 @@
 "use client";
 
 import { CARD, GOLD, GREEN, LINE, MUTED, SKY, RED, SUB } from "@/lib/design/tokens";
-import type { MonthIncome, TenantIncome } from "@/types/income";
+import type { MonthIncome, BusinessIncome } from "@/types/income";
 import { DOS_MONO, MoneyCard, SectionLabel, bizCard, money } from "./earnings-kit";
 
 /** The money-IN half of the studio's earnings screen, lifted from prototype
@@ -136,7 +136,7 @@ function GrowthBadge({ current, previous }: { current: MonthIncome; previous: Mo
  *  not exist without a live Cashfree account; the two real states of this money
  *  today are what stayed (Net) and what is being asked back — so those are the
  *  tiles, beside the prototype's own REFUNDED. */
-export function GrossCard({ income }: { income: TenantIncome }) {
+export function GrossCard({ income }: { income: BusinessIncome }) {
   const { current, previous, openRefundsInr } = income;
   const net = current.grossInr - current.refundedInr;
   return (

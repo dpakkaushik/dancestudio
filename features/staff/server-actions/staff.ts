@@ -7,14 +7,14 @@ import { createSupabaseServerClient } from "@/lib/supabase/server";
 import {
   acceptInvite,
   declineInvite,
-  invitePersonToTenant,
-  inviteToTenant,
+  invitePersonToBusiness,
+  inviteToBusiness,
   removeMember,
   revokeInvite,
   setMemberRole,
 } from "@/repositories/invites";
 import { recordTeamPayment } from "@/repositories/payouts";
-import { reorderTenantMembers, setTenantMemberPowers, type MemberRole } from "@/repositories/businesses";
+import { reorderBusinessMembers, setBusinessMemberPowers, type MemberRole } from "@/repositories/businesses";
 import { INVITABLE_ROLES, MEMBER_LABEL_ORDER, type InvitableRole } from "@/types/staff";
 
 /** Step 12b staff actions. Authorization is NOT here — it is in the RPCs, which
@@ -82,7 +82,7 @@ const revalidateDesk = (businessId: string) => {
 const message = (error: unknown, fallback: string) =>
   error instanceof Error ? error.message : fallback;
 
-export async function inviteToTenantAction(input: {
+export async function inviteToBusinessAction(input: {
   businessId: string;
   name: string;
   email: string;
@@ -94,7 +94,7 @@ export async function inviteToTenantAction(input: {
   }
   const supabase = await requireUser();
   try {
-    await inviteToTenant(supabase, parsed.data);
+    await inviteToBusiness(supabase, parsed.data);
     revalidateDesk(parsed.data.businessId);
     return { error: null };
   } catch (error: unknown) {
@@ -115,7 +115,7 @@ export async function invitePersonAction(input: {
   }
   const supabase = await requireUser();
   try {
-    await invitePersonToTenant(supabase, parsed.data);
+    await invitePersonToBusiness(supabase, parsed.data);
     revalidateDesk(parsed.data.businessId);
     return { error: null };
   } catch (error: unknown) {
@@ -134,7 +134,7 @@ export async function reorderMembersAction(input: {
   }
   const supabase = await requireUser();
   try {
-    await reorderTenantMembers(supabase, parsed.data.businessId, parsed.data.userIds);
+    await reorderBusinessMembers(supabase, parsed.data.businessId, parsed.data.userIds);
     revalidateDesk(parsed.data.businessId);
     return { error: null };
   } catch (error: unknown) {
@@ -244,7 +244,7 @@ export async function setMemberPowersAction(input: {
   }
   const supabase = await requireUser();
   try {
-    await setTenantMemberPowers(supabase, parsed.data.businessId, parsed.data.userId, parsed.data.canAttendance, parsed.data.canRefunds);
+    await setBusinessMemberPowers(supabase, parsed.data.businessId, parsed.data.userId, parsed.data.canAttendance, parsed.data.canRefunds);
     revalidateDesk(parsed.data.businessId);
     return { error: null };
   } catch (error: unknown) {

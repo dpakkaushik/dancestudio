@@ -9,14 +9,14 @@ import { canBookClass, noBookingWords } from "@/types/profile";
 import { resolveActingAs } from "@/repositories/actingAs";
 import { canSetClassRoutines, findClassRoutines, findMyRoutines } from "@/repositories/routines";
 import { findClassRegister } from "@/repositories/attendance";
-import { findClaimsByClass } from "@/repositories/classPeople";
+import { findClassPeopleByClass } from "@/repositories/classPeople";
 import { findClassBySlug } from "@/repositories/classes";
 import { countEnrolledBySession, findMyEnrolledSessionIds } from "@/repositories/classBookings";
-import { findClassMoney, findPaidReceiptByEnrollment, findPaidUserIdsBySession } from "@/repositories/payments";
+import { findClassMoney, findPaidReceiptByClassBooking, findPaidUserIdsBySession } from "@/repositories/payments";
 import { findRefundsByClass } from "@/repositories/refunds";
 import { findRoomById } from "@/repositories/rooms";
 import { findMySeat } from "@/repositories/businesses";
-import type { EnrollmentStatus } from "@/types/classBooking";
+import type { ClassBookingStatus } from "@/types/classBooking";
 
 /** The class detail page at its booking link — /c/{slug} (prototype S_class; the
  *  link grammar is shareRecOf's danceos.in/c/{slug}). Works signed out: RLS shows
@@ -38,7 +38,7 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
   if (!danceClass) return { title: "Class — DanceOS" };
   return {
     title: `${danceClass.title} — ${danceClass.businessName} · DanceOS`,
-    description: `Book ${danceClass.title} at ${danceClass.businessName}${danceClass.tenantCity ? `, ${danceClass.tenantCity}` : ""} on DanceOS.`,
+    description: `Book ${danceClass.title} at ${danceClass.businessName}${danceClass.businessCity ? `, ${danceClass.businessCity}` : ""} on DanceOS.`,
   };
 }
 
@@ -93,12 +93,12 @@ export default async function ClassSharePage({
     sessionId ? countEnrolledBySession(supabase, [sessionId]) : Promise.resolve(new Map<string, number>()),
     user
       ? findMyEnrolledSessionIds(supabase)
-      : Promise.resolve(new Map<string, { id: string; status: EnrollmentStatus }>()),
+      : Promise.resolve(new Map<string, { id: string; status: ClassBookingStatus }>()),
     /* ⚠ THE SEAT, NOT JUST ITS ROLE (28 Sep 2026) — the same one row, with the
        two STANDING grants on it, so the page can offer the register to somebody
        the Team desk gave Attendance to. Same query, no extra round trip. */
     user ? findMySeat(supabase, danceClass.businessId) : Promise.resolve(null),
-    findClaimsByClass(supabase, danceClass.id),
+    findClassPeopleByClass(supabase, danceClass.id),
   ]);
 
   const filled = sessionId ? counts.get(sessionId) ?? 0 : 0;
@@ -108,7 +108,7 @@ export default async function ClassSharePage({
   const myBooking = sessionId ? mine.get(sessionId) ?? null : null;
   const role = seat?.role ?? null;
   const canManage = role === "owner" || role === "trainer";
-  const myClaim = user ? classPeople.find((cl) => cl.userId === user.id) ?? null : null;
+  const myClassPerson = user ? classPeople.find((cl) => cl.userId === user.id) ?? null : null;
 
   /* ⚠⚠ WHO THE REGISTER IS FETCHED FOR, AND WHY THIS IS THE REAL FIX (28 Sep
      2026, the user: "when giving attendance and refunds right to assistants it
@@ -118,7 +118,7 @@ export default async function ClassSharePage({
      job saw no tab whichever way the job had been granted, and the page's own
      `canAtt` had nothing to switch on. It is now everybody the DATABASE would
      let run it: the owner and trainers by their seat, and a confirmed assistant
-     with the job either PER CLASS (`myClaim`) or STANDING on the Team desk
+     with the job either PER CLASS (`myClassPerson`) or STANDING on the Team desk
      (`seat`) — the same OR `can_run_register_for_class` applies, so the tab
      appears exactly where the RPC would answer. The RPC re-checks every row. */
   /* ⚠⚠ AND `kind === "assistant"` WENT (28 Sep 2026, the user: "as soon as the
@@ -135,7 +135,7 @@ export default async function ClassSharePage({
      holding attendance now — and this is the half no migration could do. */
   const mayRunRegister =
     canManage ||
-    (myClaim?.status === "confirmed" && (myClaim.canAttendance || Boolean(seat?.canAttendance)));
+    (myClassPerson?.status === "confirmed" && (myClassPerson.canAttendance || Boolean(seat?.canAttendance)));
 
   /* ONE ROUND TRIP FOR THE FIVE INDEPENDENT READS (19 Sep 2026, the user: "make
      app snappier") — they used to run one after another, four serial waits on
@@ -148,7 +148,7 @@ export default async function ClassSharePage({
      place row opens — the person behind the artist page, so the link never
      goes through the /artist redirect. */
   const [receipt, register, paidUserIds, room, ownerId, routines, myRoutines, canSetRoutines, passes, actingAs] = await Promise.all([
-    myBooking && danceClass.priceInr > 0 ? findPaidReceiptByEnrollment(supabase, myBooking.id) : Promise.resolve(null),
+    myBooking && danceClass.priceInr > 0 ? findPaidReceiptByClassBooking(supabase, myBooking.id) : Promise.resolve(null),
     mayRunRegister ? findClassRegister(supabase, danceClass.id) : Promise.resolve(null),
     mayRunRegister && sessionId && danceClass.priceInr > 0 ? findPaidUserIdsBySession(supabase, sessionId) : Promise.resolve(new Set<string>()),
     danceClass.roomId ? findRoomById(supabase, danceClass.roomId) : Promise.resolve(null),
@@ -182,7 +182,7 @@ export default async function ClassSharePage({
   const canSettleRefunds =
     role === "owner" ||
     (danceClass.priceInr > 0 &&
-      ((myClaim?.status === "confirmed" && myClaim.canRefunds) || Boolean(seat?.canRefunds)));
+      ((myClassPerson?.status === "confirmed" && myClassPerson.canRefunds) || Boolean(seat?.canRefunds)));
   /* What the class made is the OWNER's figure alone — the prototype puts the
      Earnings segment behind `isMine` (SEGS 11757) while Attendance and Refunds
      ride the grantable jobs beside it. A trainer running the register has no
@@ -206,7 +206,7 @@ export default async function ClassSharePage({
       sessionPhase={phaseOf(danceClass.session?.startsAt, danceClass.session?.endsAt)}
       register={register}
       classPeople={classPeople}
-      myClaim={myClaim}
+      myClassPerson={myClassPerson}
       standingAttendance={Boolean(seat?.canAttendance)}
       standingRefunds={Boolean(seat?.canRefunds)}
       roomAmenities={room?.amenities ?? []}
@@ -216,7 +216,7 @@ export default async function ClassSharePage({
       paidUserIds={[...paidUserIds]}
       /* 18 Sep 2026: the owner hands out jobs; the owner or the confirmed teacher adds assistants */
       isOwner={role === "owner"}
-      canAddAssistant={role === "owner" || (myClaim?.kind === "artist" && myClaim.status === "confirmed")}
+      canAddAssistant={role === "owner" || (myClassPerson?.kind === "artist" && myClassPerson.status === "confirmed")}
       /* an artist's class at their own place opens the ARTIST'S profile from the place row (19 Sep 2026) */
       ownerHref={ownerId ? `/person/${ownerId}` : null}
       routines={routines}

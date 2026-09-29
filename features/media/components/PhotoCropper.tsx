@@ -460,4 +460,4 @@ function Stage({ file, frame, onCancel, onUse }: { file: File; frame: CropFrame;
 
 /** which frame an owner's picture is drawn in — the disc for a person's or a
  *  business's profile picture, a square for everything else */
-export const frameForOwnerKind = (kind: PhotoOwner["kind"]): CropFrame => (kind === "avatar" || kind === "tenant" ? "disc" : "banner");
+export const frameForOwnerKind = (kind: PhotoOwner["kind"]): CropFrame => (kind === "avatar" || kind === "business" ? "disc" : "banner");

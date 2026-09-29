@@ -172,7 +172,7 @@ export async function createClassWithSession(
 }
 
 /** A business's full catalogue, drafts included — RLS admits members only. */
-export async function findClassesByTenant(
+export async function findClassesByBusiness(
   supabase: SupabaseClient,
   businessId: string
 ): Promise<DanceClass[]> {
@@ -185,7 +185,7 @@ export async function findClassesByTenant(
     .limit(100);
 
   if (error) {
-    throw new Error(`classes.findByTenant failed: ${error.message}`);
+    throw new Error(`classes.findByBusiness failed: ${error.message}`);
   }
   return (data as unknown as ClassRow[]).map(toClass);
 }
@@ -252,8 +252,8 @@ export async function findPublishedClasses(
     ...toClass(row),
     businessName: row.businesses?.name ?? "",
     businessType: row.businesses?.type ?? "studio",
-    tenantArea: row.businesses?.area ?? null,
-    tenantCity: row.businesses?.city ?? null,
+    businessArea: row.businesses?.area ?? null,
+    businessCity: row.businesses?.city ?? null,
     ...venueOf(row),
   }));
 }
@@ -283,8 +283,8 @@ export async function findClassBySlug(
     ...toClass(row),
     businessName: row.businesses?.name ?? "",
     businessType: row.businesses?.type ?? "studio",
-    tenantArea: row.businesses?.area ?? null,
-    tenantCity: row.businesses?.city ?? null,
+    businessArea: row.businesses?.area ?? null,
+    businessCity: row.businesses?.city ?? null,
     ...venueOf(row),
   };
 }
@@ -414,7 +414,7 @@ export async function softDeleteClass(
 
 /** The styles each business teaches, off its PUBLISHED classes — what Discover's
  *  style rail narrows a studio or artist by (Step 23). Public rows only, by RLS. */
-export async function findPublishedStylesByTenant(
+export async function findPublishedStylesByBusiness(
   supabase: SupabaseClient,
   businessIds: string[]
 ): Promise<Map<string, string[]>> {
@@ -431,7 +431,7 @@ export async function findPublishedStylesByTenant(
     .is("deleted_at", null)
     .limit(2000);
   if (error) {
-    throw new Error(`classes.findPublishedStylesByTenant failed: ${error.message}`);
+    throw new Error(`classes.findPublishedStylesByBusiness failed: ${error.message}`);
   }
   ((data ?? []) as Array<{ business_id: string; style: string }>).forEach((r) => {
     const cur = out.get(r.business_id) ?? [];
@@ -604,7 +604,7 @@ const VENUE_SELECT = `${CLASS_COLUMNS}, created_at`;
 
 /** The asks waiting on a set of STUDIOS for their rooms — the Requests desk's
  *  Received side for whoever runs them. Says which studios out loud. */
-export async function findVenueRequestsForTenants(supabase: SupabaseClient, businessIds: string[]): Promise<VenueRequest[]> {
+export async function findVenueRequestsForBusinesses(supabase: SupabaseClient, businessIds: string[]): Promise<VenueRequest[]> {
   if (businessIds.length === 0) return [];
   const { data, error } = await supabase
     .from("classes")

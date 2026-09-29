@@ -1,13 +1,13 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { dosClassLabel } from "@/lib/constants/styles";
 import type { ClassLevel, ClassStatus } from "@/types/class";
-import type { EnrollmentStatus, MyEnrollment, RosterEntry } from "@/types/classBooking";
+import type { ClassBookingStatus, MyClassBooking, RosterEntry } from "@/types/classBooking";
 import type { Business } from "@/types/business";
-import { TENANT_COLUMNS, toTenant, type TenantRow } from "./businesses";
+import { TENANT_COLUMNS, toBusiness, type BusinessRow } from "./businesses";
 
-interface MyEnrollmentRow {
+interface MyClassBookingRow {
   id: string;
-  status: EnrollmentStatus;
+  status: ClassBookingStatus;
   session_id: string;
   class_id: string;
   class_sessions: { starts_at: string; ends_at: string } | null;
@@ -25,7 +25,7 @@ interface MyEnrollmentRow {
 
 interface RosterRow {
   id: string;
-  status: EnrollmentStatus;
+  status: ClassBookingStatus;
   created_at: string;
   profiles: { full_name: string; city: string | null } | null;
 }
@@ -34,18 +34,18 @@ interface RosterRow {
 export async function bookClassSession(
   supabase: SupabaseClient,
   sessionId: string
-): Promise<EnrollmentStatus> {
+): Promise<ClassBookingStatus> {
   const { data, error } = await supabase.rpc("book_class_session", {
     p_session_id: sessionId,
   });
   if (error) {
     throw new Error(error.message);
   }
-  return (data as { status: EnrollmentStatus }).status;
+  return (data as { status: ClassBookingStatus }).status;
 }
 
 /** Cancel your own booking via the RPC — a freed spot promotes the first waitlisted. */
-export async function cancelEnrollment(
+export async function cancelClassBooking(
   supabase: SupabaseClient,
   classBookingId: string
 ): Promise<void> {
@@ -58,7 +58,7 @@ export async function cancelEnrollment(
 }
 
 /** The signed-in learner's live bookings, soonest session first. */
-export async function findMyEnrollments(supabase: SupabaseClient): Promise<MyEnrollment[]> {
+export async function findMyClassBookings(supabase: SupabaseClient): Promise<MyClassBooking[]> {
   /* ⚠ MINE MEANS MINE (19 Sep 2026, the user: "classes booked section is only
      for bookings made for attending the class and nothing else"). This read
      leaned on RLS for "my bookings" — and a studio's members read their
@@ -82,7 +82,7 @@ export async function findMyEnrollments(supabase: SupabaseClient): Promise<MyEnr
   if (error) {
     throw new Error(`class_bookings.findMine failed: ${error.message}`);
   }
-  return (data as unknown as MyEnrollmentRow[])
+  return (data as unknown as MyClassBookingRow[])
     .filter((r) => r.classes && r.class_sessions)
     .map((r) => ({
       id: r.id,
@@ -100,7 +100,7 @@ export async function findMyEnrollments(supabase: SupabaseClient): Promise<MyEnr
       startsAt: r.class_sessions!.starts_at,
       endsAt: r.class_sessions!.ends_at,
       businessName: r.businesses?.name ?? "",
-      tenantCity: r.businesses?.city ?? null,
+      businessCity: r.businesses?.city ?? null,
     }))
     .sort((a, b) => a.startsAt.localeCompare(b.startsAt));
 }
@@ -132,13 +132,13 @@ export async function findStudiosAttended(supabase: SupabaseClient, userId: stri
   }
   const seen = new Set<string>();
   const out: Business[] = [];
-  for (const row of (data ?? []) as unknown as Array<{ businesses: TenantRow | null }>) {
+  for (const row of (data ?? []) as unknown as Array<{ businesses: BusinessRow | null }>) {
     const b = row.businesses;
     /* the `type === "org"` skip went with organizations (29 Sep 2026) — nobody
        ever booked a class at one, so it excluded nothing it still needed to */
     if (!b || seen.has(b.id)) continue;
     seen.add(b.id);
-    out.push(toTenant(b));
+    out.push(toBusiness(b));
   }
   return out;
 }
@@ -146,7 +146,7 @@ export async function findStudiosAttended(supabase: SupabaseClient, userId: stri
 /** Session ids of the learner's live bookings — marks tiles on the public listing. */
 export async function findMyEnrolledSessionIds(
   supabase: SupabaseClient
-): Promise<Map<string, { id: string; status: EnrollmentStatus }>> {
+): Promise<Map<string, { id: string; status: ClassBookingStatus }>> {
   const { data, error } = await supabase
     .from("class_bookings")
     .select("id, status, session_id")
@@ -157,8 +157,8 @@ export async function findMyEnrolledSessionIds(
   if (error) {
     throw new Error(`class_bookings.findMySessions failed: ${error.message}`);
   }
-  const map = new Map<string, { id: string; status: EnrollmentStatus }>();
-  (data as { id: string; status: EnrollmentStatus; session_id: string }[]).forEach((r) =>
+  const map = new Map<string, { id: string; status: ClassBookingStatus }>();
+  (data as { id: string; status: ClassBookingStatus; session_id: string }[]).forEach((r) =>
     map.set(r.session_id, { id: r.id, status: r.status })
   );
   return map;

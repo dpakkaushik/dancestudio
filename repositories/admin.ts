@@ -35,9 +35,9 @@ export interface VerificationRequest {
    *  badge; the organization is only who gets told. */
   businessId: string | null;
   businessName: string | null;
-  tenantCity: string | null;
-  tenantSocials: SocialLink[];
-  tenantVerifiedAt: string | null;
+  businessCity: string | null;
+  businessSocials: SocialLink[];
+  businessVerifiedAt: string | null;
   status: VerificationStatus;
   note: string | null;
   createdAt: string;
@@ -88,9 +88,9 @@ interface RequestRow {
 const toRequest = (r: RequestRow): VerificationRequest => ({
   businessId: r.business_id ?? r.businesses?.id ?? null,
   businessName: r.businesses?.name ?? null,
-  tenantCity: r.businesses?.city ?? null,
-  tenantSocials: toSocials(r.businesses?.socials),
-  tenantVerifiedAt: r.businesses?.verified_at ?? null,
+  businessCity: r.businesses?.city ?? null,
+  businessSocials: toSocials(r.businesses?.socials),
+  businessVerifiedAt: r.businesses?.verified_at ?? null,
   id: r.id,
   orgId: r.org_id,
   orgName: r.profiles?.full_name ?? "An organization",

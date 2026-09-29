@@ -2,13 +2,13 @@ import { redirect } from "next/navigation";
 import { StaffDesk } from "@/features/staff/components/StaffDesk";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { findPendingInvites } from "@/repositories/invites";
-import { findTenantPayLedger } from "@/repositories/payouts";
-import { findMyMemberships, findTenantTeam, runsTheBusiness } from "@/repositories/businesses";
+import { findBusinessPayLedger } from "@/repositories/payouts";
+import { findMyMemberships, findBusinessTeam, runsTheBusiness } from "@/repositories/businesses";
 
 /* the clock, stamped once outside render (react-hooks/purity) */
 const stampNowIso = (): string => new Date().toISOString();
 
-export default async function TenantStaffPage({
+export default async function BusinessStaffPage({
   params,
 }: {
   params: Promise<{ businessId: string }>;
@@ -36,14 +36,14 @@ export default async function TenantStaffPage({
   const myRole = seat.memberRole;
 
   const [team, invites, ledger] = await Promise.all([
-    findTenantTeam(supabase, businessId),
+    findBusinessTeam(supabase, businessId),
     findPendingInvites(supabase, businessId),
     /* WHAT THIS BUSINESS HAS PAID ITS PEOPLE (19 Sep 2026, the user: "able to pay
        them, track payment history"). One read for the whole desk — every row
        carries its `userId`, so a person's history is that list filtered, rather
        than a query per person opened. It fails soft: a Team desk must not break
        over a money read. */
-    findTenantPayLedger(supabase, businessId, stampNowIso()).catch(() => null),
+    findBusinessPayLedger(supabase, businessId, stampNowIso()).catch(() => null),
   ]);
 
   return (

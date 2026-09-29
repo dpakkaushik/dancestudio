@@ -15,7 +15,7 @@ import { EARNING_TINT, type EarningsReport, type MoneyLine } from "@/types/earni
  *  ⚠ SUMS ARE COMPUTED HERE, NOT IN SQL, and that is a checked decision rather
  *  than a lazy one: this project's PostgREST has aggregates switched off
  *  (`PGRST123 Use of aggregate functions is not allowed`), which is why
- *  `findTenantIncome` has summed in TypeScript since 28 Aug. So the queries
+ *  `findBusinessIncome` has summed in TypeScript since 28 Aug. So the queries
  *  carry a RUNAWAY GUARD, not a page size — the card states ONE total, so a
  *  partial sum is a wrong number rather than a short list — and when a guard is
  *  filled `complete` goes false and the screen says so out loud.
@@ -92,7 +92,7 @@ export async function findBusinessEarnings(
   const [payments, refunds, payouts, assets, quotes, subs] = await Promise.all([
     /* what students paid — the three subjects an order can name (the CHECK
        `orders_subject_check`), so Classes is the residual once the other two
-       are taken out, exactly as `findTenantIncome` reads it.
+       are taken out, exactly as `findBusinessIncome` reads it.
        ⚠ `captured` AND `refunded`: a payment that was later refunded still CAME
        IN, and its refund is a deduction of its own beneath. */
     supabase
@@ -203,7 +203,7 @@ export async function findBusinessEarnings(
     else add(classes, k, p.amount_inr);
   }
 
-  /* a refund belongs to the month it was DECIDED — the rule `findTenantIncome`
+  /* a refund belongs to the month it was DECIDED — the rule `findBusinessIncome`
      set on 28 Aug — or, for the rail's own automatic ones that nobody decided,
      the moment the row last moved */
   type RefundRow = { amount_inr: number; decided_at: string | null; updated_at: string };

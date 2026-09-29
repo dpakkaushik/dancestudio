@@ -5,7 +5,7 @@ import { DOS_UI, GOLD, INK, LILAC, MUTED } from "@/lib/design/tokens";
 import { photoUrl } from "@/lib/media/photo";
 import type { HeaderPhoto } from "@/repositories/headerPhotos";
 import { enquiryTypesFor } from "@/types/enquiry";
-import type { TenantFollower } from "@/types/follow";
+import type { BusinessFollower } from "@/types/follow";
 import type { PublicTeamMember, PublicBusinessProfile } from "@/types/publicProfile";
 import { ActionRow, CallButton, LocationButton, MailButton, MessageButton, mapsPinHref, whatsappHrefOf } from "./ContactButtons";
 import { MembershipsOnSale } from "@/features/memberships/components/MembershipsOnSale";
@@ -83,7 +83,7 @@ export function PublicProfile({
    *  looking, and the route no longer reads a list on every visit to hand it
    *  one control. The sheet reads its own rows on the press. */
   canEdit?: boolean;
-  followers?: TenantFollower[] | null;
+  followers?: BusinessFollower[] | null;
   scheduleHref: string;
   manageHref: string;
   /** what this business has ON SALE (19 Sep 2026) — live ones of a listed business */
@@ -265,7 +265,7 @@ export function PublicProfile({
             visible to the owner alone, in a row about something else — while
             the FIGURE two lines above it, which everybody sees, was a dead
             number. The figure is the door now, on this page and on the six
-            others that had neither. `TenantFollowersButton` is deleted rather
+            others that had neither. `BusinessFollowersButton` is deleted rather
             than left standing: this repo has paid twice for a component
             nothing renders. */}
         {isMember ? (

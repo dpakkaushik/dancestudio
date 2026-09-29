@@ -4,7 +4,7 @@ import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Switch } from "@/features/profiles/components/ContactEditor";
 import { fieldLabel } from "@/features/profiles/components/profile-kit";
-import { updateTenantProfileAction } from "@/features/settings/server-actions/plans";
+import { updateBusinessProfileAction } from "@/features/settings/server-actions/plans";
 import { MUTED, SUB } from "@/lib/design/tokens";
 import { enquiryTypesFor } from "@/types/enquiry";
 import type { Business } from "@/types/business";
@@ -69,7 +69,7 @@ function OneBusiness({ business, showName }: { business: Business; showName: boo
   const save = (takes: boolean, picked: string[]) => {
     setErr(null);
     start(async () => {
-      const out = await updateTenantProfileAction({
+      const out = await updateBusinessProfileAction({
         businessId: business.id,
         styles: business.styles,
         socials: business.socials,

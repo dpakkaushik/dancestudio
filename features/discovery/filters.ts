@@ -1,7 +1,7 @@
 import { hourOf } from "@/lib/format/month";
 import type { PublicClassListing } from "@/types/class";
 import type { CrewSummary } from "@/types/crew";
-import type { NearbyTenant } from "@/repositories/discovery";
+import type { NearbyBusiness } from "@/repositories/discovery";
 
 /** Step 23 — the filters as URL state, and WHAT THE SHEET ACTUALLY DOES
  *  (prototype 4456-4460): "One set of predicates, applied to whichever list is
@@ -91,10 +91,10 @@ export function filterClasses(list: PublicClassListing[], f: DiscoverFilters): P
 
 /** businesses: distance bites here (the one list that carries one); a style
  *  narrows to businesses with a published class in it (the caller passes that map) */
-export function filterTenants(list: NearbyTenant[], f: DiscoverFilters, stylesByTenant: Map<string, string[]>): NearbyTenant[] {
+export function filterBusinesses(list: NearbyBusiness[], f: DiscoverFilters, stylesByBusiness: Map<string, string[]>): NearbyBusiness[] {
   const out = list.filter((t) => {
     if (f.dist !== "any" && t.distanceKm > Number(f.dist)) return false;
-    if (f.styles.length && !(stylesByTenant.get(t.id) ?? []).some((s) => f.styles.includes(s))) return false;
+    if (f.styles.length && !(stylesByBusiness.get(t.id) ?? []).some((s) => f.styles.includes(s))) return false;
     return true;
   });
   return out.sort((a, b) => a.distanceKm - b.distanceKm); /* nearest first is the only order a business has */

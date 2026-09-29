@@ -122,7 +122,7 @@ export function PassDeck({ items }: { items: DeckItem[] }) {
         danceClass={c}
         filled={p.filled}
         artist={p.artist}
-        city={p.tenantCity}
+        city={p.businessCity}
         href={p.href}
         /* every card in this rail is today, so the date block says so (8290-8293) */
         isToday
@@ -186,7 +186,7 @@ export function PassDeck({ items }: { items: DeckItem[] }) {
         <InvoiceSheet
           title={inv.danceClass.title}
           whenText={whenTextOf(inv.startsAt, inv.endsAt)}
-          whereText={[inv.danceClass.room, inv.tenantCity].filter(Boolean).join(", ")}
+          whereText={[inv.danceClass.room, inv.businessCity].filter(Boolean).join(", ")}
           classBookingId={inv.classBooking.id}
           amountInr={inv.receipt?.amountInr ?? null}
           method={inv.receipt?.method ?? null}

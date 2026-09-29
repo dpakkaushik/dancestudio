@@ -3,7 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useRecordLists } from "@/features/profiles/components/RecordLists";
 import { StylesRowEditor } from "@/features/profiles/components/StylesRowEditor";
-import { updateTenantProfileAction } from "@/features/settings/server-actions/plans";
+import { updateBusinessProfileAction } from "@/features/settings/server-actions/plans";
 import type { StudioLinkTarget } from "./StudioLinksRow";
 
 /** A STUDIO'S DANCE STYLES, EDITED WHERE A PERSON'S ARE (21 Sep 2026).
@@ -43,7 +43,7 @@ export function StudioStylesRow({
       lastWords={isStudio ? "A studio says at least one dance style — it is what Discover files it under" : "Name at least one style"}
       fallback={fallback}
       save={async (next) => {
-        const out = await updateTenantProfileAction({
+        const out = await updateBusinessProfileAction({
           businessId: business.id,
           styles: next,
           /* unchanged, and sent because the door takes the whole profile */

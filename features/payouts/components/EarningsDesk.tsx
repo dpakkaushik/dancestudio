@@ -11,7 +11,7 @@ import {
 import { CARD, DOS_DISPLAY, DOS_UI, GOLD, GREEN, INK, LILAC, LINE, RED, SUB } from "@/lib/design/tokens";
 import { sessionDayLabel } from "@/lib/format/session";
 import { useCloseOnBack } from "@/lib/hooks/useCloseOnBack";
-import type { TenantIncome } from "@/types/income";
+import type { BusinessIncome } from "@/types/income";
 import {
   PAYOUT_METHOD_LABEL,
   PAYOUT_STATUS_LABEL,
@@ -129,7 +129,7 @@ export function EarningsDesk({
   businessId: string;
   businessName: string;
   ledger: BusinessPayLedger;
-  income: TenantIncome;
+  income: BusinessIncome;
   monthLabel: string;
   /** `/earnings` — what STUDIOS have paid this person — drawn only on an artist
    *  page's desk, whose owner is the one person who has both kinds of money

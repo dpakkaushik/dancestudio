@@ -76,22 +76,55 @@
 >   there is no prefix for a rule to notice. ⚠ There is **no dynamic import of any
 >   moved module** in the tree, so every path here was resolved by the compiler
 >   rather than at runtime.
-> * ⚠⚠ **AND STAGE 3 IS REAL, MEASURED, AND DELIBERATELY NOT DONE — BECAUSE THE
->   DRY RUN PROVED IT IS NOT A REGEX JOB.** Stage 1 swept on `\b<word>\b`, which
->   is right against false positives and **wrong for camelCase**: `\bTenant\b`
->   cannot match `findTenantFollowers`, because the `F` is a word character. So
->   **122 distinct identifiers survived** a pass that reported 1,898 rewrites and
->   a green typecheck. ⚠ **Found by reading a file head after stage 2, by no
->   check** — a word-boundary sweep declares itself complete on a camelCase
->   codebase. The dry run is what stopped it: `claimed → classPersoned` and
+> * ⚠⚠ **AND STAGE 3 — THE COMPOUNDS — WHICH A DRY RUN REFUSED TO LET ME DO WITH
+>   A RULE.** Stage 1 swept on `\b<word>\b`, which is right against false
+>   positives and **wrong for camelCase**: `\bTenant\b` cannot match
+>   `findTenantFollowers`, because the `F` is a word character. So **122 distinct
+>   identifiers survived** a pass that reported 1,898 rewrites and a green
+>   typecheck. ⚠ **Found by reading a file head after stage 2, by no check** — a
+>   word-boundary sweep declares itself complete on a camelCase codebase. The dry
+>   run then refused every mechanical answer: `claimed → classPersoned` and
 >   `claiming → classPersoning` are **English words**; `claimPerson →
->   classPersonPerson` and `ClassClaim → ClassClassPerson` are **stutters**, and
->   the second needs a real decision since `ClassPerson` is taken;
->   `findAskedClaimsForTenants` renames only its FIRST noun, because one
->   identifier can carry two. ⚠ And `disclaimer` and `reclaims` are **PROSE**
->   containing "claim", while `enrolled` is a **live database value**. **Shipping
->   `classPersonPersonAction` would be worse than the inconsistency it fixes**, so
->   it is recorded in #0y with its measurement rather than guessed at.
+>   classPersonPerson` and `ClassClaim → ClassClassPerson` are **stutters**;
+>   `findAskedClaimsForTenants` renamed only its FIRST noun, because one
+>   identifier can carry two and my loop stopped at the first hit; and
+>   `disclaimer` and `reclaims` are **PROSE** containing "claim" while `enrolled`
+>   is a **live database value**. **A rule cannot name things**, so nine were
+>   hand-picked — and most of them do more than swap a noun, they make a
+>   repository function say the name of the RPC it calls, which is what #0y is
+>   actually for: `claimPerson` has called `ask_class_person` since Step 11 and
+>   said nothing of the kind, so it is **`askClassPerson`**, with
+>   `respondToClassAsk` and `withdrawClassAsk` beside it. ⚠ `ClassClaim` simply
+>   took the obvious name — **`ClassPerson` was free**, the types file having
+>   exported `ClassPersonKind`, `ClassPersonStatus` and `ClassArtist` and no
+>   `ClassPerson` at all. **120 identifiers, 618 occurrences, 108 files**, with
+>   every target name asserted unique before a byte was written.
+> * ⚠⚠⚠ **AND STAGE 3 SHIPPED TWO SILENT BUGS THAT `tsc` PASSED, BOTH IN THE ONE
+>   PLACE THE APP READS ITS OWN HISTORY.** It ran with NO string guard (the guards
+>   had cried wolf, below), so `"tenant"` — which is a **live value on 161
+>   immutable `admin_audit` rows** — was renamed wherever it stood: `subjectKind:
+>   "profile" | "business" | "tenant" | …` became **`"business" | "business"`**, a
+>   duplicate union member, **which is legal TypeScript**; and `AuditLog`'s
+>   `subjectKind === "tenant" ? "business" : …` — **the one line in the app that
+>   translates the old word into the new** — became a comparison of the new word
+>   with itself, which typechecks perfectly and would have printed the raw word
+>   `tenant` on every historical row. ⚠ **Caught by the diff's string audit and by
+>   nothing else**, and only because the list was READ rather than counted: two
+>   strings moved, and the first glance attributed both to the `PhotoOwner` kind.
+>   ⚠⚠ **AND THE COMMENTS THAT DOCUMENTED THE RULE WERE MANGLED BY THE SAME PASS**,
+>   which is the subtler half: *"`tenant` is the legacy spelling of `business`"*
+>   became *"`business` is the legacy spelling of `business`"* — **a rename map
+>   rewrites its own documentation into nonsense**, and the next reader deletes
+>   the line as gibberish along with the rule it carried. Swept for: the tell is
+>   the same backticked name twice on one line, and those two were the only ones.
+> * ⚠ **The `PhotoOwner` kind DID move, and only its KEY.** `lib/media/photo.ts`
+>   is skipped whole by every sweep, so the four callers renamed `kind: "tenant"`
+>   to `"business"` while the union kept the old word — `tsc` caught that, because
+>   it is a typed union. The honest fix was to finish it by hand: the KEY is an
+>   in-memory union member and moves, **the VALUE `"tenants"` is the STORAGE
+>   FOLDER and never does**. They had sat on one line spelled the same way for
+>   three months, which is exactly how the 16 Sep sweep took the folder with the
+>   type; the line now says in a comment that it holds two different kinds of word.
 > * ⚠⚠ **AND THREE STRING GUARDS WERE TRIED ON THAT PASS AND ALL THREE CRIED
 >   WOLF**, which is its own lesson and a new one for this file: **a regex cannot
 >   tell code from a comment.** `'` is an apostrophe in *"the studio's calendar"*
@@ -9829,34 +9862,48 @@ summary; the report has the evidence.
    missed (`./claims`, `./enrollments`, `./tenants` inside `repositories/`) —
    **nothing else could have**, because a relative specifier names no folder and
    so has no prefix to notice.
-   **⚠⚠ WHAT IS STILL LEFT — STAGE 3, AND IT IS NOT A REGEX JOB.** Stage 1 swept
-   on `\b<word>\b`, which is right against false positives and **wrong for
-   camelCase**: `\bTenant\b` matches the standalone word and cannot match
-   `findTenantFollowers`, because the `F` is a word character. So **122 distinct
-   identifiers survived** a pass that reported 1,898 rewrites and a green
-   typecheck — `findTenantFollowers`, `PublicTenantPage`, `myClaim`,
-   `MyEnrollment`, `updateTenantProfileAction`, `findPublicTenantProfile` …
-   **A word-boundary sweep declares itself complete on a camelCase codebase.**
-   Found by READING A FILE HEAD after stage 2, by no check.
-   ⚠ **It was dry-run and deliberately NOT applied, because the dry run proved it
-   needs a person to NAME things rather than a rule:**
-   `claimed → classPersoned` and `claiming → classPersoning` (**English words**),
-   `claimPerson → classPersonPerson` and `ClassClaim → ClassClassPerson`
-   (**stutters** — the first wants to be `askClassPerson`, and the second needs a
-   decision, since `ClassPerson` is already taken), and
-   `findAskedClaimsForTenants → findAskedClaimsForBusinesses` with the `Claims`
-   left behind, because an identifier can carry TWO of these nouns.
-   ⚠ **And three names must never be touched**: `disclaimer` and `reclaims` are
-   PROSE containing "claim", and `enrolled` is a **live database value**
-   (`class_bookings.status`), which is also why every `enroll` VERB form
-   (`EnrollButton`, `enrollAction`) is a separate question about the app's
-   vocabulary rather than this row's noun swap.
-   ⚠ **Three string guards were tried and all three cried wolf**, which is its own
-   lesson: a regex cannot tell code from a comment — `'` is an apostrophe in
-   *"the studio's calendar"* and `` ` `` is MARKDOWN in *"`findMyMemberships` is
-   `findMyTenants`"*, and this codebase writes both everywhere. The check that
-   works is the **diff audit**: extract every quoted string the diff changed and
-   read the list, which is short because a diff holds only changed lines.
+   **✅ STAGE 3 — the COMPOUND identifiers: 120 names, 618 occurrences, 108
+   files.** ⚠⚠ Stage 1 swept on `\b<word>\b` — right against false positives and
+   **wrong for camelCase**, since `\bTenant\b` cannot match `findTenantFollowers`
+   (the `F` is a word character) — so **122 identifiers survived a pass that
+   reported 1,898 rewrites and a green typecheck**, and it was found by READING A
+   FILE HEAD, by no check. **A word-boundary sweep declares itself complete on a
+   camelCase codebase.**
+   ⚠ **Nine names were hand-picked, because a rule cannot name things**: the dry
+   run wanted `claimed → classPersoned` (an English word), `claimPerson →
+   classPersonPerson` and `ClassClaim → ClassClassPerson` (stutters). Most of the
+   nine do more than swap a noun — they make a repository function say the RPC it
+   calls, which is what this row is FOR: `askClassPerson` (`ask_class_person`),
+   `respondToClassAsk`, `withdrawClassAsk`, and `ClassClaim → ClassPerson`, a name
+   that was free. ⚠ The loop's `break` was removed, because one identifier can
+   carry TWO of these nouns (`findAskedClaimsForTenants`).
+   ⚠ **NEVER TOUCH**: `disclaimer` and `reclaims` (PROSE containing "claim"),
+   `claimed` / `claiming` (English), and `enrolled` (a **live database value**,
+   `class_bookings.status`) — which is also why every `enroll` VERB form
+   (`EnrollButton`, `enrollAction`) is left: that is a question about the app's
+   vocabulary, not this row's noun swap. **The `Enrollment` NOUN did move.**
+   ⚠⚠ **AND IT SHIPPED TWO BUGS `tsc` PASSED, BOTH WHERE THE APP READS ITS OWN
+   HISTORY** — `subjectKind: … "tenant" …` became **`"business" | "business"`**
+   (a duplicate union member, legal TypeScript) and `AuditLog`'s
+   `=== "tenant" ? "business"` became a comparison of the new word with itself,
+   so the 161 immutable `admin_audit` rows would have printed the raw word.
+   **Caught by the diff's string audit and nothing else**, and only because the
+   list was READ rather than counted. ⚠ The comments documenting the rule were
+   mangled the same way — *"`business` is the legacy spelling of `business`"* —
+   which is how a rename map rewrites its own documentation into nonsense; the
+   tell is the same backticked name twice on one line.
+   ⚠ **Three string guards were tried and all three cried wolf**, which is the
+   reason there was no guard to catch the above: a regex cannot tell code from a
+   comment — `'` is an apostrophe in *"the studio's calendar"* and `` ` `` is
+   MARKDOWN in *"`findMyMemberships` is `findMyTenants`"*, and this codebase
+   writes both everywhere. **The check that works is the DIFF AUDIT**: extract
+   every quoted string the diff changed and read the list, which is short
+   precisely because a diff holds only changed lines.
+   **⚠ WHAT IS LEFT, AND IT IS A VOCABULARY DECISION RATHER THAN A RENAME:**
+   `EnrollButton`, `enrollAction`, `enrollPending`, `enrollSchema` and their
+   siblings still say *enroll*, where the app's own visible word is **Book** and
+   the database's is `class_bookings`. `enrolled` itself cannot move — it is the
+   stored status. Whether the verb should follow is the user's call.
    Every record in this file below the top block uses the OLD names — the map
    at the top is how to read them; do not rewrite history.
 
@@ -10130,6 +10177,30 @@ for the database schema. **The UI is not redesigned** — see Rule 2.
 
 ### Progress tracker — update after EVERY push (Rule 11)
 
+- **THE COMPOUNDS, AND TWO BUGS `tsc` PASSED — #0y STAGE 3 — 29 Sep 2026, no step
+  number — no migration.** ⚠⚠ Stage 1's `\b<word>\b` cannot match a camelCase
+  compound, so **122 identifiers survived** a pass that reported 1,898 rewrites
+  and a green typecheck — found by READING A FILE HEAD, by no check. 120 renamed,
+  618 occurrences, 108 files, every target name asserted unique first. ⚠ **Nine
+  were hand-picked because a rule cannot name things** (the dry run wanted
+  `classPersoned`, `classPersonPerson`, `ClassClassPerson`), and most make a
+  repository function say the RPC it calls at last — `askClassPerson`,
+  `respondToClassAsk`, `withdrawClassAsk`; `ClassClaim → ClassPerson` took a name
+  that was free. ⚠ `disclaimer`, `reclaims`, `claimed`, `claiming` and `enrolled`
+  are never touched — prose, English, and a stored status. ⚠⚠ **AND IT SHIPPED
+  TWO SILENT BUGS, BOTH WHERE THE APP READS ITS OWN HISTORY**: `subjectKind`
+  became **`"business" | "business"`** (a duplicate union member — legal
+  TypeScript) and `AuditLog`'s translation of the legacy word became a comparison
+  of the new word with itself, so 161 immutable `admin_audit` rows would have
+  printed raw `tenant`. **Caught by the diff string audit and nothing else**, and
+  only because the list was READ rather than counted. ⚠ The comments documenting
+  that rule were mangled identically — *"`business` is the legacy spelling of
+  `business`"* — the tell being the same backticked name twice on one line.
+  ⚠ Three string guards were tried and all cried wolf: **a regex cannot tell code
+  from a comment**. **Verified:** typecheck 0 · lint 0 · build green ·
+  `shoot-tiles` 130/130 · `shoot-hero` 186/186 · `shoot-register` 57/57 ·
+  **`shoot-admin` 19/19 screens**, run because the audit log is a screen no other
+  shoot opens · the whole e2e suite.
 - **THE FILES FOLLOW THE NAMES — #0y STAGE 2 — 29 Sep 2026, no step number — no
   migration.** 13 `git mv`s and 161 import specifiers in 110 files:
   `repositories/{tenants,claims,enrollments}.ts`, `features/{tenants,claims,enrollments}/`,

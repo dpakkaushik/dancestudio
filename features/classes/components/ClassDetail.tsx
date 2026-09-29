@@ -13,11 +13,11 @@ import {
   removeWalkInAction,
   undoCheckInAction,
 } from "@/features/attendance/server-actions/attendance";
-import { respondToClaimAction } from "@/features/classPeople/server-actions/classPeople";
+import { respondToClassAskAction } from "@/features/classPeople/server-actions/classPeople";
 import { setClassPosterAction } from "@/features/classes/server-actions/classes";
 import { PhotoPicker } from "@/features/media/components/PhotoPicker";
 import {
-  cancelEnrollmentAction,
+  cancelClassBookingAction,
   enrollAction,
   type EnrollActionState,
 } from "@/features/classBookings/server-actions/classBookings";
@@ -36,9 +36,9 @@ import { ClassRoutines } from "@/features/routines/components/ClassRoutines";
 import type { Routine } from "@/repositories/routines";
 import { bookWithMembershipAction } from "@/features/memberships/server-actions/memberships";
 import type { PassForSession } from "@/repositories/memberships";
-import type { ClassClaim } from "@/types/classPerson";
+import type { ClassPerson } from "@/types/classPerson";
 import type { PublicClassListing } from "@/types/class";
-import type { EnrollmentStatus } from "@/types/classBooking";
+import type { ClassBookingStatus } from "@/types/classBooking";
 import type { ClassMoney, PaidReceipt } from "@/types/payment";
 import type { RefundRequest } from "@/types/refund";
 import { AddAssistant, AssistantControls } from "./ClassTeamControls";
@@ -150,7 +150,7 @@ export interface ClassDetailProps {
   isMember: boolean;
   /** Viewer is owner/trainer — sees the draft footer's Edit class. */
   canManage: boolean;
-  mine: { id: string; status: EnrollmentStatus } | null;
+  mine: { id: string; status: ClassBookingStatus } | null;
   /** The captured payment behind the viewer's booking — feeds the invoice. */
   receipt: PaidReceipt | null;
   /** Where the clock stands on the session — the strip only SAYS which moment
@@ -159,15 +159,15 @@ export interface ClassDetailProps {
   /** The live register + waitlist queue — fetched only for owner/trainer viewers. */
   register: ClassRegister | null;
   /** Who is on this class. The public sees confirmed classPeople only (RLS). */
-  classPeople: ClassClaim[];
+  classPeople: ClassPerson[];
   /** An ask waiting for the signed-in viewer's own answer. */
-  myClaim: ClassClaim | null;
+  myClassPerson: ClassPerson | null;
   /** THE STANDING GRANTS ON THE VIEWER'S SEAT (28 Sep 2026, the user: "when
    *  giving attendance and refunds right to assistants it doesnt show up when
    *  viewing the class as an assistant after confirmation").
    *
    *  ⚠ There are TWO grant paths and this page only ever read one. A power can
-   *  be given PER CLASS on the class's own team controls (it rides `myClaim`),
+   *  be given PER CLASS on the class's own team controls (it rides `myClassPerson`),
    *  or STANDING for the whole business on the Team desk (R38, 20 Sep 2026 —
    *  `business_members.can_attendance` / `can_refunds`). `can_run_register_for_class`
    *  and `can_settle_refunds_for_class` have honoured both since that day; this
@@ -230,7 +230,7 @@ export function ClassDetail({
   sessionPhase,
   register,
   classPeople,
-  myClaim,
+  myClassPerson,
   standingAttendance = false,
   standingRefunds = false,
   roomAmenities,
@@ -287,7 +287,7 @@ export function ClassDetail({
   const origin = useSyncExternalStore(subscribeNever, readOrigin, readServerOrigin);
 
   const [enrollState, enrollForm, enrollPending] = useActionState(enrollAction, initialState);
-  const [cancelState, cancelForm, cancelPending] = useActionState(cancelEnrollmentAction, initialState);
+  const [cancelState, cancelForm, cancelPending] = useActionState(cancelClassBookingAction, initialState);
   const actionError = enrollState.error || cancelState.error;
 
   /* SPEND A PASS ON THIS SEAT — one RPC books the seat and takes the units under
@@ -333,13 +333,13 @@ export function ClassDetail({
   /* ⚠ EITHER GRANT PATH COUNTS (28 Sep 2026). `assisting` is still what decides
      whether this viewer reads the page as a helper rather than as its manager;
      what it may NOT decide is where the power came from. A power is theirs if
-     the class gave it to them (`myClaim`) OR if the Team desk did
+     the class gave it to them (`myClassPerson`) OR if the Team desk did
      (`standing…`) — which is exactly the OR the two database functions have
      been applying all along, so the tab now appears wherever the register would
      actually open. Both are re-checked server-side; this only draws the tab. */
-  const assisting = !canManage && myClaim?.status === "confirmed" && myClaim.kind === "assistant";
-  const canAtt = assisting && (Boolean(myClaim?.canAttendance) || standingAttendance);
-  const canRef = assisting && (Boolean(myClaim?.canRefunds) || standingRefunds);
+  const assisting = !canManage && myClassPerson?.status === "confirmed" && myClassPerson.kind === "assistant";
+  const canAtt = assisting && (Boolean(myClassPerson?.canAttendance) || standingAttendance);
+  const canRef = assisting && (Boolean(myClassPerson?.canRefunds) || standingRefunds);
   const paidSet = new Set(paidUserIds);
   const [posterOpen, setPosterOpen] = useState(false);
   /* the walk-in name field on the register (29 Sep 2026, shape 2) */
@@ -385,8 +385,8 @@ export function ClassDetail({
      link is the pin they placed. */
   const atVenue = Boolean(c.venueName && c.venueBusinessId && c.venueStatus === "accepted");
   const placeName = atVenue ? (c.venueName as string) : c.businessName;
-  const placeArea = atVenue ? c.venueArea : c.tenantArea;
-  const placeCity = atVenue ? c.venueCity : c.tenantCity;
+  const placeArea = atVenue ? c.venueArea : c.businessArea;
+  const placeCity = atVenue ? c.venueCity : c.businessCity;
   const placeIsStudio = atVenue || c.businessType === "studio";
   const placeHref = atVenue ? `/studio/${c.venueBusinessId}` : c.businessType === "studio" ? `/studio/${c.businessId}` : (ownerHref ?? `/artist/${c.businessId}`);
   const whereBits = [c.room, placeCity].filter(Boolean).join(" · ");
@@ -397,7 +397,7 @@ export function ClassDetail({
   const whenText = when
     ? `${when.weekday} ${when.day} ${when.month}${time ? ` · ${time}` : ""}`
     : (time ?? "—");
-  const whereText = [c.room, c.tenantCity].filter(Boolean).join(", ");
+  const whereText = [c.room, c.businessCity].filter(Boolean).join(", ");
 
   /* Details / Attendance tabs — what YOU can do here (prototype 11755-11757;
      Earnings/Refunds arrive with Step 13, assistant classPeople with Step 11) */
@@ -429,10 +429,10 @@ export function ClassDetail({
    *  scheme for the eye and copies what it was given. */
   const shareLink = `${origin}/c/${c.shareSlug}`;
 
-  const answerClaim = async (classPersonId: string, accept: boolean) => {
+  const answerAsk = async (classPersonId: string, accept: boolean) => {
     if (opPending) return;
     setOpPending(classPersonId);
-    const out = await respondToClaimAction({ classPersonId, accept });
+    const out = await respondToClassAskAction({ classPersonId, accept });
     setOpPending(null);
     fire(out.error ?? (accept ? "You’re on this class" : "Declined — they’ve been told"));
     router.refresh();
@@ -970,7 +970,7 @@ export function ClassDetail({
         {/* ── YOU HAVE BEEN ASKED — consent is the person's own answer, so it is
             asked where the class is (prototype 15455: "They are asked to
             confirm. A class does not go on Discover until they do."). ── */}
-        {myClaim && myClaim.status === "asked" && (
+        {myClassPerson && myClassPerson.status === "asked" && (
           <div
             style={{
               background: "var(--card)",
@@ -982,20 +982,20 @@ export function ClassDetail({
             }}
           >
             <div style={{ fontSize: 12.5, fontWeight: 900 }}>
-              {c.businessName} wants you {myClaim.kind === "artist" ? "taking this class" : "assisting on this session"}
+              {c.businessName} wants you {myClassPerson.kind === "artist" ? "taking this class" : "assisting on this session"}
             </div>
             <div style={{ fontSize: 10.5, color: "var(--sub)", marginTop: 2, lineHeight: 1.45 }}>
-              {myClaim.kind === "artist"
+              {myClassPerson.kind === "artist"
                 ? "Your name goes on the public class once you say yes."
                 : [
-                    myClaim.canAttendance ? "checking people in" : null,
-                    myClaim.canRefunds ? "settling refunds" : null,
+                    myClassPerson.canAttendance ? "checking people in" : null,
+                    myClassPerson.canRefunds ? "settling refunds" : null,
                   ]
                     .filter(Boolean)
                     .join(" and ")
                   ? `You would hold ${[
-                      myClaim.canAttendance ? "attendance" : null,
-                      myClaim.canRefunds ? "refunds" : null,
+                      myClassPerson.canAttendance ? "attendance" : null,
+                      myClassPerson.canRefunds ? "refunds" : null,
                     ]
                       .filter(Boolean)
                       .join(" and ")} on this class.`
@@ -1007,7 +1007,7 @@ export function ClassDetail({
                 tabIndex={0}
                 onKeyDown={dosKey}
                 aria-label="Decline this ask"
-                onClick={() => void answerClaim(myClaim.id, false)}
+                onClick={() => void answerAsk(myClassPerson.id, false)}
                 style={{
                   flex: 1,
                   textAlign: "center",
@@ -1028,7 +1028,7 @@ export function ClassDetail({
                 tabIndex={0}
                 onKeyDown={dosKey}
                 aria-label="Accept this ask"
-                onClick={() => void answerClaim(myClaim.id, true)}
+                onClick={() => void answerAsk(myClassPerson.id, true)}
                 style={{
                   flex: 1.3,
                   textAlign: "center",
@@ -1411,7 +1411,7 @@ export function ClassDetail({
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <div style={{ fontSize: 12.5, fontWeight: 800, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                         {cl.personName}
-                        {myClaim && cl.id === myClaim.id ? <span style={{ color: "var(--muted)", fontWeight: 700 }}>{"  you"}</span> : null}
+                        {myClassPerson && cl.id === myClassPerson.id ? <span style={{ color: "var(--muted)", fontWeight: 700 }}>{"  you"}</span> : null}
                       </div>
                       <div style={{ fontSize: 9.5, fontWeight: 800, letterSpacing: 0.5, color: cl.status === "confirmed" ? "var(--muted)" : GOLD, textTransform: "uppercase" }}>
                         {cl.status === "confirmed" ? job : "⏳ Asked"}
@@ -2194,7 +2194,7 @@ export function ClassDetail({
           posterK={posterK}
           col={col}
           metaTop={`${c.style} · ${levelWord}${time ? ` · ${time}` : ""}`}
-          metaBottom={`${c.room ?? c.businessName}${c.tenantCity ? `, ${c.tenantCity}` : ""}${artist ? ` · ${artist.personName}` : ""}`}
+          metaBottom={`${c.room ?? c.businessName}${c.businessCity ? `, ${c.businessCity}` : ""}${artist ? ` · ${artist.personName}` : ""}`}
           businessName={c.businessName}
           classLabel={c.title}
           onClose={() => setFlowOpen(false)}

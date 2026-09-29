@@ -3,8 +3,8 @@ import { CalendarScreen } from "@/features/calendar/components/CalendarScreen";
 import { dayKeyOf, monthStartIso, monthsWindow, shiftMonthKey } from "@/lib/format/month";
 import { publicProfilePath, publicSchedulePath } from "@/lib/routes/publicProfile";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
-import { findPublicTenantSchedule } from "@/repositories/calendar";
-import { findPublicTenant } from "@/repositories/publicProfile";
+import { findPublicBusinessSchedule } from "@/repositories/calendar";
+import { findPublicBusiness } from "@/repositories/publicProfile";
 import type { BusinessType } from "@/types/business";
 
 const stampNowIso = (): string => new Date().toISOString();
@@ -17,7 +17,7 @@ const MONTHS_AHEAD = 3;
  *  published classes still to come, one view, no switcher. */
 export async function PublicSchedulePage({ businessId, expect }: { businessId: string; expect: BusinessType }) {
   const supabase = await createSupabaseServerClient();
-  const business = await findPublicTenant(supabase, businessId);
+  const business = await findPublicBusiness(supabase, businessId);
   if (!business) {
     notFound();
   }
@@ -30,7 +30,7 @@ export async function PublicSchedulePage({ businessId, expect }: { businessId: s
   const now = stampNowIso();
   const months = monthsWindow(now, 0, MONTHS_AHEAD);
   const toIso = monthStartIso(shiftMonthKey(months[months.length - 1].key, -1));
-  const entries = await findPublicTenantSchedule(
+  const entries = await findPublicBusinessSchedule(
     supabase,
     businessId,
     { name: business.name, city: business.city },

@@ -1,10 +1,10 @@
 import { notFound, redirect } from "next/navigation";
 import { publicProfilePath, publicSchedulePath } from "@/lib/routes/publicProfile";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
-import { findTenantFollowers, isFollowingTenant } from "@/repositories/follows";
-import { findTenantHeaderPhotos } from "@/repositories/headerPhotos";
+import { findBusinessFollowers, isFollowingBusiness } from "@/repositories/follows";
+import { findBusinessHeaderPhotos } from "@/repositories/headerPhotos";
 import { findMembershipsOnSale } from "@/repositories/memberships";
-import { findPublicTenantProfile } from "@/repositories/publicProfile";
+import { findPublicBusinessProfile } from "@/repositories/publicProfile";
 import { findPersonFollowerCounts } from "@/repositories/publicPerson";
 import { findMyMembershipRole } from "@/repositories/businesses";
 import type { BusinessType } from "@/types/business";
@@ -14,14 +14,14 @@ import { PublicProfile } from "./PublicProfile";
  *  own members. Not signed in is fine: RLS shows a listed business to everyone
  *  and an unlisted one to its members only, so "not found" is the honest answer
  *  for both a bad id and somebody else's private business. */
-export async function PublicTenantPage({ businessId, expect }: { businessId: string; expect: BusinessType }) {
+export async function PublicBusinessPage({ businessId, expect }: { businessId: string; expect: BusinessType }) {
   const supabase = await createSupabaseServerClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
 
   /* the business, its styles, its TEAM (19 Sep 2026) and its follower count, in one read set */
-  const profile = await findPublicTenantProfile(supabase, businessId);
+  const profile = await findPublicBusinessProfile(supabase, businessId);
   if (!profile) {
     notFound();
   }
@@ -36,11 +36,11 @@ export async function PublicTenantPage({ businessId, expect }: { businessId: str
      `20260920180000_an_organization_follows`. One round trip fewer on a page
      strangers open. */
   const [following, role, header, memberships, ownerCounts] = await Promise.all([
-    user ? isFollowingTenant(supabase, businessId) : Promise.resolve(false),
+    user ? isFollowingBusiness(supabase, businessId) : Promise.resolve(false),
     user ? findMyMembershipRole(supabase, businessId) : Promise.resolve(null),
     /* THE HEADER (15 Sep 2026): the pictures that swipe across the top — the
        RPC decides what this viewer may see, and signs nothing it may not */
-    findTenantHeaderPhotos(supabase, businessId),
+    findBusinessHeaderPhotos(supabase, businessId),
     /* WHAT IT SELLS (19 Sep 2026): the live memberships of a listed business — anybody's to read */
     findMembershipsOnSale(supabase, businessId),
     /* ⚠ WHAT THIS STUDIO FOLLOWS IS WHAT ITS OWNER FOLLOWS (20 Sep 2026, the
@@ -64,7 +64,7 @@ export async function PublicTenantPage({ businessId, expect }: { businessId: str
   /* WHO follows you is the owner's to read (B6). The policy would admit any
      member; the app asks only when the owner is the one looking, so the second
      query is not made for the other 99% of visits either. */
-  const followers = role === "owner" ? await findTenantFollowers(supabase, businessId) : null;
+  const followers = role === "owner" ? await findBusinessFollowers(supabase, businessId) : null;
 
   /* ⚠ `canEditPhoto` and `ownerId` no longer travel to the page (20 Sep 2026):
      a studio's pictures are changed on the studio's OWN HOME — the ⊕ on the disc

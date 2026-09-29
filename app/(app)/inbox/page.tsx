@@ -3,8 +3,8 @@ import { InboxScreen } from "@/features/inbox/components/InboxScreen";
 import { buildRequests } from "@/features/inbox/requestItems";
 import { DOS_TINT } from "@/lib/design/tokens";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
-import { findAskedClaimsForTenants, findMyPendingClaims } from "@/repositories/classPeople";
-import { findMyVenueAsks, findVenueRequestsForTenants } from "@/repositories/classes";
+import { findAskedClassPeopleForBusinesses, findMyPendingClassPeople } from "@/repositories/classPeople";
+import { findMyVenueAsks, findVenueRequestsForBusinesses } from "@/repositories/classes";
 import { findAskedForMyCrews, findMyPendingCrewAsks } from "@/repositories/crews";
 import { findMyCrewPractices } from "@/repositories/crewPractices";
 import { findMyPendingInvites, findPendingInvites } from "@/repositories/invites";
@@ -54,14 +54,14 @@ export default async function InboxPage() {
      of its own invention (27 Sep) — and the organization team asks from both
      ends (push 2, 19 Sep; keyed on the businesses owned since 26 Sep). */
   const ALL = ["asked", "confirmed", "rejected"] as const;
-  const [claimsIn, invitesIn, claimsOut, invitesOutByTenant, crewIn, crewOut, venueIn, venueOut] = await Promise.all([
-    findMyPendingClaims(supabase, [...ALL]),
+  const [classPeopleIn, invitesIn, classPeopleOut, invitesOutByBusiness, crewIn, crewOut, venueIn, venueOut] = await Promise.all([
+    findMyPendingClassPeople(supabase, [...ALL]),
     findMyPendingInvites(supabase),
-    findAskedClaimsForTenants(supabase, businessIds, [...ALL]),
+    findAskedClassPeopleForBusinesses(supabase, businessIds, [...ALL]),
     Promise.all(businesses.map(async (t) => (await findPendingInvites(supabase, t.id)).map((i) => ({ ...i, businessName: t.name })))),
     findMyPendingCrewAsks(supabase, [...ALL]),
     findAskedForMyCrews(supabase, [...ALL]),
-    findVenueRequestsForTenants(supabase, ownedStudioIds).catch(() => []),
+    findVenueRequestsForBusinesses(supabase, ownedStudioIds).catch(() => []),
     findMyVenueAsks(supabase, ownedPageIds).catch(() => []),
   ]);
 
@@ -75,13 +75,13 @@ export default async function InboxPage() {
 
   const { requestsIn, requestsOut } = buildRequests({
     venueIn,
-    claimsIn,
+    classPeopleIn,
     invitesIn,
     crewIn,
     practiceIn,
     venueOut,
-    claimsOut,
-    invitesOut: invitesOutByTenant.flat(),
+    classPeopleOut,
+    invitesOut: invitesOutByBusiness.flat(),
     crewOut,
   });
 

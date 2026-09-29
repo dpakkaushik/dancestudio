@@ -45,7 +45,7 @@ const toLead = (row: LeadRow): Lead => ({
 
 /** The desk, newest first. Cursor pagination arrives if a studio ever outgrows
  *  200 open leads; until then the whole desk is one screen. */
-export async function findLeadsByTenant(
+export async function findLeadsByBusiness(
   supabase: SupabaseClient,
   businessId: string
 ): Promise<Lead[]> {
@@ -58,7 +58,7 @@ export async function findLeadsByTenant(
     .limit(200);
 
   if (error) {
-    throw new Error(`leads.findByTenant failed: ${error.message}`);
+    throw new Error(`leads.findByBusiness failed: ${error.message}`);
   }
   return (data as unknown as LeadRow[]).map(toLead);
 }

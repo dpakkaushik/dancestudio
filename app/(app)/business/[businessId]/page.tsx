@@ -5,13 +5,13 @@ import { DOS_TOOLS } from "@/features/businesses/components/biz-kit";
 import { StudioHome } from "@/features/businesses/components/StudioHome";
 import { photoUrl } from "@/lib/media/photo";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
-import { findPublishedStylesByTenant } from "@/repositories/classes";
+import { findPublishedStylesByBusiness } from "@/repositories/classes";
 import { findFollowerCounts } from "@/repositories/follows";
 import { findMyToolOrder } from "@/repositories/layout";
 import { findStudioDeck } from "@/repositories/home";
-import { findPublicStudioTeam, findPublicTenant } from "@/repositories/publicProfile";
+import { findPublicStudioTeam, findPublicBusiness } from "@/repositories/publicProfile";
 import { findPersonFollowerCounts } from "@/repositories/publicPerson";
-import { countRoomsByTenants } from "@/repositories/rooms";
+import { countRoomsByBusinesses } from "@/repositories/rooms";
 import { findStudioProofPhotos } from "@/repositories/studioVerification";
 import { findMyMemberships, runsTheBusiness } from "@/repositories/businesses";
 
@@ -78,17 +78,17 @@ export default async function StudioHomePage({ params, searchParams }: { params:
      policy and set_business_profile_photo admit (20260829230000) */
   const canEditPhoto = isOwner || memberRole === "trainer";
   const nowIso = stampNowIso();
-  const [photos, deck, roomCounts, stylesByTenant, editable, followerCounts, team, toolOrder] = await Promise.all([
+  const [photos, deck, roomCounts, stylesByBusiness, editable, followerCounts, team, toolOrder] = await Promise.all([
     /* the header pictures — the photos of its space, as shown to DanceOS;
        signed, and since 15 Sep 2026 readable by the whole team */
     findStudioProofPhotos(supabase, businessId),
     findStudioDeck(supabase, business, nowIso),
-    countRoomsByTenants(supabase, [businessId]),
-    findPublishedStylesByTenant(supabase, [businessId]).catch(() => new Map<string, string[]>()),
+    countRoomsByBusinesses(supabase, [businessId]),
+    findPublishedStylesByBusiness(supabase, [businessId]).catch(() => new Map<string, string[]>()),
     /* ⚠ NO EVENTS TILE ON A STUDIO'S HOME (15 Sep 2026): R15 makes an event the
        ORGANIZATION's, and `save_event` refuses a studio host outright. */
     /* the studio as its Edit sheet reads it (About, Since, the pin…) — the owner's pencil */
-    isOwner ? findPublicTenant(supabase, businessId).catch(() => null) : Promise.resolve(null),
+    isOwner ? findPublicBusiness(supabase, businessId).catch(() => null) : Promise.resolve(null),
     /* HOW MANY FOLLOW THIS STUDIO (20 Sep 2026) — `follower_counts` is
        aggregate-only, so it names nobody; a failed read is a 0 on a figure */
     findFollowerCounts(supabase, [businessId]).catch(() => new Map<string, number>()),
@@ -159,7 +159,7 @@ export default async function StudioHomePage({ params, searchParams }: { params:
       roomCount={roomCounts[businessId] ?? 0}
       /* WHAT IT SAYS IT DANCES, then what it teaches (19 Sep 2026) — the field
          first, the derived list only for a row that predates it */
-      styles={business.styles.length ? business.styles : (stylesByTenant.get(businessId) ?? [])}
+      styles={business.styles.length ? business.styles : (stylesByBusiness.get(businessId) ?? [])}
       followers={followerCounts.get(businessId) ?? 0}
       followingN={ownerUserId ? (ownerCounts.get(ownerUserId)?.following ?? null) : null}
       tiles={tiles}

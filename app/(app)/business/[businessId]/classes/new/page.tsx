@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
 import { ClassForm } from "@/features/classes/components/ClassForm";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
-import { findRoomsByTenant } from "@/repositories/rooms";
+import { findRoomsByBusiness } from "@/repositories/rooms";
 import { findMyMemberships } from "@/repositories/businesses";
 
 /** Add class. THE OWNER ALONE (18 Sep 2026, the user: "an artist should not
@@ -43,7 +43,7 @@ export default async function NewClassPage({
      the class form's map picker, and the picker is gone — an artist teaching
      somewhere that is not on DanceOS pastes that place's Google Maps link now,
      which is both more accurate and a round trip cheaper. */
-  const rooms = business.type === "studio" ? await findRoomsByTenant(supabase, businessId) : [];
+  const rooms = business.type === "studio" ? await findRoomsByBusiness(supabase, businessId) : [];
 
   return (
     <ClassForm

@@ -14,7 +14,7 @@ import type { MemberRole } from "@/repositories/businesses";
 export type InvitableRole = "manager" | "trainer" | "staff" | "visiting_faculty" | "assistant";
 export type InviteStatus = "pending" | "accepted" | "declined" | "revoked";
 
-export interface TenantInvite {
+export interface BusinessInvite {
   id: string;
   businessId: string;
   name: string;

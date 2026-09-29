@@ -6,7 +6,7 @@ import { useState, useTransition } from "react";
 import { ProofPhotos } from "@/features/orgs/components/ProofPhotos";
 import { PlatformIcon, Sheet } from "@/features/profiles/components/profile-kit";
 import { dateWords } from "@/features/settings/components/settings-kit";
-import { updateTenantProfileAction } from "@/features/settings/server-actions/plans";
+import { updateBusinessProfileAction } from "@/features/settings/server-actions/plans";
 import { requestStudioVerificationAction } from "@/features/businesses/server-actions/studioVerification";
 import { INK, LILAC, SUB } from "@/lib/design/tokens";
 import { PROOF_MAX, PROOF_MIN } from "@/lib/media/proof";
@@ -220,7 +220,7 @@ export function StudioVerificationStrip({
       }));
       /* every other link the studio keeps (WhatsApp, a custom one) is left alone */
       const others = business.socials.filter((s) => !FIELDS.some((f) => f.platform === s.platform));
-      const saved = await updateTenantProfileAction({
+      const saved = await updateBusinessProfileAction({
         businessId: business.id,
         foundedYear: business.foundedYear,
         phone: business.phone,

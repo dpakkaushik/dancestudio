@@ -1,5 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { claimPerson, findClaimsByClass, setClaimPay, withdrawClaim } from "@/repositories/classPeople";
+import { askClassPerson, findClassPeopleByClass, setClassPersonPay, withdrawClassAsk } from "@/repositories/classPeople";
 
 /** What the class form says about WHO IS TAKING IT. Since 18 Sep 2026 that is
  *  the only person the form names: the teacher, anyone on DanceOS (the RPC
@@ -28,22 +28,22 @@ export async function reconcileClassPeople(
   classId: string,
   intent: ClassPeopleIntent
 ): Promise<void> {
-  const current = await findClaimsByClass(supabase, classId);
+  const current = await findClassPeopleByClass(supabase, classId);
   const teacher = current.find((c) => c.kind === "artist") ?? null;
 
   if (teacher && teacher.userId === intent.artistUserId) {
     // a rate change is not a re-ask, and it only moves sessions that have not
     // been settled — paid ones are frozen by their payout line
     if (intent.artistPayInr !== undefined && intent.artistPayInr !== teacher.payPerSessionInr) {
-      await setClaimPay(supabase, teacher.id, intent.artistPayInr);
+      await setClassPersonPay(supabase, teacher.id, intent.artistPayInr);
     }
     return;
   }
   if (teacher) {
-    await withdrawClaim(supabase, teacher.id);
+    await withdrawClassAsk(supabase, teacher.id);
   }
   if (intent.artistUserId) {
-    await claimPerson(supabase, {
+    await askClassPerson(supabase, {
       classId,
       userId: intent.artistUserId,
       kind: "artist",

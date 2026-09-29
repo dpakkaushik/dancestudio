@@ -18,13 +18,13 @@ import { DeskAddButton } from "@/features/settings/components/settings-kit";
 export function RoomsManager({
   businessId,
   businessName,
-  tenantWhere,
+  businessWhere,
   rooms,
   canEdit = true,
 }: {
   businessId: string;
   businessName: string;
-  tenantWhere: string;
+  businessWhere: string;
   rooms: Room[];
   /** ⚠ may this seat WRITE a room — owner or trainer, which is what the two
    *  policies on `rooms` admit. Without it the whole editor was drawn for
@@ -143,7 +143,7 @@ export function RoomsManager({
 
       <div style={card}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-          <b style={{ fontSize: 14 }}>📍 {tenantWhere}</b>
+          <b style={{ fontSize: 14 }}>📍 {businessWhere}</b>
           <span style={{ fontSize: 10.5, fontWeight: 800, color: "var(--sub)" }}>{businessName}</span>
         </div>
         <div style={{ fontSize: 12, color: "var(--sub)", marginTop: 2 }}>

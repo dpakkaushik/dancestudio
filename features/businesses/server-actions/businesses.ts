@@ -6,10 +6,10 @@ import { z } from "zod";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { findProfileById } from "@/repositories/profiles";
 import { createRoom } from "@/repositories/rooms";
-import { createTenantWithOwner, setTenantLocation, updateTenantProfile } from "@/repositories/businesses";
+import { createBusinessWithOwner, setBusinessLocation, updateBusinessProfile } from "@/repositories/businesses";
 import type { BusinessType } from "@/types/business";
 
-export interface TenantActionState {
+export interface BusinessActionState {
   error: string | null;
   created?: boolean;
   /** something true about what was just made that is not an error — the sheet
@@ -41,7 +41,7 @@ const roomsSchema = z.array(roomSchema).max(20, "That is a lot of rooms — add 
  *  The database enforces the same rule inside create_business_with_owner; reading
  *  the role here first is what lets the form be told in words what is missing
  *  BEFORE a row is attempted, and what decides which fields are required. */
-const createTenantSchema = z
+const createBusinessSchema = z
   .object({
     name: z.string().trim().min(1, "Give it a name").max(140),
     area: z.string().trim().max(140).optional(),
@@ -91,11 +91,11 @@ const readRooms = (raw: FormDataEntryValue | null): unknown => {
   }
 };
 
-export async function createTenantAction(
-  _prev: TenantActionState,
+export async function createBusinessAction(
+  _prev: BusinessActionState,
   formData: FormData
-): Promise<TenantActionState> {
-  const parsed = createTenantSchema.safeParse({
+): Promise<BusinessActionState> {
+  const parsed = createBusinessSchema.safeParse({
     name: formData.get("name"),
     area: (formData.get("area") as string) || undefined,
     city: (formData.get("city") as string) || undefined,
@@ -144,7 +144,7 @@ export async function createTenantAction(
 
   let businessId: string;
   try {
-    const business = await createTenantWithOwner(supabase, {
+    const business = await createBusinessWithOwner(supabase, {
       name: parsed.data.name,
       type,
       area: parsed.data.area ?? null,
@@ -187,7 +187,7 @@ export async function createTenantAction(
      the moment the studio exists. A refusal does not undo the studio: it is said
      in the toast, and both fields are on its Edit sheet. */
   try {
-    await updateTenantProfile(supabase, businessId, {
+    await updateBusinessProfile(supabase, businessId, {
       foundedYear: null,
       phone: parsed.data.phone,
       socials: [],
@@ -200,7 +200,7 @@ export async function createTenantAction(
   }
   if (type === "studio" && parsed.data.lat !== undefined && parsed.data.lng !== undefined) {
     try {
-      await setTenantLocation(supabase, {
+      await setBusinessLocation(supabase, {
         businessId,
         lat: parsed.data.lat,
         lng: parsed.data.lng,

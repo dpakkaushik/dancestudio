@@ -18,7 +18,7 @@ import { BizPage, BizToast, bizCard, chip, dayWords, ghostBtn, rupees } from "./
 const TONE: Record<RefundStatus, string> = { processed: "#22C55E", pending: "#F59E0B", requested: "#3B82F6", declined: "#F87171", failed: "#F87171" };
 const WORD: Record<RefundStatus, string> = { ...REFUND_WORD, failed: "FAILED" };
 
-export function RefundsLedger({ rows, side, canSettle = false, focusClassId = null }: { rows: RefundLedgerRow[]; side: "mine" | "tenant"; canSettle?: boolean; focusClassId?: string | null }) {
+export function RefundsLedger({ rows, side, canSettle = false, focusClassId = null }: { rows: RefundLedgerRow[]; side: "mine" | "business"; canSettle?: boolean; focusClassId?: string | null }) {
   const router = useRouter();
   const [tab, setTab] = useState<"all" | RefundStatus>(focusClassId ? "requested" : "all");
   const [scope, setScope] = useState<"focus" | "all">(focusClassId ? "focus" : "all");

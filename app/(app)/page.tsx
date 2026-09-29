@@ -124,7 +124,7 @@ export default async function HomePage() {
      ⚠ It is worked out HERE rather than beside the grid since 22 Sep 2026,
      because the batch below needs it: the arrangement is keyed by kind. */
   const homeKind = isArtist ? "artist" : "user";
-  const [header, deck, pageId, followers, followingPeople, followingTenants, followingCrews, toolOrder] = await Promise.all([
+  const [header, deck, pageId, followers, followingPeople, followingBusinesses, followingCrews, toolOrder] = await Promise.all([
     findPersonHeaderPhotos(supabase, user.id, headerMax),
     findMyDeck(supabase, user.id, nowIso),
     !isArtist ? Promise.resolve(null) : ensureArtistPage(supabase, profile, memberships),
@@ -303,7 +303,7 @@ export default async function HomePage() {
             }
             followers={followers}
             followingPeople={followingPeople}
-            followingTenants={followingTenants}
+            followingBusinesses={followingBusinesses}
             followingCrews={followingCrews}
           />
         </IdentityHero>

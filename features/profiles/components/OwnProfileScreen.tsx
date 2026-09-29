@@ -50,7 +50,7 @@ export async function OwnProfileScreen({ userId, loaded }: { userId: string; loa
      is the chrome's now — so the layout reads them once for every page instead
      of this page reading them for one. Two fewer reads here, and the two they
      replaced in the layout ride a batch that was already being awaited. */
-  const [followers, followingPeople, followingTenants, followingCrews, seats, plan, memberships, artistTeam] = await Promise.all([
+  const [followers, followingPeople, followingBusinesses, followingCrews, seats, plan, memberships, artistTeam] = await Promise.all([
     findMyPersonFollowers(supabase),
     findMyFollowedPeople(supabase),
     findMyFollowing(supabase),
@@ -79,7 +79,7 @@ export async function OwnProfileScreen({ userId, loaded }: { userId: string; loa
        does. Not drawn on a studio's home or on a plain user's, because neither
        has an artist page for it to answer about. */
     person.artistPageId ? findPublicStudioTeam(supabase, person.artistPageId).catch(() => []) : Promise.resolve([]),
-    /* ⚠ `findMyOrgTenantId` LEFT THIS LIST (26 Sep 2026) with the organization
+    /* ⚠ `findMyOrgBusinessId` LEFT THIS LIST (26 Sep 2026) with the organization
        login: `my_org_business()` is dropped, and every profile here is a person's */
   ]);
   /* THE HEADER (15 Sep 2026): the KIND decides how many — one for a user and
@@ -117,7 +117,7 @@ export async function OwnProfileScreen({ userId, loaded }: { userId: string; loa
       headerMax={headerMax}
       followers={followers}
       followingPeople={followingPeople}
-      followingTenants={followingTenants}
+      followingBusinesses={followingBusinesses}
       followingCrews={followingCrews}
       scheduleHref={scheduleHref}
       owned={owned}

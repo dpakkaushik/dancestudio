@@ -1,7 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { BusinessType } from "@/types/business";
 
-export interface NearbyTenant {
+export interface NearbyBusiness {
   id: string;
   /** filled in by the caller from the businesses it just listed (parity slice 2) */
   photoPath?: string | null;
@@ -34,10 +34,10 @@ interface NearbyRow {
 
 /** Businesses within a radius, nearest first — the caller's RLS decides visibility
  *  (anonymous and strangers see listed businesses only). */
-export async function findNearbyTenants(
+export async function findNearbyBusinesses(
   supabase: SupabaseClient,
   input: { lat: number; lng: number; radiusKm?: number; type?: BusinessType; limit?: number; offset?: number }
-): Promise<NearbyTenant[]> {
+): Promise<NearbyBusiness[]> {
   /* `p_limit` IS ONLY SENT WHEN ASKED FOR (11 Sep 2026). It arrives with
      migration 20260913120000, and PostgREST resolves an RPC by its exact
      argument NAMES against a cached signature — so sending an argument the
@@ -125,7 +125,7 @@ export interface BusinessCardFacts {
   lng: number | null;
 }
 
-export async function findTenantCardFacts(supabase: SupabaseClient, businessIds: string[]): Promise<Map<string, BusinessCardFacts>> {
+export async function findBusinessCardFacts(supabase: SupabaseClient, businessIds: string[]): Promise<Map<string, BusinessCardFacts>> {
   const ids = [...new Set(businessIds)];
   const out = new Map<string, BusinessCardFacts>();
   if (ids.length === 0) {

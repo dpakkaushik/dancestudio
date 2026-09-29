@@ -2,7 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
-import { updateTenantProfileAction } from "@/features/settings/server-actions/plans";
+import { updateBusinessProfileAction } from "@/features/settings/server-actions/plans";
 import type { MethodUse } from "@/repositories/invoices";
 import type { AcceptedMethods, Business } from "@/types/business";
 import { BizPage, BizToast, bizBtn, bizCard, dayWords, eyebrow, rupees } from "./settings-kit";
@@ -66,7 +66,7 @@ const ACCEPT_ROWS: Array<[keyof AcceptedMethods, string]> = [
   ["bank", "Bank transfer"],
 ];
 
-export function PaymentsScreen({ side, methods, business = null, canEdit = false }: { side: "mine" | "tenant"; methods: MethodUse[]; business?: Business | null; canEdit?: boolean }) {
+export function PaymentsScreen({ side, methods, business = null, canEdit = false }: { side: "mine" | "business"; methods: MethodUse[]; business?: Business | null; canEdit?: boolean }) {
   const router = useRouter();
   const [pv, setPv] = useState<"pay" | "ver">("pay");
   const [add, setAdd] = useState<Kind | null>(null);
@@ -76,7 +76,7 @@ export function PaymentsScreen({ side, methods, business = null, canEdit = false
     setToast(m);
     setTimeout(() => setToast(null), 2600);
   };
-  const isBiz = side === "tenant" && business !== null;
+  const isBiz = side === "business" && business !== null;
   const verified = Boolean(business?.verifiedAt);
 
   const flip = (k: keyof AcceptedMethods) => {
@@ -84,7 +84,7 @@ export function PaymentsScreen({ side, methods, business = null, canEdit = false
     if (!canEdit) return fire("Only the owner changes what the business accepts");
     const accepts = { ...business.accepts, [k]: !business.accepts[k] };
     start(async () => {
-      const out = await updateTenantProfileAction({ businessId: business.id, foundedYear: business.foundedYear, phone: business.phone, socials: business.socials, enquiryTypes: business.enquiryTypes, accepts });
+      const out = await updateBusinessProfileAction({ businessId: business.id, foundedYear: business.foundedYear, phone: business.phone, socials: business.socials, enquiryTypes: business.enquiryTypes, accepts });
       if (out.error) return fire(out.error);
       fire(`${ACCEPT_ROWS.find(([kk]) => kk === k)?.[1]} ${accepts[k] ? "enabled" : "disabled"}`);
       router.refresh();

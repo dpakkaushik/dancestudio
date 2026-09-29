@@ -12,7 +12,7 @@ import { photoUrl } from "@/lib/media/photo";
 import { dosKey } from "@/features/classes/components/ShareSheet";
 import { CityPicker } from "@/features/geo/components/CityPicker";
 import { LocationPicker } from "@/features/geo/components/LocationPicker";
-import { createTenantAction, type TenantActionState } from "@/features/businesses/server-actions/businesses";
+import { createBusinessAction, type BusinessActionState } from "@/features/businesses/server-actions/businesses";
 import { centreOf } from "@/repositories/cities";
 import { DosStylePicker } from "@/components/ui/DosStyleKit";
 import { dosStyleColor } from "@/lib/constants/styles";
@@ -47,7 +47,7 @@ const ArtistI = ({ size = 18, color = "currentColor" }: { size?: number; color?:
 const CARD = "var(--card)";
 const EL = "var(--el)";
 const ACCENT = DOS_TOOLS.studios.c;
-const initialState: TenantActionState = { error: null };
+const initialState: BusinessActionState = { error: null };
 
 interface RoomDraft {
   name: string;
@@ -187,8 +187,8 @@ export function BusinessHub({
   // the action revalidates in place (no navigation), so the sheet closes itself
   // once a creation lands — prototype behavior after "Create studio"
   const [state, formAction, isPending] = useActionState(
-    async (prev: TenantActionState, formData: FormData) => {
-      const result = await createTenantAction(prev, formData);
+    async (prev: BusinessActionState, formData: FormData) => {
+      const result = await createBusinessAction(prev, formData);
       if (result.created) {
         setSheetOpen(false);
         setName("");

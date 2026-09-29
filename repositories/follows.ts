@@ -1,7 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { findArtistIds } from "@/repositories/profiles";
 import type { ProfileRole } from "@/types/profile";
-import type { FollowState, FollowedTenant, TenantFollower } from "@/types/follow";
+import type { FollowState, FollowedBusiness, BusinessFollower } from "@/types/follow";
 import type { BusinessType } from "@/types/business";
 
 /** Step 15 reads and the one write. Rows are private (the follower's own, and
@@ -79,7 +79,7 @@ const FOLLOWER_PROFILE = "full_name, role, city, profile_photo_path, deleted_at"
 /** A follower row, once — three sheets read the same shape and each used to map
  *  it by hand, and one of the three invented "Someone" for a row it could not
  *  read. Nothing is invented here: a row whose person is gone is not a row. */
-const liveFollowers = <T extends FollowerRow>(rows: T[], artists: Set<string>): TenantFollower[] =>
+const liveFollowers = <T extends FollowerRow>(rows: T[], artists: Set<string>): BusinessFollower[] =>
   rows
     .filter((r) => r.profiles && !r.profiles.deleted_at)
     .map((r) => ({
@@ -123,7 +123,7 @@ export async function findCrewFollowerCount(supabase: SupabaseClient, crewId: st
 }
 
 /** Whether the signed-in person follows this business right now. */
-export async function isFollowingTenant(supabase: SupabaseClient, businessId: string): Promise<boolean> {
+export async function isFollowingBusiness(supabase: SupabaseClient, businessId: string): Promise<boolean> {
   const {
     data: { user },
   } = await supabase.auth.getUser();
@@ -144,7 +144,7 @@ export async function isFollowingTenant(supabase: SupabaseClient, businessId: st
 }
 
 /** The businesses the signed-in person follows, newest first. */
-export async function findMyFollowing(supabase: SupabaseClient): Promise<FollowedTenant[]> {
+export async function findMyFollowing(supabase: SupabaseClient): Promise<FollowedBusiness[]> {
   const {
     data: { user },
   } = await supabase.auth.getUser();
@@ -181,9 +181,9 @@ export async function findMyFollowing(supabase: SupabaseClient): Promise<Followe
         businessId: r.business_id,
         businessType: b.type,
         businessName: b.name,
-        tenantArea: b.area,
-        tenantCity: b.city,
-        tenantPhotoPath: b.profile_photo_path,
+        businessArea: b.area,
+        businessCity: b.city,
+        businessPhotoPath: b.profile_photo_path,
         followedAt: r.created_at,
       },
     ];
@@ -194,10 +194,10 @@ export async function findMyFollowing(supabase: SupabaseClient): Promise<Followe
  *  embed names its FK: since person-follows landed, `follows` has TWO foreign
  *  keys into `profiles` (follower and followee) and an unqualified `profiles(...)`
  *  is ambiguous — PostgREST answers 300 Multiple Choices. */
-export async function findTenantFollowers(
+export async function findBusinessFollowers(
   supabase: SupabaseClient,
   businessId: string
-): Promise<TenantFollower[]> {
+): Promise<BusinessFollower[]> {
   const { data, error } = await supabase
     .from("follows")
     .select(`id, follower_id, created_at, profiles!follows_follower_id_fkey (${FOLLOWER_PROFILE})`)
@@ -220,7 +220,7 @@ export async function findTenantFollowers(
  *  policy's, not this function's.
  *  ⚠ The embed names its key for the same reason the business read does: two
  *  FKs from `follows` into `profiles` make an unqualified embed a 300. */
-export async function findCrewFollowers(supabase: SupabaseClient, crewId: string): Promise<TenantFollower[]> {
+export async function findCrewFollowers(supabase: SupabaseClient, crewId: string): Promise<BusinessFollower[]> {
   const { data, error } = await supabase
     .from("follows")
     .select(`id, follower_id, created_at, profiles!follows_follower_id_fkey (${FOLLOWER_PROFILE})`)

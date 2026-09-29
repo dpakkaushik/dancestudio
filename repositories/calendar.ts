@@ -5,7 +5,7 @@ import { dosClassLabel } from "@/lib/constants/styles";
 import { dayKeyOf, hourOf } from "@/lib/format/month";
 import type { CalendarEntry, CalendarSide } from "@/types/calendar";
 import type { ClassLevel, ClassStatus } from "@/types/class";
-import type { EnrollmentStatus } from "@/types/classBooking";
+import type { ClassBookingStatus } from "@/types/classBooking";
 import { findClassArtists } from "./classPeople";
 import { countEnrolledBySession } from "./classBookings";
 
@@ -36,28 +36,28 @@ interface SessionBits {
   deleted_at?: string | null;
 }
 
-interface TenantBits {
+interface BusinessBits {
   name: string;
   city: string | null;
 }
 
 interface MyBookingRow {
   id: string;
-  status: EnrollmentStatus;
+  status: ClassBookingStatus;
   session_id: string;
   class_id: string;
   class_sessions: SessionBits | null;
   classes: ClassBits | null;
-  businesses: TenantBits | null;
+  businesses: BusinessBits | null;
 }
 
-interface MyClaimRow {
+interface MyClassPersonRow {
   kind: "artist" | "assistant";
   class_id: string;
-  classes: (ClassBits & { businesses: TenantBits | null; class_sessions: SessionBits[] | null }) | null;
+  classes: (ClassBits & { businesses: BusinessBits | null; class_sessions: SessionBits[] | null }) | null;
 }
 
-interface TenantSessionRow {
+interface BusinessSessionRow {
   id: string;
   starts_at: string;
   ends_at: string;
@@ -72,7 +72,7 @@ const entryOf = (
   session: SessionBits,
   classId: string,
   c: ClassBits,
-  business: TenantBits | null,
+  business: BusinessBits | null,
   side: CalendarSide,
   classBooking: CalendarEntry["classBooking"]
 ): CalendarEntry => ({
@@ -91,7 +91,7 @@ const entryOf = (
   dayKey: dayKeyOf(session.starts_at),
   hour: hourOf(session.starts_at),
   businessName: business?.name ?? "",
-  tenantCity: business?.city ?? null,
+  businessCity: business?.city ?? null,
   side,
   classBooking,
   filled: 0,
@@ -126,7 +126,7 @@ export async function findMyCalendar(
   fromIso: string,
   toIso: string
 ): Promise<CalendarEntry[]> {
-  const [bookingsRes, claimsRes] = await Promise.all([
+  const [bookingsRes, classPeopleRes] = await Promise.all([
     supabase
       .from("class_bookings")
       .select(
@@ -155,13 +155,13 @@ export async function findMyCalendar(
   if (bookingsRes.error) {
     throw new Error(`calendar.findMine(bookings) failed: ${bookingsRes.error.message}`);
   }
-  if (claimsRes.error) {
-    throw new Error(`calendar.findMine(classPeople) failed: ${claimsRes.error.message}`);
+  if (classPeopleRes.error) {
+    throw new Error(`calendar.findMine(classPeople) failed: ${classPeopleRes.error.message}`);
   }
 
   const bySession = new Map<string, CalendarEntry>();
 
-  for (const row of (claimsRes.data ?? []) as unknown as MyClaimRow[]) {
+  for (const row of (classPeopleRes.data ?? []) as unknown as MyClassPersonRow[]) {
     if (!row.classes) continue;
     for (const s of row.classes.class_sessions ?? []) {
       if (s.deleted_at || !inWindow(s.starts_at, fromIso, toIso)) continue;
@@ -192,10 +192,10 @@ export async function findMyCalendar(
  *  RLS admits the studio's members and nobody else to the drafts. The prototype
  *  keeps a studio's calendar to studio sessions ("the owner's own bookings live
  *  on their artist profile", 8893), which is what this reads. */
-export async function findTenantCalendar(
+export async function findBusinessCalendar(
   supabase: SupabaseClient,
   businessId: string,
-  business: TenantBits,
+  business: BusinessBits,
   fromIso: string,
   toIso: string
 ): Promise<CalendarEntry[]> {
@@ -211,10 +211,10 @@ export async function findTenantCalendar(
     .limit(MAX_ROWS);
 
   if (error) {
-    throw new Error(`calendar.findTenant failed: ${error.message}`);
+    throw new Error(`calendar.findBusiness failed: ${error.message}`);
   }
 
-  const entries = ((data ?? []) as unknown as TenantSessionRow[])
+  const entries = ((data ?? []) as unknown as BusinessSessionRow[])
     .filter((r) => r.classes)
     .map((r) =>
       entryOf(
@@ -250,7 +250,7 @@ interface VenueClassRow {
 async function findVenueEntries(
   supabase: SupabaseClient,
   businessId: string,
-  business: TenantBits,
+  business: BusinessBits,
   fromIso: string,
   toIso: string,
   publishedOnly: boolean
@@ -293,10 +293,10 @@ async function findVenueEntries(
  *  is over. "A public schedule is an offer — a list of classes somebody can
  *  still book." RLS already draws this line for a stranger (published classes
  *  of listed businesses); the status and time filters draw it for a member too. */
-export async function findPublicTenantSchedule(
+export async function findPublicBusinessSchedule(
   supabase: SupabaseClient,
   businessId: string,
-  business: TenantBits,
+  business: BusinessBits,
   nowIso: string,
   toIso: string
 ): Promise<CalendarEntry[]> {
@@ -316,7 +316,7 @@ export async function findPublicTenantSchedule(
     throw new Error(`calendar.findPublicSchedule failed: ${error.message}`);
   }
 
-  const entries = ((data ?? []) as unknown as TenantSessionRow[])
+  const entries = ((data ?? []) as unknown as BusinessSessionRow[])
     .filter((r) => r.classes)
     .map((r) =>
       entryOf(

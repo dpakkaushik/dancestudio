@@ -11,7 +11,7 @@ import { FollowedShelf, type FollowedTile } from "@/features/discovery/component
 import { PlaceChip } from "@/features/discovery/components/PlaceChip";
 import { StudioCard } from "@/features/discovery/components/StudioCard";
 import { ArtistI, ClassI, DosFollowers, StudioI } from "@/features/discovery/components/discover-kit";
-import { filterClasses, filterCrews, filterTenants, filtersToParams, parseFilters, radiusOf } from "@/features/discovery/filters";
+import { filterClasses, filterCrews, filterBusinesses, filtersToParams, parseFilters, radiusOf } from "@/features/discovery/filters";
 import { gradientOf } from "@/features/profiles/components/profile-kit";
 import { DOS_STYLE_NAMES } from "@/lib/constants/styles";
 import { INDIA_CENTRE, centreOf, findDiscoverCities } from "@/repositories/cities";
@@ -20,9 +20,9 @@ import { photoUrl } from "@/lib/media/photo";
 import { publicProfilePath } from "@/lib/routes/publicProfile";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { findClassArtists, findClassesWithArtist } from "@/repositories/classPeople";
-import { findPublishedClasses, findPublishedStylesByTenant } from "@/repositories/classes";
+import { findPublishedClasses, findPublishedStylesByBusiness } from "@/repositories/classes";
 import { findCrewsByCity } from "@/repositories/crews";
-import { findDiscoverArtists, findNearbyTenants, findTenantCardFacts, type DiscoverArtist, type BusinessCardFacts } from "@/repositories/discovery";
+import { findDiscoverArtists, findNearbyBusinesses, findBusinessCardFacts, type DiscoverArtist, type BusinessCardFacts } from "@/repositories/discovery";
 import { findFollowerCounts, findMyFollowedPeople, findMyFollowing } from "@/repositories/follows";
 import { findStudioHeaderPhotosMany, type HeaderPhoto } from "@/repositories/headerPhotos";
 import { findPersonFollowerCounts } from "@/repositories/publicPerson";
@@ -30,7 +30,7 @@ import type { ClassArtist } from "@/types/classPerson";
 import { countEnrolledBySession, findMyEnrolledSessionIds } from "@/repositories/classBookings";
 import { findProfileById } from "@/repositories/profiles";
 import { resolveActingAs, withAs } from "@/repositories/actingAs";
-import type { EnrollmentStatus } from "@/types/classBooking";
+import type { ClassBookingStatus } from "@/types/classBooking";
 import { canBookClass, noBookingWords } from "@/types/profile";
 
 /** ONE PAGE OF A SHELF (18 Sep 2026, the user: "should give option for second
@@ -173,7 +173,7 @@ export default async function DiscoverPage({
       return [];
     }),
     wantsBusinesses
-      ? findNearbyTenants(supabase, {
+      ? findNearbyBusinesses(supabase, {
           ...centre,
           radiusKm: radiusOf(filters),
           type: "studio",
@@ -182,7 +182,7 @@ export default async function DiscoverPage({
           ...(offset > 0 ? { limit: PAGE_SIZE, offset } : {}),
         })
       : Promise.resolve([]),
-    user && tab === "classes" ? findMyEnrolledSessionIds(supabase) : Promise.resolve(new Map<string, { id: string; status: EnrollmentStatus }>()),
+    user && tab === "classes" ? findMyEnrolledSessionIds(supabase) : Promise.resolve(new Map<string, { id: string; status: ClassBookingStatus }>()),
     wantsFollows && wantsBusinesses ? findMyFollowing(supabase) : Promise.resolve([]),
     wantsArtists ? findDiscoverArtists(supabase, { city: city || null, limit: PAGE_SIZE, offset }) : Promise.resolve([] as DiscoverArtist[]),
     wantsFollows && wantsArtists ? findMyFollowedPeople(supabase) : Promise.resolve([]),
@@ -193,7 +193,7 @@ export default async function DiscoverPage({
   const styleOrder = [...DOS_STYLE_NAMES].sort((a, b) => (styleCount.get(b) ?? 0) - (styleCount.get(a) ?? 0));
 
   const inCity = filterClasses(
-    allClasses.filter((c) => c.tenantCity === city),
+    allClasses.filter((c) => c.businessCity === city),
     filters
   );
 
@@ -211,10 +211,10 @@ export default async function DiscoverPage({
        BEFORE that rule, on 18 Sep 2026.);
      · every business card ends with its styles — the styles of its published
        classes — and a style filter narrows through the same map. */
-  const [crewsRaw, taught, stylesByTenant] = await Promise.all([
+  const [crewsRaw, taught, stylesByBusiness] = await Promise.all([
     tab === "crews" ? findCrewsByCity(supabase, city) : Promise.resolve([]),
     tab === "classes" ? findClassesWithArtist(supabase, inCity.map((c) => c.id)) : Promise.resolve(new Set<string>()),
-    wantsBusinesses ? findPublishedStylesByTenant(supabase, nearby.map((t) => t.id)) : Promise.resolve(new Map<string, string[]>()),
+    wantsBusinesses ? findPublishedStylesByBusiness(supabase, nearby.map((t) => t.id)) : Promise.resolve(new Map<string, string[]>()),
   ]);
   const crews = tab === "crews" ? filterCrews(crewsRaw, filters) : [];
   const classes = tab === "classes" ? inCity.filter((c) => taught.has(c.id)) : inCity;
@@ -230,7 +230,7 @@ export default async function DiscoverPage({
     tab === "classes" ? countEnrolledBySession(supabase, classes.map((c) => c.session?.id).filter(Boolean) as string[]) : Promise.resolve(new Map<string, number>()),
     tab === "classes" ? findClassArtists(supabase, classes.map((c) => c.id)) : Promise.resolve(new Map<string, ClassArtist>()),
   ]);
-  const businesses = wantsBusinesses ? filterTenants(nearby, filters, stylesByTenant) : [];
+  const businesses = wantsBusinesses ? filterBusinesses(nearby, filters, stylesByBusiness) : [];
   const followed = following.filter((f) => f.businessType === "studio");
   /* an artist narrows by style through THEIR OWN styles — the ones on their profile */
   const artists = wantsArtists ? artistsRaw.filter((a) => filters.styles.length === 0 || a.styles.some((s) => filters.styles.includes(s))) : [];
@@ -239,13 +239,13 @@ export default async function DiscoverPage({
   /* ⚠⚠ AND THE POSTERS THE CARD SWIPES THROUGH (27 Sep 2026, the user: "Studio
      Cards on discover should have swipable photos in top section which are used
      in posters"). ONE query and ONE signing call for the whole shelf — fifty
-     cards through `findTenantHeaderPhotos` would be fifty RPCs and fifty
+     cards through `findBusinessHeaderPhotos` would be fifty RPCs and fifty
      signings, which is the per-card shape `findClassArtists` exists to avoid.
      They are the studio's own `studio_photos`, the same rows its poster rail
      draws, under the policy that makes a LISTED studio's pictures public. */
-  const [followerCounts, facts, personCounts, shotsByTenant] = await Promise.all([
+  const [followerCounts, facts, personCounts, shotsByBusiness] = await Promise.all([
     wantsBusinesses ? findFollowerCounts(supabase, businesses.map((t) => t.id)) : Promise.resolve(new Map<string, number>()),
-    wantsBusinesses ? findTenantCardFacts(supabase, [...businesses.map((t) => t.id), ...followed.map((f) => f.businessId)]) : Promise.resolve(new Map<string, BusinessCardFacts>()),
+    wantsBusinesses ? findBusinessCardFacts(supabase, [...businesses.map((t) => t.id), ...followed.map((f) => f.businessId)]) : Promise.resolve(new Map<string, BusinessCardFacts>()),
     wantsArtists ? findPersonFollowerCounts(supabase, artists.map((a) => a.id)) : Promise.resolve(new Map<string, { followers: number; following: number }>()),
     wantsBusinesses ? findStudioHeaderPhotosMany(supabase, businesses.map((t) => t.id)) : Promise.resolve(new Map<string, HeaderPhoto[]>()),
   ]);
@@ -399,7 +399,7 @@ export default async function DiscoverPage({
               danceClass={c}
               filled={filled}
               artist={classArtists.get(c.id) ?? null}
-              city={c.tenantCity}
+              city={c.businessCity}
               href={withAs(`/c/${c.shareSlug}`, asRaw)}
               actions={
                 c.session ? (
@@ -418,7 +418,7 @@ export default async function DiscoverPage({
           );
         })}
 
-      {/* ⚠ `stylesByTenant` is still READ and still narrows the shelf — it just no
+      {/* ⚠ `stylesByBusiness` is still READ and still narrows the shelf — it just no
           longer reaches the card (27 Sep 2026, "remove dance styles from studio,
           artist and crew discover cards"). A style filter is answered by the same
           map it always was. */}
@@ -428,7 +428,7 @@ export default async function DiscoverPage({
             key={t.id}
             business={t}
             followers={followerCounts.get(t.id) ?? 0}
-            shots={(shotsByTenant.get(t.id) ?? []).filter((p) => p.url).map((p) => ({ key: p.id, src: p.url as string, signed: p.signed }))}
+            shots={(shotsByBusiness.get(t.id) ?? []).filter((p) => p.url).map((p) => ({ key: p.id, src: p.url as string, signed: p.signed }))}
           />
         ))}
 

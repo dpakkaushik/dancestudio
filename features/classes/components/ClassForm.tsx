@@ -29,7 +29,7 @@ import {
 } from "@/components/ui/FormPage";
 import { DOS_LEVELS, DOS_LEVEL_LABEL, dosClassLabel, dosStyleColor } from "@/lib/constants/styles";
 import { INK, LILAC, SUB } from "@/lib/design/tokens";
-import type { ClassClaim } from "@/types/classPerson";
+import type { ClassPerson } from "@/types/classPerson";
 import type { ClassLevel, DanceClass, PosterChoice } from "@/types/class";
 import type { Room } from "@/types/room";
 import type { BusinessType } from "@/types/business";
@@ -97,9 +97,9 @@ function LevelGlyph({ code }: { code: string }) {
 }
 
 /* the classPerson badge the prototype prints beside a named person (15473-15475) */
-const claimWord = (status: string) =>
+const classPersonWord = (status: string) =>
   status === "confirmed" ? "✓ Confirmed" : status === "rejected" ? "✕ Said no" : "⏳ Asked";
-const claimTint = (status: string) =>
+const classPersonTint = (status: string) =>
   status === "confirmed" ? "#22C55E" : status === "rejected" ? "#F87171" : "#F59E0B";
 
 /** the rooms of a studio, as a radio list (15381-15396) */
@@ -206,7 +206,7 @@ export function ClassForm({
   venueName?: string | null;
   /** the business's OWN rooms — a studio's; an artist page has none */
   rooms: Room[];
-  classPeople?: ClassClaim[];
+  classPeople?: ClassPerson[];
   /** the studio's own address, printed above the room list (prototype 15381:
    *  `ownStudio().loc` — a room means nothing until you know which building) */
   studioPlace?: string;
@@ -316,9 +316,9 @@ export function ClassForm({
   };
 
   /* ── WHO IS TAKING IT, for a studio (18 Sep 2026): anyone on DanceOS, asked ── */
-  const artistClaim = classPeople.find((c) => c.kind === "artist");
-  const [teacher, setTeacher] = useState<{ id: string; name: string } | null>(artistClaim ? { id: artistClaim.userId, name: artistClaim.personName } : null);
-  const [artistPayText, setArtistPayText] = useState(String(artistClaim?.payPerSessionInr ?? 0));
+  const artistClassPerson = classPeople.find((c) => c.kind === "artist");
+  const [teacher, setTeacher] = useState<{ id: string; name: string } | null>(artistClassPerson ? { id: artistClassPerson.userId, name: artistClassPerson.personName } : null);
+  const [artistPayText, setArtistPayText] = useState(String(artistClassPerson?.payPerSessionInr ?? 0));
   const artistPayInr = numberOf(artistPayText, 0, 200000);
 
   const [state, formAction, isPending] = useActionState(isEdit ? updateClassAction : createClassAction, initialState);
@@ -688,8 +688,8 @@ export function ClassForm({
                       <div style={{ fontSize: 12.5, fontWeight: 900 }}>{teacher.name}</div>
                       <div style={{ fontSize: 10.5, color: "var(--muted)", marginTop: 1 }}>{selfTeacher ? "you take this class" : "takes this class"}</div>
                     </div>
-                    {artistClaim && artistClaim.userId === teacher.id ? (
-                      <span style={{ flexShrink: 0, fontSize: 10, fontWeight: 800, color: claimTint(artistClaim.status) }}>{claimWord(artistClaim.status)}</span>
+                    {artistClassPerson && artistClassPerson.userId === teacher.id ? (
+                      <span style={{ flexShrink: 0, fontSize: 10, fontWeight: 800, color: classPersonTint(artistClassPerson.status) }}>{classPersonWord(artistClassPerson.status)}</span>
                     ) : selfTeacher ? (
                       <span style={{ flexShrink: 0, fontSize: 10, fontWeight: 800, color: "#22C55E" }} data-testid="self-teacher">No confirmation needed</span>
                     ) : (

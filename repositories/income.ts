@@ -1,6 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { monthKeyOf, monthRefOf, monthStartIso, shiftMonthKey } from "@/lib/format/month";
-import type { MethodShare, MonthIncome, TenantIncome } from "@/types/income";
+import type { MethodShare, MonthIncome, BusinessIncome } from "@/types/income";
 
 /** Step 13b part 2b — what a studio COLLECTED, month by month (prototype S_earn
  *  17992-18085, 18171-18178). No table, no RPC, no policy: these are plain
@@ -87,11 +87,11 @@ const emptyBucket = (): Bucket => ({
   methods: new Map(),
 });
 
-export async function findTenantIncome(
+export async function findBusinessIncome(
   supabase: SupabaseClient,
   businessId: string,
   nowIso: string
-): Promise<TenantIncome> {
+): Promise<BusinessIncome> {
   const currentKey = monthKeyOf(nowIso);
   const keys = Array.from({ length: PAST_MONTHS + 1 }, (_, back) => shiftMonthKey(currentKey, back));
   const fromIso = monthStartIso(keys[keys.length - 1]);
@@ -145,7 +145,7 @@ export async function findTenantIncome(
     ["open", openRes],
   ] as const) {
     if (res.error) {
-      throw new Error(`income.findTenantIncome(${what}) failed: ${res.error.message}`);
+      throw new Error(`income.findBusinessIncome(${what}) failed: ${res.error.message}`);
     }
   }
 

@@ -17,7 +17,7 @@ export const metadata: Metadata = { title: "Subscription — DanceOS" };
  *
  *  ⚠ AND THE STUDIOS THIS ACCOUNT OWNS ARE LISTED UNDER IT (Rule 9: money):
  *  each one (₹1,200) with its own strip and the app's one Stop renewing.
- *  `findMyTenants` is every business this account is ON; a trainer neither pays
+ *  `findMyBusinesses` is every business this account is ON; a trainer neither pays
  *  nor cancels, so the list is the OWNER seat's alone.
  *  ⚠ The organizations half (₹5,000 each) went with organizations on 29 Sep. */
 export default async function SubscriptionPage() {

@@ -1,6 +1,6 @@
 import type { ClassArtist } from "@/types/classPerson";
 import type { DanceClass } from "@/types/class";
-import type { EnrollmentStatus } from "@/types/classBooking";
+import type { ClassBookingStatus } from "@/types/classBooking";
 
 /** Parity slice H10 — Home's PassDeck (prototype 6863-7204). Nothing new is
  *  stored: a deck row is a class session seen on ONE day from the side you are
@@ -42,11 +42,11 @@ export interface DeckClassItem extends DeckBase {
   /** ⚠ carried, no longer PRINTED on the card (18 Sep 2026) — a studio's name is
    *  the booking page's to say. Kept because the deck's own words read from it */
   businessName: string;
-  tenantCity: string | null;
+  businessCity: string | null;
   /** the confirmed teacher, whose face the card's centre wears */
   artist: ClassArtist | null;
   /** your own booking, when you hold one — its id is the entry code */
-  classBooking: { id: string; status: EnrollmentStatus } | null;
+  classBooking: { id: string; status: ClassBookingStatus } | null;
   /** what you paid for the seat, when it was paid for — the invoice's figures */
   receipt: { amountInr: number; method: string | null } | null;
 }

@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { updateTenantProfileAction } from "@/features/settings/server-actions/plans";
+import { updateBusinessProfileAction } from "@/features/settings/server-actions/plans";
 import { LinksRowEditor } from "@/features/profiles/components/LinksRowEditor";
 import { useRecordLists } from "@/features/profiles/components/RecordLists";
 import type { SocialLink } from "@/types/profile";
@@ -52,7 +52,7 @@ export function StudioLinksRow({ business, canEdit }: { business: StudioLinkTarg
     <LinksRowEditor
       canEdit={canEdit}
       save={async (next) => {
-        const out = await updateTenantProfileAction({
+        const out = await updateBusinessProfileAction({
           businessId: business.id,
           socials: next,
           /* unchanged, and sent because the door takes the whole profile — off

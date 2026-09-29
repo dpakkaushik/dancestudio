@@ -5,7 +5,7 @@ import { redirect } from "next/navigation";
 import { z } from "zod";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { activateArtistPlan } from "@/repositories/plans";
-import { updateTenantProfile } from "@/repositories/businesses";
+import { updateBusinessProfile } from "@/repositories/businesses";
 
 /** DanceOS Pro · Artist (S_subscr 16935): the plan's two doors, and the
  *  business profile's one (About / Since / phone / links / enquiry types / the
@@ -39,7 +39,7 @@ export async function activateArtistPlanAction(input: { plan: "monthly" | "yearl
   }
 }
 
-const tenantProfileSchema = z.object({
+const businessProfileSchema = z.object({
   businessId: z.string().uuid(),
   /* the NAME (18 Sep 2026, the user: "give option to rename") — optional, so
      every older caller that never sends one leaves it exactly as it was */
@@ -59,10 +59,10 @@ const tenantProfileSchema = z.object({
      whether an empty list is allowed — a studio's is not (`20260919190000`) */
   styles: z.array(z.string().trim().min(1).max(40)).max(12).optional(),
 });
-export type TenantProfileActionInput = z.infer<typeof tenantProfileSchema>;
+export type BusinessProfileActionInput = z.infer<typeof businessProfileSchema>;
 
-export async function updateTenantProfileAction(input: TenantProfileActionInput): Promise<{ error: string | null }> {
-  const parsed = tenantProfileSchema.safeParse(input);
+export async function updateBusinessProfileAction(input: BusinessProfileActionInput): Promise<{ error: string | null }> {
+  const parsed = businessProfileSchema.safeParse(input);
   if (!parsed.success) {
     const first = parsed.error.issues[0];
     return { error: first ? `${first.path.join(".") || "business"}: ${first.message}` : "Invalid request" };
@@ -74,7 +74,7 @@ export async function updateTenantProfileAction(input: TenantProfileActionInput)
   if (!user) redirect("/login");
   try {
     const { businessId, ...rest } = parsed.data;
-    await updateTenantProfile(supabase, businessId, { ...rest, phone: rest.phone || null });
+    await updateBusinessProfile(supabase, businessId, { ...rest, phone: rest.phone || null });
     revalidatePath(`/studio/${businessId}`);
     revalidatePath(`/artist/${businessId}`);
     revalidatePath(`/business/${businessId}/payments`);

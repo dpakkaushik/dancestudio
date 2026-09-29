@@ -2,7 +2,7 @@
 
 import { z } from "zod";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
-import { findCrewFollowers, findMyFollowedCrews, findMyFollowedPeople, findMyFollowing, findTenantFollowers } from "@/repositories/follows";
+import { findCrewFollowers, findMyFollowedCrews, findMyFollowedPeople, findMyFollowing, findBusinessFollowers } from "@/repositories/follows";
 
 /** ⚠⚠ THE FOLLOWER LIST, READ WHEN IT IS ASKED FOR (27 Sep 2026, the user:
  *  *"fix follow following for all profiles. list should open when clicked from
@@ -48,7 +48,7 @@ export async function loadFollowersAction(raw: unknown): Promise<FollowListResul
   try {
     const rows =
       parsed.data.kind === "business"
-        ? (await findTenantFollowers(supabase, parsed.data.id)).map((f) => ({
+        ? (await findBusinessFollowers(supabase, parsed.data.id)).map((f) => ({
             id: f.followId,
             name: f.name,
             sub: f.city,
@@ -123,9 +123,9 @@ export async function loadFollowingAction(): Promise<FollowListResult> {
         return {
           id: t.followId,
           name: t.businessName,
-          sub: t.tenantCity ? `${kind} · ${t.tenantCity}` : kind,
+          sub: t.businessCity ? `${kind} · ${t.businessCity}` : kind,
           href: `/${t.businessType === "studio" ? "studio" : "artist"}/${t.businessId}`,
-          photoPath: t.tenantPhotoPath,
+          photoPath: t.businessPhotoPath,
         };
       }),
       ...crews.map((c) => ({ id: c.followId, name: c.name, sub: c.city ? `Crew · ${c.city}` : "Crew", href: `/crew/${c.crewId}`, photoPath: c.photo })),

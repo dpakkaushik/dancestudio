@@ -4,13 +4,13 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
-import { claimPerson, respondToClaim, setClaimPowers, withdrawClaim } from "@/repositories/classPeople";
+import { askClassPerson, respondToClassAsk, setClassPersonPowers, withdrawClassAsk } from "@/repositories/classPeople";
 
 /** Step 11 people actions. Consent is the whole point: the studio ASKS (only
  *  its own team, owner/trainer only) and the person asked is the only one who
  *  can answer — both enforced in the RPCs, not here. */
 
-export interface ClaimActionResult {
+export interface ClassPersonActionResult {
   error: string | null;
 }
 
@@ -27,7 +27,7 @@ const respondSchema = z.object({
   accept: z.boolean(),
 });
 
-const claimIdSchema = z.object({ classPersonId: z.string().uuid() });
+const classPersonIdSchema = z.object({ classPersonId: z.string().uuid() });
 
 const powersSchema = z.object({
   classPersonId: z.string().uuid(),
@@ -52,20 +52,20 @@ function revalidatePeopleSurfaces() {
   revalidatePath("/");
 }
 
-export async function claimPersonAction(input: {
+export async function askClassPersonAction(input: {
   classId: string;
   userId: string;
   kind: "artist" | "assistant";
   canAttendance?: boolean;
   canRefunds?: boolean;
-}): Promise<ClaimActionResult> {
+}): Promise<ClassPersonActionResult> {
   const parsed = askSchema.safeParse(input);
   if (!parsed.success) {
     return { error: "Invalid request" };
   }
   const supabase = await requireUser();
   try {
-    await claimPerson(supabase, parsed.data);
+    await askClassPerson(supabase, parsed.data);
     revalidatePeopleSurfaces();
     return { error: null };
   } catch (error: unknown) {
@@ -73,17 +73,17 @@ export async function claimPersonAction(input: {
   }
 }
 
-export async function respondToClaimAction(input: {
+export async function respondToClassAskAction(input: {
   classPersonId: string;
   accept: boolean;
-}): Promise<ClaimActionResult> {
+}): Promise<ClassPersonActionResult> {
   const parsed = respondSchema.safeParse(input);
   if (!parsed.success) {
     return { error: "Invalid response" };
   }
   const supabase = await requireUser();
   try {
-    await respondToClaim(supabase, parsed.data.classPersonId, parsed.data.accept);
+    await respondToClassAsk(supabase, parsed.data.classPersonId, parsed.data.accept);
     revalidatePeopleSurfaces();
     revalidatePath("/profile");
     return { error: null };
@@ -92,14 +92,14 @@ export async function respondToClaimAction(input: {
   }
 }
 
-export async function withdrawClaimAction(input: { classPersonId: string }): Promise<ClaimActionResult> {
-  const parsed = claimIdSchema.safeParse(input);
+export async function withdrawClassAskAction(input: { classPersonId: string }): Promise<ClassPersonActionResult> {
+  const parsed = classPersonIdSchema.safeParse(input);
   if (!parsed.success) {
     return { error: "Invalid request" };
   }
   const supabase = await requireUser();
   try {
-    await withdrawClaim(supabase, parsed.data.classPersonId);
+    await withdrawClassAsk(supabase, parsed.data.classPersonId);
     revalidatePeopleSurfaces();
     return { error: null };
   } catch (error: unknown) {
@@ -107,18 +107,18 @@ export async function withdrawClaimAction(input: { classPersonId: string }): Pro
   }
 }
 
-export async function setClaimPowersAction(input: {
+export async function setClassPersonPowersAction(input: {
   classPersonId: string;
   canAttendance: boolean;
   canRefunds: boolean;
-}): Promise<ClaimActionResult> {
+}): Promise<ClassPersonActionResult> {
   const parsed = powersSchema.safeParse(input);
   if (!parsed.success) {
     return { error: "Invalid request" };
   }
   const supabase = await requireUser();
   try {
-    await setClaimPowers(
+    await setClassPersonPowers(
       supabase,
       parsed.data.classPersonId,
       parsed.data.canAttendance,

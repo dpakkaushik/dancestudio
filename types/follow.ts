@@ -6,17 +6,17 @@ import type { BusinessType } from "@/types/business";
  *  the Followers figure and sheet on the profile 10708, 11336). */
 
 /** One business the signed-in person follows — the Following sheet's row.
- *  ⚠ `tenantPhotoPath` arrived 29 Sep 2026: the sheet drew a business as
+ *  ⚠ `businessPhotoPath` arrived 29 Sep 2026: the sheet drew a business as
  *  initials for ever while the people and crews beside it wore their faces,
  *  because the read never selected the column and the action hard-coded null. */
-export interface FollowedTenant {
+export interface FollowedBusiness {
   followId: string;
   businessId: string;
   businessType: BusinessType;
   businessName: string;
-  tenantArea: string | null;
-  tenantCity: string | null;
-  tenantPhotoPath: string | null;
+  businessArea: string | null;
+  businessCity: string | null;
+  businessPhotoPath: string | null;
   followedAt: string;
 }
 
@@ -24,7 +24,7 @@ export interface FollowedTenant {
  *  the business's members only. `isArtist` is the plan's word, read once per
  *  list through `artist_ids`, so the badge on a follower's face is the same
  *  badge their own page wears. */
-export interface TenantFollower {
+export interface BusinessFollower {
   followId: string;
   userId: string;
   name: string;

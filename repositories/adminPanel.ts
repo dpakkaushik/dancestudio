@@ -50,8 +50,15 @@ export interface AuditEntry {
   actorId: string;
   actorEmail: string | null;
   action: string;
-  /** `business` is the legacy spelling of `business` on rows written before
-   *  16 Sep 2026 — admin_audit is immutable, so they stay; read the two as one */
+  /** ⚠⚠ `"tenant"` IS A LIVE DATABASE VALUE AND MUST STAY IN THIS UNION.
+   *  It is the legacy spelling of `business` on rows written before 16 Sep 2026.
+   *  `admin_audit` is insert-only and immutable by trigger — for everybody, the
+   *  service role included — so its 161 pre-rename rows carry `subject_kind =
+   *  'tenant'` for ever; `20260916130000` kept the word deliberately and widened
+   *  the CHECK to admit both. Drop it here and the app cannot type its own
+   *  history. ⚠ The 29 Sep identifier sweep DID drop it, leaving
+   *  `"business" | "business"` — a duplicate union member, which is legal
+   *  TypeScript, so nothing failed. Found by reading the diff's string audit. */
   subjectKind: "profile" | "business" | "tenant" | "request" | "thread";
   subjectId: string | null;
   subjectLabel: string | null;
@@ -228,7 +235,7 @@ export async function findAdminBusinesses(
   }));
 }
 
-export async function setTenantVisibility(
+export async function setBusinessVisibility(
   supabase: SupabaseClient,
   businessId: string,
   visibility: "listed" | "unlisted",
