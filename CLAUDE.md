@@ -122,6 +122,57 @@
 >   **`shoot-register` 41/41** · **`shoot-invert` 18/18** · **`shoot-discover`
 >   43/43** · **`shoot-seats` 21/21** · **`shoot-practice` 38/38** · **all 30
 >   proofs green**.
+> * ✅ **PUSHED AND LIVE (`32c40e1`) — 29 Sep 2026, read back off the DEPLOYMENT
+>   rather than assumed.** typecheck 0 and lint 0 re-run first (a proof is only
+>   true the last time it ran) · `db-push -DryRun` listing **every local
+>   migration with a remote counterpart, nothing pending** · Vercel's own list
+>   for THIS sha, **BUILDING → READY in ~50 s** · **`stranger-smoke` 8/8** ·
+>   **`shoot-hero` 186/186 ON THE DEPLOYMENT** — the same tally as local, its
+>   last four checks being C86 itself (`/stats` redirecting to the person's own
+>   address, carrying its whole query, landing on the one screen with no tab
+>   strip) · **`shoot-tiles` 130/130 on the deployment**.
+> * ⚠⚠ **AND THE MIGRATION HAD BEEN LIVE FOR A DAY BEFORE ITS APP HALF WAS, SO
+>   PRODUCTION RAN THE NEW COUNTS AGAINST THE OLD LISTS.** `20260929110000` was
+>   applied on the 29th and the bundle was committed and never pushed — so the
+>   three `*_follower_counts` functions filtered a deleted business or account
+>   while the live app's LIST reads did not. **The header showed the smaller,
+>   correct number and the list under it drew more rows**: the same "a number and
+>   the list disagree" defect the slice exists to fix, pointing the other way.
+>   Harmless to the data and visible on a real screen. **The two halves are one
+>   change and belong in one push** — the whole argument of the follow fix,
+>   demonstrated by splitting them.
+> * ⚠⚠ **AND PROVING THE ALIAS WAS ON THE NEW BUNDLE NEEDED THE API, BECAUSE A
+>   BEHAVIOURAL PROBE CANNOT TELL A STREAMED 200 FROM A MATCHED ROUTE.** The
+>   first check asked whether the new `/business/{id}/staff/{userId}` route
+>   answered 307 to a signed-out visitor — and it read **200**, as did a control
+>   route that unquestionably exists, because `(app)` streams behind a
+>   `loading.tsx` and **a `redirect()` inside a boundary goes out as 200 with a
+>   client hop** (this file's own 19 and 23 Sep lesson, met a third time from the
+>   outside). `/v4/aliases/{alias}` → the deployment → its `githubCommitSha` is
+>   the answer that cannot be misread: **`dancestudio-orcin.vercel.app` → sha
+>   `32c40e1`, READY.**
+> * ⚠⚠ **AND ITEMS 4 AND 5 HAD NO SHOOT AT ALL, WHICH ONLY CHECKING FOUND.**
+>   `shoot-register` touches `share_slug` twice and both are `select=share_slug`
+>   to build a URL — it never opens the poster and never reads the share block.
+>   The poster/share is covered by the **e2e happy path**, which runs against
+>   `:3100` and never against a deployment, so the most user-visible change in
+>   the push would have shipped unverified on the bundle a real person opens.
+>   A probe now drives it **as a STRANGER** (a published class of a listed
+>   business is public since Step 3, so a stranger is the strictest reader):
+>   **13/13 on the live bundle** — no "Scan this at the door", no `DOS-CL-####`
+>   anywhere, the QR labelled *Booking link for …* and `data-qr-scannable="yes"`
+>   at 148px, **encoding THIS class's own `/c/{slug}`**, one press to copy, and
+>   the poster opening a sheet with **no code and no QR in it**. No page error.
+> * ⚠⚠ **AND RULE 17 BIT FROM THE READING SIDE, WHICH IT DOES NOT YET SAY.** A
+>   `Get-Content` of `ClassShare.tsx` printed `â€"` for every em dash, `âš ` for
+>   every ⚠ and **`ðŸ”— Link copied` for a user-facing toast** — which reads
+>   exactly like committed, already-deployed mojibake. It is not: PowerShell 5.1
+>   decodes a BOM-less UTF-8 file as ANSI **when it READS one too**, so a correct
+>   file displays as damaged. Confirmed with the Read tool, which showed `—` and
+>   `🔗` intact. **"Fixing" it would have been the damage** — the third time this
+>   repo would have been bitten, self-inflicted. Rule 17 covers writing; the
+>   habit it needs is *read a source file with the Read tool, never
+>   `Get-Content`*.
 > * ⚠ **AND `shoot-practice`'s FOUR REDS WERE A STALE SCRIPT, ONE DAY OLD.**
 >   Practice became its own COLUMN on the Crews hub on 28 Sep and
 >   `SegmentedPanels` **mounts only the shown panel**, so the practices are not in
@@ -9634,6 +9685,21 @@ for the database schema. **The UI is not redesigned** — see Rule 2.
   `shoot-practice` 38/38 · all 30 proofs green.** ⚠ `shoot-practice`'s four reds
   were a script one day stale — practice became a segment on 28 Sep and
   `SegmentedPanels` mounts only the shown panel.
+  ✅ **PUSHED AND LIVE (`32c40e1`), read back off the deployment rather than
+  assumed:** typecheck 0 and lint 0 re-run first · nothing pending in the
+  database · Vercel's own list for THIS sha, BUILDING → READY in ~50 s ·
+  **`stranger-smoke` 8/8** · **`shoot-hero` 186/186** and **`shoot-tiles`
+  130/130 ON THE DEPLOYMENT** · a new **13/13 stranger probe of the poster and
+  the share block** on the live bundle. ⚠⚠ **The migration had been live a day
+  longer than its app half**, so production ran the new counts against the old
+  lists — the header's number smaller than the list under it, which is the very
+  defect the slice fixes, inverted. **Both halves are one change and belong in
+  one push.** ⚠⚠ **And no shoot covered items 4 and 5** — the poster/share is
+  the e2e's, which never runs against a deployment — so the most visible change
+  in the push had no live cover until that probe. ⚠ Proving the alias was on the
+  new bundle needed the API: a behavioural probe read **200** for both a new
+  route and a control, because a `redirect()` inside a `loading.tsx` boundary is
+  a 200 with a client hop (19/23 Sep, met again).
 - **ORGANIZATIONS AND EVENTS ARE GONE — 29 Sep 2026, no step number ⚠ (Rule 9:
   the migration drops policies and definer functions; the sweep soft-deletes
   production rows) — BUILT, APPLIED, SWEPT, PUSHED AND LIVE (`4798963`).** The user: *"Remove Organization and Events completely
@@ -14800,6 +14866,15 @@ server action → UI, finished and verified before the next begins.
     The cheap tells, worth checking after any bulk edit: `git diff --stat` for a
     line count that cannot be right, a grep for `â€`, and — for a markdown
     table — **the number of `|` per row**.
+    ⚠⚠ **AND IT BITES WHEN YOU READ, TOO** (29 Sep 2026). The same ANSI decode
+    happens on the way IN: `Get-Content` on a BOM-less UTF-8 source file PRINTS
+    `â€"` for an em dash, `âš ` for ⚠ and `ðŸ”—` for an emoji, so **a perfectly
+    clean file displays as mojibake** — and a user-facing string read that way
+    looks like damage already committed and deployed. `ClassShare.tsx` read
+    exactly like that and was intact, confirmed with the Read tool. **Read a
+    source file with the Read tool, never `Get-Content`**; and before
+    "repairing" any mojibake, confirm it with something that does UTF-8 —
+    writing the "fix" is what would actually break it.
 18. **A MIGRATION NEVER WRITES `begin;`/`commit;`, AND A DRY RUN ASSERTS ITS OWN
     TRANSACTION IS STILL OPEN.** (29 Sep 2026, learnt the expensive way.)
     `supabase db push` wraps each file in a transaction already, so a file's own
