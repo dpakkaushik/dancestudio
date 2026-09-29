@@ -102,6 +102,18 @@
 >   Supabase's auth API — taking 8 serial tests down with it; the spec then
 >   passed **9/9 alone**, so all 56 were green across the two runs on one bundle
 >   with nothing changed between them.
+> * ✅ **PUSHED AND LIVE IN TWO STAGES, each read back off the DEPLOYMENT.**
+>   The leftovers went FIRST as **`ec4f288`** — they need no migration, so
+>   holding them behind an approval gate would have kept working code off the
+>   site for no reason: BUILDING → READY in ~50 s, the alias confirmed on that
+>   sha through the API, **`shoot-invert` 22/22 ON THE DEPLOYMENT** with the
+>   hero measured in both themes. Then shape 2 as **`f183920`** after its list
+>   had been approved: READY in ~49 s, alias confirmed, **`stranger-smoke`
+>   8/8**, and **`shoot-register` 57/57 ON THE DEPLOYMENT** — a real studio, a
+>   real class live on the clock, and a walk-in with no account recorded by
+>   name, checked in, read back out of production as a seat naming **no person**,
+>   and then removed with its attendance row. ⚠ My own `next start` on :3100 was
+>   stopped afterwards.
 
 > ### A CLASS HAS A DOOR (29 Sep 2026, earlier) — ⚠ ONE MIGRATION APPLIED (`20260929120000`), dry run **24/24** rolled back first, read back live **14/14**
 > The user picked the class walk-in (#0aw) off the backlog. ⚠⚠ **THE FIRST ACT
@@ -9931,7 +9943,14 @@ for the database schema. **The UI is not redesigned** — see Rule 2.
   four "leftovers" turned out **not to be defects** and the backlog rows are
   corrected rather than acted on. **typecheck 0 · lint 0 · build green · dry run
   32/32 · live read-back 17/17 · 7/7 proofs · `shoot-register` 57/57 ·
-  `shoot-invert` 22/22 · `shoot-hero` 186/186.**
+  `shoot-invert` 22/22 · `shoot-hero` 186/186 · the whole e2e suite 56/56 in ONE
+  run, 19.1 min on one worker, no red at any point.**
+  ✅ **PUSHED AND LIVE IN TWO STAGES** — the leftovers as `ec4f288` (no
+  migration, so they went at once) and shape 2 as `f183920` after its list was
+  approved. Both read back off the deployment: Vercel's own list for each sha,
+  the alias confirmed through the API, `stranger-smoke` 8/8, **`shoot-invert`
+  22/22** and **`shoot-register` 57/57 ON THE DEPLOYMENT**, with the walk-in's
+  seat read back out of production as one naming no person.
 - **A CLASS HAS A DOOR — 29 Sep 2026, no step number ⚠ (Rule 9: a new definer
   function that books a seat for somebody else) — ONE MIGRATION APPLIED
   (`20260929120000`), dry run 24/24 rolled back first, read back live 14/14.**
