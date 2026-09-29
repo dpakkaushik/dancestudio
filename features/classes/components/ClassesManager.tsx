@@ -8,16 +8,18 @@ import {
   checkRoomClashAction,
   deleteClassAction,
   publishClassAction,
+  respondToVenueRequestAction,
   type ClassActionState,
   type RoomClash,
 } from "@/features/classes/server-actions/classes";
+import { withdrawClassAskAction } from "@/features/classPeople/server-actions/classPeople";
 import { ClassTile } from "@/features/classes/components/ClassTile";
 import { DeskAddButton } from "@/features/settings/components/settings-kit";
 import { useCloseOnBack } from "@/lib/hooks/useCloseOnBack";
 import { DOS_DISPLAY, DOS_UI, INK, LILAC, SUB } from "@/lib/design/tokens";
-import type { ClassPublishState } from "@/repositories/classes";
+import type { ClassPublishState, VenueRequest } from "@/repositories/classes";
 import type { ClassArtist } from "@/types/classPerson";
-import type { ClassStatus, DanceClass } from "@/types/class";
+import { classPhaseAt, type DanceClass } from "@/types/class";
 
 /* the IST date and clock of a session, in the shape the clash check takes */
 const istParts = (iso: string) => {
@@ -54,11 +56,26 @@ const stateChips = (st: ClassPublishState | undefined): Array<[string, string]> 
 
 const CARD = "var(--card)";
 const EL = "var(--el)";
-const TABS: ClassStatus[] = ["published", "draft", "completed"];
-const TAB_WORD: Record<ClassStatus, string> = {
+
+/** ⚠⚠ THE TABS ARE BUCKETED BY THE CLOCK, NOT BY `status` (30 Sep 2026).
+ *  Nothing in this app has ever moved a class to `completed` — see
+ *  `classPhaseAt` — so this tab counted `status === "completed"` and was
+ *  PERMANENTLY EMPTY, while every class that had already run sat under
+ *  Published for ever. A studio's register is the one screen that has to be able
+ *  to say "that one is done"; it says it off the session now.
+ *
+ *  ⚠ REQUESTS is a fourth tab and is drawn only when there is something on it
+ *  (the prototype's own rule at 7135 — a door onto an empty room is worse than
+ *  no door). It holds the asks for THIS studio's ROOMS, which had no home in the
+ *  classes section at all: a venue request is a class owned by the ARTIST's
+ *  page, so `findClassesByBusiness` never returned one and a studio's own rooms
+ *  were being committed with its classes desk silent about it. */
+type Tab = "published" | "draft" | "completed" | "requests";
+const TAB_WORD: Record<Tab, string> = {
   published: "Published",
   draft: "Draft",
   completed: "Completed",
+  requests: "Requests",
 };
 const initialState: ClassActionState = { error: null };
 
@@ -285,6 +302,9 @@ export function ClassesManager({
   embedded = false,
   whyNoClass = null,
   canCreate = true,
+  canEdit = true,
+  venueRequests = [],
+  askedTeachers = {},
 }: {
   businessId: string;
   classes: DanceClass[];
@@ -314,6 +334,24 @@ export function ClassesManager({
    *  admits since 18 Sep 2026. `whyNoClass` answers a different question (can
    *  THIS BUSINESS carry a class at all) and cannot stand in for it. */
   canCreate?: boolean;
+  /** ⚠⚠ MAY THE CALLER CHANGE A CLASS THAT EXISTS (30 Sep 2026) — the owner
+   *  alone, because RLS has admitted only the owner to `classes` UPDATE since
+   *  18 Sep. R55 opened this whole register to MANAGERS on 28 Sep and only the
+   *  Create button was re-checked, so a manager read a desk carrying Edit,
+   *  Publish and Delete on every row and all three failed: Edit bounced back
+   *  here without a word, Publish printed the raw *"Class not found or not yours
+   *  to change"*, and **Delete reported success and deleted nothing** — the
+   *  update is refused by policy as zero rows with no error, which that
+   *  repository function now reads back rather than trusting. Drawing the
+   *  control is the bug; the RPCs were right all along. */
+  canEdit?: boolean;
+  /** the asks for THIS studio's rooms, waiting on an answer (30 Sep 2026) —
+   *  empty for an artist's own register, which owns no rooms to be asked for */
+  venueRequests?: VenueRequest[];
+  /** classId → the id of the live ARTIST ask on it, so a row that says
+   *  "⏳ {name} asked" can also take the ask back (30 Sep 2026). The chips have
+   *  named these since 18 Sep and offered nothing to do about one. */
+  askedTeachers?: Record<string, string>;
 }) {
   const router = useRouter();
   const search = useSearchParams();
@@ -326,8 +364,13 @@ export function ClassesManager({
     q.set("new", "1");
     return `?${q.toString()}`;
   })();
-  const [tab, setTab] = useState<ClassStatus>("published");
+  const [rawTab, setTab] = useState<Tab>("published");
   const [liveOnly, setLiveOnly] = useState(false);
+  /* the row that is mid-action, and whatever the last one said if it failed —
+     the two new controls (withdraw an ask, answer a room request) are plain
+     async calls rather than form actions, so they carry their own busy state */
+  const [busy, setBusy] = useState<string | null>(null);
+  const [rowError, setRowError] = useState<string | null>(null);
   const [ask, setAsk] = useState<{ kind: "publish" | "draft" | "published"; c: DanceClass; clash?: RoomClash } | null>(null);
   /* the sentence a refused Publish would have raised, said before the press */
   const [note, setNote] = useState<string | null>(null);
@@ -351,11 +394,38 @@ export function ClassesManager({
 
   const nowMs = new Date(nowIso).getTime();
   const liveN = classes.filter((c) => isLiveAt(c, nowMs)).length;
-  let list = classes.filter((c) => c.status === tab);
+  /* WHICH TAB A CLASS BELONGS ON, off the clock rather than off `status` — a
+     class that has run is Completed here even though nothing ever writes that
+     word to the column (see `classPhaseAt`). Live counts as Published, because
+     it is still running and its register is still open. */
+  const bucketOf = (c: DanceClass): Exclude<Tab, "requests"> => {
+    const p = classPhaseAt(c, nowMs);
+    return p === "draft" ? "draft" : p === "over" ? "completed" : "published";
+  };
+  const countOf = (k: Tab) =>
+    k === "requests" ? venueRequests.length : classes.filter((c) => bucketOf(c) === k).length;
+  const tabs: Tab[] = venueRequests.length > 0 ? ["published", "draft", "completed", "requests"] : ["published", "draft", "completed"];
+  /* ⚠ THE OPEN TAB CAN STOP EXISTING UNDER YOU (30 Sep 2026, found by reading
+     this back): answering the LAST room request takes Requests out of the pill
+     row, and the view was still on it — no rows, no pill, and the empty state
+     is guarded against that tab, so the desk went blank. Falling back keeps the
+     answer to "what happens after the last one" the obvious one. */
+  const tab: Tab = tabs.includes(rawTab) ? rawTab : "published";
+  let list = tab === "requests" ? [] : classes.filter((c) => bucketOf(c) === tab);
   if (liveOnly) list = list.filter((c) => isLiveAt(c, nowMs));
-  const countOf = (k: ClassStatus) => classes.filter((c) => c.status === k).length;
   const filledOf = (c: DanceClass) => (c.session ? filledBySession[c.session.id] ?? 0 : 0);
-  const actionError = publishResult.error || deleteState.error;
+  const actionError = publishResult.error || deleteState.error || rowError;
+
+  /* one shape for the two controls that are not forms: mark the row busy, say
+     what went wrong if anything did, and re-read the page when it landed */
+  const run = async (key: string, fn: () => Promise<{ error: string | null }>) => {
+    setBusy(key);
+    setRowError(null);
+    const out = await fn();
+    setBusy(null);
+    if (out.error) setRowError(out.error);
+    else router.refresh();
+  };
 
   const hiddenRefs = (c: DanceClass) => (
     <>
@@ -430,7 +500,7 @@ export function ClassesManager({
             one. It opens as a sheet over this register now. */}
         {!canCreate ? (
           <div role="status" data-testid="why-no-class" style={{ ...bizBtn, cursor: "default", background: EL, color: INK, fontWeight: 700, fontSize: 12.5, lineHeight: 1.45, padding: "12px 16px", marginBottom: 12 }}>
-            Only the owner of this studio creates its classes. You can run the registers you have been given.
+            Only the owner of this studio creates and changes its classes. You can open any register you have been given, answer requests for its rooms, and see who is booked.
           </div>
         ) : whyNoClass ? (
           <div role="status" data-testid="why-no-class" style={{ ...bizBtn, cursor: "default", background: EL, color: INK, fontWeight: 700, fontSize: 12.5, lineHeight: 1.45, padding: "12px 16px", marginBottom: 12 }}>
@@ -450,14 +520,14 @@ export function ClassesManager({
         {/* the three lifecycles, pinned under the top bar (prototype 14995-15006) */}
         <div style={{ position: "sticky", top: "var(--dos-top)", zIndex: 120, background: LILAC, margin: "0 -16px", padding: "6px 16px 8px" }}>
           <div style={{ display: "flex", gap: 2, background: EL, borderRadius: 12, padding: 3 }}>
-            {TABS.map((k) => {
+            {tabs.map((k) => {
               const on = tab === k;
               return (
                 <button
                   key={k}
                   type="button"
                   aria-pressed={on}
-                  aria-label={`${TAB_WORD[k]}, ${countOf(k)} classes`}
+                  aria-label={`${TAB_WORD[k]}, ${countOf(k)} ${k === "requests" ? "requests" : "classes"}`}
                   onClick={() => setTab(k)}
                   style={{
                     flex: 1,
@@ -489,7 +559,7 @@ export function ClassesManager({
           <div role="status" style={{ fontSize: 12, color: "#F59E0B", fontWeight: 700, margin: "8px 0" }}>{note}</div>
         ) : null}
 
-        {list.length === 0 && (
+        {tab !== "requests" && list.length === 0 && (
           <div
             style={{
               textAlign: "center",
@@ -503,10 +573,58 @@ export function ClassesManager({
             <div style={{ fontSize: 11, color: SUB, marginTop: 4 }}>
               {liveOnly
                 ? "Nothing is running right now — tap the live filter to show all."
-                : "Create a class — it is saved as a draft, and published here once the yes it waits for is in."}
+                : tab === "completed"
+                  ? "Classes move here once their session is over."
+                  : "Create a class — it is saved as a draft, and published here once the yes it waits for is in."}
             </div>
           </div>
         )}
+
+        {/* ⚠⚠ SOMEBODY WANTS ONE OF YOUR ROOMS (30 Sep 2026). Until today the only
+            place to answer this was the Inbox: the class belongs to the ARTIST's
+            page, so `findClassesByBusiness` never returned it and a studio's
+            classes desk said nothing at all while its rooms were being committed.
+            ⚠ It draws the app's own class card, exactly as the Inbox's own
+            Requests desk does since 27 Sep — the same card, one source, rather
+            than a second row shape that can drift. The ACTION is the same RPC the
+            Inbox calls, which decides who may answer; this is a second door onto
+            one subject, not a second rule. */}
+        {tab === "requests" ? (
+          <div style={{ marginTop: 8 }}>
+            {venueRequests.map((v) => (
+              <ClassTile
+                key={v.classId}
+                danceClass={v.danceClass}
+                artist={null}
+                href={`/c/${v.shareSlug}`}
+                actions={
+                  <>
+                    <span style={{ flexBasis: "100%", fontSize: 10.5, color: SUB, lineHeight: 1.45 }}>
+                      <b style={{ color: INK }}>{v.artistName}</b> wants {v.room ?? "a room"} at {v.venueName}. Accepting holds it
+                      for them — the class, its bookings and its money stay theirs.
+                    </span>
+                    <button
+                      type="button"
+                      disabled={busy === v.classId}
+                      onClick={() => run(v.classId, () => respondToVenueRequestAction({ classId: v.classId, accept: false }))}
+                      style={pill(true)}
+                    >
+                      {busy === v.classId ? "…" : "Decline"}
+                    </button>
+                    <button
+                      type="button"
+                      disabled={busy === v.classId}
+                      onClick={() => run(v.classId, () => respondToVenueRequestAction({ classId: v.classId, accept: true }))}
+                      style={{ ...pill(false), background: INK, color: LILAC }}
+                    >
+                      {busy === v.classId ? "…" : "Accept the room"}
+                    </button>
+                  </>
+                }
+              />
+            ))}
+          </div>
+        ) : null}
 
         <div style={{ marginTop: 8 }}>
           {list.map((c) => {
@@ -529,21 +647,52 @@ export function ClassesManager({
               artist={artists[c.id] ?? null}
               href={`/c/${c.shareSlug}`}
               actions={
-                c.status === "draft" ? (
+                bucketOf(c) === "draft" ? (
                   <>
                     {chipRow}
                     {/* A DECLINED ROOM OFFERS THE WAY OUT IN ONE PRESS (18 Sep 2026): the
                         studio said no, so the class is going nowhere until it is moved —
                         the form's WHERE step is where it is moved, and this names it */}
+                    {/* ⚠ EVERY CONTROL FROM HERE DOWN IS THE OWNER'S (30 Sep 2026).
+                        RLS has admitted only the owner to `classes` UPDATE since
+                        18 Sep, and R55 opened this desk to managers on 28 Sep —
+                        so these three were drawn for a seat every one of them
+                        refuses. The sentence above the list says so once; drawing
+                        them and failing said it three times, badly. */}
+                    {canEdit ? (
+                      <>
                     {st?.venueStatus === "declined" ? (
                       <Link href={`/business/${businessId}/classes/${c.id}/edit`} style={{ ...pill(true), textDecoration: "none" }}>
                         Pick another studio ›
+                      </Link>
+                    ) : st?.teacherStatus === "rejected" ? (
+                      /* ⚠ THE SAME WAY OUT FOR A TEACHER WHO SAID NO (30 Sep 2026).
+                         The chip has said "✕ {name} said no" since 18 Sep and the
+                         row offered nothing but Edit — the same dead end a declined
+                         room used to be. Who takes the class is named in the form,
+                         so the form is where it is changed, and the pill says so. */
+                      <Link href={`/business/${businessId}/classes/${c.id}/edit`} style={{ ...pill(true), textDecoration: "none" }}>
+                        Ask somebody else ›
                       </Link>
                     ) : (
                       <Link href={`/business/${businessId}/classes/${c.id}/edit`} style={{ ...pill(false), textDecoration: "none" }}>
                         Edit
                       </Link>
                     )}
+                    {/* ⚠ AN ASK CAN BE TAKEN BACK FROM HERE (30 Sep 2026). The row
+                        has named who it is waiting on since 18 Sep and offered no
+                        way to stop waiting: the only door was the Inbox's Sent
+                        side or the class page. Same RPC, which decides who may. */}
+                    {st?.teacherStatus === "asked" && askedTeachers[c.id] ? (
+                      <button
+                        type="button"
+                        disabled={busy === c.id}
+                        onClick={() => run(c.id, () => withdrawClassAskAction({ classPersonId: askedTeachers[c.id] }))}
+                        style={pill(false)}
+                      >
+                        {busy === c.id ? "…" : "Withdraw ask"}
+                      </button>
+                    ) : null}
                     {/* PUBLISH WAITS FOR A YES (18 Sep 2026): the database's own sentence is
                         what the button says when pressed too early — the same words the
                         trigger would raise, so the screen cannot drift from the rule */}
@@ -578,8 +727,10 @@ export function ClassesManager({
                     <button type="button" onClick={() => setAsk({ kind: "draft", c })} style={pill(true)}>
                       Delete
                     </button>
+                      </>
+                    ) : null}
                   </>
-                ) : c.status === "published" ? (
+                ) : bucketOf(c) === "published" ? (
                   <>
                     {chipRow}
                     {/* the Roster pill stays: it is the app's register page (a documented departure) */}
@@ -589,13 +740,18 @@ export function ClassesManager({
                     >
                       Roster
                     </Link>
-                    <button type="button" onClick={() => setAsk({ kind: "published", c })} style={pill(true)}>
-                      Delete
-                    </button>
+                    {canEdit ? (
+                      <button type="button" onClick={() => setAsk({ kind: "published", c })} style={pill(true)}>
+                        Delete
+                      </button>
+                    ) : null}
                   </>
                 ) : (
                   /* a completed class has one move left (15048-15049): its refunds,
-                     which live on the class page's own Refunds segment */
+                     which live on the class page's own Refunds segment.
+                     ⚠ It reaches this branch off the CLOCK now (30 Sep 2026) — a
+                     class whose session is over, whatever `status` still says,
+                     because nothing in this app has ever written `completed`. */
                   <Link href={`/c/${c.shareSlug}`} style={{ ...pill(false), textDecoration: "none" }}>
                     Refunds
                   </Link>

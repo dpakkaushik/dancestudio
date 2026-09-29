@@ -2,8 +2,8 @@ import { redirect } from "next/navigation";
 import { ClassForm } from "@/features/classes/components/ClassForm";
 import { ClassesManager } from "@/features/classes/components/ClassesManager";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
-import { findClassArtists } from "@/repositories/classPeople";
-import { findClassPublishState, findClassesByBusiness, findWhyNoClass } from "@/repositories/classes";
+import { findAskedClassPeopleForBusinesses, findClassArtists } from "@/repositories/classPeople";
+import { findClassPublishState, findClassesByBusiness, findVenueRequestsForBusinesses, findWhyNoClass } from "@/repositories/classes";
 import { countEnrolledBySession } from "@/repositories/classBookings";
 import { findRoomsByBusiness } from "@/repositories/rooms";
 import { findMyMemberships, runsTheBusiness } from "@/repositories/businesses";
@@ -58,7 +58,7 @@ export default async function BusinessClassesPage({
   const myRole = seat.memberRole;
   const classes = await findClassesByBusiness(supabase, businessId);
   const sessionIds = classes.map((c) => c.session?.id).filter(Boolean) as string[];
-  const [counts, state, artists, whyNoClass] = await Promise.all([
+  const [counts, state, artists, whyNoClass, venueRequests, sentAsks] = await Promise.all([
     countEnrolledBySession(supabase, sessionIds),
     findClassPublishState(supabase, businessId).catch(() => new Map()),
     /* the teacher each row's card wears in its centre (18 Sep 2026) — a draft
@@ -66,7 +66,18 @@ export default async function BusinessClassesPage({
     findClassArtists(supabase, classes.map((c) => c.id)),
     /* the database's sentence, if a new class would be refused here (18 Sep 2026) */
     findWhyNoClass(supabase, businessId),
+    /* ⚠⚠ WHO WANTS THIS STUDIO'S ROOMS (30 Sep 2026). A venue request is a class
+       owned by the ARTIST's page, so `findClassesByBusiness` above has never
+       returned one — the studio's own rooms were being committed and its classes
+       desk said nothing at all. The only place to answer was the Inbox. */
+    findVenueRequestsForBusinesses(supabase, [businessId]).catch(() => []),
+    /* the live asks this studio has SENT, so a row that says "⏳ {name} asked"
+       can also take it back — `publishState` names who but carries no id */
+    findAskedClassPeopleForBusinesses(supabase, [businessId]).catch(() => []),
   ]);
+  const askedTeachers = Object.fromEntries(
+    sentAsks.filter((a) => a.kind === "artist").map((a) => [a.classId, a.id])
+  );
   /* ⚠ ADD CLASS OPENS OVER THIS REGISTER (22 Sep 2026, the user: "all forms and
      add buttons … should open form like how setting page or edit profile page
      open from the same screen", then "from inside their respective sections").
@@ -85,6 +96,13 @@ export default async function BusinessClassesPage({
         publishState={Object.fromEntries(state)}
         whyNoClass={whyNoClass}
         canCreate={myRole === "owner"}
+        /* ⚠ THE SAME SEAT DECIDES EVERY WRITE ON THIS DESK (30 Sep 2026): RLS
+           admits only the owner to `classes` UPDATE, so Edit, Publish and Delete
+           are the owner's exactly as Create is. R55 let a MANAGER in here on
+           28 Sep and only Create was re-checked. */
+        canEdit={myRole === "owner"}
+        venueRequests={venueRequests}
+        askedTeachers={askedTeachers}
         nowIso={stampNowIso()}
       />
       {opening && myRole === "owner" && !whyNoClass ? (

@@ -64,6 +64,43 @@ export interface DanceClass {
   allowsArtistMemberships: boolean;
 }
 
+/** WHERE A CLASS STANDS IN ITS OWN LIFE (30 Sep 2026).
+ *
+ *  ⚠⚠ `status` ALONE CANNOT ANSWER THIS, AND NOTHING EVER MOVES IT PAST
+ *  `published`. `update_class_status` is called with `"published"` and with
+ *  nothing else in the whole tree; no trigger and no cron writes `'completed'`
+ *  (the only two cron jobs on this database are the subscription clock and the
+ *  birthday clock). So for four months every class that has run has stayed
+ *  `published` for ever, which cost three things at once: the register's
+ *  Completed tab could never fill, `done` on the class page was never true — so
+ *  the completed view, FINAL METRICS and the final register were UNREACHABLE
+ *  code — and last month's classes were still being offered on Discover with a
+ *  Book button `book_class_session` refuses.
+ *
+ *  ⚠ The answer is arithmetic, not a column: the session says when it ran, and
+ *  the clock says what that means now. Derived in one place so the shelves, the
+ *  register's tabs, the class page and the booking bar cannot disagree — and so
+ *  that a later `run_class_clock()` cron, if one is ever wanted, only makes the
+ *  stored column agree with what the app already says rather than changing it.
+ *
+ *  ⚠ The clock is HANDED IN, never read here: `Date.now()` may not be called in
+ *  a component body under this repo's `react-hooks/purity` rule, so every caller
+ *  stamps it on the server and passes it down. */
+export type ClassPhase = "draft" | "upcoming" | "live" | "over";
+
+export const classPhaseAt = (
+  c: Pick<DanceClass, "status" | "session">,
+  nowMs: number
+): ClassPhase => {
+  if (c.status === "draft") return "draft";
+  /* a class somebody marked completed is over whatever the clock says */
+  if (c.status === "completed") return "over";
+  if (!c.session) return "upcoming";
+  if (nowMs > new Date(c.session.endsAt).getTime()) return "over";
+  if (nowMs >= new Date(c.session.startsAt).getTime()) return "live";
+  return "upcoming";
+};
+
 /** A published class as the learner listing sees it — with the business behind it. */
 export interface PublicClassListing extends DanceClass {
   businessName: string;

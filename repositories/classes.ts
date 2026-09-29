@@ -58,8 +58,12 @@ const venueOf = (row: PublicClassRow) => ({
 });
 
 /* no `title` in the read: the label is derived from style and level (types/class.ts) */
+const SESSION_EMBED = "class_sessions (id, starts_at, ends_at)";
 const CLASS_COLUMNS =
-  "id, business_id, share_slug, style, level, room, room_id, poster, poster_path, price_inr, capacity, status, venue_business_id, venue_status, lat, lng, maps_url, allows_studio_memberships, allows_artist_memberships, class_sessions (id, starts_at, ends_at)";
+  `id, business_id, share_slug, style, level, room, room_id, poster, poster_path, price_inr, capacity, status, venue_business_id, venue_status, lat, lng, maps_url, allows_studio_memberships, allows_artist_memberships, ${SESSION_EMBED}`;
+/** the same columns with the session INNER-joined, so a read can filter on when
+ *  the class actually runs — see `findPublishedClasses` (30 Sep 2026) */
+const CLASS_COLUMNS_DATED = CLASS_COLUMNS.replace(SESSION_EMBED, "class_sessions!inner (id, starts_at, ends_at)");
 
 const firstSession = (rows: SessionRow[] | null) => {
   const live = [...(rows ?? [])].sort((a, b) => a.starts_at.localeCompare(b.starts_at));
@@ -221,6 +225,16 @@ export async function findClassById(
  *  the same silence. Filtering on the business's city with an inner join keeps the
  *  limit meaning what a limit should mean: the most of THIS list, not the most
  *  of every list. */
+/* ⚠⚠ AND IT IS ONLY WHAT HAS NOT STARTED (30 Sep 2026). This read had no clock
+   in it at all, and nothing in the app ever moves a class past `published` (see
+   `classPhaseAt`) — so both shelves that call it, Discover's Classes tab and
+   `/classes`, listed every class ever published under the heading "Upcoming
+   classes", with a Book button on each. Pressing one reached
+   `book_class_session`, which refuses `starts_at <= now()` — a raw refusal after
+   the press, on the two surfaces whose whole convention is to say why before it.
+   ⚠ A class that has STARTED goes too, not just one that has ended: it cannot be
+   booked either, so a shelf whose job is "what can I book" has no business
+   drawing it. Its own page still opens at `/c/{slug}` and says it is live. */
 export async function findPublishedClasses(
   supabase: SupabaseClient,
   limit = 50,
@@ -233,9 +247,11 @@ export async function findPublishedClasses(
        answers 300 Multiple Choices to an unqualified embed through an ambiguous
        relationship (the 28 Aug lesson, `follows` → `profiles`). Every embed
        from classes to businesses says which key it means. */
-    .select(`${CLASS_COLUMNS}, ${OWNER_AND_VENUE(Boolean(city))}`)
+    .select(`${CLASS_COLUMNS_DATED}, ${OWNER_AND_VENUE(Boolean(city))}`)
     .eq("status", "published")
-    .is("deleted_at", null);
+    .is("deleted_at", null)
+    .is("class_sessions.deleted_at", null)
+    .gt("class_sessions.starts_at", new Date().toISOString());
 
   if (city) {
     query = query.eq("businesses.city", city);
@@ -399,6 +415,23 @@ export async function softDeleteClass(
 
   if (error) {
     throw new Error(`classes.delete failed: ${error.message}`);
+  }
+
+  /* ⚠⚠ AND THE UPDATE HAS TO BE READ BACK, BECAUSE A REFUSAL HERE IS SILENT
+     (30 Sep 2026). RLS has admitted only the OWNER to `classes` UPDATE since
+     18 Sep, and this update deliberately asks for no rows back — a soft-deleted
+     row satisfies no SELECT policy, so a RETURNING would make Postgres reject
+     the whole statement. The cost of that is that "refused by policy" and "done"
+     both arrive as zero rows and NO error: the action returned `{ error: null }`
+     and the class was still there. It is how a MANAGER — a seat the register has
+     admitted since 28 Sep — pressed Delete, was told nothing, and found the
+     class still on the list.
+     ⚠ `findClassById` filters `deleted_at is null`, so after a delete that
+     landed it answers null whoever is asking; a row that comes back is a row
+     that was not deleted. One extra read, on the rarest action on this desk.
+     A WRITE WHOSE STATUS NOBODY READS IS NOT A WRITE — this file's own lesson. */
+  if (await findClassById(supabase, classId)) {
+    throw new Error("Only the owner of this studio can delete its classes");
   }
 
   const { error: sessionError } = await supabase

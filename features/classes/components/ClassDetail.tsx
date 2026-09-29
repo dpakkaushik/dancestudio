@@ -357,7 +357,14 @@ export function ClassDetail({
     if (!out.error) router.refresh();
   };
   const levelWord = DOS_LEVEL_LABEL[c.level] ?? c.level;
-  const done = c.status === "completed";
+  /** ⚠⚠ A CLASS IS OVER WHEN ITS SESSION IS OVER (30 Sep 2026), not when somebody
+   *  marks it. Nothing in this app has ever written `status = 'completed'` — no
+   *  screen, no trigger, no cron (`classPhaseAt` carries the measurement) — so
+   *  this read `false` for every class that has ever run, and everything behind
+   *  it was UNREACHABLE: the completed card, FINAL METRICS, "the register below
+   *  is final", the Refunds line. `sessionPhase` has been computed on the server
+   *  and handed in all along; it just was not the thing this asked. */
+  const done = c.status === "completed" || sessionPhase === "ended";
   const isDraft = c.status === "draft";
   const isFree = c.priceInr === 0;
   const price = isFree ? "Free" : `₹${c.priceInr}`;
@@ -1953,6 +1960,23 @@ export function ClassDetail({
             <div data-testid="org-cannot-book" style={{ display: "flex", alignItems: "center", gap: 10, padding: "13px 14px", borderRadius: 16, background: "var(--card)", border: "1.5px solid var(--el)" }}>
               <span aria-hidden="true" style={{ flexShrink: 0, fontSize: 15 }}>🏛</span>
               <div style={{ fontSize: 11, color: "var(--sub)", lineHeight: 1.45 }}>{cannotBookWhy ?? "This profile does not book classes. Switch to your own to take a place."}</div>
+            </div>
+          ) : sessionPhase === "live" && !booked ? (
+            /* ⚠⚠ A CLASS THAT HAS STARTED CANNOT BE BOOKED, AND NOW SAYS SO
+               (30 Sep 2026). `book_class_session` refuses `starts_at <= now()`
+               in the database and always has — but nothing on this page tested
+               the clock (`done` was `status === "completed"`, which nothing ever
+               sets), so the bar went on offering "Book a spot" and the refusal
+               arrived as a raw sentence AFTER the press. Every other closed door
+               in this app says why before it: `why_no_class`, `why_no_publish`,
+               `cannotBookWhy`, `why_no_membership`. This is that one.
+               ⚠ The DOOR is the way in now, which is what the line names — the
+               studio can book somebody at the register until the session ends. */
+            <div data-testid="class-already-started" style={{ display: "flex", alignItems: "center", gap: 10, padding: "13px 14px", borderRadius: 16, background: "var(--card)", border: "1.5px solid var(--el)" }}>
+              <span aria-hidden="true" style={{ flexShrink: 0, fontSize: 15 }}>⏱</span>
+              <div style={{ fontSize: 11, color: "var(--sub)", lineHeight: 1.45 }}>
+                This class has already started, so it cannot be booked here. If you are at the door, the studio can still take you in on its register.
+              </div>
             </div>
           ) : soldOut && !booked ? (
             <div

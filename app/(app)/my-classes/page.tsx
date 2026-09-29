@@ -8,7 +8,8 @@ import { SegmentedPanels } from "@/features/shell/components/SegmentedNav";
 import { DeskHero } from "@/features/businesses/components/biz-kit";
 import { DOS_UI, INK, LILAC, MUTED, SUB } from "@/lib/design/tokens";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
-import { findClassArtists, findMyConfirmedClassPeople } from "@/repositories/classPeople";
+import { AnswerAsk } from "@/features/classPeople/components/AnswerAsk";
+import { findClassArtists, findMyConfirmedClassPeople, findMyPendingClassPeople } from "@/repositories/classPeople";
 import { findClassPublishState, findClassesByBusiness, findWhyNoClass } from "@/repositories/classes";
 import { countEnrolledBySession, findMyClassBookings } from "@/repositories/classBookings";
 import { findMyMemberships } from "@/repositories/businesses";
@@ -109,12 +110,21 @@ export default async function MyClassesPage({ searchParams }: { searchParams: Pr
   /* the Add class sheet, opened from the Manage segment (22 Sep 2026) */
   const opening = (Array.isArray(params.new) ? params.new[0] : params.new) === "1";
 
-  const [class_bookings, artistOn, assistantOn, memberships] = await Promise.all([
+  const [class_bookings, artistOn, assistantOn, memberships, pendingAsks] = await Promise.all([
     findMyClassBookings(supabase),
     findMyConfirmedClassPeople(supabase, "artist"),
     findMyConfirmedClassPeople(supabase, "assistant"),
     findMyMemberships(supabase),
+    /* ⚠⚠ THE ASKS NOBODY HAD ANSWERED WERE NOWHERE IN THIS SECTION (30 Sep 2026).
+       Both lists below are CONFIRMED rows, so a class you had been asked onto and
+       not yet answered appeared on no Classes screen at all — and both empty
+       states told you to go and say yes *in your Inbox*, which has been untrue
+       since Step 11 gave the class page its own Accept / Reject card. They are
+       the first thing in their own segment now, where the class is. */
+    findMyPendingClassPeople(supabase).catch(() => []),
   ]);
+  const askedToTake = pendingAsks.filter((a) => a.kind === "artist");
+  const askedToAssist = pendingAsks.filter((a) => a.kind === "assistant");
   const myPage = memberships.find((m) => m.memberRole === "owner" && m.business.type === "artist_page")?.business ?? null;
   /* ⚠ MANAGE OPENS FIRST FOR SOMEBODY WHO RUNS CLASSES (20 Sep 2026, the user:
      "Manage Membership and classes to be first option in order and when opening
@@ -135,8 +145,13 @@ export default async function MyClassesPage({ searchParams }: { searchParams: Pr
     .filter((c) => !myPage || c.businessName !== myPage.name)
     .sort((a, b) => (a.startsAt ?? "9").localeCompare(b.startsAt ?? "9"));
   const assisting = [...assistantOn].sort((a, b) => (a.startsAt ?? "9").localeCompare(b.startsAt ?? "9"));
-  /* somebody with a page, or somebody a studio has put in front of a class */
-  const runs = Boolean(myPage) || teaching.length > 0;
+  /* somebody with a page, or somebody a studio has put in front of a class —
+     ⚠ INCLUDING ONE THEY HAVE NOT ANSWERED YET (30 Sep 2026). A plain user asked
+     to take a class holds no confirmed row and owns no page, so `runs` was false,
+     so Manage was not drawn, so the ask had nowhere to be answered from. The one
+     person the class is named after was the one person the section had no room
+     for. */
+  const runs = Boolean(myPage) || teaching.length > 0 || askedToTake.length > 0;
   const show: Show =
     rawShow === "assist" ? "assist" : rawShow === "manage" && runs ? "manage" : rawShow === "booked" ? "booked" : runs ? "manage" : "booked";
   const booked = class_bookings.filter((e) => e.status === "enrolled").length;
@@ -222,7 +237,15 @@ export default async function MyClassesPage({ searchParams }: { searchParams: Pr
           href: k === "booked" ? "/my-classes" : `/my-classes?show=${k}`,
           label: SHOWS[k].label,
           aria: SHOWS[k].aria,
-          n: k === "booked" ? booked : k === "assist" ? assisting.length : myPageClasses.length + teaching.length,
+          /* ⚠ an unanswered ask COUNTS (30 Sep 2026) — it is the one thing on
+             either segment that is waiting on this person, so a pill that left
+             it out was a pill with no reason to be pressed */
+          n:
+            k === "booked"
+              ? booked
+              : k === "assist"
+                ? assisting.length + askedToAssist.length
+                : myPageClasses.length + teaching.length + askedToTake.length,
         }))}
         panels={[
           ...(runs
@@ -234,6 +257,32 @@ export default async function MyClassesPage({ searchParams }: { searchParams: Pr
                      then the classes somebody ELSE's studio put you in front of */
                   node: (
                     <>
+                      {/* ⚠ ASKED COMES FIRST, because it is the only thing here
+                          that is waiting on YOU (30 Sep 2026). The card is the
+                          app's own class tile, the buttons call the same RPC the
+                          Inbox and the class page call, and the class is what
+                          you are looking at while you decide. */}
+                      {askedToTake.length > 0 ? (
+                        <div style={{ marginBottom: myPage || teaching.length ? 22 : 0 }}>
+                          <div style={{ fontSize: 9.5, fontWeight: 900, letterSpacing: 1, color: MUTED, margin: "0 0 9px" }}>
+                            ASKED TO TAKE · {askedToTake.length}
+                          </div>
+                          {askedToTake.map((c) => (
+                            <ClassTile
+                              key={c.id}
+                              danceClass={askToTileClass(c)}
+                              city={c.businessCity}
+                              href={`/c/${c.classShareSlug}`}
+                              actions={
+                                <AnswerAsk
+                                  classPersonId={c.id}
+                                  line={`${c.businessName} wants you to take this class${c.startsAt ? ` · ${when(c.startsAt)}` : ""}${c.payPerSessionInr > 0 ? ` · ₹${c.payPerSessionInr.toLocaleString("en-IN")} a session` : ""}. Saying yes puts you on it and opens its register.`}
+                                />
+                              }
+                            />
+                          ))}
+                        </div>
+                      ) : null}
                       {myPage && manage ? (
                         <ClassesManager embedded businessId={myPage.id} classes={manage.classes} filledBySession={manage.filled} artists={manage.artists} publishState={manage.state} whyNoClass={manage.whyNoClass} nowIso={new Date().toISOString()} />
                       ) : null}
@@ -267,9 +316,13 @@ export default async function MyClassesPage({ searchParams }: { searchParams: Pr
                           ))}
                         </div>
                       ) : null}
-                      {myPageClasses.length === 0 && teaching.length === 0 ? (
+                      {myPageClasses.length === 0 && teaching.length === 0 && askedToTake.length === 0 ? (
                         <div style={{ textAlign: "center", padding: "40px 20px", color: SUB, border: "1.5px dashed var(--el)", borderRadius: 20, fontSize: 13, lineHeight: 1.5 }}>
-                          Nothing to run yet. A studio asks you onto a class as the person taking it, you say yes in your Inbox, and it appears here.
+                          {/* ⚠ IT NO LONGER POINTS AT THE INBOX (30 Sep 2026) — the
+                              ask lands at the top of this very segment now, and
+                              saying otherwise sent people looking for a screen
+                              they did not need. */}
+                          Nothing to run yet. When a studio asks you onto a class as the person taking it, the ask arrives here and you answer it on the spot.
                         </div>
                       ) : null}
                     </>
@@ -310,6 +363,29 @@ export default async function MyClassesPage({ searchParams }: { searchParams: Pr
                job you hold on it where a booked card carries its booking action */
             node: (
               <>
+                {/* the same ask, the same card, the same RPC — an assistant's
+                    side of what the Manage segment above does (30 Sep 2026) */}
+                {askedToAssist.length > 0 ? (
+                  <div style={{ marginBottom: assisting.length ? 22 : 0 }}>
+                    <div style={{ fontSize: 9.5, fontWeight: 900, letterSpacing: 1, color: MUTED, margin: "0 0 9px" }}>
+                      ASKED TO ASSIST · {askedToAssist.length}
+                    </div>
+                    {askedToAssist.map((c) => (
+                      <ClassTile
+                        key={c.id}
+                        danceClass={askToTileClass(c)}
+                        city={c.businessCity}
+                        href={`/c/${c.classShareSlug}`}
+                        actions={
+                          <AnswerAsk
+                            classPersonId={c.id}
+                            line={`${c.businessName} wants you to assist on this class${c.startsAt ? ` · ${when(c.startsAt)}` : ""}. Saying yes puts you on it.`}
+                          />
+                        }
+                      />
+                    ))}
+                  </div>
+                ) : null}
                 {assisting.map((c) => (
                   <ClassTile
                     key={c.id}
@@ -327,9 +403,9 @@ export default async function MyClassesPage({ searchParams }: { searchParams: Pr
                     }
                   />
                 ))}
-                {assisting.length === 0 && (
+                {assisting.length === 0 && askedToAssist.length === 0 && (
                   <div style={{ textAlign: "center", padding: "40px 20px", color: SUB, border: "1.5px dashed var(--el)", borderRadius: 20, fontSize: 13, lineHeight: 1.5 }}>
-                    Nothing you assist on yet. A studio asks you onto a class, you say yes in your Inbox, and it appears here.
+                    Nothing you assist on yet. When a studio asks you onto a class, the ask arrives here and you answer it on the spot.
                   </div>
                 )}
               </>

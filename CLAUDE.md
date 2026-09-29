@@ -2,7 +2,113 @@
 
 ## LAST SESSION (30 Sep 2026) — replaced on every push (Rule 13)
 
-> ### THE FOUNDER CAN TAKE IT BACK — THREE MIGRATIONS APPLIED AND THE WORLD SWEPT (30 Sep 2026, latest) — ⚠ `20260929140000` · `20260929150000` · `20260930090000`, read back live **14/14**
+> ### CLASSES, END TO END — TEN FINDINGS, EIGHT FIXED, ONE RETRACTED (30 Sep 2026, latest) — ⚠⚠ ONE MIGRATION WRITTEN, DRY-RUN **20/20** AND **HELD** (NEXT TO DO #0b2), ⚠ NOT COMMITTED TO ORIGIN
+> The user: *"check end to end flow for the classes and its permissions and logics
+> in all cases"*, then *"fix classes entirely"*. So: the whole path read — both
+> forms, the register, the class page, the booking and register RPCs, the
+> triggers and the RLS policies — the app half fixed, and the database half
+> written, proven and held.
+> * ⚠⚠ **A MANAGER READ A DESK WHOSE EVERY WRITE RLS REFUSES.** R55 opened the
+>   classes register to managers on 28 Sep and **only the Create button was
+>   re-checked**, while `classes` UPDATE has been the OWNER's since 18 Sep — so
+>   Edit bounced back with no word, Publish printed the raw *"Class not found or
+>   not yours to change"*, and ⚠⚠ **Delete reported SUCCESS and deleted nothing**:
+>   the update is refused by policy as **zero rows and no error**, and
+>   `softDeleteClass` deliberately asks for no rows back (a soft-deleted row
+>   satisfies no SELECT policy, so a RETURNING would reject the statement). It
+>   reads the row back now — **a write whose status nobody reads is not a write**,
+>   this file's own lesson, met a third time.
+> * ⚠⚠ **`findMyEnrolledSessionIds` NEVER SAID WHOSE BOOKINGS IT WANTED — THE
+>   SEVENTH INSTANCE OF "RLS IS A CEILING, NOT A SCOPE", AND THE DIRECT SIBLING
+>   OF A FUNCTION FIXED FOR EXACTLY THIS ON 19 Sep.** `class_bookings` carries two
+>   SELECT policies — *your own* and *your business's roster* — and this read
+>   filtered on neither, so anybody on a studio's team saw **"Enrolled ✓" on their
+>   own studio's classes because a LEARNER had booked one**, with a Cancel button
+>   carrying that learner's booking id. Nothing was ever cancelled (the RPC is
+>   `user_id = auth.uid()`), so the cost was a screen lying in both directions —
+>   and past the 200-row cap, a busy studio's owner losing their OWN seat out of a
+>   list it had crowded out. ⚠ Walk-ins made it worse: a `user_id = null` row
+>   passes an unfiltered read exactly as a stranger's does.
+> * ⚠⚠ **NOTHING IN THIS APP HAS EVER COMPLETED A CLASS.** `update_class_status`
+>   is called with `"published"` and with nothing else in the tree; no trigger and
+>   no cron writes `'completed'`. So the register's **Completed tab was
+>   permanently empty**, `done` on the class page was never true — making the
+>   completed view, FINAL METRICS and the final register **unreachable code** —
+>   and every class ever published stayed published. `classPhaseAt` derives the
+>   phase from the session in ONE place and every surface reads it; ⚠ **no cron
+>   was added**, deliberately, because the app is now right and a scheduled job on
+>   a live database to make a column agree with it buys nothing today.
+> * ⚠⚠ **AND THE SHELVES LISTED LAST MONTH'S CLASSES UNDER "UPCOMING CLASSES"
+>   WITH A BOOK BUTTON THAT ALWAYS FAILED.** `findPublishedClasses` had no clock
+>   in it at all, and `book_class_session` refuses `starts_at <= now()` — a raw
+>   refusal AFTER the press, on the two surfaces whose whole convention is to say
+>   why before it. The read filters to what has not started; the class page says
+>   **"This class has already started"** where the bar was, and names the door as
+>   the way in.
+> * ⚠⚠⚠ **AND ONE FINDING WAS MINE AND IS RETRACTED.** I reported that moving a
+>   published class's time bypassed the room guard — and it does not:
+>   `sessions_room_check_after` is a **`create constraint trigger`** on
+>   `class_sessions` calling `assert_room_ok`, and my search matched
+>   `create trigger` and missed it. **A narrow pattern reports a small number and
+>   reads like a finding**; the dry run's own check 6 now proves the rule holds.
+>   The migration shrank from three items to two because of it.
+> * **AND THE INVITES AND REQUESTS ARE MANAGEABLE IN THE CLASSES SECTION**, which
+>   was the user's own follow-up. ⚠⚠ A **venue request had no home there at all**
+>   — the class belongs to the ARTIST's page, so `findClassesByBusiness` never
+>   returned one and a studio's rooms were being committed with its classes desk
+>   silent; it is a **Requests tab**, drawn only when there is something on it,
+>   answering through the same RPC the Inbox calls. A row that says *"⏳ {name}
+>   asked"* can now **Withdraw** it, and one whose teacher said no offers **Ask
+>   somebody else ›**. ⚠⚠ And `/my-classes` carries **ASKED TO TAKE / ASKED TO
+>   ASSIST** — both its empty states had been telling people to *"say yes in your
+>   Inbox"* since Step 11 gave the class page its own Accept card, and a plain
+>   user asked to teach had **`runs === false`, so Manage was not drawn and the
+>   ask had nowhere to be answered from at all.**
+> * ⚠ **THE BOUNDARY IS WRITTEN DOWN SO THIS DOES NOT BECOME TWO INBOXES**: the
+>   Inbox answers *what is waiting on me across everything*, the classes section
+>   *what is waiting on this class* — same RPC, same `ClassTile`, one source.
+>   Class asks deliberately STAY in the Inbox: the bar's badge is how somebody who
+>   had no reason to open Classes learns a studio wants them on Saturday.
+> * ⚠ **AND A DEFECT IN MY OWN WORK, FOUND BY READING IT BACK RATHER THAN BY A
+>   RUN**: answering the LAST room request takes the Requests tab out of the pill
+>   row while the view is still on it — no rows, no pill, and the empty state is
+>   guarded against that tab, so the desk went blank. The open tab falls back.
+> * ⚠⚠ **ONE MIGRATION, WRITTEN AND HELD — `20260930100000_a_class_says_what_changed`,
+>   dry run 20/20 rolled back.** Two things, both about a class that ALREADY HAS
+>   PEOPLE ON IT: a **capacity floor** (`assert_room_ok` compared the number with
+>   the ROOM's and nothing else, so a class with twenty booked could be set to
+>   five) and **telling the people who booked** when a session moves or a published
+>   class is called off — `class_sessions` carried no notify trigger at all, so a
+>   studio could move Saturday to Sunday and twenty people found out by turning
+>   up. ⚠ The replaced `assert_room_ok` is the catalog's own body with one block
+>   added, **proven by diffing the two line by line** rather than asserted (the
+>   28 Sep lesson: five of six re-typed bodies were wrong). ⚠ It promises NOTHING
+>   about money, because taking a class down creates no refund rows — said out
+>   loud rather than invented.
+> * **Verified:** typecheck 0 · lint 0 · `next build` green · dry run **20/20
+>   rolled back** (⚠ including check 0, the Rule 18 probe) · a new
+>   **`scripts/shots/shoot-classes.js` 34/34** driving every finding in a real
+>   browser — the manager's three absent controls asserted **with the Draft tab
+>   open**, the Completed tab counting the class that ran, a room request
+>   answered from the desk and read back out of the database, an ask withdrawn, a
+>   past class off the shelf and a live one saying so, **the owner NOT told they
+>   are enrolled on a learner's seat**, and somebody asked to teach accepting it
+>   in the Classes section · **`shoot-register` 57/57**, the same tally as before
+>   · **the whole e2e suite 56/56 in ONE run, 17.3 min on one worker, no red at
+>   any point.**
+> * ⚠ **Three reds in the shoot's first run were all the CHECK**, and one is worth
+>   keeping: `/^Publish/` matches the **"Published, 2 classes" tab pill**, so the
+>   manager's check read 1 and — worse — **the owner's own version passed for the
+>   WRONG REASON**. A check that can pass for the wrong reason is not a check. The
+>   other two were a studio left UNLISTED (so the learner could read none of its
+>   classes, and every shelf assertion was measuring the demo world's Kathak
+>   class instead) and a studio trying to name a venue, which the database refuses
+>   in words.
+> * ⚠ **NOT COMMITTED TO ORIGIN AND NOTHING APPLIED.** The work is one local
+>   commit; the migration is pending and its list is #0b2. My `next start` on
+>   :3100 was stopped afterwards.
+
+> ### THE FOUNDER CAN TAKE IT BACK — THREE MIGRATIONS APPLIED AND THE WORLD SWEPT (30 Sep 2026, earlier) — ⚠ `20260929140000` · `20260929150000` · `20260930090000`, read back live **14/14**
 > The user, on the three things put to them with a recommendation each: **"All
 > three"** (apply the pending migrations), **"Leave it"** (the stats-history
 > migration — *"the columns are honest as they are"*) and **"Sweep it, kept set
@@ -8484,6 +8590,61 @@ summary; the report has the evidence.
 
 ## NEXT TO DO — replaced on every push (Rule 13)
 
+0b2. **⚠⚠ ONE MIGRATION WRITTEN, DRY-RUN 20/20 AND HELD FOR YOUR WORD —
+   `20260930100000_a_class_says_what_changed`.** ⚠ Rule 9: it adds two notify
+   triggers on live tables and one new refusal to a function every class write
+   passes through. **It is the only pending file**, and the classes work it
+   belongs to is a local commit that is **NOT pushed**.
+   **THE WHOLE OF IT, so it is read before it is applied:**
+   * **1 · A CAPACITY FLOOR.** `assert_room_ok` is the one guard on capacity and
+     it compares the number with the ROOM's capacity and nothing else — so a
+     class with twenty people booked can be set to five, the register then reads
+     "20 of 5 booked", and every fill bar in the app draws past 100%. One block
+     added. ⚠ **Above the `room_id is null` early return on purpose**: an
+     artist's class at a map link has no room, so anything below that return
+     would guard a studio's classes and not theirs (the dry run's check 5 is
+     exactly that case).
+   * **2 · THE PEOPLE HOLDING A SEAT ARE TOLD.** `class_sessions` has carried no
+     notify trigger at all and a soft delete of a published class raises nothing
+     — so a studio can move Saturday's class to Sunday, or take it off the
+     calendar, and the twenty people holding a seat find out by turning up.
+     `notify_class_moved` (after update of `starts_at, ends_at`) and
+     `notify_class_called_off` (after update of `deleted_at`, published only).
+     ⚠ Both are AFTER triggers returning null, and `notify()` never raises, so
+     neither can roll a legitimate edit back. ⚠ A walk-in has no account to tell.
+     ⚠ The kind is `'class'`, which is what the CHECK admits — the venue trigger
+     wrote `'classes'` for eight days and every one of its notifications was
+     silently dropped (26 Sep 2026); the plural is the trap.
+   * ⚠⚠ **THE REPLACED `assert_room_ok` IS THE CATALOG'S OWN BODY WITH ONE BLOCK
+     ADDED, AND THAT IS PROVEN RATHER THAN CLAIMED** — the two were diffed line
+     by line and the only differences are the new `v_taken` declaration, the new
+     block, and the old combined `if not found or room_id is null` split into two
+     guards so the floor sits above the return. **A re-typed function is one that
+     can differ**: five of six were wrong on 28 Sep.
+   * **NOTHING ELSE MOVES**: no table, no column, no policy, no grant on anything
+     that exists, no signature. Asserted by the dry run — **anon's executable set
+     unchanged at 39, public policies unchanged at 103**, neither new function
+     executable by a client role, and `assert_room_ok` replaced rather than
+     overloaded.
+   * ⚠ **WHAT IT DELIBERATELY DOES NOT DO, so it is not re-proposed:** no
+     `run_class_clock()` cron (the app derives the phase now, so a job to make the
+     stored column agree buys nothing today), and **no automatic refund** when a
+     class is called off — deleting a published class leaves its bookings live and
+     creates no refund rows, and making a delete cancel-and-refund every seat is a
+     decision about somebody's money that deserves its own slice. The
+     notification therefore says what happened and **promises nothing about the
+     money**.
+   **On your word:**
+```
+   $env:NODE_PATH="<a scratchpad with pg>\node_modules"
+   node scripts/dry-run-migration.js supabase/migrations/20260930100000_a_class_says_what_changed.sql <checks>   # 20/20, rolled back
+   powershell -NoProfile -ExecutionPolicy Bypass -File scripts/db-push.ps1 -DryRun   # must list exactly this one file
+   powershell -NoProfile -ExecutionPolicy Bypass -File scripts/db-push.ps1 2>&1 | Select-String -NotMatch 'Skipping migration|Warning: failed to cache|prerequisite for local'
+   powershell -NoProfile -ExecutionPolicy Bypass -File scripts/run-proofs.ps1 classes rooms-people attendance enrollments notifications
+```
+   ⚠ No PostgREST reload is needed (no column, no table). Then push the classes
+   commit and read it back off the deployment.
+
 0b1. **~~ONE MIGRATION WRITTEN AND HELD~~ — ✅ APPLIED 30 Sep 2026** on the user's
    *"All three"*, after its list and its 27/27 dry run had been in front of them.
    ⚠ Rule 9: it widens who may remove whom. The user: *"main person who created
@@ -10632,6 +10793,31 @@ for the database schema. **The UI is not redesigned** — see Rule 2.
 
 ### Progress tracker — update after EVERY push (Rule 11)
 
+- **CLASSES, END TO END — 30 Sep 2026, no step number ⚠ (Rule 9: a manager could
+  reach controls RLS refuses, and a member was shown a learner's booking as
+  their own) — BUILT; ⚠⚠ ONE MIGRATION WRITTEN, DRY-RUN 20/20 AND HELD (#0b2),
+  NOT COMMITTED TO ORIGIN.** The user: *"check end to end flow for the classes
+  and its permissions and logics in all cases"*, then *"fix classes entirely"*.
+  Ten findings; **eight fixed, one retracted as my own search error, one left as
+  a decision**. ⚠⚠ A **manager** read a register whose Edit, Publish and Delete
+  RLS all refuse — and Delete **reported success and deleted nothing**, because a
+  policy refusal is zero rows and no error. ⚠⚠ `findMyEnrolledSessionIds` scoped
+  to neither the user nor the business, so a studio's own team saw **"Enrolled ✓"
+  on a learner's seat** — the seventh instance of *RLS is a ceiling, not a scope*.
+  ⚠⚠ **Nothing has ever completed a class**, so the Completed tab could never
+  fill and the whole completed view was unreachable code; the phase is derived
+  from the session now (`classPhaseAt`), with **no cron**, deliberately. ⚠⚠ The
+  shelves listed **last month's classes under "Upcoming"** with a Book button
+  `book_class_session` always refused. ⚠⚠⚠ And **one finding was mine and is
+  retracted**: `create constraint trigger` is not `create trigger`, and the room
+  guard on a moved session was there all along. Plus the user's follow-up — **the
+  class invites and requests are manageable in the Classes section**: a Requests
+  tab for the rooms artists ask for (which had no home there at all), Withdraw on
+  a waiting ask, and ASKED TO TAKE / ASKED TO ASSIST on `/my-classes`, whose empty
+  states had pointed at the Inbox since Step 11. **typecheck 0 · lint 0 · build
+  green · dry run 20/20 rolled back · a new `shoot-classes` 34/34 ·
+  `shoot-register` 57/57 · the whole e2e suite 56/56 in ONE run, 17.3 min on one
+  worker, no red at any point.**
 - **THE FOUNDER CAN TAKE IT BACK, AND THREE MIGRATIONS GO IN — 30 Sep 2026, no
   step number ⚠ (Rule 9: who may remove an owner, and two tables with no policy
   at all) — THREE MIGRATIONS APPLIED** (`20260929140000`, `20260929150000`,
@@ -15641,6 +15827,7 @@ nothing to lift.
 
 | Gap | Prototype ref | Closes with |
 |-----|--------------|-------------|
+| **The classes slice, what it left (30 Sep 2026):** ⚠⚠ **A TEAM MEMBER STILL CANNOT BOOK A CLASS AT THEIR OWN STUDIO, AND IS TOLD NOTHING** — `showBar = !isMember` on the class page, and the DATABASE refuses no such thing (`book_class_session` has no membership test). For an owner that is right and silent; for FACULTY who want to train where they teach it is a dead end with no sentence. **Left as a DECISION rather than guessed**, because the two honest answers differ (say *"your place here is the register, not a seat"*, or let them book) and only the user can pick; a line drawn for every owner on every class page would be noise. ⚠ **Deleting a published class still leaves its bookings live and creates no refund rows** — the register's own sheet says *"N enrolled students must be refunded"* and nothing refunds them; the held migration's notification therefore promises nothing about money. ⚠ **`updateClassDetails` is two updates with no transaction** (the class, then its session), so a failure between them leaves a class edited and its time not — an RPC would fix it and is a migration. ⚠ **The Roster page and the class page's Attendance tab are still two lists of the same people behind two different gates** (owner\|manager vs `can_run_register_for_class`, which also admits a trainer); **kept deliberately** — the happy path drives the Roster pill and Rule 14 protects the address, so collapsing it is not worth breaking a working story. ⚠ **`findPublishedClasses` now INNER-joins the session**, so a legacy class with no session row drops off both shelves; it could not be booked either, and nothing in production has one. ⚠ **A class's `status` column still never reaches `'completed'`** — every screen derives it, so anything reading the column directly (an export, a future report) still sees `published` for ever | S_class 12405; S_classesmod 15048 | a decision on the member's bar; a refund slice; an RPC for the edit; a cron only if something reads the column |
 | ~~**THE HISTORY LIBRARY AND THE FOUR LEADERBOARDS ARE NOT REACHABLE**~~ — ✅ **CLOSED 30 Sep 2026, AND THE ROW LASTED ONE DAY.** It was written on 29 Sep when C86 deleted `StatsScreen`, and it said the thing that turned out to matter: *"a board or a history screen is a SCREEN away rather than a rebuild"*, which is exactly what it cost to put them back — the four reads were kept and marked `⚠ NO CALLER` for this reason and every one of them has a caller again. ⚠ **The lesson is the 28 Sep sweep's own, paid off twice in two days: "an export nothing calls is sometimes a feature nobody can reach."** Keeping them is what made the restore a re-wire rather than a rewrite | S_profiletab 9708, 9610 | closed |
 | **The three-column restore, what it LEAVES (30 Sep 2026):** ⚠⚠ **the graphs, the number grid's LISTS and the whole History column are the CALLER's own** — `my_session_history` and `my_dance_stats` take no `p_user_id` by Step 25's design and there is no per-studio or per-crew equivalent at all, so on anybody else's record those columns say which read is missing rather than drawing an empty shelf. ⚠⚠ **AND THIS IS A DECISION NOW, NOT A PENDING ITEM (30 Sep 2026): the user chose to LEAVE IT** — *"the columns are honest as they are"* — having been shown the shape they had already picked (*taught + assisted only* for a person, since their teaching is already public through `person_teaches_at` and on class pages while the classes they TOOK are a movement log; a studio's own sessions public, being published classes; and ⚠ a crew's practices NEVER, R53). **So no migration is owed here.** What somebody else's record shows is the figures and the full Rankings board, with History saying whose it is — and the day that stops being enough, the shape is already decided and the reads are named above. ⚠ **A studio's and a crew's Record is its BOARD ROW**, which is thinner than a person's three sides and is thin honestly rather than padded — a crew's is one term since the events removal took "Event entered · +3 pts". ⚠ **`stats.artists` is hard-coded 0 by `publicPerson.ts`** because `person_dance_stats` returns no such column, which is why "Assisted for" / "Trained under" are LEFT OUT of somebody else's grid rather than drawn as zeros. ⚠ **No shoot script drives the three columns for a SIGNED-IN reader** — the happy path does, and the live probe covers a stranger | S_profiletab 9862, 9708, 9610 | one migration, when the user says go |
 | **The two-column hubs and the Practice tile, what they leave (30 Sep 2026):** ⚠ **`SegmentedPanels` mounts only the shown panel**, so anything in the second column is not in the DOM until it is asked for — which made `shoot-practice` stale for a day when Practice became a column, and cost `shoot-seats` a re-cut here. **Any check that reads a second column must carry its `?show=`.** ⚠ **A studio's hub has no third column for taught-at**: it rides in "Where you learned" under its own head, so the pill's count is both lists and the label names one of them. ⚠ **`/crews?show=practices` is a dead parameter now** — it lands on the Yours column rather than 404ing, which is Rule 14's spirit, and nothing redirects it to `/practice`. ⚠ **Practice's repaint moved the DESK's hero and the calendar's practice rows too**, which is correct (a tile and the desk it opens read one vocabulary) and is the widest blast radius a colour change has had here | — | a redirect if anybody misses it; a third column only if a studio asks |

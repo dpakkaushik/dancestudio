@@ -143,13 +143,39 @@ export async function findStudiosAttended(supabase: SupabaseClient, userId: stri
   return out;
 }
 
-/** Session ids of the learner's live bookings — marks tiles on the public listing. */
+/** Session ids of the learner's live bookings — marks tiles on the public listing.
+ *
+ *  ⚠⚠ MINE MEANS MINE HERE TOO (30 Sep 2026) — the SEVENTH time this file has
+ *  had to write it, and the direct sibling of `findMyClassBookings` above, which
+ *  was fixed for exactly this on 19 Sep and left this one alone.
+ *
+ *  `class_bookings` carries TWO select policies: *your own rows*, and *the
+ *  business's members read its roster*. This read filtered on neither — so for
+ *  anybody on a studio's team it came back with EVERY live booking in that
+ *  studio, keyed by session. On Discover and `/classes` that painted
+ *  "Enrolled ✓" on their own studio's classes because a LEARNER had booked one,
+ *  with a Cancel button carrying that learner's booking id. Nothing was ever
+ *  cancelled (`cancel_class_booking` is `user_id = auth.uid()` and refused it),
+ *  so the cost was a screen that lied in both directions: somebody else's seat
+ *  shown as yours, and — past the 200-row cap on a busy studio — your own seat
+ *  missing from a list it had crowded out.
+ *
+ *  ⚠ Walk-ins made it worse rather than better: since 29 Sep a walk-in row
+ *  carries `user_id = null`, and a null passes an unfiltered read exactly as a
+ *  stranger's row does.
+ *
+ *  RLS IS A CEILING, NOT A SCOPE. The spine says `user_id`. */
 export async function findMyEnrolledSessionIds(
   supabase: SupabaseClient
 ): Promise<Map<string, { id: string; status: ClassBookingStatus }>> {
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return new Map();
   const { data, error } = await supabase
     .from("class_bookings")
     .select("id, status, session_id")
+    .eq("user_id", user.id)
     .in("status", ["enrolled", "waitlisted"])
     .is("deleted_at", null)
     .limit(200);
