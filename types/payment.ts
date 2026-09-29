@@ -62,6 +62,17 @@ export interface ClassMoney {
   /** Asked for and not settled — its "Requested" + "Processing" rows.
    *  Declined and failed refunds are in neither total, as there too. */
   owedInr: number;
+  /** ⚠⚠ SEATS PAID FOR WITH A MEMBERSHIP PASS (29 Sep 2026, backlog #0a2).
+   *
+   *  Without this the tab did not add up and said nothing about why: a pass
+   *  costs the holder nothing AT THE DOOR — the money came in when the pass was
+   *  bought, on a different day and against a different class — so such a seat
+   *  counts under "Seats taken" and contributes NOTHING to "Came in". A studio
+   *  selling passes read ten seats at ₹300 and "Came in ₹1,500" with no line
+   *  between the two, which reads as four unpaid seats rather than four spent
+   *  passes. The figures were always right; the screen simply would not explain
+   *  itself, which on a money screen is its own defect. */
+  passSeats: number;
 }
 
 /** cancel_class_booking_with_reason's money outcome, when the seat was paid for. */

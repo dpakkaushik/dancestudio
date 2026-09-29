@@ -60,7 +60,7 @@ export function ClassEarnings({
   figures,
   earningsHref,
 }: ClassEarningsProps) {
-  const { collectedInr, refundedInr, owedInr } = figures;
+  const { collectedInr, refundedInr, owedInr, passSeats } = figures;
   const net = collectedInr - refundedInr;
 
   return (
@@ -101,6 +101,17 @@ export function ClassEarnings({
             tint={styleColor}
           />
           <Line label="Price a seat" value={money(priceInr)} tint="var(--sub)" />
+          {/* ⚠⚠ THE LINE THAT MAKES THE REST ADD UP (29 Sep 2026, #0a2).
+              A pass costs the holder nothing AT THE DOOR — the money came in
+              when the pass was bought, on another day and against no class in
+              particular — so the seat counts above and adds nothing to "Came
+              in". Ten seats at ₹300 over "Came in ₹1,500" reads as four unpaid
+              seats until this line says it was four spent passes.
+              ⚠ Drawn only when there ARE any: a class nobody used a pass on
+              should not carry a row about passes. */}
+          {passSeats ? (
+            <Line label="Paid with a pass" value={`${passSeats} ${passSeats === 1 ? "seat" : "seats"}`} tint="var(--sub)" />
+          ) : null}
           <Line label="Came in" value={money(collectedInr)} tint={GREEN} />
           {refundedInr ? (
             <Line label="Refunded" value={`−${money(refundedInr)}`} tint={SOFT_RED} />

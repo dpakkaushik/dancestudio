@@ -3166,15 +3166,28 @@ test.describe.serial("DanceOS, end to end", () => {
     const ses = (await (await fetch(`${supabaseUrl}/rest/v1/class_sessions?class_id=eq.${cls[0].id}&select=id`, { headers: adminHeaders })).json()) as Array<{ id: string }>;
     const bk = (await (await fetch(`${supabaseUrl}/rest/v1/class_bookings?session_id=eq.${ses[0].id}&user_id=eq.${learnerId}&select=id`, { headers: adminHeaders })).json()) as Array<{ id: string }>;
     const ago = (h: number) => new Date(Date.now() - h * 3600_000).toISOString();
-    await fetch(`${supabaseUrl}/rest/v1/class_sessions?id=eq.${ses[0].id}`, { method: "PATCH", headers: adminHeaders, body: JSON.stringify({ starts_at: ago(3), ends_at: ago(2) }) });
-    await fetch(`${supabaseUrl}/rest/v1/attendance`, {
+    /* ⚠⚠ BOTH SET-UP WRITES ARE CHECKED, AND THAT IS THE POINT (29 Sep 2026).
+       They were fired and forgotten, so a PATCH that did not land left the
+       session in the FUTURE — where `my_routines` correctly counts nothing — and
+       the test then reported `routine-sessions` as "0" against an expected "1".
+       That reads as a product bug and is a failed fixture. A write whose status
+       nobody reads is this file's own recurring lesson (20 Sep: "a cleanup that
+       does not read its own status is not a cleanup"), and here it cost a run. */
+    const back = await fetch(`${supabaseUrl}/rest/v1/class_sessions?id=eq.${ses[0].id}`, { method: "PATCH", headers: adminHeaders, body: JSON.stringify({ starts_at: ago(3), ends_at: ago(2) }) });
+    expect(back.ok, `back-dating the session failed: ${back.status} ${await back.clone().text()}`).toBe(true);
+    const att = await fetch(`${supabaseUrl}/rest/v1/attendance`, {
       method: "POST",
       headers: adminHeaders,
       body: JSON.stringify({ class_booking_id: bk[0].id, session_id: ses[0].id, class_id: cls[0].id, business_id: cls[0].business_id, user_id: learnerId, created_by: ownerId, updated_by: ownerId }),
     });
+    expect(att.ok, `writing the attendance row failed: ${att.status} ${await att.clone().text()}`).toBe(true);
     await trainer.reload();
-    await expect(trainer.getByTestId("routine-sessions")).toHaveText("1");
-    await expect(trainer.getByTestId("routine-dancers")).toHaveText("1");
+    /* ⚠ fifteen seconds, like every other post-mutation assertion in this suite
+       (the style chip 19 Sep, "Since 2016" 18 Sep, `You're booked` 28 Sep): the
+       count is a server read behind a reload, and on a busy worker that outruns
+       the default five. */
+    await expect(trainer.getByTestId("routine-sessions")).toHaveText("1", { timeout: 15_000 });
+    await expect(trainer.getByTestId("routine-dancers")).toHaveText("1", { timeout: 15_000 });
     // and the people are named, with how many of its sessions each turned up to
     await expect(trainer.getByRole("link", { name: `Open ${learnerName}'s profile` })).toBeVisible();
     await expect(trainer.getByText("DANCERS WHO LEARNED IT · 1")).toBeVisible();

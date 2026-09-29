@@ -238,7 +238,7 @@ export async function findClassMoney(
   supabase: SupabaseClient,
   classId: string
 ): Promise<ClassMoney> {
-  const [paymentsRes, refundsRes] = await Promise.all([
+  const [paymentsRes, refundsRes, passesRes] = await Promise.all([
     supabase
       .from("payments")
       /* payments carry no class_id — the join through orders is the same spine
@@ -255,11 +255,24 @@ export async function findClassMoney(
       .eq("orders.class_id", classId)
       .is("deleted_at", null)
       .limit(MAX_MONEY_ROWS),
+    /* ⚠ THE SEATS A PASS PAID FOR — the line that makes the tab add up (#0a2).
+       `membership_uses` carries `class_id` ITSELF, so this is a plain filter and
+       not a third join; one live row per booking, by its own unique index.
+       ⚠ NO MIGRATION: `a business reads uses on its own classes` has admitted
+       this studio's members since 19 Sep 2026, and the Earnings tab is already
+       the owner's by presentation. */
+    supabase
+      .from("membership_uses")
+      .select("id")
+      .eq("class_id", classId)
+      .is("deleted_at", null)
+      .limit(MAX_MONEY_ROWS),
   ]);
 
   for (const [what, res] of [
     ["payments", paymentsRes],
     ["refunds", refundsRes],
+    ["membership uses", passesRes],
   ] as const) {
     if (res.error) {
       throw new Error(`payments.findClassMoney(${what}) failed: ${res.error.message}`);
@@ -274,6 +287,7 @@ export async function findClassMoney(
     collectedInr: sum(payments),
     refundedInr: sum(refunds.filter((r) => r.status === "processed")),
     owedInr: sum(refunds.filter((r) => r.status === "requested" || r.status === "pending")),
+    passSeats: (passesRes.data ?? []).length,
   };
 }
 

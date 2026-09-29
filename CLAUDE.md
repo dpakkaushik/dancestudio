@@ -2,7 +2,86 @@
 
 ## LAST SESSION (29 Sep 2026) — replaced on every push (Rule 13)
 
-> ### THE APP SPEAKS THE DATABASE'S LANGUAGE AT LAST — #0y STAGES 1 AND 2 (29 Sep 2026, latest) — no migration, ⚠ ZERO BEHAVIOUR CHANGE BY CONSTRUCTION
+> ### A SEAT PAID WITH A PASS SAYS SO, AND TWO MIGRATIONS ARE WRITTEN AND HELD (29 Sep 2026, latest) — ⚠⚠ NEITHER APPLIED (NEXT TO DO #0b0)
+> The user: *"fix all of them and ask me questions with suggestions to solve
+> them"*, and the four remaining backlog rows were put to them with a
+> recommendation each. All four recommendations were taken.
+> * ⚠⚠ **A SEAT PAID WITH A PASS READ AS AN UNPAID SEAT (#0a2).** On a class's
+>   Earnings tab a membership seat counts under **Seats taken** and contributes
+>   NOTHING to **Came in** — correctly, because the money arrived when the pass
+>   was bought, on another day and against no class in particular — and **nothing
+>   on the card said so**. Ten seats at ₹300 over "Came in ₹1,500" reads as four
+>   unpaid seats rather than four spent passes. **The figures were always right
+>   and the screen would not explain itself**, which on a money screen is its own
+>   defect. One line — *"Paid with a pass · 4 seats"* — between the price and what
+>   came in. ⚠ **NO MIGRATION**: `membership_uses` carries `class_id` itself, so
+>   it is a filter rather than a third join, and the policy *"a business reads
+>   uses on its own classes"* has admitted this studio's members since 19 Sep.
+>   ⚠ Drawn only when there ARE any — a class nobody spent a pass on should not
+>   carry a row about passes.
+> * ⚠⚠ **AND #0aj WAS NOT BUILT, BECAUSE READING THE CODE CORRECTED THE QUESTION
+>   I HAD ASKED.** The user chose to fold the public schedule into the profile
+>   page after I put its cost to them as **a query** on the app's most-visited
+>   public surface, answerable by reading on the press. That framing was wrong.
+>   A public schedule is `CalendarScreen mode="public"` — **1,085 lines**, with a
+>   `position: sticky` controls block the scroll helper measures and a
+>   `position: fixed` scrim for its date panel. Folding it in nests a whole second
+>   screen inside the profile page: a sticky bar stranded half way down a scroll
+>   and a fixed child inside a page section, **which is the stacking-context
+>   family this repo has paid for four times**. ⚠ **A decision the user made on a
+>   premise I supplied is my premise to check before it is executed** — the same
+>   lesson as 29 Sep's "I told them that account was empty" — so it is corrected
+>   in the row with three honest options rather than built on the wrong one.
+>   **A page-count target is not worth a worse page.**
+> * ⚠⚠ **TWO MIGRATIONS WRITTEN, DRY-RUN 18/18 AND 14/14, AND HELD** (#0b0) —
+>   backlog #5, the records a marketplace keeps and this one does not.
+>   `search_events` + `impressions` (what people looked for and what they were
+>   shown — today a studio with no bookings and a studio nobody was ever shown
+>   look identical from every screen, and they are opposite problems), and
+>   `email_events`. ⚠ **There is no client door to any of them**: the obvious
+>   shape — an RPC granted to anon so the browser can record — is a spam vector
+>   wearing a feature's clothes, since Discover is public. Discover and the search
+>   box already render on OUR server, so the rows are written there with the
+>   service role; RLS is on and **there is not one policy**, the precedent being
+>   `webhook_events` and `rate_limits`. ⚠ An impression is **one row per SHELF,
+>   not per card** — fifty cards is fifty rows under the obvious design, and the
+>   question a studio asks is answered as well by an ordered array.
+> * ⚠⚠ **AND THE EMAIL LOG'S SHAPE FOLLOWS FROM A FACT THAT WAS CHECKED RATHER
+>   THAN ASSUMED: THIS APP SENDS NO EMAIL AT ALL.** Every message is sent by
+>   Supabase Auth over Resend SMTP; there is no Resend API call anywhere in the
+>   tree. So a log written where the app "sends" could only record *"we asked
+>   Supabase to ask Resend"*, which is already in the auth logs and is not the
+>   question — **the delivery outcome exists only at Resend**. It is therefore a
+>   webhook ledger in `webhook_events`' exact shape: one row per delivery, unique
+>   on the Svix message id, append-only, **idempotent by construction rather than
+>   by care**, with no status column that can go backwards. ⚠ It does nothing
+>   until two things the USER owns are done — a webhook at resend.com pointing at
+>   `/api/webhooks/resend`, and its signing secret in env.
+> * ⚠⚠ **AND THE FIRST DRY RUN CAUGHT A CHECK THAT ACCEPTED THE ONE ROW IT EXISTS
+>   TO REFUSE.** `array_length(subject_ids, 1) between 1 and 200` passes for an
+>   EMPTY array, because `array_length('{}', 1)` is **NULL**, `NULL between …` is
+>   NULL, and **a CHECK passes on NULL — only FALSE fails one**. So an impression
+>   recording that nothing was shown would have gone straight in. `coalesce(…, 0)`
+>   is load-bearing, and the dry run is the only thing that could have said so.
+> * ⚠ **AND THE E2E'S TWO REDS WERE THE MACHINE AND A FIXTURE, PROVEN RATHER THAN
+>   WAVED AWAY.** The first was `happy-path:2741`, the ROOM ALREADY BUSY segment
+>   — a 120 s timeout waiting for a `Continue` button with **no "intercepts
+>   pointer events"** in the log, which is this segment's own recorded signature
+>   for the fourth time — and it PASSED on the re-run. ⚠ Checked rather than
+>   assumed: stage 3 touched **no file under `components/`** at all, so
+>   `FormPage`, which names that button, is untouched, and `ClassForm`'s nine
+>   changes are pure renames nowhere near the clash. ⚠⚠ The second was a **WRONG
+>   VALUE**, which this file's own criterion says is NOT automatically the
+>   machine: `routine-sessions` read 0 where 1 was expected. The cause is a
+>   FIXTURE — the segment back-dates a session and writes an attendance row with
+>   the service role, and **neither `fetch`'s status was ever read**, so a PATCH
+>   that did not land leaves the session in the FUTURE, where the count is
+>   correctly 0, and the test reports a number instead of the real cause. Both
+>   writes are asserted now, by name, and the two assertions carry the fifteen
+>   seconds every other post-mutation assertion in this suite has. **A write whose
+>   status nobody reads is this file's own lesson, and here it cost a run.**
+
+> ### THE APP SPEAKS THE DATABASE'S LANGUAGE AT LAST — #0y STAGES 1, 2 AND 3 (29 Sep 2026, earlier) — no migration, ⚠ ZERO BEHAVIOUR CHANGE BY CONSTRUCTION
 > The user: *"fix all of them and ask me questions with suggestions to solve
 > them"*, and, asked how to take the rename the 16 Sep session deferred
 > (*"strings now, identifiers next"*), they chose **two stages**. This is stage 1:
@@ -8238,6 +8317,70 @@ summary; the report has the evidence.
 
 ## NEXT TO DO — replaced on every push (Rule 13)
 
+0b0. **⚠⚠ TWO MIGRATIONS WRITTEN, DRY-RUN AND HELD FOR THE USER'S WORD — backlog
+   #5, the records a marketplace keeps and this one does not.** ⚠ Rule 9: both
+   add tables, and one of them stores a search term, which is personal data.
+   The user chose *"write and dry-run, show me the list"*, so here it is.
+   * **`20260929140000_what_people_looked_for_and_what_they_were_shown.sql` —
+     dry run 18/18, rolled back.** Two tables. **`search_events`**: the term, the
+     city, which tab, and how many rows answered — ⚠ **a result count of ZERO is
+     the most valuable row in it**, because a term people search and DanceOS
+     cannot answer is either a studio that should exist or a word the search box
+     does not understand, and there is a partial index for exactly that query.
+     **`impressions`**: one row per SHELF rendered — surface, city, kind, and the
+     subject ids **in order**, so position is answerable without a column.
+     ⚠ **One row per shelf and not per card**: fifty cards is fifty rows under the
+     obvious design, and "how often was I shown?" is answered as well by an array
+     (GIN indexed). Two definer reads, both a platform admin's:
+     `search_terms_with_no_answer` and `impressions_for_business`.
+   * **`20260929150000_whether_the_email_actually_arrived.sql` — dry run 14/14,
+     rolled back.** One table, `email_events`, plus `email_history_for` and
+     `email_delivery_pulse`. ⚠⚠ **Its shape follows from a fact that was CHECKED:
+     this app sends no email at all** — every message goes Supabase Auth → Resend
+     SMTP, and there is no Resend API call anywhere in the tree — so a log written
+     where the app "sends" could only record *"we asked Supabase to ask Resend"*,
+     which is already in the auth logs. The delivery OUTCOME exists only at
+     Resend. So it is a webhook ledger in `webhook_events`' exact shape: one row
+     per delivery, **unique on the Svix message id**, append-only, and idempotent
+     by construction — a redelivery is a duplicate key and a no-op, which matters
+     because **a log that counts a retry as a second bounce invents a failure.**
+     ⚠ An event kind Resend adds later is RECORDED rather than dropped.
+   * ⚠⚠ **NO CLIENT DOOR TO ANY OF THE THREE, AND THAT IS THE DESIGN.** The
+     obvious shape — an RPC granted to anon so the browser can record — is a spam
+     vector wearing a feature's clothes, since Discover is public and neither
+     table can carry a rate limit that means anything. Discover and the search box
+     already render on OUR server, so the rows are written there with the SERVICE
+     ROLE and the browser is never involved. **RLS is on and there is not one
+     policy**; the precedent is `webhook_events` and `rate_limits`. The dry runs
+     assert it: **0 policies, 0 grants to anon or authenticated, on all three.**
+   * ⚠ **WHAT WIDENS FOR A STRANGER: NOTHING.** No anon grant, no anon-executable
+     function, no public read. Search terms and delivery histories are readable
+     only by a platform admin, through definer functions that answer the SERVICE
+     ROLE with **emptiness rather than an error** (the 10 Sep rule), which the dry
+     runs also assert.
+   * ⚠ **AND THE FIRST DRY RUN EARNED ITS KEEP**: `array_length(subject_ids, 1)
+     between 1 and 200` **accepted an empty array**, because `array_length('{}',1)`
+     is NULL and **a CHECK passes on NULL — only FALSE fails one**. The one row the
+     constraint exists to refuse would have gone straight in. `coalesce(…, 0)` now.
+   * ⚠⚠ **WHAT IS NOT BUILT AND IS SAID RATHER THAN IMPLIED**: nothing WRITES to
+     any of the three yet. The tables and the reads are the half that needs a
+     migration; the server-side recording on Discover and the search box, and
+     `/api/webhooks/resend` with its Svix signature check, are app code and are
+     the next slice. **Applying these three changes what nobody sees until that
+     lands** — which is why they can be applied safely whenever you say, and why
+     applying them alone achieves nothing on its own.
+   **On your word:**
+```
+   # the two dry runs again, if you want them re-proven first
+   $env:NODE_PATH="<scratchpad>\node_modules"
+   node scripts/dry-run-migration.js supabase/migrations/20260929140000_what_people_looked_for_and_what_they_were_shown.sql <scratchpad>/checks-140000.js
+   node scripts/dry-run-migration.js supabase/migrations/20260929150000_whether_the_email_actually_arrived.sql <scratchpad>/checks-150000.js
+   powershell -NoProfile -ExecutionPolicy Bypass -File scripts/db-push.ps1 -DryRun   # must list exactly these two
+   powershell -NoProfile -ExecutionPolicy Bypass -File scripts/db-push.ps1 2>&1 | Select-String -NotMatch 'Skipping migration|Warning: failed to cache|prerequisite for local'
+```
+   ⚠ A PostgREST schema reload is NOT needed — the app selects none of these
+   tables, which is the same reason applying them is safe on its own.
+
 0az. **~~ONE AUTH ACCOUNT IS HELD BACK~~ — ✅ ENDED AND DELETED 29 Sep 2026**, on
    the user's *"End the subscriptions, then delete"*. **0 auth accounts remain on
    a soft-deleted `role = 'org'` profile.**
@@ -9286,6 +9429,28 @@ summary; the report has the evidence.
    * **Schedule as a segment of the public page** rather than `/…/schedule` —
      −1 for an artist and −1 for a studio. ⚠ Rule 14: the route stays and
      redirects, because a schedule link is a thing studios hand out.
+     ⚠⚠ **PUT TO THE USER ON 29 Sep 2026 AND THEY CHOSE TO FOLD IT IN — AND THEN
+     READING `CalendarScreen` CORRECTED THE QUESTION, SO IT WAS NOT BUILT.** The
+     cost was offered to them as *a query on the app's most-visited public
+     surface*, answerable by reading the schedule only when the segment opens.
+     **That framing was wrong and the real cost is larger**: a public schedule is
+     `CalendarScreen mode="public"` — **1,085 lines**, with a `position: sticky`
+     controls block (`data-dos-sticky`, which the scroll helper measures) and a
+     `position: fixed` scrim for its date panel. Folding it in nests a whole
+     second screen inside the profile page: a sticky bar stranded half way down a
+     scroll, and a fixed child inside a page section — **the stacking-context
+     family this repo has paid for four times** (16 Sep, 22 Sep C54, 27 Sep
+     `PickSheet`, 28 Sep the contact row). ⚠ It would also put two navigation
+     systems on one page, under a hero, a bio, a contact row, memberships and
+     the association groups.
+     **So the honest options are not what was offered**, and this needs the
+     user's word again: (a) leave the two pages; (b) fold in a LIGHT summary —
+     the next few sessions as class tiles, with "See the full schedule ›" still
+     opening the page — which improves the profile and reduces NO pages; or
+     (c) rebuild the public schedule as a panel with no sticky and no date
+     panel, which is a real piece of work and a different screen from the one a
+     studio hands a link to. ⚠ **A page-count target is not worth a worse page**,
+     which is the thing the original row never weighed.
    * ~~**`/crews/{id}/manage` folded into `/crew/{id}`**~~ — ⚠ **REFUSED, and
      deliberately** (C57, 23 Sep 2026): `AppChrome` decides "entity home" from
      the PATHNAME alone and cannot know the viewer's relationship, and `CrewHome`
@@ -9598,14 +9763,25 @@ summary; the report has the evidence.
    the pass unpaid (it needs the webhook rail, which `rls-proof-event-money`
    exercises for events and nothing exercises for a membership).
 
-0a2. **THE SECOND HALF OF "MEMBERSHIPS IN EARNINGS", IF THE USER WANTS IT.** The
-   money is counted (a membership payment carries `business_id`, so gross, the
-   method split and the month statements have always included it) and the
-   statement now names two sources. What it does NOT do: a period chip or a
-   filter by source, a membership line on the CLASS page's Earnings tab (a seat
-   paid by a pass shows as a seat with no payment against it, which reads as an
-   unpaid seat on the register's meta line), and nothing tells a studio how much
-   of what it sold is still unspent — a real liability figure it may want.
+0a2. **THE SECOND HALF OF "MEMBERSHIPS IN EARNINGS" — ✅ THE PART THAT WAS A
+   DEFECT IS DONE (29 Sep 2026); THE TWO THAT ARE WISHES ARE NOT.** The money has
+   always been counted (a membership payment carries `business_id`, so gross, the
+   method split and the month statements include it) and the statement names two
+   sources.
+   **✅ THE CLASS PAGE'S EARNINGS TAB NOW SAYS WHEN A PASS PAID.** A membership
+   seat counts under **Seats taken** and adds nothing to **Came in** — correctly,
+   because the money arrived when the pass was bought — and nothing said so, so
+   ten seats at ₹300 over "Came in ₹1,500" read as four UNPAID seats. One line,
+   *"Paid with a pass · N seats"*, between the price and what came in. ⚠ **No
+   migration**: `membership_uses` carries `class_id` itself, and the policy *"a
+   business reads uses on its own classes"* has admitted this studio's members
+   since 19 Sep 2026. ⚠ Drawn only when there are any.
+   **⚠ WHAT IS LEFT, AND BOTH ARE WISHES RATHER THAN DEFECTS:** a period chip or
+   a filter by source on the statement, and **how much of what a studio sold is
+   still UNSPENT** — a real liability figure, and the more interesting of the two,
+   since a studio that has taken ₹80,000 of passes owes that many classes. It is
+   countable today (`memberships.units` × live passes, less `membership_uses`)
+   and needs a screen and a decision about where it belongs, not schema.
 
 0s. **~~THE FIVE PROFILE-PAGE MIGRATIONS ARE NOT APPLIED~~ — APPLIED 19 Sep 2026**
    on the user's third "push to live" (the top block: the classifier accepted the
@@ -10177,6 +10353,36 @@ for the database schema. **The UI is not redesigned** — see Rule 2.
 
 ### Progress tracker — update after EVERY push (Rule 11)
 
+- **A SEAT PAID WITH A PASS SAYS SO, AND TWO MIGRATIONS ARE HELD — 29 Sep 2026,
+  no step number — ⚠ TWO MIGRATIONS WRITTEN AND DRY-RUN, NEITHER APPLIED
+  (#0b0).** The last four backlog rows, each put to the user with a
+  recommendation. **#0a2**: a class's Earnings tab said nothing when a seat was
+  paid with a PASS, so ten seats at ₹300 over "Came in ₹1,500" read as four
+  unpaid seats — the figures were right and **the screen would not explain
+  itself**, which on a money screen is its own defect. One line, no migration
+  (`membership_uses` carries `class_id`, and the policy has admitted a studio's
+  members since 19 Sep). ⚠⚠ **#0aj was NOT built, because reading the code
+  corrected the question I had asked**: I put its cost to the user as *a query*,
+  and a public schedule is `CalendarScreen mode="public"` — **1,085 lines with a
+  `position: sticky` block and a `position: fixed` scrim** — so folding it in
+  nests a second screen inside the profile page, which is the stacking-context
+  family this repo has paid for four times. **A decision the user makes on a
+  premise I supplied is my premise to check before it is executed**; three honest
+  options are in the row. **#5**: two migrations written and dry-run **18/18 and
+  14/14**, HELD — `search_events` + `impressions` (⚠ **one row per SHELF, not per
+  card**) and `email_events`, all three with **no client door and not one
+  policy**, written by the server with the service role. ⚠⚠ The email log's shape
+  follows from a CHECKED fact — **this app sends no email at all**, so the
+  delivery outcome exists only at Resend and the table is a webhook ledger,
+  idempotent on the Svix id, because **a log that counts a retry as a second
+  bounce invents a failure**. ⚠ The first dry run caught a CHECK that **accepted
+  the one row it exists to refuse**: `array_length('{}', 1)` is NULL and **a
+  CHECK passes on NULL**. ⚠ The e2e's two reds were the machine (the ROOM ALREADY
+  BUSY timeout, for the fourth time, passing on re-run — and stage 3 touched **no
+  file under `components/`**) and a FIXTURE: a wrong value caused by two
+  service-role writes **whose status was never read**, so a PATCH that did not
+  land left the session in the future where the count is correctly 0. Both
+  asserted now, with the fifteen seconds every other post-mutation assertion has.
 - **THE COMPOUNDS, AND TWO BUGS `tsc` PASSED — #0y STAGE 3 — 29 Sep 2026, no step
   number — no migration.** ⚠⚠ Stage 1's `\b<word>\b` cannot match a camelCase
   compound, so **122 identifiers survived** a pass that reported 1,898 rewrites
