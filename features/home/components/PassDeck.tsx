@@ -25,7 +25,7 @@ const DOS_MONO = 'ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mon
  *  implementation: the sheets are the class page's own.
  *
  *  ⚠⚠ THE DRAWN CODE AND THE TICKET SHEET WENT ON 29 Sep 2026, with the same
- *  claim on the class page (the user: "scan this at door text not required as
+ *  classPerson on the class page (the user: "scan this at door text not required as
  *  your personal qr code for user or artist profile is being used to enter the
  *  classes"). The strip drew a 54px QR of `bookingCodeOf(…)` that opened a
  *  full-screen `PassSheet` reading "Scan this at the door." — and **no door in
@@ -116,7 +116,7 @@ export function PassDeck({ items }: { items: DeckItem[] }) {
 
   const classCard = (p: DeckClassItem): ReactNode => {
     const c = p.danceClass;
-    const booked = p.enrollment?.status === "enrolled";
+    const booked = p.classBooking?.status === "enrolled";
     return (
       <ClassTile
         danceClass={c}
@@ -129,9 +129,9 @@ export function PassDeck({ items }: { items: DeckItem[] }) {
         roleLabel={p.roleLabel}
         live={p.live}
         actions={
-          booked && p.enrollment ? (
+          booked && p.classBooking ? (
             <BookingStrip
-              code={bookingCodeOf(p.enrollment.id)}
+              code={bookingCodeOf(p.classBooking.id)}
               going={false}
               onInvoice={() => setInv(p)}
               onCancel={() => setRef(p)}
@@ -182,20 +182,20 @@ export function PassDeck({ items }: { items: DeckItem[] }) {
         </div>
       ) : null}
 
-      {inv && inv.enrollment ? (
+      {inv && inv.classBooking ? (
         <InvoiceSheet
           title={inv.danceClass.title}
           whenText={whenTextOf(inv.startsAt, inv.endsAt)}
           whereText={[inv.danceClass.room, inv.tenantCity].filter(Boolean).join(", ")}
-          enrollmentId={inv.enrollment.id}
+          classBookingId={inv.classBooking.id}
           amountInr={inv.receipt?.amountInr ?? null}
           method={inv.receipt?.method ?? null}
           onClose={() => setInv(null)}
         />
       ) : null}
-      {ref && ref.enrollment ? (
+      {ref && ref.classBooking ? (
         <RefundSheet
-          enrollmentId={ref.enrollment.id}
+          classBookingId={ref.classBooking.id}
           title={ref.danceClass.title}
           timeText={whenTextOf(ref.startsAt, ref.endsAt)}
           amountInr={ref.receipt?.amountInr ?? 0}

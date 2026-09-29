@@ -3,7 +3,7 @@ import { dosClassLabel } from "@/lib/constants/styles";
 import type { RefundRequest, RefundStatus } from "@/types/refund";
 
 /** The refund queue for one class. RLS already admits the studio's members to
- *  their tenant's refunds (Step 9) and the learner to their own; WHO MAY SETTLE
+ *  their business's refunds (Step 9) and the learner to their own; WHO MAY SETTLE
  *  is narrower than who may read, and that is decided in the RPCs by
  *  can_settle_refunds_for_class. */
 
@@ -36,11 +36,11 @@ const REFUND_SELECT =
  *  same reasoning as the invoice ledger's applies. */
 export interface RefundLedgerRow extends RefundRequest {
   classId: string;
-  tenantId: string;
+  businessId: string;
   classTitle: string;
   classStyle: string;
   classShareSlug: string | null;
-  tenantName: string;
+  businessName: string;
 }
 interface LedgerRow extends RefundRow {
   orders: {
@@ -65,20 +65,20 @@ const toLedger = (r: LedgerRow): RefundLedgerRow => ({
   settledOffline: r.settled_offline,
   hasRailReference: r.provider_refund_id !== null,
   classId: r.orders?.class_id ?? "",
-  tenantId: r.orders?.business_id ?? "",
+  businessId: r.orders?.business_id ?? "",
   /* a class is called "{style} · {level}", never a stored name (types/class.ts); an event keeps its title */
   classTitle: r.orders?.classes ? dosClassLabel(r.orders.classes.style, r.orders.classes.level) : (r.orders?.events?.title ?? "Booking"),
   classStyle: r.orders?.classes?.style ?? (r.orders?.events ? "Event ticket" : ""),
   classShareSlug: r.orders?.classes?.share_slug ?? null,
-  tenantName: r.orders?.businesses?.name ?? "",
+  businessName: r.orders?.businesses?.name ?? "",
 });
 
 /** every refund against a business's classes, newest first — members read it (Step 9) */
-export async function findRefundsByTenant(supabase: SupabaseClient, tenantId: string): Promise<RefundLedgerRow[]> {
+export async function findRefundsByTenant(supabase: SupabaseClient, businessId: string): Promise<RefundLedgerRow[]> {
   const { data, error } = await supabase
     .from("refunds")
     .select(REFUND_SELECT)
-    .eq("orders.business_id", tenantId)
+    .eq("orders.business_id", businessId)
     .is("deleted_at", null)
     .order("created_at", { ascending: false })
     .limit(300);

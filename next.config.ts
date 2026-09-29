@@ -82,12 +82,12 @@ const nextConfig: NextConfig = {
       { source: "/my-events", destination: "/", permanent: false },
       /* a business's events desk, its manager and both forms — the business's
          own home is what its owner still has */
-      { source: "/business/:tenantId/events", destination: "/business/:tenantId", permanent: false },
-      { source: "/business/:tenantId/events/:rest*", destination: "/business/:tenantId", permanent: false },
-      { source: "/business/:tenantId/gst", destination: "/business/:tenantId", permanent: false },
+      { source: "/business/:businessId/events", destination: "/business/:businessId", permanent: false },
+      { source: "/business/:businessId/events/:rest*", destination: "/business/:businessId", permanent: false },
+      { source: "/business/:businessId/gst", destination: "/business/:businessId", permanent: false },
       /* an ORGANIZATION's Team desk lived here; a studio's is `/staff`, which is
          where somebody typing this address almost certainly meant to go */
-      { source: "/business/:tenantId/team", destination: "/business/:tenantId/staff", permanent: false },
+      { source: "/business/:businessId/team", destination: "/business/:businessId/staff", permanent: false },
       /* the crew's battle record */
       { source: "/crews/:crewId/manage/events", destination: "/crews/:crewId/manage", permanent: false },
     ];

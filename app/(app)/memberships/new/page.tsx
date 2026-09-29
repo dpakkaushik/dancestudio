@@ -27,7 +27,7 @@ export default async function NewMembershipPage({ searchParams }: { searchParams
   }
   const teams = await findMyTeams(supabase).catch(() => []);
   /* an organization's hosting row sells nothing — a membership is spent on classes */
-  const sellers = teams.filter((m) => m.memberRole === "owner" && (m.tenant.type === "studio" || m.tenant.type === "artist_page")).map((m) => m.tenant);
+  const sellers = teams.filter((m) => m.memberRole === "owner" && (m.business.type === "studio" || m.business.type === "artist_page")).map((m) => m.business);
   const owned = (business ? sellers.find((t) => t.id === business) : sellers.find((t) => t.type === "artist_page")) ?? null;
   if (!owned) {
     /* back to the desk that sent them, which says why there is nothing to sell from */

@@ -247,10 +247,10 @@ export function sourceRows(m: MonthIncome): Array<[string, number]> {
 /** A real statement, not a toast: the figures on screen, as a CSV the studio can
  *  hand to its accountant. The prototype's control fires a demo toast (18081);
  *  ours writes the file and then says so. */
-function downloadStatement(tenantName: string, month: MonthIncome) {
+function downloadStatement(businessName: string, month: MonthIncome) {
   const net = month.grossInr - month.refundedInr;
   const rows: Array<Array<string | number>> = [
-    ["DanceOS statement", tenantName],
+    ["DanceOS statement", businessName],
     ["Month", month.label],
     [],
     ["WHERE IT CAME FROM", ""],
@@ -287,13 +287,13 @@ function downloadStatement(tenantName: string, month: MonthIncome) {
  *  payouts; ours counts the payments that made the month, which is the real
  *  number we have. */
 export function MonthStatements({
-  tenantName,
+  businessName,
   months,
   openKey,
   onToggle,
   onDownloaded,
 }: {
-  tenantName: string;
+  businessName: string;
   months: MonthIncome[];
   openKey: string | null;
   onToggle: (key: string) => void;
@@ -309,7 +309,7 @@ export function MonthStatements({
         const open = openKey === m.key;
         const toggle = () => onToggle(m.key);
         const download = () => {
-          downloadStatement(tenantName, m);
+          downloadStatement(businessName, m);
           onDownloaded(m.label);
         };
         return (

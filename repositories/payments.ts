@@ -18,7 +18,7 @@ interface OrderRow {
 
 const toOrder = (row: OrderRow): PaymentOrder => ({
   id: row.id,
-  tenantId: row.business_id,
+  businessId: row.business_id,
   classId: row.class_id ?? null,
   sessionId: row.session_id ?? null,
   /* `eventId` / `eventBookingId` went with events (29 Sep 2026). The COLUMNS
@@ -108,11 +108,11 @@ export async function attachProviderOrder(
 /** Cancel a booking (seat now, refund by policy window). Returns the money side. */
 export async function cancelBooking(
   supabase: SupabaseClient,
-  enrollmentId: string,
+  classBookingId: string,
   reason: string | null
 ): Promise<RefundOutcome | null> {
   const { data, error } = await supabase.rpc("cancel_class_booking_with_reason", {
-    p_class_booking_id: enrollmentId,
+    p_class_booking_id: classBookingId,
     p_reason: reason,
   });
   if (error) {
@@ -167,15 +167,15 @@ interface ReceiptRow {
   }>;
 }
 
-/** The captured payment behind a booking — RLS admits the payer and the tenant. */
+/** The captured payment behind a booking — RLS admits the payer and the business. */
 export async function findPaidReceiptByEnrollment(
   supabase: SupabaseClient,
-  enrollmentId: string
+  classBookingId: string
 ): Promise<PaidReceipt | null> {
   const { data, error } = await supabase
     .from("orders")
     .select("status, payments (provider_payment_id, amount_inr, method, status, created_at)")
-    .eq("class_booking_id", enrollmentId)
+    .eq("class_booking_id", classBookingId)
     .in("status", ["paid", "refund_pending", "refunded"])
     .is("deleted_at", null)
     .order("created_at", { ascending: false })
@@ -213,13 +213,13 @@ interface ClassMoneyRow {
  *  count. We do — so this sums what was actually captured, and a comped or unpaid
  *  seat cannot inflate what the class made. The rest is its own arithmetic.
  *
- *  Reads are plain RLS-shaped queries: Step 9 admits a tenant's members to its
+ *  Reads are plain RLS-shaped queries: Step 9 admits a business's members to its
  *  orders, payments and refunds, and the public to none. WHO SEES THE TAB is
  *  narrower still and decided by the page — the owner alone, matching the
  *  prototype's own `isMine` gate on the Earnings segment (11757). */
 /** The learners whose order on this session is paid — one read so the register
  *  can print "paid" / "due" beside a name (prototype 12126-12127). Members read
- *  their tenant's orders (Step 9); a learner never reaches this. */
+ *  their business's orders (Step 9); a learner never reaches this. */
 export async function findPaidUserIdsBySession(supabase: SupabaseClient, sessionId: string): Promise<Set<string>> {
   const { data, error } = await supabase
     .from("orders")
@@ -392,7 +392,7 @@ interface DeckReceiptRow {
 
 /** The captured payments behind several bookings at once — Home's deck asks for
  *  a day's worth in one read rather than one per card. Same rows, same RLS as
- *  `findPaidReceiptByEnrollment`: the payer and the tenant's members. */
+ *  `findPaidReceiptByEnrollment`: the payer and the business's members. */
 export async function findPaidReceiptsByEnrollments(
   supabase: SupabaseClient,
   enrollmentIds: string[]

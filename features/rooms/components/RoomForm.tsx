@@ -39,7 +39,7 @@ import { SUB } from "@/lib/design/tokens";
  *  ⚠ AND IT IS A SHEET ONLY — there is no `/business/{id}/rooms/new` to keep
  *  (Rule 14 protects addresses that were handed out; this one never existed). */
 
-export function RoomForm({ tenantId, tenantName, defaultName }: { tenantId: string; tenantName: string; defaultName: string }) {
+export function RoomForm({ businessId, businessName, defaultName }: { businessId: string; businessName: string; defaultName: string }) {
   const router = useRouter();
   const [pending, start] = useTransition();
   const [confirm, setConfirm] = useState(false);
@@ -61,7 +61,7 @@ export function RoomForm({ tenantId, tenantName, defaultName }: { tenantId: stri
 
   const save = () =>
     start(async () => {
-      const out = await createRoomAction({ tenantId, name: name.trim(), capacity: cap });
+      const out = await createRoomAction({ businessId, name: name.trim(), capacity: cap });
       setConfirm(false);
       if (out.error) return fire(out.error);
       fire("● Room added");
@@ -109,7 +109,7 @@ export function RoomForm({ tenantId, tenantName, defaultName }: { tenantId: stri
         >
           <FormSummary tint={DOS_TOOLS.rooms.c} head={<span style={{ fontSize: 11.5, fontWeight: 800 }}>● Holds {cap || 0}</span>}>
             <b style={{ fontSize: 15 }}>{name.trim()}</b>
-            <div style={{ fontSize: 12, color: SUB, marginTop: 4 }}>At {tenantName}</div>
+            <div style={{ fontSize: 12, color: SUB, marginTop: 4 }}>At {businessName}</div>
           </FormSummary>
         </FormConfirm>
       ) : null}

@@ -2,10 +2,10 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 
 /** The class page's live register (prototype attend tab, 12043-12138): who holds
  *  a seat and whether they are in the room, plus the waitlist queue in join
- *  order. RLS admits the tenant's members; writes go through the RPCs only. */
+ *  order. RLS admits the business's members; writes go through the RPCs only. */
 
 export interface RegisterRow {
-  enrollmentId: string;
+  classBookingId: string;
   learnerName: string;
   checkedIn: boolean;
   /** the learner — the row opens their page. ⚠ NULL for a walk-in (shape 2,
@@ -17,7 +17,7 @@ export interface RegisterRow {
 }
 
 export interface WaitlistRow {
-  enrollmentId: string;
+  classBookingId: string;
   learnerName: string;
   /** ⚠ WHO THIS IS (28 Sep 2026). The register's scanner has to tell "waiting for
    *  a spot" from "not booked at all" — two different sentences to say at a door,
@@ -74,7 +74,7 @@ export async function findClassRegister(
   const rows = all
     .filter((r) => r.status === "enrolled")
     .map((r) => ({
-      enrollmentId: r.id,
+      classBookingId: r.id,
       learnerName: nameOf(r),
       checkedIn: r.attendance.some((a) => a.deleted_at === null),
       userId: r.user_id,
@@ -85,7 +85,7 @@ export async function findClassRegister(
   const waitlist = all
     .filter((r) => r.status === "waitlisted")
     .map((r) => ({
-      enrollmentId: r.id,
+      classBookingId: r.id,
       learnerName: nameOf(r),
       userId: r.user_id,
     }));
@@ -96,22 +96,22 @@ export async function findClassRegister(
   };
 }
 
-export async function checkIn(supabase: SupabaseClient, enrollmentId: string): Promise<void> {
-  const { error } = await supabase.rpc("check_in", { p_class_booking_id: enrollmentId });
+export async function checkIn(supabase: SupabaseClient, classBookingId: string): Promise<void> {
+  const { error } = await supabase.rpc("check_in", { p_class_booking_id: classBookingId });
   if (error) {
     throw new Error(error.message);
   }
 }
 
-export async function undoCheckIn(supabase: SupabaseClient, enrollmentId: string): Promise<void> {
-  const { error } = await supabase.rpc("undo_check_in", { p_class_booking_id: enrollmentId });
+export async function undoCheckIn(supabase: SupabaseClient, classBookingId: string): Promise<void> {
+  const { error } = await supabase.rpc("undo_check_in", { p_class_booking_id: classBookingId });
   if (error) {
     throw new Error(error.message);
   }
 }
 
-export async function giveSpot(supabase: SupabaseClient, enrollmentId: string): Promise<void> {
-  const { error } = await supabase.rpc("give_spot", { p_class_booking_id: enrollmentId });
+export async function giveSpot(supabase: SupabaseClient, classBookingId: string): Promise<void> {
+  const { error } = await supabase.rpc("give_spot", { p_class_booking_id: classBookingId });
   if (error) {
     throw new Error(error.message);
   }
@@ -119,9 +119,9 @@ export async function giveSpot(supabase: SupabaseClient, enrollmentId: string): 
 
 export async function removeFromWaitlist(
   supabase: SupabaseClient,
-  enrollmentId: string
+  classBookingId: string
 ): Promise<void> {
-  const { error } = await supabase.rpc("remove_from_waitlist", { p_class_booking_id: enrollmentId });
+  const { error } = await supabase.rpc("remove_from_waitlist", { p_class_booking_id: classBookingId });
   if (error) {
     throw new Error(error.message);
   }
@@ -185,10 +185,10 @@ export async function addWalkIn(
  *  this can never reach a real person's seat — theirs stays theirs to cancel. */
 export async function removeWalkIn(
   supabase: SupabaseClient,
-  enrollmentId: string
+  classBookingId: string
 ): Promise<void> {
   const { error } = await supabase.rpc("remove_class_walk_in", {
-    p_class_booking_id: enrollmentId,
+    p_class_booking_id: classBookingId,
   });
   if (error) {
     throw new Error(error.message);

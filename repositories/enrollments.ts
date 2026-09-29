@@ -2,7 +2,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { dosClassLabel } from "@/lib/constants/styles";
 import type { ClassLevel, ClassStatus } from "@/types/class";
 import type { EnrollmentStatus, MyEnrollment, RosterEntry } from "@/types/enrollment";
-import type { Tenant } from "@/types/tenant";
+import type { Business } from "@/types/tenant";
 import { TENANT_COLUMNS, toTenant, type TenantRow } from "./tenants";
 
 interface MyEnrollmentRow {
@@ -31,7 +31,7 @@ interface RosterRow {
 }
 
 /** Enroll (or waitlist, when full) via the atomic RPC. Returns the resulting status. */
-export async function enrollInSession(
+export async function bookClassSession(
   supabase: SupabaseClient,
   sessionId: string
 ): Promise<EnrollmentStatus> {
@@ -47,10 +47,10 @@ export async function enrollInSession(
 /** Cancel your own booking via the RPC — a freed spot promotes the first waitlisted. */
 export async function cancelEnrollment(
   supabase: SupabaseClient,
-  enrollmentId: string
+  classBookingId: string
 ): Promise<void> {
   const { error } = await supabase.rpc("cancel_class_booking", {
-    p_class_booking_id: enrollmentId,
+    p_class_booking_id: classBookingId,
   });
   if (error) {
     throw new Error(error.message);
@@ -99,7 +99,7 @@ export async function findMyEnrollments(supabase: SupabaseClient): Promise<MyEnr
       classStatus: r.classes!.status,
       startsAt: r.class_sessions!.starts_at,
       endsAt: r.class_sessions!.ends_at,
-      tenantName: r.businesses?.name ?? "",
+      businessName: r.businesses?.name ?? "",
       tenantCity: r.businesses?.city ?? null,
     }))
     .sort((a, b) => a.startsAt.localeCompare(b.startsAt));
@@ -118,7 +118,7 @@ export async function findMyEnrollments(supabase: SupabaseClient): Promise<MyEnr
  *  typecheck caught that the **Studios hub** (`/business`, R22's "STUDIOS YOU
  *  HAVE LEARNT AT") reads it too, which a grep scoped to `repositories/` had
  *  missed. A tile the user has not asked about is still a caller. */
-export async function findStudiosAttended(supabase: SupabaseClient, userId: string): Promise<Tenant[]> {
+export async function findStudiosAttended(supabase: SupabaseClient, userId: string): Promise<Business[]> {
   const { data, error } = await supabase
     .from("class_bookings")
     .select(`created_at, businesses (${TENANT_COLUMNS})`)
@@ -131,7 +131,7 @@ export async function findStudiosAttended(supabase: SupabaseClient, userId: stri
     throw new Error(`class_bookings.studiosAttended failed: ${error.message}`);
   }
   const seen = new Set<string>();
-  const out: Tenant[] = [];
+  const out: Business[] = [];
   for (const row of (data ?? []) as unknown as Array<{ businesses: TenantRow | null }>) {
     const b = row.businesses;
     /* the `type === "org"` skip went with organizations (29 Sep 2026) — nobody
@@ -164,7 +164,7 @@ export async function findMyEnrolledSessionIds(
   return map;
 }
 
-/** The roster for one class — RLS admits the tenant's members only. */
+/** The roster for one class — RLS admits the business's members only. */
 export async function findRosterByClass(
   supabase: SupabaseClient,
   classId: string

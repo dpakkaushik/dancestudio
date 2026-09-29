@@ -69,7 +69,7 @@ const firstSession = (rows: SessionRow[] | null) => {
 
 const toClass = (row: ClassRow): DanceClass => ({
   id: row.id,
-  tenantId: row.business_id,
+  businessId: row.business_id,
   title: dosClassLabel(row.style, row.level),
   shareSlug: row.share_slug,
   style: row.style,
@@ -94,7 +94,7 @@ const toClass = (row: ClassRow): DanceClass => ({
 });
 
 export interface CreateClassInput {
-  tenantId: string;
+  businessId: string;
   style: string;
   level: ClassLevel;
   room: string | null;
@@ -126,7 +126,7 @@ export async function createClassWithSession(
   input: CreateClassInput
 ): Promise<string> {
   const { data, error } = await supabase.rpc("create_class_with_session", {
-    p_business_id: input.tenantId,
+    p_business_id: input.businessId,
     /* the column and the RPC argument still exist (Rule 4 — the overload lesson);
        what goes in is the label, never a typed name */
     p_title: dosClassLabel(input.style, input.level),
@@ -171,15 +171,15 @@ export async function createClassWithSession(
   return id;
 }
 
-/** A tenant's full catalogue, drafts included — RLS admits members only. */
+/** A business's full catalogue, drafts included — RLS admits members only. */
 export async function findClassesByTenant(
   supabase: SupabaseClient,
-  tenantId: string
+  businessId: string
 ): Promise<DanceClass[]> {
   const { data, error } = await supabase
     .from("classes")
     .select(CLASS_COLUMNS)
-    .eq("business_id", tenantId)
+    .eq("business_id", businessId)
     .is("deleted_at", null)
     .order("created_at", { ascending: false })
     .limit(100);
@@ -218,7 +218,7 @@ export async function findClassById(
  *  the newest 200 can all be Delhi's, and Pune's classes simply stop appearing —
  *  no error, no empty state, just a shorter list. The style rail is ordered by
  *  how many classes each style has, so it goes wrong at the same moment and in
- *  the same silence. Filtering on the tenant's city with an inner join keeps the
+ *  the same silence. Filtering on the business's city with an inner join keeps the
  *  limit meaning what a limit should mean: the most of THIS list, not the most
  *  of every list. */
 export async function findPublishedClasses(
@@ -250,8 +250,8 @@ export async function findPublishedClasses(
   }
   return (data as unknown as PublicClassRow[]).map((row) => ({
     ...toClass(row),
-    tenantName: row.businesses?.name ?? "",
-    tenantType: row.businesses?.type ?? "studio",
+    businessName: row.businesses?.name ?? "",
+    businessType: row.businesses?.type ?? "studio",
     tenantArea: row.businesses?.area ?? null,
     tenantCity: row.businesses?.city ?? null,
     ...venueOf(row),
@@ -260,7 +260,7 @@ export async function findPublishedClasses(
 
 /** One class by its share slug — the /c/{slug} detail page. No policy of its own:
  *  the public resolves published classes of listed businesses, a member resolves
- *  their tenant's drafts too, and anyone else gets null. */
+ *  their business's drafts too, and anyone else gets null. */
 export async function findClassBySlug(
   supabase: SupabaseClient,
   slug: string
@@ -281,8 +281,8 @@ export async function findClassBySlug(
   const row = data as unknown as PublicClassRow;
   return {
     ...toClass(row),
-    tenantName: row.businesses?.name ?? "",
-    tenantType: row.businesses?.type ?? "studio",
+    businessName: row.businesses?.name ?? "",
+    businessType: row.businesses?.type ?? "studio",
     tenantArea: row.businesses?.area ?? null,
     tenantCity: row.businesses?.city ?? null,
     ...venueOf(row),
@@ -416,9 +416,9 @@ export async function softDeleteClass(
  *  style rail narrows a studio or artist by (Step 23). Public rows only, by RLS. */
 export async function findPublishedStylesByTenant(
   supabase: SupabaseClient,
-  tenantIds: string[]
+  businessIds: string[]
 ): Promise<Map<string, string[]>> {
-  const ids = [...new Set(tenantIds)];
+  const ids = [...new Set(businessIds)];
   const out = new Map<string, string[]>();
   if (ids.length === 0) {
     return out;
@@ -481,8 +481,8 @@ export interface ClassPublishState {
   why: string | null;
 }
 
-export async function findClassPublishState(supabase: SupabaseClient, tenantId: string): Promise<Map<string, ClassPublishState>> {
-  const { data, error } = await supabase.rpc("classes_publish_state", { p_business_id: tenantId });
+export async function findClassPublishState(supabase: SupabaseClient, businessId: string): Promise<Map<string, ClassPublishState>> {
+  const { data, error } = await supabase.rpc("classes_publish_state", { p_business_id: businessId });
   if (error) {
     throw new Error(`classes.publishState failed: ${error.message}`);
   }
@@ -509,8 +509,8 @@ export async function findClassPublishState(supabase: SupabaseClient, tenantId: 
  *  organization's hosting row never carries a class; an artist page only while
  *  its owner's plan is live. A failed read answers null — the trigger still
  *  decides, so the worst case is the old behaviour. */
-export async function findWhyNoClass(supabase: SupabaseClient, tenantId: string): Promise<string | null> {
-  const { data, error } = await supabase.rpc("why_no_class", { p_business_id: tenantId });
+export async function findWhyNoClass(supabase: SupabaseClient, businessId: string): Promise<string | null> {
+  const { data, error } = await supabase.rpc("why_no_class", { p_business_id: businessId });
   if (error) return null;
   const s = typeof data === "string" ? data.trim() : "";
   return s.length > 0 ? s : null;
@@ -604,12 +604,12 @@ const VENUE_SELECT = `${CLASS_COLUMNS}, created_at`;
 
 /** The asks waiting on a set of STUDIOS for their rooms — the Requests desk's
  *  Received side for whoever runs them. Says which studios out loud. */
-export async function findVenueRequestsForTenants(supabase: SupabaseClient, tenantIds: string[]): Promise<VenueRequest[]> {
-  if (tenantIds.length === 0) return [];
+export async function findVenueRequestsForTenants(supabase: SupabaseClient, businessIds: string[]): Promise<VenueRequest[]> {
+  if (businessIds.length === 0) return [];
   const { data, error } = await supabase
     .from("classes")
     .select(VENUE_SELECT)
-    .in("venue_business_id", tenantIds)
+    .in("venue_business_id", businessIds)
     .eq("venue_status", "requested")
     .is("deleted_at", null)
     .order("created_at", { ascending: false })
@@ -643,18 +643,18 @@ export async function findMyVenueAsks(supabase: SupabaseClient, pageIds: string[
  *  question `assert_room_ok` asks in the database — a PUBLISHED class of this
  *  room with a live session that overlaps — asked early, so the person reads
  *  the answer in the confirm sheet instead of as a refusal after pressing
- *  Publish. Members read their own tenant's classes and sessions (Step 3), so
+ *  Publish. Members read their own business's classes and sessions (Step 3), so
  *  this is a plain RLS-shaped read; the class being edited is left out, because
  *  a class does not clash with itself. Drafts are not in any room yet (Step 11:
  *  "a draft holds no room at all", 9729), so they never clash. */
 export async function findRoomClash(
   supabase: SupabaseClient,
-  input: { tenantId: string; roomId: string; startsAt: string; endsAt: string; excludeClassId?: string | null }
+  input: { businessId: string; roomId: string; startsAt: string; endsAt: string; excludeClassId?: string | null }
 ): Promise<{ label: string; startsAt: string } | null> {
   let q = supabase
     .from("class_sessions")
     .select("starts_at, ends_at, class_id, classes!inner (id, style, level, room_id, status, deleted_at)")
-    .eq("business_id", input.tenantId)
+    .eq("business_id", input.businessId)
     .is("deleted_at", null)
     .eq("classes.room_id", input.roomId)
     .eq("classes.status", "published")

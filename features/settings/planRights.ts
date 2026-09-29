@@ -29,7 +29,7 @@
  *
  *  ⚠⚠ **THE `org` LIST WENT ON 29 Sep 2026**, and it is the same rule one more
  *  time: it sold a public page, PUBLIC EVENTS, a named team and taking money for
- *  tickets and entries — four claims, three of which the app can no longer keep
+ *  tickets and entries — four classPeople, three of which the app can no longer keep
  *  at all, on the screen where somebody decides to pay ₹5,000 a month. Nothing
  *  passes `kind="org"` any more (the only two call sites are `"studio"` and
  *  `"artist"`), so the type says so rather than leaving a branch nobody renders.

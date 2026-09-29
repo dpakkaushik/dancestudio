@@ -19,7 +19,7 @@ import {
 
 /** Step 22's writes. The RPCs hold every rule — who leads the crew, who may
  *  answer an ask, that the leader cannot leave — so the actions validate shape
- *  and pass through. Every roster change is a claim about a PERSON on a public
+ *  and pass through. Every roster change is a classPerson about a PERSON on a public
  *  page, which is why adding somebody is an ask and never a write. */
 
 export interface CrewActionResult {

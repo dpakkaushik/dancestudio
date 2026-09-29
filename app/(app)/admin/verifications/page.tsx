@@ -51,8 +51,8 @@ export default async function VerificationsPage({
       requests.map(async (r) => {
         /* every request is a studio's now — the reads ask for business_id, so a
            legacy organization row cannot reach this page at all */
-        if (r.tenantId) {
-          proof[r.tenantId] = await findStudioProofPhotos(supabase, r.tenantId).catch(() => []);
+        if (r.businessId) {
+          proof[r.businessId] = await findStudioProofPhotos(supabase, r.businessId).catch(() => []);
         }
       })
     );
@@ -66,12 +66,12 @@ export default async function VerificationsPage({
      something waiting: one RPC for the whole page rather than one per card. */
   const mandates: Record<string, { subscriptionId: string; priceInr: number; granted: boolean }> = {};
   if (tab === "pending" && requests.length > 0) {
-    const ids = new Set(requests.map((r) => r.tenantId).filter(Boolean) as string[]);
+    const ids = new Set(requests.map((r) => r.businessId).filter(Boolean) as string[]);
     for (const status of ["active", "past_due"] as const) {
       const live = await findAdminSubscriptions(supabase, { status, limit: 500 }).catch(() => []);
       for (const s of live) {
-        if (s.tenantId && ids.has(s.tenantId) && !mandates[s.tenantId]) {
-          mandates[s.tenantId] = { subscriptionId: s.id, priceInr: s.priceInr, granted: s.granted };
+        if (s.businessId && ids.has(s.businessId) && !mandates[s.businessId]) {
+          mandates[s.businessId] = { subscriptionId: s.id, priceInr: s.priceInr, granted: s.granted };
         }
       }
     }

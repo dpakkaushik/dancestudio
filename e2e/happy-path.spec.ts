@@ -326,7 +326,7 @@ test.describe.serial("DanceOS, end to end", () => {
   let learnerId: string | null = null;
   let trainerId: string | null = null;
   let adminId: string | null = null;
-  let tenantId: string | null = null;
+  let businessId: string | null = null;
   /* ⚠ `eventsHostId` and `orgName` went on 29 Sep 2026: the organization
      BUSINESS the owner opened, and every address in this story that was keyed
      on it — its events desk, its team, its GST screen, its public page, its
@@ -363,10 +363,10 @@ test.describe.serial("DanceOS, end to end", () => {
   });
 
   test.afterAll(async () => {
-    /* tenant delete cascades classes → sessions → class_bookings; user delete
+    /* business delete cascades classes → sessions → class_bookings; user delete
        cascades the profiles. Cleanup failures surface but don't mask the test. */
-    if (tenantId) {
-      await fetch(`${supabaseUrl}/rest/v1/businesses?id=eq.${tenantId}`, { method: "DELETE", headers: adminHeaders });
+    if (businessId) {
+      await fetch(`${supabaseUrl}/rest/v1/businesses?id=eq.${businessId}`, { method: "DELETE", headers: adminHeaders });
     }
     /* EVERY BUSINESS THESE ACCOUNTS OWN GOES WITH THEM (18 Sep 2026): until
        29 Sep that included the organization the owner opened, and what it still
@@ -674,7 +674,7 @@ test.describe.serial("DanceOS, end to end", () => {
     await owner.goto("/business");
     await hubCard.getByRole("link", { name: `${studioName} — open the studio` }).click();
     await owner.waitForURL(/\/business\/[0-9a-f-]+$/);
-    tenantId = owner.url().match(/\/business\/([0-9a-f-]+)$/)?.[1] ?? null;
+    businessId = owner.url().match(/\/business\/([0-9a-f-]+)$/)?.[1] ?? null;
     await expect(owner.getByRole("heading", { name: studioName, exact: true })).toBeVisible();
     await expect(owner.getByText("Studio Tools")).toBeVisible();
     /* ⚠ ONE EMPTY-DAY CARD FOR EVERY KIND OF HOME (21 Sep 2026, the user: "when
@@ -725,7 +725,7 @@ test.describe.serial("DanceOS, end to end", () => {
     // and Cancel had nothing to undo.
     const proofRows = async () =>
       ((await (
-        await fetch(`${supabaseUrl}/rest/v1/studio_photos?business_id=eq.${tenantId}&deleted_at=is.null&select=id`, { headers: adminHeaders })
+        await fetch(`${supabaseUrl}/rest/v1/studio_photos?business_id=eq.${businessId}&deleted_at=is.null&select=id`, { headers: adminHeaders })
       ).json()) as unknown[]).length;
     // this studio showed DanceOS five photos to be verified, and they ARE its header
     const before = await proofRows();
@@ -751,7 +751,7 @@ test.describe.serial("DanceOS, end to end", () => {
     // 18 Sep 2026: the register's chip rail is gone (the user: "the row below the
     // classes heading … should be removed") — every door it held is a tile on the
     // studio's own home, which is where this goes now.
-    await owner.goto(`/business/${tenantId}`);
+    await owner.goto(`/business/${businessId}`);
     await owner.getByRole("link", { name: "Rooms", exact: true }).click();
     await owner.waitForURL(/\/business\/[0-9a-f-]+\/rooms$/);
     // amenities live with the room and show up on the public class page
@@ -798,7 +798,7 @@ test.describe.serial("DanceOS, end to end", () => {
     trainerId = await signUp(trainer, trainerEmail);
     await onboard(trainer, trainerName, "Pune");
 
-    await owner.goto(`/business/${tenantId}/staff`);
+    await owner.goto(`/business/${businessId}/staff`);
     await owner.getByRole("button", { name: "Add a team member" }).click();
     const inviteSheet = owner.getByRole("dialog", { name: "Add a team member" });
     /* ── ONE WAY IN (20 Sep 2026): the picker. The labels a studio has to give
@@ -842,7 +842,7 @@ test.describe.serial("DanceOS, end to end", () => {
     await trainer.waitForURL(/\/business\/[0-9a-f-]+\/classes$/);
 
     // ---- the class form is a two-step wizard (Step 11) --------------------
-    await owner.goto(`/business/${tenantId}/classes`);
+    await owner.goto(`/business/${businessId}/classes`);
     await owner.getByText("Create class").click();
     // step 1 — basics: when, what, and the room it runs in (no name: the class is
     // called "{style} · {level}", so the register reads "Bollywood · All levels")
@@ -907,7 +907,7 @@ test.describe.serial("DanceOS, end to end", () => {
     await trainer.getByRole("button", { name: `Accept ${classTitle}` }).click();
     await expect(trainer.getByText(/Accepted · you are the artist taking it/)).toBeVisible({ timeout: 15_000 });
     // now the owner publishes from the register — the door the form no longer is
-    await owner.goto(`/business/${tenantId}/classes`);
+    await owner.goto(`/business/${businessId}/classes`);
     await owner.getByRole("button", { name: /^Draft, \d+ classes$/ }).click();
     await owner.getByRole("button", { name: "Publish", exact: true }).click();
     await owner.getByRole("dialog", { name: "Publish this class?" }).getByRole("button", { name: "Publish it" }).click();
@@ -921,7 +921,7 @@ test.describe.serial("DanceOS, end to end", () => {
     // Schedule lists every day with something on it, so the class three days
     // out is there; Month opens on today, which honestly has nothing on.
     // (18 Sep 2026: from the studio's own home, the register's chip rail being gone)
-    await owner.goto(`/business/${tenantId}`);
+    await owner.goto(`/business/${businessId}`);
     await owner.getByRole("link", { name: "Calendar", exact: true }).click();
     await owner.waitForURL(/\/business\/[0-9a-f-]+\/calendar$/);
     await expect(owner.locator(`[aria-label="Open ${classTitle}"]`)).toBeVisible();
@@ -929,12 +929,12 @@ test.describe.serial("DanceOS, end to end", () => {
     await expect(owner.getByText("nothing on")).toBeVisible();
     await owner.getByRole("button", { name: "Day", exact: true }).click();
     await expect(owner.getByText("8 am")).toBeVisible();
-    await owner.goto(`/business/${tenantId}/classes`);
+    await owner.goto(`/business/${businessId}/classes`);
 
     // ---- the earnings desk reads that same ledger (Step 13) ---------------
     // Owner-only, and it is the pay side of the prototype's S_earn — not a
     // payroll desk: the studio settles by bank or UPI and records it here.
-    await owner.goto(`/business/${tenantId}`);
+    await owner.goto(`/business/${businessId}`);
     await owner.getByRole("link", { name: "Earnings", exact: true }).click();
     await owner.waitForURL(/\/business\/[0-9a-f-]+\/earnings$/);
     await expect(owner.getByText(/DanceOS does not move this money/)).toBeVisible();
@@ -952,7 +952,7 @@ test.describe.serial("DanceOS, end to end", () => {
        a past month unmounted the whole expense side. The shared `EarningsScreen`
        says the same money as REVENUE, of the period in the URL, with EXPENSES
        beside it and the net between them, which no money screen here had ever
-       printed. So the claim asserted is the one underneath: a new studio has
+       printed. So the classPerson asserted is the one underneath: a new studio has
        taken nothing, so revenue, expenses and what is left are all ₹0, and the
        four filters are there to choose a window with. */
     await expect(owner.getByRole("heading", { level: 1, name: "Earnings" })).toBeVisible();
@@ -996,7 +996,7 @@ test.describe.serial("DanceOS, end to end", () => {
 
   test("the class page, its share link, and a learner booking from it", async () => {
     // ---- the class detail page + its booking link (Step 8) ----------------
-    await owner.goto(`/business/${tenantId}/classes`);
+    await owner.goto(`/business/${businessId}/classes`);
     await registerTile.click();
     await owner.waitForURL(/\/c\/[a-z0-9-]+$/);
     shareSlug = owner.url().match(/\/c\/([a-z0-9-]+)$/)?.[1] ?? "";
@@ -1238,7 +1238,7 @@ test.describe.serial("DanceOS, end to end", () => {
        cannot tell you the old one was cleared: gone from the unscoped desk, and
        present on the studio's own — which is the address its tile opens. */
     await expect(owner.getByRole("button", { name: /^Enquiry types/ })).toHaveCount(0);
-    await owner.goto(`/enquiries?as=${tenantId}`);
+    await owner.goto(`/enquiries?as=${businessId}`);
     await expect(owner.getByRole("heading", { level: 1, name: "Enquiries" })).toBeVisible();
     /* ⚠ the count is the TYPE's, not a constant: a studio is offered four kinds
        (judging is a person's job), an artist page five, an organization three —
@@ -1472,7 +1472,7 @@ test.describe.serial("DanceOS, end to end", () => {
        this run own studio out of its own result list (10 Sep 2026) */
     await learner.getByLabel("Search DanceOS").fill(studioName);
     await learner.getByRole("option", { name: `${studioName} — Studio · Pune` }).click();
-    await learner.waitForURL(new RegExp(`/studio/${tenantId}$`));
+    await learner.waitForURL(new RegExp(`/studio/${businessId}$`));
 
     await learner.goto("/discover?city=Pune&tab=classes");
     /* Discover is a SHARED shelf: any Bollywood class in Pune wears this same
@@ -1509,7 +1509,7 @@ test.describe.serial("DanceOS, end to end", () => {
     // Nothing in this leg raises a notification: everything the story already did
     // — a seat booked, a person asked onto a class and answering, a crew ask
     // confirmed, an entry made — raised one through a trigger. So the bell is
-    // read as evidence of the rest of the test, which is the whole claim.
+    // read as evidence of the rest of the test, which is the whole classPerson.
     await owner.goto("/");
     await expect(owner.getByTestId("bell-badge")).toBeVisible();
     await owner.getByRole("link", { name: /^Notifications/ }).click();
@@ -1691,7 +1691,7 @@ test.describe.serial("DanceOS, end to end", () => {
     // ORGANIZATION is a business with a page of its own at /org/{business id},
     // which the push-2 segment reads.
     await learner.goto("/discover?city=Pune&tab=classes");
-    /* two claims, each on a term that cannot be crowded out by a leftover: this
+    /* two classPeople, each on a term that cannot be crowded out by a leftover: this
        run stamp finds the trainer, and the owner's name finds the owner */
     await learner.getByLabel("Search DanceOS").fill(stamp);
     /* AN ARTIST IS FOUND ONCE (later on 18 Sep 2026, the user: "should only come
@@ -1831,7 +1831,7 @@ test.describe.serial("DanceOS, end to end", () => {
     /* ── AND THE ROWS IT USED TO CARRY ARE STILL THERE, through the desks. This
        is the half that matters: removing a view is only safe while everything on
        it has another way in. ── */
-    await owner.goto(`/business/${tenantId}/classes`);
+    await owner.goto(`/business/${businessId}/classes`);
     await expect(owner.locator(`[aria-label="Open ${classTitle}"]`)).toBeVisible();
     /* ⚠ and its DESK is one press from the row — the **Roster** pill. This read
        `Manage ${classTitle}` on its first cut, which was S_managed's OWN row
@@ -1869,7 +1869,7 @@ test.describe.serial("DanceOS, end to end", () => {
        profile pages") and the EYE went today, on the user's own question —
        "i guess profile tab and profile page are the same thing?" — which makes
        "no top right button required on profile pages" cover this screen too.
-       ⚠ The claim underneath the old assertion was never "an eye exists": it was
+       ⚠ The classPerson underneath the old assertion was never "an eye exists": it was
        "you can get from here to your public page". That is what is asserted now,
        and it is the DISC that carries it, saying so in plainer words than the
        glyph did. Removing a door is only safe while the other one is there, so
@@ -1880,7 +1880,7 @@ test.describe.serial("DanceOS, end to end", () => {
        point worth keeping. When the corner's eye came off, this line was added to
        prove the door it replaced still existed: the disc, named "Open your public
        page". The profile merge later the same day made THIS page that address, so
-       the disc pointed at what it was standing on and the link went. The claim
+       the disc pointed at what it was standing on and the link went. The classPerson
        underneath survives the control that carried it — you can still reach your
        public address, because you are on it — and that is what is asserted. */
     await expect(trainer.getByRole("link", { name: "Open your public page", exact: true })).toHaveCount(0);
@@ -1999,7 +1999,7 @@ test.describe.serial("DanceOS, end to end", () => {
     // Payments is a real screen now (S_payments 16531): the trainer's goes to their OWN page's desk
     await settings.getByRole("link", { name: /Payments & verification/ }).click();
     await expect(trainer).toHaveURL(/\/business\/[0-9a-f-]+\/payments$/);
-    expect(trainer.url()).not.toContain(tenantId);
+    expect(trainer.url()).not.toContain(businessId);
     await expect(trainer.getByRole("heading", { name: "Payments & verification" })).toBeVisible();
     await expect(trainer.getByText("ACCEPTED FROM STUDENTS")).toBeVisible();
     /* ⚠ AND THIS IS A DRILL PAGE, WHICH IS THE POINT (21 Sep 2026, the user:
@@ -2025,7 +2025,7 @@ test.describe.serial("DanceOS, end to end", () => {
        switcher stopped offering the studio, and a gate closed only in the menu
        that opens it is not closed, so the ADDRESSES are what is driven here. */
     for (const desk of ["payments", "students", "invoices", "refunds", "staff"]) {
-      await trainer.goto(`/business/${tenantId}/${desk}`);
+      await trainer.goto(`/business/${businessId}/${desk}`);
       await expect(trainer).toHaveURL(/\/business$/);
     }
     /* ⚠ and what they KEEP, because that is half the decision: the studio is
@@ -2038,7 +2038,7 @@ test.describe.serial("DanceOS, end to end", () => {
        changes what the business accepts") is UNREACHABLE through the UI until
        `manager` exists — it is the server's guard either way, and the held
        migration is what gives it a person again. */
-    await owner.goto(`/business/${tenantId}/payments`);
+    await owner.goto(`/business/${businessId}/payments`);
     await expect(owner.getByText("ACCEPTED FROM STUDENTS")).toBeVisible();
     await owner.getByRole("button", { name: "Verification" }).click();
     /* 14 Sep 2026: the badge is the STUDIO's now, and an admin gave this studio
@@ -2088,7 +2088,7 @@ test.describe.serial("DanceOS, end to end", () => {
        studio's own home, which is where Settings' THIS STUDIO tile lands. */
     await owner.goto(studioUrl);
     await expect(owner.getByRole("button", { name: "Edit business" })).toHaveCount(0);
-    await owner.goto(`/business/${tenantId}?edit=1`);
+    await owner.goto(`/business/${businessId}?edit=1`);
     const bizEdit = owner.getByRole("dialog", { name: "Edit business" });
     await expect(bizEdit.getByLabel("About")).toHaveCount(0);
     await pick(bizEdit, "Since", "2016");
@@ -2100,7 +2100,7 @@ test.describe.serial("DanceOS, end to end", () => {
        here on 18 Sep 2026 (green alone, nothing on the page changed) */
     await expect(owner.getByText("Since 2016")).toBeVisible({ timeout: 15_000 });
     /* the number, through the studio home's contact sheet — the studio's own */
-    const bizContacts = await openContacts(owner, `/business/${tenantId}`);
+    const bizContacts = await openContacts(owner, `/business/${businessId}`);
     await bizContacts.getByLabel("Phone", { exact: true }).fill("+91 98765 43210");
     await bizContacts.getByRole("button", { name: "Save" }).click();
     await expect(bizContacts).toHaveCount(0, { timeout: 15_000 });
@@ -2208,10 +2208,10 @@ test.describe.serial("DanceOS, end to end", () => {
        once a studio's home stopped offering one (R17, R48). Neither end of that
        sentence exists now. */
     // the studio's question — what is running in its rooms — is asked on the STUDIO's own home
-    await owner.goto(`/business/${tenantId}`);
+    await owner.goto(`/business/${businessId}`);
     await expect(owner.getByTestId("deck-card").first().getByText("At your studio", { exact: true })).toBeVisible();
-    await expect(owner.getByRole("link", { name: "Classes", exact: true })).toHaveAttribute("href", `/business/${tenantId}/classes`);
-    await expect(owner.getByRole("link", { name: "Calendar", exact: true })).toHaveAttribute("href", `/business/${tenantId}/calendar`);
+    await expect(owner.getByRole("link", { name: "Classes", exact: true })).toHaveAttribute("href", `/business/${businessId}/classes`);
+    await expect(owner.getByRole("link", { name: "Calendar", exact: true })).toHaveAttribute("href", `/business/${businessId}/calendar`);
   });
 
   test("the wiring slice: a tick, two numbers, a followers list and two buttons that had no door", async () => {
@@ -2223,7 +2223,7 @@ test.describe.serial("DanceOS, end to end", () => {
     // ── D7: the tick on Discover's cards. Verification is DanceOS's to give
     // (the guard migration makes that a rule, not a comment), so the story sets
     // it the only way anything can: through the service role.
-    const ticked = await fetch(`${supabaseUrl}/rest/v1/businesses?id=eq.${tenantId}`, {
+    const ticked = await fetch(`${supabaseUrl}/rest/v1/businesses?id=eq.${businessId}`, {
       method: "PATCH",
       headers: adminHeaders,
       body: JSON.stringify({ verified_at: new Date().toISOString() }),
@@ -2267,7 +2267,7 @@ test.describe.serial("DanceOS, end to end", () => {
 
     // ── I4: the OTHER end of an enquiry can ring too. The business publishes its
     // number on its own page; the person who asked reads it on the enquiry they sent.
-    const bizSheet = await openContacts(owner, `/business/${tenantId}`);
+    const bizSheet = await openContacts(owner, `/business/${businessId}`);
     await bizSheet.getByLabel("Phone", { exact: true }).fill("+91 90000 11111");
     await bizSheet.getByRole("button", { name: "Save" }).click();
     await expect(bizSheet).toHaveCount(0);
@@ -2291,7 +2291,7 @@ test.describe.serial("DanceOS, end to end", () => {
        same list, and the sheet reads its rows on the press. */
     await owner.goto(studioUrl);
     await expect(owner.getByRole("button", { name: "Followers — see who" })).toHaveCount(0);
-    await owner.getByTestId("tenant-followers").click();
+    await owner.getByTestId("business-followers").click();
     const followersSheet = owner.getByRole("dialog", { name: /^Followers of / });
     const learnerRow = followersSheet.getByRole("link", { name: /E2E Learner/ });
     await expect(learnerRow).toBeVisible();
@@ -2367,9 +2367,9 @@ test.describe.serial("DanceOS, end to end", () => {
        is why this had to be an ADDRESS rather than a redirect: `/memberships`
        sold from "the first business you own", so an organization's second studio
        could not be reached at all. */
-    await owner.goto(`/business/${tenantId}`);
+    await owner.goto(`/business/${businessId}`);
     await owner.getByRole("link", { name: "Memberships", exact: true }).click();
-    await owner.waitForURL(new RegExp(`/business/${tenantId}/memberships$`));
+    await owner.waitForURL(new RegExp(`/business/${businessId}/memberships$`));
     await expect(owner.getByRole("heading", { name: "Memberships" })).toBeVisible();
     // the desk says WHOSE it is — an organization runs several studios
     await expect(owner.getByText(`What ${studioName} sells`)).toBeVisible();
@@ -2385,7 +2385,7 @@ test.describe.serial("DanceOS, end to end", () => {
        desk's own and `?business=` is not needed at all from here (it stays for
        `/memberships/new`, which is still a page — Rule 14). */
     await owner.getByRole("link", { name: "New membership" }).click();
-    await owner.waitForURL(new RegExp(`/business/${tenantId}/memberships\\?new=1$`));
+    await owner.waitForURL(new RegExp(`/business/${businessId}/memberships\\?new=1$`));
     await expect(owner.getByRole("dialog", { name: "Add membership" })).toBeVisible();
     await expect(owner.getByRole("button", { name: "Name the membership first" })).toBeVisible();
     await owner.getByLabel("Membership name").fill(passName);
@@ -2397,13 +2397,13 @@ test.describe.serial("DanceOS, end to end", () => {
     await owner.getByRole("dialog", { name: "Put this on sale?" }).getByRole("button", { name: "Put it on sale" }).click();
     /* back to the desk that SENT them — it pushed `/memberships` whatever opened
        it, so a studio owner landed on a page that no longer lists what they made */
-    await owner.waitForURL(new RegExp(`/business/${tenantId}/memberships$`), { timeout: 20_000 });
+    await owner.waitForURL(new RegExp(`/business/${businessId}/memberships$`), { timeout: 20_000 });
     const card = owner.getByRole("link", { name: `Open ${passName}` });
     await expect(card).toBeVisible({ timeout: 15_000 });
 
     // ── IT IS ON SALE ON THE STUDIO'S OWN PUBLIC PAGE, which is where the user
     // said it is bought — not on a desk somebody has to be told about
-    await learner.goto(`/studio/${tenantId}`);
+    await learner.goto(`/studio/${businessId}`);
     const onSale = learner.getByTestId("memberships-on-sale");
     await expect(onSale).toBeVisible({ timeout: 15_000 });
     await expect(onSale.getByText(passName)).toBeVisible();
@@ -2433,7 +2433,7 @@ test.describe.serial("DanceOS, end to end", () => {
     await expect(held.getByTestId("pass-progress")).toHaveAttribute("data-pct", "0");
     await expect(held.getByTestId("pass-progress")).toHaveAttribute("aria-label", "0 of 2 used");
     // and they may not take a second one while one is live — the database's rule
-    await learner.goto(`/studio/${tenantId}`);
+    await learner.goto(`/studio/${businessId}`);
     await learner.getByRole("button", { name: `Buy ${passName}` }).click();
     await learner.getByRole("dialog", { name: "Confirm — no payment" }).getByRole("button", { name: "Buy now" }).click();
     await expect(learner.getByText("use it up first")).toBeVisible({ timeout: 20_000 });
@@ -2441,7 +2441,7 @@ test.describe.serial("DanceOS, end to end", () => {
     // ── THE SELLER TRACKS IT, per class and per student (the user's own words).
     // Nothing has been spent yet, so the honest answer is one holder at nothing
     // used — a figure and the list behind it being the same number (Step 25).
-    await owner.goto(`/business/${tenantId}/memberships`);
+    await owner.goto(`/business/${businessId}/memberships`);
     /* ⚠ ONE SIDE, NOT TWO (21 Sep 2026): Booked · Manage are the two sides a
        PERSON has — what they hold and what they sell. A studio holds no passes,
        because a business is not a person (`guard_person_only`), so its own desk
@@ -2485,9 +2485,9 @@ test.describe.serial("DanceOS, end to end", () => {
        broken. ---- */
     const assetName = `E2E PA system ${stamp}`;
 
-    await owner.goto(`/business/${tenantId}`);
+    await owner.goto(`/business/${businessId}`);
     await owner.getByRole("link", { name: "Assets", exact: true }).click();
-    await owner.waitForURL(new RegExp(`/business/${tenantId}/assets$`));
+    await owner.waitForURL(new RegExp(`/business/${businessId}/assets$`));
     await expect(owner.getByRole("heading", { level: 1, name: "Assets" })).toBeVisible();
     // it names the business, because an organization runs several
     await expect(owner.getByText(`What ${studioName} owns`)).toBeVisible();
@@ -2523,7 +2523,7 @@ test.describe.serial("DanceOS, end to end", () => {
     /* the bar NAMES the missing answer rather than greying out (15573-15578), and
        ⚠ the VALUE is one of the answers it asks for: on the old card an empty box
        became `Number(value || 0)`, so not typing quietly filed the asset as one
-       the business already had — a claim about money made by leaving a field alone */
+       the business already had — a classPerson about money made by leaving a field alone */
     await owner.getByRole("link", { name: "Add asset" }).click();
     const empty = owner.getByRole("dialog", { name: "Add asset" });
     /* ⚠ ASKED FOR BY ACCESSIBLE NAME, not by text — the button carries no
@@ -2535,7 +2535,7 @@ test.describe.serial("DanceOS, end to end", () => {
     // and system back closes it, leaving the desk exactly where it was
     await owner.goBack();
     await expect(empty).toBeHidden({ timeout: 15_000 });
-    await expect(owner).toHaveURL(new RegExp(`/business/${tenantId}/assets$`));
+    await expect(owner).toHaveURL(new RegExp(`/business/${businessId}/assets$`));
 
     await addAsset(assetName, "Sound & AV", "28000");
     const row = owner.getByTestId("asset-row").filter({ hasText: assetName });
@@ -2573,7 +2573,7 @@ test.describe.serial("DanceOS, end to end", () => {
        ⚠ THE LANDING MOVED ON 28 Sep 2026: it was the studio's own home, and a
        trainer cannot open that either now, so the bounce goes all the way out to
        the hub. Two gates in a row, and the outer one answers first. */
-    await trainer.goto(`/business/${tenantId}/assets`);
+    await trainer.goto(`/business/${businessId}/assets`);
     await expect(trainer).toHaveURL(/\/business$/, { timeout: 15_000 });
   });
 
@@ -2593,7 +2593,7 @@ test.describe.serial("DanceOS, end to end", () => {
        search came back "Nobody on DanceOS by that name or number" and the ask
        could never be made. In a serial story, where a segment sits is part of
        its set-up. ---- */
-    await owner.goto(`/business/${tenantId}/staff`);
+    await owner.goto(`/business/${businessId}/staff`);
 
     // ── ASKED BY NAME. The learner is on DanceOS and not on this team, so the
     // picker finds them — a name, and the row wears their picture.
@@ -2608,7 +2608,7 @@ test.describe.serial("DanceOS, end to end", () => {
        ONE text node ("Visiting faculty · asked on DanceOS"), and the grouped
        roster prints them as separate spans — with no address span at all when
        there is none, because the "Waiting on them to confirm" line already says
-       what the row is. So the claim is made directly: the fallback words are
+       what the row is. So the classPerson is made directly: the fallback words are
        nowhere on the page, and the row carries the label it was asked into. */
     await expect(owner.getByText("asked on DanceOS")).toHaveCount(0);
     await expect(owner.getByText("Visiting faculty", { exact: true }).first()).toBeVisible();
@@ -2630,7 +2630,7 @@ test.describe.serial("DanceOS, end to end", () => {
     // ── THE LABELS ARE THE STUDIO'S OWN — and the PERMISSIONS table beside
     // them is gone (20 Sep 2026, the user: "remove permission section just for
     // labelling"); the row itself prints what the seat carries.
-    await owner.goto(`/business/${tenantId}/staff`);
+    await owner.goto(`/business/${businessId}/staff`);
     const memberRow = owner.getByRole("button", { name: `Manage ${learnerName}` });
     await expect(memberRow).toBeVisible({ timeout: 15_000 });
     await memberRow.click();
@@ -2672,7 +2672,7 @@ test.describe.serial("DanceOS, end to end", () => {
     await owner.getByRole("button", { name: `Manage ${learnerName}` }).click();
     await expect(memberSheet.getByText("September")).toHaveCount(0);
     await memberSheet.getByRole("link", { name: `Payment history for ${learnerName}` }).click();
-    await owner.waitForURL(new RegExp(`/business/${tenantId}/staff/[0-9a-f-]+$`));
+    await owner.waitForURL(new RegExp(`/business/${businessId}/staff/[0-9a-f-]+$`));
     await expect(owner.getByRole("heading", { name: "Team" })).toBeVisible();
     await expect(owner.getByText(learnerName).first()).toBeVisible();
     await expect(owner.getByText("₹2,500").first()).toBeVisible();
@@ -2682,20 +2682,20 @@ test.describe.serial("DanceOS, end to end", () => {
        says that rather than drawing an empty list under it. */
     await expect(owner.getByText("Not against sessions — recorded as an amount.")).toBeVisible();
     await owner.getByRole("link", { name: "Back to the team" }).click();
-    await owner.waitForURL(new RegExp(`/business/${tenantId}/staff$`));
+    await owner.waitForURL(new RegExp(`/business/${businessId}/staff$`));
 
-    await owner.goto(`/business/${tenantId}/earnings`);
+    await owner.goto(`/business/${businessId}/earnings`);
     await expect(owner.getByText("₹2,500").first()).toBeVisible({ timeout: 15_000 });
 
     // ── AND ORDERED. The owner arranges the team; a trainer cannot.
-    await owner.goto(`/business/${tenantId}/staff`);
+    await owner.goto(`/business/${businessId}/staff`);
     await owner.getByRole("button", { name: `Move ${learnerName} up` }).click();
     await expect(owner.getByRole("button", { name: `Move ${learnerName} up` })).toBeDisabled({ timeout: 20_000 });
     /* ⚠⚠ AND SINCE 28 Sep 2026 THE TRAINER DOES NOT REACH THE DESK AT ALL. This
        line read `toHaveCount(0)` on the Move buttons, which would now pass on the
        HUB it lands on instead — true, and for the wrong reason, which is the one
        kind of green worth nothing. The URL is what is asserted. */
-    await trainer.goto(`/business/${tenantId}/staff`);
+    await trainer.goto(`/business/${businessId}/staff`);
     await expect(trainer).toHaveURL(/\/business$/, { timeout: 15_000 });
     await expect(trainer.getByRole("button", { name: /^Move / })).toHaveCount(0);
 
@@ -2711,7 +2711,7 @@ test.describe.serial("DanceOS, end to end", () => {
        studio's memberships in the segment above, which is exactly the "or take
        a membership" case — so they must already be here, with nobody having
        typed them in. */
-    await owner.goto(`/business/${tenantId}/students`);
+    await owner.goto(`/business/${businessId}/students`);
     await expect(owner.getByRole("button", { name: "Add a lead" })).toHaveCount(0);
     await expect(owner.getByText("Any stage")).toHaveCount(0);
 
@@ -2729,7 +2729,7 @@ test.describe.serial("DanceOS, end to end", () => {
     await expect(inviteSheet).toBeVisible();
     await inviteSheet.getByLabel("Mobile number").fill("+91 98765 43210");
     const wa = inviteSheet.getByRole("link", { name: "WhatsApp" });
-    await expect(wa).toHaveAttribute("href", new RegExp(`^https://wa\\.me/919876543210\\?text=.*${tenantId}`));
+    await expect(wa).toHaveAttribute("href", new RegExp(`^https://wa\\.me/919876543210\\?text=.*${businessId}`));
     /* and the other half of the user's own sentence — "through mobile no. or email" */
     await inviteSheet.getByRole("button", { name: "Email" }).click();
     await inviteSheet.getByLabel("Email address").fill("someone@example.com");
@@ -2771,7 +2771,7 @@ test.describe.serial("DanceOS, end to end", () => {
        saved as a draft now and a draft holds no room, so there is nothing to clash
        with until somebody presses Publish on the register — which is where the
        question is asked and the sheet answers it. */
-    await owner.goto(`/business/${tenantId}/classes/new`);
+    await owner.goto(`/business/${businessId}/classes/new`);
     await owner.getByLabel("Class date").fill(when.date);
     await pick(owner, "Starts", when.time);
     await owner.getByLabel("Dance style", { exact: true }).click();
@@ -2811,7 +2811,7 @@ test.describe.serial("DanceOS, end to end", () => {
     await learner.getByRole("button", { name: "Accept Salsa · All levels" }).click();
     await expect(learner.getByText(/Accepted · you are the artist taking it/)).toBeVisible({ timeout: 15_000 });
 
-    await owner.goto(`/business/${tenantId}/classes`);
+    await owner.goto(`/business/${businessId}/classes`);
     await owner.getByRole("button", { name: /^Draft, \d+ classes$/ }).click();
     await owner.getByRole("button", { name: "Publish", exact: true }).click();
     const sheet = owner.getByRole("dialog", { name: "Publish this class?" });
@@ -2833,7 +2833,7 @@ test.describe.serial("DanceOS, end to end", () => {
     // and it is still a DRAFT — not in any room, so it clashed with nothing.
     // Its name is derived ("Salsa · All levels"), and this studio has one Salsa class.
     const rows = (await (
-      await fetch(`${supabaseUrl}/rest/v1/classes?business_id=eq.${tenantId}&title=eq.${encodeURIComponent("Salsa · All levels")}&select=status`, { headers: adminHeaders })
+      await fetch(`${supabaseUrl}/rest/v1/classes?business_id=eq.${businessId}&title=eq.${encodeURIComponent("Salsa · All levels")}&select=status`, { headers: adminHeaders })
     ).json()) as Array<{ status: string }>;
     expect(rows.map((r) => r.status)).toEqual(["draft"]);
   });
@@ -2955,7 +2955,7 @@ test.describe.serial("DanceOS, end to end", () => {
     const guestContext = await browserRef.newContext();
     try {
       const guest = await guestContext.newPage();
-      await guest.goto(`/studio/${tenantId}/stats`);
+      await guest.goto(`/studio/${businessId}/stats`);
       await expect(guest.getByRole("heading", { name: studioName })).toBeVisible();
       await expect(guest.getByTestId("standing-card")).toHaveCount(2);
       await expect(guest.getByTestId("standing-card").first()).toContainText(standing);
@@ -2985,7 +2985,7 @@ test.describe.serial("DanceOS, end to end", () => {
     // ── 1. THE TWO STANDING POWERS are the studio's to grant, and only those two.
     // Everything else a seat carries is decided by the seat; these two are the ones
     // an owner hands out per person, because the database keeps them per person.
-    await owner.goto(`/business/${tenantId}/staff`);
+    await owner.goto(`/business/${businessId}/staff`);
     await owner.getByRole("button", { name: `Manage ${learnerName}` }).click();
     const teamSheet = owner.getByRole("dialog", { name: learnerName });
     await expect(teamSheet.getByText("WHAT YOU GRANT THEM")).toBeVisible();
@@ -3052,12 +3052,12 @@ test.describe.serial("DanceOS, end to end", () => {
     /* ⚠ a MENUITEM, not a link: the switcher is a menu (`aria-haspopup="menu"`),
        so its rows carry that role however they are rendered. */
     await expect(studioRow()).toHaveCount(0, { timeout: 15_000 });
-    await learner.goto(`/business/${tenantId}`);
+    await learner.goto(`/business/${businessId}`);
     await expect(learner).toHaveURL(/\/business$/, { timeout: 20_000 });
 
     /* …and made an Owner again, both come back — so the gate is the SEAT and not
        something that merely happened to this account once */
-    await owner.goto(`/business/${tenantId}/staff`);
+    await owner.goto(`/business/${businessId}/staff`);
     await owner.getByRole("button", { name: `Manage ${learnerName}` }).click();
     await owner.getByRole("dialog", { name: learnerName }).getByRole("button", { name: `Make ${learnerName} Owner` }).click();
     await expect(owner.getByRole("status")).toContainText("Owner", { timeout: 15_000 });
@@ -3065,9 +3065,9 @@ test.describe.serial("DanceOS, end to end", () => {
     await learner.goto("/");
     await learner.getByRole("button", { name: "Switch profile" }).click();
     await expect(studioRow()).toBeVisible({ timeout: 15_000 });
-    await expect(studioRow()).toHaveAttribute("href", `/business/${tenantId}`);
+    await expect(studioRow()).toHaveAttribute("href", `/business/${businessId}`);
     await studioRow().click();
-    await learner.waitForURL(`**/business/${tenantId}`, { timeout: 20_000 });
+    await learner.waitForURL(`**/business/${businessId}`, { timeout: 20_000 });
     await expect(learner.getByRole("heading", { name: studioName })).toBeVisible({ timeout: 15_000 });
 
     /* ⚠ and back to Faculty, because the rest of this segment is written against

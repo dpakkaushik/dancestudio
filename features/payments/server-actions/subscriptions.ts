@@ -83,7 +83,7 @@ async function siteOrigin(): Promise<string> {
 
 const startSchema = z.object({
   planKey: z.string().regex(/^[a-z_]{3,40}$/),
-  tenantId: z.string().uuid().nullable().optional(),
+  businessId: z.string().uuid().nullable().optional(),
 });
 
 export interface StartSubscriptionResult {
@@ -107,16 +107,16 @@ export async function startSubscriptionAction(input: unknown): Promise<StartSubs
        customer who pressed twice ends up with two live mandates and we track
        one (seen for real on 10 Sep 2026: three presses, three authorised ₹700
        mandates, two of them orphaned). */
-    const wanted = parsed.data.tenantId ?? null;
+    const wanted = parsed.data.businessId ?? null;
     const stranded =
       (await findMySubscriptions(supabase)).find(
         (s) =>
           s.status === "pending_auth" &&
           Boolean(s.providerSubscriptionId) &&
-          (wanted ? s.tenantId === wanted : s.kind === "artist" && s.tenantId === null)
+          (wanted ? s.businessId === wanted : s.kind === "artist" && s.businessId === null)
       )?.providerSubscriptionId ?? null;
 
-    const row = await subscribe(supabase, parsed.data.planKey, parsed.data.tenantId ?? null);
+    const row = await subscribe(supabase, parsed.data.planKey, parsed.data.businessId ?? null);
 
     /* cancel it BEFORE the new one exists, so there is never a moment with two */
     if (stranded) {
@@ -160,7 +160,7 @@ export async function startSubscriptionAction(input: unknown): Promise<StartSubs
       returnUrl,
       firstChargeOn: addMonths(todayIst(), row.period === "yearly" ? 12 : 1),
       note: `DanceOS ${plan.label}`,
-      tags: { subscription_id: row.id, kind: row.kind, ...(row.tenantId ? { business_id: row.tenantId } : {}) },
+      tags: { subscription_id: row.id, kind: row.kind, ...(row.businessId ? { business_id: row.businessId } : {}) },
     });
     if (!cfSub.subscription_session_id) {
       return { checkout: null, error: "Cashfree did not return a checkout session" };

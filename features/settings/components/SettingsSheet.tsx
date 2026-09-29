@@ -6,7 +6,7 @@ import { useState, type CSSProperties, type ReactNode } from "react";
 import { DOS_UI, INK, MUTED, RED, SUB } from "@/lib/design/tokens";
 import type { ArtistPlan } from "@/repositories/plans";
 import type { Profile, ProfileRole } from "@/types/profile";
-import type { Tenant } from "@/types/tenant";
+import type { Business } from "@/types/tenant";
 
 /** THE SETTINGS SHEET — prototype S_profiletab 11402-11440, opened by the top
  *  bar's gear (19263: "if you are on the Profile tab, open settings now; else go
@@ -138,9 +138,9 @@ export type SettingsProfile =
        *  business you are on the team of", and never an arbitrary pick among the
        *  ones they own: each studio's and each organization's money is in that
        *  business's own Settings. */
-      business: Tenant | null;
+      business: Business | null;
     }
-  | { kind: "studio"; tenant: Tenant }
+  | { kind: "studio"; business: Business }
   /* ⚠ `{ kind: "org" }` — an organization's own settings (26 Sep 2026) — went
      with organizations on 29 Sep */
   | { kind: "crew"; crew: { id: string; name: string } };
@@ -193,10 +193,10 @@ export function SettingsSheet({
 
   /* ── WHAT THIS PROFILE IS, in the four shapes the sheet has to draw ── */
   const me = active.kind === "me" ? active : null;
-  const studio = active.kind === "studio" ? active.tenant : null;
+  const studio = active.kind === "studio" ? active.business : null;
   /* the business whose SETTINGS these are: a person's own artist page, or the
      studio you are in. A crew is not a business and has neither. */
-  const biz: Tenant | null = studio ?? me?.business ?? null;
+  const biz: Business | null = studio ?? me?.business ?? null;
   const profile = me?.profile ?? null;
   const role: ProfileRole = me?.role ?? "user";
   const plan = me?.plan ?? null;

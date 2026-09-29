@@ -146,7 +146,7 @@ export interface ClassDetailProps {
   /** Session window contains now — computed server-side, page renders per request. */
   liveNow: boolean;
   isSignedIn: boolean;
-  /** Viewer belongs to the class's tenant — sees share, never the booking bar. */
+  /** Viewer belongs to the class's business — sees share, never the booking bar. */
   isMember: boolean;
   /** Viewer is owner/trainer — sees the draft footer's Edit class. */
   canManage: boolean;
@@ -158,8 +158,8 @@ export interface ClassDetailProps {
   sessionPhase: "upcoming" | "live" | "ended";
   /** The live register + waitlist queue — fetched only for owner/trainer viewers. */
   register: ClassRegister | null;
-  /** Who is on this class. The public sees confirmed claims only (RLS). */
-  claims: ClassClaim[];
+  /** Who is on this class. The public sees confirmed classPeople only (RLS). */
+  classPeople: ClassClaim[];
   /** An ask waiting for the signed-in viewer's own answer. */
   myClaim: ClassClaim | null;
   /** THE STANDING GRANTS ON THE VIEWER'S SEAT (28 Sep 2026, the user: "when
@@ -171,12 +171,12 @@ export interface ClassDetailProps {
    *  or STANDING for the whole business on the Team desk (R38, 20 Sep 2026 —
    *  `business_members.can_attendance` / `can_refunds`). `can_run_register_for_class`
    *  and `can_settle_refunds_for_class` have honoured both since that day; this
-   *  page asked the claim alone, so the standing grant worked everywhere except
+   *  page asked the classPerson alone, so the standing grant worked everywhere except
    *  on the screen that is supposed to offer it. */
   standingAttendance?: boolean;
   standingRefunds?: boolean;
   /** Refund requests against this class — fetched only for a viewer who may
-   *  settle them (owner, or a confirmed claim holding the refunds job). */
+   *  settle them (owner, or a confirmed classPerson holding the refunds job). */
   refunds?: RefundRequest[];
   /** Whether this viewer may answer those requests. */
   canSettleRefunds?: boolean;
@@ -229,7 +229,7 @@ export function ClassDetail({
   receipt,
   sessionPhase,
   register,
-  claims,
+  classPeople,
   myClaim,
   standingAttendance = false,
   standingRefunds = false,
@@ -305,26 +305,26 @@ export function ClassDetail({
   /* the design the studio chose, or the one the class draws from its own name */
   const posterK = c.poster && c.poster !== "none" ? c.poster : dosPosterAuto(c.title);
 
-  /* the people. A name reaches a stranger only once its claim is confirmed —
+  /* the people. A name reaches a stranger only once its classPerson is confirmed —
      RLS already filters that for the public, and a member sees the asks too, so
      the page only prints unconfirmed rows to people who can act on them. */
-  const artist = claims.find((cl) => cl.kind === "artist" && cl.status === "confirmed") ?? null;
-  const assistants = claims.filter((cl) => cl.kind === "assistant" && cl.status === "confirmed");
+  const artist = classPeople.find((cl) => cl.kind === "artist" && cl.status === "confirmed") ?? null;
+  const assistants = classPeople.filter((cl) => cl.kind === "assistant" && cl.status === "confirmed");
   /** ⚠⚠ THE ASKS ARE SPLIT BY KIND, AND NOT SPLITTING THEM WAS THE BUG (28 Sep
    *  2026, the user: "right now when adding one it puts it on the assistant list
    *  which it shouldnt do").
    *
-   *  `pendingAsks` was every asked claim of ANY kind, and the one section that
+   *  `pendingAsks` was every asked classPerson of ANY kind, and the one section that
    *  rendered it is headed CLASS ASSISTANTS — so the moment a studio named
    *  somebody as the person TAKING the class, that person appeared in the
    *  assistants list, reading "⏳ Asked" with nothing to say they had been asked
-   *  to teach it. The artist column above prints a CONFIRMED claim only, so
+   *  to teach it. The artist column above prints a CONFIRMED classPerson only, so
    *  until they answered there was nowhere else on the page they could be. The
    *  form was always right (`reconcileClassPeople` asks `kind: "artist"`) and
    *  the database was always right; only this page filed them under the wrong
    *  heading. */
-  const askedArtist = isMember ? claims.find((cl) => cl.kind === "artist" && cl.status === "asked") ?? null : null;
-  const pendingAssistants = isMember ? claims.filter((cl) => cl.kind === "assistant" && cl.status === "asked") : [];
+  const askedArtist = isMember ? classPeople.find((cl) => cl.kind === "artist" && cl.status === "asked") ?? null : null;
+  const pendingAssistants = isMember ? classPeople.filter((cl) => cl.kind === "assistant" && cl.status === "asked") : [];
   /** who is down to take it — confirmed if they have answered, the ask if not */
   const whoTakes = artist ?? askedArtist;
   const posterItem = { title: c.title, style: c.style, styleColor: col, posterUrl: photoUrl(c.posterPath) };
@@ -351,7 +351,7 @@ export function ClassDetail({
   const setPoster = async (poster: "bold" | "split" | "quiet" | "none", said: string) => {
     if (posterBusy) return;
     setPosterBusy(true);
-    const out = await setClassPosterAction({ classId: c.id, tenantId: c.tenantId, poster });
+    const out = await setClassPosterAction({ classId: c.id, businessId: c.businessId, poster });
     setPosterBusy(false);
     fire(out.error ?? said);
     if (!out.error) router.refresh();
@@ -384,11 +384,11 @@ export function ClassDetail({
      own names the artist and opens their profile (`ownerHref`), and its Maps
      link is the pin they placed. */
   const atVenue = Boolean(c.venueName && c.venueBusinessId && c.venueStatus === "accepted");
-  const placeName = atVenue ? (c.venueName as string) : c.tenantName;
+  const placeName = atVenue ? (c.venueName as string) : c.businessName;
   const placeArea = atVenue ? c.venueArea : c.tenantArea;
   const placeCity = atVenue ? c.venueCity : c.tenantCity;
-  const placeIsStudio = atVenue || c.tenantType === "studio";
-  const placeHref = atVenue ? `/studio/${c.venueBusinessId}` : c.tenantType === "studio" ? `/studio/${c.tenantId}` : (ownerHref ?? `/artist/${c.tenantId}`);
+  const placeIsStudio = atVenue || c.businessType === "studio";
+  const placeHref = atVenue ? `/studio/${c.venueBusinessId}` : c.businessType === "studio" ? `/studio/${c.businessId}` : (ownerHref ?? `/artist/${c.businessId}`);
   const whereBits = [c.room, placeCity].filter(Boolean).join(" · ");
   const mapsQuery = [c.room, placeName, placeArea, placeCity].filter(Boolean).join(", ");
   const mapsLink = !placeIsStudio && c.mapsUrl ? c.mapsUrl : `https://maps.google.com/?q=${encodeURIComponent(mapsQuery)}`;
@@ -400,7 +400,7 @@ export function ClassDetail({
   const whereText = [c.room, c.tenantCity].filter(Boolean).join(", ");
 
   /* Details / Attendance tabs — what YOU can do here (prototype 11755-11757;
-     Earnings/Refunds arrive with Step 13, assistant claims with Step 11) */
+     Earnings/Refunds arrive with Step 13, assistant classPeople with Step 11) */
   /* the strip appears for whoever has something behind it: the register
      (owner/trainer) or the refund queue (owner, or the refunds job) */
   const ownerTabs = !isDraft && (register !== null || canSettleRefunds || classMoney !== null);
@@ -418,7 +418,7 @@ export function ClassDetail({
    *  Three things were behind the poster from 24 Aug (prototype 12001, "one
    *  place instead of three"): the art, the booking link, and — for a booked
    *  viewer — a DOS-CL-#### entry code under "Scan this at the door." The
-   *  entry-code half was a claim the product does not keep: a door scans the
+   *  entry-code half was a classPerson the product does not keep: a door scans the
    *  PERSON's own profile code (`ScanSheet` → `can_run_register_for_class`),
    *  never a per-booking square, so nothing anywhere ever read one. It is gone
    *  rather than restyled — the code itself survives as what it always really
@@ -429,10 +429,10 @@ export function ClassDetail({
    *  scheme for the eye and copies what it was given. */
   const shareLink = `${origin}/c/${c.shareSlug}`;
 
-  const answerClaim = async (claimId: string, accept: boolean) => {
+  const answerClaim = async (classPersonId: string, accept: boolean) => {
     if (opPending) return;
-    setOpPending(claimId);
-    const out = await respondToClaimAction({ claimId, accept });
+    setOpPending(classPersonId);
+    const out = await respondToClaimAction({ classPersonId, accept });
     setOpPending(null);
     fire(out.error ?? (accept ? "You’re on this class" : "Declined — they’ve been told"));
     router.refresh();
@@ -494,7 +494,7 @@ export function ClassDetail({
     if (row.checkedIn || scannedIn.current.has(personId)) {
       return { ok: true, message: `${row.learnerName} was already checked in` };
     }
-    const out = await checkInAction({ enrollmentId: row.enrollmentId });
+    const out = await checkInAction({ classBookingId: row.classBookingId });
     if (out.error) {
       return { ok: false, message: out.error };
     }
@@ -522,23 +522,23 @@ export function ClassDetail({
     router.refresh();
   };
 
-  const removeWalkIn = async (enrollmentId: string, name: string) => {
+  const removeWalkIn = async (classBookingId: string, name: string) => {
     if (opPending) return;
-    setOpPending(enrollmentId);
-    const out = await removeWalkInAction({ enrollmentId });
+    setOpPending(classBookingId);
+    const out = await removeWalkInAction({ classBookingId });
     setOpPending(null);
     fire(out.error ?? `${name} removed`);
     router.refresh();
   };
 
   const runRegisterOp = async (
-    enrollmentId: string,
-    op: (input: { enrollmentId: string }) => Promise<{ error: string | null }>,
+    classBookingId: string,
+    op: (input: { classBookingId: string }) => Promise<{ error: string | null }>,
     doneMsg: string | null
   ) => {
     if (opPending) return;
-    setOpPending(enrollmentId);
-    const out = await op({ enrollmentId });
+    setOpPending(classBookingId);
+    const out = await op({ classBookingId });
     setOpPending(null);
     if (out.error) {
       fire(out.error);
@@ -726,7 +726,7 @@ export function ClassDetail({
             </div>
 
             {/* the artist column — who is taking it, beside when it runs (11900-11920).
-                A stranger is still shown a CONFIRMED claim only; the face is a door.
+                A stranger is still shown a CONFIRMED classPerson only; the face is a door.
                 ⚠ THE STUDIO'S OWN PEOPLE ALSO SEE THE ASK (28 Sep 2026), dimmed and
                 marked, because this is where the person taking the class belongs —
                 they used to appear under CLASS ASSISTANTS instead, which is the
@@ -821,9 +821,9 @@ export function ClassDetail({
               </div>
               {/* a STUDIO's owner may pick somebody else to take it; an artist's own
                   class is theirs, so there is nobody to change (18 Sep 2026) */}
-              {isOwner && !done && c.tenantType === "studio" ? (
+              {isOwner && !done && c.businessType === "studio" ? (
                 <div style={{ display: "flex", alignItems: "center", marginTop: 4, minWidth: 0 }}>
-                  <Link href={`/business/${c.tenantId}/classes/${c.id}/edit`} aria-label="Change the artist taking this class" style={{ marginLeft: "auto", flexShrink: 0, fontSize: 9.5, fontWeight: 800, color: col, padding: "2px 7px", borderRadius: 999, border: `1.5px solid ${col}66`, textDecoration: "none" }}>
+                  <Link href={`/business/${c.businessId}/classes/${c.id}/edit`} aria-label="Change the artist taking this class" style={{ marginLeft: "auto", flexShrink: 0, fontSize: 9.5, fontWeight: 800, color: col, padding: "2px 7px", borderRadius: 999, border: `1.5px solid ${col}66`, textDecoration: "none" }}>
                     Change
                   </Link>
                 </div>
@@ -831,14 +831,14 @@ export function ClassDetail({
               {/* ⚠⚠ THE OWNER'S TWO JOB CHIPS ON THE PERSON TAKING THE CLASS
                   (28 Sep 2026). `20260928100000` made the register a DEFAULT they
                   are born with and an owner may take back, and
-                  `set_class_person_powers` has always accepted an artist claim —
+                  `set_class_person_powers` has always accepted an artist classPerson —
                   but this control lived inside the ASSISTANTS section, so the
                   taking-back half had no door and could only be reached by a
-                  hand-written API call. Confirmed claims only: an ask has nothing
+                  hand-written API call. Confirmed classPeople only: an ask has nothing
                   to grant yet. */}
               {isOwner && !done && artist ? (
                 <div style={{ marginTop: 5, minWidth: 0 }}>
-                  <AssistantControls claim={artist} isOwner={isOwner} col={col} remove={false} />
+                  <AssistantControls classPerson={artist} isOwner={isOwner} col={col} remove={false} />
                 </div>
               ) : null}
             </div>
@@ -909,7 +909,7 @@ export function ClassDetail({
                 ...(classMoney !== null ? ([["money", "Earnings"]] as Array<["money", string]>) : []),
                 /* Refunds is its own segment in the prototype's SEGS
                    (11755-11757), and it only appears for somebody who may
-                   actually settle: the owner, or a confirmed claim holding the
+                   actually settle: the owner, or a confirmed classPerson holding the
                    refunds job. A trainer without it does not get a tab that
                    would only refuse them. */
                 ...(canSettleRefunds ? ([["ref", "Refunds"]] as Array<["ref", string]>) : []),
@@ -982,7 +982,7 @@ export function ClassDetail({
             }}
           >
             <div style={{ fontSize: 12.5, fontWeight: 900 }}>
-              {c.tenantName} wants you {myClaim.kind === "artist" ? "taking this class" : "assisting on this session"}
+              {c.businessName} wants you {myClaim.kind === "artist" ? "taking this class" : "assisting on this session"}
             </div>
             <div style={{ fontSize: 10.5, color: "var(--sub)", marginTop: 2, lineHeight: 1.45 }}>
               {myClaim.kind === "artist"
@@ -1139,7 +1139,7 @@ export function ClassDetail({
             </div>
             <div style={{ fontSize: 9.5, color: "var(--muted)", marginTop: 3 }}>You get the next freed spot.</div>
             <form action={cancelForm} style={{ display: "flex", marginTop: 10 }}>
-              <input type="hidden" name="enrollmentId" value={mine.id} />
+              <input type="hidden" name="classBookingId" value={mine.id} />
               <button
                 type="submit"
                 disabled={cancelPending}
@@ -1214,7 +1214,7 @@ export function ClassDetail({
           const present = register.rows.filter((r) => r.checkedIn);
           const absent = register.rows.filter((r) => !r.checkedIn);
           const chip = (r: (typeof register.rows)[number], on: boolean) => (
-            <Link key={r.enrollmentId} href={`/person/${r.userId}`} aria-label={`Open ${r.learnerName}`} style={{ display: "inline-flex", alignItems: "center", gap: 6, background: "var(--el)", borderRadius: 999, padding: "3px 11px 3px 3px", color: on ? "var(--text)" : "var(--sub)", textDecoration: "none", opacity: on ? 1 : 0.6 }}>
+            <Link key={r.classBookingId} href={`/person/${r.userId}`} aria-label={`Open ${r.learnerName}`} style={{ display: "inline-flex", alignItems: "center", gap: 6, background: "var(--el)", borderRadius: 999, padding: "3px 11px 3px 3px", color: on ? "var(--text)" : "var(--sub)", textDecoration: "none", opacity: on ? 1 : 0.6 }}>
               <span style={{ width: 22, height: 22, borderRadius: 7, overflow: "hidden", background: on ? "linear-gradient(135deg,#22C55E,#0D9488)" : "var(--card)", border: on ? "none" : "1.5px solid var(--el)", display: "flex", alignItems: "center", justifyContent: "center", color: on ? "#fff" : "var(--sub)", fontSize: 8.5, fontWeight: 900 }}>
                 {photoUrl(r.avatarPath) ? <Image src={photoUrl(r.avatarPath)!} alt="" width={22} height={22} style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} /> : initialsOf(r.learnerName)}
               </span>
@@ -1422,7 +1422,7 @@ export function ClassDetail({
                       any assistant, the teacher on the assistants they asked; the
                       teacher's own row is changed from the form, not here */}
                   {cl.kind === "assistant" && (isOwner || canAddAssistant) ? (
-                    <AssistantControls claim={cl} isOwner={isOwner} col={col} />
+                    <AssistantControls classPerson={cl} isOwner={isOwner} col={col} />
                   ) : (
                     <Link href={`/person/${cl.userId}`} aria-label={`View ${cl.personName}`} style={{ fontSize: 10.5, fontWeight: 800, color: col, flexShrink: 0, textDecoration: "none" }}>
                       View ›
@@ -1434,7 +1434,7 @@ export function ClassDetail({
             {assistants.length === 0 && pendingAssistants.length === 0 && !canAddAssistant ? <div style={{ fontSize: 11, color: "var(--muted)", padding: "6px 0" }}>No assistants on this class.</div> : null}
             {/* the owner, or the person taking the class, asks somebody — from here,
                 not from the form (18 Sep 2026) */}
-            {canAddAssistant ? <AddAssistant classId={c.id} col={col} exclude={claims.filter((cl) => cl.status !== "rejected").map((cl) => cl.userId)} /> : null}
+            {canAddAssistant ? <AddAssistant classId={c.id} col={col} exclude={classPeople.filter((cl) => cl.status !== "rejected").map((cl) => cl.userId)} /> : null}
             {assisting ? (
               <div style={{ fontSize: 10.5, color: "var(--sub)", marginTop: 8, paddingTop: 8, borderTop: "1.5px solid var(--el)" }}>
                 You are assisting on this class{canAtt || canRef ? ` — you hold ${[canAtt ? "attendance" : null, canRef ? "refunds" : null].filter(Boolean).join(" and ")}.` : "."}
@@ -1512,7 +1512,7 @@ export function ClassDetail({
             seatsTaken={Math.max(checkedInCount, filled)}
             capacity={c.capacity}
             figures={classMoney}
-            earningsHref={`/business/${c.tenantId}/earnings`}
+            earningsHref={`/business/${c.businessId}/earnings`}
           />
         )}
 
@@ -1684,7 +1684,7 @@ export function ClassDetail({
                 </div>
                 {register.waitlist.map((w, i) => (
                   <div
-                    key={w.enrollmentId}
+                    key={w.classBookingId}
                     style={{ display: "flex", alignItems: "center", gap: 10, padding: "8px 0", borderBottom: "1.5px solid var(--el)" }}
                   >
                     <span style={{ width: 22, fontSize: 11, fontWeight: 900, color: "var(--muted)", fontFamily: DOS_MONO }}>
@@ -1713,7 +1713,7 @@ export function ClassDetail({
                           fire("Free a spot first — the class is full");
                           return;
                         }
-                        void runRegisterOp(w.enrollmentId, giveSpotAction, `✅ ${w.learnerName} moved off the waitlist`);
+                        void runRegisterOp(w.classBookingId, giveSpotAction, `✅ ${w.learnerName} moved off the waitlist`);
                       }}
                       style={{
                         fontSize: 10.5,
@@ -1724,7 +1724,7 @@ export function ClassDetail({
                         border: `1.5px solid ${soldOut ? "var(--el)" : "#22C55E55"}`,
                         borderRadius: 999,
                         padding: "4px 10px",
-                        opacity: opPending === w.enrollmentId ? 0.5 : 1,
+                        opacity: opPending === w.classBookingId ? 0.5 : 1,
                       }}
                     >
                       Give spot
@@ -1735,7 +1735,7 @@ export function ClassDetail({
                       onKeyDown={dosKey}
                       aria-label={`Remove ${w.learnerName} from the waitlist`}
                       onClick={() =>
-                        void runRegisterOp(w.enrollmentId, removeFromWaitlistAction, `${w.learnerName} removed from the waitlist`)
+                        void runRegisterOp(w.classBookingId, removeFromWaitlistAction, `${w.learnerName} removed from the waitlist`)
                       }
                       style={{ fontSize: 13, color: "var(--muted)", cursor: "pointer", flexShrink: 0, padding: "0 2px" }}
                     >
@@ -1819,7 +1819,7 @@ export function ClassDetail({
                 );
                 return (
                 <div
-                  key={r.enrollmentId}
+                  key={r.classBookingId}
                   style={{
                     display: "flex",
                     alignItems: "center",
@@ -1857,7 +1857,7 @@ export function ClassDetail({
                       aria-label={r.checkedIn ? `Check ${r.learnerName} out` : `Check ${r.learnerName} in`}
                       onClick={() =>
                         void runRegisterOp(
-                          r.enrollmentId,
+                          r.classBookingId,
                           r.checkedIn ? undoCheckInAction : checkInAction,
                           r.checkedIn ? `${r.learnerName} checked out` : `${r.learnerName} checked in`
                         )
@@ -1871,7 +1871,7 @@ export function ClassDetail({
                         flexShrink: 0,
                         background: r.checkedIn ? "rgba(34,197,94,.22)" : "var(--el)",
                         color: r.checkedIn ? "#22C55E" : "var(--text)",
-                        opacity: opPending === r.enrollmentId ? 0.5 : 1,
+                        opacity: opPending === r.classBookingId ? 0.5 : 1,
                       }}
                     >
                       {r.checkedIn ? "✓ In" : "Check in"}
@@ -1890,8 +1890,8 @@ export function ClassDetail({
                       tabIndex={0}
                       onKeyDown={dosKey}
                       aria-label={`Remove ${r.learnerName} from the register`}
-                      onClick={() => void removeWalkIn(r.enrollmentId, r.learnerName)}
-                      style={{ fontSize: 10, fontWeight: 800, padding: "6px 10px", borderRadius: 999, cursor: "pointer", flexShrink: 0, background: "var(--el)", color: "var(--sub)", opacity: opPending === r.enrollmentId ? 0.5 : 1 }}
+                      onClick={() => void removeWalkIn(r.classBookingId, r.learnerName)}
+                      style={{ fontSize: 10, fontWeight: 800, padding: "6px 10px", borderRadius: 999, cursor: "pointer", flexShrink: 0, background: "var(--el)", color: "var(--sub)", opacity: opPending === r.classBookingId ? 0.5 : 1 }}
                     >
                       ✕
                     </span>
@@ -2137,7 +2137,7 @@ export function ClassDetail({
             YOUR DRAFT · PUBLISH TO OPEN BOOKINGS
           </div>
           <Link
-            href={`/business/${c.tenantId}/classes/${c.id}/edit`}
+            href={`/business/${c.businessId}/classes/${c.id}/edit`}
             style={{
               display: "block",
               textAlign: "center",
@@ -2194,8 +2194,8 @@ export function ClassDetail({
           posterK={posterK}
           col={col}
           metaTop={`${c.style} · ${levelWord}${time ? ` · ${time}` : ""}`}
-          metaBottom={`${c.room ?? c.tenantName}${c.tenantCity ? `, ${c.tenantCity}` : ""}${artist ? ` · ${artist.personName}` : ""}`}
-          businessName={c.tenantName}
+          metaBottom={`${c.room ?? c.businessName}${c.tenantCity ? `, ${c.tenantCity}` : ""}${artist ? ` · ${artist.personName}` : ""}`}
+          businessName={c.businessName}
           classLabel={c.title}
           onClose={() => setFlowOpen(false)}
           onDone={(msg) => {
@@ -2218,7 +2218,7 @@ export function ClassDetail({
               <div style={{ marginBottom: 14 }}>
                 <div style={{ fontSize: 9.5, fontWeight: 900, letterSpacing: 0.8, color: "var(--muted)", margin: "0 0 8px" }}>YOUR OWN</div>
                 <PhotoPicker
-                  owner={{ kind: "poster", id: c.tenantId, subject: { kind: "class", id: c.id } }}
+                  owner={{ kind: "poster", id: c.businessId, subject: { kind: "class", id: c.id } }}
                   hasPhoto={Boolean(c.posterPath)}
                   label={c.posterPath ? "Change the picture" : "Upload a picture"}
                   cropLabel="Poster"
@@ -2261,7 +2261,7 @@ export function ClassDetail({
           title={c.title}
           whenText={whenText}
           whereText={whereText}
-          enrollmentId={mine.id}
+          classBookingId={mine.id}
           amountInr={receipt?.amountInr ?? null}
           method={receipt?.method ?? null}
           onClose={() => setInvoiceOpen(false)}
@@ -2269,7 +2269,7 @@ export function ClassDetail({
       )}
       {refundOpen && mine && (
         <RefundSheet
-          enrollmentId={mine.id}
+          classBookingId={mine.id}
           title={c.title}
           timeText={whenText}
           amountInr={receipt?.amountInr ?? 0}

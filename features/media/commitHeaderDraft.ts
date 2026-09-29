@@ -173,13 +173,13 @@ export function commitWords(result: CommitResult, attempted: number): string {
 
 /** A STUDIO's header pictures are the photos it showed DanceOS: the private
  *  proof bucket, the OWNER's own folder, and the floor the database keeps. */
-export const studioPorts = (tenantId: string, ownerId: string): CommitPorts => ({
+export const studioPorts = (businessId: string, ownerId: string): CommitPorts => ({
   bucket: PROOF_BUCKET,
   pathFor: (file) => proofPath(ownerId, file),
   /* a private object has no public URL; the page re-reads and signs one */
   urlFor: () => null,
   signed: true,
-  add: (path) => addStudioProofPhotoAction({ tenantId, path }),
+  add: (path) => addStudioProofPhotoAction({ businessId, path }),
   remove: (id) => removeStudioProofPhotoAction({ id }),
   min: 1,
   max: PROOF_MAX,

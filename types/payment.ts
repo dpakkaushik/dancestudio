@@ -15,7 +15,7 @@ export type PaymentProvider = "razorpay" | "cashfree";
  *  is that nothing in the app reads or writes them any more. */
 export interface PaymentOrder {
   id: string;
-  tenantId: string;
+  businessId: string;
   classId: string | null;
   sessionId: string | null;
   /** the other subject an order may name (19 Sep 2026): a membership, and the

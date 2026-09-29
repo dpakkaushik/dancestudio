@@ -11,7 +11,7 @@ import { decideStudioVerification } from "@/repositories/studioVerification";
  *  which is the order the user asked for. Rejecting carries the reason the
  *  owner reads. The RPC re-checks `is_platform_admin()` itself. */
 const studioSchema = z.object({
-  tenantId: z.string().uuid(),
+  businessId: z.string().uuid(),
   approve: z.boolean(),
   note: z.string().trim().max(300, "A note is at most 300 characters").optional().nullable(),
 });
@@ -30,7 +30,7 @@ export async function decideStudioVerificationAction(input: unknown): Promise<{ 
   }
   try {
     await decideStudioVerification(supabase, {
-      tenantId: parsed.data.tenantId,
+      businessId: parsed.data.businessId,
       approve: parsed.data.approve,
       note: parsed.data.note ?? null,
     });

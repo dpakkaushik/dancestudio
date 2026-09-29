@@ -20,12 +20,12 @@ import type { StudioLinkTarget } from "./StudioLinksRow";
  *  links come off the home's `RecordLists`, never off the prop, so a link saved
  *  a moment earlier is not written back over. */
 export function StudioStylesRow({
-  tenant,
+  business,
   canEdit,
   isStudio,
   fallback = [],
 }: {
-  tenant: StudioLinkTarget;
+  business: StudioLinkTarget;
   canEdit: boolean;
   isStudio: boolean;
   /** ⚠ WHAT IT TEACHES, OFF ITS PUBLISHED CLASSES — shown only while the FIELD
@@ -44,15 +44,15 @@ export function StudioStylesRow({
       fallback={fallback}
       save={async (next) => {
         const out = await updateTenantProfileAction({
-          tenantId: tenant.id,
+          businessId: business.id,
           styles: next,
           /* unchanged, and sent because the door takes the whole profile */
           socials: lists.socials,
-          foundedYear: tenant.foundedYear,
-          phone: tenant.phone,
-          contactEmail: tenant.contactEmail,
-          enquiryTypes: tenant.enquiryTypes,
-          accepts: tenant.accepts,
+          foundedYear: business.foundedYear,
+          phone: business.phone,
+          contactEmail: business.contactEmail,
+          enquiryTypes: business.enquiryTypes,
+          accepts: business.accepts,
         });
         if (!out.error) router.refresh();
         return out.error;

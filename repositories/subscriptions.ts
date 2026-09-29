@@ -19,7 +19,7 @@ export interface Subscription {
   id: string;
   kind: SubscriptionKind;
   userId: string;
-  tenantId: string | null;
+  businessId: string | null;
   planKey: string;
   priceInr: number;
   period: "monthly" | "yearly";
@@ -83,7 +83,7 @@ export const toSubscription = (r: Row): Subscription => {
     id: r.id,
     kind: r.kind,
     userId: r.user_id,
-    tenantId: r.business_id,
+    businessId: r.business_id,
     planKey: r.plan_key,
     priceInr: Number(r.price_inr),
     period: r.period,
@@ -140,17 +140,17 @@ export interface StudioSubscriptionState {
  *  live subscription and the one sentence between it and the public. The
  *  sentence is the database's to write (`why_not_public` answers an org's own
  *  blocker: GST, then the mandate). */
-export async function findMyStudioSubscriptions(supabase: SupabaseClient, tenantIds: string[]): Promise<Record<string, StudioSubscriptionState>> {
+export async function findMyStudioSubscriptions(supabase: SupabaseClient, businessIds: string[]): Promise<Record<string, StudioSubscriptionState>> {
   const out: Record<string, StudioSubscriptionState> = {};
-  if (tenantIds.length === 0) return out;
+  if (businessIds.length === 0) return out;
   const all = await findMySubscriptions(supabase);
-  for (const id of tenantIds) {
+  for (const id of businessIds) {
     /* a business has ONE kind of mandate — matching on the id alone is what lets an org's row through */
-    const mine = all.filter((s) => (s.kind === "studio" || s.kind === "org") && s.tenantId === id);
+    const mine = all.filter((s) => (s.kind === "studio" || s.kind === "org") && s.businessId === id);
     out[id] = { subscription: mine.find((s) => s.status !== "expired") ?? mine[0] ?? null, whyNotPublic: null };
   }
   await Promise.all(
-    tenantIds.map(async (id) => {
+    businessIds.map(async (id) => {
       const { data } = await supabase.rpc("why_not_public", { p_business_id: id });
       out[id].whyNotPublic = typeof data === "string" && data.length > 0 ? data : null;
     })
@@ -158,8 +158,8 @@ export async function findMyStudioSubscriptions(supabase: SupabaseClient, tenant
   return out;
 }
 
-export async function subscribe(supabase: SupabaseClient, planKey: string, tenantId: string | null): Promise<Subscription> {
-  const { data, error } = await supabase.rpc("subscribe", { p_plan_key: planKey, p_business_id: tenantId });
+export async function subscribe(supabase: SupabaseClient, planKey: string, businessId: string | null): Promise<Subscription> {
+  const { data, error } = await supabase.rpc("subscribe", { p_plan_key: planKey, p_business_id: businessId });
   if (error) {
     throw new Error(error.message);
   }
@@ -253,8 +253,8 @@ export interface AdminSubscription {
   status: SubscriptionStatus;
   userId: string;
   userName: string;
-  tenantId: string | null;
-  tenantName: string | null;
+  businessId: string | null;
+  businessName: string | null;
   planKey: string;
   priceInr: number;
   period: string;
@@ -281,8 +281,8 @@ export async function findAdminSubscriptions(
     status: r.status as SubscriptionStatus,
     userId: r.user_id as string,
     userName: (r.user_name as string) ?? "",
-    tenantId: (r.business_id as string) ?? null,
-    tenantName: (r.business_name as string) ?? null,
+    businessId: (r.business_id as string) ?? null,
+    businessName: (r.business_name as string) ?? null,
     planKey: r.plan_key as string,
     priceInr: Number(r.price_inr ?? 0),
     period: r.period as string,

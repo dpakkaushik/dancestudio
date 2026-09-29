@@ -170,7 +170,7 @@ export interface LearnedRoutine extends Routine {
   shareSlug: string;
   classStyle: string;
   classLevel: string;
-  tenantName: string | null;
+  businessName: string | null;
   /** how many of that class's sessions this person actually turned up to */
   sessions: number;
   lastOn: string | null;
@@ -236,7 +236,7 @@ export async function findRoutinesLearned(supabase: SupabaseClient, userId: stri
         shareSlug: (r.classes as NonNullable<Row["classes"]>).share_slug,
         classStyle: (r.classes as NonNullable<Row["classes"]>).style,
         classLevel: (r.classes as NonNullable<Row["classes"]>).level,
-        tenantName: (r.classes as NonNullable<Row["classes"]>).businesses?.name ?? null,
+        businessName: (r.classes as NonNullable<Row["classes"]>).businesses?.name ?? null,
         sessions: t?.n ?? 0,
         lastOn: t?.last ?? null,
       };

@@ -9,7 +9,7 @@ import { CONTACT_BOX, CONTACT_LABEL } from "@/features/profiles/components/Conta
 import { DOS_UI } from "@/lib/design/tokens";
 import { useCloseOnBack } from "@/lib/hooks/useCloseOnBack";
 import { enquiryTypesFor, enquiryTypesForCrew, type EnquiryField, type EnquiryType } from "@/types/enquiry";
-import type { TenantType } from "@/types/tenant";
+import type { BusinessType } from "@/types/tenant";
 import { pressKey } from "@/features/inbox/components/inbox-kit";
 
 /** The sender's sheet, lifted from the prototype's EnquirySheet (5051-5193):
@@ -53,9 +53,9 @@ const toggle = (on: boolean): React.CSSProperties => ({
 /** The round trigger + the sheet, in one client island so the server-rendered
  *  profile stays a server component. */
 export function EnquiryButton({
-  tenantId,
-  tenantName,
-  tenantType,
+  businessId,
+  businessName,
+  businessType,
   signedIn,
   accent,
   enquiryTypes = null,
@@ -63,9 +63,9 @@ export function EnquiryButton({
   cannotAsk = null,
 }: {
   /** the business asked — ignored when `crewId` is set */
-  tenantId: string;
-  tenantName: string;
-  tenantType: TenantType;
+  businessId: string;
+  businessName: string;
+  businessType: BusinessType;
   signedIn: boolean;
   accent: string;
   /** the types the business switched on (ENQUIRIES YOU ACCEPT, 9005) — null means every one its kind allows */
@@ -126,23 +126,23 @@ export function EnquiryButton({
         <span style={CONTACT_LABEL}>Enquiry</span>
       </button>
       {open ? (
-        <EnquirySheet tenantId={tenantId} tenantName={tenantName} tenantType={tenantType} accent={accent} enquiryTypes={enquiryTypes} crewId={crewId} onClose={() => setOpen(false)} />
+        <EnquirySheet businessId={businessId} businessName={businessName} businessType={businessType} accent={accent} enquiryTypes={enquiryTypes} crewId={crewId} onClose={() => setOpen(false)} />
       ) : null}
     </>
   );
 }
 
 export function EnquirySheet({
-  tenantId,
-  tenantName,
-  tenantType,
+  businessId,
+  businessName,
+  businessType,
   onClose,
   enquiryTypes = null,
   crewId = null,
 }: {
-  tenantId: string;
-  tenantName: string;
-  tenantType: TenantType;
+  businessId: string;
+  businessName: string;
+  businessType: BusinessType;
   enquiryTypes?: string[] | null;
   /** the business page's colour — the sheet wears each TYPE's own colour instead (5119), so this is accepted and unused */
   accent?: string;
@@ -153,7 +153,7 @@ export function EnquirySheet({
   useCloseOnBack(onClose);
   /* only the types the business switched on appear (9007); a crew takes its own
      three and keeps no preferences */
-  const allowed = crewId ? enquiryTypesForCrew() : enquiryTypesFor(tenantType).filter((t) => !enquiryTypes || enquiryTypes.includes(t.k));
+  const allowed = crewId ? enquiryTypesForCrew() : enquiryTypesFor(businessType).filter((t) => !enquiryTypes || enquiryTypes.includes(t.k));
   const [type, setType] = useState<EnquiryType | null>(null);
   const [dateMode, setDateMode] = useState<"single" | "multi">("single");
   const [dates, setDates] = useState<string[]>([""]);
@@ -199,7 +199,7 @@ export function EnquirySheet({
 
     setBusy(true);
     const out = await sendEnquiryAction({
-      tenantId: crewId ? null : tenantId,
+      businessId: crewId ? null : businessId,
       crewId,
       typeKey: type.k,
       fields: rows,
@@ -252,7 +252,7 @@ export function EnquirySheet({
       <div
         role="dialog"
         aria-modal="true"
-        aria-label={`Enquiry to ${tenantName}`}
+        aria-label={`Enquiry to ${businessName}`}
         onClick={(e) => e.stopPropagation()}
         style={{
           background: "var(--solid)",
@@ -277,7 +277,7 @@ export function EnquirySheet({
             </div>
             <b style={{ fontSize: 17 }}>Enquiry sent</b>
             <div style={{ fontSize: 12, color: "var(--sub)", margin: "5px 0 16px", lineHeight: 1.5 }}>
-              {tenantName} will reply in your Inbox.
+              {businessName} will reply in your Inbox.
               <br />
               You&apos;ll get a quote you can accept or decline.
             </div>
@@ -293,7 +293,7 @@ export function EnquirySheet({
           <>
             <div style={{ fontSize: 10.5, fontWeight: 900, letterSpacing: 1.2, color: "var(--muted)" }}>SEND ENQUIRY</div>
             <div style={{ fontSize: 17, fontWeight: 900, marginBottom: 2 }}>What&apos;s it for?</div>
-            <div style={{ fontSize: 11, color: "var(--sub)", marginBottom: 12 }}>To {tenantName}</div>
+            <div style={{ fontSize: 11, color: "var(--sub)", marginBottom: 12 }}>To {businessName}</div>
             {allowed.map((x) => (
               <div
                 key={x.k}
@@ -324,7 +324,7 @@ export function EnquirySheet({
               ‹ All types
             </div>
             <div style={{ fontSize: 10.5, fontWeight: 900, letterSpacing: 1.2, color: type.c }}>{type.label.toUpperCase()}</div>
-            <div style={{ fontSize: 17, fontWeight: 900, marginBottom: 2 }}>Enquiry to {tenantName}</div>
+            <div style={{ fontSize: 17, fontWeight: 900, marginBottom: 2 }}>Enquiry to {businessName}</div>
 
             <Lab>{dateMode === "multi" ? "Event dates" : "Date of event"}</Lab>
             <div style={{ display: "flex", gap: 7, marginBottom: 8 }}>

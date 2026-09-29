@@ -29,7 +29,7 @@ const STAGES = ["new", "in_talks", "quoted", "advance_paid", "confirmed", "won",
    as in the table's CHECK and the RPC */
 const sendSchema = z
   .object({
-    tenantId: z.string().uuid().nullable(),
+    businessId: z.string().uuid().nullable(),
     crewId: z.string().uuid().nullable().optional(),
     typeKey: z.enum(TYPE_KEYS),
     fields: z.array(z.tuple([z.string().max(80), z.string().max(200)])).max(20),
@@ -38,7 +38,7 @@ const sendSchema = z
     message: z.string().trim().min(1).max(1500),
     mobile: z.string().trim().max(20).nullable(),
   })
-  .refine((v) => Boolean(v.tenantId) !== Boolean(v.crewId), { message: "an enquiry goes to a business or to a crew" });
+  .refine((v) => Boolean(v.businessId) !== Boolean(v.crewId), { message: "an enquiry goes to a business or to a crew" });
 
 const statusSchema = z.object({ enquiryId: z.string().uuid(), status: z.enum(STAGES) });
 const quoteSchema = z.object({

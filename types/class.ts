@@ -23,7 +23,7 @@ export type VenueStatus = "requested" | "accepted" | "declined";
 
 export interface DanceClass {
   id: string;
-  tenantId: string;
+  businessId: string;
   /** What the class IS, not a name: "{style} · {level}" (the prototype's own
    *  dosClassLabel, 176-183). A class has had no typed name since 17 Sep 2026 —
    *  the form has no field for one, and every repository DERIVES this from
@@ -66,9 +66,9 @@ export interface DanceClass {
 
 /** A published class as the learner listing sees it — with the business behind it. */
 export interface PublicClassListing extends DanceClass {
-  tenantName: string;
+  businessName: string;
   /** which public page the studio row opens: /studio or /artist */
-  tenantType: "studio" | "artist_page";
+  businessType: "studio" | "artist_page";
   tenantArea: string | null;
   tenantCity: string | null;
   /** THE VENUE (19 Sep 2026, the user: "right Studio inside the class section"):

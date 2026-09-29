@@ -65,7 +65,7 @@ export default async function EnquiriesPage({ searchParams }: { searchParams: Pr
      what a person's own tile opens. Scoped, it is the one the tile named. */
   const scopedBusiness = actingAs && actingAs.kind !== "crew" ? actingAs.id : null;
   const scopedCrew = actingAs && actingAs.kind === "crew" ? actingAs.id : null;
-  const businessIds = scopedCrew ? [] : memberships.map((m) => m.tenant.id).filter((id) => !scopedBusiness || id === scopedBusiness);
+  const businessIds = scopedCrew ? [] : memberships.map((m) => m.business.id).filter((id) => !scopedBusiness || id === scopedBusiness);
   const crewIds = scopedBusiness ? [] : ledCrews.map((c) => c.id).filter((id) => !scopedCrew || id === scopedCrew);
 
   const [enquiriesToBusinesses, enquiriesToCrews, enquiriesOut] = await Promise.all([
@@ -105,9 +105,9 @@ export default async function EnquiriesPage({ searchParams }: { searchParams: Pr
      where `?as=` names it. One subject per settings block, always. */
   const settingsFor = memberships
     .filter((m) => m.memberRole === "owner")
-    .filter((m) => (scopedBusiness ? m.tenant.id === scopedBusiness : m.tenant.type === "artist_page"))
+    .filter((m) => (scopedBusiness ? m.business.id === scopedBusiness : m.business.type === "artist_page"))
     .filter(() => !scopedCrew)
-    .map((m) => m.tenant);
+    .map((m) => m.business);
 
   return (
     <InboxScreen

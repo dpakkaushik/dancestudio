@@ -111,7 +111,7 @@ export function RefundsLedger({ rows, side, canSettle = false, focusClassId = nu
         <div key={r.id} style={{ ...bizCard, borderLeft: `4px solid ${TONE[r.status]}`, padding: "12px 13px" }}>
           <div style={{ display: "flex", alignItems: "center", gap: 11 }}>
             <div style={{ flex: 1, minWidth: 0 }}>
-              <div style={{ fontSize: 13, fontWeight: 900 }}>{side === "mine" ? r.tenantName : r.learnerName}</div>
+              <div style={{ fontSize: 13, fontWeight: 900 }}>{side === "mine" ? r.businessName : r.learnerName}</div>
               <div style={{ fontSize: 10.5, color: "var(--sub)", marginTop: 1 }}>
                 {/* ⚠ the event arm went with events (29 Sep 2026) — a ticket's
                     refund still names what it was for and opens nothing */}

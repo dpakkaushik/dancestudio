@@ -115,7 +115,7 @@ async function openRail(
   description: string
 ): Promise<CheckoutPayload> {
   const profile = await findProfileById(supabase, user.id);
-  const tags: Record<string, string> = { order_id: order.id, business_id: order.tenantId };
+  const tags: Record<string, string> = { order_id: order.id, business_id: order.businessId };
   if (order.classId) tags.class_id = order.classId;
   if (order.sessionId) tags.session_id = order.sessionId;
   /* the two event tags went with events (29 Sep 2026) */
@@ -263,7 +263,7 @@ export async function confirmCheckoutAction(input: { orderId: string }): Promise
 }
 
 const cancelSchema = z.object({
-  enrollmentId: z.string().uuid(),
+  classBookingId: z.string().uuid(),
   reason: z.string().trim().min(1).max(300),
 });
 
@@ -274,7 +274,7 @@ export interface CancelBookingResult {
 
 /** RefundSheet's cancel: seat back now, money by the 48 h window. */
 export async function cancelBookingAction(input: {
-  enrollmentId: string;
+  classBookingId: string;
   reason: string;
 }): Promise<CancelBookingResult> {
   const parsed = cancelSchema.safeParse(input);
@@ -283,7 +283,7 @@ export async function cancelBookingAction(input: {
   }
   const { supabase } = await requireUser();
   try {
-    const refund = await cancelBooking(supabase, parsed.data.enrollmentId, parsed.data.reason);
+    const refund = await cancelBooking(supabase, parsed.data.classBookingId, parsed.data.reason);
     revalidateBookingSurfaces();
     if (!refund) {
       return { message: "Cancelled — the seat is back on sale", error: null };

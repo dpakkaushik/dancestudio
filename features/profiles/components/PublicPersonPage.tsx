@@ -221,9 +221,9 @@ export function PublicPersonPage({
         <ActionRow>
           {asksGoHere ? (
             <EnquiryButton
-              tenantId={person.artistPageId as string}
-              tenantName={profile.fullName}
-              tenantType="artist_page"
+              businessId={person.artistPageId as string}
+              businessName={profile.fullName}
+              businessType="artist_page"
               signedIn={signedIn}
               accent={RC}
               cannotAsk={canAsk ? null : "This is your own page — enquiries come to you here"}
@@ -258,7 +258,7 @@ export function PublicPersonPage({
              was true and invisible to every visitor. */
           scheduleHref={
             person.runs.length
-              ? `/${person.runs[0].tenantType === "studio" ? "studio" : "artist"}/${person.runs[0].tenantId}/schedule`
+              ? `/${person.runs[0].businessType === "studio" ? "studio" : "artist"}/${person.runs[0].businessId}/schedule`
               : person.artistPageId
                 ? `/artist/${person.artistPageId}/schedule`
                 : null

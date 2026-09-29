@@ -32,7 +32,7 @@ import { INK, LILAC, SUB } from "@/lib/design/tokens";
 import type { ClassClaim } from "@/types/claim";
 import type { ClassLevel, DanceClass, PosterChoice } from "@/types/class";
 import type { Room } from "@/types/room";
-import type { TenantType } from "@/types/tenant";
+import type { BusinessType } from "@/types/tenant";
 
 const CARD = "var(--card)";
 const EL = "var(--el)";
@@ -96,7 +96,7 @@ function LevelGlyph({ code }: { code: string }) {
   );
 }
 
-/* the claim badge the prototype prints beside a named person (15473-15475) */
+/* the classPerson badge the prototype prints beside a named person (15473-15475) */
 const claimWord = (status: string) =>
   status === "confirmed" ? "✓ Confirmed" : status === "rejected" ? "✕ Said no" : "⏳ Asked";
 const claimTint = (status: string) =>
@@ -167,11 +167,11 @@ type WhereKind = "studio" | "place";
  *  The rule behind both is the database's (`classes_publish_needs_a_yes`), so
  *  this form cannot drift from it. */
 export function ClassForm({
-  tenantId,
-  tenantType,
+  businessId,
+  businessType,
   existing,
   rooms,
-  claims = [],
+  classPeople = [],
   isOwner = false,
   studioPlace = "",
   /* ⚠ `cityCentres` and `city` are GONE (20 Sep 2026). They existed for one
@@ -184,7 +184,7 @@ export function ClassForm({
   meId = null,
   ownedStudioIds = [],
 }: {
-  tenantId: string;
+  businessId: string;
   /** THE OWNER THEMSELVES (26 Sep 2026): a studio's form offers "I take it
    *  myself" beside the people search, and the database seats that person
    *  CONFIRMED rather than asked — there is nobody to ask. Null on an artist's
@@ -199,14 +199,14 @@ export function ClassForm({
    *  and `/business/{id}/classes/new` still renders the page (Rule 14). */
   sheet?: boolean;
   /** a studio's form or an artist page's — decides WHERE and WHO (18 Sep 2026) */
-  tenantType: TenantType;
+  businessType: BusinessType;
   existing?: DanceClass;
   /** the NAME of the studio an artist's class asked for a room — the row holds
    *  only the id, and a reopened form should say who was asked (18 Sep 2026) */
   venueName?: string | null;
   /** the business's OWN rooms — a studio's; an artist page has none */
   rooms: Room[];
-  claims?: ClassClaim[];
+  classPeople?: ClassClaim[];
   /** the studio's own address, printed above the room list (prototype 15381:
    *  `ownStudio().loc` — a room means nothing until you know which building) */
   studioPlace?: string;
@@ -215,7 +215,7 @@ export function ClassForm({
   isOwner?: boolean;
 }) {
   const isEdit = Boolean(existing);
-  const isArtist = tenantType === "artist_page";
+  const isArtist = businessType === "artist_page";
   const router = useRouter();
   const formRef = useRef<HTMLFormElement>(null);
   const [step, setStep] = useState(0);
@@ -316,7 +316,7 @@ export function ClassForm({
   };
 
   /* ── WHO IS TAKING IT, for a studio (18 Sep 2026): anyone on DanceOS, asked ── */
-  const artistClaim = claims.find((c) => c.kind === "artist");
+  const artistClaim = classPeople.find((c) => c.kind === "artist");
   const [teacher, setTeacher] = useState<{ id: string; name: string } | null>(artistClaim ? { id: artistClaim.userId, name: artistClaim.personName } : null);
   const [artistPayText, setArtistPayText] = useState(String(artistClaim?.payPerSessionInr ?? 0));
   const artistPayInr = numberOf(artistPayText, 0, 200000);
@@ -434,9 +434,9 @@ export function ClassForm({
         {!isEdit ? <input type="hidden" name="status" ref={statusRef} defaultValue="draft" /> : null}
         {/* every field lives in state and submits as a hidden input, so stepping
             between the two halves never drops what you already answered */}
-        <input type="hidden" name="tenantId" value={tenantId} />
+        <input type="hidden" name="businessId" value={businessId} />
         {/* where a save lands — an artist's register is Your classes' Manage segment, in one hop (19 Sep 2026) */}
-        <input type="hidden" name="after" value={isArtist ? "/my-classes?show=manage" : `/business/${tenantId}/classes`} />
+        <input type="hidden" name="after" value={isArtist ? "/my-classes?show=manage" : `/business/${businessId}/classes`} />
         {/* which shell this form is in, so the action revalidates the register
             and hands back instead of redirecting over the sheet's own entry */}
         {sheet ? <input type="hidden" name="sheet" value="1" /> : null}

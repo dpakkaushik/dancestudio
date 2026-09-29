@@ -9,7 +9,7 @@ import { CREW_ROLE_WORD } from "@/types/crew";
 import { MEMBER_ROLE_WORD } from "@/types/staff";
 /* ⚠ `Group` and `Row` went with the Train group (27 Sep 2026) — every group left
    on this page is a `PeopleGroup` of chips, which is the user's own shape from
-   the same morning. `Tenant` went with them: nothing here is a business row any
+   the same morning. `Business` went with them: nothing here is a business row any
    more, only associations and chips. */
 import { PeopleGroup, PersonChip, SchedIcon, bigWhite } from "./profile-kit";
 import type { ReactNode } from "react";
@@ -97,7 +97,7 @@ export function PersonBody({
   const { profile } = person;
   /** ⚠ NEVER THEIR OWN ARTIST PAGE as a place they teach (R24) — but a class
    *  taught at SOMEBODY ELSE'S artist page is a real thing, and the old filter
-   *  (`tenantType === "studio"`) was broader than the rule it cited, so it
+   *  (`businessType === "studio"`) was broader than the rule it cited, so it
    *  dropped those too. `person_teaches_at` returns artist pages with no type
    *  filter, so what has to go is the ONE page they own.
    *
@@ -108,13 +108,13 @@ export function PersonBody({
    *  and every visitor would have seen the person's own page listed under Teach —
    *  R24's exact bug, for the majority of viewers, introduced by the fix for a
    *  smaller one. `artistPageId` is a definer read that answers anybody. */
-  const studiosTaughtAt = person.teachesAt.filter((t) => t.tenantType === "studio" || t.tenantId !== person.artistPageId);
+  const studiosTaughtAt = person.teachesAt.filter((t) => t.businessType === "studio" || t.businessId !== person.artistPageId);
   /* ⚠ WHERE THEY ARE SEATED (20 Sep 2026, the user's list E) — a different fact
      from the one above, which counts PUBLISHED CLASSES: somebody asked onto a
      team who has not taught yet is associated and teaches at nothing. Their own
      page is not an association with themselves, so it is left out. */
-  const studiosWith = person.associations.filter((a) => a.tenantType === "studio");
-  const artistsWith = person.associations.filter((a) => a.tenantType === "artist_page" && a.role !== "owner");
+  const studiosWith = person.associations.filter((a) => a.businessType === "studio");
+  const artistsWith = person.associations.filter((a) => a.businessType === "artist_page" && a.role !== "owner");
   /* who works WITH this artist, on their own page — the owner is the person
      whose page it is, so their own row is not drawn (see the prop's comment) */
   const teamFaculty = artistTeam.filter((m) => m.role === "trainer" || m.role === "visiting_faculty");
@@ -143,9 +143,9 @@ export function PersonBody({
   const studios = (() => {
     const byId = new Map<string, { id: string; name: string; photo: string | null; title: string }>();
     studiosWith.forEach((a) => {
-      byId.set(a.tenantId, {
-        id: a.tenantId,
-        name: a.tenantName,
+      byId.set(a.businessId, {
+        id: a.businessId,
+        name: a.businessName,
         photo: a.photoPath ? photoUrl(a.photoPath) : null,
         /* ⚠ a seat they have LEFT says so rather than disappearing (20 Sep
            2026) — the years somebody taught somewhere are part of who they are */
@@ -153,12 +153,12 @@ export function PersonBody({
       });
     });
     studiosTaughtAt.forEach((t) => {
-      if (byId.has(t.tenantId)) return;
+      if (byId.has(t.businessId)) return;
       const teaches = t.kinds.includes("Artist");
       const assists = t.kinds.includes("Assistant");
-      byId.set(t.tenantId, {
-        id: t.tenantId,
-        name: t.tenantName,
+      byId.set(t.businessId, {
+        id: t.businessId,
+        name: t.businessName,
         photo: null,
         title: teaches && assists ? "Teaches · assists" : teaches ? "Teaches here" : "Assists here",
       });
@@ -196,7 +196,7 @@ export function PersonBody({
           ⚠ NO `kind === "artist"` GATE ANY MORE. The public page hid "Studios
           taught at" from anybody without a live plan while the Profile tab showed
           it, which is two answers to one question — and the rows are public
-          either way (`person_teaches_at` counts confirmed claims on PUBLISHED
+          either way (`person_teaches_at` counts confirmed classPeople on PUBLISHED
           classes of LISTED businesses). A studio's trainer who never took the
           Artist plan taught those classes, and the page says so on both screens
           or on neither. */}
@@ -237,9 +237,9 @@ export function PersonBody({
             /* an artist page IS the person behind it (18 Sep 2026) — open them
                directly rather than the address that only redirects */
             <PersonChip
-              key={a.tenantId}
-              href={a.ownerId ? `/person/${a.ownerId}` : `/artist/${a.tenantId}`}
-              name={a.tenantName}
+              key={a.businessId}
+              href={a.ownerId ? `/person/${a.ownerId}` : `/artist/${a.businessId}`}
+              name={a.businessName}
               photo={a.photoPath ? photoUrl(a.photoPath) : null}
               role={a.ended ? `${MEMBER_ROLE_WORD[a.role]} · past` : MEMBER_ROLE_WORD[a.role]}
               roleColour={accent}

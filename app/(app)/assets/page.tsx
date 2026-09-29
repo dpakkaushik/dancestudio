@@ -24,6 +24,6 @@ export default async function AssetsPage() {
      other business they own, so the redirect is never a dead end for a studio
      owner who typed it */
   const owned = teams.filter((m) => m.memberRole === "owner");
-  const page = owned.find((m) => m.tenant.type === "artist_page") ?? owned[0] ?? null;
-  redirect(page ? `/business/${page.tenant.id}/assets` : "/business");
+  const page = owned.find((m) => m.business.type === "artist_page") ?? owned[0] ?? null;
+  redirect(page ? `/business/${page.business.id}/assets` : "/business");
 }

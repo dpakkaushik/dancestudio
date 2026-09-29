@@ -150,7 +150,7 @@ function LearnedRow({ r }: { r: LearnedRoutine }) {
         <b style={{ display: "block", fontSize: 13.5, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{r.title}</b>
         <span style={{ display: "block", fontSize: 10.5, color: SUB, fontWeight: 700, marginTop: 1 }}>
           {r.style} · {DOS_LEVEL_LABEL[r.level] ?? r.level}
-          {r.tenantName ? ` · ${r.tenantName}` : ""}
+          {r.businessName ? ` · ${r.businessName}` : ""}
         </span>
         <span style={{ display: "flex", gap: 5, marginTop: 5 }}>
           {chip("♪ Song", songHref, col)}

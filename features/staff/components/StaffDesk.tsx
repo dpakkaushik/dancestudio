@@ -28,7 +28,7 @@ import { useCloseOnBack } from "@/lib/hooks/useCloseOnBack";
 import { photoUrl } from "@/lib/media/photo";
 import type { MemberRole, TeamMember } from "@/repositories/tenants";
 import type { PayoutMethod, PayoutRecord, PayoutStatus } from "@/types/payout";
-import type { TenantType } from "@/types/tenant";
+import type { BusinessType } from "@/types/tenant";
 import {
   MEMBER_GRANTS,
   MEMBER_LABEL,
@@ -147,19 +147,19 @@ const PAY_STATES: ReadonlyArray<readonly [PayoutStatus, string]> = [
 ];
 
 export function StaffDesk({
-  tenantId,
-  tenantName,
-  tenantType,
+  businessId,
+  businessName,
+  businessType,
   team,
   invites,
   payments = [],
   isOwner,
   meUserId,
 }: {
-  tenantId: string;
-  tenantName: string;
+  businessId: string;
+  businessName: string;
   /** which labels this profile has to give (19 Sep 2026) */
-  tenantType: TenantType;
+  businessType: BusinessType;
   team: TeamMember[];
   invites: TenantInvite[];
   /** everything this business has paid its people — the history, filtered per row */
@@ -174,7 +174,7 @@ export function StaffDesk({
      profile since 18 Sep (R24), so the door is the OWNER's person page, taken
      from the roster rather than from `/artist/{id}`, which only redirects there */
   const ownerUserId = team.find((m) => m.role === "owner")?.userId ?? null;
-  const publicHref = tenantType === "artist_page" ? (ownerUserId ? `/person/${ownerUserId}` : "/business") : `/studio/${tenantId}`;
+  const publicHref = businessType === "artist_page" ? (ownerUserId ? `/person/${ownerUserId}` : "/business") : `/studio/${businessId}`;
   const [addOpen, setAddOpen] = useState(false);
   const [openMember, setOpenMember] = useState<TeamMember | null>(null);
   const [shareInvite, setShareInvite] = useState<TenantInvite | null>(null);
@@ -202,9 +202,9 @@ export function StaffDesk({
   useCloseOnBack(() => setPayOpen(false), payOpen);
 
   /** the labels this profile has to give, and the seats already on the team */
-  const roles = rolesFor(tenantType);
+  const roles = rolesFor(businessType);
   /* ⚠ the member sheet may hand over OWNER; an invite may not (20 Sep 2026) */
-  const labels = labelsFor(tenantType);
+  const labels = labelsFor(businessType);
   const onTeam = team.map((m) => m.userId);
   const paidTo = (userId: string) => payments.filter((p) => p.userId === userId);
 
@@ -255,7 +255,7 @@ export function StaffDesk({
           organization runs several studios, and the tool hero names the tool. */}
       <DeskHero tool="team" as="h1" margin="12px 0 8px" />
       <Link href={publicHref} style={{ display: "block", fontSize: 11.5, color: SUB, fontWeight: 800, margin: "0 0 12px", textDecoration: "none" }}>
-        {tenantName} · who it names ›
+        {businessName} · who it names ›
       </Link>
 
       {/* ＋ ADD, AT THE TOP, THE WAY CLASSES AND EVENTS OPEN (20 Sep 2026, the
@@ -416,7 +416,7 @@ export function StaffDesk({
                                 const b = next.indexOf(partner.userId);
                                 if (a < 0 || b < 0) return;
                                 [next[a], next[b]] = [next[b], next[a]];
-                                void run(() => reorderMembersAction({ tenantId, userIds: next }), null);
+                                void run(() => reorderMembersAction({ businessId, userIds: next }), null);
                               }}
                               style={{ fontSize: 11, lineHeight: 1.1, padding: "2px 5px", background: off ? "transparent" : "var(--el)", borderRadius: 7, border: "none", cursor: off ? "default" : "pointer", color: off ? EL : SUB, fontFamily: "inherit" }}
                             >
@@ -503,7 +503,7 @@ export function StaffDesk({
                         tabIndex={0}
                         onKeyDown={dosKey}
                         aria-label={`Withdraw the invite for ${inv.name}`}
-                        onClick={() => run(() => revokeInviteAction({ tenantId, inviteId: inv.id }), `${inv.name} — invite withdrawn`)}
+                        onClick={() => run(() => revokeInviteAction({ businessId, inviteId: inv.id }), `${inv.name} — invite withdrawn`)}
                         style={{ flex: 1, textAlign: "center", padding: "9px", borderRadius: 999, background: EL, color: "#F87171", fontWeight: 800, fontSize: 12, cursor: "pointer" }}
                       >
                         Withdraw
@@ -634,7 +634,7 @@ export function StaffDesk({
                 pickLabel={(p) => `Ask ${p.fullName}`}
                 onPick={async (p) => {
                   const done = await run(
-                    () => invitePersonAction({ tenantId, userId: p.id, role: form.role }),
+                    () => invitePersonAction({ businessId, userId: p.id, role: form.role }),
                     `📨 ${p.fullName} asked — they accept to join`
                   );
                   if (done) setAddOpen(false);
@@ -675,7 +675,7 @@ export function StaffDesk({
                     const done = await run(
                       () =>
                         inviteToTenantAction({
-                          tenantId,
+                          businessId,
                           name: form.name,
                           email: form.email,
                           role: form.role,
@@ -849,7 +849,7 @@ export function StaffDesk({
                     onClick={async () => {
                       if (on) return;
                       const done = await run(
-                        () => setMemberRoleAction({ tenantId, userId: openMember.userId, role: k }),
+                        () => setMemberRoleAction({ businessId, userId: openMember.userId, role: k }),
                         `${openMember.name} → ${word}`
                       );
                       if (done) setOpenMember({ ...openMember, role: k as MemberRole });
@@ -910,7 +910,7 @@ export function StaffDesk({
                             canRefunds: key === "refunds" ? !on : openMember.canRefunds,
                           };
                           const done = await run(
-                            () => setMemberPowersAction({ tenantId, userId: openMember.userId, ...next }),
+                            () => setMemberPowersAction({ businessId, userId: openMember.userId, ...next }),
                             `${openMember.name} · ${title.toLowerCase()} ${!on ? "on" : "off"}`,
                           );
                           if (done) setOpenMember({ ...openMember, ...next });
@@ -966,7 +966,7 @@ export function StaffDesk({
                     about this person, and a control that appears only once
                     somebody has been paid is one nobody learns is there. */}
                 <Link
-                  href={`/business/${tenantId}/staff/${openMember.userId}`}
+                  href={`/business/${businessId}/staff/${openMember.userId}`}
                   aria-label={`Payment history for ${openMember.name}`}
                   style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 4, padding: "11px 13px", borderRadius: 14, background: "var(--card)", border: `1.5px solid ${EL}`, color: "var(--text)", textDecoration: "none", fontWeight: 800, fontSize: 12.5 }}
                 >
@@ -1001,7 +1001,7 @@ export function StaffDesk({
                 aria-label={`Remove ${openMember.name} from the team`}
                 onClick={async () => {
                   const done = await run(
-                    () => removeMemberAction({ tenantId, userId: openMember.userId }),
+                    () => removeMemberAction({ businessId, userId: openMember.userId }),
                     `${openMember.name} taken off the team`
                   );
                   if (done) setOpenMember(null);
@@ -1116,7 +1116,7 @@ export function StaffDesk({
                   const done = await run(
                     () =>
                       payTeamMemberAction({
-                        tenantId,
+                        businessId,
                         userId: openMember.userId,
                         amountInr: Number(pay.amount),
                         method: pay.method,

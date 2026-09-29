@@ -96,7 +96,7 @@ export function HomeBand({
           /* ⚠ `face` was hard-coded null until 29 Sep 2026 — the one row in this
              sheet that could not show a picture, beside people and crews that
              could. The read simply never selected the column. */
-          ...followingTenants.map((t) => ({ key: t.followId, href: `/${t.tenantType === "studio" ? "studio" : "artist"}/${t.tenantId}`, name: t.tenantName, kind: t.tenantType === "studio" ? "studio" : "artist", glyph: (t.tenantType === "studio" ? "studio" : "artist") as FollowGlyph, tint: followTint(t.tenantType === "studio" ? "studio-biz" : "artist-biz"), face: photoUrl(t.tenantPhotoPath), initials: initialsOf(t.tenantName) })),
+          ...followingTenants.map((t) => ({ key: t.followId, href: `/${t.businessType === "studio" ? "studio" : "artist"}/${t.businessId}`, name: t.businessName, kind: t.businessType === "studio" ? "studio" : "artist", glyph: (t.businessType === "studio" ? "studio" : "artist") as FollowGlyph, tint: followTint(t.businessType === "studio" ? "studio-biz" : "artist-biz"), face: photoUrl(t.tenantPhotoPath), initials: initialsOf(t.businessName) })),
           ...followingCrews.map((c) => ({ key: c.followId, href: `/crew/${c.crewId}`, name: c.name, kind: "crew", glyph: "crew" as FollowGlyph, tint: followTint("crew"), face: photoUrl(c.photo), initials: initialsOf(c.name) })),
         ];
   const segOf = (kind: string): FollowSeg => (kind === "user" ? "Users" : kind === "artist" ? "Artists" : kind === "crew" ? "Crews" : "Studios");

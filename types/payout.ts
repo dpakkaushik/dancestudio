@@ -65,7 +65,7 @@ export interface PayoutRecord {
 }
 
 /** The studio owner's side of the earnings screen. */
-export interface TenantPayLedger {
+export interface BusinessPayLedger {
   people: PersonPayLedger[];
   owedTotal: number;
   paidTotal: number;
@@ -109,8 +109,8 @@ export interface PersonPayHistory {
 /** One studio's line on a teacher's own earnings screen — the prototype's
  *  "EEE Dance Studio · 14 sessions · ₹900 · ₹12,600 paid ✓". */
 export interface StudioEarning {
-  tenantId: string;
-  tenantName: string;
+  businessId: string;
+  businessName: string;
   sessions: number;
   ratePerSessionInr: number | null;
   earnedInr: number;
@@ -134,5 +134,5 @@ export interface MyEarnings {
   earnedTotal: number;
   paidTotal: number;
   dueTotal: number;
-  payouts: Array<PayoutRecord & { tenantName: string }>;
+  payouts: Array<PayoutRecord & { businessName: string }>;
 }

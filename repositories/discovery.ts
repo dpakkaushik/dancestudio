@@ -1,5 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
-import type { TenantType } from "@/types/tenant";
+import type { BusinessType } from "@/types/tenant";
 
 export interface NearbyTenant {
   id: string;
@@ -10,7 +10,7 @@ export interface NearbyTenant {
   /** likewise — where it is, for the map view (11 Sep 2026) */
   lat?: number | null;
   lng?: number | null;
-  type: TenantType;
+  type: BusinessType;
   name: string;
   area: string | null;
   city: string | null;
@@ -24,7 +24,7 @@ export interface NearbyTenant {
 
 interface NearbyRow {
   id: string;
-  type: TenantType;
+  type: BusinessType;
   name: string;
   area: string | null;
   city: string | null;
@@ -32,11 +32,11 @@ interface NearbyRow {
   located?: boolean;
 }
 
-/** Tenants within a radius, nearest first — the caller's RLS decides visibility
+/** Businesses within a radius, nearest first — the caller's RLS decides visibility
  *  (anonymous and strangers see listed businesses only). */
 export async function findNearbyTenants(
   supabase: SupabaseClient,
-  input: { lat: number; lng: number; radiusKm?: number; type?: TenantType; limit?: number; offset?: number }
+  input: { lat: number; lng: number; radiusKm?: number; type?: BusinessType; limit?: number; offset?: number }
 ): Promise<NearbyTenant[]> {
   /* `p_limit` IS ONLY SENT WHEN ASKED FOR (11 Sep 2026). It arrives with
      migration 20260913120000, and PostgREST resolves an RPC by its exact
@@ -117,7 +117,7 @@ export async function findDiscoverArtists(supabase: SupabaseClient, input: { cit
  *  one per fact — under the same "anyone reads listed businesses" policy the
  *  public page uses. A business with no photo simply has none here; a business
  *  nobody has verified carries a null `verifiedAt`, which is not a tick. */
-export interface TenantCardFacts {
+export interface BusinessCardFacts {
   photoPath: string | null;
   verifiedAt: string | null;
   /** where it is — for Discover's map view (11 Sep 2026); the centroid until the owner places it */
@@ -125,9 +125,9 @@ export interface TenantCardFacts {
   lng: number | null;
 }
 
-export async function findTenantCardFacts(supabase: SupabaseClient, tenantIds: string[]): Promise<Map<string, TenantCardFacts>> {
-  const ids = [...new Set(tenantIds)];
-  const out = new Map<string, TenantCardFacts>();
+export async function findTenantCardFacts(supabase: SupabaseClient, businessIds: string[]): Promise<Map<string, BusinessCardFacts>> {
+  const ids = [...new Set(businessIds)];
+  const out = new Map<string, BusinessCardFacts>();
   if (ids.length === 0) {
     return out;
   }

@@ -27,11 +27,11 @@ import { PAYOUT_METHOD_LABEL, type PayoutWithSessions } from "@/types/payout";
  *  ship the ledger's markup twice. */
 export function PayHistoryExport({
   personName,
-  tenantName,
+  businessName,
   payouts,
 }: {
   personName: string;
-  tenantName: string;
+  businessName: string;
   payouts: PayoutWithSessions[];
 }) {
   if (payouts.length === 0) return null;
@@ -71,7 +71,7 @@ export function PayHistoryExport({
     const blob = new Blob([lines.join("\n")], { type: "text/csv" });
     const a = document.createElement("a");
     a.href = URL.createObjectURL(blob);
-    a.download = `danceos-${slug(tenantName)}-${slug(personName)}-payments.csv`;
+    a.download = `danceos-${slug(businessName)}-${slug(personName)}-payments.csv`;
     a.click();
     URL.revokeObjectURL(a.href);
   };
@@ -80,7 +80,7 @@ export function PayHistoryExport({
     <button
       type="button"
       onClick={download}
-      aria-label={`Export what ${tenantName} has paid ${personName} as a CSV`}
+      aria-label={`Export what ${businessName} has paid ${personName} as a CSV`}
       style={{
         display: "flex",
         alignItems: "center",

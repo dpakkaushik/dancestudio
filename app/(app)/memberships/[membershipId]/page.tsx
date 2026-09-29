@@ -23,7 +23,7 @@ export default async function MembershipUsageRoute({ params }: { params: Promise
     redirect("/login");
   }
   const teams = await findMyTeams(supabase).catch(() => []);
-  const owned = teams.filter((m) => m.tenant.type === "studio" || m.tenant.type === "artist_page").map((m) => m.tenant);
+  const owned = teams.filter((m) => m.business.type === "studio" || m.business.type === "artist_page").map((m) => m.business);
   const lists = await Promise.all(owned.map((t) => findBusinessMemberships(supabase, t.id).catch(() => [])));
   /* ⚠ WHICH list it was in is the membership's seller — `MembershipWithUsage`
      carries no business id, and `lists[i]` belongs to `owned[i]` by
@@ -41,6 +41,6 @@ export default async function MembershipUsageRoute({ params }: { params: Promise
      this page admits every member — a trainer reads the usage — and
      `delete_membership` admits the OWNER alone. Offering the control to a
      trainer would be a button whose only possible answer is a refusal. */
-  const isOwner = teams.some((t) => t.tenant.id === owned[sellerIdx].id && t.memberRole === "owner");
+  const isOwner = teams.some((t) => t.business.id === owned[sellerIdx].id && t.memberRole === "owner");
   return <MembershipUsagePage membership={membership} holders={holders} classes={classes} canManage={isOwner} />;
 }

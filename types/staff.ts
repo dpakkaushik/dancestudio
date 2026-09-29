@@ -16,7 +16,7 @@ export type InviteStatus = "pending" | "accepted" | "declined" | "revoked";
 
 export interface TenantInvite {
   id: string;
-  tenantId: string;
+  businessId: string;
   name: string;
   /** null when the invite names a PERSON rather than an address (19 Sep 2026) */
   email: string | null;
@@ -33,8 +33,8 @@ export interface TenantInvite {
  *  in with — so being asked onto a team arrives in-app, no link required. */
 export interface PendingInvite {
   inviteId: string;
-  tenantId: string;
-  tenantName: string;
+  businessId: string;
+  businessName: string;
   memberRole: InvitableRole;
   code: string;
   /** the name the studio typed for them */
@@ -45,8 +45,8 @@ export interface PendingInvite {
 /** What the /join/{code} screen is allowed to say. The address is masked: a
  *  forwarded link must not hand out somebody else's email. */
 export interface InvitePreview {
-  tenantId: string;
-  tenantName: string;
+  businessId: string;
+  businessName: string;
   memberRole: InvitableRole;
   invitedName: string;
   status: InviteStatus;

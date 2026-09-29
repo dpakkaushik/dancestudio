@@ -63,10 +63,10 @@ export interface CardShot {
  * photo and no way to say there were more, and the dots under a real rail are
  * that fact told properly.
  */
-export function StudioCard({ tenant, followers = 0, shots = [] }: { tenant: NearbyTenant; followers?: number; shots?: CardShot[] }) {
-  const grad = gradientOf(tenant.name);
-  const photo = photoUrl(tenant.photoPath);
-  const place = tenant.city ?? tenant.area ?? "—";
+export function StudioCard({ business, followers = 0, shots = [] }: { business: NearbyTenant; followers?: number; shots?: CardShot[] }) {
+  const grad = gradientOf(business.name);
+  const photo = photoUrl(business.photoPath);
+  const place = business.city ?? business.area ?? "—";
   const [idx, setIdx] = useState(0);
   const [broken, setBroken] = useState<Record<string, true>>({});
   const [faceBroken, setFaceBroken] = useState(false);
@@ -75,8 +75,8 @@ export function StudioCard({ tenant, followers = 0, shots = [] }: { tenant: Near
 
   return (
     <Link
-      href={publicProfilePath(tenant)}
-      aria-label={`Open ${tenant.name}`}
+      href={publicProfilePath(business)}
+      aria-label={`Open ${business.name}`}
       style={{
         display: "block",
         borderRadius: 20,
@@ -91,7 +91,7 @@ export function StudioCard({ tenant, followers = 0, shots = [] }: { tenant: Near
       <div style={{ position: "relative" }}>
         <div
           role={many ? "region" : undefined}
-          aria-label={many ? `${tenant.name} — ${live.length} pictures, swipe sideways` : undefined}
+          aria-label={many ? `${business.name} — ${live.length} pictures, swipe sideways` : undefined}
           data-testid="studio-card-rail"
           onScroll={(e) => {
             const n = e.currentTarget;
@@ -171,12 +171,12 @@ export function StudioCard({ tenant, followers = 0, shots = [] }: { tenant: Near
               boxShadow: "0 6px 16px -8px rgba(0,0,0,.6)",
             }}
           >
-            {photo && !faceBroken ? <Image src={photo} alt="" fill sizes={`${FACE}px`} style={{ objectFit: "cover" }} onError={() => setFaceBroken(true)} /> : initialsOf(tenant.name)}
+            {photo && !faceBroken ? <Image src={photo} alt="" fill sizes={`${FACE}px`} style={{ objectFit: "cover" }} onError={() => setFaceBroken(true)} /> : initialsOf(business.name)}
           </span>
           <span style={{ flex: 1, minWidth: 0 }}>
             <span style={{ display: "flex", alignItems: "center", gap: 6, minWidth: 0 }}>
-              <span style={{ flex: 1, minWidth: 0, fontWeight: 900, fontSize: 17, letterSpacing: -0.4, fontFamily: DOS_DISPLAY, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{tenant.name}</span>
-              {tenant.verifiedAt ? <VerifiedTick size={15} /> : null}
+              <span style={{ flex: 1, minWidth: 0, fontWeight: 900, fontSize: 17, letterSpacing: -0.4, fontFamily: DOS_DISPLAY, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{business.name}</span>
+              {business.verifiedAt ? <VerifiedTick size={15} /> : null}
             </span>
             <span style={{ display: "flex", alignItems: "center", gap: 12, minWidth: 0, marginTop: 4 }}>
               {/* A DISTANCE ONLY WHEN IT IS ONE (11 Sep 2026). Until a business has
@@ -185,7 +185,7 @@ export function StudioCard({ tenant, followers = 0, shots = [] }: { tenant: Near
                   for every studio in the city, and a confident lie on a card that
                   is asking somebody to travel. Where the point was never chosen the
                   card says the place and stops. */}
-              <DosWhere city={place} km={tenant.located ? kmLabel(tenant.distanceKm) : null} />
+              <DosWhere city={place} km={business.located ? kmLabel(business.distanceKm) : null} />
               <DosFollowers n={followers} />
             </span>
           </span>

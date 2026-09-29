@@ -23,14 +23,14 @@ const askSchema = z.object({
 });
 
 const respondSchema = z.object({
-  claimId: z.string().uuid(),
+  classPersonId: z.string().uuid(),
   accept: z.boolean(),
 });
 
-const claimIdSchema = z.object({ claimId: z.string().uuid() });
+const claimIdSchema = z.object({ classPersonId: z.string().uuid() });
 
 const powersSchema = z.object({
-  claimId: z.string().uuid(),
+  classPersonId: z.string().uuid(),
   canAttendance: z.boolean(),
   canRefunds: z.boolean(),
 });
@@ -74,7 +74,7 @@ export async function claimPersonAction(input: {
 }
 
 export async function respondToClaimAction(input: {
-  claimId: string;
+  classPersonId: string;
   accept: boolean;
 }): Promise<ClaimActionResult> {
   const parsed = respondSchema.safeParse(input);
@@ -83,7 +83,7 @@ export async function respondToClaimAction(input: {
   }
   const supabase = await requireUser();
   try {
-    await respondToClaim(supabase, parsed.data.claimId, parsed.data.accept);
+    await respondToClaim(supabase, parsed.data.classPersonId, parsed.data.accept);
     revalidatePeopleSurfaces();
     revalidatePath("/profile");
     return { error: null };
@@ -92,14 +92,14 @@ export async function respondToClaimAction(input: {
   }
 }
 
-export async function withdrawClaimAction(input: { claimId: string }): Promise<ClaimActionResult> {
+export async function withdrawClaimAction(input: { classPersonId: string }): Promise<ClaimActionResult> {
   const parsed = claimIdSchema.safeParse(input);
   if (!parsed.success) {
     return { error: "Invalid request" };
   }
   const supabase = await requireUser();
   try {
-    await withdrawClaim(supabase, parsed.data.claimId);
+    await withdrawClaim(supabase, parsed.data.classPersonId);
     revalidatePeopleSurfaces();
     return { error: null };
   } catch (error: unknown) {
@@ -108,7 +108,7 @@ export async function withdrawClaimAction(input: { claimId: string }): Promise<C
 }
 
 export async function setClaimPowersAction(input: {
-  claimId: string;
+  classPersonId: string;
   canAttendance: boolean;
   canRefunds: boolean;
 }): Promise<ClaimActionResult> {
@@ -120,7 +120,7 @@ export async function setClaimPowersAction(input: {
   try {
     await setClaimPowers(
       supabase,
-      parsed.data.claimId,
+      parsed.data.classPersonId,
       parsed.data.canAttendance,
       parsed.data.canRefunds
     );

@@ -65,7 +65,7 @@ export default function TermsPage() {
 
       <h2>8. What DanceOS is not responsible for</h2>
       <p>
-        DanceOS is provided as it is. DanceOS does not run the classes, teach the sessions, host the events or employ the people you meet through it, and is not responsible for what happens in a studio, at a venue or between you and a business. To the extent the law allows, DanceOS&apos;s liability to you is limited to the amount you paid DanceOS in the twelve months before the claim.
+        DanceOS is provided as it is. DanceOS does not run the classes, teach the sessions, host the events or employ the people you meet through it, and is not responsible for what happens in a studio, at a venue or between you and a business. To the extent the law allows, DanceOS&apos;s liability to you is limited to the amount you paid DanceOS in the twelve months before the classPerson.
       </p>
 
       <h2>9. Ending an account</h2>

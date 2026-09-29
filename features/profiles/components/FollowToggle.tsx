@@ -25,7 +25,7 @@ import { PROFILE_CHIP } from "./profile-band";
 export type FollowTarget = { kind: "business" | "person" | "crew"; id: string };
 
 const send = (target: FollowTarget, on: boolean): Promise<FollowActionResult> =>
-  target.kind === "business" ? setFollowAction({ tenantId: target.id, on }) : target.kind === "person" ? setPersonFollowAction({ userId: target.id, on }) : setCrewFollowAction({ crewId: target.id, on });
+  target.kind === "business" ? setFollowAction({ businessId: target.id, on }) : target.kind === "person" ? setPersonFollowAction({ userId: target.id, on }) : setCrewFollowAction({ crewId: target.id, on });
 
 export function FollowToggle({
   target,

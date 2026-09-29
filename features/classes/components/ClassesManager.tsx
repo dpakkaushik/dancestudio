@@ -276,7 +276,7 @@ function ConfirmSheet({
 
 /** Classes register — lifted from the prototype's S_classesmod (DanceOSApp.jsx:14970-15106). */
 export function ClassesManager({
-  tenantId,
+  businessId,
   classes,
   filledBySession = {},
   artists = {},
@@ -286,7 +286,7 @@ export function ClassesManager({
   whyNoClass = null,
   canCreate = true,
 }: {
-  tenantId: string;
+  businessId: string;
   classes: DanceClass[];
   /** Enrolled count per session id — real numbers from Step 4. */
   filledBySession?: Record<string, number>;
@@ -360,7 +360,7 @@ export function ClassesManager({
   const hiddenRefs = (c: DanceClass) => (
     <>
       <input type="hidden" name="classId" value={c.id} />
-      <input type="hidden" name="tenantId" value={tenantId} />
+      <input type="hidden" name="businessId" value={businessId} />
     </>
   );
 
@@ -536,11 +536,11 @@ export function ClassesManager({
                         studio said no, so the class is going nowhere until it is moved —
                         the form's WHERE step is where it is moved, and this names it */}
                     {st?.venueStatus === "declined" ? (
-                      <Link href={`/business/${tenantId}/classes/${c.id}/edit`} style={{ ...pill(true), textDecoration: "none" }}>
+                      <Link href={`/business/${businessId}/classes/${c.id}/edit`} style={{ ...pill(true), textDecoration: "none" }}>
                         Pick another studio ›
                       </Link>
                     ) : (
-                      <Link href={`/business/${tenantId}/classes/${c.id}/edit`} style={{ ...pill(false), textDecoration: "none" }}>
+                      <Link href={`/business/${businessId}/classes/${c.id}/edit`} style={{ ...pill(false), textDecoration: "none" }}>
                         Edit
                       </Link>
                     )}
@@ -567,7 +567,7 @@ export function ClassesManager({
                         if (c.roomId && c.session && !c.venueBusinessId) {
                           const s = istParts(c.session.startsAt);
                           const e = istParts(c.session.endsAt);
-                          clash = await checkRoomClashAction({ tenantId, roomId: c.roomId, date: s.date, startTime: s.time, endTime: e.time, excludeClassId: c.id });
+                          clash = await checkRoomClashAction({ businessId, roomId: c.roomId, date: s.date, startTime: s.time, endTime: e.time, excludeClassId: c.id });
                         }
                         setAsk({ kind: "publish", c, clash });
                       }}
@@ -584,7 +584,7 @@ export function ClassesManager({
                     {chipRow}
                     {/* the Roster pill stays: it is the app's register page (a documented departure) */}
                     <Link
-                      href={`/business/${tenantId}/classes/${c.id}/roster`}
+                      href={`/business/${businessId}/classes/${c.id}/roster`}
                       style={{ ...pill(false), textDecoration: "none" }}
                     >
                       Roster
@@ -622,7 +622,7 @@ export function ClassesManager({
           form={(go) =>
             ask.clash ? (
               /* a clashing publish is not offered: the database would refuse it */
-              <Link href={`/business/${tenantId}/classes/${ask.c.id}/edit`} style={{ flex: 1.3, textAlign: "center", padding: 13, borderRadius: 999, background: INK, color: LILAC, fontWeight: 900, fontSize: 13, textDecoration: "none" }}>
+              <Link href={`/business/${businessId}/classes/${ask.c.id}/edit`} style={{ flex: 1.3, textAlign: "center", padding: 13, borderRadius: 999, background: INK, color: LILAC, fontWeight: 900, fontSize: 13, textDecoration: "none" }}>
                 Change the slot
               </Link>
             ) : (
@@ -673,7 +673,7 @@ export function ClassesManager({
                   onSubmit={() => {
                     /* a soft-deleted class no longer resolves at its own link, so the
                        refunds are settled from the money desk */
-                    if (n > 0) goAfterDelete.current = `/business/${tenantId}/earnings`;
+                    if (n > 0) goAfterDelete.current = `/business/${businessId}/earnings`;
                     setAsk(null);
                   }}
                   style={{ flex: 1.3, display: "flex" }}

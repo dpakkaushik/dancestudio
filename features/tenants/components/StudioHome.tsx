@@ -24,8 +24,8 @@ import { StudioPicturesButton, StudioPostersButton } from "./StudioPictures";
 import { DOS_UI, INK, LILAC, SUB } from "@/lib/design/tokens";
 import type { ProofPhoto } from "@/lib/media/proof";
 import type { DeckItem } from "@/types/home";
-import type { PublicTenant } from "@/types/publicProfile";
-import type { Tenant } from "@/types/tenant";
+import type { PublicBusiness } from "@/types/publicProfile";
+import type { Business } from "@/types/tenant";
 
 /** ONE STUDIO'S OWN HOME (14 Sep 2026) — what a studio row on the hub opens.
  *
@@ -54,7 +54,7 @@ import type { Tenant } from "@/types/tenant";
  *  second implementation: the hero is `IdentityHero`, the shelf is
  *  `TodayShelf`, the grid is Home's `ToolGrid`. */
 export function StudioHome({
-  tenant,
+  business,
   /** the studio's own picture — `businesses.profile_photo_path`, served from the public bucket */
   photo,
   /** an owner or trainer — the pair that may change the picture */
@@ -87,12 +87,12 @@ export function StudioHome({
    *  non-null, which is the owner-only read this page already made. */
   editOpen = false,
 }: {
-  tenant: Tenant;
+  business: Business;
   photo: string | null;
   canEditPhoto: boolean;
   header: ProofPhoto[];
   ownerId: string | null;
-  editable?: PublicTenant | null;
+  editable?: PublicBusiness | null;
   deck: DeckItem[];
   roomCount: number;
   styles: string[];
@@ -109,10 +109,10 @@ export function StudioHome({
    *  it nor is handed it, and the three reads that fed it left the route. */
 }) {
   /* ⚠ GOLD, BECAUSE IT IS A STUDIO (20 Sep 2026, the user's colour list) — it
-     was `gradientOf(tenant.name)`, a hash, so this screen and the studio's own
+     was `gradientOf(business.name)`, a hash, so this screen and the studio's own
      public page could not even agree with each other */
   const RG = PROFILE_RING.studio;
-  const place = [tenant.area, tenant.city].filter(Boolean).join(", ");
+  const place = [business.area, business.city].filter(Boolean).join(", ");
   const pinHref = editable?.locationSetAt && editable.lat != null && editable.lng != null ? mapsPinHref(editable.lat, editable.lng) : null;
   const roomsWords = `${roomCount} room${roomCount === 1 ? "" : "s"}`;
   /* a photo whose URL could not be signed is not a square the rail can draw —
@@ -122,19 +122,19 @@ export function StudioHome({
     .map((p, i) => ({
       key: p.id,
       src: p.url as string,
-      alt: `Header picture ${i + 1} of ${tenant.name} — its space`,
+      alt: `Header picture ${i + 1} of ${business.name} — its space`,
       signed: true,
     }));
 
   /* who may press the pencil: the owner (every editor) or a trainer (the disc) */
   const canEditAny = Boolean(editable) || canEditPhoto;
-  const whatsapp = whatsappHrefOf(tenant.socials);
+  const whatsapp = whatsappHrefOf(business.socials);
 
   return (
     /* EDIT MODE (26 Sep 2026): the pencil toggles it and every editor on this
        home appears with it — see `EditMode.tsx` */
     <EditModeProvider>
-    <RecordListsProvider styles={tenant.styles} socials={tenant.socials}>
+    <RecordListsProvider styles={business.styles} socials={business.socials}>
     <div
       style={{
         background: LILAC,
@@ -152,21 +152,21 @@ export function StudioHome({
             the order you read a business ── */}
         <IdentityHero
           testId="studio-hero"
-          name={tenant.name}
+          name={business.name}
           grad={RG}
           eyebrow="Studio"
           /* the number beside the word, exactly as a person's Home prints theirs
              (20 Sep 2026, the user: "Id should be besides profile type on home
              and profilepage both") — `businesses.member_no` is new today */
-          eyebrowSub={tenant.memberNo ? <HeroId>{memberNoWords(tenant.memberNo)}</HeroId> : null}
+          eyebrowSub={business.memberNo ? <HeroId>{memberNoWords(business.memberNo)}</HeroId> : null}
           /* the badge — set when a DanceOS admin approved this studio */
-          verified={Boolean(tenant.verifiedAt)}
+          verified={Boolean(business.verifiedAt)}
           meta={
             <>
-              {place ? <HeroPlace text={place} query={`${tenant.name} ${place}`} /> : null}
+              {place ? <HeroPlace text={place} query={`${business.name} ${place}`} /> : null}
               {place ? <HeroDot /> : null}
               {/* "· N rooms" is the hub row's own sub-line (2655), and here it is a door */}
-              <Link href={`/business/${tenant.id}/rooms`} aria-label="Rooms at this studio" style={{ color: SUB, textDecoration: "none", fontWeight: 800 }}>
+              <Link href={`/business/${business.id}/rooms`} aria-label="Rooms at this studio" style={{ color: SUB, textDecoration: "none", fontWeight: 800 }}>
                 {roomsWords}
               </Link>
             </>
@@ -176,7 +176,7 @@ export function StudioHome({
              Profile tab use. The hero's own row comes before its children. */
           styles={[]}
           avatar={photo}
-          avatarAlt={tenant.name}
+          avatarAlt={business.name}
           /* ⚠ THE DISC IS THE PICTURE, AND THE ⊕ BESIDE IT CHANGES IT (20 Sep
              2026, the user: "edit profile for studio not consistent with how its
              done for Artist and users. for social media links, photos etc.").
@@ -185,11 +185,11 @@ export function StudioHome({
              address — while a person's disc has opened their own picture since
              19 Sep and their ⊕ has been the one way to change it. Same two
              controls, same two jobs, on both kinds of home now. */
-          avatarSlot={<StudioPicturesButton tenantId={tenant.id} tenantName={tenant.name} grad={RG} avatar={photo} canEdit={canEditPhoto} />}
+          avatarSlot={<StudioPicturesButton businessId={business.id} businessName={business.name} grad={RG} avatar={photo} canEdit={canEditPhoto} />}
           shots={shots}
           /* the posters' own ⊕ at the rail's corner — the OWNER's alone, because
              a new picture goes into the owner's folder in the private bucket */
-          headerEdit={ownerId ? <StudioPostersButton tenantId={tenant.id} tenantName={tenant.name} ownerId={ownerId} photos={header} /> : null}
+          headerEdit={ownerId ? <StudioPostersButton businessId={business.id} businessName={business.name} ownerId={ownerId} photos={header} /> : null}
           /* the corner (10613, 15 Sep 2026): the owner's pencil — About, Since,
              the number, the links, the pin — over the eye onto THIS STUDIO'S
              public page.
@@ -226,12 +226,12 @@ export function StudioHome({
           corner={
             <>
               {canEditAny ? <EditModeButton /> : null}
-              <Link href={`/studio/${tenant.id}`} aria-label="Public view" style={cornerChip}>
+              <Link href={`/studio/${business.id}`} aria-label="Public view" style={cornerChip}>
                 <EyeIcon />
               </Link>
             </>
           }
-          detailsEdit={editable ? <EditDetailsChip href={`/business/${tenant.id}?edit=1`} /> : null}
+          detailsEdit={editable ? <EditDetailsChip href={`/business/${business.id}?edit=1`} /> : null}
         >
           {/* ── THE BAND, THE SAME ONE EVERY PROFILE WEARS (20 Sep 2026, the user:
               "check all profile pages look similar according to their Profile
@@ -252,7 +252,7 @@ export function StudioHome({
           <EntityBand
             figures={
               <>
-                <FollowerFigure n={followers} kind="business" id={tenant.id} name={tenant.name} testId="studio-followers" />
+                <FollowerFigure n={followers} kind="business" id={business.id} name={business.name} testId="studio-followers" />
                 {/* ⚠ THE SECOND FIGURE IS THE OWNER'S (20 Sep 2026, the user:
                     "Organization and Studio still dont have Following section in
                     profile and home"). A studio cannot follow anything itself,
@@ -283,9 +283,9 @@ export function StudioHome({
                 19 Sep (R29) and nothing had ever opened it from here. The
                 organization's chip has pointed at its own board all along, which
                 is what made the difference visible. */}
-            <StatsChip href={`/studio/${tenant.id}/stats`} />
-                <ProfileShare path={`/studio/${tenant.id}`} name={tenant.name} />
-                <ProfileLink path={`/studio/${tenant.id}`} name={tenant.name} />
+            <StatsChip href={`/studio/${business.id}/stats`} />
+                <ProfileShare path={`/studio/${business.id}`} name={business.name} />
+                <ProfileLink path={`/studio/${business.id}`} name={business.name} />
               </>
             }
             /* ⚠ BOTH ROWS ARE THE EDITABLE ONES NOW (styles 21 Sep 2026, links
@@ -299,8 +299,8 @@ export function StudioHome({
           >
             {/* the studio's own row carries every field the door takes, so no
                 cast is needed and a missing one would be a compile error */}
-            <StudioStylesRow tenant={tenant} canEdit={Boolean(editable)} isStudio={tenant.type === "studio"} fallback={styles} />
-            <StudioLinksRow tenant={tenant} canEdit={Boolean(editable)} />
+            <StudioStylesRow business={business} canEdit={Boolean(editable)} isStudio={business.type === "studio"} fallback={styles} />
+            <StudioLinksRow business={business} canEdit={Boolean(editable)} />
           </EntityBand>
         </IdentityHero>
 
@@ -315,16 +315,16 @@ export function StudioHome({
             sit 12 apart. */}
         <ActionRow>
           <EnquiryButton
-            tenantId={tenant.id}
-            tenantName={tenant.name}
-            tenantType={tenant.type}
+            businessId={business.id}
+            businessName={business.name}
+            businessType={business.type}
             signedIn
             accent={RG[1]}
-            enquiryTypes={tenant.enquiryTypes}
+            enquiryTypes={business.enquiryTypes}
             cannotAsk="You are on this team — enquiries come to you here"
           />
-          {tenant.phone ? <CallButton phone={tenant.phone} /> : null}
-          {tenant.contactEmail ? <MailButton email={tenant.contactEmail} /> : null}
+          {business.phone ? <CallButton phone={business.phone} /> : null}
+          {business.contactEmail ? <MailButton email={business.contactEmail} /> : null}
           {whatsapp ? <MessageButton href={whatsapp} /> : null}
           {/* ⚠ the PIN comes off `editable`, which is the owner's read and the
               only one carrying lat/lng — a trainer gets the name-and-place query
@@ -334,11 +334,11 @@ export function StudioHome({
           {pinHref ? (
             <LocationButton href={pinHref} />
           ) : place ? (
-            <LocationButton query={`${tenant.name} ${place}`} />
+            <LocationButton query={`${business.name} ${place}`} />
           ) : null}
         </ActionRow>
         {/* the ⊕ that makes and unmakes those buttons — the owner's, while the pencil is pressed (26 Sep 2026) */}
-        {editable ? <ContactEditButton target={{ kind: "business", tenant, detailsHref: `/business/${tenant.id}?edit=1` }} /> : null}
+        {editable ? <ContactEditButton target={{ kind: "business", business, detailsHref: `/business/${business.id}?edit=1` }} /> : null}
 
         {/* ── TODAY, AS THE SCHEDULE IT ACTUALLY IS (7500-7520): every class and
             event running in THIS studio's rooms today, one card each, in the
@@ -369,12 +369,12 @@ export function StudioHome({
               own order (22 Sep 2026); the panel and its heading are
               `ArrangeTools`' own since 27 Sep, so the Arrange control sits on
               the head rather than under the grid */}
-          <ArrangeTools kind="studio" tiles={arrangeTiles(tiles, order)} defaultOrder={orderOf(tiles)} layoutKey={toolsLayoutKey("studio", tenant.id)} arranged={Boolean(order && order.length > 0)} />
+          <ArrangeTools kind="studio" tiles={arrangeTiles(tiles, order)} defaultOrder={orderOf(tiles)} layoutKey={toolsLayoutKey("studio", business.id)} arranged={Boolean(order && order.length > 0)} />
         </div>
       </div>
       {/* the form Settings sends you to, over the home it belongs to (C54's
           shape). Drawn only for somebody the OWNER read admitted. */}
-      {editOpen && editable ? <BusinessEditFromUrl tenant={editable} /> : null}
+      {editOpen && editable ? <BusinessEditFromUrl business={editable} /> : null}
     </div>
     </RecordListsProvider>
     </EditModeProvider>

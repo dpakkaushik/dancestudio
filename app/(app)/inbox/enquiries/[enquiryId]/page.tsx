@@ -25,7 +25,7 @@ export default async function EnquiryPage({ params }: { params: Promise<{ enquir
   if (!enquiry) {
     notFound();
   }
-  const mine = enquiry.crewId ? ledCrews.some((c) => c.id === enquiry.crewId) : businesses.some((t) => t.id === enquiry.tenantId);
+  const mine = enquiry.crewId ? ledCrews.some((c) => c.id === enquiry.crewId) : businesses.some((t) => t.id === enquiry.businessId);
 
   return <EnquiryDetail enquiry={enquiry} mine={mine} nowIso={stampNowIso()} />;
 }

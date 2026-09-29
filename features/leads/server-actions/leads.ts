@@ -6,7 +6,7 @@ import { z } from "zod";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { createLead, softDeleteLead, updateLead } from "@/repositories/leads";
 
-/** Step 12 lead actions. Authorization is RLS (any member of the tenant — staff
+/** Step 12 lead actions. Authorization is RLS (any member of the business — staff
  *  answer the phone, so staff work the desk); what a lead may say is validated
  *  here. Leads are private business records with no public policy at all.
  *
@@ -30,7 +30,7 @@ export interface LeadActionResult {
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 
 const createSchema = z.object({
-  tenantId: z.string().uuid(),
+  businessId: z.string().uuid(),
   name: z.string().trim().min(1, "Who is it?").max(120),
   mobile: z.string().trim().max(20).optional().nullable(),
   interest: z.string().trim().max(160).optional().nullable(),
@@ -43,7 +43,7 @@ const createSchema = z.object({
 });
 
 const updateSchema = z.object({
-  tenantId: z.string().uuid(),
+  businessId: z.string().uuid(),
   leadId: z.string().uuid(),
   status: z.enum(["new", "quoted", "trial_booked", "converted", "lost"]).optional(),
   trialClassId: z.string().uuid().nullable().optional(),
@@ -51,7 +51,7 @@ const updateSchema = z.object({
   note: z.string().trim().max(1000).nullable().optional(),
 });
 
-const deleteSchema = z.object({ tenantId: z.string().uuid(), leadId: z.string().uuid() });
+const deleteSchema = z.object({ businessId: z.string().uuid(), leadId: z.string().uuid() });
 
 async function requireUser() {
   const supabase = await createSupabaseServerClient();
@@ -64,10 +64,10 @@ async function requireUser() {
   return supabase;
 }
 
-const revalidateDesk = (tenantId: string) => revalidatePath(`/business/${tenantId}/students`);
+const revalidateDesk = (businessId: string) => revalidatePath(`/business/${businessId}/students`);
 
 export async function createLeadAction(input: {
-  tenantId: string;
+  businessId: string;
   name: string;
   mobile?: string | null;
   interest?: string | null;
@@ -82,7 +82,7 @@ export async function createLeadAction(input: {
   const supabase = await requireUser();
   try {
     await createLead(supabase, {
-      tenantId: parsed.data.tenantId,
+      businessId: parsed.data.businessId,
       name: parsed.data.name,
       mobile: parsed.data.mobile?.trim() || null,
       interest: parsed.data.interest?.trim() || null,
@@ -90,7 +90,7 @@ export async function createLeadAction(input: {
       note: parsed.data.note?.trim() || null,
       userId: parsed.data.userId ?? null,
     });
-    revalidateDesk(parsed.data.tenantId);
+    revalidateDesk(parsed.data.businessId);
     return { error: null };
   } catch (error: unknown) {
     return { error: error instanceof Error ? error.message : "Could not add the lead" };
@@ -98,7 +98,7 @@ export async function createLeadAction(input: {
 }
 
 export async function updateLeadAction(input: {
-  tenantId: string;
+  businessId: string;
   leadId: string;
   status?: string;
   trialClassId?: string | null;
@@ -110,10 +110,10 @@ export async function updateLeadAction(input: {
     return { error: parsed.error.issues[0]?.message ?? "Invalid change" };
   }
   const supabase = await requireUser();
-  const { leadId, tenantId, ...patch } = parsed.data;
+  const { leadId, businessId, ...patch } = parsed.data;
   try {
     await updateLead(supabase, leadId, patch);
-    revalidateDesk(tenantId);
+    revalidateDesk(businessId);
     return { error: null };
   } catch (error: unknown) {
     return { error: error instanceof Error ? error.message : "Could not save the lead" };
@@ -121,7 +121,7 @@ export async function updateLeadAction(input: {
 }
 
 export async function deleteLeadAction(input: {
-  tenantId: string;
+  businessId: string;
   leadId: string;
 }): Promise<LeadActionResult> {
   const parsed = deleteSchema.safeParse(input);
@@ -131,7 +131,7 @@ export async function deleteLeadAction(input: {
   const supabase = await requireUser();
   try {
     await softDeleteLead(supabase, parsed.data.leadId);
-    revalidateDesk(parsed.data.tenantId);
+    revalidateDesk(parsed.data.businessId);
     return { error: null };
   } catch (error: unknown) {
     return { error: error instanceof Error ? error.message : "Could not remove the lead" };

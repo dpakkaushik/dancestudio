@@ -16,14 +16,14 @@ import { DeskAddButton } from "@/features/settings/components/settings-kit";
  *  location, so these are THIS studio's rooms; another branch is another studio. */
 
 export function RoomsManager({
-  tenantId,
-  tenantName,
+  businessId,
+  businessName,
   tenantWhere,
   rooms,
   canEdit = true,
 }: {
-  tenantId: string;
-  tenantName: string;
+  businessId: string;
+  businessName: string;
   tenantWhere: string;
   rooms: Room[];
   /** ⚠ may this seat WRITE a room — owner or trainer, which is what the two
@@ -71,7 +71,7 @@ export function RoomsManager({
     setDraft(null);
     if (!name || (name === room.name && capacity === room.capacity)) return;
     void run(
-      () => updateRoomAction({ tenantId, roomId: room.id, name, capacity, amenities: room.amenities }),
+      () => updateRoomAction({ businessId, roomId: room.id, name, capacity, amenities: room.amenities }),
       null
     );
   };
@@ -84,7 +84,7 @@ export function RoomsManager({
     void run(
       () =>
         updateRoomAction({
-          tenantId,
+          businessId,
           roomId: room.id,
           name: room.name,
           capacity: room.capacity,
@@ -144,7 +144,7 @@ export function RoomsManager({
       <div style={card}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
           <b style={{ fontSize: 14 }}>📍 {tenantWhere}</b>
-          <span style={{ fontSize: 10.5, fontWeight: 800, color: "var(--sub)" }}>{tenantName}</span>
+          <span style={{ fontSize: 10.5, fontWeight: 800, color: "var(--sub)" }}>{businessName}</span>
         </div>
         <div style={{ fontSize: 12, color: "var(--sub)", marginTop: 2 }}>
           {rooms.length} room{rooms.length === 1 ? "" : "s"} · one studio = one location
@@ -209,7 +209,7 @@ export function RoomsManager({
                     tabIndex={0}
                     onKeyDown={dosKey}
                     aria-label={`Remove ${r.name}`}
-                    onClick={() => void run(() => deleteRoomAction({ tenantId, roomId: r.id }), `${r.name} removed`)}
+                    onClick={() => void run(() => deleteRoomAction({ businessId, roomId: r.id }), `${r.name} removed`)}
                     style={{ fontSize: 13, color: "var(--sub)", cursor: "pointer" }}
                   >
                     ✕

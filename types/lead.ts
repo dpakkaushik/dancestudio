@@ -5,7 +5,7 @@ export type LeadSource = "walk_in" | "enquiry" | "referral" | "social";
 
 export interface Lead {
   id: string;
-  tenantId: string;
+  businessId: string;
   name: string;
   mobile: string | null;
   interest: string | null;

@@ -48,7 +48,7 @@ export async function resolveActingAs(supabase: SupabaseClient, raw: string | nu
   }
 
   const mine = await findMyMemberships(supabase).catch(() => []);
-  const m = mine.find((x) => x.tenant.id === v);
+  const m = mine.find((x) => x.business.id === v);
   if (!m) return null;
   /* ⚠ AND THE SEAT HAS TO RUN IT (28 Sep 2026). Acting AS a business is exactly
      the identity the switcher hands out, and the switcher stopped offering it to
@@ -59,8 +59,8 @@ export async function resolveActingAs(supabase: SupabaseClient, raw: string | nu
   if (!runsTheBusiness(m.memberRole)) return null;
   /* an ARTIST PAGE is the person's own public face, not a profile they switch
      into — they book as themselves there, so it is not a business for this */
-  if (m.tenant.type === "artist_page") return null;
+  if (m.business.type === "artist_page") return null;
   /* ⚠ the `org` arm went with organizations (29 Sep 2026); a studio is the only
      business left that anybody acts AS */
-  return { kind: "studio", name: m.tenant.name, id: m.tenant.id };
+  return { kind: "studio", name: m.business.name, id: m.business.id };
 }

@@ -114,7 +114,7 @@ function dosScrollTo(el: HTMLElement, smooth: boolean) {
 
 const toTileClass = (e: CalendarEntry): DanceClass => ({
   id: e.classId,
-  tenantId: "",
+  businessId: "",
   title: e.title,
   shareSlug: e.shareSlug,
   style: e.style,

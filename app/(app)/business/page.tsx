@@ -54,7 +54,7 @@ export default async function BusinessPage() {
        DOS_CITIES, which was twelve names nobody could add to. */
     findDiscoverCities(supabase),
   ]);
-  const owned = memberships.filter((m) => m.memberRole === "owner").map((m) => m.tenant);
+  const owned = memberships.filter((m) => m.memberRole === "owner").map((m) => m.business);
   const studioIds = owned.filter((t) => t.type === "studio").map((t) => t.id);
   const [roomCounts, studioSubscriptions, studioVerification, attended] = await Promise.all([
     countRoomsByTenants(supabase, owned.map((t) => t.id)),

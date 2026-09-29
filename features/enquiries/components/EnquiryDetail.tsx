@@ -85,7 +85,7 @@ export function EnquiryDetail({ enquiry: e, mine, nowIso }: { enquiry: Enquiry; 
     return true;
   };
 
-  const who = mine ? e.fromName : e.tenantName;
+  const who = mine ? e.fromName : e.businessName;
   const worth = live ? `worth about ${money(live.costInr)}` : "no quote yet";
   const rows: Array<[string, string]> = [
     ...e.fields.filter(([k]) => k !== "Enquiry"),
@@ -96,7 +96,7 @@ export function EnquiryDetail({ enquiry: e, mine, nowIso }: { enquiry: Enquiry; 
      On an enquiry that came IN, the number is the one the sender typed. On one
      you SENT, it is the business's published number — the same one its public
      page prints, read through the join that already fetched its name. */
-  const tel = String((mine ? e.mobile : e.tenantPhone) ?? "").replace(/[^\d+]/g, "");
+  const tel = String((mine ? e.mobile : e.businessPhone) ?? "").replace(/[^\d+]/g, "");
 
   return (
     <div style={{ background: LILAC, maxWidth: 430, margin: "0 auto", color: "var(--text)", paddingBottom: 40, fontFamily: DOS_UI, minHeight: "100vh" }}>
@@ -284,7 +284,7 @@ export function EnquiryDetail({ enquiry: e, mine, nowIso }: { enquiry: Enquiry; 
                     {live.advancePaidAt ? `Pay the balance · ${money(live.costInr - live.advanceInr)}` : live.advanceInr > 0 ? `Pay the advance · ${money(live.advanceInr)}` : `Pay ${money(live.costInr)}`}
                   </div>
                   <div style={{ fontSize: 10.5, color: "var(--sub)", marginTop: 7, lineHeight: 1.5, textAlign: "center" }}>
-                    Payments aren&apos;t switched on yet — settle with {e.tenantName} directly and they will record it here.
+                    Payments aren&apos;t switched on yet — settle with {e.businessName} directly and they will record it here.
                   </div>
                 </div>
               )

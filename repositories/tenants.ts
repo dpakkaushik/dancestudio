@@ -1,13 +1,13 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { findArtistIds } from "@/repositories/profiles";
 import type { ProfileRole } from "@/types/profile";
-import type { AcceptedMethods, Tenant, TenantType } from "@/types/tenant";
+import type { AcceptedMethods, Business, BusinessType } from "@/types/tenant";
 import type { SocialLink } from "@/types/profile";
 
 export interface TenantRow {
   profile_photo_path?: string | null;
   id: string;
-  type: TenantType;
+  type: BusinessType;
   name: string;
   area: string | null;
   city: string | null;
@@ -46,7 +46,7 @@ const toSocials = (raw: unknown): SocialLink[] =>
         .filter((x) => x.platform && x.url)
     : [];
 
-export const toTenant = (row: TenantRow): Tenant => ({
+export const toTenant = (row: TenantRow): Business => ({
   id: row.id,
   type: row.type,
   name: row.name,
@@ -75,7 +75,7 @@ export const toTenant = (row: TenantRow): Tenant => ({
      subscription waited on. The columns stay on the row; nothing reads them. */
 });
 
-export interface TenantProfileInput {
+export interface BusinessProfileInput {
   /** the NAME (18 Sep 2026) — sent only when it changed; omitted, the row keeps its own */
   name?: string | null;
   foundedYear: number | null;
@@ -95,9 +95,9 @@ export interface TenantProfileInput {
 /** What a business says about itself and the switches it sets (S_payments 16612,
  *  the enquiry-types sheet 9000, the public page's About / Since / Call / links):
  *  one owner-only door, validated inside. */
-export async function updateTenantProfile(supabase: SupabaseClient, tenantId: string, input: TenantProfileInput): Promise<void> {
+export async function updateTenantProfile(supabase: SupabaseClient, businessId: string, input: BusinessProfileInput): Promise<void> {
   const { error } = await supabase.rpc("update_business_profile", {
-    p_business_id: tenantId,
+    p_business_id: businessId,
     p_founded_year: input.foundedYear,
     p_phone: input.phone,
     p_socials: input.socials,
@@ -121,11 +121,11 @@ export async function updateTenantProfile(supabase: SupabaseClient, tenantId: st
   }
 }
 
-/** Atomic create: tenant + owner membership via the create_business_with_owner RPC. */
+/** Atomic create: business + owner membership via the create_business_with_owner RPC. */
 export async function createTenantWithOwner(
   supabase: SupabaseClient,
-  input: { name: string; type: TenantType; area?: string | null; city?: string | null; styles?: string[] }
-): Promise<Tenant> {
+  input: { name: string; type: BusinessType; area?: string | null; city?: string | null; styles?: string[] }
+): Promise<Business> {
   const { data, error } = await supabase.rpc("create_business_with_owner", {
     p_name: input.name,
     p_type: input.type,
@@ -159,8 +159,8 @@ export async function ensureArtistPage(
   profile: { fullName: string; city: string | null },
   memberships: MyMembership[]
 ): Promise<string | null> {
-  const have = memberships.find((m) => m.memberRole === "owner" && m.tenant.type === "artist_page");
-  if (have) return have.tenant.id;
+  const have = memberships.find((m) => m.memberRole === "owner" && m.business.type === "artist_page");
+  if (have) return have.business.id;
   try {
     const page = await createTenantWithOwner(supabase, { name: profile.fullName, type: "artist_page", area: null, city: profile.city });
     return page.id;
@@ -175,7 +175,7 @@ export async function ensureArtistPage(
 export async function findBusinessName(supabase: SupabaseClient, businessId: string): Promise<string | null> {
   const { data, error } = await supabase.from("businesses").select("name").eq("id", businessId).is("deleted_at", null).maybeSingle();
   if (error) {
-    throw new Error(`tenants.findBusinessName failed: ${error.message}`);
+    throw new Error(`businesses.findBusinessName failed: ${error.message}`);
   }
   return (data as { name: string } | null)?.name ?? null;
 }
@@ -213,7 +213,7 @@ export const runsTheBusiness = (role: MemberRole | null | undefined): boolean =>
   role != null && RUNS_THE_BUSINESS.includes(role);
 
 export interface MyMembership {
-  tenant: Tenant;
+  business: Business;
   memberRole: MemberRole;
 }
 
@@ -226,10 +226,10 @@ interface MembershipWithRoleRow {
  *  of them (prototype S_bizhub 2595-2603): a studio you own has a roster and a
  *  payroll to keep; a studio you teach at has a page you read. The hub lists
  *  them under separate headings and sends them to different places, so it needs
- *  the role beside the tenant.
+ *  the role beside the business.
  *
  *  Says `user_id = auth.uid()` OUT LOUD, like findMyTenants below: since Step 11
- *  a tenant's members can read each other's membership rows, so leaning on RLS
+ *  a business's members can read each other's membership rows, so leaning on RLS
  *  to mean "mine" would list one row per teammate. RLS is a ceiling, not a
  *  scoping mechanism. */
 export async function findMyMemberships(supabase: SupabaseClient): Promise<MyMembership[]> {
@@ -253,20 +253,20 @@ export async function findMyMemberships(supabase: SupabaseClient): Promise<MyMem
   }
   return (data as unknown as MembershipWithRoleRow[])
     .filter((row): row is MembershipWithRoleRow & { businesses: TenantRow } => row.businesses !== null)
-    .map((row) => ({ tenant: toTenant(row.businesses), memberRole: row.member_role }));
+    .map((row) => ({ business: toTenant(row.businesses), memberRole: row.member_role }));
 }
 
-/** The signed-in user's role on one tenant, or null when they are not a member.
+/** The signed-in user's role on one business, or null when they are not a member.
  *
  *  Says `user_id = auth.uid()` OUT LOUD, and must keep doing so. This query once
  *  leaned on business_members being own-rows-only under RLS — then Step 11 let a
- *  tenant's members read each other, so on any studio with two people it started
+ *  business's members read each other, so on any studio with two people it started
  *  matching several rows and maybeSingle() threw ("multiple (or no) rows
  *  returned"), taking the public class page down with it. Same lesson as
  *  findMyTenants below: RLS is a ceiling, not a scoping mechanism. */
 export async function findMyMembershipRole(
   supabase: SupabaseClient,
-  tenantId: string
+  businessId: string
 ): Promise<MemberRole | null> {
   const {
     data: { user },
@@ -278,7 +278,7 @@ export async function findMyMembershipRole(
   const { data, error } = await supabase
     .from("business_members")
     .select("member_role")
-    .eq("business_id", tenantId)
+    .eq("business_id", businessId)
     .eq("user_id", user.id)
     .is("deleted_at", null)
     .maybeSingle();
@@ -296,7 +296,7 @@ export async function findMyMembershipRole(
  *  out per person on the Team desk — `business_members.can_attendance` and
  *  `can_refunds` — and the DATABASE has honoured them ever since:
  *  `can_run_register_for_class` and `can_settle_refunds_for_class` each carry a
- *  branch for the standing grant beside the per-class claim and the owner. The
+ *  branch for the standing grant beside the per-class classPerson and the owner. The
  *  CLASS PAGE never read them: it asked `myClaim` alone, which is the OTHER
  *  grant path. So an assistant given Attendance on the Team desk could run the
  *  register as far as the database was concerned and **saw no tab to run it
@@ -310,7 +310,7 @@ export interface MySeat {
   canAttendance: boolean;
   canRefunds: boolean;
 }
-export async function findMySeat(supabase: SupabaseClient, tenantId: string): Promise<MySeat | null> {
+export async function findMySeat(supabase: SupabaseClient, businessId: string): Promise<MySeat | null> {
   const {
     data: { user },
   } = await supabase.auth.getUser();
@@ -321,7 +321,7 @@ export async function findMySeat(supabase: SupabaseClient, tenantId: string): Pr
   const { data, error } = await supabase
     .from("business_members")
     .select("member_role, can_attendance, can_refunds")
-    .eq("business_id", tenantId)
+    .eq("business_id", businessId)
     .eq("user_id", user.id)
     .is("deleted_at", null)
     .maybeSingle();
@@ -334,14 +334,14 @@ export async function findMySeat(supabase: SupabaseClient, tenantId: string): Pr
   return { role: row.member_role, canAttendance: Boolean(row.can_attendance), canRefunds: Boolean(row.can_refunds) };
 }
 
-/** Tenants the signed-in user belongs to.
+/** Businesses the signed-in user belongs to.
  *  RLS policies OR together — since discovery made listed businesses publicly
- *  readable, selecting from `businesses` directly returns EVERY listed tenant.
+ *  readable, selecting from `businesses` directly returns EVERY listed business.
  *  Membership is the query's spine instead — and the spine says whose rows it
- *  wants OUT LOUD: since Step 11 a tenant's members can read each other, so
+ *  wants OUT LOUD: since Step 11 a business's members can read each other, so
  *  leaning on the policy to mean "mine" would list one row per teammate. RLS is
  *  a ceiling, not a scoping mechanism. */
-export async function findMyTenants(supabase: SupabaseClient): Promise<Tenant[]> {
+export async function findMyTenants(supabase: SupabaseClient): Promise<Business[]> {
   const {
     data: { user },
   } = await supabase.auth.getUser();
@@ -362,7 +362,7 @@ export async function findMyTenants(supabase: SupabaseClient): Promise<Tenant[]>
   }
   return (data as unknown as MembershipRow[])
     .map((row) => row.businesses)
-    .filter((tenant): tenant is TenantRow => tenant !== null)
+    .filter((business): business is TenantRow => business !== null)
     .map(toTenant);
 }
 
@@ -389,7 +389,7 @@ export interface TeamMember {
   style: string | null;
 }
 
-/** The tenant's own people — the pool the class form's artist and assistant
+/** The business's own people — the pool the class form's artist and assistant
  *  pickers offer (prototype dosTeachPool / dosAssistPool). Staff invites arrive
  *  with Step 12, so today this is whoever the studio already has.
  *
@@ -397,12 +397,12 @@ export interface TeamMember {
  *  profiles, so PostgREST has no relationship to embed the name through. */
 export async function findTenantTeam(
   supabase: SupabaseClient,
-  tenantId: string
+  businessId: string
 ): Promise<TeamMember[]> {
   const { data, error } = await supabase
     .from("business_members")
     .select("user_id, member_role, can_attendance, can_refunds")
-    .eq("business_id", tenantId)
+    .eq("business_id", businessId)
     .is("deleted_at", null)
     /* THE ORDER THE OWNER ARRANGED (19 Sep 2026, the user: "should be able to
        place them in order as well") — `sort` first, joined-first as the tie */
@@ -463,13 +463,13 @@ export async function findTenantTeam(
  *  ceiling — the grant dies with it. */
 export async function setTenantMemberPowers(
   supabase: SupabaseClient,
-  tenantId: string,
+  businessId: string,
   userId: string,
   canAttendance: boolean,
   canRefunds: boolean,
 ): Promise<void> {
   const { error } = await supabase.rpc("set_member_powers", {
-    p_business_id: tenantId,
+    p_business_id: businessId,
     p_user_id: userId,
     p_can_attendance: canAttendance,
     p_can_refunds: canRefunds,
@@ -484,11 +484,11 @@ export async function setTenantMemberPowers(
  *  of the list keeps their place after it, so a partial list is safe. */
 export async function reorderTenantMembers(
   supabase: SupabaseClient,
-  tenantId: string,
+  businessId: string,
   userIds: string[]
 ): Promise<void> {
   const { error } = await supabase.rpc("reorder_business_members", {
-    p_business_id: tenantId,
+    p_business_id: businessId,
     p_user_ids: userIds,
   });
   if (error) {
@@ -505,10 +505,10 @@ export async function reorderTenantMembers(
  *  on the app's closed list. */
 export async function setTenantLocation(
   supabase: SupabaseClient,
-  input: { tenantId: string; lat: number; lng: number; area: string | null; city: string | null }
+  input: { businessId: string; lat: number; lng: number; area: string | null; city: string | null }
 ): Promise<void> {
   const { error } = await supabase.rpc("set_business_location", {
-    p_business_id: input.tenantId,
+    p_business_id: input.businessId,
     p_lat: input.lat,
     p_lng: input.lng,
     p_area: input.area,

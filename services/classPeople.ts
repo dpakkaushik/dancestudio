@@ -16,13 +16,13 @@ export interface ClassPeopleIntent {
 
 /** Make the class's TEACHER match what the form asked for.
  *
- *  The form states an intent; the claim is the record. Reconciling rather than
- *  re-asking matters because a claim carries CONSENT: somebody who already said
+ *  The form states an intent; the classPerson is the record. Reconciling rather than
+ *  re-asking matters because a classPerson carries CONSENT: somebody who already said
  *  yes must not be asked again just because the owner re-saved the form. So:
  *    · the same person still named keeps their answer; only the rate may move
  *    · a different person named: the old ask is withdrawn, the new person ASKED
  *    · nobody named: the old ask is withdrawn (the class waits for a teacher)
- *  Assistant claims on the class are left exactly as they are. */
+ *  Assistant classPeople on the class are left exactly as they are. */
 export async function reconcileClassPeople(
   supabase: SupabaseClient,
   classId: string,

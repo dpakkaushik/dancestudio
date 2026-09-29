@@ -44,13 +44,13 @@ const setter = (owner: PhotoOwner, path: string | null): Promise<PhotoActionResu
     case "avatar":
       return setMyAvatarAction({ path });
     case "tenant":
-      return setTenantPhotoAction({ tenantId: owner.id, path });
+      return setTenantPhotoAction({ businessId: owner.id, path });
     case "crew":
       return setCrewPhotoAction({ crewId: owner.id, path });
     case "gallery":
       return path ? addMyGalleryPhotoAction({ path }) : Promise.resolve({ error: "A header picture is removed from its own corner." });
     case "studioHeader":
-      return path ? addStudioProofPhotoAction({ tenantId: owner.id, path }) : Promise.resolve({ error: "A header picture is removed from its own corner." });
+      return path ? addStudioProofPhotoAction({ businessId: owner.id, path }) : Promise.resolve({ error: "A header picture is removed from its own corner." });
     /* a poster belongs to the BUSINESS's folder and to ONE class or event —
        the folder is the authority, the subject is what it is a poster OF */
     case "poster":

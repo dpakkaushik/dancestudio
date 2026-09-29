@@ -15,9 +15,9 @@ import { addStudioProofPhoto, requestStudioVerification } from "@/repositories/s
  *  is the caller's own and that the studio is theirs, so a forged path or
  *  somebody else's studio id is refused even though the browser chose both. */
 
-const addSchema = z.object({ tenantId: z.string().uuid(), path: z.string().min(8).max(400) });
+const addSchema = z.object({ businessId: z.string().uuid(), path: z.string().min(8).max(400) });
 const removeSchema = z.object({ id: z.string().uuid() });
-const askSchema = z.object({ tenantId: z.string().uuid() });
+const askSchema = z.object({ businessId: z.string().uuid() });
 
 /* the photos are the studio's HEADER PICTURES too (15 Sep 2026), so every page
    that swipes through them re-reads: its own home, its Media desk, its public
@@ -25,9 +25,9 @@ const askSchema = z.object({ tenantId: z.string().uuid() });
 const refresh = () => {
   revalidatePath("/");
   revalidatePath("/business");
-  revalidatePath("/business/[tenantId]", "page");
-  revalidatePath("/business/[tenantId]/media", "page");
-  revalidatePath("/studio/[tenantId]", "page");
+  revalidatePath("/business/[businessId]", "page");
+  revalidatePath("/business/[businessId]/media", "page");
+  revalidatePath("/studio/[businessId]", "page");
   revalidatePath("/admin/verifications");
 };
 
@@ -47,7 +47,7 @@ export async function addStudioProofPhotoAction(input: unknown): Promise<{ error
   const supabase = await createSupabaseServerClient();
   let id: string;
   try {
-    id = await addStudioProofPhoto(supabase, parsed.data.tenantId, parsed.data.path);
+    id = await addStudioProofPhoto(supabase, parsed.data.businessId, parsed.data.path);
   } catch (e) {
     return { error: e instanceof Error ? e.message : "Could not add that photo" };
   }
@@ -79,7 +79,7 @@ export async function requestStudioVerificationAction(input: unknown): Promise<{
   }
   const supabase = await createSupabaseServerClient();
   try {
-    await requestStudioVerification(supabase, parsed.data.tenantId);
+    await requestStudioVerification(supabase, parsed.data.businessId);
   } catch (e) {
     /* the database's refusals are written to be read — "add at least 5 photos
        of this studio (3 so far)" is the whole instruction */

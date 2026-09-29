@@ -7,7 +7,7 @@ import { isAmenity } from "@/lib/constants/amenities";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { createRoom, softDeleteRoom, updateRoom } from "@/repositories/rooms";
 
-/** Step 11 room actions. Authorization is RLS (owner/trainer of the tenant);
+/** Step 11 room actions. Authorization is RLS (owner/trainer of the business);
  *  what a room may hold is validated here, and the amenity vocabulary is closed
  *  so "AC" and "air conditioning" can never become two things. */
 
@@ -21,13 +21,13 @@ const amenitiesSchema = z
   .refine((list) => list.every(isAmenity), "That is not one of the amenities");
 
 const createSchema = z.object({
-  tenantId: z.string().uuid(),
+  businessId: z.string().uuid(),
   name: z.string().trim().min(1, "Give the room a name").max(80),
   capacity: z.coerce.number().int().min(1, "A room holds at least one").max(500, "That is too many"),
 });
 
 const updateSchema = z.object({
-  tenantId: z.string().uuid(),
+  businessId: z.string().uuid(),
   roomId: z.string().uuid(),
   name: z.string().trim().min(1, "Give the room a name").max(80),
   capacity: z.coerce.number().int().min(1, "A room holds at least one").max(500, "That is too many"),
@@ -35,7 +35,7 @@ const updateSchema = z.object({
 });
 
 const deleteSchema = z.object({
-  tenantId: z.string().uuid(),
+  businessId: z.string().uuid(),
   roomId: z.string().uuid(),
 });
 
@@ -50,14 +50,14 @@ async function requireUser() {
   return supabase;
 }
 
-const revalidateRooms = (tenantId: string) => {
-  revalidatePath(`/business/${tenantId}/rooms`);
-  revalidatePath(`/business/${tenantId}/classes`);
+const revalidateRooms = (businessId: string) => {
+  revalidatePath(`/business/${businessId}/rooms`);
+  revalidatePath(`/business/${businessId}/classes`);
   revalidatePath("/c/[slug]", "page");
 };
 
 export async function createRoomAction(input: {
-  tenantId: string;
+  businessId: string;
   name: string;
   capacity: number;
 }): Promise<RoomActionResult> {
@@ -68,7 +68,7 @@ export async function createRoomAction(input: {
   const supabase = await requireUser();
   try {
     await createRoom(supabase, { ...parsed.data, amenities: [] });
-    revalidateRooms(parsed.data.tenantId);
+    revalidateRooms(parsed.data.businessId);
     return { error: null };
   } catch (error: unknown) {
     return { error: error instanceof Error ? error.message : "Could not add the room" };
@@ -76,7 +76,7 @@ export async function createRoomAction(input: {
 }
 
 export async function updateRoomAction(input: {
-  tenantId: string;
+  businessId: string;
   roomId: string;
   name: string;
   capacity: number;
@@ -93,7 +93,7 @@ export async function updateRoomAction(input: {
       capacity: parsed.data.capacity,
       amenities: parsed.data.amenities,
     });
-    revalidateRooms(parsed.data.tenantId);
+    revalidateRooms(parsed.data.businessId);
     return { error: null };
   } catch (error: unknown) {
     return { error: error instanceof Error ? error.message : "Could not save the room" };
@@ -101,7 +101,7 @@ export async function updateRoomAction(input: {
 }
 
 export async function deleteRoomAction(input: {
-  tenantId: string;
+  businessId: string;
   roomId: string;
 }): Promise<RoomActionResult> {
   const parsed = deleteSchema.safeParse(input);
@@ -111,7 +111,7 @@ export async function deleteRoomAction(input: {
   const supabase = await requireUser();
   try {
     await softDeleteRoom(supabase, parsed.data.roomId);
-    revalidateRooms(parsed.data.tenantId);
+    revalidateRooms(parsed.data.businessId);
     return { error: null };
   } catch (error: unknown) {
     return { error: error instanceof Error ? error.message : "Could not remove the room" };

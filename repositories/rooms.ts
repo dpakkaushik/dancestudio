@@ -2,7 +2,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Room } from "@/types/room";
 
 /** Rooms are plain studio config, so they are edited through RLS-guarded direct
- *  writes (owner/trainer of the tenant) rather than RPCs — there is no
+ *  writes (owner/trainer of the business) rather than RPCs — there is no
  *  cross-row invariant to serialise. What a room caps and whether it clashes is
  *  enforced by the class-side triggers. */
 
@@ -18,21 +18,21 @@ const ROOM_COLUMNS = "id, business_id, name, capacity, amenities";
 
 const toRoom = (row: RoomRow): Room => ({
   id: row.id,
-  tenantId: row.business_id,
+  businessId: row.business_id,
   name: row.name,
   capacity: row.capacity,
   amenities: row.amenities ?? [],
 });
 
-/** A tenant's live rooms, oldest first (the order they were added). */
+/** A business's live rooms, oldest first (the order they were added). */
 export async function findRoomsByTenant(
   supabase: SupabaseClient,
-  tenantId: string
+  businessId: string
 ): Promise<Room[]> {
   const { data, error } = await supabase
     .from("rooms")
     .select(ROOM_COLUMNS)
-    .eq("business_id", tenantId)
+    .eq("business_id", businessId)
     .is("deleted_at", null)
     .order("created_at", { ascending: true })
     .limit(100);
@@ -45,18 +45,18 @@ export async function findRoomsByTenant(
 
 /** How many live rooms each of several businesses has — the hub's "{area, city} ·
  *  N rooms" sub-line (prototype 2655). One query for all of them, grouped here;
- *  a tenant with no rooms is simply absent from the map (read it as 0). */
+ *  a business with no rooms is simply absent from the map (read it as 0). */
 export async function countRoomsByTenants(
   supabase: SupabaseClient,
-  tenantIds: string[]
+  businessIds: string[]
 ): Promise<Record<string, number>> {
-  if (tenantIds.length === 0) {
+  if (businessIds.length === 0) {
     return {};
   }
   const { data, error } = await supabase
     .from("rooms")
     .select("id, business_id")
-    .in("business_id", tenantIds)
+    .in("business_id", businessIds)
     .is("deleted_at", null)
     .limit(1000);
 
@@ -90,12 +90,12 @@ export async function findRoomById(
 
 export async function createRoom(
   supabase: SupabaseClient,
-  input: { tenantId: string; name: string; capacity: number; amenities: string[] }
+  input: { businessId: string; name: string; capacity: number; amenities: string[] }
 ): Promise<Room> {
   const { data, error } = await supabase
     .from("rooms")
     .insert({
-      business_id: input.tenantId,
+      business_id: input.businessId,
       name: input.name,
       capacity: input.capacity,
       amenities: input.amenities,

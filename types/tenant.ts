@@ -11,7 +11,7 @@
  *  ⚠ THE COLUMN'S CHECK STILL ADMITS `'org'` and 20 live rows still carry it
  *  until the held sweep runs. Narrowing the type here is what turned every
  *  reader of the word into a compile error, which is how they were found. */
-export type TenantType = "studio" | "artist_page";
+export type BusinessType = "studio" | "artist_page";
 
 import type { SocialLink } from "@/types/profile";
 
@@ -23,11 +23,11 @@ export interface AcceptedMethods {
   bank: boolean;
 }
 
-export interface Tenant {
+export interface Business {
   /** a path in the public media bucket, or null for the business's gradient */
   photoPath?: string | null;
   id: string;
-  type: TenantType;
+  type: BusinessType;
   name: string;
   area: string | null;
   city: string | null;

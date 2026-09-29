@@ -49,8 +49,8 @@ export interface HistoryRow {
   style: string;
   room: string | null;
   city: string | null;
-  tenantId: string | null;
-  tenantName: string | null;
+  businessId: string | null;
+  businessName: string | null;
   artistName: string | null;
   startsAt: string;
   endsAt: string;
@@ -108,7 +108,7 @@ export const POINT_RULES: Array<[string, string, string]> = [
 /** ⚠ "Event entered · +3 pts" WAS THE FIRST LINE AND WENT WITH EVENTS (29 Sep
  *  2026). What a crew is scored on is its confirmed roster now — which is thin,
  *  and is said rather than padded: inventing a second term to make the card look
- *  fuller would be a claim about a formula nobody has decided. The board's own
+ *  fuller would be a classPerson about a formula nobody has decided. The board's own
  *  SQL loses the entry term in the same push that removes the rows. */
 export const CREW_POINT_RULES: Array<[string, string, string]> = [["Confirmed member", "+1 pt", "#3B82F6"]];
 

@@ -23,9 +23,9 @@ export interface PersonCrew {
 }
 
 export interface PersonTeachesAt {
-  tenantId: string;
-  tenantName: string;
-  tenantType: "studio" | "artist_page";
+  businessId: string;
+  businessName: string;
+  businessType: "studio" | "artist_page";
   city: string | null;
   classes: number;
   kinds: string;
@@ -38,9 +38,9 @@ export interface PersonTeachesAt {
  *  teaches at nothing; both are true and the page says both. ⚠ A `staff` seat
  *  is never returned — a front-desk job is not a public association. */
 export interface PersonAssociation {
-  tenantId: string;
-  tenantName: string;
-  tenantType: "studio" | "artist_page";
+  businessId: string;
+  businessName: string;
+  businessType: "studio" | "artist_page";
   city: string | null;
   photoPath: string | null;
   role: "owner" | "trainer" | "visiting_faculty" | "assistant";
@@ -66,7 +66,7 @@ export interface PublicPerson {
   /** the seats they hold on listed businesses — "Studios / Artists associated with" */
   associations: PersonAssociation[];
   /** the businesses this person OWNS, when they are listed (a studio's page is public) */
-  runs: Array<{ tenantId: string; tenantName: string; tenantType: "studio" | "artist_page"; city: string | null; photoPath: string | null }>;
+  runs: Array<{ businessId: string; businessName: string; businessType: "studio" | "artist_page"; city: string | null; photoPath: string | null }>;
   /** the listed artist page behind an artist — what an Enquiry on their profile is
    *  sent to (18 Sep 2026: an artist's public face is their profile); null otherwise */
   artistPageId: string | null;
@@ -254,9 +254,9 @@ export async function findPublicPerson(supabase: SupabaseClient, userId: string)
     classes: number;
     kinds: string;
   }>).map((r) => ({
-    tenantId: r.business_id,
-    tenantName: r.business_name,
-    tenantType: r.business_type,
+    businessId: r.business_id,
+    businessName: r.business_name,
+    businessType: r.business_type,
     city: r.city,
     classes: Number(r.classes),
     kinds: r.kinds,
@@ -266,16 +266,16 @@ export async function findPublicPerson(supabase: SupabaseClient, userId: string)
     businesses: { id: string; name: string; type: "studio" | "artist_page"; city: string | null; visibility: string; profile_photo_path: string | null; deleted_at: string | null } | null;
   }>)
     .filter((r) => r.businesses && !r.businesses.deleted_at && r.businesses.visibility === "listed")
-    .map((r) => ({ tenantId: r.businesses!.id, tenantName: r.businesses!.name, tenantType: r.businesses!.type, city: r.businesses!.city, photoPath: r.businesses!.profile_photo_path ?? null }));
+    .map((r) => ({ businessId: r.businesses!.id, businessName: r.businesses!.name, businessType: r.businesses!.type, city: r.businesses!.city, photoPath: r.businesses!.profile_photo_path ?? null }));
 
   /* ⚠ swallowed on purpose, like `artist_page_of`: a profile must never fail to
      render because one association read went wrong (19 Sep 2026's rule) */
   const associations: PersonAssociation[] = assocRes.error
     ? []
     : ((assocRes.data ?? []) as Array<{ business_id: string; business_type: "studio" | "artist_page"; business_name: string; city: string | null; photo_path: string | null; member_role: PersonAssociation["role"]; owner_id: string | null; ended: boolean }>).map((r) => ({
-        tenantId: r.business_id,
-        tenantName: r.business_name,
-        tenantType: r.business_type,
+        businessId: r.business_id,
+        businessName: r.business_name,
+        businessType: r.business_type,
         city: r.city,
         photoPath: r.photo_path ?? null,
         role: r.member_role,

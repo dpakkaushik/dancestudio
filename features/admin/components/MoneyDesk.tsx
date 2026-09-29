@@ -201,7 +201,7 @@ export function MoneyDesk({
                     <div style={{ fontSize: 10.5, color: SUB, marginTop: 3, lineHeight: 1.5 }}>
                       {p.payerName}
                       {p.payerEmail ? ` · ${p.payerEmail}` : ""}
-                      {p.tenantName ? ` · to ${p.tenantName}` : ""}
+                      {p.businessName ? ` · to ${p.businessName}` : ""}
                       {p.method ? ` · ${p.method}` : ""}
                       {` · ${agoWords(p.createdAt, nowIso)}`}
                     </div>
@@ -251,7 +251,7 @@ export function MoneyDesk({
                     <div style={{ fontSize: 11.5, marginTop: 4, color: INK, fontWeight: 700 }}>{r.classTitle}</div>
                     <div style={{ fontSize: 10.5, color: SUB, marginTop: 3, lineHeight: 1.5 }}>
                       {r.learnerName}
-                      {r.tenantName ? ` · ${r.tenantName}` : ""}
+                      {r.businessName ? ` · ${r.businessName}` : ""}
                       {` · asked ${agoWords(r.createdAt, nowIso)}`}
                       {r.decidedAt ? ` · decided ${dateWords(r.decidedAt.slice(0, 10))}` : ""}
                     </div>
@@ -259,9 +259,9 @@ export function MoneyDesk({
                     {r.decisionNote ? (
                       <div style={{ fontSize: 11, color: INK, marginTop: 5, lineHeight: 1.45, background: "var(--bg)", borderRadius: 10, padding: "6px 9px" }}>{r.decisionNote}</div>
                     ) : null}
-                    {r.tenantName ? (
+                    {r.businessName ? (
                       <div style={{ marginTop: 8 }}>
-                        <Link href={`/admin/businesses?q=${encodeURIComponent(r.tenantName)}`} style={{ display: "inline-flex", alignItems: "center", height: 30, padding: "0 11px", borderRadius: 10, fontSize: 11, fontWeight: 800, textDecoration: "none", border: `1.5px solid ${EL}`, background: CARD, color: INK }}>
+                        <Link href={`/admin/businesses?q=${encodeURIComponent(r.businessName)}`} style={{ display: "inline-flex", alignItems: "center", height: 30, padding: "0 11px", borderRadius: 10, fontSize: 11, fontWeight: 800, textDecoration: "none", border: `1.5px solid ${EL}`, background: CARD, color: INK }}>
                           Open the business
                         </Link>
                       </div>
@@ -306,7 +306,7 @@ export function MoneyDesk({
                       <Chip word={st.word} tone={st.tone} />
                     </div>
                     <div style={{ fontSize: 11.5, marginTop: 4, color: INK, fontWeight: 700 }}>
-                      {p.tenantName ?? "A business"} → {p.personName}
+                      {p.businessName ?? "A business"} → {p.personName}
                     </div>
                     <div style={{ fontSize: 10.5, color: SUB, marginTop: 3, lineHeight: 1.5 }}>
                       {p.method.replace("_", " ")} · {dateWords(p.paidOn)}

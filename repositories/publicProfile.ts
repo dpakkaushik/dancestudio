@@ -1,15 +1,15 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
-import type { PublicTeamMember, PublicTenant, PublicTenantProfile } from "@/types/publicProfile";
-import type { TenantType } from "@/types/tenant";
+import type { PublicTeamMember, PublicBusiness, PublicBusinessProfile } from "@/types/publicProfile";
+import type { BusinessType } from "@/types/tenant";
 import { findFollowerCounts } from "./follows";
 
 /** Step 15 — a business's public page, assembled from what the public may
- *  already read: the listed tenant (Step 3's "anyone reads listed businesses"),
+ *  already read: the listed business (Step 3's "anyone reads listed businesses"),
  *  its published classes, and — since 19 Sep 2026 — its TEAM through
  *  `public_studio_team`, one SECURITY DEFINER read that hands a stranger the
  *  owner, the faculty and the visiting faculty of a LISTED studio with a name
  *  and a picture each, and nobody else's. The Faculty that used to be read off
- *  confirmed claims on published classes is gone: since 18 Sep 2026 an outside
+ *  confirmed classPeople on published classes is gone: since 18 Sep 2026 an outside
  *  teacher who accepts a class is seated on the team as visiting faculty, so
  *  the team IS the answer, and it is readable signed out where `profiles` is not. */
 
@@ -17,7 +17,7 @@ const MAX_CLASSES = 500;
 
 interface TenantRow {
   id: string;
-  type: TenantType;
+  type: BusinessType;
   name: string;
   area: string | null;
   city: string | null;
@@ -53,17 +53,17 @@ interface TeamRow {
   is_org: boolean;
 }
 
-/** The tenant as the caller may see it — null when it is unlisted and the
+/** The business as the caller may see it — null when it is unlisted and the
  *  caller is not a member (RLS decides, the query does not). */
-export async function findPublicTenant(supabase: SupabaseClient, tenantId: string): Promise<PublicTenant | null> {
+export async function findPublicTenant(supabase: SupabaseClient, businessId: string): Promise<PublicBusiness | null> {
   const { data, error } = await supabase
     .from("businesses")
     .select("id, type, name, area, city, lat, lng, location_set_at, created_at, profile_photo_path, founded_year, phone, contact_email, socials, enquiry_types, accepts_upi, accepts_cards, accepts_cash, accepts_bank, verified_at, styles, member_no")
-    .eq("id", tenantId)
+    .eq("id", businessId)
     .is("deleted_at", null)
     .maybeSingle();
   if (error) {
-    throw new Error(`publicProfile.tenant failed: ${error.message}`);
+    throw new Error(`publicProfile.business failed: ${error.message}`);
   }
   if (!data) {
     return null;
@@ -98,17 +98,17 @@ export async function findPublicTenant(supabase: SupabaseClient, tenantId: strin
 /** A listed studio's team as the page prints it — owner, faculty, visiting
  *  faculty, in that order (the function orders them). Empty rather than an
  *  error when the caller may not see it: the page draws no group. */
-export async function findPublicStudioTeam(supabase: SupabaseClient, tenantId: string): Promise<PublicTeamMember[]> {
-  const { data, error } = await supabase.rpc("public_studio_team", { p_business_id: tenantId });
+export async function findPublicStudioTeam(supabase: SupabaseClient, businessId: string): Promise<PublicTeamMember[]> {
+  const { data, error } = await supabase.rpc("public_studio_team", { p_business_id: businessId });
   if (error) {
     return [];
   }
   return ((data ?? []) as TeamRow[]).map((r) => ({ userId: r.user_id, role: r.member_role, name: r.full_name, photoPath: r.photo_path, isOrg: Boolean(r.is_org) }));
 }
 
-export async function findPublicTenantProfile(supabase: SupabaseClient, tenantId: string): Promise<PublicTenantProfile | null> {
-  const tenant = await findPublicTenant(supabase, tenantId);
-  if (!tenant) {
+export async function findPublicTenantProfile(supabase: SupabaseClient, businessId: string): Promise<PublicBusinessProfile | null> {
+  const business = await findPublicTenant(supabase, businessId);
+  if (!business) {
     return null;
   }
   /* ⚠ the `type === "org"` guard went with organizations (29 Sep 2026). It was
@@ -117,9 +117,9 @@ export async function findPublicTenantProfile(supabase: SupabaseClient, tenantId
      for a page that did not exist. Both kinds left have a page. */
 
   const [classesRes, team, counts] = await Promise.all([
-    supabase.from("classes").select("id, style").eq("business_id", tenantId).eq("status", "published").is("deleted_at", null).limit(MAX_CLASSES),
-    findPublicStudioTeam(supabase, tenantId),
-    findFollowerCounts(supabase, [tenantId]),
+    supabase.from("classes").select("id, style").eq("business_id", businessId).eq("status", "published").is("deleted_at", null).limit(MAX_CLASSES),
+    findPublicStudioTeam(supabase, businessId),
+    findFollowerCounts(supabase, [businessId]),
   ]);
 
   if (classesRes.error) {
@@ -138,12 +138,12 @@ export async function findPublicTenantProfile(supabase: SupabaseClient, tenantId
      have one at least"). The derived list is kept for the rows that predate the
      field and have not been edited since — the migration backfills what it can,
      and a studio with no published class had nothing to backfill FROM. */
-  const styles = tenant.styles.length ? tenant.styles : taught;
+  const styles = business.styles.length ? business.styles : taught;
 
   return {
-    tenant,
+    business,
     styles,
     team,
-    followers: counts.get(tenantId) ?? 0,
+    followers: counts.get(businessId) ?? 0,
   };
 }

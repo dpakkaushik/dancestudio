@@ -31,7 +31,7 @@ export const handleOf = (url: string): string => {
  *  write it. Until this date the narrowest door was a direct PostgREST PATCH,
  *  which validated nothing, and `javascript:alert(1)` could be stored as a
  *  business's Instagram link and rendered on its public page and in the
- *  admin's own verification queue (scripts/rls-proof-tenant-columns.ps1).
+ *  admin's own verification queue (scripts/rls-proof-business-columns.ps1).
  *
  *  The database keeps the rule now — a CHECK on both socials columns — and
  *  this keeps it a second time, at the last moment before the browser sees it.

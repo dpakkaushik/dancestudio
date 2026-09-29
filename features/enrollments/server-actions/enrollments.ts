@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
-import { cancelEnrollment, enrollInSession } from "@/repositories/enrollments";
+import { cancelEnrollment, bookClassSession } from "@/repositories/enrollments";
 
 export interface EnrollActionState {
   error: string | null;
@@ -13,7 +13,7 @@ export interface EnrollActionState {
 }
 
 const enrollSchema = z.object({ sessionId: z.string().uuid() });
-const cancelSchema = z.object({ enrollmentId: z.string().uuid() });
+const cancelSchema = z.object({ classBookingId: z.string().uuid() });
 
 async function requireUser() {
   const supabase = await createSupabaseServerClient();
@@ -37,7 +37,7 @@ export async function enrollAction(
 
   const supabase = await requireUser();
   try {
-    const status = await enrollInSession(supabase, parsed.data.sessionId);
+    const status = await bookClassSession(supabase, parsed.data.sessionId);
     revalidatePath("/classes");
     revalidatePath("/my-classes");
     revalidatePath("/discover");
@@ -56,14 +56,14 @@ export async function cancelEnrollmentAction(
   _prev: EnrollActionState,
   formData: FormData
 ): Promise<EnrollActionState> {
-  const parsed = cancelSchema.safeParse({ enrollmentId: formData.get("enrollmentId") });
+  const parsed = cancelSchema.safeParse({ classBookingId: formData.get("classBookingId") });
   if (!parsed.success) {
     return { error: "Invalid booking", outcome: null };
   }
 
   const supabase = await requireUser();
   try {
-    await cancelEnrollment(supabase, parsed.data.enrollmentId);
+    await cancelEnrollment(supabase, parsed.data.classBookingId);
     revalidatePath("/classes");
     revalidatePath("/my-classes");
     revalidatePath("/discover");

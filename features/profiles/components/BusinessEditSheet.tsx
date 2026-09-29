@@ -10,7 +10,7 @@ import { updateTenantProfileAction } from "@/features/settings/server-actions/pl
 /* the style registry left with the styles block on 21 Sep — the value is still
    carried through this sheet's save, it is just not edited here any more */
 import { SUB } from "@/lib/design/tokens";
-import type { PublicTenant } from "@/types/publicProfile";
+import type { PublicBusiness } from "@/types/publicProfile";
 import { Sheet, fieldInput, fieldLabel, sheetBtn } from "./profile-kit";
 
 /** The business's own Edit sheet — the prototype has ONE editor for a profile
@@ -49,22 +49,22 @@ import { Sheet, fieldInput, fieldLabel, sheetBtn } from "./profile-kit";
  *  to the next reader, so the three call sites stopped sending them in the same
  *  push. */
 export function BusinessEditSheet({
-  tenant,
+  business,
   onClose,
 }: {
-  tenant: PublicTenant;
+  business: PublicBusiness;
   onClose: () => void;
 }) {
   const router = useRouter();
   /* the name (18 Sep 2026, the user: "give option to rename") — the owner's alone,
      like everything else this sheet saves through the one door */
-  const [name, setName] = useState(tenant.name);
+  const [name, setName] = useState(business.name);
   /* ⚠ THE ABOUT IS GONE ENTIRELY (20 Sep 2026). For one day this sheet read the
      column without writing it, so a Save could not wipe a paragraph written
      before the field went away; the user then asked for the column itself, so
      `update_business_profile` no longer takes `p_about` and there is nothing
      left to pass back. */
-  const [founded, setFounded] = useState(tenant.foundedYear ? String(tenant.foundedYear) : "");
+  const [founded, setFounded] = useState(business.foundedYear ? String(business.foundedYear) : "");
   /* ⚠ NO PHONE, NO EMAIL HERE (26 Sep 2026, the user: "all buttons like email,
      location, phone, message, enquiry on home tab should also be like social
      media and dance style edit style … and those options can be removed from
@@ -84,11 +84,11 @@ export function BusinessEditSheet({
      since 21 Sep, and this sheet carries the value through untouched because
      `update_business_profile` takes the whole profile and an omitted list would
      empty a column the same RPC then refuses. */
-  const [styles] = useState<string[]>(tenant.styles);
+  const [styles] = useState<string[]>(business.styles);
   const [err, setErr] = useState<string | null>(null);
   const [placeNote, setPlaceNote] = useState<string | null>(null);
   const [pending, start] = useTransition();
-  const isStudio = tenant.type === "studio";
+  const isStudio = business.type === "studio";
 
   /** The pin saves itself. A location is chosen by a gesture that is already
    *  visible on screen — the map has moved, the address has appeared — so
@@ -98,7 +98,7 @@ export function BusinessEditSheet({
     start(async () => {
       setPlaceNote("Saving the pin…");
       const out = await setTenantLocationAction({
-        tenantId: tenant.id,
+        businessId: business.id,
         lat: picked.lat,
         lng: picked.lng,
         area: picked.area,
@@ -132,18 +132,18 @@ export function BusinessEditSheet({
       }
       const yr = founded ? Number(founded) : null;
       const out = await updateTenantProfileAction({
-        tenantId: tenant.id,
+        businessId: business.id,
         styles,
-        name: name.trim() !== tenant.name ? name.trim() : undefined,
+        name: name.trim() !== business.name ? name.trim() : undefined,
         foundedYear: yr,
-        phone: tenant.phone ?? null,
-        contactEmail: tenant.contactEmail ?? null,
+        phone: business.phone ?? null,
+        contactEmail: business.contactEmail ?? null,
         /* ⚠ SENT UNCHANGED (20 Sep 2026). The links are edited on the studio's
            home now, but this door takes the WHOLE profile — omitting them would
            empty the rail the moment somebody saved a phone number. */
-        socials: tenant.socials,
-        enquiryTypes: tenant.enquiryTypes,
-        accepts: tenant.accepts,
+        socials: business.socials,
+        enquiryTypes: business.enquiryTypes,
+        accepts: business.accepts,
       });
       if (out.error) {
         setErr(out.error);
@@ -255,10 +255,10 @@ export function BusinessEditSheet({
           already visibly placed reads like it did not take. */}
       <div style={fieldLabel}>Where it is</div>
       <LocationPicker
-        value={{ lat: tenant.lat, lng: tenant.lng, area: tenant.area }}
+        value={{ lat: business.lat, lng: business.lng, area: business.area }}
         /* the business already has a point; the centre is only the fallback for
            one that does not, so its own coordinates are the honest opening */
-        centre={tenant.lat != null && tenant.lng != null ? { lat: tenant.lat, lng: tenant.lng } : null}
+        centre={business.lat != null && business.lng != null ? { lat: business.lat, lng: business.lng } : null}
         onChange={savePlace}
       />
       {/* a failure must not be the faintest text on the screen */}
@@ -300,11 +300,11 @@ export function BusinessEditSheet({
  *  home, which is the shape every other form in this app took on 22 Sep (C54):
  *  the form opens over the screen it belongs to, system back closes it, and the
  *  desk underneath keeps its scroll and its reads. */
-export function BusinessEditFromUrl({ tenant }: { tenant: PublicTenant }) {
+export function BusinessEditFromUrl({ business }: { business: PublicBusiness }) {
   const router = useRouter();
   /* ⚠ `back()`, not a `?edit=` strip: the tile in Settings NAVIGATED here, so
      the entry it pushed is the one to spend — the same rule the `?new=1` sheets
      keep, and the reason a push there would re-open the form on the next back
      press (C54). */
-  return <BusinessEditSheet tenant={tenant} onClose={() => router.back()} />;
+  return <BusinessEditSheet business={business} onClose={() => router.back()} />;
 }

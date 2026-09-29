@@ -87,7 +87,7 @@ export function AuditLog({ entries, nowIso, filter }: { entries: AuditEntry[]; n
                 ) : null}
                 <div style={{ fontSize: 10, color: MUTED, marginTop: 5, fontVariantNumeric: "tabular-nums" }}>
                   {/* admin_audit is immutable: rows written before 16 Sep 2026 say
-                      `tenant` for what is now `business`, and are read as such */}
+                      `business` for what is now `business`, and are read as such */}
                   {agoWords(e.createdAt, nowIso)} · {e.action} · {e.subjectKind === "tenant" ? "business" : e.subjectKind}
                 </div>
               </div>

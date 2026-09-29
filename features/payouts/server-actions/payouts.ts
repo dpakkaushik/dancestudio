@@ -19,7 +19,7 @@ export interface PayoutActionResult {
 }
 
 const recordSchema = z.object({
-  tenantId: z.string().uuid(),
+  businessId: z.string().uuid(),
   userId: z.string().uuid(),
   sessionIds: z.array(z.string().uuid()).min(1).max(200),
   method: z.enum(["bank_transfer", "upi", "cash", "other"]),
@@ -55,17 +55,17 @@ async function requireUser() {
 
 /** Both sides of the ledger change at once: the studio's desk and the earnings
  *  screen of whoever was paid. */
-function revalidateMoneySurfaces(tenantId?: string) {
-  if (tenantId) {
-    revalidatePath(`/business/${tenantId}/earnings`);
+function revalidateMoneySurfaces(businessId?: string) {
+  if (businessId) {
+    revalidatePath(`/business/${businessId}/earnings`);
   }
-  revalidatePath("/business/[tenantId]/earnings", "page");
+  revalidatePath("/business/[businessId]/earnings", "page");
   revalidatePath("/earnings");
   revalidatePath("/");
 }
 
 export async function recordPayoutAction(input: {
-  tenantId: string;
+  businessId: string;
   userId: string;
   sessionIds: string[];
   method: "bank_transfer" | "upi" | "cash" | "other";
@@ -81,7 +81,7 @@ export async function recordPayoutAction(input: {
   const supabase = await requireUser();
   try {
     await recordPayout(supabase, parsed.data);
-    revalidateMoneySurfaces(parsed.data.tenantId);
+    revalidateMoneySurfaces(parsed.data.businessId);
     return { error: null };
   } catch (error: unknown) {
     return { error: error instanceof Error ? error.message : "Could not record that payment" };

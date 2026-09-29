@@ -20,7 +20,7 @@ import type { CrewPractice } from "@/types/crewPractice";
  *  ⚠ NO CAPACITY, NO PRICE, NO ROOM PICKER. A practice is not a class: there is
  *  nothing to sell, nobody to pay, and the place is free text because a crew
  *  rehearses wherever it found a floor — a room belongs to a studio, and a crew
- *  that books one is that studio's guest, not its tenant. */
+ *  that books one is that studio's guest, not its business. */
 export function PracticeForm({ crewId, crewName, practice = null }: { crewId: string; crewName: string; practice?: CrewPractice | null }) {
   const router = useRouter();
   const editing = Boolean(practice);

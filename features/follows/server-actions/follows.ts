@@ -19,11 +19,11 @@ export interface FollowActionResult {
 }
 
 const schema = z.object({
-  tenantId: z.string().uuid(),
+  businessId: z.string().uuid(),
   on: z.boolean(),
 });
 
-export async function setFollowAction(input: { tenantId: string; on: boolean }): Promise<FollowActionResult> {
+export async function setFollowAction(input: { businessId: string; on: boolean }): Promise<FollowActionResult> {
   const parsed = schema.safeParse(input);
   if (!parsed.success) {
     return { state: null, error: "Invalid request" };
@@ -36,9 +36,9 @@ export async function setFollowAction(input: { tenantId: string; on: boolean }):
     redirect("/login");
   }
   try {
-    const state = await setFollow(supabase, parsed.data.tenantId, parsed.data.on);
-    revalidatePath(`/studio/${parsed.data.tenantId}`);
-    revalidatePath(`/artist/${parsed.data.tenantId}`);
+    const state = await setFollow(supabase, parsed.data.businessId, parsed.data.on);
+    revalidatePath(`/studio/${parsed.data.businessId}`);
+    revalidatePath(`/artist/${parsed.data.businessId}`);
     revalidatePath("/profile");
     revalidatePath("/discover");
     return { state, error: null };

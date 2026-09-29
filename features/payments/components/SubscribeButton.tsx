@@ -15,7 +15,7 @@ import { openCashfreeSubscription } from "@/lib/cashfree/checkout-client";
  *  the webhook also calls. The browser's word for the outcome is never used. */
 export function SubscribeButton({
   planKey,
-  tenantId,
+  businessId,
   label,
   onDone,
   style,
@@ -23,7 +23,7 @@ export function SubscribeButton({
 }: {
   planKey: string;
   /** the studio being subscribed; omitted for the payer's own Artist plan */
-  tenantId?: string;
+  businessId?: string;
   /** what the button says, e.g. "Subscribe · ₹1,200/mo" */
   label: string;
   onDone?: (message: string) => void;
@@ -37,7 +37,7 @@ export function SubscribeButton({
   const go = async () => {
     setBusy(true);
     setError(null);
-    const res = await startSubscriptionAction({ planKey, tenantId: tenantId ?? null });
+    const res = await startSubscriptionAction({ planKey, businessId: businessId ?? null });
     if (!res.checkout) {
       setBusy(false);
       setError(res.error ?? "Could not start the subscription");

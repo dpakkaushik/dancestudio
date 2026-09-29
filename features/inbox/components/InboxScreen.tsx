@@ -35,7 +35,7 @@ import { DOS_MONO, EnqIcon, agoWords, dateWords, initialsOf, moneyShort, pressKe
  *  you to BELONG to: a team, a crew, an organization) and **Enquiries**
  *  (somebody wanting to book you).
  *
- *  Requests and Invites are rows that already exist: class claims (Step 11),
+ *  Requests and Invites are rows that already exist: class classPeople (Step 11),
  *  team invites (Step 12b), crew and duet asks (Step 22), room asks (18 Sep),
  *  organization asks (push 2). Each has two sides: RECEIVED is somebody asking
  *  YOU; SENT is what you or your business asked of other people and are still
@@ -53,7 +53,7 @@ export interface RequestItem {
    *  invitations one; `JOIN_KINDS` leaves it out by omission */
   /** ⚠ `partner` (a duet entry) and `orgteam` (an organization's label) went on
    *  29 Sep 2026 with events and organizations */
-  kind: "claim" | "invite" | "crew" | "venue" | "practice";
+  kind: "classPerson" | "invite" | "crew" | "venue" | "practice";
   id: string;
   dir: "in" | "out";
   /** in: who is asking; out: who is being asked */
@@ -68,10 +68,10 @@ export interface RequestItem {
   href: string | null;
   at: string;
   note: string | null;
-  claimId?: string;
+  classPersonId?: string;
   inviteCode?: string;
   inviteId?: string;
-  tenantId?: string;
+  businessId?: string;
   /** crew asks (crew_members.id) and duet-partner asks (event_bookings.id) */
   memberId?: string;
   crewId?: string;
@@ -99,7 +99,7 @@ export interface RequestItem {
    `RequestItem["kind"]` made this line fail to COMPILE until the word was
    written, so a kind the desk cannot name cannot ship. That is the `GLYPH`
    lesson of the same morning working the right way round. */
-const KIND_WORD: Record<RequestItem["kind"], string> = { claim: "class", invite: "team", crew: "crew", venue: "room", practice: "practice" };
+const KIND_WORD: Record<RequestItem["kind"], string> = { classPerson: "class", invite: "team", crew: "crew", venue: "room", practice: "practice" };
 
 /** ⚠⚠ TWO KINDS OF THING WERE WEARING ONE CARD (27 Sep 2026, the user:
  *  *"class and event requests should have same cards with accept and reject
@@ -278,8 +278,8 @@ export function InboxScreen({
 
   /* one answer per kind — the RPC behind each decides who may give it */
   const answer = (r: RequestItem, accept: boolean) =>
-    r.kind === "claim"
-      ? respondToClaimAction({ claimId: r.claimId!, accept })
+    r.kind === "classPerson"
+      ? respondToClaimAction({ classPersonId: r.classPersonId!, accept })
       : r.kind === "invite"
         ? accept
           ? acceptInviteAction({ code: r.inviteCode! })
@@ -290,10 +290,10 @@ export function InboxScreen({
             ? respondToVenueRequestAction({ classId: r.classId!, accept })
             : respondToPracticeAction({ practiceId: r.practiceId!, accept, crewId: r.crewId });
   const withdraw = (r: RequestItem) =>
-    r.kind === "claim"
-      ? withdrawClaimAction({ claimId: r.claimId! })
+    r.kind === "classPerson"
+      ? withdrawClaimAction({ classPersonId: r.classPersonId! })
       : r.kind === "invite"
-        ? revokeInviteAction({ tenantId: r.tenantId!, inviteId: r.inviteId! })
+        ? revokeInviteAction({ businessId: r.businessId!, inviteId: r.inviteId! })
         : r.kind === "crew"
           ? withdrawCrewAskAction({ memberId: r.memberId!, crewId: r.crewId })
           : Promise.resolve({ error: "Pick another studio or room from the class's Edit form — that is the withdrawal" });
@@ -503,7 +503,7 @@ export function InboxScreen({
           <>
             <div style={{ fontSize: 10.5, color: "#F59E0B", margin: "9px 0 0", fontWeight: 800 }}>
               ⏳ Waiting on {r.who}
-              {r.kind === "claim" || r.kind === "venue" ? <span style={{ color: "var(--sub)", fontWeight: 700 }}> — this class stays a draft until they {r.kind === "venue" ? "accept" : "confirm"}</span> : null}
+              {r.kind === "classPerson" || r.kind === "venue" ? <span style={{ color: "var(--sub)", fontWeight: 700 }}> — this class stays a draft until they {r.kind === "venue" ? "accept" : "confirm"}</span> : null}
             </div>
             <div style={{ display: "flex", gap: 8, marginTop: 9 }}>
               <button
@@ -684,7 +684,7 @@ export function InboxScreen({
     const tc = ENQ_TINT[e.typeKey];
     const c = stage === "won" || stage === "confirmed" || stage === "advance_paid" ? "#22C55E" : stage === "lost" ? "#F87171" : stage === "quoted" ? "#F59E0B" : "#3B82F6";
     const label = enquiryTypeOf(e.typeKey)?.label ?? e.typeKey;
-    const who = enqSide === "out" ? e.tenantName : e.fromName;
+    const who = enqSide === "out" ? e.businessName : e.fromName;
     const value = enquiryValueInr(e);
     /* the occasion — every type's first field is what the thing IS ("Wedding",
        "Brand shoot", "One-on-one"); a type with none falls back to its label */

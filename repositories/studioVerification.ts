@@ -53,11 +53,11 @@ async function signProof(supabase: SupabaseClient, rows: PhotoRow[]): Promise<Pr
 
 /** One studio's photos, for its owner or for an admin reading its request.
  *  The policies are what admit either; no service key passes through here. */
-export async function findStudioProofPhotos(supabase: SupabaseClient, tenantId: string): Promise<ProofPhoto[]> {
+export async function findStudioProofPhotos(supabase: SupabaseClient, businessId: string): Promise<ProofPhoto[]> {
   const { data, error } = await supabase
     .from("studio_photos")
     .select("id, path, sort, created_at")
-    .eq("business_id", tenantId)
+    .eq("business_id", businessId)
     .is("deleted_at", null)
     .order("sort", { ascending: true })
     .order("created_at", { ascending: true })
@@ -130,16 +130,16 @@ export async function findStudioVerificationStates(
   return out;
 }
 
-export async function addStudioProofPhoto(supabase: SupabaseClient, tenantId: string, path: string): Promise<string> {
-  const { data, error } = await supabase.rpc("add_studio_photo", { p_business_id: tenantId, p_path: path });
+export async function addStudioProofPhoto(supabase: SupabaseClient, businessId: string, path: string): Promise<string> {
+  const { data, error } = await supabase.rpc("add_studio_photo", { p_business_id: businessId, p_path: path });
   if (error) {
     throw new Error(error.message);
   }
   return String(data);
 }
 
-export async function requestStudioVerification(supabase: SupabaseClient, tenantId: string): Promise<string> {
-  const { data, error } = await supabase.rpc("request_studio_verification", { p_business_id: tenantId });
+export async function requestStudioVerification(supabase: SupabaseClient, businessId: string): Promise<string> {
+  const { data, error } = await supabase.rpc("request_studio_verification", { p_business_id: businessId });
   if (error) {
     throw new Error(error.message);
   }
@@ -150,10 +150,10 @@ export async function requestStudioVerification(supabase: SupabaseClient, tenant
  *  to reach Discover, which is the order the user asked for. */
 export async function decideStudioVerification(
   supabase: SupabaseClient,
-  input: { tenantId: string; approve: boolean; note: string | null }
+  input: { businessId: string; approve: boolean; note: string | null }
 ): Promise<void> {
   const { error } = await supabase.rpc("decide_studio_verification", {
-    p_business_id: input.tenantId,
+    p_business_id: input.businessId,
     p_approve: input.approve,
     p_note: input.note,
   });

@@ -22,7 +22,7 @@ import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { findClassArtists, findClassesWithArtist } from "@/repositories/claims";
 import { findPublishedClasses, findPublishedStylesByTenant } from "@/repositories/classes";
 import { findCrewsByCity } from "@/repositories/crews";
-import { findDiscoverArtists, findNearbyTenants, findTenantCardFacts, type DiscoverArtist, type TenantCardFacts } from "@/repositories/discovery";
+import { findDiscoverArtists, findNearbyTenants, findTenantCardFacts, type DiscoverArtist, type BusinessCardFacts } from "@/repositories/discovery";
 import { findFollowerCounts, findMyFollowedPeople, findMyFollowing } from "@/repositories/follows";
 import { findStudioHeaderPhotosMany, type HeaderPhoto } from "@/repositories/headerPhotos";
 import { findPersonFollowerCounts } from "@/repositories/publicPerson";
@@ -204,7 +204,7 @@ export default async function DiscoverPage({
      · the Crews tab (Step 22);
      · ⚠ A CLASS WITH NOBODY TAKING IT IS NOT ON DISCOVER (18 Sep 2026, the user:
        "remove all classes on discover without an artist in it"). The test is the
-       confirmed claim ROW, which everybody may read — not the teacher's name,
+       confirmed classPerson ROW, which everybody may read — not the teacher's name,
        which only a signed-in reader may — so the shelf is the same list for a
        stranger as for a member. (A published class should always have one since
        `classes_publish_needs_a_yes`; what this removes is what was published
@@ -231,7 +231,7 @@ export default async function DiscoverPage({
     tab === "classes" ? findClassArtists(supabase, classes.map((c) => c.id)) : Promise.resolve(new Map<string, ClassArtist>()),
   ]);
   const businesses = wantsBusinesses ? filterTenants(nearby, filters, stylesByTenant) : [];
-  const followed = following.filter((f) => f.tenantType === "studio");
+  const followed = following.filter((f) => f.businessType === "studio");
   /* an artist narrows by style through THEIR OWN styles — the ones on their profile */
   const artists = wantsArtists ? artistsRaw.filter((a) => filters.styles.length === 0 || a.styles.some((s) => filters.styles.includes(s))) : [];
   /* the follower count sits at the foot of every card — a number, never a name (Step 15);
@@ -245,7 +245,7 @@ export default async function DiscoverPage({
      draws, under the policy that makes a LISTED studio's pictures public. */
   const [followerCounts, facts, personCounts, shotsByTenant] = await Promise.all([
     wantsBusinesses ? findFollowerCounts(supabase, businesses.map((t) => t.id)) : Promise.resolve(new Map<string, number>()),
-    wantsBusinesses ? findTenantCardFacts(supabase, [...businesses.map((t) => t.id), ...followed.map((f) => f.tenantId)]) : Promise.resolve(new Map<string, TenantCardFacts>()),
+    wantsBusinesses ? findTenantCardFacts(supabase, [...businesses.map((t) => t.id), ...followed.map((f) => f.businessId)]) : Promise.resolve(new Map<string, BusinessCardFacts>()),
     wantsArtists ? findPersonFollowerCounts(supabase, artists.map((a) => a.id)) : Promise.resolve(new Map<string, { followers: number; following: number }>()),
     wantsBusinesses ? findStudioHeaderPhotosMany(supabase, businesses.map((t) => t.id)) : Promise.resolve(new Map<string, HeaderPhoto[]>()),
   ]);
@@ -265,14 +265,14 @@ export default async function DiscoverPage({
          legacy follow of an artist BUSINESS belongs on the Artists tab beside
          the people, not under a heading that says Studios */
       followed
-        .filter((f) => f.tenantType === "studio")
+        .filter((f) => f.businessType === "studio")
         .map((f) => ({
-        id: f.tenantId,
-        name: f.tenantName,
+        id: f.businessId,
+        name: f.businessName,
         kind: "studio" as const,
-        href: publicProfilePath({ id: f.tenantId, type: f.tenantType }),
-        photo: photoUrl(facts.get(f.tenantId)?.photoPath ?? undefined),
-        grad: gradientOf(f.tenantName),
+        href: publicProfilePath({ id: f.businessId, type: f.businessType }),
+        photo: photoUrl(facts.get(f.businessId)?.photoPath ?? undefined),
+        grad: gradientOf(f.businessName),
       }));
 
   const shelfHead = tab === "classes" ? "Upcoming classes" : tab === "artists" ? "Artists" : tab === "crews" ? "Crews" : "Studios near you";
@@ -426,7 +426,7 @@ export default async function DiscoverPage({
         businesses.map((t) => (
           <StudioCard
             key={t.id}
-            tenant={t}
+            business={t}
             followers={followerCounts.get(t.id) ?? 0}
             shots={(shotsByTenant.get(t.id) ?? []).filter((p) => p.url).map((p) => ({ key: p.id, src: p.url as string, signed: p.signed }))}
           />

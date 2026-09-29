@@ -6,7 +6,7 @@ import { photoUrl } from "@/lib/media/photo";
 import type { HeaderPhoto } from "@/repositories/headerPhotos";
 import { enquiryTypesFor } from "@/types/enquiry";
 import type { TenantFollower } from "@/types/follow";
-import type { PublicTeamMember, PublicTenantProfile } from "@/types/publicProfile";
+import type { PublicTeamMember, PublicBusinessProfile } from "@/types/publicProfile";
 import { ActionRow, CallButton, LocationButton, MailButton, MessageButton, mapsPinHref, whatsappHrefOf } from "./ContactButtons";
 import { MembershipsOnSale } from "@/features/memberships/components/MembershipsOnSale";
 import type { MembershipOnSale as MembershipOnSaleRow } from "@/repositories/memberships";
@@ -57,7 +57,7 @@ export function PublicProfile({
   manageHref,
   memberships = [],
 }: {
-  profile: PublicTenantProfile;
+  profile: PublicBusinessProfile;
   /** THE HEADER PICTURES (15 Sep 2026): a studio's photos of its space —
    *  whatever `business_header_photos` let this viewer see */
   header?: HeaderPhoto[];
@@ -89,19 +89,19 @@ export function PublicProfile({
   /** what this business has ON SALE (19 Sep 2026) — live ones of a listed business */
   memberships?: MembershipOnSaleRow[];
 }) {
-  const { tenant } = profile;
+  const { business } = profile;
   /* ⚠ THE KIND'S OWN COLOUR, NOT A HASH OF THE NAME (20 Sep 2026, the user:
-     "Profile Type Colors … Studio: Gold"). This was `gradientOf(tenant.name)`,
+     "Profile Type Colors … Studio: Gold"). This was `gradientOf(business.name)`,
      so two studios of one organization came out two unrelated colours. A studio
      is gold; an artist page read through this component is silver, like the
      person whose face it is. */
-  const RG = PROFILE_RING[tenant.type === "studio" ? "studio" : "artist"];
+  const RG = PROFILE_RING[business.type === "studio" ? "studio" : "artist"];
   const RC = RG[1];
-  const place = [tenant.area, tenant.city].filter(Boolean).join(", ");
-  const face = photoUrl(tenant.photoPath);
+  const place = [business.area, business.city].filter(Boolean).join(", ");
+  const face = photoUrl(business.photoPath);
   const shots: HeroShot[] = header
     .filter((h) => h.url)
-    .map((h, i) => ({ key: h.id, src: h.url as string, alt: `Header picture ${i + 1} of ${tenant.name}`, signed: h.signed }));
+    .map((h, i) => ({ key: h.id, src: h.url as string, alt: `Header picture ${i + 1} of ${business.name}`, signed: h.signed }));
   /* the seats a studio's page names (19 Sep 2026: "Owner, Faculty, Visiting
      Faculty"), and since 20 Sep the ASSISTANTS — the user's list E. A `staff`
      seat is still never named: a front-desk job is not a public association. */
@@ -140,12 +140,12 @@ export function PublicProfile({
      Call, Mail and Location beside it, and the studio page a team member opened
      from their own home was a different shape from the one a visitor opened
      from Discover. Same treatment the Follow bell already gets. */
-  const asksGoHere = enquiryTypesFor(tenant.type).length > 0;
+  const asksGoHere = enquiryTypesFor(business.type).length > 0;
   const canAsk = !isMember && asksGoHere;
   /* the Location button is the studio's own pin once the owner has placed it
      (19 Sep 2026); until then the centroid is nobody's address, so Maps is asked
      by name and place */
-  const pinHref = tenant.locationSetAt && tenant.lat != null && tenant.lng != null ? mapsPinHref(tenant.lat, tenant.lng) : null;
+  const pinHref = business.locationSetAt && business.lat != null && business.lng != null ? mapsPinHref(business.lat, business.lng) : null;
 
   return (
     <div style={{ background: LILAC, color: INK, maxWidth: 430, margin: "0 auto", fontFamily: DOS_UI, minHeight: "100vh", paddingBottom: 40, boxSizing: "border-box" }}>
@@ -153,12 +153,12 @@ export function PublicProfile({
         {/* ── the profile, lit like a player — the one hero every profile page wears ── */}
         <IdentityHero
           testId="public-hero"
-          name={tenant.name}
+          name={business.name}
           grad={RG}
-          eyebrow={tenant.type === "studio" ? "Studio" : "Artist"}
-          eyebrowSub={tenant.memberNo ? <HeroId>{memberNoWords(tenant.memberNo)}</HeroId> : null}
+          eyebrow={business.type === "studio" ? "Studio" : "Artist"}
+          eyebrowSub={business.memberNo ? <HeroId>{memberNoWords(business.memberNo)}</HeroId> : null}
           /* the tick is DanceOS's to give — set when a verification actually clears (DosVerified 10592) */
-          verified={Boolean(tenant.verifiedAt)}
+          verified={Boolean(business.verifiedAt)}
           meta={
             <>
               <span style={{ display: "inline-flex", alignItems: "center", gap: 5, fontWeight: 800, color: INK }}>
@@ -166,12 +166,12 @@ export function PublicProfile({
                   <rect x="3.5" y="4.5" width="17" height="16" rx="3" />
                   <path d="M3.5 9.5h17M8.5 4.5v-2M15.5 4.5v-2" />
                 </svg>
-                {tenant.foundedYear ? `Since ${tenant.foundedYear}` : `On DanceOS since ${new Intl.DateTimeFormat("en-IN", { timeZone: "Asia/Kolkata", year: "numeric" }).format(new Date(tenant.createdAt))}`}
+                {business.foundedYear ? `Since ${business.foundedYear}` : `On DanceOS since ${new Intl.DateTimeFormat("en-IN", { timeZone: "Asia/Kolkata", year: "numeric" }).format(new Date(business.createdAt))}`}
               </span>
               {place ? (
                 <>
                   <HeroDot />
-                  <HeroPlace text={place} query={`${tenant.name} ${place}`} />
+                  <HeroPlace text={place} query={`${business.name} ${place}`} />
                 </>
               ) : null}
             </>
@@ -181,7 +181,7 @@ export function PublicProfile({
              the order every profile screen keeps is figures → styles → links. */
           styles={[]}
           avatar={face}
-          avatarAlt={tenant.name}
+          avatarAlt={business.name}
           shots={shots}
           /* ⚠ NO CORNER ON A PROFILE PAGE (21 Sep 2026) — see `PublicPersonPage`
              for the loop this cuts; a studio's ran home → eye → here → "Manage
@@ -197,14 +197,14 @@ export function PublicProfile({
           <EntityBand
             figures={
               <>
-                <FollowerFigure n={profile.followers} kind="business" id={tenant.id} name={tenant.name} testId="tenant-followers" />
+                <FollowerFigure n={profile.followers} kind="business" id={business.id} name={business.name} testId="business-followers" />
                 {/* ⚠ THE SECOND FIGURE IS THE OWNER'S (20 Sep 2026, the user:
                     "Organization and Studio still dont have Following section in
                     profile and home"). A studio cannot follow — see the prop's
                     own note — so what is counted here is what the account that
                     RUNS it follows, and the Owner group further down the page is
                     who that is. Null reads as no figure, never as 0. */}
-                <Figure n={followingN} label="Following" testId="tenant-following" />
+                <Figure n={followingN} label="Following" testId="business-following" />
               </>
             }
             /* ⚠ THE THREE CHIPS (20 Sep 2026, the user: "Follow button to be a
@@ -224,21 +224,21 @@ export function PublicProfile({
                     reason it used to be drawn DISABLED has gone. */}
                 {isMember ? null : (
                   <FollowToggle
-                    target={{ kind: "business", id: tenant.id }}
+                    target={{ kind: "business", id: business.id }}
                     initialFollowing={following}
                     initialFollowers={profile.followers}
                     accent={RC}
                     signedIn={signedIn}
                   />
                 )}
-                <StatsChip href={`/studio/${tenant.id}/stats`} />
-                <ProfileShare path={path} name={tenant.name} />
-                <ProfileLink path={path} name={tenant.name} />
+                <StatsChip href={`/studio/${business.id}/stats`} />
+                <ProfileShare path={path} name={business.name} />
+                <ProfileLink path={path} name={business.name} />
               </>
             }
             styles={profile.styles}
             styleAria={(s) => `${s} — a style this business teaches`}
-            socials={tenant.socials}
+            socials={business.socials}
           />
         </IdentityHero>
 
@@ -286,19 +286,19 @@ export function PublicProfile({
         <ActionRow marginTop={isMember ? 6 : undefined}>
           {asksGoHere ? (
             <EnquiryButton
-              tenantId={tenant.id}
-              tenantName={tenant.name}
-              tenantType={tenant.type}
+              businessId={business.id}
+              businessName={business.name}
+              businessType={business.type}
               signedIn={signedIn}
               accent={RC}
-              enquiryTypes={tenant.enquiryTypes}
+              enquiryTypes={business.enquiryTypes}
               cannotAsk={canAsk ? null : "You are on this team — enquiries come to you here"}
             />
           ) : null}
-          {tenant.phone ? <CallButton phone={tenant.phone} /> : null}
-          {tenant.contactEmail ? <MailButton email={tenant.contactEmail} /> : null}
-          {whatsappHrefOf(tenant.socials) ? <MessageButton href={whatsappHrefOf(tenant.socials) as string} /> : null}
-          {pinHref ? <LocationButton href={pinHref} /> : place ? <LocationButton query={`${tenant.name} ${place}`} /> : null}
+          {business.phone ? <CallButton phone={business.phone} /> : null}
+          {business.contactEmail ? <MailButton email={business.contactEmail} /> : null}
+          {whatsappHrefOf(business.socials) ? <MessageButton href={whatsappHrefOf(business.socials) as string} /> : null}
+          {pinHref ? <LocationButton href={pinHref} /> : place ? <LocationButton query={`${business.name} ${place}`} /> : null}
         </ActionRow>
 
         {/* ── THE ONE WHITE BAR THE PAGE IS FOR (10919): the schedule ── */}
@@ -312,7 +312,7 @@ export function PublicProfile({
         {/* ── WHAT IT SELLS (19 Sep 2026, the user: "Users should be able to buy
             from Studio and Artist Profile Pages") — a price on a public page is
             public; who holds one never is ── */}
-        <MembershipsOnSale memberships={memberships} businessName={tenant.name} accent={RC} signedIn={signedIn} canBuy={!isMember} />
+        <MembershipsOnSale memberships={memberships} businessName={business.name} accent={RC} signedIn={signedIn} canBuy={!isMember} />
 
         {/* ── THE TEAM, A SECTION PER ROLE (11000-11060; re-cut 27 Sep 2026 to
             the user's *"Studio, Crew and Organization — simply should show the
@@ -328,7 +328,7 @@ export function PublicProfile({
       </div>
       {/* the quiet control at the foot of a public page (10 Sep 2026) — not for
           its own members, who have the hub for anything that is wrong */}
-      {isMember ? null : <ReportButton subjectKind="business" subjectId={tenant.id} subjectName={tenant.name} signedIn={signedIn} />}
+      {isMember ? null : <ReportButton subjectKind="business" subjectId={business.id} subjectName={business.name} signedIn={signedIn} />}
     </div>
   );
 }

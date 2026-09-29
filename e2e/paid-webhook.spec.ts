@@ -9,7 +9,7 @@ import { createHmac } from "node:crypto";
  * test-number users), then posts a PAYMENT_SUCCESS_WEBHOOK to
  * /api/webhooks/cashfree and watches the seat land.
  *
- * Proves: signature rejection, signature acceptance, the capture → enrollment
+ * Proves: signature rejection, signature acceptance, the capture → classBooking
  * pipeline, and exactly-once replay handling (the event ledger + the RPC's own
  * idempotency on the provider payment id).
  *
@@ -80,20 +80,20 @@ async function rows<T>(headers: Record<string, string>, path: string): Promise<T
 /** 10 Sep 2026: a studio is born UNLISTED and goes public on ITS OWN subscription.
  *  The service role stands in for an admin's grant here — a granted, active row at
  *  ₹0 — and lists the studio as the grant would, so the class below is public. */
-async function subscribeStudio(tenantId: string, ownerId: string) {
+async function subscribeStudio(businessId: string, ownerId: string) {
   const today = new Date().toISOString().slice(0, 10);
   const until = new Date(Date.now() + 365 * 24 * 3600 * 1000).toISOString().slice(0, 10);
   const granted = await fetch(`${supabaseUrl}/rest/v1/subscriptions`, {
     method: "POST",
     headers: serviceHeaders,
     body: JSON.stringify({
-      kind: "studio", user_id: ownerId, business_id: tenantId, plan_key: "studio_monthly", price_inr: 0, period: "monthly",
+      kind: "studio", user_id: ownerId, business_id: businessId, plan_key: "studio_monthly", price_inr: 0, period: "monthly",
       status: "active", current_period_start: today, current_period_end: until, granted: true,
       note: "Granted by the webhook spec — nothing charged", created_by: ownerId, updated_by: ownerId,
     }),
   });
   if (!granted.ok) throw new Error(`could not grant the studio a subscription: ${granted.status} ${await granted.text()}`);
-  const listed = await fetch(`${supabaseUrl}/rest/v1/businesses?id=eq.${tenantId}`, {
+  const listed = await fetch(`${supabaseUrl}/rest/v1/businesses?id=eq.${businessId}`, {
     method: "PATCH",
     headers: serviceHeaders,
     body: JSON.stringify({ visibility: "listed" }),
@@ -116,7 +116,7 @@ test("cashfree webhook: bad signature rejected, capture books the seat, replay i
   const owner = await signInTestNumber("+919999999999");
   const learner = await signInTestNumber("+918888888888");
 
-  const tenant = await rpc<{ id: string }>(userHeaders(owner.token), "create_business_with_owner", {
+  const business = await rpc<{ id: string }>(userHeaders(owner.token), "create_business_with_owner", {
     p_name: `Webhook Proof Studio ${stamp}`,
     p_type: "studio",
     p_area: "Kothrud",
@@ -126,10 +126,10 @@ test("cashfree webhook: bad signature rejected, capture books the seat, replay i
   });
 
   try {
-    await subscribeStudio(tenant.id, owner.userId);
+    await subscribeStudio(business.id, owner.userId);
     const inSevenDays = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
     const created = await rpc<{ id: string }>(userHeaders(owner.token), "create_class_with_session", {
-      p_business_id: tenant.id,
+      p_business_id: business.id,
       /* a class has no name (17 Sep 2026): its title is "{style} · {level}", what the app writes.
          And since 18 Sep 2026 it is born a DRAFT: publishing waits for the teacher's
          yes, which the learner gives below — so a seat can be sold at all. */
@@ -151,7 +151,7 @@ test("cashfree webhook: bad signature rejected, capture books the seat, replay i
       headers: serviceHeaders,
       body: JSON.stringify({
         class_id: created.id,
-        business_id: tenant.id,
+        business_id: business.id,
         user_id: learner.userId,
         kind: "artist",
         status: "confirmed",
@@ -297,12 +297,12 @@ test("cashfree webhook: bad signature rejected, capture books the seat, replay i
       /* ⚠ RE-CUT 21 Sep 2026. This asked for the `GROSS · SEPTEMBER` card, which
          the shared `EarningsScreen` replaced: the same money is REVENUE now, of
          the period you are looking at rather than of the month whatever you
-         picked. The claim underneath was never the card — it was "the ₹300 this
+         picked. The classPerson underneath was never the card — it was "the ₹300 this
          webhook captured reaches the studio's earnings desk, and it says it came
          by UPI" — so that is what is asserted, on the day it was captured.
          HOW STUDENTS PAID is untouched: the method split is a fact nothing else
          on the page carries. */
-      await page.goto(`/business/${tenant.id}/earnings?period=day`);
+      await page.goto(`/business/${business.id}/earnings?period=day`);
       await expect(page.getByTestId("earn-revenue")).toHaveText("₹300");
       await expect(page.getByTestId("earn-left")).toHaveText("₹300");
       await expect(page.getByText("UPI 100%")).toBeVisible();
@@ -310,9 +310,9 @@ test("cashfree webhook: bad signature rejected, capture books the seat, replay i
       await page.close();
     }
   } finally {
-    // tenant delete cascades class → session → enrollment → order → payment;
+    // business delete cascades class → session → classBooking → order → payment;
     // the webhook_events ledger row is machine history and stays
-    await fetch(`${supabaseUrl}/rest/v1/businesses?id=eq.${tenant.id}`, {
+    await fetch(`${supabaseUrl}/rest/v1/businesses?id=eq.${business.id}`, {
       method: "DELETE",
       headers: serviceHeaders,
     });
@@ -352,7 +352,7 @@ test("cashfree subscription webhook, in the shapes Cashfree really sends: the au
     await fetch(`${supabaseUrl}/rest/v1/businesses?id=eq.${old.id}`, { method: "DELETE", headers: serviceHeaders });
   }
 
-  const tenant = await rpc<{ id: string; visibility: string }>(userHeaders(owner.token), "create_business_with_owner", {
+  const business = await rpc<{ id: string; visibility: string }>(userHeaders(owner.token), "create_business_with_owner", {
     p_name: `Mandate Proof Studio ${stamp}`,
     p_type: "studio",
     p_area: "Kothrud",
@@ -375,7 +375,7 @@ test("cashfree subscription webhook, in the shapes Cashfree really sends: the au
         `subscriptions?id=eq.${sub.id}&select=status,current_period_end,granted,cancel_at_period_end,failure_reason`
       )
     )[0];
-  const visibilityNow = async () => (await rows<{ visibility: string }>(serviceHeaders, `businesses?id=eq.${tenant.id}&select=visibility`))[0].visibility;
+  const visibilityNow = async () => (await rows<{ visibility: string }>(serviceHeaders, `businesses?id=eq.${business.id}&select=visibility`))[0].visibility;
   const paymentsNow = () =>
     rows<{ kind: string; provider_payment_id: string; amount_inr: number }>(
       userHeaders(owner.token),
@@ -383,7 +383,7 @@ test("cashfree subscription webhook, in the shapes Cashfree really sends: the au
     );
 
   // a studio is born PRIVATE (10 Sep 2026)
-  expect(tenant.visibility).toBe("unlisted");
+  expect(business.visibility).toBe("unlisted");
 
   /* ⚠ AND SINCE 14 SEP 2026 IT IS ALSO BORN UNVERIFIED. The badge is an admin's
      decision, which this spec has no admin for and is not what it is testing —
@@ -396,7 +396,7 @@ test("cashfree subscription webhook, in the shapes Cashfree really sends: the au
      webhook's branch carries `and business_is_verified(t.id)`, so an unverified
      studio would pay and stay dark — which is the rule, and would read here as
      a broken assertion rather than as the rule. */
-  const badged = await fetch(`${supabaseUrl}/rest/v1/businesses?id=eq.${tenant.id}`, {
+  const badged = await fetch(`${supabaseUrl}/rest/v1/businesses?id=eq.${business.id}`, {
     method: "PATCH",
     headers: serviceHeaders,
     body: JSON.stringify({ verified_at: new Date().toISOString() }),
@@ -407,7 +407,7 @@ test("cashfree subscription webhook, in the shapes Cashfree really sends: the au
   // price list's price, waiting on the mandate
   const sub = await rpc<{ id: string; status: string; price_inr: number; period: string }>(userHeaders(owner.token), "subscribe", {
     p_plan_key: "studio_monthly",
-    p_business_id: tenant.id,
+    p_business_id: business.id,
   });
   try {
     expect(sub.status).toBe("pending_auth");
@@ -571,9 +571,9 @@ test("cashfree subscription webhook, in the shapes Cashfree really sends: the au
     expect(row.current_period_end).not.toBeNull();
     expect(await visibilityNow()).toBe("listed");
   } finally {
-    // the tenant delete cascades the subscription; its payments keep their rows
+    // the business delete cascades the subscription; its payments keep their rows
     // with subscription_id set null (a ledger does not forget money)
-    await fetch(`${supabaseUrl}/rest/v1/businesses?id=eq.${tenant.id}`, {
+    await fetch(`${supabaseUrl}/rest/v1/businesses?id=eq.${business.id}`, {
       method: "DELETE",
       headers: serviceHeaders,
     });

@@ -11,7 +11,7 @@ import { countEnrolledBySession } from "./enrollments";
 
 /** Step 14 reads. No table, no RPC, no policy: a calendar is class sessions
  *  read through rows that already exist — a person's bookings and confirmed
- *  claims, a studio's sessions — under the RLS Steps 4, 11 and 3 set. Every
+ *  classPeople, a studio's sessions — under the RLS Steps 4, 11 and 3 set. Every
  *  query says whose rows it wants out loud (`user_id = …`, `business_id = …`):
  *  RLS is a ceiling, not a scoping mechanism, and a person who is both a
  *  learner and a studio's member can read far more than their own rows. */
@@ -72,9 +72,9 @@ const entryOf = (
   session: SessionBits,
   classId: string,
   c: ClassBits,
-  tenant: TenantBits | null,
+  business: TenantBits | null,
   side: CalendarSide,
-  enrollment: CalendarEntry["enrollment"]
+  classBooking: CalendarEntry["classBooking"]
 ): CalendarEntry => ({
   sessionId: session.id,
   classId,
@@ -90,10 +90,10 @@ const entryOf = (
   endsAt: session.ends_at,
   dayKey: dayKeyOf(session.starts_at),
   hour: hourOf(session.starts_at),
-  tenantName: tenant?.name ?? "",
-  tenantCity: tenant?.city ?? null,
+  businessName: business?.name ?? "",
+  tenantCity: business?.city ?? null,
   side,
-  enrollment,
+  classBooking,
   filled: 0,
   artist: null,
 });
@@ -156,7 +156,7 @@ export async function findMyCalendar(
     throw new Error(`calendar.findMine(bookings) failed: ${bookingsRes.error.message}`);
   }
   if (claimsRes.error) {
-    throw new Error(`calendar.findMine(claims) failed: ${claimsRes.error.message}`);
+    throw new Error(`calendar.findMine(classPeople) failed: ${claimsRes.error.message}`);
   }
 
   const bySession = new Map<string, CalendarEntry>();
@@ -194,15 +194,15 @@ export async function findMyCalendar(
  *  on their artist profile", 8893), which is what this reads. */
 export async function findTenantCalendar(
   supabase: SupabaseClient,
-  tenantId: string,
-  tenant: TenantBits,
+  businessId: string,
+  business: TenantBits,
   fromIso: string,
   toIso: string
 ): Promise<CalendarEntry[]> {
   const { data, error } = await supabase
     .from("class_sessions")
     .select(`id, starts_at, ends_at, class_id, classes!inner (${CLASS_BITS})`)
-    .eq("business_id", tenantId)
+    .eq("business_id", businessId)
     .is("deleted_at", null)
     .is("classes.deleted_at", null)
     .gte("starts_at", fromIso)
@@ -221,7 +221,7 @@ export async function findTenantCalendar(
         { id: r.id, starts_at: r.starts_at, ends_at: r.ends_at },
         r.class_id,
         r.classes as ClassBits,
-        tenant,
+        business,
         "hosting",
         null
       )
@@ -229,7 +229,7 @@ export async function findTenantCalendar(
   /* AND THE ARTISTS' CLASSES IT HOLDS (18 Sep 2026): a class an artist asked to
      run in one of this studio's rooms, once the studio has ACCEPTED — the room is
      held from then on, so it belongs on the calendar the rooms are planned from */
-  const hosted = await findVenueEntries(supabase, tenantId, tenant, fromIso, toIso, false);
+  const hosted = await findVenueEntries(supabase, businessId, business, fromIso, toIso, false);
   return withSeatCounts(supabase, [...entries, ...hosted]);
 }
 
@@ -249,8 +249,8 @@ interface VenueClassRow {
  *  `publishedOnly` for the public schedule, drafts included for the studio's own */
 async function findVenueEntries(
   supabase: SupabaseClient,
-  tenantId: string,
-  tenant: TenantBits,
+  businessId: string,
+  business: TenantBits,
   fromIso: string,
   toIso: string,
   publishedOnly: boolean
@@ -258,7 +258,7 @@ async function findVenueEntries(
   let q = supabase
     .from("classes")
     .select(`id, ${CLASS_BITS}, class_sessions (id, starts_at, ends_at, deleted_at)`)
-    .eq("venue_business_id", tenantId)
+    .eq("venue_business_id", businessId)
     .eq("venue_status", "accepted")
     .is("deleted_at", null)
     .limit(MAX_ROWS);
@@ -271,7 +271,7 @@ async function findVenueEntries(
   for (const row of (data ?? []) as unknown as VenueClassRow[]) {
     for (const s of row.class_sessions ?? []) {
       if (s.deleted_at || !inWindow(s.starts_at, fromIso, toIso)) continue;
-      out.push(entryOf(s, row.id, row, tenant, "hosting", null));
+      out.push(entryOf(s, row.id, row, business, "hosting", null));
     }
   }
   return out;
@@ -295,15 +295,15 @@ async function findVenueEntries(
  *  of listed businesses); the status and time filters draw it for a member too. */
 export async function findPublicTenantSchedule(
   supabase: SupabaseClient,
-  tenantId: string,
-  tenant: TenantBits,
+  businessId: string,
+  business: TenantBits,
   nowIso: string,
   toIso: string
 ): Promise<CalendarEntry[]> {
   const { data, error } = await supabase
     .from("class_sessions")
     .select(`id, starts_at, ends_at, class_id, classes!inner (${CLASS_BITS})`)
-    .eq("business_id", tenantId)
+    .eq("business_id", businessId)
     .eq("classes.status", "published")
     .is("deleted_at", null)
     .is("classes.deleted_at", null)
@@ -323,12 +323,12 @@ export async function findPublicTenantSchedule(
         { id: r.id, starts_at: r.starts_at, ends_at: r.ends_at },
         r.class_id,
         r.classes as ClassBits,
-        tenant,
+        business,
         "hosting",
         null
       )
     );
   /* the artists' published classes it holds are on offer here too (18 Sep 2026) */
-  const hosted = await findVenueEntries(supabase, tenantId, tenant, nowIso, toIso, true);
+  const hosted = await findVenueEntries(supabase, businessId, business, nowIso, toIso, true);
   return withSeatCounts(supabase, [...entries, ...hosted]);
 }

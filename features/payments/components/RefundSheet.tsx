@@ -17,7 +17,7 @@ const DOS_MONO = 'ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mon
 const REASONS = ["Injury or illness", "Schedule clash", "Travelling", "Changed my mind"];
 
 export interface RefundSheetProps {
-  enrollmentId: string;
+  classBookingId: string;
   title: string;
   timeText: string;
   amountInr: number;
@@ -26,7 +26,7 @@ export interface RefundSheetProps {
   onDone: (message: string) => void;
 }
 
-export function RefundSheet({ enrollmentId, title, timeText, amountInr, onClose, onDone }: RefundSheetProps) {
+export function RefundSheet({ classBookingId, title, timeText, amountInr, onClose, onDone }: RefundSheetProps) {
   useCloseOnBack(onClose);
   const [own, setOwn] = useState(false);
   const [why, setWhy] = useState("");
@@ -37,7 +37,7 @@ export function RefundSheet({ enrollmentId, title, timeText, amountInr, onClose,
     if (busy) return;
     setBusy(true);
     setError(null);
-    const out = await cancelBookingAction({ enrollmentId, reason });
+    const out = await cancelBookingAction({ classBookingId, reason });
     setBusy(false);
     if (out.error || !out.message) {
       setError(out.error ?? "Could not cancel");

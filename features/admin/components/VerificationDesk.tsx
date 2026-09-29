@@ -69,8 +69,8 @@ const TABS: Array<{ key: VerificationTab; label: string }> = [
  *  organization reviews this replaced are still in the table as history, so the
  *  fallbacks are here to keep the types honest rather than to be used. */
 const subjectOf = (r: VerificationRequest) => ({
-  id: r.tenantId ?? r.orgId,
-  name: r.tenantName ?? r.orgName,
+  id: r.businessId ?? r.orgId,
+  name: r.businessName ?? r.orgName,
   city: r.tenantCity,
   socials: r.tenantSocials,
   verifiedAt: r.tenantVerifiedAt,
@@ -156,9 +156,9 @@ export function VerificationDesk({
     setTimeout(() => setToast(null), 2600);
   };
   /* the studio's badge — the only answer this desk gives */
-  const decideStudio = (tenantId: string, approve: boolean, said: string, withNote?: string) =>
+  const decideStudio = (businessId: string, approve: boolean, said: string, withNote?: string) =>
     start(async () => {
-      const out = await decideStudioVerificationAction({ tenantId, approve, note: withNote || null });
+      const out = await decideStudioVerificationAction({ businessId, approve, note: withNote || null });
       if (out.error) return fire(out.error);
       setRejecting(null);
       setNote("");
@@ -170,11 +170,11 @@ export function VerificationDesk({
    *  call fails the studio is still correctly unverified and the desk says the
    *  subscription is still live, which is recoverable. The other order would
    *  take somebody's money away over a rejection that did not happen. */
-  const rejectAndMaybeEnd = (tenantId: string, name: string, withNote: string) => {
-    const m = mandates[tenantId];
+  const rejectAndMaybeEnd = (businessId: string, name: string, withNote: string) => {
+    const m = mandates[businessId];
     const end = Boolean(m) && alsoEnd;
     return start(async () => {
-      const out = await decideStudioVerificationAction({ tenantId, approve: false, note: withNote || null });
+      const out = await decideStudioVerificationAction({ businessId, approve: false, note: withNote || null });
       if (out.error) return fire(out.error);
       if (end && m) {
         const stopped = await endSubscriptionAction({ subscriptionId: m.subscriptionId, reason: `Studio not approved${withNote ? ` — ${withNote}` : ""}` });
@@ -274,7 +274,7 @@ export function VerificationDesk({
                 <div style={{ margin: "10px 0 4px" }}>
                   <Links socials={s.socials} />
                 </div>
-                {/* R16: the links say who they claim to be; the photos say there is a floor */}
+                {/* R16: the links say who they classPerson to be; the photos say there is a floor */}
                 <div style={{ margin: "10px 0 4px" }}>
                   <ProofStrip photos={proof[s.id] ?? []} orgName={s.name} />
                 </div>

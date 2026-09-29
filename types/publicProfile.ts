@@ -1,12 +1,12 @@
-import type { AcceptedMethods, TenantType } from "@/types/tenant";
+import type { AcceptedMethods, BusinessType } from "@/types/tenant";
 
 /** A business as a stranger sees it (prototype S_profiletab with
  *  `publicEntity="studio"|"trainer"`, PUB presets 8641-8646). Everything here is
- *  readable under existing public policies: the listed tenant, the styles of its
+ *  readable under existing public policies: the listed business, the styles of its
  *  published classes, and — since 19 Sep 2026 — its TEAM through one definer read. */
-export interface PublicTenant {
+export interface PublicBusiness {
   id: string;
-  type: TenantType;
+  type: BusinessType;
   name: string;
   area: string | null;
   city: string | null;
@@ -55,8 +55,8 @@ export interface PublicTeamMember {
   isOrg: boolean;
 }
 
-export interface PublicTenantProfile {
-  tenant: PublicTenant;
+export interface PublicBusinessProfile {
+  business: PublicBusiness;
   /** what it SAYS it dances (19 Sep 2026, `businesses.styles`), falling back to
    *  the distinct styles of its published classes for a row that has neither
    *  been edited nor had anything to backfill from */

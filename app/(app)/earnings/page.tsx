@@ -10,7 +10,7 @@ import { findMyEarnings } from "@/repositories/payouts";
    impure call during render, even in a server component */
 const stampNowIso = (): string => new Date().toISOString();
 
-/** Your own teaching money. Every row is yours: RLS admits you to your claims
+/** Your own teaching money. Every row is yours: RLS admits you to your classPeople
  *  and to payouts where you are the person paid.
  *
  *  ⚠ THE SUMMARY IS THE SHARED EARNINGS SCREEN NOW (21 Sep 2026): the period

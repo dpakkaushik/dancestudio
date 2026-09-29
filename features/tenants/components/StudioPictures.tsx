@@ -44,16 +44,16 @@ import { PROOF_MAX, type ProofPhoto } from "@/lib/media/proof";
  *  that can only be refused. A person's floor is 0 and theirs says so. */
 
 /** the disc's own editor — one picker, and it lands as soon as you choose */
-export function StudioPictureSheet({ tenantId, tenantName, hasPhoto, onClose }: { tenantId: string; tenantName: string; hasPhoto: boolean; onClose: () => void }) {
+export function StudioPictureSheet({ businessId, businessName, hasPhoto, onClose }: { businessId: string; businessName: string; hasPhoto: boolean; onClose: () => void }) {
   return (
     <Portal>
       <Sheet label="Profile picture" onClose={onClose} maxHeight="70vh">
         <b style={{ fontSize: 16.5, letterSpacing: -0.2 }}>Profile picture</b>
-        <div style={{ fontSize: 11.5, color: SUB, marginTop: 3 }}>{tenantName} — it changes as soon as you pick one.</div>
+        <div style={{ fontSize: 11.5, color: SUB, marginTop: 3 }}>{businessName} — it changes as soon as you pick one.</div>
         <div style={{ marginTop: 14 }}>
           {/* the owner OR a trainer, which is the pair the storage policy on
-              `tenants/{id}` admits and `set_business_profile_photo` re-checks */}
-          <PhotoPicker owner={{ kind: "tenant", id: tenantId }} hasPhoto={hasPhoto} label="Change the photo" />
+              `businesses/{id}` admits and `set_business_profile_photo` re-checks */}
+          <PhotoPicker owner={{ kind: "tenant", id: businessId }} hasPhoto={hasPhoto} label="Change the photo" />
         </div>
         <div style={{ display: "flex", gap: 8, marginTop: 20 }}>
           <button type="button" onClick={onClose} style={sheetBtn(true)}>Done</button>
@@ -65,14 +65,14 @@ export function StudioPictureSheet({ tenantId, tenantName, hasPhoto, onClose }: 
 
 /** the posters, as a draft — nothing happens until Save */
 export function StudioPostersSheet({
-  tenantId,
-  tenantName,
+  businessId,
+  businessName,
   ownerId,
   photos = [],
   onClose,
 }: {
-  tenantId: string;
-  tenantName: string;
+  businessId: string;
+  businessName: string;
   /** the OWNER's id — the folder in the private bucket a new picture goes into */
   ownerId: string;
   photos?: ProofPhoto[];
@@ -86,14 +86,14 @@ export function StudioPostersSheet({
     min: 1,
     max: PROOF_MAX,
   });
-  const tiles = headerTiles(draft, tenantName);
+  const tiles = headerTiles(draft, businessName);
   const [lightbox, setLightbox] = useState<number | null>(null);
 
   const save = () => {
     start(async () => {
       setErr(null);
       if (draft.dirty) {
-        const result = await commitHeaderDraft(draft.items, studioPorts(tenantId, ownerId));
+        const result = await commitHeaderDraft(draft.items, studioPorts(businessId, ownerId));
         draft.applyCommit(result);
         if (result.failures.length > 0) {
           /* the sheet STAYS OPEN wearing the database's own sentence, and Save
@@ -140,7 +140,7 @@ export function StudioPostersSheet({
           index={lightbox}
           onIndex={setLightbox}
           onClose={() => setLightbox(null)}
-          label={tenantName}
+          label={businessName}
         />
       ) : null}
     </Portal>
@@ -155,14 +155,14 @@ export function StudioPostersSheet({
  *  may look at a studio's pictures and not write them, and a control that exists
  *  only to be refused is noise. The picture still opens for them. */
 export function StudioPicturesButton({
-  tenantId,
-  tenantName,
+  businessId,
+  businessName,
   grad,
   avatar,
   canEdit,
 }: {
-  tenantId: string;
-  tenantName: string;
+  businessId: string;
+  businessName: string;
   grad: [string, string];
   avatar: string | null;
   canEdit: boolean;
@@ -171,13 +171,13 @@ export function StudioPicturesButton({
   const [viewing, setViewing] = useState(false);
   /* the ⊕ appears with the pencil (26 Sep 2026) — edit mode, on top of the seat's own right */
   const { editing: editMode } = useEditMode();
-  const disc = <ProfileDisc name={tenantName} grad={grad} photo={avatar} photoAlt={tenantName} testId="hero-disc" />;
+  const disc = <ProfileDisc name={businessName} grad={grad} photo={avatar} photoAlt={businessName} testId="hero-disc" />;
   return (
     <div style={{ position: "relative", flexShrink: 0 }}>
       {avatar ? (
         <button
           type="button"
-          aria-label={`${tenantName} — profile picture`}
+          aria-label={`${businessName} — profile picture`}
           onClick={() => setViewing(true)}
           style={{ display: "block", padding: 0, border: "none", background: "none", cursor: "pointer", lineHeight: 0, fontFamily: "inherit" }}
         >
@@ -198,15 +198,15 @@ export function StudioPicturesButton({
       ) : null}
       {viewing && avatar ? (
         <PhotoLightbox
-          shots={[{ key: "avatar", src: avatar, alt: `${tenantName} — profile picture`, signed: false }]}
+          shots={[{ key: "avatar", src: avatar, alt: `${businessName} — profile picture`, signed: false }]}
           frame="disc"
           index={0}
           onIndex={() => {}}
           onClose={() => setViewing(false)}
-          label={tenantName}
+          label={businessName}
         />
       ) : null}
-      {editing ? <StudioPictureSheet tenantId={tenantId} tenantName={tenantName} hasPhoto={Boolean(avatar)} onClose={() => setEditing(false)} /> : null}
+      {editing ? <StudioPictureSheet businessId={businessId} businessName={businessName} hasPhoto={Boolean(avatar)} onClose={() => setEditing(false)} /> : null}
     </div>
   );
 }
@@ -214,7 +214,7 @@ export function StudioPicturesButton({
 /** the ⊕ at the posters rail's corner — the owner's alone, because a new picture
  *  goes into the OWNER's folder in the private bucket and nobody else may write
  *  there */
-export function StudioPostersButton({ tenantId, tenantName, ownerId, photos = [] }: { tenantId: string; tenantName: string; ownerId: string; photos?: ProofPhoto[] }) {
+export function StudioPostersButton({ businessId, businessName, ownerId, photos = [] }: { businessId: string; businessName: string; ownerId: string; photos?: ProofPhoto[] }) {
   const [open, setOpen] = useState(false);
   const { editing } = useEditMode();
   /* only while the pencil is pressed (26 Sep 2026) */
@@ -229,7 +229,7 @@ export function StudioPostersButton({ tenantId, tenantName, ownerId, photos = []
       >
         <PlusIcon light />
       </button>
-      {open ? <StudioPostersSheet tenantId={tenantId} tenantName={tenantName} ownerId={ownerId} photos={photos} onClose={() => setOpen(false)} /> : null}
+      {open ? <StudioPostersSheet businessId={businessId} businessName={businessName} ownerId={ownerId} photos={photos} onClose={() => setOpen(false)} /> : null}
     </>
   );
 }

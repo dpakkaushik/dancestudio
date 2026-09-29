@@ -48,16 +48,16 @@ export async function setMyAvatarAction(input: { path: string | null }): Promise
   return { error: null, path: (data as string | null) ?? null };
 }
 
-export async function setTenantPhotoAction(input: { tenantId: string; path: string | null }): Promise<PhotoActionResult> {
-  const parsed = z.object({ tenantId: z.string().uuid(), path }).safeParse(input);
+export async function setTenantPhotoAction(input: { businessId: string; path: string | null }): Promise<PhotoActionResult> {
+  const parsed = z.object({ businessId: z.string().uuid(), path }).safeParse(input);
   if (!parsed.success) return { error: "Invalid photo" };
   const supabase = await requireUser();
-  const { data, error } = await supabase.rpc("set_business_profile_photo", { p_business_id: parsed.data.tenantId, p_path: parsed.data.path });
+  const { data, error } = await supabase.rpc("set_business_profile_photo", { p_business_id: parsed.data.businessId, p_path: parsed.data.path });
   if (error) {
     return { error: error.message };
   }
-  revalidatePath(`/studio/${parsed.data.tenantId}`);
-  revalidatePath(`/artist/${parsed.data.tenantId}`);
+  revalidatePath(`/studio/${parsed.data.businessId}`);
+  revalidatePath(`/artist/${parsed.data.businessId}`);
   revalidatePath("/discover");
   return { error: null, path: (data as string | null) ?? null };
 }

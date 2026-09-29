@@ -104,7 +104,7 @@ export function BusinessesDesk({
 
   const move = (b: AdminBusiness, visibility: "listed" | "unlisted", why?: string) =>
     start(async () => {
-      const out = await setTenantVisibilityAction({ tenantId: b.id, visibility, reason: why ?? null });
+      const out = await setTenantVisibilityAction({ businessId: b.id, visibility, reason: why ?? null });
       if (out.error) return fire(out.error);
       setUnlisting(null);
       setReason("");

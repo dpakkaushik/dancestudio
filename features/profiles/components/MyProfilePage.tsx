@@ -19,20 +19,20 @@ import { EnquiryButton } from "@/features/enquiries/components/EnquirySheet";
 import { ProfileLink, ProfileShare } from "./ProfileShare";
 import { StatsChip } from "./StatsChip";
 import type { ArtistPlan } from "@/repositories/plans";
-import type { Tenant } from "@/types/tenant";
+import type { Business } from "@/types/tenant";
 import type { PublicTeamMember } from "@/types/publicProfile";
 import type { HeaderPhoto } from "@/repositories/headerPhotos";
 import type { HeroShot } from "./HeroRail";
 import { HeroId, HeroPlace, IdentityHero } from "./hero-kit";
 import { EntityBand, figureLabel, figureNum } from "./profile-band";
 import { Group, ROLE_RING, RoleBadge, Row, Sheet, followTint, initialsOf, type FollowGlyph } from "./profile-kit";
-import type { TenantType } from "@/types/tenant";
+import type { BusinessType } from "@/types/tenant";
 
 /** What each kind of thing you run is CALLED on the "What you run" group
- *  (27 Sep 2026). ⚠ `satisfies`, so a fourth `TenantType` cannot be added
+ *  (27 Sep 2026). ⚠ `satisfies`, so a fourth `BusinessType` cannot be added
  *  without this map being told — the `GLYPH` lesson of this same morning, where
  *  a `Record<string, …>` let two tiles name a key nobody had written. */
-const OWNED_WORD = { studio: "Studio", artist_page: "Artist page" } satisfies Record<TenantType, string>;
+const OWNED_WORD = { studio: "Studio", artist_page: "Artist page" } satisfies Record<BusinessType, string>;
 
 /** THE PROFILE TAB — prototype S_profiletab's OWN render (10565-11400), lifted
  *  whole: the profile lit like a player (the role's colour bleeding off the top;
@@ -101,7 +101,7 @@ export function MyProfilePage({
    *  `businesses`, which is every seat: the group is about what you RUN, and a
    *  studio you teach at is not that. The tab's alone — `findMyMemberships` is
    *  the caller's own read, so there is nothing here a stranger could be shown. */
-  owned?: Tenant[];
+  owned?: Business[];
   /** what this artist has ON SALE (20 Sep 2026) — the public page has shown it
    *  since 19 Sep and this one showed nothing, which is one of the five ways the
    *  two screens had drifted */
@@ -162,7 +162,7 @@ export function MyProfilePage({
       : [
           ...followingPeople.map((f) => ({ key: f.followId, href: `/person/${f.userId}`, name: f.name, kind: kindOf(f.isArtist), glyph: kindOf(f.isArtist) as FollowGlyph, tint: followTint(kindOf(f.isArtist)), face: photoUrl(f.avatarPath), initials: initialsOf(f.name) })),
           /* ⚠ `face: null` until 29 Sep 2026 — see the same line in `HomeBand` */
-          ...followingTenants.map((t) => ({ key: t.followId, href: `/${t.tenantType === "studio" ? "studio" : "artist"}/${t.tenantId}`, name: t.tenantName, kind: t.tenantType === "studio" ? "studio" : "artist", glyph: (t.tenantType === "studio" ? "studio" : "artist") as FollowGlyph, tint: followTint(t.tenantType === "studio" ? "studio-biz" : "artist-biz"), face: photoUrl(t.tenantPhotoPath), initials: initialsOf(t.tenantName) })),
+          ...followingTenants.map((t) => ({ key: t.followId, href: `/${t.businessType === "studio" ? "studio" : "artist"}/${t.businessId}`, name: t.businessName, kind: t.businessType === "studio" ? "studio" : "artist", glyph: (t.businessType === "studio" ? "studio" : "artist") as FollowGlyph, tint: followTint(t.businessType === "studio" ? "studio-biz" : "artist-biz"), face: photoUrl(t.tenantPhotoPath), initials: initialsOf(t.businessName) })),
           /* the crews (19 Sep 2026) — each row opens its own page. ⚠ The
              organizations followed sat here and went on 29 Sep 2026. */
           ...followingCrews.map((c) => ({ key: c.followId, href: `/crew/${c.crewId}`, name: c.name, kind: "crew", glyph: "crew" as FollowGlyph, tint: followTint("crew"), face: photoUrl(c.photo), initials: initialsOf(c.name) })),
@@ -300,9 +300,9 @@ export function MyProfilePage({
         <ActionRow>
           {asksGoHere ? (
             <EnquiryButton
-              tenantId={asksGoHere}
-              tenantName={profile.fullName}
-              tenantType="artist_page"
+              businessId={asksGoHere}
+              businessName={profile.fullName}
+              businessType="artist_page"
               signedIn
               accent={RC}
               cannotAsk="This is your own page — enquiries come to you here"
@@ -370,9 +370,9 @@ export function MyProfilePage({
                        organization a verified GST number before either is
                        public; an ARTIST PAGE is reviewed by nobody, so
                        "Not verified yet" on one would be an alarm about a state
-                       that does not exist. `Tenant` carries no `visibility`, so
+                       that does not exist. `Business` carries no `visibility`, so
                        the badge is what it honestly can be rather than a
-                       listed/unlisted claim the type cannot make. */
+                       listed/unlisted classPerson the type cannot make. */
                     right={t.type === "artist_page" || t.verifiedAt ? OWNED_WORD[t.type] : "Not verified yet"}
                   />
                 ))}

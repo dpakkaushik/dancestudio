@@ -28,7 +28,7 @@ const INVITE_COLUMNS = "id, business_id, name, email, user_id, member_role, code
 
 const toInvite = (row: InviteRow): TenantInvite => ({
   id: row.id,
-  tenantId: row.business_id,
+  businessId: row.business_id,
   name: row.name,
   email: row.email ?? null,
   userId: row.user_id ?? null,
@@ -42,12 +42,12 @@ const toInvite = (row: InviteRow): TenantInvite => ({
  *  history but the desk shows the live queue. */
 export async function findPendingInvites(
   supabase: SupabaseClient,
-  tenantId: string
+  businessId: string
 ): Promise<TenantInvite[]> {
   const { data, error } = await supabase
     .from("business_invites")
     .select(INVITE_COLUMNS)
-    .eq("business_id", tenantId)
+    .eq("business_id", businessId)
     .eq("status", "pending")
     .is("deleted_at", null)
     .order("created_at", { ascending: false })
@@ -61,10 +61,10 @@ export async function findPendingInvites(
 
 export async function inviteToTenant(
   supabase: SupabaseClient,
-  input: { tenantId: string; name: string; email: string; role: InvitableRole }
+  input: { businessId: string; name: string; email: string; role: InvitableRole }
 ): Promise<TenantInvite> {
   const { data, error } = await supabase.rpc("invite_to_business", {
-    p_business_id: input.tenantId,
+    p_business_id: input.businessId,
     p_name: input.name,
     p_email: input.email,
     p_role: input.role,
@@ -81,10 +81,10 @@ export async function inviteToTenant(
  *  a person. Consent is unchanged: they still accept it themselves. */
 export async function invitePersonToTenant(
   supabase: SupabaseClient,
-  input: { tenantId: string; userId: string; role: InvitableRole }
+  input: { businessId: string; userId: string; role: InvitableRole }
 ): Promise<TenantInvite> {
   const { data, error } = await supabase.rpc("invite_person_to_business", {
-    p_business_id: input.tenantId,
+    p_business_id: input.businessId,
     p_user_id: input.userId,
     p_role: input.role,
   });
@@ -120,8 +120,8 @@ export async function findMyPendingInvites(supabase: SupabaseClient): Promise<Pe
   }
   return (data as PendingRow[]).map((row) => ({
     inviteId: row.invite_id,
-    tenantId: row.business_id,
-    tenantName: row.business_name,
+    businessId: row.business_id,
+    businessName: row.business_name,
     memberRole: row.member_role,
     code: row.code,
     invitedName: row.invited_name,
@@ -155,8 +155,8 @@ export async function previewInvite(
   }
   const row = rows[0];
   return {
-    tenantId: row.business_id,
-    tenantName: row.business_name,
+    businessId: row.business_id,
+    businessName: row.business_name,
     memberRole: row.member_role,
     invitedName: row.invited_name,
     status: row.status,
@@ -186,10 +186,10 @@ export async function declineInvite(supabase: SupabaseClient, code: string): Pro
  *  and the two invite RPCs still refuse owner — consent first, the seat after. */
 export async function setMemberRole(
   supabase: SupabaseClient,
-  input: { tenantId: string; userId: string; role: MemberRole }
+  input: { businessId: string; userId: string; role: MemberRole }
 ): Promise<void> {
   const { error } = await supabase.rpc("set_member_role", {
-    p_business_id: input.tenantId,
+    p_business_id: input.businessId,
     p_user_id: input.userId,
     p_role: input.role,
   });
@@ -198,14 +198,14 @@ export async function setMemberRole(
   }
 }
 
-/** Removing somebody closes their class claims in the same act — see the
+/** Removing somebody closes their class classPeople in the same act — see the
  *  migration's note on can_run_register_for_class. */
 export async function removeMember(
   supabase: SupabaseClient,
-  input: { tenantId: string; userId: string }
+  input: { businessId: string; userId: string }
 ): Promise<void> {
   const { error } = await supabase.rpc("remove_business_member", {
-    p_business_id: input.tenantId,
+    p_business_id: input.businessId,
     p_user_id: input.userId,
   });
   if (error) {

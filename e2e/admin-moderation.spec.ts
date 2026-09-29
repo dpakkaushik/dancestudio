@@ -4,7 +4,7 @@ import { test, expect, type BrowserContext, type Locator, type Page } from "@pla
  * The admin panel, phase 2 (10 Sep 2026): reporting, and taking ONE business
  * off Discover.
  *
- * The claims under test, in the order the story tells them:
+ * The classPeople under test, in the order the story tells them:
  *   1. a stranger cannot see the two new screens exist — both 404;
  *   2. a signed-OUT visitor is told reporting needs an account, and is given no
  *      form — the queue is only worth reading if it is answerable;
@@ -347,7 +347,7 @@ test.describe.serial("the admin panel: businesses and reports", () => {
     // AT LEAST two, not exactly two: this figure is platform-wide on a database
     // the whole suite shares, so an exact number is only ever right by luck —
     // a run killed before its cleanup left a third behind and failed this as
-    // though the product were broken (10 Sep 2026). The claim the story makes is
+    // though the product were broken (10 Sep 2026). The classPerson the story makes is
     // that its own two became work; the queue below names the case itself.
     /* 11 Sep 2026: the figures moved off /admin onto their own desk — the front
        door is the blocks and nothing else (the user: "the main screen will only

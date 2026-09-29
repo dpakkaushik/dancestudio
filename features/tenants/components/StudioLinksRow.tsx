@@ -5,7 +5,7 @@ import { updateTenantProfileAction } from "@/features/settings/server-actions/pl
 import { LinksRowEditor } from "@/features/profiles/components/LinksRowEditor";
 import { useRecordLists } from "@/features/profiles/components/RecordLists";
 import type { SocialLink } from "@/types/profile";
-import type { TenantType } from "@/types/tenant";
+import type { BusinessType } from "@/types/tenant";
 
 /** A STUDIO'S LINKS, EDITED WHERE A PERSON'S ARE (20 Sep 2026, the user: "edit
  *  profile for studio not consistent with how its done for Artist and users. for
@@ -24,8 +24,8 @@ import type { TenantType } from "@/types/tenant";
  *  ⚠ AND IT IS THE OWNER'S. A trainer may read the row and is offered no ＋:
  *  `update_business_profile` refuses them, and a control that exists only to be
  *  refused is noise. */
-/** ⚠ EXACTLY THE FIELDS IT SENDS, AND NOT `PublicTenant` (20 Sep 2026). The row
- *  is drawn for the whole team off the studio's own `Tenant` and edited by the
+/** ⚠ EXACTLY THE FIELDS IT SENDS, AND NOT `PublicBusiness` (20 Sep 2026). The row
+ *  is drawn for the whole team off the studio's own `Business` and edited by the
  *  owner; naming the wider type would have meant a cast at the call site, and a
  *  cast is how a missing field becomes a runtime `undefined` that wipes a column
  *  the RPC then refuses. This is the contract, so the compiler checks it. */
@@ -35,7 +35,7 @@ export interface StudioLinkTarget {
    *  contact editor shares this contract and the ENQUIRY KINDS it now offers are
    *  decided by the type (`enquiryTypesFor`). Added here rather than casting at
    *  the call site, for the reason the note above gives. */
-  type: TenantType;
+  type: BusinessType;
   socials: SocialLink[];
   styles: string[];
   foundedYear: number | null;
@@ -45,7 +45,7 @@ export interface StudioLinkTarget {
   accepts: { upi: boolean; cards: boolean; cash: boolean; bank: boolean };
 }
 
-export function StudioLinksRow({ tenant, canEdit }: { tenant: StudioLinkTarget; canEdit: boolean }) {
+export function StudioLinksRow({ business, canEdit }: { business: StudioLinkTarget; canEdit: boolean }) {
   const router = useRouter();
   const { lists } = useRecordLists();
   return (
@@ -53,16 +53,16 @@ export function StudioLinksRow({ tenant, canEdit }: { tenant: StudioLinkTarget; 
       canEdit={canEdit}
       save={async (next) => {
         const out = await updateTenantProfileAction({
-          tenantId: tenant.id,
+          businessId: business.id,
           socials: next,
           /* unchanged, and sent because the door takes the whole profile — off
              the home's lists, never the prop (the 26 Sep e2e find) */
           styles: lists.styles,
-          foundedYear: tenant.foundedYear,
-          phone: tenant.phone,
-          contactEmail: tenant.contactEmail,
-          enquiryTypes: tenant.enquiryTypes,
-          accepts: tenant.accepts,
+          foundedYear: business.foundedYear,
+          phone: business.phone,
+          contactEmail: business.contactEmail,
+          enquiryTypes: business.enquiryTypes,
+          accepts: business.accepts,
         });
         if (!out.error) router.refresh();
         return out.error;

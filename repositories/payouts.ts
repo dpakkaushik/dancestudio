@@ -10,7 +10,7 @@ import type {
   PersonPayLedger,
   PayoutWithSessions,
   StudioEarning,
-  TenantPayLedger,
+  BusinessPayLedger,
 } from "@/types/payout";
 
 /** Step 13 money reads. Nothing here computes an amount that gets written —
@@ -21,7 +21,7 @@ import type {
  *  studio's OWNER and the person paid, and nobody else — a trainer has no
  *  business reading what another trainer earns. */
 
-/** Sessions are only "taught" once they have ended, and a claim stops accruing
+/** Sessions are only "taught" once they have ended, and a classPerson stops accruing
  *  the moment it is closed: somebody taken off the team is still owed for the
  *  sessions they actually took, but not for the ones that ran afterwards. */
 const accrualCutoff = (claimDeletedAt: string | null, nowIso: string): string =>
@@ -83,26 +83,26 @@ const PAYOUT_SELECT =
 
 /** What this studio owes its people, and what it has settled.
  *
- *  Confirmed claims are read WITHOUT the deleted_at filter on purpose: Step 12b's
- *  removal closes a person's claims, and the work they did before that is still
+ *  Confirmed classPeople are read WITHOUT the deleted_at filter on purpose: Step 12b's
+ *  removal closes a person's classPeople, and the work they did before that is still
  *  owed. `accrualCutoff` is what keeps that honest. */
 export async function findTenantPayLedger(
   supabase: SupabaseClient,
-  tenantId: string,
+  businessId: string,
   nowIso: string
-): Promise<TenantPayLedger> {
+): Promise<BusinessPayLedger> {
   const [claimsRes, sessionsRes, linesRes, payoutsRes] = await Promise.all([
     supabase
       .from("class_people")
       .select(CLAIM_SELECT)
-      .eq("business_id", tenantId)
+      .eq("business_id", businessId)
       .eq("status", "confirmed")
       .order("created_at", { ascending: false })
       .limit(MAX_CLAIMS),
     supabase
       .from("class_sessions")
       .select("id, class_id, starts_at, ends_at")
-      .eq("business_id", tenantId)
+      .eq("business_id", businessId)
       .lt("ends_at", nowIso)
       .is("deleted_at", null)
       .order("starts_at", { ascending: false })
@@ -110,20 +110,20 @@ export async function findTenantPayLedger(
     supabase
       .from("payout_lines")
       .select("payout_id, session_id, user_id, rate_inr")
-      .eq("business_id", tenantId)
+      .eq("business_id", businessId)
       .is("deleted_at", null)
       .limit(MAX_LINES),
     supabase
       .from("payouts")
       .select(PAYOUT_SELECT)
-      .eq("business_id", tenantId)
+      .eq("business_id", businessId)
       .is("deleted_at", null)
       .order("paid_on", { ascending: false })
       .limit(MAX_PAYOUTS),
   ]);
 
   for (const [what, res] of [
-    ["claims", claimsRes],
+    ["classPeople", claimsRes],
     ["sessions", sessionsRes],
     ["lines", linesRes],
     ["payouts", payoutsRes],
@@ -133,7 +133,7 @@ export async function findTenantPayLedger(
     }
   }
 
-  const claims = (claimsRes.data ?? []) as unknown as ClaimRow[];
+  const classPeople = (claimsRes.data ?? []) as unknown as ClaimRow[];
   const sessions = (sessionsRes.data ?? []) as unknown as SessionRow[];
   const lines = (linesRes.data ?? []) as unknown as LineRow[];
   const payoutRows = (payoutsRes.data ?? []) as unknown as PayoutRow[];
@@ -147,38 +147,38 @@ export async function findTenantPayLedger(
   }
 
   const byPerson = new Map<string, PersonPayLedger>();
-  for (const claim of claims) {
-    const cutoff = accrualCutoff(claim.deleted_at, nowIso);
+  for (const classPerson of classPeople) {
+    const cutoff = accrualCutoff(classPerson.deleted_at, nowIso);
     const unpaid: PayableSession[] = [];
-    for (const s of sessionsByClass.get(claim.class_id) ?? []) {
+    for (const s of sessionsByClass.get(classPerson.class_id) ?? []) {
       if (s.ends_at >= cutoff) continue;
-      if (settled.has(`${s.id}:${claim.user_id}`)) continue;
+      if (settled.has(`${s.id}:${classPerson.user_id}`)) continue;
       unpaid.push({
         sessionId: s.id,
-        classId: claim.class_id,
-        classTitle: claim.classes ? dosClassLabel(claim.classes.style, claim.classes.level) : "Class",
-        classStyle: claim.classes?.style ?? "",
+        classId: classPerson.class_id,
+        classTitle: classPerson.classes ? dosClassLabel(classPerson.classes.style, classPerson.classes.level) : "Class",
+        classStyle: classPerson.classes?.style ?? "",
         startsAt: s.starts_at,
-        rateInr: claim.pay_per_session_inr,
+        rateInr: classPerson.pay_per_session_inr,
       });
     }
 
-    const existing = byPerson.get(claim.user_id);
+    const existing = byPerson.get(classPerson.user_id);
     if (existing) {
       existing.unpaid.push(...unpaid);
       existing.owedInr += unpaid.reduce((a, u) => a + u.rateInr, 0);
-      // a live claim anywhere means they are still on the team
-      existing.offTeam = existing.offTeam && claim.deleted_at !== null;
+      // a live classPerson anywhere means they are still on the team
+      existing.offTeam = existing.offTeam && classPerson.deleted_at !== null;
     } else {
-      byPerson.set(claim.user_id, {
-        userId: claim.user_id,
-        personName: claim.profiles?.full_name ?? "Someone",
-        kind: claim.kind,
+      byPerson.set(classPerson.user_id, {
+        userId: classPerson.user_id,
+        personName: classPerson.profiles?.full_name ?? "Someone",
+        kind: classPerson.kind,
         unpaid,
         owedInr: unpaid.reduce((a, u) => a + u.rateInr, 0),
         paidInr: 0,
         paidSessions: 0,
-        offTeam: claim.deleted_at !== null,
+        offTeam: classPerson.deleted_at !== null,
       });
     }
   }
@@ -253,14 +253,14 @@ export async function findTenantPayLedger(
  *  this file's own rule has had to be written down. */
 export async function findPersonPayHistory(
   supabase: SupabaseClient,
-  tenantId: string,
+  businessId: string,
   userId: string
 ): Promise<PersonPayHistory> {
   const [payoutsRes, linesRes] = await Promise.all([
     supabase
       .from("payouts")
       .select(PAYOUT_SELECT)
-      .eq("business_id", tenantId)
+      .eq("business_id", businessId)
       .eq("user_id", userId)
       .is("deleted_at", null)
       .order("paid_on", { ascending: false })
@@ -268,7 +268,7 @@ export async function findPersonPayHistory(
     supabase
       .from("payout_lines")
       .select("payout_id, session_id, rate_inr, class_sessions (starts_at, classes (style, level))")
-      .eq("business_id", tenantId)
+      .eq("business_id", businessId)
       .eq("user_id", userId)
       .is("deleted_at", null)
       .limit(MAX_LINES),
@@ -328,7 +328,7 @@ export async function findPersonPayHistory(
     payouts,
     /* ⚠ SETTLED AND NOT-YET ARE TWO FIGURES, never one "paid" total: a payout
        recorded `in_transit` is money the studio says it has SENT, and printing
-       it beside money that landed is the claim `otherPaidInr` was split out to
+       it beside money that landed is the classPerson `otherPaidInr` was split out to
        stop making (20 Sep 2026). */
     paidInr: payouts.filter((p) => p.status === "done").reduce((a, p) => a + p.amountInr, 0),
     pendingInr: payouts.filter((p) => p.status !== "done").reduce((a, p) => a + p.amountInr, 0),
@@ -348,7 +348,7 @@ interface MyPayoutRow extends PayoutRow {
 }
 
 /** The teaching side of the earnings screen: what each studio owes me and what
- *  they have paid. Every row is my own — RLS admits me to my claims and to
+ *  they have paid. Every row is my own — RLS admits me to my classPeople and to
  *  payouts where I am the payee. */
 export async function findMyEarnings(
   supabase: SupabaseClient,
@@ -379,7 +379,7 @@ export async function findMyEarnings(
   ]);
 
   for (const [what, res] of [
-    ["claims", claimsRes],
+    ["classPeople", claimsRes],
     ["payouts", payoutsRes],
     ["lines", linesRes],
   ] as const) {
@@ -388,11 +388,11 @@ export async function findMyEarnings(
     }
   }
 
-  const claims = (claimsRes.data ?? []) as unknown as MyClaimRow[];
+  const classPeople = (claimsRes.data ?? []) as unknown as MyClaimRow[];
   const payoutRows = (payoutsRes.data ?? []) as unknown as MyPayoutRow[];
   const lines = (linesRes.data ?? []) as unknown as LineRow[];
 
-  const classIds = [...new Set(claims.map((c) => c.class_id))];
+  const classIds = [...new Set(classPeople.map((c) => c.class_id))];
   let sessions: SessionRow[] = [];
   if (classIds.length > 0) {
     const { data, error } = await supabase
@@ -417,12 +417,12 @@ export async function findMyEarnings(
   }
 
   const byTenant = new Map<string, StudioEarning & { rates: Set<number> }>();
-  for (const claim of claims) {
-    const cutoff = accrualCutoff(claim.deleted_at, nowIso);
-    const taught = (sessionsByClass.get(claim.class_id) ?? []).filter((s) => s.ends_at < cutoff);
-    const row = byTenant.get(claim.business_id) ?? {
-      tenantId: claim.business_id,
-      tenantName: claim.businesses?.name ?? "A studio",
+  for (const classPerson of classPeople) {
+    const cutoff = accrualCutoff(classPerson.deleted_at, nowIso);
+    const taught = (sessionsByClass.get(classPerson.class_id) ?? []).filter((s) => s.ends_at < cutoff);
+    const row = byTenant.get(classPerson.business_id) ?? {
+      businessId: classPerson.business_id,
+      businessName: classPerson.businesses?.name ?? "A studio",
       sessions: 0,
       ratePerSessionInr: null,
       earnedInr: 0,
@@ -432,9 +432,9 @@ export async function findMyEarnings(
       rates: new Set<number>(),
     };
     row.sessions += taught.length;
-    row.earnedInr += taught.length * claim.pay_per_session_inr;
-    if (taught.length > 0) row.rates.add(claim.pay_per_session_inr);
-    byTenant.set(claim.business_id, row);
+    row.earnedInr += taught.length * classPerson.pay_per_session_inr;
+    if (taught.length > 0) row.rates.add(classPerson.pay_per_session_inr);
+    byTenant.set(classPerson.business_id, row);
   }
 
   const linesByPayout = new Map<string, number>();
@@ -467,15 +467,15 @@ export async function findMyEarnings(
   }
   /* a studio that has only ever paid you off the register still gets a row —
      otherwise the money is in WHO HAS PAID YOU and in none of the totals */
-  for (const [tenantId, at] of otherByTenant) {
-    if (!byTenant.has(tenantId)) {
-      byTenant.set(tenantId, { tenantId, tenantName: at.name, sessions: 0, ratePerSessionInr: null, earnedInr: 0, paidInr: 0, dueInr: 0, otherPaidInr: 0, rates: new Set<number>() });
+  for (const [businessId, at] of otherByTenant) {
+    if (!byTenant.has(businessId)) {
+      byTenant.set(businessId, { businessId, businessName: at.name, sessions: 0, ratePerSessionInr: null, earnedInr: 0, paidInr: 0, dueInr: 0, otherPaidInr: 0, rates: new Set<number>() });
     }
   }
 
   const studios: StudioEarning[] = [...byTenant.values()]
     .map(({ rates, ...row }) => {
-      const paid = paidByTenant.get(row.tenantId) ?? 0;
+      const paid = paidByTenant.get(row.businessId) ?? 0;
       return {
         ...row,
         // one rate is the common case, so the row can print it like the
@@ -483,10 +483,10 @@ export async function findMyEarnings(
         ratePerSessionInr: rates.size === 1 ? [...rates][0] : null,
         paidInr: paid,
         dueInr: Math.max(0, row.earnedInr - paid),
-        otherPaidInr: otherByTenant.get(row.tenantId)?.amount ?? 0,
+        otherPaidInr: otherByTenant.get(row.businessId)?.amount ?? 0,
       };
     })
-    .sort((a, b) => b.earnedInr - a.earnedInr || a.tenantName.localeCompare(b.tenantName));
+    .sort((a, b) => b.earnedInr - a.earnedInr || a.businessName.localeCompare(b.businessName));
 
   return {
     studios,
@@ -498,7 +498,7 @@ export async function findMyEarnings(
       id: p.id,
       userId: p.user_id,
       personName: p.profiles?.full_name ?? "Someone",
-      tenantName: p.businesses?.name ?? "A studio",
+      businessName: p.businesses?.name ?? "A studio",
       amountInr: p.amount_inr,
       status: p.status,
       method: p.method,
@@ -513,7 +513,7 @@ export async function findMyEarnings(
 export async function recordPayout(
   supabase: SupabaseClient,
   input: {
-    tenantId: string;
+    businessId: string;
     userId: string;
     sessionIds: string[];
     method: PayoutMethod;
@@ -524,7 +524,7 @@ export async function recordPayout(
   }
 ): Promise<void> {
   const { error } = await supabase.rpc("record_payout", {
-    p_business_id: input.tenantId,
+    p_business_id: input.businessId,
     p_user_id: input.userId,
     p_session_ids: input.sessionIds,
     p_method: input.method,
@@ -547,7 +547,7 @@ export async function recordPayout(
 export async function recordTeamPayment(
   supabase: SupabaseClient,
   input: {
-    tenantId: string;
+    businessId: string;
     userId: string;
     amountInr: number;
     method: PayoutMethod;
@@ -557,7 +557,7 @@ export async function recordTeamPayment(
   }
 ): Promise<void> {
   const { error } = await supabase.rpc("record_team_payment", {
-    p_business_id: input.tenantId,
+    p_business_id: input.businessId,
     p_user_id: input.userId,
     p_amount_inr: input.amountInr,
     p_method: input.method,

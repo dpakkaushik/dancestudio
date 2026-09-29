@@ -49,7 +49,7 @@ export type ContactTarget =
       /** a live plan — the Call switch is an artist's, and a plain user's page draws no buttons */
       isArtist: boolean;
     }
-  | { kind: "business"; tenant: StudioLinkTarget; /** `?edit=1` on the business's own home — where the pin is */ detailsHref: string }
+  | { kind: "business"; business: StudioLinkTarget; /** `?edit=1` on the business's own home — where the pin is */ detailsHref: string }
   | { kind: "crew"; crew: Crew; socials: SocialLink[] };
 
 const WA = "WhatsApp";
@@ -116,11 +116,11 @@ function ContactSheet({ target, onClose }: { target: ContactTarget; onClose: () 
      remount and neither editor writes a stale list over the other's. */
   const { lists, adopt } = useRecordLists();
   const socials: SocialLink[] = lists.socials;
-  const enquiryTypes = target.kind === "business" ? target.tenant.enquiryTypes : null;
+  const enquiryTypes = target.kind === "business" ? target.business.enquiryTypes : null;
   const [d, setD] = useState({
-    phone: (target.kind === "person" ? target.profile.phone : target.kind === "business" ? target.tenant.phone : target.crew.phone) ?? "",
+    phone: (target.kind === "person" ? target.profile.phone : target.kind === "business" ? target.business.phone : target.crew.phone) ?? "",
     phonePublic: target.kind === "person" ? target.profile.phonePublic : target.kind === "crew" ? target.crew.phonePublic : true,
-    email: (target.kind === "person" ? target.profile.contactEmail : target.kind === "business" ? target.tenant.contactEmail : target.crew.contactEmail) ?? "",
+    email: (target.kind === "person" ? target.profile.contactEmail : target.kind === "business" ? target.business.contactEmail : target.crew.contactEmail) ?? "",
     whatsapp: whatsappBox(socials),
     /* null on the record means every type the kind allows; an empty list means none — no button */
     enquiry: !(Array.isArray(enquiryTypes) && enquiryTypes.length === 0),
@@ -130,7 +130,7 @@ function ContactSheet({ target, onClose }: { target: ContactTarget; onClose: () 
       target.kind === "business"
         ? Array.isArray(enquiryTypes) && enquiryTypes.length
           ? enquiryTypes
-          : enquiryTypesFor(target.tenant.type).map((t) => t.k)
+          : enquiryTypesFor(target.business.type).map((t) => t.k)
         : ([] as string[]),
   });
   const [err, setErr] = useState<string | null>(null);
@@ -158,7 +158,7 @@ function ContactSheet({ target, onClose }: { target: ContactTarget; onClose: () 
      *  growing the day a sixth kind is added. Off is an EMPTY list — no button. */
     const enqNext = (): string[] | null => {
       if (!d.enquiry) return [];
-      const all = enquiryTypesFor(target.kind === "business" ? target.tenant.type : "studio").map((t) => t.k);
+      const all = enquiryTypesFor(target.kind === "business" ? target.business.type : "studio").map((t) => t.k);
       const picked = all.filter((k) => d.kinds.includes(k));
       return picked.length === 0 || picked.length === all.length ? null : picked;
     };
@@ -170,8 +170,8 @@ function ContactSheet({ target, onClose }: { target: ContactTarget; onClose: () 
         const out = await updateMyProfileAction({ fullName: p.fullName, city: (p.city ?? "").trim(), age: p.age, socials: nextSocials, styles: lists.styles, phone, contactEmail: email, phonePublic: target.isArtist ? d.phonePublic : undefined });
         error = out.error;
       } else if (target.kind === "business") {
-        const t = target.tenant;
-        const out = await updateTenantProfileAction({ tenantId: t.id, styles: lists.styles, socials: nextSocials, foundedYear: t.foundedYear, phone, contactEmail: email, accepts: t.accepts, enquiryTypes: enqNext() });
+        const t = target.business;
+        const out = await updateTenantProfileAction({ businessId: t.id, styles: lists.styles, socials: nextSocials, foundedYear: t.foundedYear, phone, contactEmail: email, accepts: t.accepts, enquiryTypes: enqNext() });
         error = out.error;
       } else {
         const c = target.crew;

@@ -20,7 +20,7 @@ import type { Period } from "@/lib/format/month";
  *  ⚠ ONE RULE HOLDS ACROSS ALL FOUR: a line is only drawn when the app can
  *  actually count it. The prototype's S_earn prints a DanceOS fee, GST on the
  *  fee and TDS; none of those exists — there is no platform fee and no rate a
- *  studio has set — so printing them at ₹0 would be a claim about money rather
+ *  studio has set — so printing them at ₹0 would be a classPerson about money rather
  *  than a measurement of it. The backlog carries them. */
 
 /** one line of a breakup — a name, an amount, and where to go and see it */

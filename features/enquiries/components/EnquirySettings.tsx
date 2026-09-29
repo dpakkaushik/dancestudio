@@ -7,7 +7,7 @@ import { fieldLabel } from "@/features/profiles/components/profile-kit";
 import { updateTenantProfileAction } from "@/features/settings/server-actions/plans";
 import { MUTED, SUB } from "@/lib/design/tokens";
 import { enquiryTypesFor } from "@/types/enquiry";
-import type { Tenant } from "@/types/tenant";
+import type { Business } from "@/types/tenant";
 
 /** ⚠⚠ THE ENQUIRY SETTINGS LIVE ON THE ENQUIRIES DESK (27 Sep 2026, the user:
  *  *"enquiries should not be on navbar a tab in tools for all"*, and then *"with
@@ -32,25 +32,25 @@ import type { Tenant } from "@/types/tenant";
  *  `crews` carries no `enquiry_types` column at all. The desk says so in one
  *  line rather than drawing an empty block, which is this file's own rule about
  *  a heading with nothing under it. */
-export function EnquirySettings({ businesses }: { businesses: Tenant[] }) {
+export function EnquirySettings({ businesses }: { businesses: Business[] }) {
   if (businesses.length === 0) return null;
   return (
     <div style={{ margin: "0 0 14px" }}>
       {businesses.map((t) => (
-        <OneBusiness key={t.id} tenant={t} showName={businesses.length > 1} />
+        <OneBusiness key={t.id} business={t} showName={businesses.length > 1} />
       ))}
     </div>
   );
 }
 
-function OneBusiness({ tenant, showName }: { tenant: Tenant; showName: boolean }) {
+function OneBusiness({ business, showName }: { business: Business; showName: boolean }) {
   const router = useRouter();
   const [pending, start] = useTransition();
   const [err, setErr] = useState<string | null>(null);
   const [open, setOpen] = useState(false);
 
-  const all = enquiryTypesFor(tenant.type).map((t) => t.k);
-  const stored = tenant.enquiryTypes;
+  const all = enquiryTypesFor(business.type).map((t) => t.k);
+  const stored = business.enquiryTypes;
   /* null on the record means EVERY kind its type allows; an empty list means
      none, and no button on its page. The control opens on what the record
      MEANS rather than on what it literally holds. */
@@ -70,13 +70,13 @@ function OneBusiness({ tenant, showName }: { tenant: Tenant; showName: boolean }
     setErr(null);
     start(async () => {
       const out = await updateTenantProfileAction({
-        tenantId: tenant.id,
-        styles: tenant.styles,
-        socials: tenant.socials,
-        foundedYear: tenant.foundedYear,
-        phone: tenant.phone,
-        contactEmail: tenant.contactEmail,
-        accepts: tenant.accepts,
+        businessId: business.id,
+        styles: business.styles,
+        socials: business.socials,
+        foundedYear: business.foundedYear,
+        phone: business.phone,
+        contactEmail: business.contactEmail,
+        accepts: business.accepts,
         enquiryTypes: next(takes, picked),
       });
       if (out.error) {
@@ -94,12 +94,12 @@ function OneBusiness({ tenant, showName }: { tenant: Tenant; showName: boolean }
       <button
         type="button"
         aria-expanded={open}
-        aria-label={showName ? `Enquiry types — ${tenant.name}` : "Enquiry types"}
+        aria-label={showName ? `Enquiry types — ${business.name}` : "Enquiry types"}
         onClick={() => setOpen((v) => !v)}
         style={{ display: "flex", alignItems: "center", gap: 10, width: "100%", background: "none", border: "none", padding: 0, cursor: "pointer", fontFamily: "inherit", color: "var(--text)", textAlign: "left" }}
       >
         <span style={{ flex: 1, minWidth: 0 }}>
-          <span style={{ ...fieldLabel, margin: 0, display: "block" }}>What you take{showName ? ` · ${tenant.name}` : ""}</span>
+          <span style={{ ...fieldLabel, margin: 0, display: "block" }}>What you take{showName ? ` · ${business.name}` : ""}</span>
           {/* the one figure that says the state without opening anything */}
           <span style={{ fontSize: 11.5, fontWeight: 800, color: SUB }}>{on ? `${liveCount} of ${all.length} kinds` : "Not taking enquiries"}</span>
         </span>
@@ -124,7 +124,7 @@ function OneBusiness({ tenant, showName }: { tenant: Tenant; showName: boolean }
               to govern */}
           {on ? (
             <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 9 }}>
-              {enquiryTypesFor(tenant.type).map((t) => {
+              {enquiryTypesFor(business.type).map((t) => {
                 const lit = kinds.includes(t.k);
                 return (
                   <button

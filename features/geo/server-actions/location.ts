@@ -17,7 +17,7 @@ import { setTenantLocation } from "@/repositories/tenants";
  *  India's box is the bound in both places. It is not a precision check; it is
  *  the difference between a typo and a studio in the Bay of Bengal. */
 const schema = z.object({
-  tenantId: z.string().uuid(),
+  businessId: z.string().uuid(),
   lat: z.number().min(6).max(37.5),
   lng: z.number().min(68).max(97.5),
   area: z.string().trim().max(140).nullable(),
@@ -34,7 +34,7 @@ export interface LocationActionResult {
 }
 
 export async function setTenantLocationAction(input: {
-  tenantId: string;
+  businessId: string;
   lat: number;
   lng: number;
   area: string | null;
@@ -56,8 +56,8 @@ export async function setTenantLocationAction(input: {
 
   try {
     await setTenantLocation(supabase, parsed.data);
-    revalidatePath(`/studio/${parsed.data.tenantId}`);
-    revalidatePath(`/artist/${parsed.data.tenantId}`);
+    revalidatePath(`/studio/${parsed.data.businessId}`);
+    revalidatePath(`/artist/${parsed.data.businessId}`);
     /* the point is what Discover measures from, so its lists are now stale */
     revalidatePath("/discover");
     revalidatePath("/business");

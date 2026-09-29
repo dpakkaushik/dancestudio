@@ -43,14 +43,14 @@ const INVITABLE = INVITABLE_ROLES.map(([k]) => k) as [InvitableRole, ...Invitabl
 const ROLE = z.enum(INVITABLE);
 
 const inviteSchema = z.object({
-  tenantId: z.string().uuid(),
+  businessId: z.string().uuid(),
   name: z.string().trim().min(1, "Who is it?").max(120),
   email: z.string().trim().toLowerCase().email("That is not an email address").max(254),
   role: ROLE,
 });
 
-const inviteIdSchema = z.object({ tenantId: z.string().uuid(), inviteId: z.string().uuid() });
-const memberSchema = z.object({ tenantId: z.string().uuid(), userId: z.string().uuid() });
+const inviteIdSchema = z.object({ businessId: z.string().uuid(), inviteId: z.string().uuid() });
+const memberSchema = z.object({ businessId: z.string().uuid(), userId: z.string().uuid() });
 const roleSchema = memberSchema.extend({ role: ROLE });
 /* ⚠ THE RELABEL TAKES A WIDER SET THAN THE INVITE, AND THEY ARE TWO SCHEMAS FOR
    THAT REASON (20 Sep 2026, the user's answer 3). An INVITE may still never hand
@@ -73,17 +73,17 @@ async function requireUser() {
   return supabase;
 }
 
-const revalidateDesk = (tenantId: string) => {
-  revalidatePath(`/business/${tenantId}/staff`);
+const revalidateDesk = (businessId: string) => {
+  revalidatePath(`/business/${businessId}/staff`);
   // the class form's people pickers read the same team
-  revalidatePath(`/business/${tenantId}/classes`);
+  revalidatePath(`/business/${businessId}/classes`);
 };
 
 const message = (error: unknown, fallback: string) =>
   error instanceof Error ? error.message : fallback;
 
 export async function inviteToTenantAction(input: {
-  tenantId: string;
+  businessId: string;
   name: string;
   email: string;
   role: string;
@@ -95,7 +95,7 @@ export async function inviteToTenantAction(input: {
   const supabase = await requireUser();
   try {
     await inviteToTenant(supabase, parsed.data);
-    revalidateDesk(parsed.data.tenantId);
+    revalidateDesk(parsed.data.businessId);
     return { error: null };
   } catch (error: unknown) {
     return { error: message(error, "Could not send that invite") };
@@ -105,7 +105,7 @@ export async function inviteToTenantAction(input: {
 /** ASKED BY NAME (19 Sep 2026) — the people picker's half of the same door.
  *  The RPC decides everything that matters; this checks the shape. */
 export async function invitePersonAction(input: {
-  tenantId: string;
+  businessId: string;
   userId: string;
   role: string;
 }): Promise<StaffActionResult> {
@@ -116,7 +116,7 @@ export async function invitePersonAction(input: {
   const supabase = await requireUser();
   try {
     await invitePersonToTenant(supabase, parsed.data);
-    revalidateDesk(parsed.data.tenantId);
+    revalidateDesk(parsed.data.businessId);
     return { error: null };
   } catch (error: unknown) {
     return { error: message(error, "Could not ask them") };
@@ -125,17 +125,17 @@ export async function invitePersonAction(input: {
 
 /** THE ORDER (19 Sep 2026) — the owner's, and the RPC says so. */
 export async function reorderMembersAction(input: {
-  tenantId: string;
+  businessId: string;
   userIds: string[];
 }): Promise<StaffActionResult> {
-  const parsed = z.object({ tenantId: z.string().uuid(), userIds: z.array(z.string().uuid()).max(100) }).safeParse(input);
+  const parsed = z.object({ businessId: z.string().uuid(), userIds: z.array(z.string().uuid()).max(100) }).safeParse(input);
   if (!parsed.success) {
     return { error: "Invalid order" };
   }
   const supabase = await requireUser();
   try {
-    await reorderTenantMembers(supabase, parsed.data.tenantId, parsed.data.userIds);
-    revalidateDesk(parsed.data.tenantId);
+    await reorderTenantMembers(supabase, parsed.data.businessId, parsed.data.userIds);
+    revalidateDesk(parsed.data.businessId);
     return { error: null };
   } catch (error: unknown) {
     return { error: message(error, "Could not save the order") };
@@ -148,7 +148,7 @@ export async function reorderMembersAction(input: {
  *  expense straight away. Nothing moves through code: this records a payment
  *  the studio has already made, which is Step 13's own limit. */
 export async function payTeamMemberAction(input: {
-  tenantId: string;
+  businessId: string;
   userId: string;
   amountInr: number;
   method: string;
@@ -158,7 +158,7 @@ export async function payTeamMemberAction(input: {
 }): Promise<StaffActionResult> {
   const parsed = z
     .object({
-      tenantId: z.string().uuid(),
+      businessId: z.string().uuid(),
       userId: z.string().uuid(),
       amountInr: z.coerce.number().int().min(1, "A payment is at least ₹1").max(10000000),
       method: z.enum(["bank_transfer", "upi", "cash", "other"]),
@@ -173,7 +173,7 @@ export async function payTeamMemberAction(input: {
   const supabase = await requireUser();
   try {
     await recordTeamPayment(supabase, {
-      tenantId: parsed.data.tenantId,
+      businessId: parsed.data.businessId,
       userId: parsed.data.userId,
       amountInr: parsed.data.amountInr,
       method: parsed.data.method,
@@ -181,9 +181,9 @@ export async function payTeamMemberAction(input: {
       paidOn: parsed.data.paidOn ?? null,
       note: parsed.data.note ?? null,
     });
-    revalidateDesk(parsed.data.tenantId);
+    revalidateDesk(parsed.data.businessId);
     /* it is an expense the moment it is written — the ledger that prints it */
-    revalidatePath(`/business/${parsed.data.tenantId}/earnings`);
+    revalidatePath(`/business/${parsed.data.businessId}/earnings`);
     revalidatePath("/earnings");
     return { error: null };
   } catch (error: unknown) {
@@ -192,7 +192,7 @@ export async function payTeamMemberAction(input: {
 }
 
 export async function revokeInviteAction(input: {
-  tenantId: string;
+  businessId: string;
   inviteId: string;
 }): Promise<StaffActionResult> {
   const parsed = inviteIdSchema.safeParse(input);
@@ -202,7 +202,7 @@ export async function revokeInviteAction(input: {
   const supabase = await requireUser();
   try {
     await revokeInvite(supabase, parsed.data.inviteId);
-    revalidateDesk(parsed.data.tenantId);
+    revalidateDesk(parsed.data.businessId);
     return { error: null };
   } catch (error: unknown) {
     return { error: message(error, "Could not withdraw that invite") };
@@ -210,7 +210,7 @@ export async function revokeInviteAction(input: {
 }
 
 export async function setMemberRoleAction(input: {
-  tenantId: string;
+  businessId: string;
   userId: string;
   role: string;
 }): Promise<StaffActionResult> {
@@ -221,7 +221,7 @@ export async function setMemberRoleAction(input: {
   const supabase = await requireUser();
   try {
     await setMemberRole(supabase, parsed.data);
-    revalidateDesk(parsed.data.tenantId);
+    revalidateDesk(parsed.data.businessId);
     return { error: null };
   } catch (error: unknown) {
     return { error: message(error, "Could not change what they may do") };
@@ -233,7 +233,7 @@ export async function setMemberRoleAction(input: {
  *  who may grant, refuses an owner (who already holds both) and refuses somebody
  *  who is not on the team. */
 export async function setMemberPowersAction(input: {
-  tenantId: string;
+  businessId: string;
   userId: string;
   canAttendance: boolean;
   canRefunds: boolean;
@@ -244,8 +244,8 @@ export async function setMemberPowersAction(input: {
   }
   const supabase = await requireUser();
   try {
-    await setTenantMemberPowers(supabase, parsed.data.tenantId, parsed.data.userId, parsed.data.canAttendance, parsed.data.canRefunds);
-    revalidateDesk(parsed.data.tenantId);
+    await setTenantMemberPowers(supabase, parsed.data.businessId, parsed.data.userId, parsed.data.canAttendance, parsed.data.canRefunds);
+    revalidateDesk(parsed.data.businessId);
     return { error: null };
   } catch (error: unknown) {
     return { error: message(error, "Could not change what they may do") };
@@ -253,7 +253,7 @@ export async function setMemberPowersAction(input: {
 }
 
 export async function removeMemberAction(input: {
-  tenantId: string;
+  businessId: string;
   userId: string;
 }): Promise<StaffActionResult> {
   const parsed = memberSchema.safeParse(input);
@@ -263,7 +263,7 @@ export async function removeMemberAction(input: {
   const supabase = await requireUser();
   try {
     await removeMember(supabase, parsed.data);
-    revalidateDesk(parsed.data.tenantId);
+    revalidateDesk(parsed.data.businessId);
     return { error: null };
   } catch (error: unknown) {
     return { error: message(error, "Could not remove them") };

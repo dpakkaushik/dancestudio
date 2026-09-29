@@ -31,7 +31,7 @@ export default async function SubscriptionPage() {
     findPlanCatalog(supabase).catch(() => []),
     findMyMemberships(supabase).catch(() => []),
   ]);
-  const owned = memberships.filter((m) => m.memberRole === "owner").map((m) => m.tenant);
+  const owned = memberships.filter((m) => m.memberRole === "owner").map((m) => m.business);
   const businesses = owned.filter((t) => t.type === "studio");
   const states: Record<string, StudioSubscriptionState> = businesses.length
     ? await findMyStudioSubscriptions(supabase, businesses.map((t) => t.id)).catch(() => ({}))

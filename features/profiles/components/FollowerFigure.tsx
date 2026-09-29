@@ -23,7 +23,7 @@ import { figureLabel, figureNum } from "./profile-band";
  *  its rows ON THE PRESS — see `loadFollowersAction` for why that is cheaper
  *  than what it replaces and where the privacy line actually is.
  *
- *  ⚠ WHAT IT DOES NOT DO, deliberately: it never claims a list it cannot get.
+ *  ⚠ WHAT IT DOES NOT DO, deliberately: it never classPeople a list it cannot get.
  *  `follows` has no public SELECT policy, so a visitor pressing this on a
  *  studio's public page gets the honest "Nobody here you can see" rather than
  *  an error or an empty white sheet — and the COUNT beside it is still the real
@@ -39,7 +39,7 @@ export function FollowerFigure({
    *  drawn nothing for null since 20 Sep): zero followers is a measurement and
    *  is drawn; NULL means the count could not be read at all — a crew whose
    *  `crew_follower_counts` failed — and a figure invented for that would be a
-   *  claim rather than a reading. This is not the 27 Sep "show it even if it is
+   *  classPerson rather than a reading. This is not the 27 Sep "show it even if it is
    *  0" rule pulling the other way; that rule is about zeros. */
   n: number | null;
   kind: "business" | "crew";

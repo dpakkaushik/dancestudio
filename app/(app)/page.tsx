@@ -338,9 +338,9 @@ export default async function HomePage() {
         <ActionRow>
           {asksGoHere ? (
             <EnquiryButton
-              tenantId={asksGoHere}
-              tenantName={profile.fullName}
-              tenantType="artist_page"
+              businessId={asksGoHere}
+              businessName={profile.fullName}
+              businessType="artist_page"
               signedIn
               accent={ring[1]}
               cannotAsk="This is your own page — enquiries come to you here"
@@ -393,7 +393,7 @@ export default async function HomePage() {
                   }}
                 >
                   <span style={{ display: "block", fontSize: 12.5, fontWeight: 900 }}>
-                    {inv.tenantName} wants you on the team
+                    {inv.businessName} wants you on the team
                   </span>
                   <span style={{ display: "block", fontSize: 10.5, color: SUB, marginTop: 3 }}>
                     As {MEMBER_ROLE_WORD[inv.memberRole].toLowerCase()} · you decide

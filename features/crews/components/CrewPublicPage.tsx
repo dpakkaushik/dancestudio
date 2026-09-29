@@ -178,7 +178,7 @@ export function CrewPublicPage({
             the measurement). 6 for the crew's own people, whose row follows the
             strip above instead, and a strip pads nothing. */}
         <ActionRow marginTop={viewer === "other" ? undefined : 6}>
-          {viewer === "other" ? <EnquiryButton tenantId={crew.id} crewId={crew.id} tenantName={crew.name} tenantType="artist_page" signedIn={signedIn} accent={RC} /> : null}
+          {viewer === "other" ? <EnquiryButton businessId={crew.id} crewId={crew.id} businessName={crew.name} businessType="artist_page" signedIn={signedIn} accent={RC} /> : null}
           {/* CALL IS A SWITCH (push 2): the number reaches this page only while the leader's switch is on — the policy on crew_contacts is the switch */}
           {crew.phone && crew.phonePublic ? <CallButton phone={crew.phone} /> : null}
           {crew.contactEmail ? <MailButton email={crew.contactEmail} /> : null}

@@ -114,7 +114,7 @@ const pill: React.CSSProperties = { display: "inline-block", padding: "9px 16px"
  *  the consequence — whether it may add a studio yet, and why not. */
 export function BusinessHub({
   memberships,
-  /** live rooms per owned tenant id — the "· N rooms" half of the sub-line (2655) */
+  /** live rooms per owned business id — the "· N rooms" half of the sub-line (2655) */
   roomCounts,
   isArtist,
   whyNoStudio,
@@ -129,7 +129,7 @@ export function BusinessHub({
   /** THE STUDIOS YOU HAVE TAKEN CLASSES AT (18 Sep 2026, the user's Home grid:
    *  a person's Studios tile lists them) — every business behind one of your
    *  bookings, once each. */
-  attended?: MyMembership["tenant"][];
+  attended?: MyMembership["business"][];
   roomCounts: Record<string, number>;
   /* ⚠ `role` went on 29 Sep 2026 with organizations: it only ever separated an
      organization's hub from a person's, and `ProfileRole` is `"user"` alone now
@@ -245,8 +245,8 @@ export function BusinessHub({
   /* ⚠ `isOrg` went with organizations (29 Sep 2026). It had been unreachable
      since R48 retired the login on 26 Sep, and its three branches are gone with
      it — every reader of this hub is a person. */
-  const mine = memberships.filter((m) => m.memberRole === "owner").map((m) => m.tenant);
-  const theirs = memberships.filter((m) => m.memberRole !== "owner").map((m) => m.tenant);
+  const mine = memberships.filter((m) => m.memberRole === "owner").map((m) => m.business);
+  const theirs = memberships.filter((m) => m.memberRole !== "owner").map((m) => m.business);
   const myStudios = mine.filter((t) => t.type === "studio");
   /* where a person has LEARNT: every studio behind one of their bookings, less
      the ones they teach at or own — a studio is listed once, under one heading */
@@ -283,7 +283,7 @@ export function BusinessHub({
    *  before the studio name"). Its own picture when it has one — the same
    *  `businesses.profile_photo_path` the disc on its home wears — and its kind's mark on
    *  the accent when it does not. */
-  const face = (t: MyMembership["tenant"], own: boolean) => {
+  const face = (t: MyMembership["business"], own: boolean) => {
     const src = photoUrl(t.photoPath);
     return (
       <span
@@ -315,7 +315,7 @@ export function BusinessHub({
   /** WHO IT IS — the face, the name with its badge, the line under it. Sits
    *  BELOW the stretched link (z-index 0) so a tap anywhere on it opens the
    *  studio; the work below sits above the link so its controls still work. */
-  const identity = (t: MyMembership["tenant"], own: boolean, right?: React.ReactNode) => {
+  const identity = (t: MyMembership["business"], own: boolean, right?: React.ReactNode) => {
     const loc = [t.area, t.city].filter(Boolean).join(", ");
     const n = roomCounts[t.id] ?? 0;
     const sub = own
@@ -355,7 +355,7 @@ export function BusinessHub({
    *  The renewal date and Stop renewing moved to the studio's own home
    *  (`StudioSubscriptionStrip`) — this hub was the only door to cancelling,
    *  and a collapsed card must not take a control away with it. */
-  const studioCard = (t: MyMembership["tenant"]) => {
+  const studioCard = (t: MyMembership["business"]) => {
     const st = studioSubscriptions[t.id];
     const v = studioVerification[t.id];
     const live = st ? st.whyNotPublic === null : false;
@@ -375,12 +375,12 @@ export function BusinessHub({
               lands on the control and not on the card. ── */}
         {showForm || canSubscribe ? (
           <div style={{ position: "relative", zIndex: 2, marginTop: 10 }}>
-            {showForm ? <StudioVerificationStrip tenant={t} orgId={userId as string} state={v} onDone={fire} /> : null}
+            {showForm ? <StudioVerificationStrip business={t} orgId={userId as string} state={v} onDone={fire} /> : null}
             {canSubscribe && studioPrice ? (
               <div style={{ display: "flex", flexWrap: "wrap", gap: 8, alignItems: "center" }}>
                 <SubscribeButton
                   planKey={studioPrice.key}
-                  tenantId={t.id}
+                  businessId={t.id}
                   label={`Subscribe · ${priceWords(studioPrice.priceInr, studioPrice.period)}`}
                   onDone={fire}
                   style={{ background: ACCENT }}
@@ -417,7 +417,7 @@ export function BusinessHub({
 
   /* a studio somebody teaches or learns at: the same card without the studio's
      paperwork, opening its public page */
-  const plainCard = (t: MyMembership["tenant"]) => (
+  const plainCard = (t: MyMembership["business"]) => (
     <div key={t.id} style={cardStyle(false)}>
       {openLink(publicProfilePath(t), `${t.name} — open the profile`)}
       {identity(t, false)}

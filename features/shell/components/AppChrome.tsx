@@ -9,7 +9,7 @@ import { SettingsSheet, type SettingsProfile } from "@/features/settings/compone
 import { DOS_UI, INK, RED } from "@/lib/design/tokens";
 import type { ArtistPlan } from "@/repositories/plans";
 import type { Profile, ProfileRole } from "@/types/profile";
-import type { Tenant } from "@/types/tenant";
+import type { Business } from "@/types/tenant";
 
 /** App shell lifted from the prototype's root (DanceOSApp.jsx:19171-19397): the
  *  fixed top bar (wordmark on a tab, back chip + title on a drill page, round
@@ -237,10 +237,10 @@ export interface ChromeSettings {
   isAdmin: boolean;
   /** ⚠ the artist page this account OWNS, or null — never a business it is
    *  merely on the team of, and never an arbitrary pick among the ones it owns */
-  ownBusiness: Tenant | null;
+  ownBusiness: Business | null;
   /** every studio AND organization this account is on the team of (26 Sep
    *  2026), so the sheet can be THAT one's while you are inside it */
-  businesses: Tenant[];
+  businesses: Business[];
 }
 
 export function AppChrome({
@@ -338,8 +338,8 @@ export function AppChrome({
         if (!hereItem) return mine;
         if (hereItem.kind === "studio") {
           /* the same row the switcher named */
-          const tenant = settings.businesses.find((t) => t.id === hereItem.key);
-          return tenant ? { kind: "studio", tenant } : mine;
+          const business = settings.businesses.find((t) => t.id === hereItem.key);
+          return business ? { kind: "studio", business } : mine;
         }
         if (hereItem.kind === "crew") return { kind: "crew", crew: { id: hereItem.key, name: hereItem.label } };
         return mine;

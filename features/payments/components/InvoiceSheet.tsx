@@ -23,22 +23,22 @@ const dosHash = (str: string): number => {
   return h >>> 0;
 };
 
-export const bookingCodeOf = (enrollmentId: string): string =>
-  `DOS-CL-${String((dosHash(enrollmentId) % 9000) + 1000)}`;
+export const bookingCodeOf = (classBookingId: string): string =>
+  `DOS-CL-${String((dosHash(classBookingId) % 9000) + 1000)}`;
 
 export interface InvoiceSheetProps {
   title: string;
   whenText: string;
   whereText: string;
-  enrollmentId: string;
+  classBookingId: string;
   amountInr: number | null; // null = free booking
   method: string | null;
   onClose: () => void;
 }
 
-export function InvoiceSheet({ title, whenText, whereText, enrollmentId, amountInr, method, onClose }: InvoiceSheetProps) {
+export function InvoiceSheet({ title, whenText, whereText, classBookingId, amountInr, method, onClose }: InvoiceSheetProps) {
   useCloseOnBack(onClose);
-  const code = bookingCodeOf(enrollmentId);
+  const code = bookingCodeOf(classBookingId);
   const num = `INV-2026-${String((dosHash(code) % 9000) + 1000)}`;
   const rows: Array<[string, string]> = [
     ["Item", title],

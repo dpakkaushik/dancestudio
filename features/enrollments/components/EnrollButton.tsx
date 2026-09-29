@@ -123,7 +123,7 @@ export function EnrollButton({
               </Link>
             ) : (
               <form action={cancelForm} style={{ flex: 1, display: "flex" }}>
-                <input type="hidden" name="enrollmentId" value={mine.id} />
+                <input type="hidden" name="classBookingId" value={mine.id} />
                 <button type="submit" disabled={cancelPending} style={btn(false)}>
                   {cancelPending ? "Cancelling…" : mine.status === "enrolled" ? "Cancel booking" : "Leave waitlist"}
                 </button>

@@ -98,7 +98,7 @@ export async function loadFollowingAction(): Promise<FollowListResult> {
   } = await supabase.auth.getUser();
   if (!user) return { error: null, rows: [] };
   try {
-    const [people, tenants, crews] = await Promise.all([
+    const [people, businesses, crews] = await Promise.all([
       findMyFollowedPeople(supabase),
       findMyFollowing(supabase),
       findMyFollowedCrews(supabase).catch(() => []),
@@ -118,13 +118,13 @@ export async function loadFollowingAction(): Promise<FollowListResult> {
        now, the way every other list in this app says it. */
     const rows: FollowListResult["rows"] = [
       ...people.map((f) => ({ id: f.followId, name: f.name, sub: f.city, href: `/person/${f.userId}`, photoPath: f.avatarPath })),
-      ...tenants.map((t) => {
-        const kind = t.tenantType === "studio" ? "Studio" : "Artist";
+      ...businesses.map((t) => {
+        const kind = t.businessType === "studio" ? "Studio" : "Artist";
         return {
           id: t.followId,
-          name: t.tenantName,
+          name: t.businessName,
           sub: t.tenantCity ? `${kind} · ${t.tenantCity}` : kind,
-          href: `/${t.tenantType === "studio" ? "studio" : "artist"}/${t.tenantId}`,
+          href: `/${t.businessType === "studio" ? "studio" : "artist"}/${t.businessId}`,
           photoPath: t.tenantPhotoPath,
         };
       }),

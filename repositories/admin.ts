@@ -33,8 +33,8 @@ export interface VerificationRequest {
    *  requests, which are kept as history. When set, the card is about the
    *  studio — its name, its links, its photos — and the decision stamps ITS
    *  badge; the organization is only who gets told. */
-  tenantId: string | null;
-  tenantName: string | null;
+  businessId: string | null;
+  businessName: string | null;
   tenantCity: string | null;
   tenantSocials: SocialLink[];
   tenantVerifiedAt: string | null;
@@ -74,7 +74,7 @@ interface RequestRow {
   id: string;
   org_id: string;
   /** the request's OWN column, so a card knows it is about a studio even when
-   *  the embedded tenant read comes back empty (14 Sep 2026: RLS hid an
+   *  the embedded business read comes back empty (14 Sep 2026: RLS hid an
    *  unlisted studio from the admin and the card fell back to the organization) */
   business_id: string | null;
   status: VerificationStatus;
@@ -86,8 +86,8 @@ interface RequestRow {
 }
 
 const toRequest = (r: RequestRow): VerificationRequest => ({
-  tenantId: r.business_id ?? r.businesses?.id ?? null,
-  tenantName: r.businesses?.name ?? null,
+  businessId: r.business_id ?? r.businesses?.id ?? null,
+  businessName: r.businesses?.name ?? null,
   tenantCity: r.businesses?.city ?? null,
   tenantSocials: toSocials(r.businesses?.socials),
   tenantVerifiedAt: r.businesses?.verified_at ?? null,
@@ -210,17 +210,17 @@ export async function findVerificationRequestsPage(
          columns on this table, though — so the names are resolved to ids first
          and the `or` is over columns. Two small indexed reads (`pg_trgm` on
          both names since 20260913090000) for a search box that runs on submit,
-         and an admin may read every tenant (20260914130000) and every profile,
+         and an admin may read every business (20260914130000) and every profile,
          so nothing is hidden from the lookup that is visible in the list. */
       const like = `%${term}%`;
       const [studios, orgs] = await Promise.all([
         supabase.from("businesses").select("id").eq("type", "studio").ilike("name", like).is("deleted_at", null).limit(500),
         supabase.from("profiles").select("id").ilike("full_name", like).is("deleted_at", null).limit(500),
       ]);
-      const tenantIds = ((studios.data ?? []) as Array<{ id: string }>).map((r) => r.id);
+      const businessIds = ((studios.data ?? []) as Array<{ id: string }>).map((r) => r.id);
       const orgIds = ((orgs.data ?? []) as Array<{ id: string }>).map((r) => r.id);
       const clauses = [
-        ...(tenantIds.length ? [`business_id.in.(${tenantIds.join(",")})`] : []),
+        ...(businessIds.length ? [`business_id.in.(${businessIds.join(",")})`] : []),
         ...(orgIds.length ? [`org_id.in.(${orgIds.join(",")})`] : []),
       ];
       /* a term that names no studio and no organization matches no request —

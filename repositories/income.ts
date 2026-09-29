@@ -4,7 +4,7 @@ import type { MethodShare, MonthIncome, TenantIncome } from "@/types/income";
 
 /** Step 13b part 2b — what a studio COLLECTED, month by month (prototype S_earn
  *  17992-18085, 18171-18178). No table, no RPC, no policy: these are plain
- *  RLS-shaped reads of the payments and refunds Step 9 already admits a tenant's
+ *  RLS-shaped reads of the payments and refunds Step 9 already admits a business's
  *  members to. WHO SEES THE SCREEN is narrower and decided by the page — the
  *  owner alone — exactly as the class page's Earnings tab is gated.
  *
@@ -89,7 +89,7 @@ const emptyBucket = (): Bucket => ({
 
 export async function findTenantIncome(
   supabase: SupabaseClient,
-  tenantId: string,
+  businessId: string,
   nowIso: string
 ): Promise<TenantIncome> {
   const currentKey = monthKeyOf(nowIso);
@@ -100,7 +100,7 @@ export async function findTenantIncome(
     supabase
       .from("payments")
       .select("amount_inr, status, method, created_at, orders (membership_id)")
-      .eq("business_id", tenantId)
+      .eq("business_id", businessId)
       /* ⚠ MONEY THIS BUSINESS TOOK, SAID OUT LOUD (20 Sep 2026). `payments.kind`
          is order | subscription_auth | subscription_charge, and the last two are
          a studio PAYING DanceOS — money out, never in. They never reached this
@@ -119,7 +119,7 @@ export async function findTenantIncome(
     supabase
       .from("refunds")
       .select("amount_inr, created_at, decided_at, updated_at")
-      .eq("business_id", tenantId)
+      .eq("business_id", businessId)
       .eq("status", "processed")
       .is("deleted_at", null)
       /* updated_at is never earlier than decided_at, so this bound cannot drop
@@ -130,7 +130,7 @@ export async function findTenantIncome(
     supabase
       .from("refunds")
       .select("amount_inr")
-      .eq("business_id", tenantId)
+      .eq("business_id", businessId)
       /* being asked back right now, whichever month it was filed — a live
          queue figure. Declined and failed are in neither total, matching the
          prototype's own filters (only Paid, and Requested + Processing). */

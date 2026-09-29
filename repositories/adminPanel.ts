@@ -50,7 +50,7 @@ export interface AuditEntry {
   actorId: string;
   actorEmail: string | null;
   action: string;
-  /** `tenant` is the legacy spelling of `business` on rows written before
+  /** `business` is the legacy spelling of `business` on rows written before
    *  16 Sep 2026 — admin_audit is immutable, so they stay; read the two as one */
   subjectKind: "profile" | "business" | "tenant" | "request" | "thread";
   subjectId: string | null;
@@ -230,12 +230,12 @@ export async function findAdminBusinesses(
 
 export async function setTenantVisibility(
   supabase: SupabaseClient,
-  tenantId: string,
+  businessId: string,
   visibility: "listed" | "unlisted",
   reason?: string | null
 ): Promise<void> {
   const { error } = await supabase.rpc("admin_set_business_visibility", {
-    p_business_id: tenantId,
+    p_business_id: businessId,
     p_visibility: visibility,
     p_reason: reason ?? null,
   });
@@ -373,8 +373,8 @@ export interface AdminPayment {
   payerId: string | null;
   payerName: string;
   payerEmail: string | null;
-  tenantId: string | null;
-  tenantName: string | null;
+  businessId: string | null;
+  businessName: string | null;
   /** what the money was for, in the app's own words */
   what: string;
   refundedInr: number;
@@ -410,8 +410,8 @@ export async function findAdminPayments(
       payerId: (r.payer_id as string) ?? null,
       payerName: (r.payer_name as string) ?? "Someone",
       payerEmail: (r.payer_email as string) ?? null,
-      tenantId: (r.business_id as string) ?? null,
-      tenantName: (r.business_name as string) ?? null,
+      businessId: (r.business_id as string) ?? null,
+      businessName: (r.business_name as string) ?? null,
       what: (r.what as string) ?? "",
       refundedInr: n(r.refunded_inr),
     })),
@@ -430,8 +430,8 @@ export interface AdminRefund {
   providerRefundId: string | null;
   learnerId: string | null;
   learnerName: string;
-  tenantId: string | null;
-  tenantName: string | null;
+  businessId: string | null;
+  businessName: string | null;
   classTitle: string;
   /** days somebody has been waiting — the number that says which one to chase */
   waitingDays: number;
@@ -465,8 +465,8 @@ export async function findAdminRefunds(
       providerRefundId: (r.provider_refund_id as string) ?? null,
       learnerId: (r.learner_id as string) ?? null,
       learnerName: (r.learner_name as string) ?? "Someone",
-      tenantId: (r.business_id as string) ?? null,
-      tenantName: (r.business_name as string) ?? null,
+      businessId: (r.business_id as string) ?? null,
+      businessName: (r.business_name as string) ?? null,
       classTitle: (r.class_title as string) ?? "A class",
       waitingDays: n(r.waiting_days),
     })),
@@ -481,8 +481,8 @@ export interface AdminPayout {
   providerRef: string | null;
   paidOn: string;
   createdAt: string;
-  tenantId: string | null;
-  tenantName: string | null;
+  businessId: string | null;
+  businessName: string | null;
   personId: string | null;
   personName: string;
 }
@@ -511,8 +511,8 @@ export async function findAdminPayouts(
       providerRef: (r.provider_ref as string) ?? null,
       paidOn: r.paid_on as string,
       createdAt: r.created_at as string,
-      tenantId: (r.business_id as string) ?? null,
-      tenantName: (r.business_name as string) ?? null,
+      businessId: (r.business_id as string) ?? null,
+      businessName: (r.business_name as string) ?? null,
       personId: (r.person_id as string) ?? null,
       personName: (r.person_name as string) ?? "Someone",
     })),

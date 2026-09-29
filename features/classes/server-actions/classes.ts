@@ -41,7 +41,7 @@ const classFields = z.object({
   level: z.enum(["all", "beginner", "intermediate", "professional"]),
   room: z.string().trim().max(140).optional(),
   /** Step 11: the room is picked from the studio's own rooms. The RPC and the
-   *  class triggers re-check that it belongs to this tenant and that it holds
+   *  class triggers re-check that it belongs to this business and that it holds
    *  the capacity, so a forged id gets nowhere. */
   roomId: z.string().uuid().optional(),
   poster: z.enum(["bold", "split", "quiet", "none"]).optional(),
@@ -100,7 +100,7 @@ const startsInFuture = {
 
 const createClassSchema = classFields
   .extend({
-    tenantId: z.string().uuid(),
+    businessId: z.string().uuid(),
     status: z.enum(["draft", "published"]),
   })
   .refine(endsAfterStart.check, { message: endsAfterStart.message })
@@ -108,7 +108,7 @@ const createClassSchema = classFields
 
 const updateClassSchema = classFields
   .extend({
-    tenantId: z.string().uuid(),
+    businessId: z.string().uuid(),
     classId: z.string().uuid(),
   })
   .refine(endsAfterStart.check, { message: endsAfterStart.message });
@@ -174,7 +174,7 @@ export async function createClassAction(
 ): Promise<ClassActionState> {
   const parsed = createClassSchema.safeParse({
     ...readFields(formData),
-    tenantId: formData.get("tenantId"),
+    businessId: formData.get("businessId"),
     status: formData.get("status"),
   });
   if (!parsed.success) {
@@ -186,7 +186,7 @@ export async function createClassAction(
   const people = readPeople(formData);
   try {
     const classId = await createClassWithSession(supabase, {
-      tenantId: d.tenantId,
+      businessId: d.businessId,
       style: d.style,
       level: d.level,
       room: d.room ?? null,
@@ -213,10 +213,10 @@ export async function createClassAction(
   }
 
   if (isSheet(formData)) {
-    revalidatePath(afterSave(formData, d.tenantId));
+    revalidatePath(afterSave(formData, d.businessId));
     return { error: null, ok: true };
   }
-  redirect(afterSave(formData, d.tenantId));
+  redirect(afterSave(formData, d.businessId));
 }
 
 export async function updateClassAction(
@@ -225,7 +225,7 @@ export async function updateClassAction(
 ): Promise<ClassActionState> {
   const parsed = updateClassSchema.safeParse({
     ...readFields(formData),
-    tenantId: formData.get("tenantId"),
+    businessId: formData.get("businessId"),
     classId: formData.get("classId"),
   });
   if (!parsed.success) {
@@ -261,10 +261,10 @@ export async function updateClassAction(
   }
 
   if (isSheet(formData)) {
-    revalidatePath(afterSave(formData, d.tenantId));
+    revalidatePath(afterSave(formData, d.businessId));
     return { error: null, ok: true };
   }
-  redirect(afterSave(formData, d.tenantId));
+  redirect(afterSave(formData, d.businessId));
 }
 
 /** WHERE A SAVE LANDS (19 Sep 2026): an artist's register is the Manage segment
@@ -272,9 +272,9 @@ export async function updateClassAction(
  *  redirect goes there in ONE hop instead of through `/business/{id}/classes`,
  *  which for an artist page could only redirect again and left a looping entry
  *  in the history. Only the two known destinations are honoured. */
-const afterSave = (formData: FormData, tenantId: string) => {
+const afterSave = (formData: FormData, businessId: string) => {
   const after = String(formData.get("after") ?? "");
-  return after === "/my-classes?show=manage" ? after : `/business/${tenantId}/classes`;
+  return after === "/my-classes?show=manage" ? after : `/business/${businessId}/classes`;
 };
 
 /** the form's own word for which shell it is in — a hint about NAVIGATION and
@@ -283,7 +283,7 @@ const isSheet = (formData: FormData) => String(formData.get("sheet") ?? "") === 
 
 const classRefSchema = z.object({
   classId: z.string().uuid(),
-  tenantId: z.string().uuid(),
+  businessId: z.string().uuid(),
 });
 
 export async function publishClassAction(
@@ -292,7 +292,7 @@ export async function publishClassAction(
 ): Promise<ClassActionState> {
   const parsed = classRefSchema.safeParse({
     classId: formData.get("classId"),
-    tenantId: formData.get("tenantId"),
+    businessId: formData.get("businessId"),
   });
   if (!parsed.success) {
     return { error: "Invalid class" };
@@ -305,7 +305,7 @@ export async function publishClassAction(
     return { error: error instanceof Error ? error.message : "Could not publish" };
   }
 
-  revalidatePath(`/business/${parsed.data.tenantId}/classes`);
+  revalidatePath(`/business/${parsed.data.businessId}/classes`);
   return { error: null };
 }
 
@@ -315,7 +315,7 @@ export async function deleteClassAction(
 ): Promise<ClassActionState> {
   const parsed = classRefSchema.safeParse({
     classId: formData.get("classId"),
-    tenantId: formData.get("tenantId"),
+    businessId: formData.get("businessId"),
   });
   if (!parsed.success) {
     return { error: "Invalid class" };
@@ -328,13 +328,13 @@ export async function deleteClassAction(
     return { error: error instanceof Error ? error.message : "Could not delete" };
   }
 
-  revalidatePath(`/business/${parsed.data.tenantId}/classes`);
+  revalidatePath(`/business/${parsed.data.businessId}/classes`);
   return { error: null };
 }
 
 const posterSchema = z.object({
   classId: z.string().uuid(),
-  tenantId: z.string().uuid(),
+  businessId: z.string().uuid(),
   poster: z.enum(["bold", "split", "quiet", "none"]),
 });
 
@@ -343,7 +343,7 @@ const posterSchema = z.object({
  *  no row for anybody else, and the repository says so. */
 export async function setClassPosterAction(input: {
   classId: string;
-  tenantId: string;
+  businessId: string;
   poster: string;
 }): Promise<ClassActionState> {
   const parsed = posterSchema.safeParse(input);
@@ -358,13 +358,13 @@ export async function setClassPosterAction(input: {
     return { error: error instanceof Error ? error.message : "Could not set the poster" };
   }
 
-  revalidatePath(`/business/${parsed.data.tenantId}/classes`);
+  revalidatePath(`/business/${parsed.data.businessId}/classes`);
   return { error: null };
 }
 
 const clashSchema = z
   .object({
-    tenantId: z.string().uuid(),
+    businessId: z.string().uuid(),
     roomId: z.string().uuid(),
     date: z.string().regex(DATE_RE),
     startTime: z.string().regex(TIME_RE),
@@ -422,7 +422,7 @@ export async function venueRoomsAction(businessId: unknown): Promise<Array<{ id:
 export type RoomClash = { label: string; at: string } | null;
 
 /** The confirm sheet's ROOM ALREADY BUSY question (F3). A read, not a write:
- *  it changes nothing and it is the caller's own tenant's rows. Anything that
+ *  it changes nothing and it is the caller's own business's rows. Anything that
  *  goes wrong here answers "no clash" — the database still refuses a real one
  *  at publish, so a failed early check can never let a double-booking through;
  *  it can only lose the early warning. */
@@ -436,7 +436,7 @@ export async function checkRoomClashAction(input: unknown): Promise<RoomClash> {
   if (!user) return null;
   try {
     const hit = await findRoomClash(supabase, {
-      tenantId: parsed.data.tenantId,
+      businessId: parsed.data.businessId,
       roomId: parsed.data.roomId,
       startsAt: toIst(parsed.data.date, parsed.data.startTime),
       endsAt: toIst(parsed.data.date, parsed.data.endTime),

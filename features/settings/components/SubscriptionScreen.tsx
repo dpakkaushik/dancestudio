@@ -191,7 +191,7 @@ export function SubscriptionScreen({
           )}
           {studios.map((t) =>
             t.state ? (
-              <StudioSubscriptionStrip key={t.id} tenantId={t.id} tenantName={t.name} state={t.state} studioPrice={studioPrice} heading={t.name} />
+              <StudioSubscriptionStrip key={t.id} businessId={t.id} businessName={t.name} state={t.state} studioPrice={studioPrice} heading={t.name} />
             ) : null
           )}
         </div>

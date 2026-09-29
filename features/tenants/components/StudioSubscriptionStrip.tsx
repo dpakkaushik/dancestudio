@@ -29,14 +29,14 @@ const MUTED = "var(--muted)";
  *
  *  Drawn for the OWNER only — a trainer neither pays nor cancels. */
 export function StudioSubscriptionStrip({
-  tenantId,
-  tenantName,
+  businessId,
+  businessName,
   state,
   studioPrice,
   heading,
 }: {
-  tenantId: string;
-  tenantName: string;
+  businessId: string;
+  businessName: string;
   /** ⚠ `verified` IS GONE (27 Sep 2026). It existed to gate Subscribe on the
    *  badge, and the user's "pay at creation, verify after" removed that gate —
    *  and the standing LINE never read it: it prints `state.whyNotPublic`, the
@@ -78,7 +78,7 @@ export function StudioSubscriptionStrip({
       const out = await cancelSubscriptionAction({ subscriptionId: s.id });
       if (out.error) return fire(out.error);
       setConfirm(false);
-      fire(out.until ? `${tenantName} stays on Discover until ${dateWords(out.until)}, then stops` : "Cancelled");
+      fire(out.until ? `${businessName} stays on Discover until ${dateWords(out.until)}, then stops` : "Cancelled");
       router.refresh();
     });
 
@@ -101,7 +101,7 @@ export function StudioSubscriptionStrip({
         {!live && studioPrice ? (
           <SubscribeButton
             planKey={studioPrice.key}
-            tenantId={tenantId}
+            businessId={businessId}
             label={`Subscribe · ${priceWords(studioPrice.priceInr, studioPrice.period)}`}
             onDone={fire}
             style={{ background: "#3B82F6" }}
@@ -119,7 +119,7 @@ export function StudioSubscriptionStrip({
               </button>
             </>
           ) : (
-            <button type="button" onClick={() => setConfirm(true)} aria-label={`Stop ${tenantName} renewing`} style={{ background: "none", border: "none", padding: 0, fontFamily: "inherit", fontSize: 10.5, fontWeight: 800, color: SUB, textDecoration: "underline", cursor: "pointer" }}>
+            <button type="button" onClick={() => setConfirm(true)} aria-label={`Stop ${businessName} renewing`} style={{ background: "none", border: "none", padding: 0, fontFamily: "inherit", fontSize: 10.5, fontWeight: 800, color: SUB, textDecoration: "underline", cursor: "pointer" }}>
               Stop renewing
             </button>
           )

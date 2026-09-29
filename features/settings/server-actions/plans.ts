@@ -40,7 +40,7 @@ export async function activateArtistPlanAction(input: { plan: "monthly" | "yearl
 }
 
 const tenantProfileSchema = z.object({
-  tenantId: z.string().uuid(),
+  businessId: z.string().uuid(),
   /* the NAME (18 Sep 2026, the user: "give option to rename") — optional, so
      every older caller that never sends one leaves it exactly as it was */
   name: z.string().trim().min(1, "a business needs a name").max(80, "a name is at most 80 characters").optional(),
@@ -73,13 +73,13 @@ export async function updateTenantProfileAction(input: TenantProfileActionInput)
   } = await supabase.auth.getUser();
   if (!user) redirect("/login");
   try {
-    const { tenantId, ...rest } = parsed.data;
-    await updateTenantProfile(supabase, tenantId, { ...rest, phone: rest.phone || null });
-    revalidatePath(`/studio/${tenantId}`);
-    revalidatePath(`/artist/${tenantId}`);
-    revalidatePath(`/business/${tenantId}/payments`);
+    const { businessId, ...rest } = parsed.data;
+    await updateTenantProfile(supabase, businessId, { ...rest, phone: rest.phone || null });
+    revalidatePath(`/studio/${businessId}`);
+    revalidatePath(`/artist/${businessId}`);
+    revalidatePath(`/business/${businessId}/payments`);
     /* a rename shows on the studio's own home, the hub and the switcher */
-    revalidatePath(`/business/${tenantId}`);
+    revalidatePath(`/business/${businessId}`);
     revalidatePath("/business");
     revalidatePath("/profile");
     return { error: null };

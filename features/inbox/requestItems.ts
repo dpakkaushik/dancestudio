@@ -44,7 +44,7 @@ export const PRACTICE_WORDS = { what: "at the practice", verb: "have you at a pr
    (29 Sep 2026) — a practice ask carries its own instant instead */
 
 type MyPendingInvite = Awaited<ReturnType<typeof findMyPendingInvites>>[number];
-type SentInvite = Awaited<ReturnType<typeof findPendingInvites>>[number] & { tenantName: string };
+type SentInvite = Awaited<ReturnType<typeof findPendingInvites>>[number] & { businessName: string };
 
 export interface RequestSources {
   venueIn?: VenueRequest[];
@@ -95,10 +95,10 @@ export function buildRequests(s: RequestSources): { requestsIn: RequestItem[]; r
       danceClass: v.danceClass,
     })),
     ...(s.claimsIn ?? []).map((c): RequestItem => ({
-      kind: "claim",
+      kind: "classPerson",
       id: c.id,
       dir: "in",
-      who: c.tenantName,
+      who: c.businessName,
       what: CLAIM_WORDS[c.kind].what,
       verb: CLAIM_WORDS[c.kind].verb,
       subjectKind: "CLASS",
@@ -107,7 +107,7 @@ export function buildRequests(s: RequestSources): { requestsIn: RequestItem[]; r
       href: `/c/${c.classShareSlug}`,
       at: c.createdAt,
       note: c.payPerSessionInr > 0 ? `₹${c.payPerSessionInr.toLocaleString("en-IN")} a session` : null,
-      claimId: c.id,
+      classPersonId: c.id,
       status: askStatus(c.status),
       danceClass: askToTileClass(c),
     })),
@@ -115,18 +115,18 @@ export function buildRequests(s: RequestSources): { requestsIn: RequestItem[]; r
       kind: "invite",
       id: i.inviteId,
       dir: "in",
-      who: i.tenantName,
+      who: i.businessName,
       what: TEAM_WORDS.what,
       verb: TEAM_WORDS.verb,
       subjectKind: "STUDIO",
-      subjectTitle: i.tenantName,
+      subjectTitle: i.businessName,
       when: null,
       href: `/join/${i.code}`,
       at: i.createdAt,
       note: `As ${i.memberRole}`,
       inviteCode: i.code,
     })),
-    /* a crew roster is a public page, so being on one is a claim about you (16428) */
+    /* a crew roster is a public page, so being on one is a classPerson about you (16428) */
     ...(s.crewIn ?? []).map((c): RequestItem => ({
       kind: "crew",
       id: c.id,
@@ -186,7 +186,7 @@ export function buildRequests(s: RequestSources): { requestsIn: RequestItem[]; r
       danceClass: v.danceClass,
     })),
     ...(s.claimsOut ?? []).map((c): RequestItem => ({
-      kind: "claim",
+      kind: "classPerson",
       id: c.id,
       dir: "out",
       who: c.personName,
@@ -198,7 +198,7 @@ export function buildRequests(s: RequestSources): { requestsIn: RequestItem[]; r
       href: `/c/${c.classShareSlug}`,
       at: c.createdAt,
       note: null,
-      claimId: c.id,
+      classPersonId: c.id,
       status: askStatus(c.status),
       danceClass: askToTileClass(c),
     })),
@@ -210,13 +210,13 @@ export function buildRequests(s: RequestSources): { requestsIn: RequestItem[]; r
       what: TEAM_WORDS.what,
       verb: TEAM_WORDS.verb,
       subjectKind: "STUDIO",
-      subjectTitle: i.tenantName,
+      subjectTitle: i.businessName,
       when: null,
       href: null,
       at: i.createdAt,
       note: `${i.email} · as ${i.memberRole}`,
       inviteId: i.id,
-      tenantId: i.tenantId,
+      businessId: i.businessId,
     })),
     ...(s.crewOut ?? []).map((c): RequestItem => ({
       kind: "crew",

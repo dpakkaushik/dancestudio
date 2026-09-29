@@ -18,7 +18,7 @@ import type { MyEnrollment } from "@/types/enrollment";
 
 const toTileClass = (e: MyEnrollment): DanceClass => ({
   id: e.classId,
-  tenantId: "",
+  businessId: "",
   title: e.title,
   shareSlug: e.shareSlug,
   style: e.style,
@@ -43,7 +43,7 @@ const toTileClass = (e: MyEnrollment): DanceClass => ({
   allowsArtistMemberships: false,
 });
 
-/* ⚠ `askToTileClass` MOVED TO `types/claim.ts` (27 Sep 2026) — the Inbox draws
+/* ⚠ `askToTileClass` MOVED TO `types/classPerson.ts` (27 Sep 2026) — the Inbox draws
    the same card for the same ask now, and a second copy of a conversion is how
    two screens come to disagree about one class. */
 
@@ -115,7 +115,7 @@ export default async function MyClassesPage({ searchParams }: { searchParams: Pr
     findMyConfirmedClaims(supabase, "assistant"),
     findMyMemberships(supabase),
   ]);
-  const myPage = memberships.find((m) => m.memberRole === "owner" && m.tenant.type === "artist_page")?.tenant ?? null;
+  const myPage = memberships.find((m) => m.memberRole === "owner" && m.business.type === "artist_page")?.business ?? null;
   /* ⚠ MANAGE OPENS FIRST FOR SOMEBODY WHO RUNS CLASSES (20 Sep 2026, the user:
      "Manage Membership and classes to be first option in order and when opening
      the tile"). It has been first in the ORDER since 19 Sep; what it was not was
@@ -123,16 +123,16 @@ export default async function MyClassesPage({ searchParams }: { searchParams: Pr
      at other people's classes they had booked. A URL that names a segment still
      wins, so every existing link keeps landing where it always did (Rule 14). */
   /* ⚠⚠ TEACHING IS MANAGING, AND ASSISTING IS NOT (28 Sep 2026). A confirmed
-     `artist` claim means you are the person taking that class — you run its
+     `artist` classPerson means you are the person taking that class — you run its
      register — so it belongs in Manage beside your own page's classes; an
-     `assistant` claim is somebody helping on somebody else's class, which is
+     `assistant` classPerson is somebody helping on somebody else's class, which is
      what Assist has always meant. They were one list until today, told apart
      only by a word in the corner of each card.
      ⚠ Your OWN page's classes are excluded here rather than listed twice: you
      are every one of their confirmed teachers by construction, and the register
      below already draws them in full. */
   const teaching = artistOn
-    .filter((c) => !myPage || c.tenantName !== myPage.name)
+    .filter((c) => !myPage || c.businessName !== myPage.name)
     .sort((a, b) => (a.startsAt ?? "9").localeCompare(b.startsAt ?? "9"));
   const assisting = [...assistantOn].sort((a, b) => (a.startsAt ?? "9").localeCompare(b.startsAt ?? "9"));
   /* somebody with a page, or somebody a studio has put in front of a class */
@@ -235,7 +235,7 @@ export default async function MyClassesPage({ searchParams }: { searchParams: Pr
                   node: (
                     <>
                       {myPage && manage ? (
-                        <ClassesManager embedded tenantId={myPage.id} classes={manage.classes} filledBySession={manage.filled} artists={manage.artists} publishState={manage.state} whyNoClass={manage.whyNoClass} nowIso={new Date().toISOString()} />
+                        <ClassesManager embedded businessId={myPage.id} classes={manage.classes} filledBySession={manage.filled} artists={manage.artists} publishState={manage.state} whyNoClass={manage.whyNoClass} nowIso={new Date().toISOString()} />
                       ) : null}
                       {teaching.length > 0 ? (
                         <div style={{ marginTop: myPage ? 22 : 0 }}>
@@ -258,7 +258,7 @@ export default async function MyClassesPage({ searchParams }: { searchParams: Pr
                               actions={
                                 <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
                                   <span style={{ fontSize: 10.5, color: SUB }}>
-                                    {c.tenantName} · {when(c.startsAt)}
+                                    {c.businessName} · {when(c.startsAt)}
                                   </span>
                                   <span style={{ flexShrink: 0, fontSize: 9.5, fontWeight: 900, letterSpacing: 0.6, textTransform: "uppercase", color: "#F59E0B" }}>Teaching</span>
                                 </div>
@@ -320,7 +320,7 @@ export default async function MyClassesPage({ searchParams }: { searchParams: Pr
                     actions={
                       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
                         <span style={{ fontSize: 10.5, color: SUB }}>
-                          {c.tenantName} · {when(c.startsAt)}
+                          {c.businessName} · {when(c.startsAt)}
                         </span>
                         <span style={{ flexShrink: 0, fontSize: 9.5, fontWeight: 900, letterSpacing: 0.6, textTransform: "uppercase", color: "#8B5CF6" }}>Assisting</span>
                       </div>
@@ -351,14 +351,14 @@ export default async function MyClassesPage({ searchParams }: { searchParams: Pr
           to read: the sheet costs one render and no round trip. */}
       {opening && myPage && manage && !manage.whyNoClass ? (
         <ClassForm
-          tenantId={myPage.id}
-          tenantType="artist_page"
+          businessId={myPage.id}
+          businessType="artist_page"
           rooms={[]}
           isOwner
           sheet
           /* the studios this artist OWNS (26 Sep 2026): a class held in one of
              them needs no request, and the form says so */
-          ownedStudioIds={memberships.filter((m) => m.memberRole === "owner" && m.tenant.type === "studio").map((m) => m.tenant.id)}
+          ownedStudioIds={memberships.filter((m) => m.memberRole === "owner" && m.business.type === "studio").map((m) => m.business.id)}
         />
       ) : null}
     </div>

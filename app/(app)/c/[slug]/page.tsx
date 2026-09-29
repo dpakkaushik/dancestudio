@@ -37,8 +37,8 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
   const danceClass = await loadClass(slug);
   if (!danceClass) return { title: "Class — DanceOS" };
   return {
-    title: `${danceClass.title} — ${danceClass.tenantName} · DanceOS`,
-    description: `Book ${danceClass.title} at ${danceClass.tenantName}${danceClass.tenantCity ? `, ${danceClass.tenantCity}` : ""} on DanceOS.`,
+    title: `${danceClass.title} — ${danceClass.businessName} · DanceOS`,
+    description: `Book ${danceClass.title} at ${danceClass.businessName}${danceClass.tenantCity ? `, ${danceClass.tenantCity}` : ""} on DanceOS.`,
   };
 }
 
@@ -87,9 +87,9 @@ export default async function ClassSharePage({
   const sessionId = danceClass.session?.id ?? null;
   /* ⚠ CLAIMS MOVED UP INTO THIS BATCH (28 Sep 2026), and it costs nothing: it
      depends only on the class's id, so it was always parallelisable. What it
-     BUYS is that the viewer's own claim is known BEFORE the batch that decides
+     BUYS is that the viewer's own classPerson is known BEFORE the batch that decides
      whether to fetch the register — see `mayRunRegister` below. */
-  const [counts, mine, seat, claims] = await Promise.all([
+  const [counts, mine, seat, classPeople] = await Promise.all([
     sessionId ? countEnrolledBySession(supabase, [sessionId]) : Promise.resolve(new Map<string, number>()),
     user
       ? findMyEnrolledSessionIds(supabase)
@@ -97,7 +97,7 @@ export default async function ClassSharePage({
     /* ⚠ THE SEAT, NOT JUST ITS ROLE (28 Sep 2026) — the same one row, with the
        two STANDING grants on it, so the page can offer the register to somebody
        the Team desk gave Attendance to. Same query, no extra round trip. */
-    user ? findMySeat(supabase, danceClass.tenantId) : Promise.resolve(null),
+    user ? findMySeat(supabase, danceClass.businessId) : Promise.resolve(null),
     findClaimsByClass(supabase, danceClass.id),
   ]);
 
@@ -108,7 +108,7 @@ export default async function ClassSharePage({
   const myBooking = sessionId ? mine.get(sessionId) ?? null : null;
   const role = seat?.role ?? null;
   const canManage = role === "owner" || role === "trainer";
-  const myClaim = user ? claims.find((cl) => cl.userId === user.id) ?? null : null;
+  const myClaim = user ? classPeople.find((cl) => cl.userId === user.id) ?? null : null;
 
   /* ⚠⚠ WHO THE REGISTER IS FETCHED FOR, AND WHY THIS IS THE REAL FIX (28 Sep
      2026, the user: "when giving attendance and refunds right to assistants it
@@ -123,7 +123,7 @@ export default async function ClassSharePage({
      appears exactly where the RPC would answer. The RPC re-checks every row. */
   /* ⚠⚠ AND `kind === "assistant"` WENT (28 Sep 2026, the user: "as soon as the
      teacher confirms the class they should get access to attendance").
-     `can_run_register_for_class` has never cared which kind the claim is — it
+     `can_run_register_for_class` has never cared which kind the classPerson is — it
      reads a CONFIRMED row holding `can_attendance`, full stop — so that clause
      was a narrowing the database never had, and it shut out the one person the
      class is named after. It is the same mistake as the line above it in a
@@ -131,7 +131,7 @@ export default async function ClassSharePage({
      (assistants) and not for the other kind that shares the rule. Found by
      driving it: `can_run_register_for_class` answered TRUE for the confirmed
      teacher while the page drew no tab at all.
-     ⚠ `20260928100000` is what makes this reachable — an artist claim is born
+     ⚠ `20260928100000` is what makes this reachable — an artist classPerson is born
      holding attendance now — and this is the half no migration could do. */
   const mayRunRegister =
     canManage ||
@@ -143,7 +143,7 @@ export default async function ClassSharePage({
      booking — the invoice and refund sheets); the live register and waitlist
      queue, only for people who can run it, and on a priced class who has paid
      for their seat; who is on the class and what the room has in it (RLS
-     decides what the viewer may see: the public gets confirmed claims on
+     decides what the viewer may see: the public gets confirmed classPeople on
      published classes only); and, for an artist's class, WHOSE profile the
      place row opens — the person behind the artist page, so the link never
      goes through the /artist redirect. */
@@ -152,7 +152,7 @@ export default async function ClassSharePage({
     mayRunRegister ? findClassRegister(supabase, danceClass.id) : Promise.resolve(null),
     mayRunRegister && sessionId && danceClass.priceInr > 0 ? findPaidUserIdsBySession(supabase, sessionId) : Promise.resolve(new Set<string>()),
     danceClass.roomId ? findRoomById(supabase, danceClass.roomId) : Promise.resolve(null),
-    danceClass.tenantType === "artist_page" ? findArtistPageOwner(supabase, danceClass.tenantId).catch(() => null) : Promise.resolve(null),
+    danceClass.businessType === "artist_page" ? findArtistPageOwner(supabase, danceClass.businessId).catch(() => null) : Promise.resolve(null),
     /* WHAT THIS CLASS IS TAUGHT FROM (19 Sep 2026): the routines on it — RLS
        hands them to anybody who may read the class — the viewer's OWN routines
        for the picker, and whether they may change what is on it at all */
@@ -205,7 +205,7 @@ export default async function ClassSharePage({
       receipt={receipt}
       sessionPhase={phaseOf(danceClass.session?.startsAt, danceClass.session?.endsAt)}
       register={register}
-      claims={claims}
+      classPeople={classPeople}
       myClaim={myClaim}
       standingAttendance={Boolean(seat?.canAttendance)}
       standingRefunds={Boolean(seat?.canRefunds)}

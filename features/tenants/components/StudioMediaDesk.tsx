@@ -10,7 +10,7 @@ import { DOS_TOOLS, dosToolPaint } from "@/features/tenants/components/biz-kit";
 import { INK, SUB } from "@/lib/design/tokens";
 import { photoUrl } from "@/lib/media/photo";
 import { PROOF_MAX, PROOF_MIN, type ProofPhoto } from "@/lib/media/proof";
-import type { Tenant } from "@/types/tenant";
+import type { Business } from "@/types/tenant";
 
 const MUTED = "var(--muted)";
 
@@ -25,16 +25,16 @@ const MUTED = "var(--muted)";
  *  `ProfileDisc`, the ＋ is `PhotoPicker`, the grid is the verification form's
  *  `ProofPhotos`. Who may do what is the same pair of rules the hero keeps: an
  *  owner or a trainer changes the studio's picture (the storage policy on
- *  `tenants/{id}` admits both); only the OWNER adds to or takes from the header,
+ *  `businesses/{id}` admits both); only the OWNER adds to or takes from the header,
  *  because the files go into the owner's own folder in the private bucket. */
 export function StudioMediaDesk({
-  tenant,
+  business,
   /** the owner's id when the viewer IS the owner — the folder a new header picture goes into */
   ownerId,
   canEditPhoto,
   photos,
 }: {
-  tenant: Tenant;
+  business: Business;
   ownerId: string | null;
   canEditPhoto: boolean;
   photos: ProofPhoto[];
@@ -47,18 +47,18 @@ export function StudioMediaDesk({
         <div style={eyebrow}>Profile picture</div>
         <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
           <ProfileDisc
-            name={tenant.name}
-            grad={gradientOf(tenant.name)}
-            photo={photoUrl(tenant.photoPath)}
-            photoAlt={`${tenant.name} — profile picture`}
+            name={business.name}
+            grad={gradientOf(business.name)}
+            photo={photoUrl(business.photoPath)}
+            photoAlt={`${business.name} — profile picture`}
             testId="media-disc"
           />
           <div style={{ flex: 1, minWidth: 0 }}>
             <div style={{ fontSize: 12.5, color: SUB, lineHeight: 1.5, marginBottom: 8 }}>
-              The round picture on {tenant.name}&rsquo;s page and Discover card — a logo, or the front of the studio.
+              The round picture on {business.name}&rsquo;s page and Discover card — a logo, or the front of the studio.
             </div>
             {canEditPhoto ? (
-              <PhotoPicker owner={{ kind: "tenant", id: tenant.id }} hasPhoto={Boolean(tenant.photoPath)} label="Change the photo" />
+              <PhotoPicker owner={{ kind: "tenant", id: business.id }} hasPhoto={Boolean(business.photoPath)} label="Change the photo" />
             ) : (
               <div style={{ fontSize: 10.5, color: MUTED }}>The owner or a trainer changes this.</div>
             )}
@@ -72,16 +72,16 @@ export function StudioMediaDesk({
             for one thing is one too many (the verification form's rule) */}
         <div style={eyebrow}>Header pictures</div>
         <div style={{ fontSize: 12.5, color: SUB, lineHeight: 1.5, marginBottom: 12 }}>
-          These swipe across the top of {tenant.name}&rsquo;s page. They are also what a DanceOS admin checks to verify the
+          These swipe across the top of {business.name}&rsquo;s page. They are also what a DanceOS admin checks to verify the
           studio — {PROOF_MIN} to {PROOF_MAX} photos of the space — so the two are one set.{" "}
           <b style={{ color: INK }}>One always stays</b>: to replace your only picture, add the new one first.
         </div>
-        <ProofPhotos orgId={ownerId} tenantId={tenant.id} initialPhotos={photos} compact readOnly={!canEditHeader} />
+        <ProofPhotos orgId={ownerId} businessId={business.id} initialPhotos={photos} compact readOnly={!canEditHeader} />
         {!canEditHeader ? <div style={{ fontSize: 10.5, color: MUTED, marginTop: 8 }}>Only the owner adds to or removes from the header.</div> : null}
       </div>
 
       <Link
-        href={`/business/${tenant.id}`}
+        href={`/business/${business.id}`}
         style={{ display: "block", textAlign: "center", fontSize: 12, fontWeight: 800, color: SUB, textDecoration: "none", padding: "10px 0" }}
       >
         See them on the studio&rsquo;s home ›

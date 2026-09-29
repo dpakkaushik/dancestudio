@@ -15,7 +15,7 @@ import { decideReport, setTenantVisibility } from "@/repositories/adminPanel";
 
 const visibilitySchema = z
   .object({
-    tenantId: z.string().uuid(),
+    businessId: z.string().uuid(),
     visibility: z.enum(["listed", "unlisted"]),
     reason: z.string().trim().max(500).nullable().optional(),
   })
@@ -45,7 +45,7 @@ export async function setTenantVisibilityAction(input: unknown): Promise<{ error
   }
   const supabase = await createSupabaseServerClient();
   try {
-    await setTenantVisibility(supabase, parsed.data.tenantId, parsed.data.visibility, parsed.data.reason ?? null);
+    await setTenantVisibility(supabase, parsed.data.businessId, parsed.data.visibility, parsed.data.reason ?? null);
   } catch (e) {
     return { error: e instanceof Error ? e.message : "Could not change that" };
   }

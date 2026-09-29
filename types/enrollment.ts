@@ -19,7 +19,7 @@ export interface MyEnrollment {
   classStatus: ClassStatus;
   startsAt: string;
   endsAt: string;
-  tenantName: string;
+  businessName: string;
   tenantCity: string | null;
 }
 

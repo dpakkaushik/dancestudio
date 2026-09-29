@@ -31,7 +31,7 @@ export interface ClassTileArtist {
 
 export interface ClassTileProps {
   danceClass: DanceClass;
-  /** Enrollment count — 0 until Step 4 wires bookings. */
+  /** ClassBooking count — 0 until Step 4 wires bookings. */
   filled?: number;
   /** ⚠ ACCEPTED AND NEVER PRINTED (18 Sep 2026, the user: "remove studio names
    *  from class cards, should only be visible inside the booking page"). It used
@@ -39,7 +39,7 @@ export interface ClassTileProps {
    *  studio's name ended up on the card at all. The prop stays so seven callers
    *  did not have to change in the same breath as the layout; `/c/{slug}` is
    *  where the studio is named, under AT THE STUDIO with its address and rooms. */
-  tenantName?: string | null;
+  businessName?: string | null;
   /** Accepted for the callers that already pass it; the card does not print it
    *  (8443-8449) — the class page carries the venue. */
   city?: string | null;

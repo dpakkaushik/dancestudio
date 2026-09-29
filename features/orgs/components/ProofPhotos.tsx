@@ -47,7 +47,7 @@ import { createSupabaseBrowserClient } from "@/lib/supabase/client";
  *  only the timing differs, which is what the timing is for. */
 export function ProofPhotos({
   orgId,
-  tenantId,
+  businessId,
   initialPhotos,
   onCount,
   compact = false,
@@ -61,7 +61,7 @@ export function ProofPhotos({
    *  11 Sep 2026 — an organization is asked for no photos at all — so this is
    *  required. The file still goes to `proof/{orgId}/…`, the owner's own
    *  folder, so the bucket's policies were never touched. */
-  tenantId: string;
+  businessId: string;
   initialPhotos: ProofPhoto[];
   /** onboarding counts the strip to decide whether Continue is allowed */
   onCount?: (n: number) => void;
@@ -124,7 +124,7 @@ export function ProofPhotos({
           setError(up.error.message);
           continue;
         }
-        const out = await addStudioProofPhotoAction({ tenantId, path });
+        const out = await addStudioProofPhotoAction({ businessId, path });
         if (out.error || !out.id) {
           /* the row would not take it, so the orphan file goes back out */
           await supabase.storage.from(PROOF_BUCKET).remove([path]);

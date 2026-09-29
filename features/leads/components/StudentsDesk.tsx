@@ -82,14 +82,14 @@ function Face({ name, photoPath, size = 38 }: { name: string; photoPath: string 
 }
 
 export function StudentsDesk({
-  tenantId,
-  tenantName,
+  businessId,
+  businessName,
   students,
   /** where an invited person lands — the studio's own public page */
   inviteUrl,
 }: {
-  tenantId: string;
-  tenantName: string;
+  businessId: string;
+  businessName: string;
   students: Student[];
   inviteUrl: string;
 }) {
@@ -108,7 +108,7 @@ export function StudentsDesk({
 
   const remove = async (leadId: string, name: string) => {
     setBusyLead(leadId);
-    const out = await deleteLeadAction({ tenantId, leadId });
+    const out = await deleteLeadAction({ businessId, leadId });
     setBusyLead(null);
     fire(out.error ?? `${name} removed from your list`);
   };
@@ -189,7 +189,7 @@ export function StudentsDesk({
         </div>
       ) : null}
 
-      {invite ? <InviteSheet tenantName={tenantName} inviteUrl={inviteUrl} onClose={() => setInvite(false)} onToast={fire} /> : null}
+      {invite ? <InviteSheet businessName={businessName} inviteUrl={inviteUrl} onClose={() => setInvite(false)} onToast={fire} /> : null}
 
       {toast ? (
         <div role="status" style={{ position: "fixed", bottom: 96, left: "50%", transform: "translateX(-50%)", background: "var(--solid)", border: "1.5px solid #0EA5E9", color: INK, padding: "11px 18px", borderRadius: 999, fontSize: 13, fontWeight: 700, maxWidth: 360, textAlign: "center", zIndex: 650, boxShadow: "0 6px 24px rgba(0,0,0,.45)" }}>
@@ -205,12 +205,12 @@ export function StudentsDesk({
  *  DanceOS, and nothing pretends to be: see the file header for why that is the
  *  honest build today rather than a smaller one. */
 function InviteSheet({
-  tenantName,
+  businessName,
   inviteUrl,
   onClose,
   onToast,
 }: {
-  tenantName: string;
+  businessName: string;
   inviteUrl: string;
   onClose: () => void;
   onToast: (m: string) => void;
@@ -219,7 +219,7 @@ function InviteSheet({
   const [by, setBy] = useState<"mobile" | "email">("mobile");
   const [to, setTo] = useState("");
 
-  const message = `Join me on DanceOS — ${tenantName} is on it. Classes, bookings and your membership in one place: ${inviteUrl}`;
+  const message = `Join me on DanceOS — ${businessName} is on it. Classes, bookings and your membership in one place: ${inviteUrl}`;
   const digits = waDigits(to);
   const ready = by === "mobile" ? digits.length >= 10 : looksLikeEmail(to);
 
@@ -291,7 +291,7 @@ function InviteSheet({
           ) : (
             <a
               aria-disabled={!ready}
-              href={ready ? `mailto:${to.trim()}?subject=${encodeURIComponent(`Join me on DanceOS — ${tenantName}`)}&body=${encodeURIComponent(message)}` : undefined}
+              href={ready ? `mailto:${to.trim()}?subject=${encodeURIComponent(`Join me on DanceOS — ${businessName}`)}&body=${encodeURIComponent(message)}` : undefined}
               onClick={(e) => { if (!ready) { e.preventDefault(); onToast("Type an email address first"); } }}
               style={{ ...pill, background: ready ? INK : EL, color: ready ? LILAC : "var(--muted)" }}
             >

@@ -1,4 +1,4 @@
-import type { TenantType } from "@/types/tenant";
+import type { BusinessType } from "@/types/tenant";
 
 /** Step 18 — the enquiry system, lifted from the prototype's ENQ_TYPES
  *  (DanceOSApp.jsx:4900-4923): five types, each with its own fields, each
@@ -19,7 +19,7 @@ export interface EnquiryType {
   /** the type's tint (ENQ_TINT 5208) */
   c: string;
   /** who may be sent one — the prototype's entity kinds, mapped onto our businesses */
-  to: TenantType[];
+  to: BusinessType[];
   fields: EnquiryField[];
 }
 
@@ -124,7 +124,7 @@ export const ENQ_TINT: Record<EnquiryTypeKey, string> = {
 export const enquiryTypeOf = (k: string): EnquiryType | null => ENQ_TYPES.find((t) => t.k === k) ?? null;
 
 /** the types a business of this kind may be sent (dosEnqTypesFor 4935) */
-export const enquiryTypesFor = (kind: TenantType): EnquiryType[] => ENQ_TYPES.filter((t) => t.to.includes(kind));
+export const enquiryTypesFor = (kind: BusinessType): EnquiryType[] => ENQ_TYPES.filter((t) => t.to.includes(kind));
 
 /** A CREW CAN BE ASKED (18 Sep 2026, the user: "crews can also get enquiries"):
  *  a crew dances at a celebration, a corporate show or a collaboration. Judging
@@ -166,12 +166,12 @@ export interface EnquiryQuote {
 export interface Enquiry {
   id: string;
   /** the business asked — "" when the enquiry went to a CREW (exactly one of the two is set) */
-  tenantId: string;
+  businessId: string;
   /** who was asked, in words: the business's name, or the crew's */
-  tenantName: string;
-  tenantType: TenantType;
+  businessName: string;
+  businessType: BusinessType;
   /** the business's published number, so the person who ASKED can ring back (I4); a crew has none */
-  tenantPhone: string | null;
+  businessPhone: string | null;
   /** the crew asked (18 Sep 2026) — null when the enquiry went to a business */
   crewId: string | null;
   fromUserId: string;

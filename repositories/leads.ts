@@ -28,7 +28,7 @@ const LEAD_COLUMNS =
 
 const toLead = (row: LeadRow): Lead => ({
   id: row.id,
-  tenantId: row.business_id,
+  businessId: row.business_id,
   name: row.name,
   mobile: row.mobile,
   interest: row.interest,
@@ -47,12 +47,12 @@ const toLead = (row: LeadRow): Lead => ({
  *  200 open leads; until then the whole desk is one screen. */
 export async function findLeadsByTenant(
   supabase: SupabaseClient,
-  tenantId: string
+  businessId: string
 ): Promise<Lead[]> {
   const { data, error } = await supabase
     .from("leads")
     .select(LEAD_COLUMNS)
-    .eq("business_id", tenantId)
+    .eq("business_id", businessId)
     .is("deleted_at", null)
     .order("created_at", { ascending: false })
     .limit(200);
@@ -69,15 +69,15 @@ export async function findLeadsByTenant(
  *  ⚠ ATTENDED IS CHECK-INS, not bookings — Step 25's rule, said on the screen. */
 export async function findStudentStats(
   supabase: SupabaseClient,
-  tenantId: string,
+  businessId: string,
   userIds: string[]
 ): Promise<Map<string, StudentStats>> {
   const out = new Map<string, StudentStats>();
   if (userIds.length === 0) return out;
   const ids = [...new Set(userIds)].slice(0, 200);
   const [booked, attended] = await Promise.all([
-    supabase.from("class_bookings").select("user_id").eq("business_id", tenantId).in("user_id", ids).is("deleted_at", null).limit(4000),
-    supabase.from("attendance").select("user_id").eq("business_id", tenantId).in("user_id", ids).is("deleted_at", null).limit(4000),
+    supabase.from("class_bookings").select("user_id").eq("business_id", businessId).in("user_id", ids).is("deleted_at", null).limit(4000),
+    supabase.from("attendance").select("user_id").eq("business_id", businessId).in("user_id", ids).is("deleted_at", null).limit(4000),
   ]);
   const bump = (rows: unknown, key: "booked" | "attended") => {
     for (const r of ((rows ?? []) as Array<{ user_id: string }>)) {
@@ -92,7 +92,7 @@ export async function findStudentStats(
 }
 
 export interface CreateLeadInput {
-  tenantId: string;
+  businessId: string;
   name: string;
   mobile: string | null;
   interest: string | null;
@@ -107,7 +107,7 @@ export async function createLead(
   input: CreateLeadInput
 ): Promise<void> {
   const { error } = await supabase.from("leads").insert({
-    business_id: input.tenantId,
+    business_id: input.businessId,
     name: input.name,
     mobile: input.mobile,
     interest: input.interest,

@@ -1,6 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Enquiry, EnquiryQuote, EnquiryStatus, EnquiryTypeKey, QuoteStatus } from "@/types/enquiry";
-import type { TenantType } from "@/types/tenant";
+import type { BusinessType } from "@/types/tenant";
 
 /** Step 18 reads and the RPC wrappers. Both ends of an enquiry read it under
  *  RLS — the sender and the business's members — and every "mine" query says
@@ -35,7 +35,7 @@ interface EnquiryRow {
   mobile: string | null;
   status: EnquiryStatus;
   created_at: string;
-  businesses: { name: string; type: TenantType; phone: string | null } | null;
+  businesses: { name: string; type: BusinessType; phone: string | null } | null;
   crews: { name: string } | null;
   profiles: { full_name: string } | null;
   enquiry_quotes: QuoteRow[] | null;
@@ -67,14 +67,14 @@ const toFields = (raw: unknown): Array<[string, string]> =>
 
 const toEnquiry = (r: EnquiryRow): Enquiry => ({
   id: r.id,
-  tenantId: r.business_id ?? "",
+  businessId: r.business_id ?? "",
   /* who was asked, in words: a crew's enquiry carries the crew's name where a
      business's carries the business's, so every desk prints one field */
-  tenantName: r.crew_id ? (r.crews?.name ?? "A crew") : (r.businesses?.name ?? "A business"),
-  tenantType: r.businesses?.type ?? "studio",
+  businessName: r.crew_id ? (r.crews?.name ?? "A crew") : (r.businesses?.name ?? "A business"),
+  businessType: r.businesses?.type ?? "studio",
   /* under the policy that already let this join read the name — the same number
      the business's public page prints, not a private one (I4). A crew has none. */
-  tenantPhone: r.businesses?.phone ?? null,
+  businessPhone: r.businesses?.phone ?? null,
   crewId: r.crew_id,
   fromUserId: r.from_user_id,
   fromName: r.profiles?.full_name ?? "Someone",
@@ -93,14 +93,14 @@ const toEnquiry = (r: EnquiryRow): Enquiry => ({
 });
 
 /** Enquiries that came IN to the businesses I belong to. */
-export async function findReceivedEnquiries(supabase: SupabaseClient, tenantIds: string[]): Promise<Enquiry[]> {
-  if (tenantIds.length === 0) {
+export async function findReceivedEnquiries(supabase: SupabaseClient, businessIds: string[]): Promise<Enquiry[]> {
+  if (businessIds.length === 0) {
     return [];
   }
   const { data, error } = await supabase
     .from("enquiries")
     .select(ENQUIRY_SELECT)
-    .in("business_id", tenantIds)
+    .in("business_id", businessIds)
     .is("deleted_at", null)
     .order("created_at", { ascending: false })
     .limit(MAX_LIST);
@@ -162,7 +162,7 @@ export async function sendEnquiry(
   supabase: SupabaseClient,
   input: {
     /** the business asked — or null when the enquiry goes to a crew */
-    tenantId: string | null;
+    businessId: string | null;
     /** the crew asked (18 Sep 2026) — exactly one of the two is set; the RPC keeps the same rule */
     crewId?: string | null;
     typeKey: EnquiryTypeKey;
@@ -174,7 +174,7 @@ export async function sendEnquiry(
   }
 ): Promise<string> {
   const { data, error } = await supabase.rpc("send_enquiry", {
-    p_business_id: input.tenantId,
+    p_business_id: input.businessId,
     p_type_key: input.typeKey,
     p_fields: input.fields,
     p_dates: input.dates,

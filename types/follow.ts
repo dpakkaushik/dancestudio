@@ -1,5 +1,5 @@
 import type { ProfileRole } from "@/types/profile";
-import type { TenantType } from "@/types/tenant";
+import type { BusinessType } from "@/types/tenant";
 
 /** Step 15 — follows. A person follows a business; the count is public, the
  *  list is the business's own (prototype: DOS_FOLLOWERS pill on Discover 4277,
@@ -11,9 +11,9 @@ import type { TenantType } from "@/types/tenant";
  *  because the read never selected the column and the action hard-coded null. */
 export interface FollowedTenant {
   followId: string;
-  tenantId: string;
-  tenantType: TenantType;
-  tenantName: string;
+  businessId: string;
+  businessType: BusinessType;
+  businessName: string;
   tenantArea: string | null;
   tenantCity: string | null;
   tenantPhotoPath: string | null;

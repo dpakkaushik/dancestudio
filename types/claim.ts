@@ -3,8 +3,8 @@ import type { DanceClass } from "@/types/class";
 /** Who is on a class. An assistant is not a bare name in a list: they are a
  *  person with a job (prototype dosTeamOne, DanceOSApp.jsx:89-90), and a class
  *  never names anybody publicly until they confirm. */
-export type ClaimKind = "artist" | "assistant";
-export type ClaimStatus = "asked" | "confirmed" | "rejected";
+export type ClassPersonKind = "artist" | "assistant";
+export type ClassPersonStatus = "asked" | "confirmed" | "rejected";
 
 /** The confirmed teacher on a class, as a card draws them: a face and a name
  *  (18 Sep 2026). Kept minimal on purpose — a card needs who it is and what they
@@ -19,8 +19,8 @@ export interface ClassClaim {
   id: string;
   classId: string;
   userId: string;
-  kind: ClaimKind;
-  status: ClaimStatus;
+  kind: ClassPersonKind;
+  status: ClassPersonStatus;
   canAttendance: boolean;
   canRefunds: boolean;
   /** What the studio pays them for one session of this class, in whole rupees.
@@ -43,7 +43,7 @@ export interface MyClaimAsk extends ClassClaim {
   classTitle: string;
   classStyle: string;
   classShareSlug: string;
-  tenantName: string;
+  businessName: string;
   startsAt: string | null;
   /** ENOUGH OF THE CLASS TO DRAW ITS CARD (19 Sep 2026, the user: "assisting
    *  should also show class cards in same way") */
@@ -66,13 +66,13 @@ export interface MyClaimAsk extends ClassClaim {
  *  three times, three copies of the identity band — so it lives beside the type
  *  it converts.
  *
- *  ⚠ `tenantId` is "" and the poster null on purpose: an ask carries neither,
+ *  ⚠ `businessId` is "" and the poster null on purpose: an ask carries neither,
  *  and the card draws its own poster from the title. The two membership flags
  *  are the column defaults, because whose pass pays is the CLASS's answer, read
  *  on its own page, and a card must not invent one. */
 export const askToTileClass = (c: MyClaimAsk): DanceClass => ({
   id: c.classId,
-  tenantId: "",
+  businessId: "",
   title: c.classTitle,
   shareSlug: c.classShareSlug,
   style: c.classStyle,

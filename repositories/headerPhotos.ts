@@ -52,8 +52,8 @@ export async function findPersonHeaderPhotos(supabase: SupabaseClient, userId: s
  *  an artist page's are its owner's own header pictures (the public bucket).
  *  One RPC decides which and whether the caller may see them at all, so the
  *  page never has to know whose folder anything is in. */
-export async function findTenantHeaderPhotos(supabase: SupabaseClient, tenantId: string): Promise<HeaderPhoto[]> {
-  const { data, error } = await supabase.rpc("business_header_photos", { p_business_id: tenantId });
+export async function findTenantHeaderPhotos(supabase: SupabaseClient, businessId: string): Promise<HeaderPhoto[]> {
+  const { data, error } = await supabase.rpc("business_header_photos", { p_business_id: businessId });
   if (error) {
     return [];
   }

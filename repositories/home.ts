@@ -3,14 +3,14 @@ import { addDays, dayKeyOf } from "@/lib/format/month";
 import type { CalendarEntry } from "@/types/calendar";
 import type { DanceClass } from "@/types/class";
 import type { DeckClassItem, DeckItem, DeckRole } from "@/types/home";
-import type { Tenant } from "@/types/tenant";
+import type { Business } from "@/types/tenant";
 import { findMyCalendar, findTenantCalendar } from "./calendar";
 import { findPaidReceiptsByEnrollments } from "./payments";
 
 /** Home's PassDeck reads (prototype 6863-7104). No table, no RPC, no policy: the
  *  deck is TODAY's slice of rows that already exist — the calendar's three sides
- *  (a booking is Train, a confirmed artist claim is Teach, a confirmed assistant
- *  claim is Assist), and, on a studio's Home, every session in its rooms. Every
+ *  (a booking is Train, a confirmed artist classPerson is Teach, a confirmed assistant
+ *  classPerson is Assist), and, on a studio's Home, every session in its rooms. Every
  *  read below is one the calendar or the bookings list already makes; this file
  *  only asks them for one day and says which side each row is on.
  *
@@ -35,7 +35,7 @@ const todayWindow = (nowIso: string) => {
    title; the entry carries neither poster nor room id) */
 const classOf = (e: CalendarEntry): DanceClass => ({
   id: e.classId,
-  tenantId: "",
+  businessId: "",
   title: e.title,
   shareSlug: e.shareSlug,
   style: e.style,
@@ -70,10 +70,10 @@ const classItem = (e: CalendarEntry, roleLabel: DeckRole, host: boolean, receipt
   href: `/c/${e.shareSlug}`,
   danceClass: classOf(e),
   filled: e.filled,
-  tenantName: e.tenantName,
+  businessName: e.businessName,
   tenantCity: e.tenantCity,
   artist: e.artist,
-  enrollment: e.enrollment,
+  classBooking: e.classBooking,
   receipt,
 });
 
@@ -109,13 +109,13 @@ export async function findMyDeck(supabase: SupabaseClient, userId: string, nowIs
   // one read for every paid seat on the day, not one per card
   const receipts = await findPaidReceiptsByEnrollments(
     supabase,
-    live.filter((e) => e.enrollment?.status === "enrolled").map((e) => e.enrollment!.id)
+    live.filter((e) => e.classBooking?.status === "enrolled").map((e) => e.classBooking!.id)
   );
 
   const rows: DeckItem[] = live.map((e) => {
     const role: DeckRole =
-      e.side === "hosting" ? "Teaching" : e.side === "assisting" ? "Assisting" : e.enrollment?.status === "waitlisted" ? "Waitlisted" : "Booked";
-    const r = e.enrollment ? receipts.get(e.enrollment.id) : undefined;
+      e.side === "hosting" ? "Teaching" : e.side === "assisting" ? "Assisting" : e.classBooking?.status === "waitlisted" ? "Waitlisted" : "Booked";
+    const r = e.classBooking ? receipts.get(e.classBooking.id) : undefined;
     return classItem(e, role, e.side === "hosting", r ? { amountInr: r.amountInr, method: r.method } : null);
   });
 
@@ -125,9 +125,9 @@ export async function findMyDeck(supabase: SupabaseClient, userId: string, nowIs
 /** A studio's day is not a person's day (prototype 7022-7060): what is running
  *  in ITS rooms today, drawn by the same card, in the same rail, as everybody
  *  else's. */
-export async function findStudioDeck(supabase: SupabaseClient, tenant: Tenant, nowIso: string): Promise<DeckItem[]> {
+export async function findStudioDeck(supabase: SupabaseClient, business: Business, nowIso: string): Promise<DeckItem[]> {
   const { from, to } = todayWindow(nowIso);
-  const entries = await findTenantCalendar(supabase, tenant.id, { name: tenant.name, city: tenant.city }, from, to);
+  const entries = await findTenantCalendar(supabase, business.id, { name: business.name, city: business.city }, from, to);
   const rows: DeckItem[] = entries.filter((e) => e.classStatus !== "draft").map((e) => classItem(e, "At your studio", true, null));
   return settle(rows, new Date(nowIso).getTime());
 }

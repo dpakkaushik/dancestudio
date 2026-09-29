@@ -2,13 +2,13 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { findArtistIds } from "@/repositories/profiles";
 import type { ProfileRole } from "@/types/profile";
 import type { FollowState, FollowedTenant, TenantFollower } from "@/types/follow";
-import type { TenantType } from "@/types/tenant";
+import type { BusinessType } from "@/types/tenant";
 
 /** Step 15 reads and the one write. Rows are private (the follower's own, and
  *  the followed business's members'); the COUNT is public through the
  *  aggregate-only `follower_counts`. Every "mine" query says `follower_id =
  *  auth.uid()` out loud — RLS is a ceiling, not a scope: a studio member reads
- *  their tenant's follows too, and would otherwise see them as their own.
+ *  their business's follows too, and would otherwise see them as their own.
  *
  *  ⚠⚠ A FOLLOW OUTLIVES WHAT IT NAMES, AND EVERY READ HERE HAS TO SAY SO
  *  (29 Sep 2026, the user: *"fix follow following list when it opens shows
@@ -44,12 +44,12 @@ interface MyFollowRow {
   business_id: string;
   created_at: string;
   businesses: {
-    /** ⚠ `| "org"` because the COLUMN still holds it and `TenantType` no longer
+    /** ⚠ `| "org"` because the COLUMN still holds it and `BusinessType` no longer
      *  does: 20 `businesses` rows carry `type = 'org'` as tombstones, soft-
      *  deleted by the 29 Sep sweep (the money on them is why the rows stay).
      *  Typing this as the app's own union would be the app telling itself a
      *  word cannot arrive that the database can still send. */
-    type: TenantType | "org";
+    type: BusinessType | "org";
     name: string;
     area: string | null;
     city: string | null;
@@ -97,9 +97,9 @@ const liveFollowers = <T extends FollowerRow>(rows: T[], artists: Set<string>): 
  *  everybody; an unlisted one only for its own members (the function decides). */
 export async function findFollowerCounts(
   supabase: SupabaseClient,
-  tenantIds: string[]
+  businessIds: string[]
 ): Promise<Map<string, number>> {
-  const ids = [...new Set(tenantIds)];
+  const ids = [...new Set(businessIds)];
   if (ids.length === 0) {
     return new Map();
   }
@@ -123,7 +123,7 @@ export async function findCrewFollowerCount(supabase: SupabaseClient, crewId: st
 }
 
 /** Whether the signed-in person follows this business right now. */
-export async function isFollowingTenant(supabase: SupabaseClient, tenantId: string): Promise<boolean> {
+export async function isFollowingTenant(supabase: SupabaseClient, businessId: string): Promise<boolean> {
   const {
     data: { user },
   } = await supabase.auth.getUser();
@@ -134,7 +134,7 @@ export async function isFollowingTenant(supabase: SupabaseClient, tenantId: stri
     .from("follows")
     .select("id")
     .eq("follower_id", user.id)
-    .eq("business_id", tenantId)
+    .eq("business_id", businessId)
     .is("deleted_at", null)
     .limit(1);
   if (error) {
@@ -178,9 +178,9 @@ export async function findMyFollowing(supabase: SupabaseClient): Promise<Followe
     return [
       {
         followId: r.id,
-        tenantId: r.business_id,
-        tenantType: b.type,
-        tenantName: b.name,
+        businessId: r.business_id,
+        businessType: b.type,
+        businessName: b.name,
         tenantArea: b.area,
         tenantCity: b.city,
         tenantPhotoPath: b.profile_photo_path,
@@ -196,12 +196,12 @@ export async function findMyFollowing(supabase: SupabaseClient): Promise<Followe
  *  is ambiguous — PostgREST answers 300 Multiple Choices. */
 export async function findTenantFollowers(
   supabase: SupabaseClient,
-  tenantId: string
+  businessId: string
 ): Promise<TenantFollower[]> {
   const { data, error } = await supabase
     .from("follows")
     .select(`id, follower_id, created_at, profiles!follows_follower_id_fkey (${FOLLOWER_PROFILE})`)
-    .eq("business_id", tenantId)
+    .eq("business_id", businessId)
     .is("deleted_at", null)
     .order("created_at", { ascending: false })
     .limit(MAX_LIST);
@@ -299,8 +299,8 @@ export async function findMyFollowedPeople(supabase: SupabaseClient): Promise<Pe
 
 /** Follow or unfollow — the RPC is idempotent and refuses an unlisted business
  *  or one the caller belongs to. */
-export async function setFollow(supabase: SupabaseClient, tenantId: string, on: boolean): Promise<FollowState> {
-  const { data, error } = await supabase.rpc("set_follow", { p_business_id: tenantId, p_on: on });
+export async function setFollow(supabase: SupabaseClient, businessId: string, on: boolean): Promise<FollowState> {
+  const { data, error } = await supabase.rpc("set_follow", { p_business_id: businessId, p_on: on });
   if (error) {
     throw new Error(error.message);
   }

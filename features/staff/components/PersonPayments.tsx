@@ -48,14 +48,14 @@ const TONE: Record<"done" | "transit" | "held", { word: string; ink: string; gro
 };
 
 export function PersonPayments({
-  tenantId,
-  tenantName,
+  businessId,
+  businessName,
   personName,
   avatarPath,
   history,
 }: {
-  tenantId: string;
-  tenantName: string;
+  businessId: string;
+  businessName: string;
   personName: string;
   avatarPath: string | null;
   history: PersonPayHistory;
@@ -76,7 +76,7 @@ export function PersonPayments({
             the Team desk's, so it wears Team's colour and says whose team, the
             same two elements in the same order the desk itself draws (C49) */}
         <DeskHero tool="team" as="h1" margin="12px 0 8px" />
-        <div style={{ fontSize: 11.5, color: SUB, fontWeight: 800, margin: "0 0 12px" }}>{tenantName}</div>
+        <div style={{ fontSize: 11.5, color: SUB, fontWeight: 800, margin: "0 0 12px" }}>{businessName}</div>
 
         {/* WHO — the page is about one person, so it leads with them */}
         <div style={{ display: "flex", alignItems: "center", gap: 11, margin: "14px 0 12px" }}>
@@ -93,7 +93,7 @@ export function PersonPayments({
               {personName}
             </div>
             <div style={{ fontSize: 10.5, color: SUB, marginTop: 2 }}>
-              Everything {tenantName} has paid them
+              Everything {businessName} has paid them
             </div>
           </div>
         </div>
@@ -186,10 +186,10 @@ export function PersonPayments({
             this page had none — a studio reconciling a year of somebody's pay
             was reading twelve cards on a phone. One line per SESSION, because
             this is the only screen that knows which. */}
-        <PayHistoryExport personName={personName} tenantName={tenantName} payouts={history.payouts} />
+        <PayHistoryExport personName={personName} businessName={businessName} payouts={history.payouts} />
 
         <Link
-          href={`/business/${tenantId}/staff`}
+          href={`/business/${businessId}/staff`}
           style={{ display: "block", marginTop: 14, textAlign: "center", padding: "12px", borderRadius: 999, background: "var(--card)", border: "1.5px solid var(--el)", fontWeight: 800, fontSize: 12.5, color: "var(--text)", textDecoration: "none" }}
         >
           Back to the team

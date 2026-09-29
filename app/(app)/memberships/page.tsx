@@ -35,7 +35,7 @@ export default async function MembershipsPage({ searchParams }: { searchParams: 
     findMyTeams(supabase).catch(() => []),
   ]);
   /* an organization's hosting row sells nothing — a membership is spent on classes */
-  const owned = teams.find((m) => m.memberRole === "owner" && m.tenant.type === "artist_page")?.tenant ?? null;
+  const owned = teams.find((m) => m.memberRole === "owner" && m.business.type === "artist_page")?.business ?? null;
   const selling = owned ? await findBusinessMemberships(supabase, owned.id).catch(() => []) : [];
 
   /** ⚠ WHO SOLD YOU THIS PASS, WITH THEIR FACE (28 Sep 2026, the user:

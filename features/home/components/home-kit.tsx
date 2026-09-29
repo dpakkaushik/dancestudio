@@ -43,7 +43,7 @@ export const DosShelfHead = ({ children, right, pad = "0 16px 10px" }: { childre
  *  ⚠ `org` was kept in this union through 26 Sep 2026, naming no login, so the
  *  types that share it kept compiling; it went with organizations on 29 Sep.
  *  A STUDIO's own grid is built beside the studio's home
- *  (`app/(app)/business/[tenantId]/page.tsx`), because every one of its doors is
+ *  (`app/(app)/business/[businessId]/page.tsx`), because every one of its doors is
  *  that studio's. */
 export type HomeKind = "user" | "artist";
 

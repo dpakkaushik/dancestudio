@@ -38,25 +38,25 @@ export function MyEarnings({
   const [openRow, setOpenRow] = useState<string | null>(null);
 
   const rows: LedgerRow[] = data.studios.map((s, i) => ({
-    key: s.tenantId,
-    label: s.tenantName,
+    key: s.businessId,
+    label: s.businessName,
     amount: s.earnedInr,
     colour: barColour(i),
     people: [
       {
-        key: `${s.tenantId}-sessions`,
+        key: `${s.businessId}-sessions`,
         label: `${s.sessions} session${s.sessions === 1 ? "" : "s"}`,
         meta: s.ratePerSessionInr !== null ? `${money(s.ratePerSessionInr)} each` : "mixed rates",
         status: money(s.earnedInr),
       },
       {
-        key: `${s.tenantId}-paid`,
+        key: `${s.businessId}-paid`,
         label: "Settled",
         meta: "recorded by the studio",
         status: money(s.paidInr),
       },
       {
-        key: `${s.tenantId}-due`,
+        key: `${s.businessId}-due`,
         label: "Still due",
         meta: s.dueInr > 0 ? "not settled yet" : "nothing outstanding",
         status: money(s.dueInr),
@@ -71,7 +71,7 @@ export function MyEarnings({
       ...(s.otherPaidInr > 0
         ? [
             {
-              key: `${s.tenantId}-other`,
+              key: `${s.businessId}-other`,
               label: "Other payments",
               meta: "not against sessions",
               status: money(s.otherPaidInr),
@@ -105,7 +105,7 @@ export function MyEarnings({
             note="Paid by each studio on their own cycle — DanceOS records it, it does not move the money."
             segments={data.studios
               .filter((s) => s.earnedInr > 0)
-              .map((s, i) => ({ label: s.tenantName.split(" ")[0], value: s.earnedInr, colour: barColour(i) }))}
+              .map((s, i) => ({ label: s.businessName.split(" ")[0], value: s.earnedInr, colour: barColour(i) }))}
             tiles={[
               [money(data.paidTotal), "Settled", GREEN],
               [money(data.dueTotal), "Awaiting studios", GOLD],
@@ -146,7 +146,7 @@ export function MyEarnings({
           {data.payouts.map((p) => (
             <SettlementRow
               key={p.id}
-              title={`${p.tenantName} · ${PAYOUT_METHOD_LABEL[p.method]}`}
+              title={`${p.businessName} · ${PAYOUT_METHOD_LABEL[p.method]}`}
               meta={`${p.paidOn}${p.providerRef ? ` · ${p.providerRef}` : ""} · ${p.sessionCount} session${
                 p.sessionCount === 1 ? "" : "s"
               } · ${PAYOUT_STATUS_LABEL[p.status]}`}

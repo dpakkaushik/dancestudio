@@ -15,10 +15,10 @@ import {
 } from "@/repositories/attendance";
 
 /** Step 10 register actions — thin Zod-validated wrappers; authorization
- *  (owner/trainer of the tenant, the clock's check-in window, capacity under
+ *  (owner/trainer of the business, the clock's check-in window, capacity under
  *  the class lock) lives in the RPCs. */
 
-const idSchema = z.object({ enrollmentId: z.string().uuid() });
+const idSchema = z.object({ classBookingId: z.string().uuid() });
 
 export interface RegisterActionResult {
   error: string | null;
@@ -44,17 +44,17 @@ function revalidateRegisterSurfaces() {
 
 type RegisterOp = (
   supabase: Awaited<ReturnType<typeof createSupabaseServerClient>>,
-  enrollmentId: string
+  classBookingId: string
 ) => Promise<void>;
 
-async function runRegisterOp(op: RegisterOp, input: { enrollmentId: string }): Promise<RegisterActionResult> {
+async function runRegisterOp(op: RegisterOp, input: { classBookingId: string }): Promise<RegisterActionResult> {
   const parsed = idSchema.safeParse(input);
   if (!parsed.success) {
     return { error: "Invalid booking" };
   }
   const supabase = await requireUser();
   try {
-    await op(supabase, parsed.data.enrollmentId);
+    await op(supabase, parsed.data.classBookingId);
     revalidateRegisterSurfaces();
     return { error: null };
   } catch (error: unknown) {
@@ -62,20 +62,20 @@ async function runRegisterOp(op: RegisterOp, input: { enrollmentId: string }): P
   }
 }
 
-export async function checkInAction(input: { enrollmentId: string }): Promise<RegisterActionResult> {
+export async function checkInAction(input: { classBookingId: string }): Promise<RegisterActionResult> {
   return runRegisterOp(checkIn, input);
 }
 
-export async function undoCheckInAction(input: { enrollmentId: string }): Promise<RegisterActionResult> {
+export async function undoCheckInAction(input: { classBookingId: string }): Promise<RegisterActionResult> {
   return runRegisterOp(undoCheckIn, input);
 }
 
-export async function giveSpotAction(input: { enrollmentId: string }): Promise<RegisterActionResult> {
+export async function giveSpotAction(input: { classBookingId: string }): Promise<RegisterActionResult> {
   return runRegisterOp(giveSpot, input);
 }
 
 export async function removeFromWaitlistAction(input: {
-  enrollmentId: string;
+  classBookingId: string;
 }): Promise<RegisterActionResult> {
   return runRegisterOp(removeFromWaitlist, input);
 }
@@ -111,15 +111,15 @@ export async function bookAtTheDoorAction(input: {
   }
   const supabase = await requireUser();
 
-  let enrollmentId: string;
+  let classBookingId: string;
   try {
-    enrollmentId = await bookForPerson(supabase, parsed.data.sessionId, parsed.data.userId);
+    classBookingId = await bookForPerson(supabase, parsed.data.sessionId, parsed.data.userId);
   } catch (error: unknown) {
     return { error: error instanceof Error ? error.message : "Could not book them in" };
   }
 
   try {
-    await checkIn(supabase, enrollmentId);
+    await checkIn(supabase, classBookingId);
   } catch (error: unknown) {
     revalidateRegisterSurfaces();
     const why = error instanceof Error ? error.message : "the register would not take it";
@@ -149,15 +149,15 @@ export async function addWalkInAction(input: {
   }
   const supabase = await requireUser();
 
-  let enrollmentId: string;
+  let classBookingId: string;
   try {
-    enrollmentId = await addWalkIn(supabase, parsed.data.sessionId, parsed.data.name);
+    classBookingId = await addWalkIn(supabase, parsed.data.sessionId, parsed.data.name);
   } catch (error: unknown) {
     return { error: error instanceof Error ? error.message : "Could not record the walk-in" };
   }
 
   try {
-    await checkIn(supabase, enrollmentId);
+    await checkIn(supabase, classBookingId);
   } catch (error: unknown) {
     revalidateRegisterSurfaces();
     const why = error instanceof Error ? error.message : "the register would not take it";
@@ -169,7 +169,7 @@ export async function addWalkInAction(input: {
 }
 
 export async function removeWalkInAction(input: {
-  enrollmentId: string;
+  classBookingId: string;
 }): Promise<RegisterActionResult> {
   return runRegisterOp(removeWalkIn, input);
 }

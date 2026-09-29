@@ -7,7 +7,7 @@ import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { findProfileById } from "@/repositories/profiles";
 import { createRoom } from "@/repositories/rooms";
 import { createTenantWithOwner, setTenantLocation, updateTenantProfile } from "@/repositories/tenants";
-import type { TenantType } from "@/types/tenant";
+import type { BusinessType } from "@/types/tenant";
 
 export interface TenantActionState {
   error: string | null;
@@ -133,7 +133,7 @@ export async function createTenantAction(
      artist and an organization all open a STUDIO here, and `why_no_studio()`
      inside the RPC is the one gate (at most fifteen per account). `profile` is
      still read so an account with no profile is sent to onboarding first. */
-  const type: TenantType = "studio";
+  const type: BusinessType = "studio";
   void profile;
   if (type === "studio") {
     if (!parsed.data.city) return { error: "A studio needs a city" };
@@ -142,16 +142,16 @@ export async function createTenantAction(
     if (parsed.data.styles.length === 0) return { error: "A studio says at least one dance style" };
   }
 
-  let tenantId: string;
+  let businessId: string;
   try {
-    const tenant = await createTenantWithOwner(supabase, {
+    const business = await createTenantWithOwner(supabase, {
       name: parsed.data.name,
       type,
       area: parsed.data.area ?? null,
       city: parsed.data.city ?? null,
       styles: parsed.data.styles,
     });
-    tenantId = tenant.id;
+    businessId = business.id;
   } catch (error: unknown) {
     return {
       error: error instanceof Error ? error.message : "Could not create the business",
@@ -164,7 +164,7 @@ export async function createTenantAction(
      the sheet says so; the message says which room did not make it. */
   for (const room of type === "studio" ? parsed.data.rooms : []) {
     try {
-      await createRoom(supabase, { tenantId, name: room.name, capacity: room.capacity, amenities: [] });
+      await createRoom(supabase, { businessId, name: room.name, capacity: room.capacity, amenities: [] });
     } catch (error: unknown) {
       revalidatePath("/business");
       return {
@@ -187,7 +187,7 @@ export async function createTenantAction(
      the moment the studio exists. A refusal does not undo the studio: it is said
      in the toast, and both fields are on its Edit sheet. */
   try {
-    await updateTenantProfile(supabase, tenantId, {
+    await updateTenantProfile(supabase, businessId, {
       foundedYear: null,
       phone: parsed.data.phone,
       socials: [],
@@ -201,7 +201,7 @@ export async function createTenantAction(
   if (type === "studio" && parsed.data.lat !== undefined && parsed.data.lng !== undefined) {
     try {
       await setTenantLocation(supabase, {
-        tenantId,
+        businessId,
         lat: parsed.data.lat,
         lng: parsed.data.lng,
         area: parsed.data.area ?? null,
@@ -219,6 +219,6 @@ export async function createTenantAction(
   // client state open — refresh the list and let the sheet close itself instead
   revalidatePath("/business");
   revalidatePath("/");
-  return { error: null, created: true, note, businessId: tenantId };
+  return { error: null, created: true, note, businessId: businessId };
 }
 

@@ -498,7 +498,7 @@ export const SchedIcon = () => (
  *  be followed (19 Sep 2026).
  *
  *  ⚠ THE BUILDING WAS KEYED `"org"` UNTIL 29 Sep 2026 AND ALWAYS DREW A STUDIO.
- *  Both follow sheets passed `t.tenantType === "studio" ? "org" : "artist"`, so
+ *  Both follow sheets passed `t.businessType === "studio" ? "org" : "artist"`, so
  *  the one glyph named after an organization was the one thing in this file an
  *  organization never used. Renaming it is what let the word go without taking a
  *  studio's own mark with it. */

@@ -42,7 +42,7 @@ const SCANNABLE_PX_PER_MODULE = 3;
  *  caller that meant it went: a DOS-CL-#### square claiming to be a class's
  *  door key, which no door in this app has ever read. Every live caller names
  *  its own square (an invite code, a profile, a booking link), so what this
- *  default governs is the NEXT one, and it must not hand it a claim. */
+ *  default governs is the NEXT one, and it must not hand it a classPerson. */
 export function QRBlock({
   code,
   size = 96,

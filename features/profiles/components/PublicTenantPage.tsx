@@ -7,27 +7,27 @@ import { findMembershipsOnSale } from "@/repositories/memberships";
 import { findPublicTenantProfile } from "@/repositories/publicProfile";
 import { findPersonFollowerCounts } from "@/repositories/publicPerson";
 import { findMyMembershipRole } from "@/repositories/tenants";
-import type { TenantType } from "@/types/tenant";
+import type { BusinessType } from "@/types/tenant";
 import { PublicProfile } from "./PublicProfile";
 
 /** The public page of a business, for anybody — a stranger, a follower, or its
  *  own members. Not signed in is fine: RLS shows a listed business to everyone
  *  and an unlisted one to its members only, so "not found" is the honest answer
  *  for both a bad id and somebody else's private business. */
-export async function PublicTenantPage({ tenantId, expect }: { tenantId: string; expect: TenantType }) {
+export async function PublicTenantPage({ businessId, expect }: { businessId: string; expect: BusinessType }) {
   const supabase = await createSupabaseServerClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
 
-  /* the tenant, its styles, its TEAM (19 Sep 2026) and its follower count, in one read set */
-  const profile = await findPublicTenantProfile(supabase, tenantId);
+  /* the business, its styles, its TEAM (19 Sep 2026) and its follower count, in one read set */
+  const profile = await findPublicTenantProfile(supabase, businessId);
   if (!profile) {
     notFound();
   }
   /* a studio opened under /artist (or the reverse) lands on its own address */
-  if (profile.tenant.type !== expect) {
-    redirect(publicProfilePath(profile.tenant));
+  if (profile.business.type !== expect) {
+    redirect(publicProfilePath(profile.business));
   }
 
   /* ⚠ THE VIEWER'S OWN PROFILE IS NO LONGER READ (20 Sep 2026). It was fetched
@@ -36,13 +36,13 @@ export async function PublicTenantPage({ tenantId, expect }: { tenantId: string;
      `20260920180000_an_organization_follows`. One round trip fewer on a page
      strangers open. */
   const [following, role, header, memberships, ownerCounts] = await Promise.all([
-    user ? isFollowingTenant(supabase, tenantId) : Promise.resolve(false),
-    user ? findMyMembershipRole(supabase, tenantId) : Promise.resolve(null),
+    user ? isFollowingTenant(supabase, businessId) : Promise.resolve(false),
+    user ? findMyMembershipRole(supabase, businessId) : Promise.resolve(null),
     /* THE HEADER (15 Sep 2026): the pictures that swipe across the top — the
        RPC decides what this viewer may see, and signs nothing it may not */
-    findTenantHeaderPhotos(supabase, tenantId),
+    findTenantHeaderPhotos(supabase, businessId),
     /* WHAT IT SELLS (19 Sep 2026): the live memberships of a listed business — anybody's to read */
-    findMembershipsOnSale(supabase, tenantId),
+    findMembershipsOnSale(supabase, businessId),
     /* ⚠ WHAT THIS STUDIO FOLLOWS IS WHAT ITS OWNER FOLLOWS (20 Sep 2026, the
        user: "Organization and Studio still dont have Following section in
        profile and home"). A studio cannot follow ANYTHING on its own and never
@@ -64,7 +64,7 @@ export async function PublicTenantPage({ tenantId, expect }: { tenantId: string;
   /* WHO follows you is the owner's to read (B6). The policy would admit any
      member; the app asks only when the owner is the one looking, so the second
      query is not made for the other 99% of visits either. */
-  const followers = role === "owner" ? await findTenantFollowers(supabase, tenantId) : null;
+  const followers = role === "owner" ? await findTenantFollowers(supabase, businessId) : null;
 
   /* ⚠ `canEditPhoto` and `ownerId` no longer travel to the page (20 Sep 2026):
      a studio's pictures are changed on the studio's OWN HOME — the ⊕ on the disc
@@ -75,15 +75,15 @@ export async function PublicTenantPage({ tenantId, expect }: { tenantId: string;
     <PublicProfile
       profile={profile}
       header={header}
-      path={publicProfilePath(profile.tenant)}
+      path={publicProfilePath(profile.business)}
       following={following}
       signedIn={Boolean(user)}
       followingN={followingN}
       isMember={role !== null}
       canEdit={role === "owner"}
       followers={followers}
-      scheduleHref={publicSchedulePath(profile.tenant)}
-      manageHref={profile.tenant.type === "studio" ? `/business/${tenantId}` : `/business/${tenantId}/classes`}
+      scheduleHref={publicSchedulePath(profile.business)}
+      manageHref={profile.business.type === "studio" ? `/business/${businessId}` : `/business/${businessId}/classes`}
       memberships={memberships}
     />
   );

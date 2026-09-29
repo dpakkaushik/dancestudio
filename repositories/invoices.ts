@@ -5,7 +5,7 @@ import { dosClassLabel } from "@/lib/constants/styles";
  *  for what, how much, its state. A person's ledger is the payments THEY made
  *  (`user_id = auth.uid()` out loud); a business's is the payments it took.
  *  Both read Step 9's `payments` under the RLS it set: the payer their own, the
- *  tenant's members their studio's. Nothing is invented — a captured payment is
+ *  business's members their studio's. Nothing is invented — a captured payment is
  *  PAID, a refunded one says so.
  *
  *  THREE KINDS OF ROW since 17 Sep 2026: a class seat, an event ticket or
@@ -154,18 +154,18 @@ export async function findMyInvoices(supabase: SupabaseClient): Promise<InvoiceR
 /** the payments a business took — its ledger (members, by RLS). Seats, and the
  *  historical tickets an organization's hosting row took (29 Sep 2026); never
  *  its own subscription, which is money it paid, not money it took. */
-export async function findTenantInvoices(supabase: SupabaseClient, tenantId: string): Promise<InvoiceRow[]> {
+export async function findTenantInvoices(supabase: SupabaseClient, businessId: string): Promise<InvoiceRow[]> {
   const { data, error } = await supabase
     .from("payments")
     .select(ORDER_SELECT)
-    .eq("business_id", tenantId)
+    .eq("business_id", businessId)
     .eq("kind", "order")
     .in("status", ["captured", "refunded"])
     .is("deleted_at", null)
     .order("created_at", { ascending: false })
     .limit(500);
   if (error) {
-    throw new Error(`invoices.tenant failed: ${error.message}`);
+    throw new Error(`invoices.business failed: ${error.message}`);
   }
   return ((data ?? []) as unknown as OrderPaymentRow[]).map((r) => toOrderRow(r, "tenant"));
 }

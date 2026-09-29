@@ -4,7 +4,7 @@ import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import { updateTenantProfileAction } from "@/features/settings/server-actions/plans";
 import type { MethodUse } from "@/repositories/invoices";
-import type { AcceptedMethods, Tenant } from "@/types/tenant";
+import type { AcceptedMethods, Business } from "@/types/tenant";
 import { BizPage, BizToast, bizBtn, bizCard, dayWords, eyebrow, rupees } from "./settings-kit";
 
 /** S_payments (16531-16620): "Payments" for a person, "Payments & verification"
@@ -66,7 +66,7 @@ const ACCEPT_ROWS: Array<[keyof AcceptedMethods, string]> = [
   ["bank", "Bank transfer"],
 ];
 
-export function PaymentsScreen({ side, methods, tenant = null, canEdit = false }: { side: "mine" | "tenant"; methods: MethodUse[]; tenant?: Tenant | null; canEdit?: boolean }) {
+export function PaymentsScreen({ side, methods, business = null, canEdit = false }: { side: "mine" | "tenant"; methods: MethodUse[]; business?: Business | null; canEdit?: boolean }) {
   const router = useRouter();
   const [pv, setPv] = useState<"pay" | "ver">("pay");
   const [add, setAdd] = useState<Kind | null>(null);
@@ -76,15 +76,15 @@ export function PaymentsScreen({ side, methods, tenant = null, canEdit = false }
     setToast(m);
     setTimeout(() => setToast(null), 2600);
   };
-  const isBiz = side === "tenant" && tenant !== null;
-  const verified = Boolean(tenant?.verifiedAt);
+  const isBiz = side === "tenant" && business !== null;
+  const verified = Boolean(business?.verifiedAt);
 
   const flip = (k: keyof AcceptedMethods) => {
-    if (!tenant) return;
+    if (!business) return;
     if (!canEdit) return fire("Only the owner changes what the business accepts");
-    const accepts = { ...tenant.accepts, [k]: !tenant.accepts[k] };
+    const accepts = { ...business.accepts, [k]: !business.accepts[k] };
     start(async () => {
-      const out = await updateTenantProfileAction({ tenantId: tenant.id, foundedYear: tenant.foundedYear, phone: tenant.phone, socials: tenant.socials, enquiryTypes: tenant.enquiryTypes, accepts });
+      const out = await updateTenantProfileAction({ businessId: business.id, foundedYear: business.foundedYear, phone: business.phone, socials: business.socials, enquiryTypes: business.enquiryTypes, accepts });
       if (out.error) return fire(out.error);
       fire(`${ACCEPT_ROWS.find(([kk]) => kk === k)?.[1]} ${accepts[k] ? "enabled" : "disabled"}`);
       router.refresh();
@@ -92,7 +92,7 @@ export function PaymentsScreen({ side, methods, tenant = null, canEdit = false }
   };
 
   const checklist: Array<[string, string]> =
-    tenant?.type === "studio"
+    business?.type === "studio"
       ? [
           ["Business proof", "GST or shop registration"],
           ["Address proof", "A utility bill for the premises"],
@@ -135,7 +135,7 @@ export function PaymentsScreen({ side, methods, tenant = null, canEdit = false }
                 )}
               </span>
               <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ fontSize: 13.5, fontWeight: 900 }}>{verified ? (tenant.type === "studio" ? "Verified studio" : "Verified artist") : "Not verified yet"}</div>
+                <div style={{ fontSize: 13.5, fontWeight: 900 }}>{verified ? (business.type === "studio" ? "Verified studio" : "Verified artist") : "Not verified yet"}</div>
                 <div style={{ fontSize: 10.5, color: "var(--sub)", marginTop: 1 }}>{verified ? "Green tick shown on your profile and cards" : "The tick appears once Cashfree's KYC clears your account"}</div>
               </div>
             </div>
@@ -164,7 +164,7 @@ export function PaymentsScreen({ side, methods, tenant = null, canEdit = false }
               </div>
             );
           })}
-          <button type="button" onClick={() => fire(verified ? `Verified ${dayWords(tenant.verifiedAt as string)} — no review is due` : "Verification runs through Cashfree's KYC when the account goes live")} style={bizBtn}>
+          <button type="button" onClick={() => fire(verified ? `Verified ${dayWords(business.verifiedAt as string)} — no review is due` : "Verification runs through Cashfree's KYC when the account goes live")} style={bizBtn}>
             {verified ? "Re-verify documents" : "Start verification"}
           </button>
           <div style={{ fontSize: 10, color: "var(--muted)", lineHeight: 1.5, margin: "8px 2px 0" }}>DanceOS never holds an Aadhaar, a PAN or a bank statement. The tick is set by DanceOS when the rail&apos;s KYC clears — a business cannot tick itself.</div>
@@ -224,7 +224,7 @@ export function PaymentsScreen({ side, methods, tenant = null, canEdit = false }
             <div style={{ ...bizCard, marginTop: 10 }}>
               <div style={{ fontSize: 9.5, fontWeight: 900, letterSpacing: 0.8, color: "var(--muted)", marginBottom: 8 }}>ACCEPTED FROM STUDENTS</div>
               {ACCEPT_ROWS.map(([k, l]) => {
-                const on = tenant.accepts[k];
+                const on = business.accepts[k];
                 return (
                   <div key={k} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "7px 0", borderBottom: "1.5px solid var(--el)" }}>
                     <span style={{ fontSize: 12.5 }}>{l}</span>

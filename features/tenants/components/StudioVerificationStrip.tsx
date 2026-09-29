@@ -12,7 +12,7 @@ import { INK, LILAC, SUB } from "@/lib/design/tokens";
 import { PROOF_MAX, PROOF_MIN } from "@/lib/media/proof";
 import type { StudioVerificationState } from "@/repositories/studioVerification";
 import type { SocialLink } from "@/types/profile";
-import type { Tenant } from "@/types/tenant";
+import type { Business } from "@/types/tenant";
 
 const CARD = "var(--card)";
 const EL = "var(--el)";
@@ -179,12 +179,12 @@ function WhySheet({ onClose }: { onClose: () => void }) {
  *  request in one press, because to the person filling it in they were always
  *  one act. */
 export function StudioVerificationStrip({
-  tenant,
+  business,
   orgId,
   state,
   onDone,
 }: {
-  tenant: Tenant;
+  business: Business;
   /** the owner's own id — the photos go into their folder in the private bucket */
   orgId: string;
   state: StudioVerificationState;
@@ -200,7 +200,7 @@ export function StudioVerificationStrip({
   const [links, setLinks] = useState<Record<string, string>>(() => {
     const seed: Record<string, string> = {};
     FIELDS.forEach((f) => {
-      seed[f.platform] = tenant.socials.find((s) => s.platform === f.platform)?.url ?? "";
+      seed[f.platform] = business.socials.find((s) => s.platform === f.platform)?.url ?? "";
     });
     return seed;
   });
@@ -219,25 +219,25 @@ export function StudioVerificationStrip({
         url: asUrl(links[f.platform]!),
       }));
       /* every other link the studio keeps (WhatsApp, a custom one) is left alone */
-      const others = tenant.socials.filter((s) => !FIELDS.some((f) => f.platform === s.platform));
+      const others = business.socials.filter((s) => !FIELDS.some((f) => f.platform === s.platform));
       const saved = await updateTenantProfileAction({
-        tenantId: tenant.id,
-        foundedYear: tenant.foundedYear,
-        phone: tenant.phone,
+        businessId: business.id,
+        foundedYear: business.foundedYear,
+        phone: business.phone,
         socials: [...next, ...others],
-        enquiryTypes: tenant.enquiryTypes,
-        accepts: tenant.accepts,
+        enquiryTypes: business.enquiryTypes,
+        accepts: business.accepts,
       });
       if (saved.error) {
         setErr(saved.error);
         return;
       }
-      const out = await requestStudioVerificationAction({ tenantId: tenant.id });
+      const out = await requestStudioVerificationAction({ businessId: business.id });
       if (out.error) {
         setErr(out.error);
         return;
       }
-      onDone?.(`Sent — a DanceOS admin will look at ${tenant.name}`);
+      onDone?.(`Sent — a DanceOS admin will look at ${business.name}`);
       router.refresh();
     });
 
@@ -359,7 +359,7 @@ export function StudioVerificationStrip({
           <span>STUDIO PHOTOS</span>
           <span style={{ marginLeft: "auto", fontWeight: 700, letterSpacing: 0, color: MUTED, textTransform: "none" }}>also the header of your studio page</span>
         </div>
-        <ProofPhotos orgId={orgId} tenantId={tenant.id} initialPhotos={state.photos} compact onCount={setPhotoCount} />
+        <ProofPhotos orgId={orgId} businessId={business.id} initialPhotos={state.photos} compact onCount={setPhotoCount} />
       </div>
 
       {/* ── the one action ── */}
@@ -367,7 +367,7 @@ export function StudioVerificationStrip({
         type="button"
         onClick={submit}
         disabled={!ready || pending}
-        aria-label={`Submit ${tenant.name} for verification`}
+        aria-label={`Submit ${business.name} for verification`}
         style={{
           width: "100%",
           marginTop: 12,

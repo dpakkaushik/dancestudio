@@ -5,7 +5,7 @@ import { test, expect, type BrowserContext, type Locator, type Page } from "@pla
  * organization and DanceOS, the decision landing inside it, the audit log, and
  * suspension.
  *
- * The claims under test, in the order the story tells them:
+ * The classPeople under test, in the order the story tells them:
  *   1. a stranger cannot see the panel exists — every route 404s;
  *   2. a STUDIO under review says so on the hub (11 Sep 2026 — the review moved
  *      from the organization to the studio), with a door to write to DanceOS
@@ -329,7 +329,7 @@ test.describe("the admin panel: support, trust, accountability", () => {
     await adminGoto(admin, `panel-admin-${stamp}@example.com`, `/admin/verifications?q=${encodeURIComponent(studioName)}`);
     const request = admin.getByTestId("verification-request").filter({ hasText: studioName });
     await expect(request).toBeVisible();
-    // R16: the links say who they claim to be, the photos say there is a floor
+    // R16: the links say who they classPerson to be, the photos say there is a floor
     await expect(request.getByText("5 PHOTOS OF THE SPACE")).toBeVisible();
     await request.getByRole("button", { name: `Reject ${studioName}` }).click();
     await admin.getByRole("textbox").last().fill("Your Instagram has three posts and no classes — show us the studio.");

@@ -8,7 +8,7 @@ import type { EnrollmentStatus } from "@/types/enrollment";
  *  is doing on the floor — "a dancer does not attend a class, they TRAIN; a
  *  teacher does not host one, they TEACH" (DOS_SIDES, DanceOSApp.jsx:6666) —
  *  and here they come from real rows: a booking is Train, a confirmed artist
- *  claim is Teach, a confirmed assistant claim is Assist. */
+ *  classPerson is Teach, a confirmed assistant classPerson is Assist. */
 export type CalendarSide = "attending" | "assisting" | "hosting";
 
 export interface CalendarEntry {
@@ -28,11 +28,11 @@ export interface CalendarEntry {
   dayKey: string;
   /** the IST hour it starts — the day view's rail */
   hour: number;
-  tenantName: string;
+  businessName: string;
   tenantCity: string | null;
   side: CalendarSide;
   /** the viewer's own booking, when the side is Train */
-  enrollment: { id: string; status: EnrollmentStatus } | null;
+  classBooking: { id: string; status: EnrollmentStatus } | null;
   /** seats taken, for the tile's "N spots left" */
   filled: number;
   /** the confirmed teacher, whose face the card's centre column wears (18 Sep

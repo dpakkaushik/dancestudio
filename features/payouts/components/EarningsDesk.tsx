@@ -19,7 +19,7 @@ import {
   type PayoutMethod,
   type PayoutStatus,
   type PersonPayLedger,
-  type TenantPayLedger,
+  type BusinessPayLedger,
 } from "@/types/payout";
 import {
   DOS_MONO,
@@ -118,17 +118,17 @@ function Sheet({
 }
 
 export function EarningsDesk({
-  tenantId,
-  tenantName,
+  businessId,
+  businessName,
   ledger,
   income,
   monthLabel,
   selfEarningsHref = null,
   summary = true,
 }: {
-  tenantId: string;
-  tenantName: string;
-  ledger: TenantPayLedger;
+  businessId: string;
+  businessName: string;
+  ledger: BusinessPayLedger;
   income: TenantIncome;
   monthLabel: string;
   /** `/earnings` — what STUDIOS have paid this person — drawn only on an artist
@@ -246,7 +246,7 @@ export function EarningsDesk({
 
       {eview === "hist" ? (
         <MonthStatements
-          tenantName={tenantName}
+          businessName={businessName}
           months={income.previous}
           openKey={eopen}
           onToggle={(key) => setEopen(eopen === key ? null : key)}
@@ -502,7 +502,7 @@ export function EarningsDesk({
               const ok = await run(
                 () =>
                   recordPayoutAction({
-                    tenantId,
+                    businessId,
                     userId: payPerson.userId,
                     sessionIds: [...chosen],
                     method,

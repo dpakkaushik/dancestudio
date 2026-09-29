@@ -5,7 +5,7 @@ import { publicProfilePath, publicSchedulePath } from "@/lib/routes/publicProfil
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { findPublicTenantSchedule } from "@/repositories/calendar";
 import { findPublicTenant } from "@/repositories/publicProfile";
-import type { TenantType } from "@/types/tenant";
+import type { BusinessType } from "@/types/tenant";
 
 const stampNowIso = (): string => new Date().toISOString();
 
@@ -15,16 +15,16 @@ const MONTHS_AHEAD = 3;
 
 /** The prototype's `PubCal` (19140): S_profiletab calendarOnly pubSchedule —
  *  published classes still to come, one view, no switcher. */
-export async function PublicSchedulePage({ tenantId, expect }: { tenantId: string; expect: TenantType }) {
+export async function PublicSchedulePage({ businessId, expect }: { businessId: string; expect: BusinessType }) {
   const supabase = await createSupabaseServerClient();
-  const tenant = await findPublicTenant(supabase, tenantId);
-  if (!tenant) {
+  const business = await findPublicTenant(supabase, businessId);
+  if (!business) {
     notFound();
   }
   /* ⚠ the `type === "org"` guard went with organizations (29 Sep 2026) — R15's,
      for a hosting row nobody browsed to */
-  if (tenant.type !== expect) {
-    redirect(publicSchedulePath(tenant));
+  if (business.type !== expect) {
+    redirect(publicSchedulePath(business));
   }
 
   const now = stampNowIso();
@@ -32,8 +32,8 @@ export async function PublicSchedulePage({ tenantId, expect }: { tenantId: strin
   const toIso = monthStartIso(shiftMonthKey(months[months.length - 1].key, -1));
   const entries = await findPublicTenantSchedule(
     supabase,
-    tenantId,
-    { name: tenant.name, city: tenant.city },
+    businessId,
+    { name: business.name, city: business.city },
     now,
     toIso
   );
@@ -41,11 +41,11 @@ export async function PublicSchedulePage({ tenantId, expect }: { tenantId: strin
   return (
     <CalendarScreen
       mode="public"
-      title={tenant.name}
+      title={business.name}
       months={months}
       todayKey={dayKeyOf(now)}
       entries={entries}
-      emptyHref={publicProfilePath(tenant)}
+      emptyHref={publicProfilePath(business)}
     />
   );
 }

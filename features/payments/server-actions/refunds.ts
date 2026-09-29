@@ -19,7 +19,7 @@ import {
  *  API call fires. If the call fails, or no keys are configured, the row stays
  *  'pending' and stays on the queue — ledgered rather than lost. The rail's
  *  refund.processed webhook is what finally closes it (Step 9's rails), so this
- *  action never claims the money has landed. */
+ *  action never classPeople the money has landed. */
 
 export interface RefundActionResult {
   message: string | null;

@@ -87,7 +87,7 @@ export function AddAssistant({ classId, col, exclude }: { classId: string; col: 
  *  ⚠⚠ IT IS NOT ONLY AN ASSISTANT'S ANY MORE (28 Sep 2026). `20260928100000` made
  *  the register a DEFAULT the person taking the class is born with and an owner
  *  may take back — and `set_class_person_powers` has always accepted an ARTIST
- *  claim, while this control was rendered inside the assistants section alone. So
+ *  classPerson, while this control was rendered inside the assistants section alone. So
  *  half of that rule existed in the database with no control on top of it: the
  *  only way an owner could take the register back off a teacher was a
  *  hand-written API call. The chips are drawn on the artist's own row now.
@@ -95,7 +95,7 @@ export function AddAssistant({ classId, col, exclude }: { classId: string; col: 
  *  ⚠ `remove` IS OFF THERE, on purpose: the artist column already carries
  *  **Change**, which is the owner's door to swapping who takes the class, and two
  *  buttons for one job is what this repo keeps paying for. */
-export function AssistantControls({ claim, isOwner, col, remove = true }: { claim: ClassClaim; isOwner: boolean; col: string; remove?: boolean }) {
+export function AssistantControls({ classPerson, isOwner, col, remove = true }: { classPerson: ClassClaim; isOwner: boolean; col: string; remove?: boolean }) {
   const router = useRouter();
   const [pending, start] = useTransition();
   const [err, setErr] = useState<string | null>(null);
@@ -108,27 +108,27 @@ export function AssistantControls({ claim, isOwner, col, remove = true }: { clai
     });
   return (
     <div style={{ display: "flex", alignItems: "center", gap: 6, flexShrink: 0, flexWrap: "wrap", justifyContent: "flex-end" }}>
-      {isOwner && claim.status === "confirmed"
+      {isOwner && classPerson.status === "confirmed"
         ? (
             [
               ["canAttendance", "Attendance"],
               ["canRefunds", "Refunds"],
             ] as Array<["canAttendance" | "canRefunds", string]>
           ).map(([job, word]) => {
-            const has = claim[job];
+            const has = classPerson[job];
             return (
               <button
                 key={job}
                 type="button"
                 disabled={pending}
                 aria-pressed={has}
-                aria-label={`${claim.personName} holds ${word}`}
+                aria-label={`${classPerson.personName} holds ${word}`}
                 onClick={() =>
                   run(() =>
                     setClaimPowersAction({
-                      claimId: claim.id,
-                      canAttendance: job === "canAttendance" ? !claim.canAttendance : claim.canAttendance,
-                      canRefunds: job === "canRefunds" ? !claim.canRefunds : claim.canRefunds,
+                      classPersonId: classPerson.id,
+                      canAttendance: job === "canAttendance" ? !classPerson.canAttendance : classPerson.canAttendance,
+                      canRefunds: job === "canRefunds" ? !classPerson.canRefunds : classPerson.canRefunds,
                     })
                   )
                 }
@@ -141,7 +141,7 @@ export function AssistantControls({ claim, isOwner, col, remove = true }: { clai
           })
         : null}
       {remove ? (
-        <button type="button" disabled={pending} aria-label={`Remove ${claim.personName} from this class`} onClick={() => run(() => withdrawClaimAction({ claimId: claim.id }))} style={{ ...pill(false, col), color: "#F87171" }}>
+        <button type="button" disabled={pending} aria-label={`Remove ${classPerson.personName} from this class`} onClick={() => run(() => withdrawClaimAction({ classPersonId: classPerson.id }))} style={{ ...pill(false, col), color: "#F87171" }}>
           Remove
         </button>
       ) : null}

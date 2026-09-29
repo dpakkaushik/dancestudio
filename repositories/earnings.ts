@@ -114,7 +114,7 @@ export async function findBusinessEarnings(
       .limit(MAX_ROWS),
     /* ⚠ `done` and `in_transit` only: money that has left or is leaving. An
        `on_hold` or `failed` payout has not been spent, and the existing desk
-       tiles all three together under "In transit", which is a different claim. */
+       tiles all three together under "In transit", which is a different classPerson. */
     supabase
       .from("payouts")
       .select("amount_inr, paid_on, status")

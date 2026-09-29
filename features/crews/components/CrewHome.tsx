@@ -212,10 +212,10 @@ export function CrewHome({ crew, members, header = [], followers = 0, followingN
         {/* no gap of its own — the hero's own bottom padding is it (21 Sep 2026) */}
         <ActionRow>
           <EnquiryButton
-            tenantId={crew.id}
+            businessId={crew.id}
             crewId={crew.id}
-            tenantName={crew.name}
-            tenantType="artist_page"
+            businessName={crew.name}
+            businessType="artist_page"
             signedIn
             accent={CREW_GRAD[1]}
             cannotAsk="You are in this crew — enquiries come to you here"

@@ -32,7 +32,7 @@ import { findMyMemberships, runsTheBusiness } from "@/repositories/tenants";
  *  memberships, the crews, the plan and the admin check all need only the user
  *  id, so they are read together. ⚠ `findMyGst` LEFT THIS BATCH on 26 Sep 2026
  *  with the login it read for: a GST number is a business row's now, and the
- *  organization's Settings reads it off the same `Tenant` every other tile uses. */
+ *  organization's Settings reads it off the same `Business` every other tile uses. */
 export default async function AppLayout({ children }: { children: ReactNode }) {
   const supabase = await createSupabaseServerClient();
   const {
@@ -79,8 +79,8 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
     switcher.push({ key: "me", href: "/", label: profile.fullName, sub: plan?.active ? "Artist" : "User", kind: "me" });
     for (const m of runsA) {
       /* ⚠ the organization arm went with organizations (29 Sep 2026) */
-      if (m.tenant.type === "studio") {
-        switcher.push({ key: m.tenant.id, href: `/business/${m.tenant.id}`, label: m.tenant.name, sub: "Studio", kind: "studio" });
+      if (m.business.type === "studio") {
+        switcher.push({ key: m.business.id, href: `/business/${m.business.id}`, label: m.business.name, sub: "Studio", kind: "studio" });
       }
     }
     for (const c of ledCrews) {
@@ -102,14 +102,14 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
         role: profile.role,
         plan,
         isAdmin,
-        ownBusiness: memberships.find((m) => m.memberRole === "owner" && m.tenant.type === "artist_page")?.tenant ?? null,
+        ownBusiness: memberships.find((m) => m.memberRole === "owner" && m.business.type === "artist_page")?.business ?? null,
         /* ⚠ THE SAME RULE AS THE SWITCHER, and it has to be: the Settings sheet's
            subject is `hereItem`, which is what the switcher marks HERE (C53). A
            business the switcher no longer names could never be the subject, so a
            wider list here would only be a list nothing can reach — and the THIS
            STUDIO block it feeds carries Verification, the Subscription and the
            money desks, which are the last things a visiting teacher should meet. */
-        businesses: runsA.filter((m) => m.tenant.type === "studio").map((m) => m.tenant),
+        businesses: runsA.filter((m) => m.business.type === "studio").map((m) => m.business),
       }
     : null;
 

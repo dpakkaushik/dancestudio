@@ -2,7 +2,109 @@
 
 ## LAST SESSION (29 Sep 2026) — replaced on every push (Rule 13)
 
-> ### A WALK-IN HAS A NAME, AND TWO "LEFTOVERS" THAT WERE NOT (29 Sep 2026, latest) — ⚠ ONE MIGRATION APPLIED (`20260929130000`), dry run **32/32** rolled back first, read back live **17/17**
+> ### THE APP SPEAKS THE DATABASE'S LANGUAGE AT LAST — #0y STAGE 1 (29 Sep 2026, latest) — no migration, ⚠ ZERO BEHAVIOUR CHANGE BY CONSTRUCTION
+> The user: *"fix all of them and ask me questions with suggestions to solve
+> them"*, and, asked how to take the rename the 16 Sep session deferred
+> (*"strings now, identifiers next"*), they chose **two stages**. This is stage 1:
+> the TYPES and IDENTIFIERS, with every file left exactly where it is.
+> **1,898 occurrences in 185 files** — `Tenant` → `Business`, `Claim` →
+> `ClassPerson`, `Enrollment` → `ClassBooking`, and the three route folders
+> `[tenantId]` → `[businessId]`.
+> * ⚠⚠ **THE ROUTE FOLDERS WENT FIRST, AND THAT ORDER IS THE WHOLE OF THE RISK.**
+>   Next derives the param NAME from the folder name, so renaming `params.tenantId`
+>   without renaming `[tenantId]` gives **`undefined` at runtime and TypeScript
+>   cannot see it** — every page under a business would have read an id that is not
+>   there, on a tree that typechecks, lints and builds green. `git mv` first, sweep
+>   second.
+> * ⚠⚠ **AND THE FIRST RUN HAD TWO GUARD BUGS IN OPPOSITE DIRECTIONS, WHICH IS THE
+>   FINDING WORTH KEEPING.** (1) **TOO NARROW:** the module-path guards froze the
+>   DIRECTORY (`@/features/claims`) and let the sweep rename the FILE NAME at the
+>   end of the same path — `@/features/claims/server-actions/claims` became
+>   `.../classPeople`, a module that does not exist. **Ten import paths broke that
+>   way in one pass.** Stage 1 renames no files, so the fix is to freeze **every
+>   module specifier WHOLE** rather than trying to say which part of it is a
+>   directory. (2) **TOO BROAD:** the `"tenant"` string guard covered
+>   `BusinessHub.tsx`'s five `MyMembership["tenant"]` — which are TYPE INDEXES into
+>   a property this very sweep renames to `business`, so freezing the string froze
+>   five lookups of a property that no longer exists. That one file is exempt from
+>   that guard and every other file keeps it. **Reverted and re-run rather than
+>   patched forward** — 30 errors are cheaper to delete than to chase, and a sweep
+>   whose guards are wrong will be wrong again the next time it is read.
+> * ⚠⚠ **ONE FILE IS SKIPPED WHOLE, AND IT IS THE ONE THAT COST 2.5 DAYS IN
+>   SEPTEMBER.** `lib/media/photo.ts` holds `FOLDER = { … tenant: "tenants" … }`:
+>   the KEY is a TypeScript union member and the **VALUE is a STORAGE FOLDER the
+>   storage policies test by name**. The 16 Sep sweep renamed that value and **every
+>   studio disc upload was refused for two and a half days**, invisible to
+>   typecheck, lint and all thirty proofs. Not guarded — skipped, whole.
+> * ⚠ **AND THE `"tenant"` THAT STAYS EVERYWHERE ELSE IS A LIVE DATABASE VALUE**:
+>   `admin_audit.subject_kind` carries it on 161 historical rows that are immutable
+>   by trigger (`20260916130000` kept it deliberately), so renaming the union member
+>   would make the app stop recognising its own history.
+> * ⚠⚠ **THE CHECK THAT ACTUALLY PROVES THIS SAFE IS NOT `tsc` — IT IS THE STRING
+>   AUDIT.** TypeScript checks none of `.from("…")`, `.rpc("…")`, an embed, a
+>   `p_*` key, a `data-testid` or an accessible name, so the sweep was verified by
+>   extracting **every quoted string the diff changed: exactly 18**, each one
+>   accounted for — two test ids (moved on BOTH ends, producer and e2e consumer),
+>   six `next.config.ts` redirect params (source AND destination together, so the
+>   user-visible path is unchanged and **Rule 14 is not triggered** — a `:name` is
+>   a placeholder, never text), four route literals matching the renamed folders,
+>   five form-field names with their own `formData.get` readers, and one code
+>   comment. **Not one database string moved**, which is why the proofs cannot be
+>   affected: every key is snake_case and every one is byte-identical.
+> * ⚠ **`scripts/` WAS NOT SWEPT — IT IS `.js`, AND THE FILTER IS `.ts`/`.tsx`.**
+>   That is safe only because it was CHECKED: the two test ids that moved
+>   (`tenant-followers` / `tenant-following`) have **no shoot or proof consumer**,
+>   and the shoots navigate by real URL, which is unchanged. ⚠ `e2e/` IS
+>   typechecked (`include: **/*.ts`), so its four swept files are tsc-gated.
+> * **Verified:** typecheck 0 · lint 0 · `next build` green with the same route
+>   count and every path unchanged · **`shoot-tiles` 130/130**, **`shoot-hero`
+>   186/186**, **`shoot-register` 57/57** — ⚠ **the same tallies as before the
+>   rename, which is what "zero behaviour change" looks like when it is measured
+>   rather than asserted** — and the whole e2e suite.
+> * ⚠ **WHAT STAGE 1 LEAVES, SAID RATHER THAN DISCOVERED:** the repo is
+>   deliberately inconsistent for one push — `repositories/tenants.ts` exports
+>   `findMyBusinesses`, `features/enrollments/` holds class-booking actions, and
+>   `types/claim.ts` defines `ClassPerson`. **Stage 2 is the files and folders**
+>   (#0y), and it is a `git mv` plus an import-path rewrite with nothing else in it.
+
+> ### PINK IS SKY, THE BINARIES LEAVE GIT, AND THE LEFTOVERS ARE SWEPT (29 Sep 2026, earlier) — no migration, PUSHED (`2bd74c7`)
+> Three open backlog rows, none needing schema.
+> * ⚠⚠ **THE FOCUS RING (#16) WAS A NAMING BUG, NOT A COLOUR ONE — AND THE USER'S
+>   ANSWER WAS THE BETTER READING.** The row had framed it as *"the ring is
+>   magenta while the accent is cyan — align them"*, which would have repainted
+>   ~50 screens. The real defect is that **a constant called `PINK` has held
+>   `#5AC8FA`, a cyan, since the palette swap**. It is `SKY` now (its sibling is
+>   `GREEN`, so a colour name keeps the palette honest), 51 occurrences in 16
+>   files. ⚠ **The ring STAYS magenta, and that is written down as a DECISION
+>   rather than left looking like drift**: a focus ring painted in the brand's own
+>   colour reads as *"this control is active"* rather than *"your keyboard is
+>   here"*, and standing apart from every other state is the entire job of a focus
+>   indicator. ⚠ `globals.css` carried two stale comments, one of them simply
+>   wrong — it claimed the accent was *"used semantically: the primary path and
+>   focus only"*, and **focus has never been the accent**.
+> * ⚠ **The sweep asserted its own arithmetic per file before a byte was written**
+>   (Rule 17): the count of `PINK` removed, the count of `SKY` added and the length
+>   delta, all three, with the whole run refused if any disagreed — and the tell
+>   says it worked, every touched file showing **equal insertions and deletions**,
+>   which is what a pure rename looks like in `git diff --stat`.
+> * **RELEASE BINARIES LEAVE GIT (#19).** ⚠ The row's own premise had expired: the
+>   folder reorganization it described has already happened (`files/` and
+>   `danceos-android/` are both gone), so what was left was narrower — two ~4 MB
+>   binaries tracked in a source repo. Untracked going forward.
+>   ⚠ **They stay in HISTORY on purpose**: nothing is lost, no rewrite, no
+>   force-push, and nobody's clone breaks. The signing key is ignored too, with a
+>   comment recording what is true — it has never been committed and **does not
+>   exist on this machine at all**.
+> * **THE LEFTOVER PILE IS SWEPT (#0aa)** — the kept set printed by email FIRST, as
+>   the standing rule requires (33 profiles, 12 businesses: the user's own
+>   accounts, the fifteen demo accounts, the test-phone pair), then 13 businesses,
+>   1 profile, 4 seats and 2 sessions soft-deleted. ⚠ Three of the thirteen
+>   belonged to a KEPT owner — the test-phone account — which is correct and is the
+>   point: that account hoarding proof studios is what pushed it past
+>   `findMyTenants`' 50-row read in September. `ensure-test-phone-profiles` ran
+>   after, which is the standing rule for any sweep.
+
+> ### A WALK-IN HAS A NAME, AND TWO "LEFTOVERS" THAT WERE NOT (29 Sep 2026, earlier) — ⚠ ONE MIGRATION APPLIED (`20260929130000`), dry run **32/32** rolled back first, read back live **17/17**
 > The user: *"fix all and push to live"*, then *"ask me if something needs my
 > input"* — so what "all" covered was ASKED rather than guessed, and they chose
 > **everything**: shape 2 of the class door, plus the four small leftovers the
@@ -9186,12 +9288,20 @@ summary; the report has the evidence.
    killed run. **A cleanup that does not read its own status is not a cleanup.**
 
 0aa. **~~NINE PROOFS CANNOT RUN: THE 15-STUDIO CAP~~ — ✅ SWEPT 20 Sep 2026, AGAIN
-   22 Sep 2026, AND AGAIN 29 Sep 2026** — the third run on the user's *"fix all
-   3"*: **88 businesses, 17 profiles, 4 seats and 1 session**, after its kept set
-   had been read, leaving 33 profiles and 12 businesses. ⚠ **The pile regrows by
-   roughly one row per proof and e2e run**, so this is a standing chore rather
-   than a one-off: it went 479 → (two months) → 88 in a week. `--show-kept`
-   first, `ensure-test-phone-profiles` after, every time.
+   22 Sep, AGAIN 29 Sep, AND ONCE MORE 29 Sep (FOURTH RUN)** — the last on the
+   user's *"fix all of them"*: **13 businesses, 1 profile, 4 seats and 2
+   sessions**, after the kept set had been printed by email (33 profiles, 12
+   businesses — the user's own accounts, the fifteen demo accounts, the
+   test-phone pair). ⚠ **Three of the thirteen belonged to a KEPT owner**, the
+   test-phone account, which is correct and is the whole point: that account
+   hoarding proof studios is what pushed it past `findMyTenants`' 50-row read in
+   September, so sweeping its leftovers while keeping the account is exactly the
+   distinction the script exists to make.
+   The third run: **88 businesses, 17 profiles, 4 seats and 1 session**, after its
+   kept set had been read, leaving 33 profiles and 12 businesses. ⚠ **The pile
+   regrows by roughly one row per proof and e2e run**, so this is a standing chore
+   rather than a one-off: it went 479 → (two months) → 88 in a week → 13 in a day.
+   `--show-kept` first, `ensure-test-phone-profiles` after, every time.
    **The 22 Sep run**, on the user's *"do both"*, after the kept set had been
    listed by email: **479 businesses and 14 profiles** soft-deleted (with 27
    events, 15 seats, 2 classes, 3 sessions beneath them). Read back off the live
@@ -9654,18 +9764,31 @@ summary; the report has the evidence.
    LABEL that is still called `title` — #0y's identifier pass is where it would
    become `label`, if the user wants the word changed at all.
 
-0y. **THE IDENTIFIERS PASS — the second half of the rename, owed by the user's
-   own choice ("strings now, identifiers next", 16 Sep 2026).** The database
-   and every string that reaches it say `business` / `class_people` /
-   `class_bookings` / `studio_photos` / `category`; the TypeScript, the files and
-   the folders still say `Tenant` · `tenantId` · `findMyTenants` · `Claim` ·
-   `enrollInSession` · `ev.cat` · `EventCat` · `repositories/tenants.ts` ·
-   `features/tenants/` · `features/enrollments/` · `app/…/[tenantId]` ·
-   `scripts/rls-proof-tenants.ps1`. ~2,200 occurrences in 207 files. It is a
-   pure identifier rename — `tsc` is the gate, and a wrong one fails to compile
-   — so it is far safer than what just shipped, but it should be its OWN push
-   with nothing else in it. Route folder names are Next param names, not URLs:
-   `[tenantId]` → `[businessId]` changes no public path (Rule 14 not triggered).
+0y. **THE IDENTIFIERS PASS — ✅ STAGE 1 DONE 29 Sep 2026, ⚠ STAGE 2 IS THE FILES
+   AND FOLDERS AND IS ITS OWN PUSH.** Owed since the user's own split of
+   16 Sep ("strings now, identifiers next"), and split again at their word on
+   29 Sep into two stages.
+   **✅ STAGE 1 — the types and identifiers, files left in place: 1,898
+   occurrences in 185 files.** `Tenant` → `Business`, `Claim` → `ClassPerson`,
+   `Enrollment` → `ClassBooking`, `enrollInSession` → `bookClassSession`, and the
+   three route folders `[tenantId]` → `[businessId]`. ⚠ **The folders went FIRST**:
+   Next derives the param name from the folder, so renaming `params.tenantId`
+   alone is `undefined` at runtime and **invisible to TypeScript**. ⚠ `[tenantId]`
+   → `[businessId]` changes no public path (Rule 14 not triggered) — asserted by
+   the string audit, source and destination of every redirect moving together.
+   ⚠ **`lib/media/photo.ts` is skipped WHOLE and must stay skipped**: its
+   `tenant: "tenants"` VALUE is a storage folder the policies test by name.
+   ⚠ The `"tenant"` literal stays everywhere it is a VALUE (`PhotoOwner`'s kind,
+   `admin_audit.subject_kind`'s 161 immutable rows, the `side` prop) and is
+   deliberately NOT frozen in `BusinessHub.tsx`, whose five are type indexes.
+   **⚠ WHAT IS LEFT — STAGE 2, and the repo is knowingly inconsistent until it
+   lands:** `repositories/tenants.ts` exports `findMyBusinesses`,
+   `features/enrollments/` holds class-booking actions, `types/claim.ts` defines
+   `ClassPerson`. The moves: `repositories/{tenants,claims,enrollments}.ts`,
+   `features/{tenants,claims,enrollments}/`, `types/{tenant,claim,enrollment}.ts`,
+   `scripts/rls-proof-tenants.ps1` — a `git mv` plus an import-path rewrite,
+   **and nothing else in the push.** ⚠ Stage 1's sweep froze every module
+   specifier whole precisely so stage 2 is the only thing that ever moves one.
    Every record in this file below the top block uses the OLD names — the map
    at the top is how to read them; do not rewrite history.
 
@@ -9871,12 +9994,19 @@ summary; the report has the evidence.
     grievance officer's name and postal address, which each page currently
     promises "before launch".
 
-16. **Decide whether the app-wide focus ring should stay magenta.** `PINK` in
-    `lib/design/tokens.ts` is `#5AC8FA` (cyan — misnamed since the palette swap)
-    while the global ring in `globals.css` is `#ec4899`. Auth is consistent
-    because the shadcn primitives draw the accent; every other screen still
-    rings magenta against cyan buttons. One line to align, ~50 screens
-    repainted, so it is the user's call.
+16. **~~Decide whether the app-wide focus ring should stay magenta~~ — ✅ ANSWERED
+    AND CLOSED 29 Sep 2026, and the row had the defect the wrong way round.** It
+    proposed aligning the `#ec4899` ring with "the cyan accent", which would have
+    repainted ~50 screens. Asked, the user chose **the NAME**: the real bug was a
+    constant called `PINK` holding `#5AC8FA`. It is **`SKY`** now (51 occurrences,
+    16 files; its sibling is `GREEN`, so a colour name keeps the palette honest).
+    ⚠ **The ring stays magenta ON PURPOSE and that is now recorded rather than
+    left looking like drift**: a focus ring in the brand's own colour reads as
+    "this control is active" rather than "your keyboard is here", and standing
+    apart from every other state is the whole job of a focus indicator. ⚠ Two
+    stale comments in `globals.css` went with it, one of them simply wrong — it
+    claimed the accent was "used semantically: the primary path and focus only",
+    and **focus has never been the accent**.
 
 17. **~~Three dead `RAZORPAY_*` entries in `.env.local`~~ — ✅ GONE** (counted
     20 Sep 2026: zero lines match `^RAZORPAY`). Stale row, closed.
@@ -9885,17 +10015,21 @@ summary; the report has the evidence.
     2026)** — not a pending errand. Step 26 stays unbuilt; re-adding it needs
     Twilio credentials, DLT registration and an approved Meta template.
 
-19. **The folder reorganization is proposed but NOT started**, and it is blocked
-    on one question: how does the APK reach a phone? `android/danceos-1.1.0.apk`
-    and `.aab` are TRACKED in git (~4 MB per release), and the Android project
-    exists twice — `files/android/` (tracked, no keystore) and
-    `dancestudio/danceos-android/` (untracked, holds `android.keystore`). The
-    keystore has never been committed; `git log --diff-filter=A` across all
-    history confirms it. Also: `files/.claude/settings.json` hardcodes
-    `c:\Users\Admin\Downloads\dancestudio\files` in ~9 permission entries, which
-    is what a rename would silently break. **What actually breaks the installed
-    app is a URL disappearing, not a folder moving** (Rule 14) — so the reorg is
-    safer than it looked, provided every route keeps its path or gets a redirect.
+19. **~~The folder reorganization is proposed but NOT started~~ — ✅ CLOSED 29 Sep
+    2026, and ⚠ MOST OF THE ROW HAD EXPIRED WITHOUT ANYBODY NOTICING.** It
+    described a repo where the Android project existed TWICE (`files/android/`
+    tracked, `dancestudio/danceos-android/` untracked) and `files/.claude/settings.json`
+    hardcoded a path in ~9 permission entries. **Neither folder exists any more** —
+    the reorganization happened, as part of other work, and this row went on
+    describing the world before it. Re-measured before acting, which is the only
+    reason it did not become a day of work on a problem that was gone.
+    **What was genuinely left was narrower**: `android/danceos-1.1.0.apk` and
+    `.aab`, ~4 MB each, tracked in a source repo. Untracked going forward
+    (`.gitignore`), ⚠ **and KEPT IN HISTORY on purpose** — nothing is lost, no
+    rewrite, no force-push, nobody's clone breaks. The signing key is ignored too,
+    with the truth recorded beside it: it has never been committed and does not
+    exist on this machine at all. ⚠ How a release reaches a phone is still a real
+    question and is the user's — it is just not a *git* question.
 
 ## What this repo is
 
@@ -9928,6 +10062,50 @@ for the database schema. **The UI is not redesigned** — see Rule 2.
 
 ### Progress tracker — update after EVERY push (Rule 11)
 
+- **THE APP SPEAKS THE DATABASE'S LANGUAGE — #0y STAGE 1 — 29 Sep 2026, no step
+  number — no migration, ⚠ ZERO BEHAVIOUR CHANGE BY CONSTRUCTION.** The half the
+  16 Sep rename deferred at the user's own word (*"strings now, identifiers
+  next"*), split into two stages at their choice: **1,898 occurrences in 185
+  files** — `Tenant` → `Business`, `Claim` → `ClassPerson`, `Enrollment` →
+  `ClassBooking` — with every FILE left where it is. ⚠⚠ **The route folders went
+  first**, because Next derives the param name from the folder and renaming
+  `params.tenantId` without renaming `[tenantId]` is `undefined` at runtime that
+  **TypeScript cannot see**. ⚠⚠ **Two guard bugs in opposite directions, and both
+  are the lesson**: the module-path guards froze the DIRECTORY and let the sweep
+  rename the FILE at the end of the path (ten broken imports), while the
+  `"tenant"` guard was too BROAD and froze five `MyMembership["tenant"]` type
+  indexes into a property the sweep was renaming. Reverted and re-run with the
+  guards corrected — freeze every module specifier WHOLE, exempt the one file
+  where the string is a type index. ⚠⚠ **`lib/media/photo.ts` is skipped whole**:
+  its `tenant: "tenants"` VALUE is a storage folder the policies test by name, and
+  renaming it on 16 Sep refused every studio disc upload for 2.5 days, invisible
+  to typecheck, lint and thirty proofs. ⚠⚠ **`tsc` is not what proves this safe** —
+  it checks no `.from()`, no `.rpc()`, no `p_*` key, no test id — so **every
+  quoted string the diff changed was extracted and accounted for: exactly 18**,
+  and **not one is a database string**. **Verified:** typecheck 0 · lint 0 ·
+  build green, same routes and every public path unchanged · **`shoot-tiles`
+  130/130 · `shoot-hero` 186/186 · `shoot-register` 57/57 — the same tallies as
+  before the rename**, which is what zero behaviour change looks like measured
+  rather than asserted · the whole e2e suite. ⚠ Stage 2 (the files and folders)
+  is its own push with nothing else in it.
+- **PINK IS SKY, THE BINARIES LEAVE GIT, AND THE LEFTOVERS ARE SWEPT — 29 Sep
+  2026, no step number — no migration, PUSHED (`2bd74c7`).** Three backlog rows.
+  ⚠⚠ **The focus ring (#16) was a NAMING bug, not a colour one, and the user's
+  reading was the better one**: the row proposed repainting ~50 screens, when the
+  real defect is a constant called `PINK` holding `#5AC8FA` — a cyan — since the
+  palette swap. It is `SKY` now (51 occurrences, 16 files) and **the ring stays
+  magenta as a recorded DECISION**: a focus ring in the brand's own colour reads
+  as "this control is active" rather than "your keyboard is here". ⚠ `globals.css`
+  carried two stale comments, one plainly wrong (it claimed focus used the accent,
+  which has never been true). ⚠ The sweep asserted its own arithmetic per file
+  before writing (Rule 17), and every touched file shows **equal insertions and
+  deletions** — what a pure rename looks like. **The release binaries leave git
+  (#19)** — ⚠ that row's premise had expired (`files/` and `danceos-android/` are
+  already gone), so what was left was two ~4 MB artefacts tracked in a source
+  repo; untracked going forward and **kept in history**, so no rewrite, no
+  force-push and no broken clone. **The leftover pile is swept (#0aa)** — the kept
+  set by email first, then 13 businesses, 1 profile, 4 seats and 2 sessions
+  soft-deleted, with `ensure-test-phone-profiles` after.
 - **A WALK-IN HAS A NAME — 29 Sep 2026, no step number ⚠ (Rule 9: two core
   columns made nullable, two new definer doors, one live trigger function
   rewritten) — ONE MIGRATION APPLIED (`20260929130000`), dry run 32/32 rolled

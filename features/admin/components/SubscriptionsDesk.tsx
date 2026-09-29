@@ -54,7 +54,7 @@ export function SubscriptionsDesk({ rows, status, nowIso }: { rows: AdminSubscri
       if (out.error) return fire(out.error);
       setEnding(null);
       setReason("");
-      fire(`${s.kind === "studio" ? s.tenantName ?? "The studio" : s.userName}'s subscription has ended — they have been told why`);
+      fire(`${s.kind === "studio" ? s.businessName ?? "The studio" : s.userName}'s subscription has ended — they have been told why`);
       router.refresh();
     });
 
@@ -85,7 +85,7 @@ export function SubscriptionsDesk({ rows, status, nowIso }: { rows: AdminSubscri
         <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
           {rows.map((s) => {
             const st = STATUS[s.status];
-            const who = s.kind === "studio" ? `${s.tenantName ?? "a studio"} · ${s.userName}` : s.userName;
+            const who = s.kind === "studio" ? `${s.businessName ?? "a studio"} · ${s.userName}` : s.userName;
             return (
               <div key={s.id} data-testid="admin-subscription" style={{ background: CARD, border: `1.5px solid ${EL}`, borderLeft: `4px solid ${st.tone}`, borderRadius: 16, padding: "11px 12px" }}>
                 <div style={{ display: "flex", alignItems: "baseline", gap: 6, flexWrap: "wrap" }}>
@@ -128,8 +128,8 @@ export function SubscriptionsDesk({ rows, status, nowIso }: { rows: AdminSubscri
                       <button type="button" onClick={() => { setReason(""); setEnding(s.id); }} style={{ ...btn, color: "#B42318" }} aria-label={`End ${who}'s subscription`}>
                         End now
                       </button>
-                      {s.kind === "studio" && s.tenantName ? (
-                        <Link href={`/admin/businesses?q=${encodeURIComponent(s.tenantName)}`} style={{ ...btn, display: "inline-flex", alignItems: "center", textDecoration: "none" }}>Open in Businesses</Link>
+                      {s.kind === "studio" && s.businessName ? (
+                        <Link href={`/admin/businesses?q=${encodeURIComponent(s.businessName)}`} style={{ ...btn, display: "inline-flex", alignItems: "center", textDecoration: "none" }}>Open in Businesses</Link>
                       ) : (
                         <Link href={`/admin/accounts?q=${encodeURIComponent(s.userName)}`} style={{ ...btn, display: "inline-flex", alignItems: "center", textDecoration: "none" }}>Open in Accounts</Link>
                       )}

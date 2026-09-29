@@ -75,18 +75,18 @@ export function JoinInvite({ code, preview }: { code: string; preview: InvitePre
     return notice("That link isn’t an invite", "It may have been withdrawn, or the address was mistyped.");
   }
   if (preview.status === "accepted") {
-    return notice("Already answered", `You are on ${preview.tenantName}. This invite has been used.`);
+    return notice("Already answered", `You are on ${preview.businessName}. This invite has been used.`);
   }
   if (preview.status === "declined" || preview.status === "revoked") {
     return notice(
       preview.status === "revoked" ? "This invite was withdrawn" : "This invite was declined",
-      `${preview.tenantName} will need to ask again if that was a mistake.`
+      `${preview.businessName} will need to ask again if that was a mistake.`
     );
   }
   if (!preview.isForMe) {
     return notice(
       "This invite is for somebody else",
-      `${preview.tenantName} sent it to ${preview.emailHint}. Sign in with that address to accept it — holding the link isn’t enough.`
+      `${preview.businessName} sent it to ${preview.emailHint}. Sign in with that address to accept it — holding the link isn’t enough.`
     );
   }
 
@@ -100,7 +100,7 @@ export function JoinInvite({ code, preview }: { code: string; preview: InvitePre
       setError(out.error);
       return;
     }
-    router.push(yes ? `/business/${preview.tenantId}/classes` : "/");
+    router.push(yes ? `/business/${preview.businessId}/classes` : "/");
   };
 
   const roleWord = MEMBER_ROLE_WORD[preview.memberRole].toLowerCase();
@@ -121,7 +121,7 @@ export function JoinInvite({ code, preview }: { code: string; preview: InvitePre
           marginBottom: 14,
         }}
       >
-        Join {preview.tenantName}
+        Join {preview.businessName}
       </h1>
 
       <div
@@ -134,7 +134,7 @@ export function JoinInvite({ code, preview }: { code: string; preview: InvitePre
         }}
       >
         <div style={{ fontSize: 12.5, fontWeight: 900 }}>
-          {preview.tenantName} wants you on the team as {roleWord === "staff" ? "staff" : `a ${roleWord}`}
+          {preview.businessName} wants you on the team as {roleWord === "staff" ? "staff" : `a ${roleWord}`}
         </div>
         <div style={{ fontSize: 10.5, color: SUB, marginTop: 3, lineHeight: 1.5 }}>
           You would have {MEMBER_GRANTS[preview.memberRole]}. Nothing is yours to run until you say yes, and

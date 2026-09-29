@@ -16,7 +16,7 @@ const stampNowIso = (): string => new Date().toISOString();
 
 /** Inbox tab — the prototype's S_chats: Requests and Enquiries, two desks that
  *  count what is waiting on you. Requests are rows that already exist (class
- *  claims, team invites), read from BOTH ends: what is asked of you, and what
+ *  classPeople, team invites), read from BOTH ends: what is asked of you, and what
  *  your businesses have asked of others. The mapping into rows lives in
  *  `features/inbox/requestItems.ts` since 18 Sep 2026, because a studio's inbox
  *  and a crew's inbox draw the same rows scoped to one entity. */
@@ -37,11 +37,11 @@ export default async function InboxPage() {
      one thing, the accent `kindOf` paints this desk with, and the KIND is the
      plan's answer alone now. One round trip fewer. */
   const [memberships, plan] = await Promise.all([findMyMemberships(supabase), findMyArtistPlan(supabase)]);
-  const businesses = memberships.map((m) => m.tenant);
-  const tenantIds = businesses.map((t) => t.id);
+  const businesses = memberships.map((m) => m.business);
+  const businessIds = businesses.map((t) => t.id);
   /* the rooms asked of the STUDIOS you own, and the rooms your own PAGE has asked for */
-  const ownedStudioIds = memberships.filter((m) => m.memberRole === "owner" && m.tenant.type === "studio").map((m) => m.tenant.id);
-  const ownedPageIds = memberships.filter((m) => m.memberRole === "owner" && m.tenant.type === "artist_page").map((m) => m.tenant.id);
+  const ownedStudioIds = memberships.filter((m) => m.memberRole === "owner" && m.business.type === "studio").map((m) => m.business.id);
+  const ownedPageIds = memberships.filter((m) => m.memberRole === "owner" && m.business.type === "artist_page").map((m) => m.business.id);
 
   /* AN ANSWERED ASK STAYS ON THE DESK (19 Sep 2026, the user: "enquiries and
      requests don't get removed after accepting"): every ask read takes the
@@ -57,8 +57,8 @@ export default async function InboxPage() {
   const [claimsIn, invitesIn, claimsOut, invitesOutByTenant, crewIn, crewOut, venueIn, venueOut] = await Promise.all([
     findMyPendingClaims(supabase, [...ALL]),
     findMyPendingInvites(supabase),
-    findAskedClaimsForTenants(supabase, tenantIds, [...ALL]),
-    Promise.all(businesses.map(async (t) => (await findPendingInvites(supabase, t.id)).map((i) => ({ ...i, tenantName: t.name })))),
+    findAskedClaimsForTenants(supabase, businessIds, [...ALL]),
+    Promise.all(businesses.map(async (t) => (await findPendingInvites(supabase, t.id)).map((i) => ({ ...i, businessName: t.name })))),
     findMyPendingCrewAsks(supabase, [...ALL]),
     findAskedForMyCrews(supabase, [...ALL]),
     findVenueRequestsForTenants(supabase, ownedStudioIds).catch(() => []),
