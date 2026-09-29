@@ -19,27 +19,33 @@ const TINT = DOS_TOOLS.practice.c;
  *  bounce them"* — and a backlog row naming a defect is not a decision to accept
  *  it, which this file has now learned twice (C46 was the same shape).
  *
- *  ⚠ IT LIVES ON THE CREWS HUB rather than behind a tile of its own, and that is
- *  a decision with two reasons. **A practice belongs to a crew** — there is no
- *  such thing as one without — and `/crews` is the screen about your crews,
- *  opened by the Crews tile every person's grid already carries. And **a Practice
- *  tile on a person's grid would have failed R20's own colour test**: the tool is
- *  `#15803D`, which is hue 142° at 71% saturation, and Earnings is `#22C55E` —
- *  hue 142°, saturation 71%, sixteen points lighter. That pair is fine on a
- *  CREW's grid, which has no Earnings tile (R20's test is per-grid), and would be
- *  two greens on a person's. Giving the tool a second colour for one grid would
- *  break the rule that a tile and the desk it opens read one vocabulary.
+ *  ⚠⚠ IT LIVED ON THE CREWS HUB AND IS ITS OWN TILE NOW — `/practice`, 30 Sep
+ *  2026, the user: *"practice should be seprate tab in home tab not in crew"*.
+ *  This note argued the other way on two grounds and BOTH are answered rather
+ *  than overruled. *"A practice belongs to a crew"* is true and is not what the
+ *  person is asking: they want to know what they are rehearsing this week, which
+ *  is a Home question, and it was two presses inside a screen about something
+ *  else. And *"a Practice tile would fail R20's own colour test"* was TRUE of the
+ *  green the tool wore — `#15803D` is hue 142° at 71% saturation and Earnings is
+ *  `#22C55E`, hue 142°, sixteen points lighter, which is the one pair R20 exists
+ *  to refuse — so **the tool was repainted deep indigo `#4338CA` in the same
+ *  push** rather than the tile being squeezed onto a grid it clashes with,
+ *  measured at 102° from Earnings and ≥28° from everything on every grid it
+ *  lands on. A tile and the desk it opens still read one vocabulary.
+ *  ⚠ This component is unchanged and is drawn `bare` by `/practice` exactly as
+ *  it was by the hub's segment.
  *
  *  ⚠ THE LEADER GETS A LINK, NOT A REGISTER. Their desk is one tap away and has
  *  the roster, the check-in and Call it off; drawing a second register here would
  *  be the two-doors-to-one-subject shape this file has paid for twice. What the
  *  hub gives everybody is the same thing: what is coming, what is over, where you
  *  stand, and — for anybody who was ASKED — the answer. */
-/** ⚠ `bare` IS FOR THE COLUMN (28 Sep 2026). This was a section stacked under
- *  the two crew lists, so it wore its own top margin and its own YOUR PRACTICES
- *  head to separate it from them. As a SEGMENT it is the only thing on screen
- *  and the pill above already names it, so both would be the heading said twice
- *  — the `TODAY` badge lesson from this morning in a second place. */
+/** ⚠ `bare` IS FOR WHATEVER ALREADY NAMED IT (28 Sep 2026, and still true one
+ *  screen later). This was a section stacked under the two crew lists, so it
+ *  wore its own top margin and its own YOUR PRACTICES head to separate it from
+ *  them. Then it was a SEGMENT, whose pill named it; it is a PAGE now, whose
+ *  `DeskHero` names it. In all three the head would be the heading said twice —
+ *  the `TODAY` badge lesson in a third place. */
 export function MyPractices({ practices, todayIso, bare = false }: { practices: CrewPractice[]; todayIso: string; bare?: boolean }) {
   const [toast, setToast] = useState<string | null>(null);
   const [, start] = useTransition();

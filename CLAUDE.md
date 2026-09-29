@@ -75,6 +75,18 @@
 >   ONE run, 16.8 min on one worker, no red at any point** — on the bundle
 >   carrying the founder controls, against the migrated database and the swept
 >   world, which is what makes those sixteen minutes worth spending.
+> * ✅ **PUSHED AND LIVE (`2fd9ea6`), read back off the DEPLOYMENT rather than
+>   assumed:** typecheck 0 and lint 0 re-run first (a proof is only true the last
+>   time it ran) · Vercel's own list for THIS sha, **BUILDING → READY** · the
+>   production alias confirmed on `2fd9ea6` **through the API**, because a
+>   behavioural probe cannot tell a streamed 200 from a matched route ·
+>   **`stranger-smoke` 8/8** · **`shoot-founder` 20/20 ON THE DEPLOYMENT** — two
+>   real owners on a real studio on the live host, Remove offered to the principal
+>   and refused to the other owner, the seat read back out of PRODUCTION, and a
+>   real crew handed over and taken back · **`shoot-tiles` 134/134 on the
+>   deployment** (130 before — the four new ones are the **Practice tile**, driven
+>   rather than skipped, because that helper only presses the names it is given).
+> * ⚠ My own `next start` on :3100 was stopped afterwards.
 >
 > ### THE STATS PAGE IS THREE COLUMNS AGAIN, ON EVERY PROFILE — AND FIVE MORE (30 Sep 2026, earlier) — no migration in this half
 > The user, opening on a defect: *"you messed up with the stats page it was
@@ -8549,9 +8561,20 @@ summary; the report has the evidence.
      principal), and **`invalid input syntax for type json`**, which is the
      `''`-vs-`'{}'` claims trap (19 Sep) biting a plain superuser INSERT,
      because every audit trigger on it calls `auth.uid()`.
-   * ⚠ **THE APP SIDE IS NOT BUILT EITHER**, said rather than implied: Remove is
-     not offered on an owner's row and `reclaim_crew` has no control at all. The
-     StaffDesk comment names the held migration where the button will go.
+   * ✅ **AND IT IS DRIVEN, ON THE DEPLOYMENT** — `scripts/shots/shoot-founder.js`
+     (new, **20/20 locally and 20/20 against the live host**). ⚠ It exists because
+     both halves are **a control that is drawn or not drawn**, decided on the
+     client from a value the server reads: the RPCs are proven and typecheck,
+     lint and the build are green whether the button appears for the right
+     person, the wrong person or nobody, which is the 21 Sep tile audit's exact
+     shape. Two real owners on a real studio, Remove offered to the principal and
+     to **NOBODY else** — not to the other owner, not on their own row — the seat
+     read back out of the database and **gone from the removed owner's
+     switcher**; then a real crew handed over, **Take it back** offered to the
+     founder and not to the person now leading it, and one press putting it back
+     with **exactly one leader row** and the previous leader still a **member**.
+     ⚠ Every absence is asserted **with the sheet open**, because "no Remove" and
+     "the sheet never opened" are indistinguishable from outside.
 
 0b0. **~~TWO MIGRATIONS WRITTEN, DRY-RUN AND HELD~~ — ✅ BOTH APPLIED 30 Sep 2026**
    with #0b1, on the user's *"All three"*. Read back off the live catalog (the
@@ -10634,7 +10657,11 @@ for the database schema. **The UI is not redesigned** — see Rule 2.
   the kept set printed by email first (33 profiles, 12 businesses), then 12
   businesses and 0 profiles soft-deleted, `ensure-test-phone-profiles` after.
   ⚠ The stats-history migration is now a **decision** — the user chose to leave
-  it, so nothing is owed there.
+  it, so nothing is owed there. **PUSHED AND LIVE (`2fd9ea6`), read back off the
+  deployment:** Vercel's own list for THIS sha BUILDING → READY, the alias
+  confirmed through the API, **`stranger-smoke` 8/8**, **`shoot-founder` 20/20 ON
+  THE DEPLOYMENT** and **`shoot-tiles` 134/134** (130 before — the four new ones
+  are the Practice tile).
 - **THE STATS PAGE IS THREE COLUMNS AGAIN, ON EVERY PROFILE — 30 Sep 2026,
   earlier, no step number — no migration in this half.** The user:
   *"you messed up with the stats page — it was supposed to be the one with the

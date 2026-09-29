@@ -40,8 +40,9 @@ export default async function BusinessRoomsPage({
      ⚠ SINCE 28 Sep 2026 ONLY A SEAT THAT RUNS THE BUSINESS REACHES THIS PAGE, so
      the trainer half of that test is unreachable from here and `canEdit` is the
      same question the guard above already answered. The seat is read once.
-     ⚠ A MANAGER IS NOT IN THE `rooms` POLICIES YET — that is the held migration's
-     to add; today the value cannot exist, so nobody meets the gap. */
+     ⚠ A MANAGER IS IN BOTH `rooms` POLICIES since `20260928110000` applied, so
+     the screen and the database now admit the same two seats. This line said the
+     opposite while that migration was still held. */
   const myRole = seat.memberRole;
   const rooms = await findRoomsByBusiness(supabase, businessId);
   const canEdit = runsTheBusiness(myRole);

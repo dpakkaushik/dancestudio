@@ -69,11 +69,10 @@ export interface InvitePreview {
  *  them. ⚠ What they KEEP is said out loud, because it is not nothing — their
  *  own classes, the register on them, and their earnings.
  *
- *  ⚠ `manager` CANNOT BE HANDED OUT YET (`business_members_member_role_check`
- *  admits five values and this is not one of them), so this line describes a
- *  seat nothing can create until the held migration applies. It is here so the
- *  vocabulary is one thing rather than two, and so the compiler refuses a map
- *  that has forgotten it. */
+ *  ⚠ `manager` IS A REAL SEAT since `20260928110000` applied — the CHECK admits
+ *  it, `rolesFor` offers it and `runsTheBusiness` lets it in. The line above it
+ *  was written while the migration was still held and said so; it does not any
+ *  more. What it describes is a seat somebody can be asked onto today. */
 export const MEMBER_GRANTS: Record<MemberRole, string> = {
   owner: "everything, including the money, the subscription and who else runs it",
   /* ⚠ WHAT A MANAGER READS AND WHAT THEY MOVE ARE TWO DIFFERENT THINGS, and the
