@@ -1138,7 +1138,7 @@ test.describe.serial("DanceOS, end to end", () => {
        today — which it is on first load — immediately beside the `Today` button,
        so one line said the word twice. Counting the LEAF elements whose whole
        text is the word is what catches that: it read 2 before and reads 1 now.
-       And `PINK` is `#5AC8FA` — rgb(90, 200, 250) — which is what "blue" meant. */
+       And `SKY` is `#5AC8FA` — rgb(90, 200, 250) — which is what "blue" meant. */
     const todayWords = await learner.evaluate(() =>
       [...document.querySelectorAll("span,div,b")].filter((el) => el.children.length === 0 && /^today$/i.test((el.textContent || "").trim())).length
     );

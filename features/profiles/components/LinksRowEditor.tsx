@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { PLATFORMS, handleOf, isPlatform, safeHref } from "@/lib/constants/socials";
-import { CARD, INK, LINE, PINK, SUB } from "@/lib/design/tokens";
+import { CARD, INK, LINE, SKY, SUB } from "@/lib/design/tokens";
 import type { SocialLink } from "@/types/profile";
 import { useEditMode } from "./EditMode";
 import { LINKS_ROW, linkChip } from "./profile-band";
@@ -95,7 +95,7 @@ export function LinksRowEditor({
               <span style={{ flexShrink: 0, lineHeight: 0 }}>
                 <PlatformIcon label={l.platform} size={15} />
               </span>
-              <span style={{ fontSize: 12, fontWeight: 800, color: PINK }}>{isPlatform(l.platform) ? handleOf(l.url) : l.platform}</span>
+              <span style={{ fontSize: 12, fontWeight: 800, color: SKY }}>{isPlatform(l.platform) ? handleOf(l.url) : l.platform}</span>
             </button>
           ) : (
             <a
@@ -109,7 +109,7 @@ export function LinksRowEditor({
               <span style={{ flexShrink: 0, lineHeight: 0 }}>
                 <PlatformIcon label={l.platform} size={15} />
               </span>
-              <span style={{ fontSize: 12, fontWeight: 800, color: PINK }}>{isPlatform(l.platform) ? handleOf(l.url) : l.platform}</span>
+              <span style={{ fontSize: 12, fontWeight: 800, color: SKY }}>{isPlatform(l.platform) ? handleOf(l.url) : l.platform}</span>
             </a>
           )
         )}

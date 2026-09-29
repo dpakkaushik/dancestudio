@@ -10,7 +10,7 @@ import { respondToPracticeAction } from "@/features/crews/server-actions/practic
 import { acceptInviteAction, declineInviteAction, revokeInviteAction } from "@/features/staff/server-actions/staff";
 import { ClassTile } from "@/features/classes/components/ClassTile";
 import { DeskHero } from "@/features/tenants/components/biz-kit";
-import { DOS_DISPLAY, DOS_UI, LILAC, PINK } from "@/lib/design/tokens";
+import { DOS_DISPLAY, DOS_UI, LILAC, SKY } from "@/lib/design/tokens";
 import type { DanceClass } from "@/types/class";
 import {
   ENQ_STAGES,
@@ -269,7 +269,7 @@ export function InboxScreen({
       ]
     : [
         ["req", "Requests", askIn.length, "#DC2626"],
-        ["join", "Invites", joinIn.length, JOIN_TINT.invite ?? PINK],
+        ["join", "Invites", joinIn.length, JOIN_TINT.invite ?? SKY],
         /* ⚠ its badge counts what is IN it, not what waits on you — nothing here
            waits on anybody, and a red 0 beside "Done" would say the opposite */
         ["done", "Done", doneN, "#22C55E"],

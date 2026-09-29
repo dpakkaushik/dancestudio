@@ -6,7 +6,7 @@ import { ClassTile } from "@/features/classes/components/ClassTile";
 import { dosKey } from "@/features/classes/components/ShareSheet";
 import { InvoiceSheet, bookingCodeOf } from "@/features/payments/components/InvoiceSheet";
 import { RefundSheet } from "@/features/payments/components/RefundSheet";
-import { DOS_UI, GREEN, LINE, PINK } from "@/lib/design/tokens";
+import { DOS_UI, GREEN, LINE, SKY } from "@/lib/design/tokens";
 import { dateParts, timeRangeOf } from "@/lib/format/session";
 import type { DeckClassItem, DeckItem } from "@/types/home";
 
@@ -177,7 +177,7 @@ export function PassDeck({ items }: { items: DeckItem[] }) {
       {items.length > 1 ? (
         <div style={{ display: "flex", gap: 5, justifyContent: "center", marginTop: 2, marginBottom: 4 }} aria-hidden="true">
           {items.map((p, i) => (
-            <span key={p.key} style={{ width: i === at ? 14 : 5, height: 5, borderRadius: 3, transition: "width .2s", background: i === at ? PINK : LINE }} />
+            <span key={p.key} style={{ width: i === at ? 14 : 5, height: 5, borderRadius: 3, transition: "width .2s", background: i === at ? SKY : LINE }} />
           ))}
         </div>
       ) : null}

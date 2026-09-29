@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { AuthShell } from "@/features/auth/components/AuthShell";
-import { BTN_STYLE, DOS_DISPLAY, GOLD, INK, LINE, PINK, SUB } from "@/lib/design/tokens";
+import { BTN_STYLE, DOS_DISPLAY, GOLD, INK, LINE, SKY, SUB } from "@/lib/design/tokens";
 
 /** Welcome screen, from the prototype (DanceOSApp.jsx:3700-3724) with three
  *  deliberate departures, all logged under "Deliberate deviations from the
@@ -29,7 +29,7 @@ export default function LoginWelcomePage() {
   return (
     <AuthShell>
       <div style={{ fontSize: 17, fontWeight: 800, animation: "dosRise .5s ease both" }}>
-        Dance<span style={{ color: PINK }}>OS</span>
+        Dance<span style={{ color: SKY }}>OS</span>
       </div>
       {/* The slack is SPLIT rather than all dumped below the hero: roughly a
           third above, two thirds below. All of it in one place left the headline
@@ -122,7 +122,7 @@ export default function LoginWelcomePage() {
               flex: 1,
               height: 5,
               borderRadius: 3,
-              background: i === 7 ? GOLD : PINK,
+              background: i === 7 ? GOLD : SKY,
               animation: `dosDash 2.4s ease ${i * 0.3}s infinite`,
             }}
           />
@@ -146,9 +146,9 @@ export default function LoginWelcomePage() {
           fontWeight: 800,
         }}
       >
-        LEARN <span style={{ color: PINK }}>·</span> TEACH <span style={{ color: PINK }}>·</span> CONNECT
+        LEARN <span style={{ color: SKY }}>·</span> TEACH <span style={{ color: SKY }}>·</span> CONNECT
         <br />
-        PERFORM <span style={{ color: PINK }}>·</span> EARN <span style={{ color: PINK }}>·</span> GROW
+        PERFORM <span style={{ color: SKY }}>·</span> EARN <span style={{ color: SKY }}>·</span> GROW
       </div>
     </AuthShell>
   );

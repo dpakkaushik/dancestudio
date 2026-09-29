@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { ClassTile } from "@/features/classes/components/ClassTile";
 import { dosStyleColor } from "@/lib/constants/styles";
-import { CARD, DOS_DISPLAY, DOS_UI, INK, LILAC, LINE, MUTED, PINK, SUB } from "@/lib/design/tokens";
+import { CARD, DOS_DISPLAY, DOS_UI, INK, LILAC, LINE, MUTED, SKY, SUB } from "@/lib/design/tokens";
 import {
   addDays,
   dayKeyFor,
@@ -51,7 +51,7 @@ const toolPaint = (c: string) => `linear-gradient(135deg,${c} 0%, ${c}cc 55%, ${
 const SIDES: Record<CalendarSide, { name: string; tint: string }> = {
   attending: { name: "Train", tint: "#3B82F6" },
   assisting: { name: "Assist", tint: "#0D9488" },
-  hosting: { name: "Teach", tint: PINK },
+  hosting: { name: "Teach", tint: SKY },
 };
 const SIDE_KEYS: CalendarSide[] = ["attending", "assisting", "hosting"];
 /* ⚠ `EVENTS_TINT` went with events (29 Sep 2026) — the amber half of the switch.
@@ -74,7 +74,7 @@ const PRACTICE_C = "#15803D";
  *  marks a POSITION — where today falls in a list that runs from the past — and
  *  the button, because it is a control rather than a label.
  *
- *  ⚠ BLUE: every one of those markers was `PINK`, which has been `#5AC8FA` — a
+ *  ⚠ BLUE: every one of those markers was `SKY`, which has been `#5AC8FA` — a
  *  cyan — since the palette swap, and the calendar's own tool colour `#06B6D4`
  *  is no escape from that. So the marker is the page's own ink now, and the two
  *  states in the day picker read as a pair instead of two blues: **the day you
@@ -532,7 +532,7 @@ export function CalendarScreen({ mode, months, todayKey, entries, practices = []
   const nothing = isPublic ? (
     <div style={emptyCard}>
       No upcoming classes on the schedule yet —{" "}
-      <Link href={emptyHref} style={{ color: PINK, fontWeight: 800, textDecoration: "none" }}>
+      <Link href={emptyHref} style={{ color: SKY, fontWeight: 800, textDecoration: "none" }}>
         back to the profile →
       </Link>
     </div>
@@ -541,7 +541,7 @@ export function CalendarScreen({ mode, months, todayKey, entries, practices = []
        that half comes from */
     <div style={emptyCard}>
       {showPractices ? (isCrew ? "Nothing arranged on " : "No practice on — ") : mode === "personal" ? "Nothing booked — " : "Nothing scheduled — "}
-      <Link href={emptyHref} style={{ color: PINK, fontWeight: 800, textDecoration: "none" }}>
+      <Link href={emptyHref} style={{ color: SKY, fontWeight: 800, textDecoration: "none" }}>
         {showPractices ? (isCrew ? "arrange one →" : "open your crew →") : mode === "personal" ? "find a class →" : "add a class →"}
       </Link>
     </div>

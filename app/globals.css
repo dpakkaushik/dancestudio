@@ -12,9 +12,16 @@
  *  DanceOS variable — and because these point AT the DanceOS vars, the existing
  *  light/dark toggle on <html> keeps driving them for free.
  *
- *  The accent is DanceOS cyan (tokens.ts PINK — misnamed since the palette
- *  swap, kept for call-site compatibility). It is used semantically: the
- *  primary path and focus only, never as decoration. */
+ *  The accent is DanceOS cyan (tokens.ts `SKY` — renamed from PINK on 29 Sep
+ *  2026, when it had held #5AC8FA since the palette swap and the name had
+ *  stopped being true). It is used semantically: the primary path only, never
+ *  as decoration.
+ *
+ *  ⚠ THE FOCUS RING IS DELIBERATELY NOT THE ACCENT. It is magenta (#ec4899,
+ *  below), and that is a decision rather than drift: a ring in the brand's own
+ *  colour is confusable with a control that is ACTIVE or SELECTED, and the one
+ *  thing a focus indicator must do is stand out from every other state on the
+ *  screen. This comment used to say focus was cyan, which was never true. */
 @theme inline {
   --color-background: var(--bg);
   --color-foreground: var(--text);
@@ -227,6 +234,9 @@ select:focus-visible,
 textarea:focus-visible,
 button:focus-visible:not([data-slot]),
 a:focus-visible:not([data-slot]) {
+  /* ⚠ MAGENTA ON PURPOSE, not drift (settled 29 Sep 2026). The accent is cyan
+     (`SKY`), and a focus ring painted in it would read as "this control is
+     active" rather than "your keyboard is here". Distinct is the whole job. */
   outline: 2.5px solid #ec4899;
   outline-offset: 2px;
   border-radius: 10px;

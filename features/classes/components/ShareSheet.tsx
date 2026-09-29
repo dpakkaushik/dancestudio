@@ -2,7 +2,7 @@
 
 import { useState, useSyncExternalStore, type KeyboardEvent } from "react";
 import { useCloseOnBack } from "@/lib/hooks/useCloseOnBack";
-import { DOS_DISPLAY, DOS_UI, PINK } from "@/lib/design/tokens";
+import { DOS_DISPLAY, DOS_UI, SKY } from "@/lib/design/tokens";
 
 /** Enter/Space activate a role="button" span — the prototype's dosKey. */
 export const dosKey = (e: KeyboardEvent<HTMLElement>) => {
@@ -122,7 +122,7 @@ export function ShareSheet({
           >
             {link}
           </span>
-          <span style={{ fontSize: 11, fontWeight: 800, color: done ? "#22C55E" : PINK, flexShrink: 0 }}>
+          <span style={{ fontSize: 11, fontWeight: 800, color: done ? "#22C55E" : SKY, flexShrink: 0 }}>
             {done ? "Copied ✓" : "Copy"}
           </span>
         </div>

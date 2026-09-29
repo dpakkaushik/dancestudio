@@ -2,7 +2,7 @@ import type { CSSProperties, ReactNode } from "react";
 import { DosStyleTile } from "@/features/discovery/components/DiscoverFilters";
 import { dosStyleColor } from "@/lib/constants/styles";
 import { handleOf, isPlatform, safeHref } from "@/lib/constants/socials";
-import { DOS_DISPLAY, INK, MUTED, PINK } from "@/lib/design/tokens";
+import { DOS_DISPLAY, INK, MUTED, SKY } from "@/lib/design/tokens";
 import type { SocialLink } from "@/types/profile";
 import { PlatformIcon, TYPE } from "./profile-kit";
 
@@ -136,7 +136,7 @@ export function EntityLinks({ socials }: { socials: SocialLink[] }) {
           <span style={{ flexShrink: 0, lineHeight: 0 }}>
             <PlatformIcon label={l.platform} size={15} />
           </span>
-          <span style={{ fontSize: 12, fontWeight: 800, color: PINK }}>{isPlatform(l.platform) ? handleOf(l.url) : l.platform}</span>
+          <span style={{ fontSize: 12, fontWeight: 800, color: SKY }}>{isPlatform(l.platform) ? handleOf(l.url) : l.platform}</span>
         </a>
       ))}
     </div>

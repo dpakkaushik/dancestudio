@@ -36,3 +36,19 @@ playwright-report/
 
 # screenshot rigs write here (scripts/shots/*.js)
 scripts/shots/shots/
+
+# ⚠ RELEASE BINARIES ARE NOT SOURCE (29 Sep 2026). `danceos-1.1.0.apk` and
+# `.aab` were tracked, ~4 MB each, and a repo that carries one per release grows
+# for ever. They are untracked from here; the two that exist STAY IN HISTORY, so
+# nothing is lost and no rewrite was needed — which also means no force-push and
+# nobody's clone breaks. Build output belongs with a release, not in the tree.
+android/*.apk
+android/*.aab
+
+# ⚠ AND THE SIGNING KEY IS NOT SOURCE EITHER, and never has been: it has never
+# been committed (checked with `git log --diff-filter=A` across all history) and
+# it does not exist on this machine at all — it lives only on the PC this repo
+# was copied from. Losing it means a new package identity for the app, so it
+# belongs in a password manager or a secret store, not here.
+*.keystore
+*.jks

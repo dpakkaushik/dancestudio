@@ -9,7 +9,7 @@ import { CityPicker } from "@/features/geo/components/CityPicker";
 import { PhotoPicker } from "@/features/media/components/PhotoPicker";
 import { updateMyProfileAction } from "@/features/profiles/server-actions/profile";
 import { DOS_STYLE_REG, dosStyleColor } from "@/lib/constants/styles";
-import { BTN_STYLE, DOS_DISPLAY, DOS_UI, INK, LINE, PINK, SUB } from "@/lib/design/tokens";
+import { BTN_STYLE, DOS_DISPLAY, DOS_UI, INK, LINE, SKY, SUB } from "@/lib/design/tokens";
 import { dosToolPaint } from "@/lib/format/styleInk";
 import { photoUrl } from "@/lib/media/photo";
 import type { Profile, ProfileRole, SocialLink } from "@/types/profile";
@@ -197,7 +197,7 @@ export function OnboardingForm({
         />
         {fullName ? (
           <div style={{ fontSize: 12, color: SUB, marginTop: 10 }}>
-            Your handle: <b style={{ color: PINK }}>@{handle}</b> · editable later
+            Your handle: <b style={{ color: SKY }}>@{handle}</b> · editable later
           </div>
         ) : null}
 
@@ -241,7 +241,7 @@ export function OnboardingForm({
             }
             if (ready) setStep("styles");
           }}
-          style={{ ...BTN_STYLE, background: ready ? PINK : LINE, color: ready ? "#fff" : SUB, marginTop: 4, transition: "all .2s" }}
+          style={{ ...BTN_STYLE, background: ready ? SKY : LINE, color: ready ? "#fff" : SUB, marginTop: 4, transition: "all .2s" }}
         >
           {pending ? "Saving…" : ready ? "Continue" : missing}
         </button>
@@ -266,7 +266,7 @@ export function OnboardingForm({
           {DOS_STYLE_REG.map(([l]) => {
             const on = mine.includes(l);
             return (
-              <button type="button" key={l} aria-pressed={on} aria-label={l} onClick={() => setMine((v) => (on ? v.filter((x) => x !== l) : [...v, l]))} style={{ display: "flex", alignItems: "center", gap: 7, padding: "6px 13px 6px 6px", borderRadius: 999, cursor: "pointer", fontSize: 13, fontWeight: 750, background: on ? `${PINK}14` : "var(--card)", color: on ? PINK : SUB, border: `2px solid ${on ? PINK : LINE}`, transition: "all .15s", fontFamily: "inherit" }}>
+              <button type="button" key={l} aria-pressed={on} aria-label={l} onClick={() => setMine((v) => (on ? v.filter((x) => x !== l) : [...v, l]))} style={{ display: "flex", alignItems: "center", gap: 7, padding: "6px 13px 6px 6px", borderRadius: 999, cursor: "pointer", fontSize: 13, fontWeight: 750, background: on ? `${SKY}14` : "var(--card)", color: on ? SKY : SUB, border: `2px solid ${on ? SKY : LINE}`, transition: "all .15s", fontFamily: "inherit" }}>
                 <DosStyleCoin label={l} size={30} active={on} />
                 {l}
                 {on ? " ✓" : ""}
@@ -293,7 +293,7 @@ export function OnboardingForm({
           disabled={pending || mine.length === 0}
           aria-disabled={mine.length === 0}
           onClick={() => mine.length && writeProfile({ styles: mine, socials: [] }, () => setStep("socials"))}
-          style={{ ...BTN_STYLE, background: mine.length ? PINK : LINE, color: mine.length ? "#fff" : SUB, marginTop: 14 }}
+          style={{ ...BTN_STYLE, background: mine.length ? SKY : LINE, color: mine.length ? "#fff" : SUB, marginTop: 14 }}
         >
           {pending ? "Saving…" : mine.length ? `Continue · ${mine.length} ${mine.length === 1 ? "style" : "styles"}` : "Pick at least one style"}
         </button>
@@ -327,14 +327,14 @@ export function OnboardingForm({
             </button>
           </div>
         ))}
-        <button type="button" onClick={() => setExtras((a) => [...a, { label: "", url: "" }])} style={{ fontSize: 12.5, fontWeight: 800, color: PINK, cursor: "pointer", margin: "4px 0 16px", background: "none", border: "none", padding: 0, fontFamily: "inherit" }}>
+        <button type="button" onClick={() => setExtras((a) => [...a, { label: "", url: "" }])} style={{ fontSize: 12.5, fontWeight: 800, color: SKY, cursor: "pointer", margin: "4px 0 16px", background: "none", border: "none", padding: 0, fontFamily: "inherit" }}>
           ＋ Add another link
         </button>
         <button
           type="button"
           disabled={pending}
           onClick={() => writeProfile({ styles: mine, socials: socials() }, () => setStep("done"))}
-          style={{ ...BTN_STYLE, background: PINK, color: "#fff" }}
+          style={{ ...BTN_STYLE, background: SKY, color: "#fff" }}
         >
           {pending ? "Saving…" : any ? "Continue" : "Skip for now →"}
         </button>

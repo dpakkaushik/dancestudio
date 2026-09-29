@@ -3,9 +3,9 @@
  *  The neutral surfaces are CSS variables (declared per-theme on <html> in globals.css,
  *  prototype DOS_PALETTE) so every screen follows the light/dark toggle. The accents are
  *  literal hex — the prototype keeps them identical in both themes, and several call
- *  sites alpha-suffix them (`${PINK}14`), which only works on a literal. */
+ *  sites alpha-suffix them (`${SKY}14`), which only works on a literal. */
 
-export const PINK = "#5AC8FA";
+export const SKY = "#5AC8FA";
 export const GREEN = "#22C55E";
 export const GOLD = "#F59E0B";
 export const RED = "#EF4444";

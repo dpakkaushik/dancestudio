@@ -1,6 +1,6 @@
 "use client";
 
-import { CARD, GOLD, GREEN, LINE, MUTED, PINK, RED, SUB } from "@/lib/design/tokens";
+import { CARD, GOLD, GREEN, LINE, MUTED, SKY, RED, SUB } from "@/lib/design/tokens";
 import type { MonthIncome, TenantIncome } from "@/types/income";
 import { DOS_MONO, MoneyCard, SectionLabel, bizCard, money } from "./earnings-kit";
 
@@ -392,7 +392,7 @@ export function MonthStatements({
                   tabIndex={0}
                   onKeyDown={pressKey(download)}
                   onClick={download}
-                  style={{ fontSize: 10.5, fontWeight: 800, color: PINK, marginTop: 9, cursor: "pointer" }}
+                  style={{ fontSize: 10.5, fontWeight: 800, color: SKY, marginTop: 9, cursor: "pointer" }}
                 >
                   Download statement ↓
                 </div>

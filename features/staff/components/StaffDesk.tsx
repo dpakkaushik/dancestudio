@@ -23,7 +23,7 @@ import {
 import Link from "next/link";
 import { DeskAddButton } from "@/features/settings/components/settings-kit";
 import { DOS_TOOLS, DeskHero, SheetHandle, sheetBody, sheetWrap } from "@/features/tenants/components/biz-kit";
-import { DOS_DISPLAY, DOS_UI, INK, LILAC, MUTED, PINK, SUB } from "@/lib/design/tokens";
+import { DOS_DISPLAY, DOS_UI, INK, LILAC, MUTED, SKY, SUB } from "@/lib/design/tokens";
 import { useCloseOnBack } from "@/lib/hooks/useCloseOnBack";
 import { photoUrl } from "@/lib/media/photo";
 import type { MemberRole, TeamMember } from "@/repositories/tenants";
@@ -622,7 +622,7 @@ export function StaffDesk({
                  scanned profile link, every row with its picture (R27).
                  ⚠ IT WEARS THE PICKER'S OWN CLOTHES SINCE 21 Sep 2026: this call
                  overrode all four of them — its own eyebrow, its own
-                 placeholder, "Ask" without the chevron, and `PINK`, which is
+                 placeholder, "Ask" without the chevron, and `SKY`, which is
                  CYAN — while the organization's and the crew's Team desks both
                  take the defaults. One widget, three visual identities, on three
                  pages doing the same job. `ariaLabel` stays, because it is the
@@ -986,7 +986,7 @@ export function StaffDesk({
                      (the 19 Sep lesson, met again the day after). */
                   aria-label={`Record a payment for ${openMember.name}`}
                   onClick={() => { setPay({ amount: "", method: "upi", status: "done", note: "" }); setPayOpen(true); }}
-                  style={{ width: "100%", marginTop: 10, textAlign: "center", padding: "11px", borderRadius: 999, border: `1.5px dashed ${PINK}`, background: "none", color: PINK, fontWeight: 800, fontSize: 12.5, cursor: "pointer", fontFamily: "inherit" }}
+                  style={{ width: "100%", marginTop: 10, textAlign: "center", padding: "11px", borderRadius: 999, border: `1.5px dashed ${SKY}`, background: "none", color: SKY, fontWeight: 800, fontSize: 12.5, cursor: "pointer", fontFamily: "inherit" }}
                 >
                   ＋ Record a payment
                 </button>

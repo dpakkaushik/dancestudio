@@ -15,7 +15,7 @@ import { filterClasses, filterCrews, filterTenants, filtersToParams, parseFilter
 import { gradientOf } from "@/features/profiles/components/profile-kit";
 import { DOS_STYLE_NAMES } from "@/lib/constants/styles";
 import { INDIA_CENTRE, centreOf, findDiscoverCities } from "@/repositories/cities";
-import { DOS_DISPLAY, DOS_UI, INK, PINK, SUB } from "@/lib/design/tokens";
+import { DOS_DISPLAY, DOS_UI, INK, SKY, SUB } from "@/lib/design/tokens";
 import { photoUrl } from "@/lib/media/photo";
 import { publicProfilePath } from "@/lib/routes/publicProfile";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
@@ -312,7 +312,7 @@ export default async function DiscoverPage({
       style={{
         /* the page's own colour bleeding off the top (4491-4496): stops in PIXELS, so the wash
            always ends just under the section tabs no matter how long the list below runs */
-        background: `linear-gradient(180deg, ${PINK}80 0px, ${PINK}3d 150px, ${PINK}12 250px, var(--bg) 340px)`,
+        background: `linear-gradient(180deg, ${SKY}80 0px, ${SKY}3d 150px, ${SKY}12 250px, var(--bg) 340px)`,
         backgroundColor: "var(--bg)",
         backgroundRepeat: "no-repeat",
         color: INK,

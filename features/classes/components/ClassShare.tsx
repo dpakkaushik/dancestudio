@@ -3,7 +3,7 @@
 import { useState } from "react";
 
 import { QRBlock } from "@/components/ui/QRBlock";
-import { PINK } from "@/lib/design/tokens";
+import { SKY } from "@/lib/design/tokens";
 import { dosKey } from "./ShareSheet";
 
 const DOS_MONO = 'ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace';
@@ -88,7 +88,7 @@ export function ClassShare({
           border: "1.5px solid var(--el)",
           fontWeight: 800,
           fontSize: 12,
-          color: done ? "#22C55E" : PINK,
+          color: done ? "#22C55E" : SKY,
           cursor: "pointer",
         }}
       >
