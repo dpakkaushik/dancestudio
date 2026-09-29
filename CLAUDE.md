@@ -9116,15 +9116,21 @@ summary; the report has the evidence.
    * **Schedule as a segment of the public page** rather than `/…/schedule` —
      −1 for an artist and −1 for a studio. ⚠ Rule 14: the route stays and
      redirects, because a schedule link is a thing studios hand out.
-   * **`/crews/{id}/manage` folded into `/crew/{id}`**, the way a person's own
-     profile now renders on their public address — −1 for a crew. The owner
-     branch goes ABOVE the public read, for the same reason it does on
-     `/org/{id}`: that read answers only for a live crew.
-   * **The two stats addresses per kind collapsed** — `/stats` beside
-     `/person/{id}/stats`, and `/business/stats` beside `/org/{id}/stats` —
-     which is C40's shape again: two addresses drawing one subject. ⚠ This does
-     NOT contradict "keep stats as a separate page": it stays separate, it stops
-     being separate TWICE.
+   * ~~**`/crews/{id}/manage` folded into `/crew/{id}`**~~ — ⚠ **REFUSED, and
+     deliberately** (C57, 23 Sep 2026): `AppChrome` decides "entity home" from
+     the PATHNAME alone and cannot know the viewer's relationship, and `CrewHome`
+     is a TOOL GRID — merging would put owner-only tiles on a visitor's front
+     door, which is the thing C40 exists to stop rather than to spread. **Do not
+     re-propose this.**
+   * ~~**The two stats addresses per kind collapsed**~~ — ✅ **DONE 23 Sep 2026**
+     (C57): `/stats` and `/business/stats` are redirects carrying their whole
+     query, and `OwnStatsScreen` holds the owner's reads. ⚠ `/business/stats` and
+     `/org/{id}/stats` have since gone entirely with the organizations removal
+     (R57), so there is no second stats address left anywhere.
+   ⚠ **SO ONLY THE FIRST BULLET IS STILL OPEN** — the other two were built or
+   refused within two days of this row being written, and it said otherwise for
+   six days. **A backlog row is a claim about the code** (#0al's lesson, met
+   again on 29 Sep while re-measuring #0aw).
    ⚠ **What I will NOT merge, and why, so it is not re-proposed**: `/business/{id}`
    into `/studio/{id}`. A studio's own home is ten owner-only tiles and a
    visitor's front door is a public page; putting both behind one address is a
@@ -9752,10 +9758,14 @@ summary; the report has the evidence.
    the events SELECT carries `lat, lng` now, so the edit form reopens on the
    point the organiser put. Both are asserted by `shoot-org.js` (13 checks).
 
-3. **An event radius search is the slice after that.** The GiST index on
-   `events (lat, lng)` is already there from `20260913130000`, and nothing uses
-   it yet: Discover's Events tab is still city-only, and an event is not on the
-   map view. `nearby_tenants` is the shape to copy.
+3. **~~An event radius search is the slice after that.~~ — ⚠ DEAD 29 Sep 2026.**
+   The organizations-and-events removal (R57/R58) deleted `types/event.ts`,
+   `features/events/`, every event route and Discover's Events tab, so there is
+   no Events tab to make a radius search for. **The `events` table survives as a
+   TOMBSTONE** — four paid orders with four captured payments name it, and a
+   ledger does not forget money — and its GiST index on `(lat, lng)` survives
+   with it, pointing at rows nothing can read. Nothing to build; recorded so the
+   index is not mistaken for an unfinished feature.
 
 4. **~~RATE LIMITING DOES NOT EXIST ANYWHERE~~ — BUILT 18 Sep 2026** in exactly
    the shape recommended here (`20260918174000_rate_limits`, `lib/rateLimit.ts`):
