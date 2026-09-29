@@ -76,7 +76,9 @@ export function ScanSheet({
   confirmLabel = "Confirm",
 }: {
   onClose: () => void;
-  onCode: (personId: string) => void | ScanOutcome | Promise<void | ScanOutcome>;
+  /** ⚠ the name is passed too, for a caller with no row to read one off — a
+   *  handler that only wants the id still satisfies this (fewer parameters). */
+  onCode: (personId: string, personName: string) => void | ScanOutcome | Promise<void | ScanOutcome>;
   busy?: boolean;
   error?: string | null;
   /** what this scan is FOR — "Check somebody in" on a register, the default on a picker */
@@ -158,7 +160,13 @@ export function ScanSheet({
     if (!found || working) return;
     setOutErr(null);
     setWorking(true);
-    const out = await onCode(found.id);
+    /* ⚠ the NAME goes with the id (29 Sep 2026). A door that books somebody has
+       no register row to read a name off yet, so without this its one message
+       back would have to say "Booked in" about nobody in particular — and the
+       sheet is a QUEUE, so that message sits under the camera while the next
+       person steps up. The sheet has the person on screen; it may as well say
+       who. Optional, so a caller that does not care ignores it. */
+    const out = await onCode(found.id, found.fullName);
     setWorking(false);
     if (!out || typeof out !== "object") return;
     if (out.ok) {

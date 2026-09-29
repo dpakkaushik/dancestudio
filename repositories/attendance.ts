@@ -106,3 +106,33 @@ export async function removeFromWaitlist(
     throw new Error(error.message);
   }
 }
+
+/** THE DOOR (29 Sep 2026) — book somebody who is standing in front of you.
+ *
+ *  ⚠ It hands back the new booking's id, and that is the point of returning
+ *  anything at all: the door's next act is to CHECK THEM IN, and waiting for a
+ *  `router.refresh()` to bring the row back before it can would be the same race
+ *  the scan sheet was bitten by on 28 Sep (a prop only moves when the round trip
+ *  lands, so a second scan read a stale register and said "✓ checked in" twice).
+ *
+ *  Everything that decides is the RPC's: who may run the register, the register's
+ *  own 30-minutes-before-until-it-ends window, capacity, and the three answers a
+ *  door has to tell apart. Nothing here re-implements any of it. */
+export async function bookForPerson(
+  supabase: SupabaseClient,
+  sessionId: string,
+  userId: string
+): Promise<string> {
+  const { data, error } = await supabase.rpc("book_class_session_for_person", {
+    p_session_id: sessionId,
+    p_user_id: userId,
+  });
+  if (error) {
+    throw new Error(error.message);
+  }
+  const row = data as { id?: string } | null;
+  if (!row?.id) {
+    throw new Error("The door did not hand back a booking");
+  }
+  return row.id;
+}

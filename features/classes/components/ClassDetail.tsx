@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useActionState, useRef, useState, useSyncExternalStore, type ReactNode } from "react";
 import {
+  bookAtTheDoorAction,
   checkInAction,
   giveSpotAction,
   removeFromWaitlistAction,
@@ -450,10 +451,20 @@ export function ClassDetail({
    *  ⚠ AND IT TELLS THE THREE "NO"s APART, because they need three different
    *  answers at a door: on the waitlist (give them a spot first — a decision,
    *  not something a scan should take), booked for a DIFFERENT class, or not
-   *  booked at all. The last one is where a class walk-in would go, and classes
-   *  have no walk-in: `add_event_walk_in` exists for events and has no class
-   *  equivalent, so the sentence says what can actually be done instead. */
-  const scanCheckIn = async (personId: string): Promise<ScanOutcome> => {
+   *  booked at all.
+   *
+   *  ⚠⚠ AND THE LAST ONE IS A DOOR NOW (29 Sep 2026). It used to end the errand
+   *  — "a class has no walk-in yet" — which is the one thing a person standing
+   *  at the door cannot act on. `book_class_session_for_person` books them and
+   *  they are checked in in the same press, because the confirm card they just
+   *  passed IS the consent step (the user's own 28 Sep wording: "after
+   *  confirmation only should check them in OR ADD THEM").
+   *
+   *  ⚠ Everything that decides still lives in the database: the register's own
+   *  window, capacity, and who may run the door. A refusal comes back in the
+   *  RPC's own words and the confirm card stays up wearing it, which is what
+   *  `ok: false` means to this sheet. */
+  const scanCheckIn = async (personId: string, personName: string): Promise<ScanOutcome> => {
     if (!register) return { ok: false, message: "This register is not open." };
     const row = register.rows.find((r) => r.userId === personId);
     if (!row) {
@@ -461,7 +472,19 @@ export function ClassDetail({
       if (waiting) {
         return { ok: false, message: `${waiting.learnerName} is on the waitlist — give them a spot first, then scan again.` };
       }
-      return { ok: false, message: "Not booked for this class. They can book it on the class page; a class has no walk-in yet." };
+      if (!c.session) {
+        return { ok: false, message: "This class has no session to book against." };
+      }
+      /* ⚠ the id is remembered BEFORE the refresh lands, exactly as a check-in
+         is: `register` is a prop, so scanning two people in a second would
+         otherwise read a stale one and offer to book somebody twice. */
+      const booked = await bookAtTheDoorAction({ sessionId: c.session.id, userId: personId });
+      if (booked.error) {
+        return { ok: false, message: booked.error };
+      }
+      scannedIn.current.add(personId);
+      router.refresh();
+      return { ok: true, message: `✓ ${personName} booked in at the door` };
     }
     if (row.checkedIn || scannedIn.current.has(personId)) {
       return { ok: true, message: `${row.learnerName} was already checked in` };
@@ -1529,10 +1552,12 @@ export function ClassDetail({
               <button
                 type="button"
                 onClick={() => {
-                  if (register.rows.length === 0) {
-                    fire("Nobody has booked yet — there is nothing to scan against");
-                    return;
-                  }
+                  /* ⚠ NO "nothing to scan against" GUARD ANY MORE (29 Sep 2026).
+                     It refused to open the sheet while `register.rows` was
+                     empty, which was true while the only thing a scan could do
+                     was find an existing booking — and is exactly backwards for
+                     a door: an empty class is precisely when the first walk-in
+                     arrives. The feature made its own guard wrong. */
                   /* ⚠ CLEARED ON EVERY OPEN, not on close: the set is only ever
                      right for ONE sitting at the door. Somebody checked in by a
                      scan and then checked OUT on their row would otherwise still
@@ -2013,7 +2038,15 @@ export function ClassDetail({
       )}
 
       {/* the register's scanner — the sheet resolves the code and shows WHO it
-          found, and `scanCheckIn` decides what that person is to this class */}
+          found, and `scanCheckIn` decides what that person is to this class.
+
+          ⚠ THE LABEL STILL SAYS "Check in" THOUGH THE PRESS MAY ALSO BOOK
+          (29 Sep 2026), and that is this file's own rule rather than an
+          oversight: the 28 Sep re-cut of "Save & ask" → "Send request" said a
+          button names what the person is DOING, not the steps the code takes to
+          do it. Here the act is letting somebody into the room; the booking is
+          the mechanism, the way the draft was there. What happened IS said —
+          the outcome message reads "booked in at the door". */}
       {scanOpen && register && (
         <ScanSheet
           heading="Check somebody in"

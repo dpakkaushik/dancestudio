@@ -4,7 +4,13 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
-import { checkIn, giveSpot, removeFromWaitlist, undoCheckIn } from "@/repositories/attendance";
+import {
+  bookForPerson,
+  checkIn,
+  giveSpot,
+  removeFromWaitlist,
+  undoCheckIn,
+} from "@/repositories/attendance";
 
 /** Step 10 register actions — thin Zod-validated wrappers; authorization
  *  (owner/trainer of the tenant, the clock's check-in window, capacity under
@@ -70,4 +76,54 @@ export async function removeFromWaitlistAction(input: {
   enrollmentId: string;
 }): Promise<RegisterActionResult> {
   return runRegisterOp(removeFromWaitlist, input);
+}
+
+/** THE DOOR: book somebody in, then check them in, as ONE act (29 Sep 2026).
+ *
+ *  ⚠ ONE ACT IS THE USER'S OWN WORDING, not a shortcut. Their 28 Sep sentence
+ *  was "after confirmation only should check them in OR ADD THEM" — so the scan
+ *  sheet's confirm card (the face, the name, the city, Confirm / Not them) IS
+ *  the consent step, and a second press asking "really?" would be the same
+ *  question twice. The person is at the door and has handed over their own code.
+ *
+ *  ⚠ AND IT CHECKS THEM IN WITH THE ID THE BOOKING JUST RETURNED rather than
+ *  going back for the register — the row cannot be in the page's props yet, and
+ *  waiting for it is the 28 Sep stale-prop race.
+ *
+ *  ⚠ A HALF-DONE DOOR IS REPORTED HONESTLY: if the seat is taken and the
+ *  check-in then fails, the seat STANDS and the message says so, because the
+ *  booking is the thing that matters and un-booking somebody to tidy up a
+ *  failed second step would throw away the real one. */
+const doorSchema = z.object({
+  sessionId: z.string().uuid(),
+  userId: z.string().uuid(),
+});
+
+export async function bookAtTheDoorAction(input: {
+  sessionId: string;
+  userId: string;
+}): Promise<RegisterActionResult> {
+  const parsed = doorSchema.safeParse(input);
+  if (!parsed.success) {
+    return { error: "Invalid person or session" };
+  }
+  const supabase = await requireUser();
+
+  let enrollmentId: string;
+  try {
+    enrollmentId = await bookForPerson(supabase, parsed.data.sessionId, parsed.data.userId);
+  } catch (error: unknown) {
+    return { error: error instanceof Error ? error.message : "Could not book them in" };
+  }
+
+  try {
+    await checkIn(supabase, enrollmentId);
+  } catch (error: unknown) {
+    revalidateRegisterSurfaces();
+    const why = error instanceof Error ? error.message : "the register would not take it";
+    return { error: `They have a seat, but the check-in did not go through — ${why}` };
+  }
+
+  revalidateRegisterSurfaces();
+  return { error: null };
 }

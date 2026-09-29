@@ -2,7 +2,110 @@
 
 ## LAST SESSION (29 Sep 2026) — replaced on every push (Rule 13)
 
-> ### SIX THINGS, AND A "DRY RUN" THAT COMMITTED TO PRODUCTION (29 Sep 2026, latest) — ⚠ ONE MIGRATION APPLIED (`20260929110000`), ⚠⚠ AND IT WENT IN BY MISTAKE
+> ### A CLASS HAS A DOOR (29 Sep 2026, latest) — ⚠ ONE MIGRATION APPLIED (`20260929120000`), dry run **24/24** rolled back first, read back live **14/14**
+> The user picked the class walk-in (#0aw) off the backlog. ⚠⚠ **THE FIRST ACT
+> WAS TO RE-MEASURE THE ROW RATHER THAN BUILD FROM IT, AND THREE OF ITS CLAIMS
+> HAD GONE STALE IN ONE DAY.** It was written on 28 Sep and the organizations
+> and events removal landed on the 29th, so: **`add_event_walk_in` NO LONGER
+> EXISTS** — the row's whole framing was *"events have it and classes have no
+> equivalent"*, and shape 2's "mirror the event door" had **no mirror left to
+> copy**; the headline measurement, *"29 of 66 live event bookings are walk-ins
+> — 44%"*, is now **0 live event bookings** (all 68 swept), so the number is
+> history rather than a live signal (30 of 68 did carry no user, so it was
+> real); and the blast radius is **30 functions**, not the row's "six more
+> reads". **A backlog row is a claim about the code, and a claim nobody
+> re-measures is a claim that goes wrong quietly** — the #0al lesson, met again,
+> and this time it would have been built on.
+> * ⚠⚠ **TWO FACTS THE ROW NEVER HAD, AND BOTH CHANGED THE DESIGN.**
+>   `attendance.class_booking_id` is **NOT NULL and unique per booking**, so
+>   attendance always hangs off a booking and a walk-in needs a booking row
+>   **whichever shape** is chosen. And the Students desk **already has a walk-in
+>   concept** (`StudentSource = "added"`, `userId: null`, off `leads`) with no
+>   writer left — so the fourth decision was a wire-up rather than a new idea.
+>   ⚠ Only **4 policies** on the two tables, all SELECT: every write is an RPC,
+>   which is what makes shape 1 one function and nothing else.
+> * **THE FOUR DECISIONS WERE THE USER'S AND ARE RECORDED ON THE OPTIONS**:
+>   **both shapes, shape 1 first**; **full is full**; **₹0, collected at the
+>   door**; **no leads row**. So this slice is shape 1 — book a person who IS on
+>   DanceOS — and shape 2 (a name, no account) is its own slice, unprejudiced.
+> * ⚠⚠ **IT REVERSES A DELIBERATE NON-FEATURE, AND THE WINDOW IS WHAT KEEPS THE
+>   REVERSAL SMALL.** Step 12 (25 Aug): *"a studio CANNOT book a seat for
+>   somebody … faking an enrollment would put a name on a roster that never
+>   agreed to it."* Right for a desk inventing bookings, wrong for a door — the
+>   person is standing there holding up their own code. So the door's window is
+>   **the REGISTER'S OWN**, copied out of `check_in` rather than invented: from
+>   thirty minutes before the session until it ends. **Outside it a studio still
+>   cannot book anybody for anything**, so the reversal reaches exactly the
+>   circumstance the consent argument covers and no further (row R59).
+> * **ONE PRESS, AND THAT IS THE USER'S OWN WORDING RATHER THAN A SHORTCUT.**
+>   Their 28 Sep sentence was *"after confirmation only should check them in **or
+>   add them**"*, so the scan sheet's confirm card — the 96px face, the name, the
+>   city, View profile / Stats, Not them / Confirm — **IS** the consent step, and
+>   a second "really?" would be the same question twice. ⚠ The check-in uses the
+>   id the booking just returned rather than going back for the register: the row
+>   cannot be in the page's props yet, and waiting for it is the 28 Sep
+>   stale-prop race that made the sheet say "✓ checked in" twice.
+> * ⚠⚠ **AND THE FEATURE MADE ONE OF ITS OWN GUARDS WRONG.** The scan button
+>   refused to open while `register.rows` was empty — *"Nobody has booked yet —
+>   there is nothing to scan against"* — which was true while a scan could only
+>   ever FIND an existing booking, and is exactly backwards for a door: **an
+>   empty class is precisely when the first walk-in arrives.** Deleted.
+> * ⚠ **THE LABEL STILL READS "Check in" THOUGH THE PRESS MAY ALSO BOOK**, by
+>   this file's own rule rather than by omission: the 28 Sep re-cut of
+>   *"Save & ask"* → *"Send request"* settled that **a button names what the
+>   person is DOING, not the steps the code takes** — the act is letting somebody
+>   into the room and the booking is the mechanism, the way the draft was. What
+>   happened IS said: the outcome reads *"✓ {name} booked in at the door"*.
+> * ⚠ **`ScanSheet` PASSES THE NAME NOW** — a door that books somebody has no
+>   register row to read one off, and the sheet is a QUEUE, so its one message
+>   sits under the camera while the next person steps up. Optional second
+>   parameter, so the picker's handler is untouched.
+> * **NOTHING ELSE MOVES IN THE DATABASE**: one function, its grants, one
+>   comment. No table, no column, no policy, not one existing function. ⚠ The
+>   two triggers on the insert are left alone on purpose — `guard_person_only`
+>   refuses a suspended account (inherited, nothing re-implemented), and
+>   `notify_class_booking` tells the owners a seat was taken, whose verb is the
+>   desk's rather than the person's and whose FACT is right, so rewriting a live
+>   notify function for a wording nuance would risk the ordinary booking path
+>   for nothing.
+> * **Verified:** typecheck 0 · lint 0 · `next build` green · the dry run
+>   **24/24, rolled back** — ⚠ including **check 0, yesterday's new Rule 18
+>   probe**, confirming the file never committed — · applied on the FIRST try
+>   with `db-push -DryRun` listing **exactly the one file** · read back off the
+>   **LIVE catalog 14/14** (the signature the app calls, definer, authenticated +
+>   service_role and **NOT anon**, anon's set still **39**, the four policies
+>   untouched, no write policy, the three functions it stands on intact,
+>   `guard_person_only` still bound, **PostgREST reloaded**) · **4/4 proofs**
+>   (attendance, classes, rooms-people, enrollments) · **`shoot-register`
+>   46/46** (41 before — the five new ones drive the door on a real class live on
+>   the clock and then **read the seat and the attendance row out of the
+>   database**) · **the whole e2e suite 56/56 in ONE run, 9.5 min on one worker,
+>   no red at any point**.
+> * ⚠ **AND CHECK 13 OF THE READ-BACK IS THE DIRECT ANSWER TO YESTERDAY'S
+>   DISASTER**: it asks production whether the dry run's planted studio is there,
+>   and it is not. The rolled-back world really did roll back.
+> * ⚠ **TWO REDS ON THE WAY, BOTH THE RIGHT KIND, NEITHER THE PRODUCT.**
+>   `rls-proof-enrollments` came back **429 Too Many Requests** — the OTP rate
+>   limit the phone-based proofs share, which this file already says to run
+>   alone — and passed alone seventy-five seconds later. And **two assertions in
+>   `shoot-register` described the decision that just changed** ("Not booked for
+>   this class", "nothing at all was written for the person who was refused");
+>   they are re-cut to assert the door, and one of them now asserts **both
+>   ends** — the new sentence present AND the old dead end gone.
+> * ⚠⚠ **AND THE JSX-COMMENT TRAP FOR THE SIXTH TIME, SELF-INFLICTED IN THE SAME
+>   HOUR I WAS WRITING ABOUT IT.** A `{/* … */}` placed inside
+>   `{scanOpen && register && (` is a SECOND CHILD of a parenthesised
+>   expression, not a comment — three parse errors from one comment. It goes
+>   above the expression. **The rule is in this file twice and it still cost a
+>   build.**
+> * ⚠ **AND ONE DEFECT IN MY OWN CHECK, CAUGHT BY READING IT BACK RATHER THAN BY
+>   A RUN**: the new shoot asserted `walkBk[0].user_id !== owner.id` while the
+>   select asked for `id,status,created_by` — so `undefined !== owner.id` would
+>   have passed **for the wrong reason**, on every run, for ever. `user_id` is in
+>   the select now. **A check that can pass for the wrong reason is not a
+>   check** — this file's own 11 Sep lesson, pointing the other way.
+
+> ### SIX THINGS, AND A "DRY RUN" THAT COMMITTED TO PRODUCTION (29 Sep 2026, earlier) — ⚠ ONE MIGRATION APPLIED (`20260929110000`), ⚠⚠ AND IT WENT IN BY MISTAKE
 > The user, in one message: *"1. top pink hue enquiries should be removed from
 > all profiles. 2. Team payment history to be a button called History which
 > should show all transactions with that particular person on a different page.
@@ -8073,7 +8176,36 @@ summary; the report has the evidence.
    `rolesFor`/`labelsFor` and the organization Team desk's list, and
    `shoot-seats.js` grows the manager's own half.
 
-0aw. **⚠⚠ A CLASS HAS NO WALK-IN, AND IT NEEDS A MIGRATION — THE TWO SHAPES AND
+0aw. **~~A CLASS HAS NO WALK-IN~~ — ✅ SHAPE 1 APPLIED AND LIVE 29 Sep 2026**
+   (`20260929120000_a_class_has_a_door`, dry run 24/24 rolled back, read back
+   live 14/14), on the user's four answers: **both shapes with shape 1 first ·
+   full is full · ₹0 collected at the door · no leads row.**
+   ⚠⚠ **AND THREE OF THIS ROW'S OWN CLAIMS WERE STALE WITHIN A DAY OF BEING
+   WRITTEN, WHICH IS THE LESSON WORTH MORE THAN THE FEATURE.** It was written
+   28 Sep; the organizations-and-events removal landed on the 29th. So:
+   **`add_event_walk_in` NO LONGER EXISTS** — the row's central comparison was
+   *"events have it and classes have no equivalent"*, and shape 2's "mirrors
+   events" had **nothing left to mirror**; the headline **"29 of 66 live event
+   bookings are walk-ins — 44%"** is now **0 live event bookings** (all 68
+   swept), so the number is HISTORY, not a live signal — though 30 of 68 really
+   did carry no user, so it was true when measured; and the blast radius is
+   **30 functions**, not "six more reads". **Re-measure a backlog row before
+   building on it** (#0al's lesson, met again and this time nearly acted on).
+   ⚠ **WHAT IS STILL OWED IS SHAPE 2 — a walk-in BY NAME, with no DanceOS
+   account** — which the user chose to take as its own slice. It needs
+   `class_bookings.user_id` and `attendance.user_id` nullable, an
+   `attendee_name`, a CHECK that exactly one is set, and an audit of the 30
+   functions reading those tables for NULL-user assumptions. ⚠ Two facts found
+   while building shape 1 that shape 2 must start from: **`attendance.class_booking_id`
+   is NOT NULL and unique per booking**, so a walk-in needs a booking row
+   whichever shape; and **the live-unique index stops protecting walk-ins**
+   (`(session_id, user_id)` with NULLs treated as distinct), so the same person
+   could be added twice unless the name is in the key. ⚠ And the Students desk
+   already has the `source: "added"` path with `userId: null` and no writer, so
+   that is where a named walk-in would land if the fourth decision is ever
+   revisited. The original list, kept for shape 2:
+
+0aw-old. **⚠⚠ A CLASS HAS NO WALK-IN, AND IT NEEDS A MIGRATION — THE TWO SHAPES AND
    THE FOUR DECISIONS, IN FRONT OF THE USER RATHER THAN GUESSED (28 Sep 2026).**
    Events have `add_event_walk_in`; classes have **no equivalent at all**, so the
    register's new scanner can only ever say "not booked" to somebody standing at
@@ -9658,6 +9790,30 @@ for the database schema. **The UI is not redesigned** — see Rule 2.
 
 ### Progress tracker — update after EVERY push (Rule 11)
 
+- **A CLASS HAS A DOOR — 29 Sep 2026, no step number ⚠ (Rule 9: a new definer
+  function that books a seat for somebody else) — ONE MIGRATION APPLIED
+  (`20260929120000`), dry run 24/24 rolled back first, read back live 14/14.**
+  The class walk-in (#0aw), shape 1 of two. ⚠⚠ **Re-measuring the backlog row
+  first is what saved it**: written 28 Sep, and the events removal landed on the
+  29th, so `add_event_walk_in` — the thing shape 2 was to mirror — **no longer
+  exists**, the "44% of live event bookings are walk-ins" headline is now **0
+  live event bookings**, and the blast radius is 30 functions rather than six
+  reads. The user's four decisions: **both shapes, shape 1 first · full is full ·
+  ₹0 collected at the door · no leads row.** One RPC gated on
+  `can_run_register_for_class`, and ⚠ **its window is the REGISTER'S own**
+  (30 minutes before until the session ends, copied out of `check_in`) — which
+  is what keeps the reversal of Step 12's deliberate non-feature as small as the
+  consent argument that justifies it (R59). One press, because the user's own
+  28 Sep wording was *"check them in **or add them**"* and the scan sheet's
+  confirm card is the consent step. ⚠ The feature made one of its own guards
+  wrong — the scan button refused to open on an empty class, which is exactly
+  when the first walk-in arrives. **typecheck 0 · lint 0 · build green · dry run
+  24/24 · live read-back 14/14 · 4/4 proofs · `shoot-register` 46/46 · the whole
+  e2e suite 56/56 in ONE run, 9.5 min, no red at any point.** ⚠ Two reds were the
+  machine and the right kind: a 429 OTP rate limit (green alone), and two
+  assertions describing the decision that had just changed. ⚠⚠ The JSX-comment
+  trap for the SIXTH time, self-inflicted; and a check of mine that would have
+  passed for the wrong reason for ever, caught by reading it back.
 - **SIX THINGS, AND A "DRY RUN" THAT COMMITTED — 29 Sep 2026, no step number ⚠
   (Rule 9: three definer functions, and a migration that went in unapproved) —
   ONE MIGRATION APPLIED (`20260929110000`), read back live 8/8.** The user's
@@ -14401,6 +14557,8 @@ Home. **Do not "restore parity" on these.**
 | C86 | R29 / C40: `/person/{id}/stats` draws `StatsScreen` for its owner (the record, a History library, four boards with city, metric and style filters) and `EntityStatsPage` for everybody else | **ONE SCREEN, WHOEVER IS LOOKING** — `EntityStatsPage` for both. ⚠ **What it costs was named before it was chosen**: the History library and browsing the boards go with `StatsScreen`, which is deleted. Every read behind them is kept and marked `⚠ NO CALLER` and every SQL function is untouched, so a board is a screen away rather than a rebuild. ⚠ Two doors moved with it — the crew home's Stats chip (which pointed at the crew BOARD on the PERSON's screen, the studio chip's own bug of 21 Sep in a second place) and the page's own "See the whole board ›", which would have walked a visitor from somebody else's record to their own because `/stats` redirects to the READER. `/stats` stays an address (Rule 14) and still carries its query, which now buys nothing and costs a line | 29 Sep 2026, the user: *"stats — should only have one view when looking at your profile or someone else, charts when looking at someone else's profile also should have a view with that person's rankings"*, and, asked which way to converge, **"Yours becomes theirs"**. The second clause was already true of the surviving screen: a standing card per scope IS that person's rankings |
 | C87 | The class poster opens the PASS (24 Aug 2026, prototype 12001 "one place instead of three"): the art, the booking link, and for a booked viewer a `DOS-CL-####` entry code under "Scan this at the door." | **THE POSTER OPENS THE POSTER**, share is a BLOCK IN THE DETAILS (the QR, the address in words, one press to copy), and the entry code is gone from the class page AND Home's deck — `PassSheet.tsx` deleted with no caller left. ⚠ **The entry code was a credential nothing accepts**: the register's scanner resolves a PERSON's profile link and `can_run_register_for_class` decides. What survives is the string it encoded, printed where it already was as the booking REFERENCE it always was. ⚠ `PosterSheet` takes the whole `PosterItem`, so an UPLOADED poster opens as the picture it is — `PassSheet` typed a narrower shape and silently drew the design over somebody's photograph. ⚠ The share square is **148px**, because a `/c/{slug}` link is a version-3 or -4 code and under ~125px `QRBlock` marks itself `small` | 29 Sep 2026, the user: *"when clicking on the poster right now we get poster and a qr code for the class which should not happen — should just open poster in that. share should be part of the details with qr code with link and option to copy the link as well … scan this at door text not required as your personal qr code for user or artist profile is being used to enter the classes"* |
 | C82 | A room's capacity is a NUMBER in component state on the Rooms desk and in the New-studio sheet's rooms editor | **TEXT-BACKED, NORMALISED ON BLUR** — `Number("") \|\| 0` makes an emptied box a hard 0, so backspacing over `20` snapped to `0` and typing `15` gave `015`. The same defect as the class form's price and session-pay fields, in the two places that morning's fix did not reach | 28 Sep 2026, the user's *"fix these 2 as well"*. ⚠ It is a bigger lie on a room than on a price: capacity is the one field on that desk the DATABASE enforces on every booking (`assert_room_ok` caps a class by its room), so a 0 there is a room nobody can book into |
+
+| R59 | Step 12 (25 Aug 2026) made it a **deliberate non-feature**: *"a studio CANNOT book a seat for somebody. Enrolling is the learner's own act … faking an enrollment here would have put a name on a roster that never agreed to it."* A trial was recorded as which class and which day, and the lead was marked Converted when they turned up for real | **A DOOR MAY BOOK SOMEBODY WHO IS STANDING AT IT** (29 Sep 2026, `book_class_session_for_person`): whoever may run the register books a person who IS on DanceOS, and they are checked in in the same press. ⚠⚠ **THE WINDOW IS WHAT MAKES THE REVERSAL HONEST, and it is the REGISTER'S OWN** — copied out of `check_in` rather than invented: from thirty minutes before the session until it ends. **Outside it a studio still cannot book anybody for anything**, so the reversal reaches exactly the circumstance the consent argument covers: the person is physically there and has handed over their own profile code, which is consent in person rather than consent by proxy. Step 12's reasoning is untouched for the case it was written about — a desk inventing bookings at leisure. ⚠ **Capacity is real** (full is refused; `assert_room_ok` caps a class by its room and a door that overfills a room is a fire-safety claim this app must not make), **nobody is waitlisted** (putting the person in front of you on a list is not an answer), and **a priced class books at ₹0** with the money collected at the door — the one rule it does NOT share with `book_class_session`, which refuses a priced class outright so the seat goes through Cashfree. ⚠ Shape 1 of two: a walk-in with **no account** needs a nullable `user_id` and is its own slice (#0aw) | 29 Sep 2026, the user's own four decisions when the two shapes were put to them: **both, shape 1 first · full is full · ₹0 at the door · no leads row** — and their 28 Sep wording, *"after confirmation only should check them in **or add them**"*, which is why it is ONE press: the scan sheet's confirm card is the consent step and a second prompt would be the same question twice |
 
 ### UI parity backlog — gaps vs the prototype, tracked so none is forgotten
 

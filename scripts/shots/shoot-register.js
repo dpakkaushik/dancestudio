@@ -226,12 +226,24 @@ const valueOf = (page, label) => page.getByLabel(label).inputValue();
     await sheet.getByText("already checked in", { exact: false }).waitFor({ timeout: 20000 });
     check(true, "⚠ scanning them again says they were already in — a scan is an arrival, never a departure");
 
-    /* ⚠ SOMEBODY WITH AN ACCOUNT AND NO BOOKING */
+    /* ⚠⚠ SOMEBODY WITH AN ACCOUNT AND NO BOOKING — THE DOOR (29 Sep 2026).
+       This check used to assert the OPPOSITE ("Not booked for this class …"),
+       which was the honest answer while classes had no walk-in of any kind. It
+       is re-cut rather than deleted, because what changed is a DECISION and the
+       old wording is exactly what would tell us the door had stopped working. */
     await scanLink(page, stranger.id);
     await sheet.getByTestId("scan-confirm").waitFor({ timeout: 20000 });
     await sheet.getByRole("button", { name: `Check in ${stranger.name}` }).click();
-    await sheet.getByText("Not booked for this class", { exact: false }).waitFor({ timeout: 20000 });
-    check(true, "somebody who is not booked is refused in words, and the confirm card stays up");
+    await sheet.getByText("booked in at the door", { exact: false }).waitFor({ timeout: 20000 });
+    check(true, "⚠ somebody with no booking is BOOKED IN at the door — the sentence that used to end the errand");
+    check(
+      !(await sheet.textContent()).includes("Not booked for this class"),
+      "and the old dead end is gone from the sheet"
+    );
+    check(
+      (await sheet.getByTestId("scan-confirm").count()) === 0,
+      "and the camera comes back for the next person — one press, not two"
+    );
 
     await sheet.getByRole("button", { name: "Cancel" }).click();
     await sheet.waitFor({ state: "detached", timeout: 20000 });
@@ -246,8 +258,20 @@ const valueOf = (page, label) => page.getByLabel(label).inputValue();
     /* the database's own answer, not the screen's */
     const att = await rows(owner.h, `attendance?class_id=eq.${cls.id}&user_id=eq.${learner.id}&deleted_at=is.null&select=id`);
     check(att.length === 1, `and the database holds exactly one live attendance row (found ${att.length})`);
-    const strangerAtt = await rows(owner.h, `attendance?class_id=eq.${cls.id}&user_id=eq.${stranger.id}&select=id`);
-    check(strangerAtt.length === 0, "and nothing at all was written for the person who was refused");
+    /* ⚠ THE DOOR, READ OUT OF THE DATABASE RATHER THAN OFF THE SCREEN. The
+       message said it happened; these two say WHAT happened. */
+    const walkBk = await rows(
+      owner.h,
+      `class_bookings?class_id=eq.${cls.id}&user_id=eq.${stranger.id}&deleted_at=is.null&select=id,status,user_id,created_by`
+    );
+    check(walkBk.length === 1, `the walk-in holds exactly one seat (found ${walkBk.length})`);
+    check(walkBk[0] && walkBk[0].status === "enrolled", "and it is ENROLLED — a door never waitlists somebody standing in front of it");
+    check(
+      walkBk[0] && walkBk[0].created_by === owner.id && walkBk[0].user_id !== owner.id,
+      "⚠ and the row records WHO OPENED THE DOOR, not the person who walked in — that is what makes it a walk-in without a column saying so"
+    );
+    const strangerAtt = await rows(owner.h, `attendance?class_id=eq.${cls.id}&user_id=eq.${stranger.id}&deleted_at=is.null&select=id`);
+    check(strangerAtt.length === 1, `and they are on the register in the same press (found ${strangerAtt.length})`);
 
     /* ── 4. THE NAME EVERY DRILL PAGE LOST ──────────────────────────────────── */
     const NAMED = [
