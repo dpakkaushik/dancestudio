@@ -87,16 +87,27 @@ export const DOS_TOOLS = {
      — so the two are never side by side. */
   enquiries: { name: "Enquiries", c: "#7E22CE" },
   /* PRACTICE (27 Sep 2026, the user: "crew should also get an option on home tab
-     called Practice"). A CREW-ONLY tile, so the only grid it has to clear is a
-     crew's — Team #9A3412 (22°), Events #F59E0B (38°), Enquiries #7E22CE (275°)
-     and Calendar #06B6D4 (187°), which joins it in the same breath. A deep green
-     at 142° is the widest empty band on that grid: 104° from Calendar's cyan and
-     133° from Enquiries' purple, and nothing warm to collide with.
-     ⚠ It shares a hue with Earnings' #22C55E and that is NOT a clash by R20's own
-     test, which is per-GRID: a crew has no Earnings tile — it takes no money —
-     so the two are never drawn side by side, and this one is a full step darker
-     besides, which is this list's way of separating a shared band. */
-  practice: { name: "Practice", c: "#15803D" },
+     called Practice") — ⚠⚠ REPAINTED 29 Sep 2026, and the repaint is what makes
+     the user's own next ask legal: *"practice should be seprate tab in home tab
+     not in crew"*.
+     It was #15803D, a deep green at 142°, chosen when this was a CREW-ONLY tile
+     and the only grid it had to clear was a crew's. Its own note said the rest
+     out loud: "it shares a hue with Earnings' #22C55E and that is NOT a clash by
+     R20's own test, WHICH IS PER-GRID — a crew has no Earnings tile." The moment
+     it joins a person's grid that reasoning expires, and 142° against 142° is the
+     one pair R20 exists to refuse.
+     A deep indigo at 245° is the widest band actually free on every grid it now
+     lands on. Checked against each kind's REAL list rather than the palette:
+     · a person's / an artist's — Studios #3B82F6 (217°, 28° and a step darker),
+       Subscription #0369A1 (202°), Enquiries #7E22CE (275°, 30°), Assets #64748B
+       (215° but the deliberate NEUTRAL — unsaturated, so it reads as grey),
+       Media #D946EF (292°), and nothing green at all beside it now.
+     · a crew's — Team #9A3412 (22°), Calendar #06B6D4 (187°, 58°), Enquiries
+       #7E22CE (275°, 30°).
+     ⚠ Rooms #6366F1 (239°) is six degrees away and is a STUDIO-only tile, so the
+     two are never on one grid — the same per-grid reading that licensed the old
+     green, recorded here so the next reader does not have to re-derive it. */
+  practice: { name: "Practice", c: "#4338CA" },
   /* `managed` ("Manage", violet) left this list on 19 Sep 2026 — the user: "just
      need to remove manage as the tile in tools, nothing else changes". The
      /managed page stays; nothing paints a tile for it any more */

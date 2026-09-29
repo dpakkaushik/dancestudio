@@ -26,7 +26,9 @@ import { findMyMemberships } from "@/repositories/businesses";
  *  Since 10 Sep 2026 every studio row carries ITS OWN subscription: whether it
  *  is live, renews, or is ending; and — from the database — the one sentence
  *  between the studio and Discover, with the button that sets the mandate up. */
-export default async function BusinessPage() {
+export default async function BusinessPage({ searchParams }: { searchParams: Promise<Record<string, string | undefined>> }) {
+  /* which column the ADDRESS asks for — the URL is the state (19 Sep 2026) */
+  const show = (await searchParams).show === "learned" ? "learned" : "own";
   const supabase = await createSupabaseServerClient();
   const {
     data: { user },
@@ -73,6 +75,7 @@ export default async function BusinessPage() {
     <BusinessHub
       memberships={memberships}
       attended={attended}
+      show={show}
       roomCounts={roomCounts}
       isArtist={Boolean(plan?.active)}
       whyNoStudio={whyNoStudio}

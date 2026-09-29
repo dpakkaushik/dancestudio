@@ -54,22 +54,25 @@ interface ChartRawRow {
   population: number;
 }
 
-/* ⚠⚠ NO CALLER — 29 Sep 2026, AND KEPT ON PURPOSE.
+/* ⚠ EVERY READ BELOW HAS A CALLER AGAIN — 29 Sep 2026.
  *
- *  `findMyStats`, `findMyHistory`, `findChart` and `findMyPlace` are the four
- *  reads behind `StatsScreen`, which was deleted the day the two stats screens
- *  became one (the user: "stats — should only have one view when looking at your
- *  profile or someone else"). What went with it is the HISTORY LIBRARY and
- *  browsing the four leaderboards; the user was shown that cost and chose it.
+ *  For one day these four were marked NO CALLER: `StatsScreen` had been deleted
+ *  when the two stats screens were collapsed into the thin one, and the History
+ *  library and the four leaderboards went with it. The note said "a board or a
+ *  history screen is a SCREEN away rather than a rebuild" and kept them — which
+ *  is exactly what it cost to put the three-column screen back the next day
+ *  (`StatsPageBody`). The 28 Sep sweep's own finding, paid off: "an export
+ *  nothing calls is sometimes a feature nobody can reach."
  *
- *  ⚠ DO NOT SWEEP THESE AS DEAD CODE. Every SQL function they call is live and
- *  untouched (`my_dance_stats`, `my_session_history`, `dance_chart`,
- *  `my_chart_place` — Step 25), so a board or a history screen is a SCREEN away
- *  rather than a rebuild. The 28 Sep sweep's own finding applies: "an export
- *  nothing calls is sometimes a feature nobody can reach", and these are that.
- *  `findEntityChartRow` below IS called — by all three `/…/stats` pages. */
+ *  ⚠ All four are the CALLER'S OWN by construction — `my_dance_stats`,
+ *  `my_session_history` and `my_chart_place` are scoped to `auth.uid()` inside
+ *  the database and take no `p_user_id`, by Step 25's design. That is why the
+ *  stats screen's History column and its graphs are drawn for the caller alone
+ *  and say so on anybody else's record. `findChart` is a BOARD, not a person, so
+ *  it answers any signed-in reader; `findEntityChartRow` answers for one
+ *  entity and is what every profile's Rankings column stands on. */
 
-/** The signed-in person's record. ⚠ no caller — see the note above. */
+/** The signed-in person's record. */
 export async function findMyStats(supabase: SupabaseClient): Promise<DanceStats> {
   const { data, error } = await supabase.rpc("my_dance_stats");
   if (error) {

@@ -756,7 +756,21 @@ export function InboxScreen({
 
   return (
     <div style={{ position: "relative", background: LILAC, color: "var(--text)", maxWidth: 430, margin: "0 auto", fontFamily: DOS_UI, minHeight: "100vh", paddingBottom: 40 }}>
-      <div aria-hidden="true" style={{ position: "absolute", top: 0, left: 0, right: 0, height: 230, pointerEvents: "none", background: `linear-gradient(180deg, ${accent}5c 0%, ${accent}20 44%, transparent 100%)` }} />
+      {/* ⚠ NO WASH ON THE ENQUIRIES DESK (29 Sep 2026, the user: *"enquiries page
+          should not have the pink background on top, should be like other pages
+          in home tab"*).
+          Enquiries stopped being a tab and became a TOOL on all four grids on
+          27 Sep (C70), and every other tool's page — Classes, Events, Rooms,
+          Team, Students, Earnings — opens on the page's own ground under its
+          `DeskHero`. This screen kept the profile-tinted wash it wore as a tab,
+          so the one tool page that had been a tab was the one that did not look
+          like a tool page; on an artist's account that tint is `#EC4899`, which
+          is the pink.
+          ⚠ THE INBOX KEEPS ITS OWN, and that is the same rule rather than an
+          exception: `/inbox` IS a tab, the chrome draws the wordmark over it, and
+          the wash is what a tab opens on (5681). This is the C83 cut — "the hero's
+          ground is the page's own" — applied where the screen changed category. */}
+      {!onEnq ? <div aria-hidden="true" style={{ position: "absolute", top: 0, left: 0, right: 0, height: 230, pointerEvents: "none", background: `linear-gradient(180deg, ${accent}5c 0%, ${accent}20 44%, transparent 100%)` }} /> : null}
       {/* ⚠⚠ THE HEADING WAS MISSING (27 Sep 2026, the user: "inbox heading is
           missing"). The three-desk re-cut earlier the same day took the title
           out with the paragraph beside it, and `/inbox` is a TAB — so the chrome

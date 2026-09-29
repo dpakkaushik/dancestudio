@@ -95,6 +95,32 @@ export interface ChartRow {
   population: number;
 }
 
+/** WHERE ONE ENTITY STANDS ON ONE BOARD — a scope ("Everywhere", "In Pune") and
+ *  the row it has there, or null when it is not on that board yet. Step 25's rule
+ *  holds: "#0" is not a rank, so a null is said in words rather than drawn. */
+export interface Standing {
+  scope: string;
+  row: ChartRow | null;
+}
+
+/** the board's own noun, for "of 12 dancers" */
+export const SEG_WORD: Record<ChartSegment, { one: string; many: string }> = {
+  dancer: { one: "dancer", many: "dancers" },
+  artist: { one: "artist", many: "artists" },
+  studio: { one: "studio", many: "studios" },
+  crew: { one: "crew", many: "crews" },
+};
+
+/** the line under a board row, in the board's own words (StatsScreen 693-700) */
+export const chartRowWords = (r: ChartRow): string =>
+  r.kind === "crew"
+    ? `${r.extra} member${r.extra === 1 ? "" : "s"}`
+    : r.kind === "studio"
+      ? `${r.conducted} session${r.conducted === 1 ? "" : "s"} held · ${hoursWords(r.hours)} · ${r.extra} on the floor`
+      : r.kind === "artist"
+        ? `${r.conducted} taught · ${r.assisted} assisted · ${hoursWords(r.hours)}`
+        : `${r.attended} danced · ${hoursWords(r.hours)}`;
+
 /** HOW POINTS WORK (9660), minus the one line we cannot make true: a battle win
  *  is +10 in the prototype, and no table holds a score yet (Step 21 left
  *  scoring on the backlog), so it is absent here and said out loud on screen. */

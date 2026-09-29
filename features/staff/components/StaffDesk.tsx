@@ -347,7 +347,18 @@ export function StaffDesk({
 
             {members.map((m, i) => {
               const mine = m.userId === meUserId;
-              const manageable = isOwner && m.role !== "owner";
+              /* ⚠⚠ AN OWNER'S ROW OPENS TOO (29 Sep 2026, the user: *"owners can
+                 also be paid from the studio"*). It was `isOwner && m.role !==
+                 "owner"`, which closed the WHOLE sheet on every owner row — and
+                 the sheet is where Pay and History live, so a studio could not
+                 record what it had paid the person who runs it. ⚠ The DATABASE
+                 never refused this: `record_team_payment` asks only that they
+                 "are, or have been, on this team", so this was an app-side gate
+                 over a rule that does not exist. Each control inside decides for
+                 itself now — the powers block is still not drawn for an owner (a
+                 switch they hold by their seat is not a switch) and Remove is
+                 still not offered for one. */
+              const manageable = isOwner;
               const g = gradOf(m.name);
               const face = photoUrl(m.avatarPath);
               return (
@@ -994,6 +1005,18 @@ export function StaffDesk({
             ) : null}
 
             <div style={{ display: "flex", gap: 8, marginTop: 14 }}>
+              {/* ⚠ NOT OFFERED FOR AN OWNER, BECAUSE THE DATABASE REFUSES IT
+                  (`remove_business_member`: "an owner cannot be removed from
+                  their own business" — one rule covering "not yourself" and
+                  "never the last owner"). A door that would be refused is not
+                  offered (21 Sep's tile audit).
+                  ⚠⚠ THIS IS THE HALF THE USER ASKED FOR AND IT NEEDS A MIGRATION
+                  (29 Sep 2026: *"main person who created the studio should be
+                  able to remove the other owner"*). With two owners neither can
+                  remove the other today, so a studio that hands out a second
+                  owner seat can never take it back — the migration that lets the
+                  FOUNDING owner do it is written and held for the user's word. */}
+              {openMember.role !== "owner" ? (
               <span
                 role="button"
                 tabIndex={0}
@@ -1021,6 +1044,7 @@ export function StaffDesk({
               >
                 Remove
               </span>
+              ) : null}
               <span
                 role="button"
                 tabIndex={0}

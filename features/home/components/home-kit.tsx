@@ -86,6 +86,21 @@ export const tilesFor = (kind: HomeKind, pageId: string | null): Tile[] => {
        (`/organizations`, 26 Sep 2026) BOTH WENT ON 29 Sep 2026 */
     { name: DOS_TOOLS.calendar.name, href: "/calendar", k: "calendar", c: DOS_TOOLS.calendar.c },
     { name: DOS_TOOLS.crews.name, href: "/crews", k: "crews", c: DOS_TOOLS.crews.c },
+    /* ⚠ PRACTICE IS ITS OWN TILE (29 Sep 2026, the user: *"practice should be
+       seprate tab in home tab not in crew"*). It was a SEGMENT of the Crews hub
+       (28 Sep) and a section stacked under both crew lists before that, so the
+       thing somebody opens most often — what am I rehearsing this week — was two
+       presses inside a screen about something else.
+       ⚠ `MyPractices`' own note argued the opposite and is superseded: it said a
+       tile "would fail R20's colour test", which was TRUE of the green it wore
+       and is why the tool is repainted indigo in the same push rather than the
+       tile being squeezed onto a grid it clashes with. Its other argument — "a
+       practice belongs to a crew, and /crews is the screen about your crews" —
+       is the one the user has now answered: the person looking for a practice is
+       asking what they are dancing, not a question about crews.
+       ⚠ THE CREW'S OWN Practice tile STAYS on a crew's grid: that one is the
+       LEADER's register for THAT crew, which is a different screen from this. */
+    { name: DOS_TOOLS.practice.name, href: "/practice", k: "practice", c: DOS_TOOLS.practice.c },
     { name: DOS_TOOLS.studios.name, href: "/business", k: "studios", c: DOS_TOOLS.studios.c },
     /* ⚠ ROUTINES IS A USER'S TILE TOO (20 Sep 2026, the user: "routines you
        learned … should be visible to user profiles as well in tools"). It was an

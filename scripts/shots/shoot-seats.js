@@ -180,7 +180,13 @@ const DESKS = [...RUN_DESKS, ...OWNER_DESKS];
     check(stayed.length === 0, `⚠⚠ every one of the ${DESKS.length} desks bounces the faculty seat (${bounced} bounced${stayed.length ? `, STAYED ON: ${stayed.join(", ")}` : ""})`);
 
     /* ── 3. WHAT THEY KEEP, which is not nothing ───────────────────────────── */
-    await fPage.goto(`${BASE}/business`, { waitUntil: "networkidle" });
+    /* ⚠ `?show=learned` — THE HUB IS TWO COLUMNS NOW (29 Sep 2026, the user:
+       "same should be for studios with 2 colums — your own studios and the
+       second column with where your learned"). Taught-at rides in the second
+       one, and `SegmentedPanels` mounts only the shown panel, so the list is not
+       in the DOM at all until the column is asked for — the same trap that made
+       shoot-practice stale for a day when Practice became a column. */
+    await fPage.goto(`${BASE}/business?show=learned`, { waitUntil: "networkidle" });
     const hub = (await fPage.locator("body").innerText()).replace(/\s+/g, " ");
     check(/STUDIOS YOU HAVE TAUGHT AT/.test(hub) && hub.includes("Seat Studio"), "the hub still lists the studio under STUDIOS YOU HAVE TAUGHT AT");
     const taughtHref = await fPage.getByRole("link", { name: new RegExp(`Seat Studio ${stamp} — open the profile`) }).getAttribute("href");

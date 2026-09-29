@@ -333,7 +333,11 @@ async function personOpensAStudio(page, who, acc, stamp) {
     /* ⚠ Memberships is on a USER's grid since 21 Sep — they are who a membership
        is FOR, and a pass they had bought was reachable only by typing the URL */
     /* ⚠ `Events` left this list on 29 Sep 2026 with `/my-events` itself */
-    await pressEveryTile(p1, "user", ["Classes", "Calendar", "Crews", "Studios", "Routines", "Memberships", "Earnings"]);
+    /* ⚠ Practice joined a person's grid on 29 Sep 2026 (the user: "practice
+       should be seprate tab in home tab not in crew") — pressed here so the new
+       tile is DRIVEN rather than skipped: `pressEveryTile` only presses names it
+       is given, so a tile left off this list is a tile nothing opens. */
+    await pressEveryTile(p1, "user", ["Classes", "Calendar", "Crews", "Practice", "Studios", "Routines", "Memberships", "Earnings"]);
     /* the grid is arrangeable, and the arrangement is the account's (22 Sep 2026) */
     await arrangeGrid(p1, "user", `${BASE}/`);
     /* a person opens a studio, runs it from the switcher, takes their own class (26 Sep 2026) */
@@ -358,7 +362,7 @@ async function personOpensAStudio(page, who, acc, stamp) {
        so the tiles that point at it are only right on the SECOND look — which is
        itself worth checking, because a first-time artist sees the first one. */
     await p2.goto(`${BASE}/`, { waitUntil: "networkidle" });
-    await pressEveryTile(p2, "artist", ["Classes", "Calendar", "Crews", "Studios", "Routines", "Team", "Students", "Earnings", "Memberships", "Assets"]);
+    await pressEveryTile(p2, "artist", ["Classes", "Calendar", "Crews", "Practice", "Studios", "Routines", "Team", "Students", "Earnings", "Memberships", "Assets"]);
 
     /* ⚠ A FORM OPENS OVER THE DESK THAT OFFERED IT, AND IS STILL A PAGE OF ITS
        OWN (22 Sep 2026, the user: "All forms and add buttons anywhere in home

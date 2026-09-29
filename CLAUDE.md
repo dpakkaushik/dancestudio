@@ -1,6 +1,87 @@
 # CLAUDE.md — DanceOS
 
-## LAST SESSION (29 Sep 2026) — replaced on every push (Rule 13)
+## LAST SESSION (30 Sep 2026) — replaced on every push (Rule 13)
+
+> ### THE STATS PAGE IS THREE COLUMNS AGAIN, ON EVERY PROFILE — AND FIVE MORE (30 Sep 2026) — no migration applied; ⚠ ONE WRITTEN AND HELD (NEXT TO DO #0b1)
+> The user, opening on a defect: *"you messed up with the stats page it was
+> supposed to be the one with the graphs and number grid, history and rankings in
+> 3 columns for all profiles"*, then five more asks across the session and
+> *"finish all what i said and push to live directly"*.
+> * ⚠⚠ **C86 COLLAPSED THE TWO STATS SCREENS THE WRONG WAY ROUND, AND THAT IS THE
+>   WHOLE OF THE COMPLAINT.** The 29 Sep ask was *"only one view"*, and what it
+>   wanted was the RICH screen made universal; what shipped deleted
+>   `StatsScreen` — Record with its number grid and its graphs · History ·
+>   Rankings — and kept the thin `EntityStatsPage`. So the library, the sessions
+>   chart, the whole-record bars and the four boards all went. **Recovered from
+>   `32c40e1^` byte-intact and made every profile's**; `EntityStatsPage` is the
+>   one that is gone now, its standing cards folded into the Rankings column.
+> * ⚠⚠ **AND THE RESTORE HAD TO BE HONEST ABOUT WHAT EACH COLUMN CAN ANSWER,
+>   BECAUSE IT IS NOT UNIFORM.** `my_session_history` and `my_dance_stats` are
+>   scoped to `auth.uid()` INSIDE the database and take no `p_user_id`, by
+>   Step 25's own design — so the graphs, the number grid's LISTS and the whole
+>   History column exist for the caller and for nobody else. A person's FIGURES
+>   do reach further (`person_dance_stats`), and a studio's and a crew's come off
+>   their board row. **Each column is still drawn and SAYS which read is
+>   missing**, because an empty shelf would read as a measured zero — the 10017
+>   rule pointing the other way. ⚠ `dance_chart` is `authenticated`-only, so a
+>   signed-out reader gets the standings (public) and is told where the boards
+>   are rather than meeting an error.
+> * ⚠ **AND "Assisted for" / "Trained under" ARE LEFT OUT of somebody else's
+>   number grid rather than drawn as 0** — `person_dance_stats` returns no
+>   artists count at all and `publicPerson.ts` hard-codes it, so a zero nobody
+>   measured is not a measurement.
+> * ⚠⚠ **THE RESTORED SCREEN HAD NO `<h1>` AT ALL — THE SIXTH TIME THIS REPO HAS
+>   FOUND THAT SHAPE**, and the suite is what found it. It drew the name as a
+>   `<span>` and the tab word as a `<div>`; it survived because this was your own
+>   screen behind a tab, where the chrome draws the wordmark — and
+>   `EntityStatsPage`, written for a VISITOR, had one from the start, **so
+>   folding the rich screen back in would have lost it.**
+> * **ENQUIRIES HAS NO PINK WASH** (*"should be like other pages in home tab"*).
+>   It became a TOOL on 27 Sep (C70) and kept the profile-tinted wash it wore as
+>   a tab, so the one tool page that had been a tab was the one that did not look
+>   like a tool page — on an artist's account that tint is `#EC4899`. ⚠ The Inbox
+>   keeps its own, which is the same rule rather than an exception: it IS a tab.
+> * **CREWS IS TWO COLUMNS** — Yours · You are in — and **PRACTICE IS ITS OWN HOME
+>   TILE** at `/practice`. ⚠⚠ **That move needed a repaint first**: `MyPractices`'
+>   own note said a Practice tile "would fail R20's colour test", and it was
+>   right — `#15803D` is hue 142° and Earnings is `#22C55E`, hue 142°, which is
+>   the one pair R20 exists to refuse. Deep indigo `#4338CA` now, and **measured
+>   rather than asserted: 102° from Earnings and ≥28° from everything on every
+>   grid it lands on.**
+> * **STUDIOS IS TWO COLUMNS** — Yours · Where you learned. ⚠ Taught-at rides in
+>   the second under its own head rather than becoming a third: both are "a
+>   studio that is not yours", and dropping it would lose an artist's teaching
+>   history (R22 built it deliberately).
+> * ⚠⚠ **OWNERS CAN BE PAID, AND THE DATABASE NEVER REFUSED IT.**
+>   `record_team_payment` asks only that they "are, or have been, on this team" —
+>   so `manageable = isOwner && m.role !== "owner"` was an **app-side gate over a
+>   rule that does not exist**, and it closed the WHOLE member sheet, which is
+>   where Pay and History live. Each control decides for itself now: the powers
+>   block is still not drawn for an owner (a switch they hold by their seat is not
+>   a switch) and Remove is still not offered, because THAT half is the migration.
+> * **Verified:** typecheck 0 · lint 0 · `next build` green · **the happy path
+>   19/19 in ONE run, 13.3 min on one worker** · **the other 37 specs 5.8 min** —
+>   **all 56 on the SAME bundle**, the `<h1>` fix included. ⚠ Three reds on the
+>   way and every one was a stale assertion of mine, which is the right kind: an
+>   empty-state's words, a segment pill's accessible name (**it is the `aria`
+>   plus its count, never the visible label** — `SegmentedNav:78`), and the `<h1>`
+>   that was a real defect. ⚠ The harness was re-cut BEFORE the run by grepping
+>   the specs for every name this slice moved (the 21 Sep rule), which is why
+>   only three got through: `shoot-practice` (its THIRD address in three days),
+>   `shoot-seats`, `shoot-hero` (whose check had asserted "no tab strip" for
+>   exactly one day) and `shoot-tiles` (Practice added, so the new tile is DRIVEN
+>   rather than skipped — that helper only presses names it is given).
+> * ⚠⚠ **AND ONE OF THE SIX ASKS COULD NOT BE BUILT AS DESCRIBED, WHICH IS SAID
+>   RATHER THAN QUIETLY REINTERPRETED.** *"same applies for crew when 2 or more
+>   crew leaders are there"* — **a crew cannot have two leaders**:
+>   `set_crew_member_role(_, 'leader')` demotes every existing leader row and
+>   moves `crews.leader_id` in the same statement, and `remove_crew_member`
+>   refuses anybody whose role is `leader`. What IS true is worse and is the real
+>   equivalent: **handing a crew over is a ONE-WAY DOOR** — the founder becomes a
+>   plain member, `is_crew_leader` answers false, and they can never take it
+>   back. `reclaim_crew` is in the held migration.
+
+## LAST SESSION (29 Sep 2026) — history
 
 > ### A SEAT PAID WITH A PASS SAYS SO, AND TWO MIGRATIONS ARE WRITTEN AND HELD (29 Sep 2026, latest) — ⚠⚠ NEITHER APPLIED (NEXT TO DO #0b0)
 > The user: *"fix all of them and ask me questions with suggestions to solve
@@ -8317,6 +8398,60 @@ summary; the report has the evidence.
 
 ## NEXT TO DO — replaced on every push (Rule 13)
 
+0b1. **⚠⚠ ONE MIGRATION WRITTEN AND HELD — `20260930090000_the_founder_can_take_it_back.sql`.**
+   ⚠ Rule 9: it widens who may remove whom. The user: *"main person who created
+   the studio should be able to remove the other owner. same applies for crew
+   when 2 or more crew leaders are there."*
+   ⚠⚠ **THREE FILES ARE PENDING NOW, NOT ONE** — this plus #0b0's two
+   (`20260929140000`, `20260929150000`) — and **`db-push` applies EVERY pending
+   file**. If only some are approved, move the others to the scratchpad and
+   re-run `-DryRun` until it lists exactly what was approved (the 27 Sep trap,
+   recorded twice).
+   * **WHAT IT FIXES.** `set_member_role` has handed the owner seat out from a
+     studio's own desk since 20 Sep (R39) and `remove_business_member` refuses
+     EVERY owner — one rule written when there could only be one. So a studio
+     that names a second owner can never take the seat back: **neither owner can
+     remove the other.**
+   * ⚠⚠ **"THE MAIN PERSON WHO CREATED IT" IS NOT THE SAME COLUMN IN BOTH
+     HALVES, and that is the one real design decision.** A CREW has
+     `crews.created_by`, stamped at creation and never moved by a hand-over, so
+     it names the founder exactly. A BUSINESS's `created_by` is **not safe**:
+     `shift-studio-owner.js` moves a studio by rewriting the owner seat's
+     `user_id`, and the 26 Sep retirement soft-deleted the accounts that created
+     many live studios — so it can name somebody who is no longer an owner or no
+     longer exists, and a studio whose founder is gone would have **nobody** able
+     to remove an owner, which is the deadlock this exists to end. The
+     **PRINCIPAL OWNER is the oldest live owner SEAT** instead: at birth that is
+     the creator, it survives a shift, and it can never strand.
+   * **THE WHOLE FILE: three functions, nothing else.**
+     `business_principal_owner(uuid)` (the rule, in one place),
+     `remove_business_owner(business, user)` and `reclaim_crew(crew)`.
+     ⚠⚠ **NOT ONE LIVE BODY IS RE-TYPED** — this file's own hardest lesson
+     (28 Sep: five of six re-typed bodies were wrong). `remove_business_member`
+     is **untouched**: the new door DEMOTES and then calls it, so the seat
+     removal, the `class_people` cascade that goes with it and every audit column
+     stay exactly what that one function does, and a refusal inside it rolls the
+     demotion back. **One removal path, not two that can drift.**
+   * **The refusals, all kept:** never yourself, never the last owner, only an
+     owner through this door, and — for the crew — the founder must still be a
+     **confirmed member** (`created_by` is a record of who started it, not a
+     standing key to it).
+   * **NOTHING IS BACKFILLED**: no table, no column, no policy, no grant on
+     anything that exists; two new authenticated-only functions plus one helper.
+   * ⚠ **NOT DRY-RUN YET**, and that is what is owed before it can be applied —
+     `scripts/dry-run-migration.js` with `pg` in the scratchpad (Rule 18: it
+     probes with a SAVEPOINT and refuses to report success if the file
+     committed). The checks it needs: the two-owner deadlock reproduced BEFORE;
+     the principal removing the second owner AFTER; a NON-principal owner
+     refused; self-removal refused; the last owner refused; a non-owner still
+     going through `remove_business_member` unchanged; the `class_people` rows
+     closed with the seat; a crew handed over and reclaimed; a non-founder
+     refused; a founder who has LEFT refused; **exactly one `leader` row after a
+     reclaim**; anon's executable set unchanged; and no existing ACL moved.
+   * ⚠ **THE APP SIDE IS NOT BUILT EITHER**, said rather than implied: Remove is
+     not offered on an owner's row and `reclaim_crew` has no control at all. The
+     StaffDesk comment names the held migration where the button will go.
+
 0b0. **⚠⚠ TWO MIGRATIONS WRITTEN, DRY-RUN AND HELD FOR THE USER'S WORD — backlog
    #5, the records a marketplace keeps and this one does not.** ⚠ Rule 9: both
    add tables, and one of them stores a search term, which is personal data.
@@ -10353,6 +10488,33 @@ for the database schema. **The UI is not redesigned** — see Rule 2.
 
 ### Progress tracker — update after EVERY push (Rule 11)
 
+- **THE STATS PAGE IS THREE COLUMNS AGAIN, ON EVERY PROFILE — 30 Sep 2026, no
+  step number — no migration applied; ⚠ ONE WRITTEN AND HELD (#0b1).** The user:
+  *"you messed up with the stats page — it was supposed to be the one with the
+  graphs and number grid, history and rankings in 3 columns for all profiles."*
+  ⚠⚠ **C86 collapsed the two stats screens the wrong way round**: the ask had
+  been "only one view" and what it wanted was the RICH screen made universal, so
+  deleting `StatsScreen` and keeping the thin `EntityStatsPage` took the number
+  grid, the sessions graph, the whole-record bars and the History library with
+  it. Recovered byte-intact from `32c40e1^`, generalised to a person, a studio
+  and a crew, with the standings folded into the Rankings column. ⚠⚠ **Each
+  column says what it can HONESTLY answer**: `my_session_history` takes no
+  `p_user_id` by Step 25's design, so the graphs and the library are the
+  caller's own and the rest is said in words rather than drawn as an empty shelf
+  that reads as a measured zero. ⚠⚠ **And the restored screen had NO `<h1>` — the
+  sixth time this repo has found that shape**, caught by the suite. Plus five
+  more: **the pink wash off Enquiries** (it became a TOOL on 27 Sep and kept its
+  tab's wash), **Crews and Studios as two columns each**, **Practice as its own
+  Home tile** — ⚠ which needed a repaint first, because its green was hue 142°
+  and Earnings is hue 142°, the one pair R20 refuses; deep indigo now, **measured
+  at 102° clear** — and **owners can be paid**, ⚠ which the database never
+  refused: `record_team_payment` asks only that they are on the team, so the
+  block was an app-side gate over a rule that does not exist. ⚠ **One ask could
+  not be built as described and is corrected rather than reinterpreted: a crew
+  cannot have two leaders** — the real defect is that handing one over is a
+  ONE-WAY door, and `reclaim_crew` is in the held migration. **typecheck 0 ·
+  lint 0 · build green · the happy path 19/19 in ONE run (13.3 min) and the
+  other 37 specs (5.8 min) — all 56 on the same bundle.**
 - **A SEAT PAID WITH A PASS SAYS SO, AND TWO MIGRATIONS ARE HELD — 29 Sep 2026,
   no step number — ⚠ TWO MIGRATIONS WRITTEN AND DRY-RUN, NEITHER APPLIED
   (#0b0).** The last four backlog rows, each put to the user with a
@@ -15281,6 +15443,11 @@ Home. **Do not "restore parity" on these.**
 | R59 | Step 12 (25 Aug 2026) made it a **deliberate non-feature**: *"a studio CANNOT book a seat for somebody. Enrolling is the learner's own act … faking an enrollment here would have put a name on a roster that never agreed to it."* A trial was recorded as which class and which day, and the lead was marked Converted when they turned up for real | **A DOOR MAY BOOK SOMEBODY WHO IS STANDING AT IT** (29 Sep 2026, `book_class_session_for_person`): whoever may run the register books a person who IS on DanceOS, and they are checked in in the same press. ⚠⚠ **THE WINDOW IS WHAT MAKES THE REVERSAL HONEST, and it is the REGISTER'S OWN** — copied out of `check_in` rather than invented: from thirty minutes before the session until it ends. **Outside it a studio still cannot book anybody for anything**, so the reversal reaches exactly the circumstance the consent argument covers: the person is physically there and has handed over their own profile code, which is consent in person rather than consent by proxy. Step 12's reasoning is untouched for the case it was written about — a desk inventing bookings at leisure. ⚠ **Capacity is real** (full is refused; `assert_room_ok` caps a class by its room and a door that overfills a room is a fire-safety claim this app must not make), **nobody is waitlisted** (putting the person in front of you on a list is not an answer), and **a priced class books at ₹0** with the money collected at the door — the one rule it does NOT share with `book_class_session`, which refuses a priced class outright so the seat goes through Cashfree. ⚠ Shape 1 of two: a walk-in with **no account** needs a nullable `user_id` and is its own slice (#0aw) | 29 Sep 2026, the user's own four decisions when the two shapes were put to them: **both, shape 1 first · full is full · ₹0 at the door · no leads row** — and their 28 Sep wording, *"after confirmation only should check them in **or add them**"*, which is why it is ONE press: the scan sheet's confirm card is the consent step and a second prompt would be the same question twice |
 
 | R60 | R59 (29 Sep 2026) let a door book somebody who IS on DanceOS; a seat has always been a PERSON — `class_bookings.user_id` and `attendance.user_id` both NOT NULL references to `profiles` | **A SEAT NEED NOT BE A PERSON** (`add_class_walk_in`): both columns are nullable, `class_bookings.attendee_name` holds a walk-in recorded at the door, and a CHECK keeps exactly one of the two set. ⚠ **`attendance` carries NO copy of the name** — `class_booking_id` is NOT NULL and unique there, so the name is reachable through the booking and lives in one place; a name stored twice is a name that can disagree with itself. ⚠⚠ **Making the column nullable silently disarmed the unique index**: `class_bookings_one_live_per_session` is `(session_id, user_id)` and Postgres treats NULLs as DISTINCT, so walk-ins lost that protection entirely — a second partial index on `lower(btrim(attendee_name))` is their half of the rule, and the original still bites for real people. ⚠⚠ **And `remove_class_walk_in` exists because the door would otherwise be ONE-WAY**: a real learner cancels their own seat and a walk-in has no account to, so a mistyped name would hold a seat for ever; it refuses any booking carrying a `user_id`, so it can never reach a real person's. ⚠ Costs, stated: `routine_students` does not count walk-ins (it lists dancers by name), and a walk-in on a priced class is a seat with no payment on the Earnings tab | 29 Sep 2026, the user's *"fix all"* after choosing **both shapes, shape 1 first**. ⚠⚠ The audit is the feature: 31 functions read those two tables and every one was classified first — and **a text search missed every TRIGGER function**, because a trigger says `new`/`old` and never names its table, so `notify_class_booking` was absent from the list and would have told a studio *"Somebody booked …"* about a walk-in whose name was on the row |
+
+| C88 | C86 (29 Sep 2026) made `/person\|studio\|crew/{id}/stats` one screen — and made it `EntityStatsPage`, the thin one: the record's figures and a standing card per scope | **THE THREE-COLUMN SCREEN IS THE ONE, ON EVERY PROFILE** (30 Sep 2026): **Record** (the three cards, the number grid that opens the list behind each figure, WHAT YOU DANCE MOST, and THE WHOLE RECORD's side pills, stacked sessions chart and sortable group-by bars) · **History** · **Rankings** (the subject's own standings first, then the four boards with their metric, city and style filters). `EntityStatsPage` is deleted and its standing card lives in the third column. ⚠⚠ **What each column can answer is NOT uniform and the screen says so**: `my_session_history` and `my_dance_stats` take no `p_user_id` by Step 25's design, so the graphs, the number grid's LISTS and the whole History column are the CALLER's — a person's figures reach further (`person_dance_stats`), a studio's and a crew's come off their board row, and the rest is said in words rather than drawn as an empty shelf that reads as a measured zero (10017's rule, pointing the other way). ⚠ "Assisted for" / "Trained under" are LEFT OUT of somebody else's grid rather than shown as 0, because that function returns no artists count at all. ⚠ `dance_chart` is `authenticated`-only, so a signed-out reader gets the standings — public for a public entity — and is told where the boards are. ⚠⚠ **The restored screen had NO `<h1>`**, the SIXTH time this repo has found that shape: it survived because this was your own screen behind a tab, and `EntityStatsPage` — written for a visitor — had one, so folding the rich screen back in would have lost it | 30 Sep 2026, the user: *"you messed up with the stats page it was supposed to be the one with the graphs and number grid, history and rankings in 3 columns for all profiles."* ⚠ This reverses C86 at the same person's word; what C86 got right and this keeps is that there is exactly ONE stats screen |
+| C89 | The Inbox opens on a profile-tinted wash (5681), and `/enquiries` renders the same component | **NO WASH ON THE ENQUIRIES DESK.** Enquiries stopped being a tab and became a TOOL on all four grids on 27 Sep (C70), and every other tool's page opens on the page's own ground under its `DeskHero` — so the one tool page that had been a tab was the one that did not look like a tool page. ⚠ **The Inbox keeps its own, and that is the same rule rather than an exception**: `/inbox` IS a tab, the chrome draws the wordmark over it, and the wash is what a tab opens on | 30 Sep 2026, the user: *"enquiries page should not have the pink background on top should be like other pages in home tab."* On an artist's account the tint is `DOS_TINT.trainer` — `#EC4899` — which is the pink |
+| C90 | The Crews hub stacks CREWS YOU LEAD over CREWS YOU ARE IN with Practices as a third segment (28 Sep); the Studios hub stacks YOUR STUDIOS, TAUGHT AT and LEARNT AT | **TWO COLUMNS EACH, AND PRACTICE IS ITS OWN HOME TILE.** Crews: **Yours** · **You are in**. Studios: **Yours** · **Where you learned**. Practice leaves the Crews hub for `/practice`, a tile on a person's and an artist's grid. ⚠⚠ **That move needed a REPAINT first, and `MyPractices`' own note is why**: it argued a Practice tile "would fail R20's colour test", and it was right — `#15803D` is hue 142° and Earnings `#22C55E` is hue 142°, which is the one pair R20 exists to refuse. Deep indigo `#4338CA` now, **measured across every grid rather than asserted: 102° from Earnings, ≥28° from everything else**. ⚠ Taught-at rides in the studios' SECOND column under its own head rather than becoming a third — both are "a studio that is not yours", and dropping it would lose an artist's teaching history (R22). ⚠ The crew's OWN Practice tile stays on a crew's grid: that is the leader's register for THAT crew | 30 Sep 2026, the user: *"practice should be seprate tab in home tab not in crew. crew tab should have 2 colums for where you have created the crew and where you are a part of in the other column"*, then *"same should be for studios with 2 colums your own studios and t second column with where your learned."* ⚠ A segment pill's accessible name is its `aria` plus its count, never its visible label (`SegmentedNav:78`) — which cost one e2e red |
+| C91 | The Team desk's member sheet opens only for a NON-owner (`manageable = isOwner && m.role !== "owner"`) | **AN OWNER'S ROW OPENS TOO, AND EACH CONTROL INSIDE DECIDES FOR ITSELF.** Pay and History are drawn (the user's ask), the two power switches are still not (an owner holds both by their seat — a switch that cannot be turned off is not a switch), and Remove is still not, because the database refuses it. ⚠⚠ **The DATABASE never refused the PAYMENT**: `record_team_payment` asks only that they "are, or have been, on this team", so this was an **app-side gate over a rule that does not exist** — and because it closed the whole sheet, a studio could not record what it had paid the person who runs it | 30 Sep 2026, the user: *"owners can also be paid from the studio."* No migration |
 
 ### UI parity backlog — gaps vs the prototype, tracked so none is forgotten
 

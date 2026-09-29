@@ -1294,7 +1294,11 @@ test.describe.serial("DanceOS, end to end", () => {
     // and the crew's page carries the entry as its battle record.
     crewName = `E2E Crew ${stamp}`;
     await learner.goto("/crews");
-    await expect(learner.getByText("You do not lead a crew yet.")).toBeVisible();
+    /* ⚠ "created", not "lead" (29 Sep 2026). The hub is two columns now — the
+       crews you created, and the ones you are a part of — so the empty state of
+       the first column is about creating one, which is also what the button
+       under it does. */
+    await expect(learner.getByText("You have not created a crew yet.")).toBeVisible();
     /* ⚠ "Create crew", not "＋ Create crew" (20 Sep 2026). The ＋ moved to the top
        of the desk as the shared `DeskAddButton`, where the glyph is an
        `aria-hidden` icon and the LABEL is the words — which is what a screen
@@ -1434,8 +1438,16 @@ test.describe.serial("DanceOS, end to end", () => {
        strict-mode violation; what the check means is "the leader's row says so",
        so that is what it asks. */
     await expect(trainer.getByRole("link", { name: `Open ${learnerName}`, exact: true })).toContainText("Crew leader");
-    await trainer.goto("/crews");
-    await expect(trainer.getByText("CREWS YOU ARE IN")).toBeVisible();
+    /* ⚠ TWO COLUMNS ON THE CREWS HUB (29 Sep 2026, the user: "crew tab should
+       have 2 colums for where you have created the crew and where you are a part
+       of in the other column"). The stacked CREWS YOU LEAD / CREWS YOU ARE IN
+       headings are segments now, so the crew this trainer is merely ON is in the
+       second column rather than further down the page. */
+    /* ⚠ a segment pill's accessible name is its `aria` plus its count, never its
+       visible label (`SegmentedNav` line 78) — the label is for the eye and the
+       aria is the sentence, which is what a screen reader and a locator read. */
+    await trainer.goto("/crews?show=in");
+    await expect(trainer.getByRole("link", { name: /^The crews you are a part of/ })).toBeVisible();
     await expect(trainer.getByRole("link", { name: `${crewName} — open the profile` })).toBeVisible();
     await trainer.goto("/discover?city=Pune&tab=crews");
     await expect(trainer.getByRole("link", { name: `${crewName} — Crew` })).toBeVisible();
@@ -1550,18 +1562,19 @@ test.describe.serial("DanceOS, end to end", () => {
     await expect(trainer.getByRole("button", { name: /^People — / })).toHaveCount(0);
   });
 
-  test("stats: one screen, whoever is looking", async () => {
+  test("stats: three columns, every profile", async () => {
     // ---- Step 25: stats ----
-    // ⚠⚠ THIS SEGMENT WAS "the record, the history library and the boards" AND
-    // DESCRIBED A SCREEN THAT NO LONGER EXISTS (29 Sep 2026, the user: "stats —
-    // should only have one view when looking at your profile or someone else,
-    // charts when looking at someone else's profile also should have a view with
-    // that person's rankings"). `/person/{id}/stats` forked: your own id drew
-    // `StatsScreen` (the record, a History library, four leaderboards with city,
-    // metric and style filters) and anybody else's drew `EntityStatsPage`. One
-    // question, two screens — so the richer one was reachable only by NOT naming
-    // yourself. `EntityStatsPage` is both now, and the History library and the
-    // boards went with `StatsScreen`; the reads behind them are kept and marked.
+    // ⚠⚠ THREE COLUMNS, AND THIS SEGMENT HAS NOW DESCRIBED THREE DIFFERENT
+    // SCREENS IN TWO DAYS (29 Sep 2026, the user: "you messed up with the stats
+    // page — it was supposed to be the one with the graphs and number grid,
+    // history and rankings in 3 columns for all profiles").
+    //
+    // Earlier the same day the two stats screens were collapsed into one, and
+    // into the WRONG one: `StatsScreen` (Record · History · Rankings) was
+    // deleted and the thin `EntityStatsPage` kept. The ask had been "only one
+    // view", and what it wanted was the RICH screen made universal. So the
+    // three-column screen is back and it is every profile's — a person's, a
+    // studio's and a crew's — and `EntityStatsPage` is the one that is gone.
     //
     // Nothing this story creates has ENDED (every session it books is in the
     // future), so the record is honestly empty — and saying so is the assertion.
@@ -1570,38 +1583,60 @@ test.describe.serial("DanceOS, end to end", () => {
        proved as a redirect, not assumed. */
     await learner.waitForURL(new RegExp(`/person/${learnerId}/stats`));
     await expect(learner.getByRole("heading", { name: learnerName })).toBeVisible();
+    /* THE THREE COLUMNS, BY NAME */
+    for (const col of ["Record", "History", "Rankings"]) {
+      await expect(learner.getByRole("link", { name: col, exact: true })).toBeVisible();
+    }
     /* the three sides, and A ZERO IS DRAWN (27 Sep 2026, the user: "show all
        metrics for that particular profile type even if its 0") */
     await expect(learner.getByLabel(/^Classes taken — 0 sessions/)).toBeVisible();
     await expect(learner.getByLabel(/^Classes taught — 0 sessions/)).toBeVisible();
-    /* WHERE THEY STAND — a place is never printed without its denominator, and
-       "#0" is refused in words (Step 25's own rule, kept) */
+    /* ⚠ THE NUMBER GRID IS BACK — the four figures that open the list behind
+       them, which went with `StatsScreen` and are the "number grid" of the ask */
+    await expect(learner.getByRole("button", { name: /^Styles — 0, open the list$/ })).toBeVisible();
+
+    /* THE HISTORY COLUMN — your own library, empty but SAYING so */
+    await learner.getByRole("link", { name: "History", exact: true }).click();
+    await learner.waitForURL(/tab=history/);
+    await expect(learner.getByText("Nothing on the record yet")).toBeVisible();
+
+    /* THE RANKINGS COLUMN — where you stand, then the board you stand on. A
+       place is never printed without its denominator, and "#0" is refused in
+       words (Step 25's own rule, kept). */
+    await learner.getByRole("link", { name: "Rankings", exact: true }).click();
+    await learner.waitForURL(/tab=charts/);
     const standings = learner.getByTestId("standing-card");
     await expect(standings.first()).toBeVisible();
     await expect(standings.first()).toContainText("Everywhere");
-    await expect(learner.getByText("How points work")).toBeVisible();
-    /* ⚠⚠ AND THE BOARD LINK IS GONE (29 Sep 2026). It opened
-       `/stats?tab=charts&seg=…`, and `/stats` redirects to the READER's own
-       stats — so on somebody else's record that button would have walked a
-       visitor to their own. Both ends: absent here, and the screen it opened
-       is absent too (the History link below). */
-    await expect(learner.getByRole("link", { name: /See the whole .* board/ })).toHaveCount(0);
-    await expect(learner.getByRole("link", { name: "History", exact: true })).toHaveCount(0);
+    /* the boards are browsable again — the four segments went with StatsScreen */
+    await expect(learner.getByRole("link", { name: "Dancers", exact: true })).toBeVisible();
+    await expect(learner.getByRole("link", { name: "Studios", exact: true })).toBeVisible();
+    /* the points rules are a DISCLOSURE beside the count (27 Sep 2026), not a
+       card standing between the controls and the board */
+    await learner.getByRole("button", { name: "Points" }).click();
+    await expect(learner.getByText("Session conducted", { exact: true })).toBeVisible();
 
-    /* ⚠ THE SAME SCREEN FOR SOMEBODY ELSE — which is the whole of the ask. The
-       trainer's record is read by the learner, and it carries THEIR rankings. */
+    /* ⚠ THE SAME THREE COLUMNS FOR SOMEBODY ELSE — which is "for all profiles".
+       The trainer's record is read by the learner, and it carries THEIR
+       rankings; the History column is drawn and says WHY it is empty, because
+       `my_session_history` is the caller's own by Step 25's design and an empty
+       shelf would read as "they have danced nothing". */
     await learner.goto(`/person/${trainerId}/stats`);
     await expect(learner.getByRole("heading", { name: trainerName })).toBeVisible();
-    await expect(learner.getByTestId("standing-card").first()).toBeVisible();
     await expect(learner.getByRole("link", { name: `Back to ${trainerName}` })).toBeVisible();
+    await learner.getByRole("link", { name: "History", exact: true }).click();
+    await expect(learner.getByText("This library is theirs")).toBeVisible();
+    await learner.getByRole("link", { name: "Rankings", exact: true }).click();
+    await expect(learner.getByTestId("standing-card").first()).toBeVisible();
 
-    /* and a crew's own page ranks the crew, which is where the crew home's chip
-       points since the board went (29 Sep 2026) */
-    await learner.goto(`/crew/${crewId}/stats`);
+    /* and a crew's own page wears the same three, which is where the crew
+       home's chip points since the board went (29 Sep 2026) */
+    await learner.goto(`/crew/${crewId}/stats?tab=charts`);
     await expect(learner.getByRole("heading", { name: crewName })).toBeVisible();
     await expect(learner.getByTestId("standing-card").first()).toBeVisible();
     /* the crew's points are its confirmed members — ⚠ no "Event entered · +3 pts"
        since 29 Sep 2026, when events went */
+    await learner.getByRole("button", { name: "Points" }).click();
     await expect(learner.getByText("Event entered", { exact: true })).toHaveCount(0);
     await expect(learner.getByText("Confirmed member", { exact: true })).toBeVisible();
   });
@@ -2030,7 +2065,12 @@ test.describe.serial("DanceOS, end to end", () => {
     }
     /* ⚠ and what they KEEP, because that is half the decision: the studio is
        still on their hub under the taught-at list, with a door to its PUBLIC
-       page rather than its manage home */
+       page rather than its manage home.
+       ⚠ IT IS THE SECOND COLUMN NOW (29 Sep 2026, the user: "same should be for
+       studios with 2 colums — your own studios and the second column with where
+       your learned"). Taught-at rides in that column under its own head rather
+       than becoming a third: both are "a studio that is not yours". */
+    await trainer.goto("/business?show=learned");
     await expect(trainer.getByText("STUDIOS YOU HAVE TAUGHT AT")).toBeVisible();
 
     /* …and the two things this block used to prove ride the OWNER now, which is
@@ -2304,16 +2344,16 @@ test.describe.serial("DanceOS, end to end", () => {
     await expect(learner.getByRole("button", { name: /see who/ })).toHaveCount(0);
 
     /* ⚠ THE HISTORY CHIP IS OFF THE CALENDAR (19 Sep 2026, the user: "Calendar —
-       remove History button"). ⚠⚠ AND SINCE 29 Sep 2026 SO IS THE LIBRARY IT
-       OPENED: the two stats screens became one and `StatsScreen` went with it,
-       so `/stats?tab=history` lands on the record rather than a library. Both
-       ends, because a chip reappearing on the calendar is the regression and a
-       library reappearing is not what was asked for. */
+       remove History button") — and that is still true, while the LIBRARY it
+       used to open is back as the stats screen's own second column (29 Sep
+       2026). Both ends: no chip on the calendar, and `?tab=history` carried
+       through the `/stats` redirect opens the library at the far end, which is
+       what that parameter was kept alive for. */
     await learner.goto("/calendar");
     await expect(learner.getByRole("link", { name: "History" })).toHaveCount(0);
     await learner.goto("/stats?tab=history");
     await learner.waitForURL(new RegExp(`/person/${learnerId}/stats`));
-    await expect(learner.getByTestId("standing-card").first()).toBeVisible();
+    await expect(learner.getByText("COMPLETED · 0")).toBeVisible();
 
     /* ⚠⚠ THE STATS CHIP ON A CREW'S OWN HOME OPENS THAT CREW'S OWN STATS
        (29 Sep 2026). It pointed at `/stats?tab=charts&seg=crew` — the crew
@@ -2327,6 +2367,8 @@ test.describe.serial("DanceOS, end to end", () => {
     await rankingBtn.click();
     await learner.waitForURL(new RegExp(`/crew/${crewId}/stats`));
     await expect(learner.getByRole("heading", { name: crewName })).toBeVisible();
+    /* the standings live in the Rankings column — the screen opens on Record */
+    await learner.getByRole("link", { name: "Rankings", exact: true }).click();
     await expect(learner.getByTestId("standing-card").first()).toBeVisible();
 
     /* ⚠ THE RANK IS OFF BOTH SCREENS (19 Sep 2026 — "remove rank from profile
@@ -2939,13 +2981,14 @@ test.describe.serial("DanceOS, end to end", () => {
     // ── 4. SOMEBODY ELSE'S RECORD AND RANK — one page shape for four kinds of profile.
     // A place is never printed without its denominator, and an empty board is said,
     // not drawn as "#0" (Step 25's rule): the assertions accept either honest answer.
+    /* ⚠ THE STANDINGS ARE THE RANKINGS COLUMN (29 Sep 2026) — `?tab=charts` is
+       how this page is opened at it, since the screen opens on Record. */
     const standing = /of \d+ (dancers?|artists?|studios?|crews?)|Not on this board yet/;
-    await learner.goto(`/person/${trainerId}/stats`);
+    await learner.goto(`/person/${trainerId}/stats?tab=charts`);
     await expect(learner.getByRole("heading", { name: trainerName })).toBeVisible();
-    await expect(learner.getByText("The record")).toBeVisible();
     await expect(learner.getByTestId("standing-card")).toHaveCount(2);
     await expect(learner.getByTestId("standing-card").first()).toContainText(standing);
-    await learner.goto(`/crew/${crewId}/stats`);
+    await learner.goto(`/crew/${crewId}/stats?tab=charts`);
     await expect(learner.getByRole("heading", { name: crewName })).toBeVisible();
     await expect(learner.getByTestId("standing-card")).toHaveCount(2);
     await expect(learner.getByTestId("standing-card").first()).toContainText(standing);
@@ -2955,10 +2998,15 @@ test.describe.serial("DanceOS, end to end", () => {
     const guestContext = await browserRef.newContext();
     try {
       const guest = await guestContext.newPage();
-      await guest.goto(`/studio/${businessId}/stats`);
+      await guest.goto(`/studio/${businessId}/stats?tab=charts`);
       await expect(guest.getByRole("heading", { name: studioName })).toBeVisible();
       await expect(guest.getByTestId("standing-card")).toHaveCount(2);
       await expect(guest.getByTestId("standing-card").first()).toContainText(standing);
+      /* ⚠ AND A SIGNED-OUT READER IS TOLD WHERE THE BOARDS ARE RATHER THAN
+         MEETING AN ERROR (29 Sep 2026). `dance_chart` is granted to
+         `authenticated` only — "a person's activity is not public data" (Step
+         25) — so the standings above are public and the four boards are not. */
+      await expect(guest.getByText("Sign in to browse the boards")).toBeVisible();
       await guest.goto(`/person/${learnerId}/stats`);
       await guest.waitForURL(/\/login/);
     } finally {

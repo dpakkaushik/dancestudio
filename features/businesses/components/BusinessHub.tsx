@@ -8,6 +8,7 @@ import { SubscribeButton } from "@/features/payments/components/SubscribeButton"
 import { StudioVerificationStrip } from "@/features/businesses/components/StudioVerificationStrip";
 import type { StudioVerificationState } from "@/repositories/studioVerification";
 import { DeskAddButton, VerifiedTick } from "@/features/settings/components/settings-kit";
+import { SegmentedPanels } from "@/features/shell/components/SegmentedNav";
 import { photoUrl } from "@/lib/media/photo";
 import { dosKey } from "@/features/classes/components/ShareSheet";
 import { CityPicker } from "@/features/geo/components/CityPicker";
@@ -124,7 +125,11 @@ export function BusinessHub({
   studioVerification = {},
   userId = null,
   attended = [],
+  show = "own",
 }: {
+  /** ⚠ WHICH COLUMN IS OPEN (29 Sep 2026) — `?show=learned`, the URL as the
+   *  state, like every other segmented desk in the app. */
+  show?: "own" | "learned";
   memberships: MyMembership[];
   /** THE STUDIOS YOU HAVE TAKEN CLASSES AT (18 Sep 2026, the user's Home grid:
    *  a person's Studios tile lists them) — every business behind one of your
@@ -484,11 +489,30 @@ export function BusinessHub({
           {studioPrice ? `A studio is ${priceWords(studioPrice.priceInr, studioPrice.period).replace("/mo", " a month")} once DanceOS has verified it.` : "No studio plan is on offer right now — message DanceOS from Settings › Help & support."}
         </div>
 
-        {/* ⚠ YOUR STUDIOS IS EVERYBODY'S SECTION (26 Sep 2026) — it was an
-            organization's alone. A person's hub opens with the same pill and the
-            same list, and a person's studio card carries the same verification
-            form and Subscribe button, because the process is the same. */}
-        {(
+        {/* ⚠⚠ TWO COLUMNS (29 Sep 2026, the user: *"same should be for studios
+            with 2 colums — your own studios and the second column with where
+            your learned"*, after the same cut on Crews).
+            They were three stacked sections — YOUR STUDIOS, then STUDIOS YOU
+            HAVE TAUGHT AT, then STUDIOS YOU HAVE LEARNT AT — so a person who
+            owns one and has booked at nine scrolled past all of them.
+            ⚠ TAUGHT AT RIDES IN THE SECOND COLUMN under its own head rather than
+            becoming a third: both are "a studio that is not yours", the user
+            asked for two, and dropping the list would lose an artist's teaching
+            history (R22 built it deliberately). A studio is still listed once. */}
+        <SegmentedPanels
+          /* the key is the SERVER's answer, so a link carrying `?show=` wins over
+             whatever this control last showed (the my-classes note) */
+          key={show}
+          initial={show}
+          label="Show"
+          segments={[
+            { key: "own", href: "/business", label: "Yours", n: myStudios.length, aria: "The studios you own" },
+            { key: "learned", href: "/business?show=learned", label: "Where you learned", n: learnt.length + theirs.length, aria: "The studios you have learned and taught at" },
+          ]}
+          panels={[
+            {
+              key: "own",
+              node: (
           <>
             {/* ⚠ ＋ ADD STUDIO IS THE DESK PILL, AT THE TOP (20 Sep 2026, the user:
                 "fix add studio button also similarly"). It was a DASHED row at the
@@ -548,35 +572,38 @@ export function BusinessHub({
                 usually a component in the wrong place. ONE door now, on Home,
                 where the user went looking for it on 11 Sep. */}
           </>
-        )}
-
-        {/* ── A PERSON'S TWO LISTS (18 Sep 2026, the user: "Studios in user should
-            show where they have learnt from, and for artist studios where they have
-            taught and learned"). TAUGHT AT is every studio whose team you are on —
-            a trainer's seat, or the Visiting Faculty seat accepting a class gives
-            you; LEARNT AT is every studio behind one of your bookings. A studio is
-            never listed twice, and there is no "Your artist page" block: an
-            artist's tools live on Home, and the page behind them is provisioned,
-            not set up here. ── */}
-        {theirs.length > 0 && (
-          <div style={{ marginTop: 20 }}>
-            <Head>STUDIOS YOU HAVE TAUGHT AT</Head>
-            {theirs.map((t) => plainCard(t))}
-          </div>
-        )}
-        {learnt.length > 0 && (
-          <div style={{ marginTop: 20 }}>
-            <Head>STUDIOS YOU HAVE LEARNT AT</Head>
-            {learnt.map((t) => plainCard(t))}
-          </div>
-        )}
-        {learnt.length === 0 && theirs.length === 0 ? (
-          <div style={{ fontSize: 11.5, color: SUB, padding: "14px 2px 0" }}>
-            {isArtist
-              ? "The studios you teach at and learn at will be listed here — teach a class at one, or book one."
-              : "The studios you learn at will be listed here once you have booked a class."}
-          </div>
-        ) : null}
+              ),
+            },
+            {
+              key: "learned",
+              node: (
+                <>
+                  {learnt.length > 0 ? (
+                    <>
+                      <Head>STUDIOS YOU HAVE LEARNT AT</Head>
+                      {learnt.map((t) => plainCard(t))}
+                    </>
+                  ) : null}
+                  {/* every studio whose team you are on — a trainer's seat, or the
+                      Visiting Faculty seat accepting a class gives you (R19) */}
+                  {theirs.length > 0 ? (
+                    <div style={{ marginTop: learnt.length > 0 ? 20 : 0 }}>
+                      <Head>STUDIOS YOU HAVE TAUGHT AT</Head>
+                      {theirs.map((t) => plainCard(t))}
+                    </div>
+                  ) : null}
+                  {learnt.length === 0 && theirs.length === 0 ? (
+                    <div style={{ fontSize: 11.5, color: SUB, padding: "4px 2px 0" }}>
+                      {isArtist
+                        ? "The studios you teach at and learn at will be listed here — teach a class at one, or book one."
+                        : "The studios you learn at will be listed here once you have booked a class."}
+                    </div>
+                  ) : null}
+                </>
+              ),
+            },
+          ]}
+        />
       </div>
 
       {/* "New studio" bottom sheet — lifted from DanceOSApp.jsx:2659-2685 */}

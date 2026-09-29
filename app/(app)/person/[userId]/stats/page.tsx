@@ -1,39 +1,32 @@
 import type { Metadata } from "next";
 import { notFound, redirect } from "next/navigation";
-import { EntityStatsPage, type Standing } from "@/features/stats/components/EntityStatsPage";
+import { StatsPageBody, type StatsQuery } from "@/features/stats/components/StatsPageBody";
 import { ROLE_RING } from "@/features/profiles/components/profile-kit";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { findPublicPerson } from "@/repositories/publicPerson";
-import { findEntityChartRow } from "@/repositories/stats";
 import { KIND_WORD, kindOf } from "@/types/profile";
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 export const metadata: Metadata = { title: "Stats — DanceOS" };
 
-/** /person/{id}/stats — this person's record and where they stand (push 2,
- *  19 Sep 2026). The same door the person page has: a signed-in reader gets
- *  anybody's; a stranger gets a public ARTIST's and is sent to sign in for a
- *  plain user's (`findPublicPerson` and `entity_chart_row` draw the same line).
+/** /person/{id}/stats — this person's record, their history and the rankings.
  *
- *  ⚠⚠ ONE SCREEN, WHOEVER IS LOOKING (29 Sep 2026, the user: *"stats — should
- *  only have one view when looking at your profile or someone else, charts when
- *  looking at someone else's profile also should have a view with that person's
- *  rankings"*).
+ *  ⚠⚠ THE THREE-COLUMN SCREEN IS BACK, AND THIS UNDOES C86 (29 Sep 2026). That
+ *  day the two stats screens were collapsed into one — correctly — and into the
+ *  WRONG ONE: `StatsScreen` (Record with its number grid and its graphs ·
+ *  History · Rankings) was deleted and the thin `EntityStatsPage` kept. The user:
+ *  *"you messed up with the stats page — it was supposed to be the one with the
+ *  graphs and number grid, history and rankings in 3 columns for all profiles."*
+ *  So it is the rich screen that is universal now, which is what "only one view"
+ *  should have meant.
  *
- *  Until today this page forked: your own id drew `OwnStatsScreen` (three tabs
- *  — the record, a History library, the four leaderboards with their city,
- *  metric and style filters) and anybody else's drew `EntityStatsPage` (the
- *  record, and where they stand nationally and in their city). Two screens for
- *  one question, and the second clause of the ask is already what the surviving
- *  one does: a standing card per scope IS that person's rankings.
- *
- *  ⚠ WHAT THAT COSTS, and the user was shown it before choosing: the History
- *  library and browsing the boards go with `StatsScreen`. Every read behind them
- *  is kept (`findChart`, `findMyHistory`, `findMyPlace`) and every SQL function
- *  is untouched, so a board screen is a screen away rather than a rebuild — see
- *  the parity backlog. `/stats` stays an address and lands here (Rule 14). */
-export default async function PersonStatsPage({ params }: { params: Promise<{ userId: string }> }) {
+ *  The door is unchanged: a signed-in reader gets anybody's; a stranger gets a
+ *  public ARTIST's and is sent to sign in for a plain user's (`findPublicPerson`
+ *  and `entity_chart_row` draw the same line). What a stranger can READ is
+ *  narrower, and `StatsPageBody` says which column is which rather than drawing
+ *  an empty shelf. */
+export default async function PersonStatsPage({ params, searchParams }: { params: Promise<{ userId: string }>; searchParams: Promise<StatsQuery> }) {
   const { userId } = await params;
   if (!UUID_RE.test(userId)) {
     notFound();
@@ -51,12 +44,22 @@ export default async function PersonStatsPage({ params }: { params: Promise<{ us
     notFound();
   }
   const kind = kindOf(person.isArtist);
-  const segment = kind === "artist" ? "artist" : "dancer";
-  const city = person.profile.city;
-  const [everywhere, inCity] = await Promise.all([
-    findEntityChartRow(supabase, { segment, id: userId }),
-    city ? findEntityChartRow(supabase, { segment, id: userId, city }) : Promise.resolve(null),
-  ]);
-  const standings: Standing[] = [{ scope: "Everywhere", row: everywhere }, ...(city ? [{ scope: `In ${city}`, row: inCity }] : [])];
-  return <EntityStatsPage name={person.profile.fullName} eyebrow={KIND_WORD[kind]} segment={segment} accent={ROLE_RING[kind][1]} backHref={`/person/${userId}`} standings={standings} stats={person.stats} />;
+  return (
+    <StatsPageBody
+      subject={{
+        kind: "person",
+        id: userId,
+        name: person.profile.fullName,
+        eyebrow: KIND_WORD[kind],
+        accent: ROLE_RING[kind][1],
+        backHref: `/person/${userId}`,
+        segment: kind === "artist" ? "artist" : "dancer",
+        city: person.profile.city,
+        isArtist: person.isArtist,
+        stats: person.stats,
+      }}
+      query={await searchParams}
+      basePath={`/person/${userId}/stats`}
+    />
+  );
 }
