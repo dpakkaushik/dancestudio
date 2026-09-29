@@ -1,6 +1,7 @@
 import Link from "next/link";
 
 import { DeskHero } from "@/features/tenants/components/biz-kit";
+import { PayHistoryExport } from "./PayHistoryExport";
 import { DOS_DISPLAY, DOS_UI, GREEN, SUB } from "@/lib/design/tokens";
 import { photoUrl } from "@/lib/media/photo";
 import { PAYOUT_METHOD_LABEL, payoutTone, type PersonPayHistory } from "@/types/payout";
@@ -179,6 +180,13 @@ export function PersonPayments({
             </div>
           );
         })}
+
+        {/* ⚠ A LEDGER YOU CANNOT GET OUT OF IS HALF A LEDGER. The Invoices
+            screen and the month statements have had a real CSV since 29 Aug and
+            this page had none — a studio reconciling a year of somebody's pay
+            was reading twelve cards on a phone. One line per SESSION, because
+            this is the only screen that knows which. */}
+        <PayHistoryExport personName={personName} tenantName={tenantName} payouts={history.payouts} />
 
         <Link
           href={`/business/${tenantId}/staff`}

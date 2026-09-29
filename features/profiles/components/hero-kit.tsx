@@ -269,7 +269,14 @@ export function IdentityHero({
                 contiguous and a screen reader says what the screen shows. The
                 e2e read that space and is what found it. */}
             <div style={{ display: "flex", alignItems: "baseline", flexWrap: "wrap" }}>
-              <span style={HERO_EYEBROW}>
+              {/* ⚠ A HANDLE SO THE CONTRAST CAN BE MEASURED (29 Sep 2026).
+                  When `heroWash` went, these two lines moved from white-on-tint
+                  to SUB and MUTED on the page's own ground — and `shoot-invert`
+                  measured the panel, the shelf count, a card, a tile and a
+                  control, and never the hero. That is the 27 Sep shape exactly:
+                  the one thing a colour change touched is the one thing nothing
+                  measured. This id is what lets it. */}
+              <span data-testid="hero-eyebrow" style={HERO_EYEBROW}>
                 {eyebrow}
                 {eyebrowSub}
               </span>

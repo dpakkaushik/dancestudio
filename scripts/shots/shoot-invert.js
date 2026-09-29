@@ -151,6 +151,52 @@ const PROBE = (sel) => {
     });
   }
 
+  /* ── THE HERO, WHICH THIS FILE HAS NEVER MEASURED (29 Sep 2026) ────────────
+     `heroWash` painted a gradient down from the profile's own tint, and the
+     eyebrow and the account number were WHITE on it. C83 deleted the wash at the
+     user's word ("top pink hue ... should be removed from all profiles") and
+     those two lines became `--sub` and `--muted` on the page's own ground.
+
+     ⚠ NOTHING MEASURED THAT. This script read the panel, a shelf count, a card's
+     name, a tile's headline and a control — every one of them on Discover — so
+     the one surface a colour change actually touched was the one surface it did
+     not look at. That is the 27 Sep finding repeating: a contrast check is only
+     worth what it points at.
+
+     ⚠ AND IT ASSERTS THE WASH IS GONE, not merely that the text is legible: the
+     hero's ground must be the PAGE's own. A tint creeping back would still
+     probably measure fine and would be exactly what the user asked to remove. */
+  for (const theme of ["dark", "light"]) {
+    await page.goto(`${BASE}/discover?tab=studios`, { waitUntil: "domcontentloaded" });
+    await page.waitForTimeout(300);
+    const href = await page.evaluate(() => {
+      const a = document.querySelector('a[href^="/studio/"]');
+      return a ? a.getAttribute("href") : null;
+    });
+    if (!href) { console.log(`  ..     [${theme}] no public studio to measure a hero on`); continue; }
+
+    await page.goto(`${BASE}${href}`, { waitUntil: "domcontentloaded" });
+    await page.evaluate((t) => { document.documentElement.className = t; }, theme);
+    await page.waitForSelector('[data-testid="hero-eyebrow"]', { timeout: 20000 }).catch(() => {});
+    await page.waitForTimeout(200);
+
+    const eyebrow = await page.evaluate(PROBE, '[data-testid="hero-eyebrow"]');
+    const body = await page.evaluate(PROBE, "body");
+    if (!eyebrow) { check(false, `[${theme}] the hero's eyebrow is measurable`); continue; }
+
+    console.log(`\n  ${theme.toUpperCase()} — hero ground ${eyebrow.ground}`);
+    check(
+      eyebrow.ratio >= 4.5,
+      `[${theme}] the hero's eyebrow reads at 4.5:1 or better on the page's own ground`,
+      `${eyebrow.ratio}:1 ${eyebrow.ink} on ${eyebrow.ground}`
+    );
+    check(
+      eyebrow.ground === body.ground,
+      `[${theme}] ⚠ and the hero has NO WASH — its ground IS the page's (C83)`,
+      `hero ${eyebrow.ground} vs page ${body.ground}`
+    );
+  }
+
   await browser.close();
   console.log(`\n${pass} passed, ${fail} failed`);
   process.exit(fail ? 1 : 0);
