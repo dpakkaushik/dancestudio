@@ -104,6 +104,17 @@
 >   have passed **for the wrong reason**, on every run, for ever. `user_id` is in
 >   the select now. **A check that can pass for the wrong reason is not a
 >   check** — this file's own 11 Sep lesson, pointing the other way.
+> * ✅ **PUSHED AND LIVE (`f96428f`), read back off the DEPLOYMENT rather than
+>   assumed:** Vercel's own list for THIS sha, **BUILDING → READY in ~50 s** ·
+>   the production alias confirmed on `f96428f` **through the API**, because a
+>   behavioural probe cannot tell a streamed 200 from a matched route ·
+>   **`stranger-smoke` 8/8** · **`shoot-register` 46/46 ON THE DEPLOYMENT** — a
+>   real studio, a real class live on the clock, and the door driven end to end
+>   on the live bundle against production: **somebody with no booking BOOKED IN
+>   at the door**, the seat read back out of the database as exactly one
+>   **ENROLLED** row **whose `created_by` is the person who opened the door and
+>   not the person who walked in**, and the attendance row written in the same
+>   press. ⚠ My own `next start` on :3100 was stopped afterwards.
 
 > ### SIX THINGS, AND A "DRY RUN" THAT COMMITTED TO PRODUCTION (29 Sep 2026, earlier) — ⚠ ONE MIGRATION APPLIED (`20260929110000`), ⚠⚠ AND IT WENT IN BY MISTAKE
 > The user, in one message: *"1. top pink hue enquiries should be removed from
@@ -9814,6 +9825,11 @@ for the database schema. **The UI is not redesigned** — see Rule 2.
   assertions describing the decision that had just changed. ⚠⚠ The JSX-comment
   trap for the SIXTH time, self-inflicted; and a check of mine that would have
   passed for the wrong reason for ever, caught by reading it back.
+  ✅ **PUSHED AND LIVE (`f96428f`), read back off the deployment:** Vercel's own
+  list for THIS sha BUILDING → READY in ~50 s · the alias confirmed on that sha
+  through the API · `stranger-smoke` 8/8 · **`shoot-register` 46/46 ON THE
+  DEPLOYMENT**, with the walk-in's seat and attendance row read back out of
+  production and `created_by` proving who opened the door.
 - **SIX THINGS, AND A "DRY RUN" THAT COMMITTED — 29 Sep 2026, no step number ⚠
   (Rule 9: three definer functions, and a migration that went in unapproved) —
   ONE MIGRATION APPLIED (`20260929110000`), read back live 8/8.** The user's
