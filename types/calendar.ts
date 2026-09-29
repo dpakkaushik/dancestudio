@@ -1,6 +1,6 @@
 import type { ClassArtist } from "@/types/classPerson";
 import type { PracticeStanding } from "@/types/crewPractice";
-import type { ClassLevel, ClassStatus } from "@/types/class";
+import type { ClassLevel, ClassStatus, DanceClass } from "@/types/class";
 import type { ClassBookingStatus } from "@/types/classBooking";
 
 /** Step 14 — the calendar. Nothing new is stored: a calendar entry is a class
@@ -40,6 +40,44 @@ export interface CalendarEntry {
    *  the style square */
   artist: ClassArtist | null;
 }
+
+/** A CALENDAR ENTRY AS THE APP'S ONE CLASS CARD (30 Sep 2026).
+ *
+ *  ⚠ IT LIVES HERE BECAUSE TWO SURFACES DRAW IT NOW: the public schedule (where
+ *  a stranger deciding whether to come needs the price, the seats left and the
+ *  teacher's face) and the NEXT SESSIONS summary on the profile page whose bar
+ *  opens that schedule. It was `CalendarScreen`'s own local helper until the
+ *  second caller arrived — and a second COPY is the bill this repo has paid
+ *  three times (`linkChip` twice, the figure row three times, three identity
+ *  bands): one of the two would have drifted, and the drift would be a class
+ *  that looks like a different class on the page it is linked from.
+ *
+ *  ⚠ `businessId` is empty and the venue/pin fields are null on purpose — a
+ *  calendar entry does not carry them and the card does not draw them. The
+ *  membership flags carry the column defaults so the SHAPE matches; whose pass
+ *  pays for a seat is the class's own answer, read on its page. */
+export const tileClassOf = (e: CalendarEntry): DanceClass => ({
+  id: e.classId,
+  businessId: "",
+  title: e.title,
+  shareSlug: e.shareSlug,
+  style: e.style,
+  level: e.level,
+  room: e.room,
+  roomId: null,
+  poster: null,
+  priceInr: e.priceInr,
+  capacity: e.capacity,
+  status: e.classStatus,
+  venueBusinessId: null,
+  venueStatus: null,
+  lat: null,
+  lng: null,
+  mapsUrl: null,
+  allowsStudioMemberships: true,
+  allowsArtistMemberships: false,
+  session: { id: e.sessionId, startsAt: e.startsAt, endsAt: e.endsAt },
+});
 
 /** ⚠⚠ `CalendarEventEntry` WAS HERE AND WENT WITH EVENTS (29 Sep 2026, the
  *  user: *"Remove Organization and Events completely from the system"*). It was

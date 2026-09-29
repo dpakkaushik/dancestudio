@@ -322,6 +322,31 @@ const text = async (page) => (await page.locator("body").innerText()).replace(/\
     const seated = await rows(owner.h, `class_people?class_id=eq.${second}&status=eq.confirmed&deleted_at=is.null&select=user_id`);
     check(seated.length === 1 && seated[0].user_id === learner.id, "…one press and they are on it, read back out of the database");
 
+    /* ══ 8 · NEXT SESSIONS ON THE PUBLIC PAGE (#0aj) ══════════════════════════
+       The backlog row wanted the whole public schedule folded into the profile
+       page. It is a 1,085-line screen with a `position: sticky` controls block
+       and a `position: fixed` scrim, so folding it in nests a second screen
+       inside a page section — the stacking-context family this repo has paid
+       for four times. What lands instead is the part that is only an
+       improvement: three cards under the bar that opens the rest. */
+    await lPage.goto(`${BASE}/studio/${studio.id}`, { waitUntil: "networkidle" });
+    const pubBody = await text(lPage);
+    check((await lPage.getByTestId("next-sessions").count()) === 1, "a listed studio's public page carries NEXT SESSIONS under the Schedule bar");
+    check(/Next sessions/i.test(pubBody), "…headed in words, not only by a test id");
+    check(await onShelf(lPage, aheadSlug), "…and the class that is AHEAD is one of the cards");
+    check(!(await onShelf(lPage, ranSlug)), "⚠ …while the one that already RAN is not — the summary reads the SCHEDULE's own window, so it cannot name a class the page behind it does not list");
+    check(
+      (await lPage.locator('[data-testid="next-sessions"] a[href$="/schedule"]').count()) === 0,
+      "⚠ …and it carries no door of its own: the white bar directly above it goes exactly there, and two doors to one subject is the shape C31 and C51 each cost a push to undo"
+    );
+    /* ⚠ AND THE ORDER, WHICH IS THE USER'S OWN RULE: the bar first, then the
+       preview, then what is on sale ("SCHEDULE WILL ALWAYS BE ABOVE
+       MEMBERSHIPS", 20 Sep 2026). A summary that landed between them would
+       have broken a rule the user has stated by name. */
+    const barY = await lPage.getByRole("link", { name: "Schedule" }).first().evaluate((el) => el.getBoundingClientRect().top);
+    const sumY = await lPage.getByTestId("next-sessions").evaluate((el) => el.getBoundingClientRect().top);
+    check(sumY > barY, `…drawn UNDER the bar rather than above it (bar ${Math.round(barY)}, summary ${Math.round(sumY)})`);
+
     check(errs.length === 0, `no page error on any of it${errs.length ? ` — ${errs.slice(0, 3).join(" | ")}` : ""}`);
   } catch (error) {
     check(false, `threw: ${error.message}`);

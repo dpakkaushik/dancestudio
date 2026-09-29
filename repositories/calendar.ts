@@ -2,7 +2,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { dosClassLabel } from "@/lib/constants/styles";
 /* ⚠ `addDays` walked a multi-day event into one row per day and went with
    events (29 Sep 2026) — a class session is one day by construction */
-import { dayKeyOf, hourOf } from "@/lib/format/month";
+import { dayKeyOf, hourOf, monthStartIso, monthsWindow, shiftMonthKey } from "@/lib/format/month";
 import type { CalendarEntry, CalendarSide } from "@/types/calendar";
 import type { ClassLevel, ClassStatus } from "@/types/class";
 import type { ClassBookingStatus } from "@/types/classBooking";
@@ -288,6 +288,23 @@ async function findVenueEntries(
 // events, and one `findEventBySlug` per distinct event held — so a person's
 // calendar is materially cheaper than it was.
 
+/** HOW FAR A PUBLIC SCHEDULE LOOKS — three months, starting now. There is no
+ *  history on an offer to scroll back into. */
+export const PUBLIC_SCHEDULE_MONTHS = 3;
+
+/** The exclusive upper bound of that window, from one function.
+ *
+ *  ⚠ ONE FUNCTION BECAUSE TWO SCREENS ASK IT NOW (30 Sep 2026): the schedule
+ *  page, and the NEXT SESSIONS summary on the profile whose Schedule bar opens
+ *  it. A summary naming a class the page behind it does not list is a number
+ *  and the list behind it disagreeing — the prototype's own complaint (9950,
+ *  "the grid used to say 86 students and open a list of five"), which this repo
+ *  has already had to fix twice in its follower counts. */
+export const publicScheduleToIso = (nowIso: string): string => {
+  const months = monthsWindow(nowIso, 0, PUBLIC_SCHEDULE_MONTHS);
+  return monthStartIso(shiftMonthKey(months[months.length - 1].key, -1));
+};
+
 /** A business's PUBLIC schedule (prototype `pubSchedule`, 8902-8907): published
  *  classes that have not happened yet, and nothing else — not drafts, not what
  *  is over. "A public schedule is an offer — a list of classes somebody can
@@ -331,4 +348,25 @@ export async function findPublicBusinessSchedule(
   /* the artists' published classes it holds are on offer here too (18 Sep 2026) */
   const hosted = await findVenueEntries(supabase, businessId, business, nowIso, toIso, true);
   return withSeatCounts(supabase, [...entries, ...hosted]);
+}
+
+/** THE FIRST FEW CLASSES BEHIND A PROFILE'S SCHEDULE BAR (30 Sep 2026, #0aj).
+ *
+ *  ⚠ THE SAME FUNCTION AND THE SAME WINDOW AS THE SCHEDULE PAGE, deliberately —
+ *  the summary sits directly under the bar that opens that page, and a summary
+ *  naming a class the page behind it does not list is the number-and-list
+ *  disagreement this app has already had to fix in its follower counts. It
+ *  reads the whole window and the caller shows three: the cost of slicing here
+ *  instead would be a second set of rules about what "next" means.
+ *
+ *  ⚠ IT DEGRADES TO NOTHING RATHER THAN FAILING. A profile page must not 500
+ *  over a PREVIEW of a list that has a page of its own — the bar above the
+ *  summary still opens the real thing. */
+export async function findNextPublicSessions(
+  supabase: SupabaseClient,
+  businessId: string,
+  business: BusinessBits
+): Promise<CalendarEntry[]> {
+  const now = new Date().toISOString();
+  return findPublicBusinessSchedule(supabase, businessId, business, now, publicScheduleToIso(now)).catch(() => []);
 }

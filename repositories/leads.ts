@@ -158,12 +158,22 @@ export async function updateLead(
 /** Soft delete — a lead who asked you not to keep their details still leaves a
  *  row, so the funnel's history stays honest. */
 export async function softDeleteLead(supabase: SupabaseClient, leadId: string): Promise<void> {
-  const { error } = await supabase
+  /* ⚠ `.select()` AND A COUNT, because a refusal here is SILENT (30 Sep 2026,
+     found by `scripts/audit-reads.mjs`). The `leads` UPDATE policy admits the
+     business's members; somebody who is not one is refused by RLS, and a
+     refused UPDATE comes back with **zero rows and no error** — so without this
+     the desk said the student was removed and the row was still there. It is
+     exactly the shape `softDeleteClass` shipped with, one table over. */
+  const { data, error } = await supabase
     .from("leads")
     .update({ deleted_at: new Date().toISOString() })
     .eq("id", leadId)
-    .is("deleted_at", null);
+    .is("deleted_at", null)
+    .select("id");
   if (error) {
     throw new Error(error.message);
+  }
+  if (!data || data.length === 0) {
+    throw new Error("That student is not yours to remove");
   }
 }

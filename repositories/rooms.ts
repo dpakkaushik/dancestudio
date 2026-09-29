@@ -131,16 +131,29 @@ export async function updateRoom(
 
 /** Soft delete. Classes pointing at it keep their room NAME (the FK is ON DELETE
  *  SET NULL only for a hard delete, which never happens) so history stays
- *  readable. No `.select()`: the member SELECT policy admits deleted rows, but
- *  keeping the write bare matches the classes repository's shape. */
+ *  readable.
+ *
+ *  ⚠ IT READS THE WRITE BACK NOW (30 Sep 2026, found by
+ *  `scripts/audit-reads.mjs`). The old comment said "no `.select()` … keeping
+ *  the write bare matches the classes repository's shape" — and that reason had
+ *  EXPIRED: the classes repository stopped having that shape the same day, for
+ *  this exact defect. `rooms` is updated by an OWNER OR TRAINER, so a `staff`
+ *  seat is refused by RLS, and a refused UPDATE comes back with **zero rows and
+ *  no error** — the desk said the room was gone and it was still there, which is
+ *  the worst kind of wrong answer on a screen about capacity. **A reason that
+ *  points at another file's shape goes stale when that file changes.** */
 export async function softDeleteRoom(supabase: SupabaseClient, roomId: string): Promise<void> {
-  const { error } = await supabase
+  const { data, error } = await supabase
     .from("rooms")
     .update({ deleted_at: new Date().toISOString() })
     .eq("id", roomId)
-    .is("deleted_at", null);
+    .is("deleted_at", null)
+    .select("id");
 
   if (error) {
     throw new Error(error.message);
+  }
+  if (!data || data.length === 0) {
+    throw new Error("Only the studio's owner or a trainer can remove a room");
   }
 }

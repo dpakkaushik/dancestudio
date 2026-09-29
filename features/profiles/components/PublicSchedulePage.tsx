@@ -1,17 +1,18 @@
 import { notFound, redirect } from "next/navigation";
 import { CalendarScreen } from "@/features/calendar/components/CalendarScreen";
-import { dayKeyOf, monthStartIso, monthsWindow, shiftMonthKey } from "@/lib/format/month";
+import { dayKeyOf, monthsWindow } from "@/lib/format/month";
 import { publicProfilePath, publicSchedulePath } from "@/lib/routes/publicProfile";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
-import { findPublicBusinessSchedule } from "@/repositories/calendar";
+import { PUBLIC_SCHEDULE_MONTHS, findPublicBusinessSchedule, publicScheduleToIso } from "@/repositories/calendar";
 import { findPublicBusiness } from "@/repositories/publicProfile";
 import type { BusinessType } from "@/types/business";
 
 const stampNowIso = (): string => new Date().toISOString();
 
-/* a public schedule is an offer, so it starts today and looks three months out —
-   there is no history on it to scroll back into */
-const MONTHS_AHEAD = 3;
+/* ⚠ HOW FAR IT LOOKS IS THE REPOSITORY'S (30 Sep 2026) — `PUBLIC_SCHEDULE_MONTHS`
+   and `publicScheduleToIso`, so the NEXT SESSIONS summary on the profile page
+   whose bar opens this screen cannot come to a different answer about what
+   "upcoming" means. It was a local `MONTHS_AHEAD` until that second reader. */
 
 /** The prototype's `PubCal` (19140): S_profiletab calendarOnly pubSchedule —
  *  published classes still to come, one view, no switcher. */
@@ -28,14 +29,13 @@ export async function PublicSchedulePage({ businessId, expect }: { businessId: s
   }
 
   const now = stampNowIso();
-  const months = monthsWindow(now, 0, MONTHS_AHEAD);
-  const toIso = monthStartIso(shiftMonthKey(months[months.length - 1].key, -1));
+  const months = monthsWindow(now, 0, PUBLIC_SCHEDULE_MONTHS);
   const entries = await findPublicBusinessSchedule(
     supabase,
     businessId,
     { name: business.name, city: business.city },
     now,
-    toIso
+    publicScheduleToIso(now)
   );
 
   return (

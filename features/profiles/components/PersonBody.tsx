@@ -12,6 +12,8 @@ import { MEMBER_ROLE_WORD } from "@/types/staff";
    the same morning. `Business` went with them: nothing here is a business row any
    more, only associations and chips. */
 import { PeopleGroup, PersonChip, SchedIcon, bigWhite } from "./profile-kit";
+import { NextSessions } from "./NextSessions";
+import type { CalendarEntry } from "@/types/calendar";
 import type { ReactNode } from "react";
 
 /** EVERYTHING UNDER A PERSON'S HERO — WRITTEN ONCE (20 Sep 2026).
@@ -59,6 +61,7 @@ export function PersonBody({
   signedIn,
   memberships = [],
   scheduleHref,
+  nextSessions = [],
   accent,
   beforeGroups = null,
   artistTeam = [],
@@ -71,6 +74,10 @@ export function PersonBody({
   /** the public schedule of a business they run; null draws no bar rather than
    *  a button pointing nowhere (10868) */
   scheduleHref: string | null;
+  /** THE FIRST FEW CLASSES BEHIND THAT BAR (30 Sep 2026, backlog #0aj) — the
+   *  same window the schedule page reads, so the summary cannot name a class the
+   *  page behind it does not list. Empty draws nothing at all. */
+  nextSessions?: CalendarEntry[];
   accent: string;
   /** a group only ONE of the two screens has — "What you run", on your own tab
    *  (27 Sep 2026); a stranger's view of you never draws it */
@@ -184,6 +191,11 @@ export function PersonBody({
           </Link>
         </div>
       ) : null}
+
+      {/* ── A TASTE OF WHAT IS BEHIND THE BAR (30 Sep 2026, #0aj) — directly
+          under it, so the door and the preview read as one block, and with no
+          door of its own: the bar above IS that door ── */}
+      <NextSessions entries={nextSessions} />
 
       {/* ── WHAT THEY SELL (19 Sep 2026): an artist's memberships, bought from
           their own profile page exactly as a studio's are from its ── */}

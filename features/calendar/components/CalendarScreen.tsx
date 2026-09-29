@@ -16,9 +16,8 @@ import {
 } from "@/lib/format/month";
 import { timeOf } from "@/lib/format/session";
 import { useCloseOnBack } from "@/lib/hooks/useCloseOnBack";
-import type { CalendarEntry, CalendarMonth, CalendarPracticeEntry, CalendarSide } from "@/types/calendar";
+import { tileClassOf, type CalendarEntry, type CalendarMonth, type CalendarPracticeEntry, type CalendarSide } from "@/types/calendar";
 import { PRACTICE_TINT, PRACTICE_WORD, practiceWhen } from "@/types/crewPractice";
-import type { DanceClass } from "@/types/class";
 
 /** The calendar, lifted from prototype S_profiletab in its `calendarOnly` dress
  *  (`CalTab=()=><S_profiletab calendarOnly/>` 19146, `StudioCalPage` 19143):
@@ -112,31 +111,10 @@ function dosScrollTo(el: HTMLElement, smooth: boolean) {
   window.scrollTo({ top: Math.max(0, y), behavior: smooth ? "smooth" : "auto" });
 }
 
-const toTileClass = (e: CalendarEntry): DanceClass => ({
-  id: e.classId,
-  businessId: "",
-  title: e.title,
-  shareSlug: e.shareSlug,
-  style: e.style,
-  level: e.level,
-  room: e.room,
-  roomId: null,
-  poster: null,
-  priceInr: e.priceInr,
-  capacity: e.capacity,
-  status: e.classStatus,
-  /* a calendar entry carries no venue or pin — the card does not draw them */
-  venueBusinessId: null,
-  venueStatus: null,
-  lat: null,
-  lng: null,
-  mapsUrl: null,
-  /* a card stands in for the class; whose pass pays is the class’s own answer,
-     read on its page — these carry the column defaults so the shape matches */
-  allowsStudioMemberships: true,
-  allowsArtistMemberships: false,
-  session: { id: e.sessionId, startsAt: e.startsAt, endsAt: e.endsAt },
-});
+/* ⚠ `toTileClass` MOVED to `types/calendar.ts` on 30 Sep 2026, the day the
+   profile page's NEXT SESSIONS summary became its second caller — a class drawn
+   two ways on a page and the page it links to is exactly the drift this repo
+   keeps paying for. */
 
 const hourLabel = (h: number) => (h === 12 ? "12 pm" : h > 12 ? `${h - 12} pm` : `${h} am`);
 
@@ -524,7 +502,7 @@ export function CalendarScreen({ mode, months, todayKey, entries, practices = []
   const publicCard = (r: Row) => {
     if (r.k !== "class") return pill(r);
     const e = r.e;
-    return <ClassTile key={r.id} danceClass={toTileClass(e)} filled={e.filled} artist={e.artist} city={e.businessCity} href={`/c/${e.shareSlug}`} />;
+    return <ClassTile key={r.id} danceClass={tileClassOf(e)} filled={e.filled} artist={e.artist} city={e.businessCity} href={`/c/${e.shareSlug}`} />;
   };
 
   const card = (r: Row) => (isPublic ? publicCard(r) : pill(r));

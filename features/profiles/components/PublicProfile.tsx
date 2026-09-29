@@ -11,6 +11,8 @@ import { ActionRow, CallButton, LocationButton, MailButton, MessageButton, mapsP
 import { MembershipsOnSale } from "@/features/memberships/components/MembershipsOnSale";
 import type { MembershipOnSale as MembershipOnSaleRow } from "@/repositories/memberships";
 import { FollowToggle } from "./FollowToggle";
+import { NextSessions } from "./NextSessions";
+import type { CalendarEntry } from "@/types/calendar";
 import { EntityBand, Figure } from "./profile-band";
 import { FollowerFigure } from "./FollowerFigure";
 import type { HeroShot } from "./HeroRail";
@@ -54,6 +56,7 @@ export function PublicProfile({
   followingN = null,
   isMember,
   scheduleHref,
+  nextSessions = [],
   manageHref,
   memberships = [],
 }: {
@@ -85,6 +88,10 @@ export function PublicProfile({
   canEdit?: boolean;
   followers?: BusinessFollower[] | null;
   scheduleHref: string;
+  /** THE FIRST FEW CLASSES BEHIND THAT BAR (30 Sep 2026, backlog #0aj) — read
+   *  through the schedule page's own function, in the schedule page's own
+   *  window, so the two cannot disagree about what is coming. */
+  nextSessions?: CalendarEntry[];
   manageHref: string;
   /** what this business has ON SALE (19 Sep 2026) — live ones of a listed business */
   memberships?: MembershipOnSaleRow[];
@@ -308,6 +315,10 @@ export function PublicProfile({
             Schedule
           </Link>
         </div>
+
+        {/* ── AND A TASTE OF WHAT IS BEHIND IT (30 Sep 2026, #0aj) — three
+            cards, no door of its own, nothing at all when there is nothing ── */}
+        <NextSessions entries={nextSessions} />
 
         {/* ── WHAT IT SELLS (19 Sep 2026, the user: "Users should be able to buy
             from Studio and Artist Profile Pages") — a price on a public page is

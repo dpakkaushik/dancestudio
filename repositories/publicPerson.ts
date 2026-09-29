@@ -72,6 +72,36 @@ export interface PublicPerson {
   artistPageId: string | null;
 }
 
+/** WHOSE SCHEDULE A PERSON'S PAGE OPENS — written once (30 Sep 2026).
+ *
+ *  The rule was inline in `PublicPersonPage` and had to be said a second time
+ *  the moment the route needed to READ that schedule for the NEXT SESSIONS
+ *  summary. ⚠ Two copies would be worse than a duplicate here: the bar opening
+ *  one business's schedule while the preview under it lists another's is a
+ *  summary that lies, and nothing on screen would say so.
+ *
+ *  ⚠ `runs` FIRST, `artistPageId` SECOND, and the order carries the 20 Sep
+ *  finding: `runs` comes from `business_members`, which RLS admits to a
+ *  business's OWN MEMBERS — so it is EMPTY for every visitor, and the artist
+ *  page (a definer read that answers anybody, and only while it is LISTED) is
+ *  what a stranger actually gets. Without that fallback the white bar was never
+ *  drawn for anyone but the person themselves.
+ *
+ *  ⚠ The fallback's name and city are the PERSON's, which is what an artist
+ *  page is: `ensureArtistPage` names it after them, in their city. */
+export const personScheduleBusiness = (
+  person: PublicPerson
+): { id: string; type: "studio" | "artist_page"; name: string; city: string | null } | null => {
+  const run = person.runs[0];
+  if (run) {
+    return { id: run.businessId, type: run.businessType, name: run.businessName, city: run.city };
+  }
+  if (person.artistPageId) {
+    return { id: person.artistPageId, type: "artist_page", name: person.profile.fullName, city: person.profile.city };
+  }
+  return null;
+};
+
 interface StatsRow {
   sessions_conducted: number;
   sessions_assisted: number;

@@ -163,6 +163,10 @@ export async function createClassWithSession(
      moved a switch, it goes through the owners-only UPDATE policy the edit form
      already uses, and a refusal leaves a real class wearing the defaults rather
      than no class at all. */
+  /* audit-ok: the caller created this class one statement ago through an
+     owner-only RPC, so the owner-only UPDATE policy cannot refuse them; and the
+     documented fallback is a real class wearing the default switches, which is
+     a better outcome than throwing away a class that exists. */
   if (input.allowsStudioMemberships !== true || input.allowsArtistMemberships !== false) {
     const { error: patchError } = await supabase
       .from("classes")
@@ -383,6 +387,10 @@ export async function updateClassDetails(
     throw new Error("Class not found or not yours to edit");
   }
 
+  /* audit-ok: the UPDATE directly above reads ITS result back and throws
+     "Class not found or not yours to edit" on zero rows, so authority over this
+     class is already proven one statement earlier — and `class_sessions`' own
+     policy admits the same owner. The guard is the statement above. */
   const { error: sessionError } = await supabase
     .from("class_sessions")
     .update({ starts_at: input.startsAt, ends_at: input.endsAt })
@@ -407,6 +415,9 @@ export async function softDeleteClass(
   }
 
   const deletedAt = new Date().toISOString();
+  /* audit-ok: a soft-deleted row satisfies no SELECT policy, so `.select()`
+     here would make Postgres reject the whole statement — the read-back
+     below is this write's status check, and the block above it says why. */
   const { error } = await supabase
     .from("classes")
     .update({ deleted_at: deletedAt })
@@ -434,6 +445,8 @@ export async function softDeleteClass(
     throw new Error("Only the owner of this studio can delete its classes");
   }
 
+  /* audit-ok: same two reasons — a soft-deleted row is unreadable, and the
+     read-back four lines up has already proven this caller may delete. */
   const { error: sessionError } = await supabase
     .from("class_sessions")
     .update({ deleted_at: deletedAt })

@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { MyProfilePage } from "@/features/profiles/components/MyProfilePage";
 import { headerMaxFor } from "@/lib/media/photo";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { findNextPublicSessions } from "@/repositories/calendar";
 import { findMyFollowedCrews, findMyFollowedPeople, findMyFollowing, findMyPersonFollowers } from "@/repositories/follows";
 import { findPersonHeaderPhotos } from "@/repositories/headerPhotos";
 import { findMembershipsOnSale } from "@/repositories/memberships";
@@ -86,7 +87,6 @@ export async function OwnProfileScreen({ userId, loaded }: { userId: string; loa
      five for an artist (19 Sep 2026) — the same rule the database keeps on the
      way in */
   const headerMax = headerMaxFor(kindOf(Boolean(plan?.active)));
-  const header = await findPersonHeaderPhotos(supabase, userId, headerMax);
   /* ⚠ the `type !== "org"` filter went with organizations (29 Sep 2026); every
      business left has a public page for `scheduleHref` to point at */
   const businesses = seats.map((m) => m.business);
@@ -110,6 +110,22 @@ export async function OwnProfileScreen({ userId, loaded }: { userId: string; loa
   const schedBiz = businesses.find((t) => t.type === "artist_page") ?? businesses[0];
   const scheduleHref = schedBiz ? `/${schedBiz.type === "studio" ? "studio" : "artist"}/${schedBiz.id}/schedule` : null;
 
+  /* ⚠ THE SUMMARY IS ON YOUR OWN TAB TOO (30 Sep 2026, #0aj), and that is
+     `PersonBody`'s whole argument rather than a nicety: this screen and
+     `/person/{id}` draw the same person, and every time one of them has been
+     given something the other was not, they drifted — five ways by 20 Sep, which
+     is why the body below them is one component. Defaulting the prop to `[]`
+     here would have been the sixth.
+     ⚠ It rides the header's await rather than the batch above, because the
+     business it is about comes OUT of that batch (`seats`); paired with the
+     header it costs no wall clock. */
+  const [header, nextSessions] = await Promise.all([
+    findPersonHeaderPhotos(supabase, userId, headerMax),
+    schedBiz
+      ? findNextPublicSessions(supabase, schedBiz.id, { name: schedBiz.name, city: schedBiz.city })
+      : Promise.resolve([]),
+  ]);
+
   return (
     <MyProfilePage
       person={person}
@@ -120,6 +136,7 @@ export async function OwnProfileScreen({ userId, loaded }: { userId: string; loa
       followingBusinesses={followingBusinesses}
       followingCrews={followingCrews}
       scheduleHref={scheduleHref}
+      nextSessions={nextSessions}
       owned={owned}
       memberships={memberships}
       artistTeam={artistTeam}

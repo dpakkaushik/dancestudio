@@ -27,6 +27,8 @@ import { findFollowerCounts, findMyFollowedPeople, findMyFollowing } from "@/rep
 import { findStudioHeaderPhotosMany, type HeaderPhoto } from "@/repositories/headerPhotos";
 import { findPersonFollowerCounts } from "@/repositories/publicPerson";
 import type { ClassArtist } from "@/types/classPerson";
+import { after } from "next/server";
+import { recordImpression } from "@/repositories/analytics";
 import { countEnrolledBySession, findMyEnrolledSessionIds } from "@/repositories/classBookings";
 import { findProfileById } from "@/repositories/profiles";
 import { resolveActingAs, withAs } from "@/repositories/actingAs";
@@ -255,6 +257,38 @@ export default async function DiscoverPage({
     t.photoPath = facts.get(t.id)?.photoPath ?? null;
     t.verifiedAt = facts.get(t.id)?.verifiedAt ?? null;
   });
+
+  /* ⚠⚠ WHAT THIS SHELF ACTUALLY SHOWED (30 Sep 2026) — the writer for the
+     `impressions` table `20260929140000` created and nothing had ever written
+     to. Until now a studio with no bookings and a studio NOBODY WAS EVER SHOWN
+     looked identical from every screen in the app, and they are opposite
+     problems with opposite answers.
+     ⚠ ONE ROW PER SHELF, in order — fifty cards is fifty rows under the obvious
+     design, and "was I shown, and where in the list" is answered as well by an
+     ordered array.
+     ⚠ It runs AFTER the response has gone out, with the service role, and can
+     never fail the page: Discover is the most-visited surface in the app and a
+     measurement is not worth a 500.
+     ⚠⚠ THE ARTISTS TAB IS DELIBERATELY NOT RECORDED. `impressions.subject_kind`
+     admits `business | class | crew`, and an artist on this shelf is a PERSON
+     since R24 — their id is a `profiles` id, not a business's. Filing them as
+     'business' would put the wrong key in the column and quietly corrupt the one
+     read that answers "was this studio shown"; widening the CHECK is a migration
+     and belongs with its own approval. Said out loud rather than fudged. */
+  const shownIds =
+    tab === "classes" ? classes.map((c) => c.id) : tab === "crews" ? crews.map((c) => c.id) : wantsBusinesses ? businesses.map((b) => b.id) : [];
+  if (shownIds.length > 0) {
+    const shownKind = tab === "classes" ? "class" : tab === "crews" ? "crew" : "business";
+    after(() =>
+      recordImpression({
+        viewerId: user?.id ?? null,
+        surface: "discover",
+        city: city || null,
+        subjectKind: shownKind,
+        subjectIds: shownIds,
+      })
+    );
+  }
   const followedTiles: FollowedTile[] = wantsArtists
     ? /* the ARTISTS you follow are people (18 Sep 2026): the ones with a live plan, opening their profile */
       followedPeople

@@ -2,7 +2,129 @@
 
 ## LAST SESSION (30 Sep 2026) — replaced on every push (Rule 13)
 
-> ### CLASSES, END TO END — TEN FINDINGS, EIGHT FIXED, ONE RETRACTED (30 Sep 2026, latest) — ⚠⚠ ONE MIGRATION WRITTEN, DRY-RUN **20/20** AND **HELD** (NEXT TO DO #0b2), ⚠ NOT COMMITTED TO ORIGIN
+> ### THE RECORDS A MARKETPLACE KEEPS, A TASTE OF THE SCHEDULE, AND TWO GREPS THAT FOUND TWO MORE SILENT REFUSALS (30 Sep 2026, latest) — ⚠⚠ ONE MIGRATION WRITTEN, DRY-RUN **21/21** AND **HELD** (NEXT TO DO #0b3)
+> The user: *"fix all and push to live in order apart from the sand box items.
+> and give suggestions where you need my help."* — so the ranked order was run,
+> and the one thing at the top of it that moves money is written, proven and
+> **held**, because its list has never been in front of them.
+> * ✅ **`20260930100000` IS APPLIED** (the class slice's held migration — its list
+>   was NEXT TO DO #0b2 and the user had it): `db-push -DryRun` listed exactly the
+>   one file, it applied on the FIRST try, and it was **read back off the LIVE
+>   catalog 11/11** with PostgREST's cache reloaded. Proofs `classes`,
+>   `rooms-people`, `attendance`, `enrollments`, `notifications` **5/5**.
+> * ⚠⚠ **THE ANALYTICS TABLES HAVE WRITERS AT LAST**, which is what `20260929140000`
+>   and `20260929150000` were applied without: `recordSearch` on the search box and
+>   `recordImpression` on Discover's shelf, both through `after()` so **not one
+>   millisecond of a public page waits on a log**, both with the SERVICE ROLE on
+>   the server — there is still no client door, which is the whole of their
+>   security. ⚠ **An impression is one row per SHELF**, the ids in the order they
+>   were shown. ⚠ **The Artists tab is deliberately NOT recorded**: `subject_kind`
+>   admits `business | class | crew`, and an artist has been a `profiles` id since
+>   R24 — a row claiming a person is a business would be a lie in a table nobody
+>   would ever re-read. ⚠ Both swallow every error: a log that can break Discover
+>   is worse than no log.
+> * ⚠⚠ **AND THE EMAIL LEDGER HAS ITS ROUTE** — `/api/webhooks/resend`, in
+>   `webhook_events`' exact shape: the RAW body read first and the **Svix**
+>   signature verified over `{id}.{timestamp}.{body}` (Resend delivers through
+>   Svix, so the scheme is Svix's), 401 on mismatch, **idempotent on the Svix
+>   message id** so a redelivery is a 200 no-op — ⚠ which matters more than it
+>   looks, because **a log that counts a retry as a second bounce invents a
+>   failure** and Svix retries for days. ⚠ Unconfigured it answers **503**, not
+>   "accept anything": an open unauthenticated writer into a table is not a
+>   smaller problem than a missing feature. ⚠ It does nothing until the two things
+>   the USER owns (#0ar).
+> * ⚠⚠ **#0aj IS BUILT AS THE SMALL HALF, AND THE ROW'S OWN CORRECTION IS WHY.**
+>   It had proposed folding the whole public schedule into the profile page; that
+>   is `CalendarScreen mode="public"` — **1,085 lines with a `position: sticky`
+>   controls block the scroll helper MEASURES and a `position: fixed` scrim** — so
+>   it nests a second screen inside a page section, which is the stacking-context
+>   family this repo has paid for four times. **A page-count target is not worth a
+>   worse page.** What landed is **NEXT SESSIONS**: three `ClassTile`s under the
+>   Schedule bar, on a studio's public page, on a person's, and on your own tab.
+>   ⚠ **No door of its own** — the white bar directly above goes exactly there,
+>   and two doors to one subject is what C31 and C51 each cost a push to undo.
+>   ⚠ **The same function and the same window as the schedule page**
+>   (`publicScheduleToIso`, `findNextPublicSessions`), so the summary cannot name
+>   a class the page behind it does not list — the number-and-list disagreement
+>   this app has already fixed in its follower counts. ⚠ `toTileClass` MOVED out
+>   of `CalendarScreen` into `types/calendar.ts` the moment it had a second
+>   caller, and the rule for WHOSE schedule a person's bar opens moved into
+>   `personScheduleBusiness` for the same reason — the route reads it and the href
+>   is built from it, so a preview of somebody else's schedule under this one's
+>   bar cannot happen. ⚠ It rides a batch each page was already awaiting, and
+>   **degrades to nothing rather than failing**: a profile must not 500 over a
+>   preview of a list that has a page of its own.
+> * ⚠⚠ **AND THE TWO CI GREPS FOUND TWO MORE SILENT REFUSALS ON THEIR FIRST RUN**
+>   — `scripts/audit-reads.mjs`, `npm run audit:reads`, in CI after typecheck.
+>   `softDeleteLead` and `softDeleteRoom` each wrote through an RLS-guarded table
+>   with no `.select()`, so a refusal came back as **zero rows and no error** and
+>   the desk said the student was removed / the room was gone while both were
+>   still there. ⚠⚠ **`softDeleteRoom`'s own comment said why it was safe and the
+>   reason had EXPIRED**: *"keeping the write bare matches the classes
+>   repository's shape"* — and the classes repository stopped having that shape
+>   the same day, for this exact defect. **A reason that points at another file's
+>   shape goes stale when that file changes.**
+> * ⚠⚠ **AND THE CHECK TAUGHT ITSELF ITS OWN FALSE POSITIVES, WHICH IS THE PART
+>   WORTH KEEPING.** Its first run reported **16 unscoped reads and 6 silent
+>   writes**; **twelve of the sixteen were the check**, because the scope is
+>   routinely stated through an EMBED PREFIX (`payments` carries no `class_id`, so
+>   a class's money is `.eq("orders.class_id", …)` through an `!inner` join) and
+>   four more were `repositories/admin.ts`, where a platform admin's queue IS the
+>   whole queue. **A check that cries wolf is worse than none, because the next
+>   person switches it off** — so the prefix is understood, the admin file is one
+>   exemption with one true reason, and the four honest exceptions carry an
+>   `audit-ok:` with the reason beside the code. **0 unexplained**, and it is
+>   proven to still BITE: a planted file holding both shapes is caught 2/2.
+> * ⚠⚠ **THE REFUND HOLE IS WORSE THAN THE BACKLOG SAID, AND IT IS MEASURED ON
+>   PRODUCTION** — `20260930110000`, dry run **21/21 rolled back**, **HELD**
+>   (#0b3). `ClassesManager`'s delete sheet has read *"{n} enrolled students **must
+>   be refunded** — you'll settle each refund on the next screen"* since 29 Aug
+>   2026, its button reads **"Delete & manage refunds"**, and it then navigates to
+>   the money desk — **and no refund row was ever written by any of it**. Counted
+>   before a line was written: **13 live `enrolled` seats on 13 soft-deleted
+>   classes, held by 10 people, and 6 paid orders worth ₹1,800**. ⚠ It could not be
+>   wired rather than built: `cancel_class_booking_with_reason` is scoped
+>   `where e.user_id = auth.uid()` by design, so a studio has never been able to
+>   call it for a learner, and there was no door at all.
+> * ⚠⚠ **AND THE ONE SUBSTITUTION THAT WOULD HAVE BEEN A MONEY BUG IS WHY THE CORE
+>   IS EXTRACTED RATHER THAN RE-TYPED.** The body moves out of the live function
+>   verbatim and gains two identities where it had one: the **actor** (audit
+>   columns) and the **payer** (`refunds.user_id`). They were the same variable
+>   because they were the same person — and filing a learner's refund against the
+>   STUDIO OWNER would make it unreadable to the person owed it and wrong on every
+>   ledger it reaches. **Five of six re-typed live bodies were wrong on 28 Sep**,
+>   and this is the body that moves money. ⚠ One flag, `p_called_off`, carries two
+>   consequences that must not be settable apart: the refund is **automatic
+>   whatever the clock says** (the 48-hour rule is about a learner cancelling
+>   late, not about a class the studio itself called off) and **nobody is promoted
+>   off the waitlist** into a class that is ending. ⚠ **No trigger on the delete**:
+>   money as a side effect of a soft delete cannot carry a reason and cannot be
+>   refused, and the owner check in front of it is what stops a refused delete
+>   leaving a room full of cancelled seats. ⚠ **Nothing is backfilled** — the 13
+>   seats already on production are real people's money and that decision is the
+>   user's.
+> * ⚠ **Its APP HALF IS DELIBERATELY NOT WIRED**, and that is the 27 Sep
+>   `poster_path` lesson read forwards: an RPC the database does not have answers
+>   PGRST202, so pointing `softDeleteClass` at it before the apply would stop
+>   studios deleting classes at all. It goes in the SAME push as the apply, which
+>   is 19 Sep's own rule.
+> * **Verified:** typecheck 0 · lint 0 · `next build` green with
+>   `/api/webhooks/resend` in the manifest · `20260930100000` applied and read back
+>   live 11/11 · proofs 5/5 · dry run **21/21 rolled back** · **`audit-reads` 0
+>   unexplained and 2/2 on a planted self-test** · **`shoot-classes` 40/40** (34
+>   before — the six new ones are the summary, including that it is drawn UNDER
+>   the bar, because "Schedule is above Memberships" is the user's own rule) ·
+>   **`shoot-hero` 186/186** · **`shoot-tiles` 134/134** · **`shoot-register`
+>   57/57** — the three unchanged tallies being what says the profile surfaces
+>   moved without anything else moving.
+> * ⚠ One lint warning was introduced and fixed rather than suppressed: the search
+>   effect gained `city` for the LOG, and listing it as a dependency would have
+>   CLAIMED the results depend on it — a city change with a term in the box would
+>   fire a second identical query on the app's most-visited public surface. It is
+>   read through a ref at send time, synced in its own effect because this repo's
+>   lint forbids a ref write during render.
+
+> ### CLASSES, END TO END — TEN FINDINGS, EIGHT FIXED, ONE RETRACTED (30 Sep 2026, earlier) — ⚠ ITS MIGRATION IS APPLIED NOW (the block above)
 > The user: *"check end to end flow for the classes and its permissions and logics
 > in all cases"*, then *"fix classes entirely"*. So: the whole path read — both
 > forms, the register, the class page, the booking and register RPCs, the
@@ -8590,11 +8712,85 @@ summary; the report has the evidence.
 
 ## NEXT TO DO — replaced on every push (Rule 13)
 
-0b2. **⚠⚠ ONE MIGRATION WRITTEN, DRY-RUN 20/20 AND HELD FOR YOUR WORD —
-   `20260930100000_a_class_says_what_changed`.** ⚠ Rule 9: it adds two notify
-   triggers on live tables and one new refusal to a function every class write
-   passes through. **It is the only pending file**, and the classes work it
-   belongs to is a local commit that is **NOT pushed**.
+0b3. **⚠⚠ ONE MIGRATION WRITTEN, DRY-RUN 21/21 AND HELD FOR YOUR WORD —
+   `20260930110000_calling_off_a_class_gives_the_money_back`.** ⚠⚠ Rule 9:
+   **MONEY.** It is the only pending file. Its app half is deliberately NOT
+   written, so nothing in the tree calls it and applying it changes what nobody
+   sees until that half lands in the same push.
+   **THE CASE, MEASURED ON PRODUCTION BEFORE A LINE WAS WRITTEN:**
+   * ⚠⚠ **THE APP HAS PROMISED THIS SINCE 29 Aug 2026 AND NOTHING EVER DID IT.**
+     `ClassesManager`'s delete sheet reads, word for word: *"{class} · {n}
+     enrolled students **must be refunded** — you'll settle each refund on the
+     next screen."* The button reads **"Delete & manage refunds"**, and pressing
+     it navigates to `/business/{id}/earnings` "so the refunds are settled from
+     the money desk". **No refund row is created by any of it.** The studio
+     arrives at the money desk and there is nothing there.
+   * **13 live `enrolled` seats on 13 soft-deleted classes, held by 10 people;
+     6 paid orders worth ₹1,800** against classes that are gone. Their seat
+     still says `enrolled` on a class that does not exist, and their money is
+     where it was.
+   * ⚠ **IT COULD NOT BE WIRED RATHER THAN BUILT.** `cancel_class_booking_with_reason`
+     does all of this correctly and is scoped `where e.user_id = auth.uid()` —
+     the PAYER's door by design (Step 9) — so a studio has never been able to
+     call it for a learner, and there was no door for a studio to cancel a seat
+     at all.
+   **THE WHOLE OF THE FILE — three functions, nothing else:**
+   * **`_cancel_one_class_booking`** — the money logic, MOVED out of the existing
+     function VERBATIM and gaining the two things a studio's cancel needs that a
+     learner's does not. ⚠⚠ **The substitution that would have been a money bug:
+     `refunds.user_id` is the PAYER and the audit columns are the ACTOR.** They
+     were one variable because they were one person; filing a learner's refund
+     against the studio OWNER would make it unreadable to the person owed it and
+     wrong on every ledger it reaches. **Executable by NO client role** — it
+     takes the payer as an argument, so anything that could run it could file a
+     refund against anybody.
+   * **`cancel_class_booking_with_reason`** — `create or replace`, **SAME
+     signature, so not one grant moves**, now a thin ownership check in front of
+     that core. ⚠ **ZERO BEHAVIOUR CHANGE for a learner**, proven on both sides
+     of the 48-hour window and on the waitlist promote.
+   * **`cancel_class_bookings_for_class(p_class_id, p_reason)`** — the new door:
+     the business's **OWNER** cancels every live seat, each with its own refund.
+     Returns `{seats, refunds, amount_inr}`.
+   * ⚠ **ONE FLAG, `p_called_off`, CARRIES TWO CONSEQUENCES THAT MUST NOT BE
+     SETTABLE APART.** When the studio calls the class off the refund is
+     **automatic whatever the clock says** — the 48-hour rule exists to stop a
+     LEARNER cancelling late, and pointing it at somebody whose class the studio
+     cancelled is the rule aimed at the one person it was never about — and
+     **nobody is promoted off the waitlist**, because enrolling somebody into a
+     class that is ending is a seat given and taken in one statement.
+   * ⚠ **NO TRIGGER ON THE DELETE.** Money as a side effect of a soft delete
+     cannot carry a reason and cannot be refused; the delete path CALLS this, so
+     a manager is refused **in words before one seat is touched**, which is also
+     what stops a refused delete leaving a room full of cancelled seats.
+   * ⚠ **NOTHING IS BACKFILLED.** The 13 seats and the ₹1,800 already on
+     production are real people's money, and a migration that files thirteen
+     refunds behind somebody's back is the same mistake pointing the other way.
+     **What to do about them is your call** — the three options are in the
+     message that came with this.
+   * **NOTHING ELSE MOVES**: no table, no column, no policy, no grant on anything
+     that exists. Asserted by the dry run — **anon's executable set unchanged at
+     39, public policies unchanged at 103, `class_bookings` still has NO write
+     policy**, and the payer's door kept its exact signature.
+   **On your word:**
+```
+   $env:NODE_PATH="<a scratchpad with pg>\node_modules"
+   node scripts/dry-run-migration.js supabase/migrations/20260930110000_calling_off_a_class_gives_the_money_back.sql <checks>   # 21/21, rolled back
+   powershell -NoProfile -ExecutionPolicy Bypass -File scripts/db-push.ps1 -DryRun   # must list exactly this one file
+   powershell -NoProfile -ExecutionPolicy Bypass -File scripts/db-push.ps1 2>&1 | Select-String -NotMatch 'Skipping migration|Warning: failed to cache|prerequisite for local'
+   powershell -NoProfile -ExecutionPolicy Bypass -File scripts/run-proofs.ps1 payments refunds enrollments class-earnings
+```
+   ⚠ No PostgREST reload is needed (no column, no table). **Then the app half in
+   the SAME push**: `softDeleteClass` calls it before deleting, and the delete
+   sheet's promise becomes true for the first time.
+
+0b2. **~~ONE MIGRATION WRITTEN, DRY-RUN 20/20 AND HELD~~ — ✅ APPLIED 30 Sep 2026**
+   on the user's *"fix all and push to live in order"*, its list having been this
+   row. `db-push -DryRun` listed exactly the one file, it applied on the FIRST
+   try, and it was **read back off the LIVE catalog 11/11** — the capacity floor
+   refusing a cut below what is booked and ADMITTING a roomless class, both notify
+   triggers bound with `'class'` (never the plural that was silently dropped for
+   eight days), neither trigger function executable by a client role, anon still
+   39 and policies still 103. Proofs **5/5**. Kept below for the record.
    **THE WHOLE OF IT, so it is read before it is applied:**
    * **1 · A CAPACITY FLOOR.** `assert_room_ok` is the one guard on capacity and
      it compares the number with the ROOM's capacity and nothing else — so a
@@ -9873,14 +10069,25 @@ summary; the report has the evidence.
      `PickSheet`, 28 Sep the contact row). ⚠ It would also put two navigation
      systems on one page, under a hero, a bio, a contact row, memberships and
      the association groups.
-     **So the honest options are not what was offered**, and this needs the
-     user's word again: (a) leave the two pages; (b) fold in a LIGHT summary —
-     the next few sessions as class tiles, with "See the full schedule ›" still
-     opening the page — which improves the profile and reduces NO pages; or
-     (c) rebuild the public schedule as a panel with no sticky and no date
-     panel, which is a real piece of work and a different screen from the one a
-     studio hands a link to. ⚠ **A page-count target is not worth a worse page**,
-     which is the thing the original row never weighed.
+     ✅ **RESOLVED 30 Sep 2026 AS OPTION (b) — THE LIGHT SUMMARY, AND THE PAGE
+     COUNT IS UNCHANGED.** Three honest options were put up: (a) leave the two
+     pages; (b) a light summary; (c) rebuild the public schedule as a panel with
+     no sticky and no date panel. (b) is what landed — **NEXT SESSIONS**, three
+     `ClassTile`s under the Schedule bar on a studio's public page, a person's
+     and your own tab, drawn only when there ARE any. ⚠ **It carries NO "See the
+     full schedule ›" of its own**: the white bar is directly above it and goes
+     exactly there, and a second door to one subject is the shape C31 and C51
+     each cost a push to undo. ⚠ **It reads through the schedule page's own
+     function and window** (`findNextPublicSessions`, `publicScheduleToIso`), so
+     it cannot name a class the page behind it does not list — a summary and its
+     door disagreeing is the number-and-list complaint this app fixed twice in
+     its follower counts. ⚠ **`toTileClass` moved into `types/calendar.ts`** and
+     the "whose schedule does this bar open" rule into `personScheduleBusiness`,
+     both on the same principle: the moment either had a second caller, two
+     copies would have drifted into a class that looks like a different class on
+     the page it is linked from. ⚠ **A page-count target is not worth a worse
+     page**, which is the thing the original row never weighed — and (c) stays
+     unbuilt and un-proposed unless somebody asks for it by name.
    * ~~**`/crews/{id}/manage` folded into `/crew/{id}`**~~ — ⚠ **REFUSED, and
      deliberately** (C57, 23 Sep 2026): `AppChrome` decides "entity home" from
      the PATHNAME alone and cannot know the viewer's relationship, and `CrewHome`
@@ -10793,6 +11000,40 @@ for the database schema. **The UI is not redesigned** — see Rule 2.
 
 ### Progress tracker — update after EVERY push (Rule 11)
 
+- **THE RECORDS A MARKETPLACE KEEPS, A TASTE OF THE SCHEDULE, AND TWO GREPS —
+  30 Sep 2026, no step number ⚠ (Rule 9: `20260930100000` APPLIED; and the HELD
+  `20260930110000` moves money) — the ranked order the user asked for, run.**
+  The two analytics tables applied on 29 Sep finally have **writers**
+  (`recordSearch`, `recordImpression`, both through `after()` so no public page
+  waits on a log, both service-role on the server — there is still no client
+  door, which is their whole security), and the email ledger has its
+  **`/api/webhooks/resend`** route: raw body first, **Svix** signature over
+  `{id}.{timestamp}.{body}`, idempotent on the Svix message id, **503 rather
+  than accepting unsigned posts**. ⚠ The Artists tab is deliberately not
+  recorded — `subject_kind` admits `business | class | crew` and an artist is a
+  `profiles` id (R24). **#0aj landed as its small half**: NEXT SESSIONS, three
+  class cards under the Schedule bar on every profile, with **no door of its
+  own** and read through the **schedule page's own function and window**, so it
+  cannot name a class the page behind it does not list. ⚠⚠ Two new CI greps
+  (`npm run audit:reads`) found **two more silent refusals** — `softDeleteLead`
+  and `softDeleteRoom`, where an RLS refusal came back as zero rows and no error
+  and the desk said the thing was gone — and ⚠ **`softDeleteRoom`'s own comment
+  said why it was safe, citing a shape another file had stopped having that same
+  day**. ⚠⚠ The check's first run was **75% false positives** (the scope is
+  routinely stated through an embed prefix), which is the thing that gets a check
+  switched off; it understands them now and is proven to still bite on a planted
+  self-test. **And the refund hole is worse than the backlog said and is
+  measured**: the delete sheet has promised *"{n} enrolled students must be
+  refunded"* since 29 Aug 2026 and nothing ever wrote a refund row — **13 live
+  seats on 13 deleted classes, 10 people, ₹1,800** — so `20260930110000` is
+  written, dry-run **21/21 rolled back** and **HELD** (#0b3), with its core
+  EXTRACTED rather than re-typed because the one substitution it needs
+  (`refunds.user_id` is the PAYER, the audit columns are the ACTOR) would have
+  been a money bug. **Verified:** typecheck 0 · lint 0 · build green ·
+  `20260930100000` applied, read back live 11/11 · proofs 5/5 · `audit-reads`
+  0 unexplained and 2/2 on the self-test · **`shoot-classes` 40/40** ·
+  **`shoot-hero` 186/186** · **`shoot-tiles` 134/134** · **`shoot-register`
+  57/57**.
 - **CLASSES, END TO END — 30 Sep 2026, no step number ⚠ (Rule 9: a manager could
   reach controls RLS refuses, and a member was shown a learner's booking as
   their own) — BUILT; ⚠⚠ ONE MIGRATION WRITTEN, DRY-RUN 20/20 AND HELD (#0b2),
@@ -15808,6 +16049,7 @@ Home. **Do not "restore parity" on these.**
 | C89 | The Inbox opens on a profile-tinted wash (5681), and `/enquiries` renders the same component | **NO WASH ON THE ENQUIRIES DESK.** Enquiries stopped being a tab and became a TOOL on all four grids on 27 Sep (C70), and every other tool's page opens on the page's own ground under its `DeskHero` — so the one tool page that had been a tab was the one that did not look like a tool page. ⚠ **The Inbox keeps its own, and that is the same rule rather than an exception**: `/inbox` IS a tab, the chrome draws the wordmark over it, and the wash is what a tab opens on | 30 Sep 2026, the user: *"enquiries page should not have the pink background on top should be like other pages in home tab."* On an artist's account the tint is `DOS_TINT.trainer` — `#EC4899` — which is the pink |
 | C90 | The Crews hub stacks CREWS YOU LEAD over CREWS YOU ARE IN with Practices as a third segment (28 Sep); the Studios hub stacks YOUR STUDIOS, TAUGHT AT and LEARNT AT | **TWO COLUMNS EACH, AND PRACTICE IS ITS OWN HOME TILE.** Crews: **Yours** · **You are in**. Studios: **Yours** · **Where you learned**. Practice leaves the Crews hub for `/practice`, a tile on a person's and an artist's grid. ⚠⚠ **That move needed a REPAINT first, and `MyPractices`' own note is why**: it argued a Practice tile "would fail R20's colour test", and it was right — `#15803D` is hue 142° and Earnings `#22C55E` is hue 142°, which is the one pair R20 exists to refuse. Deep indigo `#4338CA` now, **measured across every grid rather than asserted: 102° from Earnings, ≥28° from everything else**. ⚠ Taught-at rides in the studios' SECOND column under its own head rather than becoming a third — both are "a studio that is not yours", and dropping it would lose an artist's teaching history (R22). ⚠ The crew's OWN Practice tile stays on a crew's grid: that is the leader's register for THAT crew | 30 Sep 2026, the user: *"practice should be seprate tab in home tab not in crew. crew tab should have 2 colums for where you have created the crew and where you are a part of in the other column"*, then *"same should be for studios with 2 colums your own studios and t second column with where your learned."* ⚠ A segment pill's accessible name is its `aria` plus its count, never its visible label (`SegmentedNav:78`) — which cost one e2e red |
 | C91 | The Team desk's member sheet opens only for a NON-owner (`manageable = isOwner && m.role !== "owner"`) | **AN OWNER'S ROW OPENS TOO, AND EACH CONTROL INSIDE DECIDES FOR ITSELF.** Pay and History are drawn (the user's ask), the two power switches are still not (an owner holds both by their seat — a switch that cannot be turned off is not a switch), and Remove is still not, because the database refuses it. ⚠⚠ **The DATABASE never refused the PAYMENT**: `record_team_payment` asks only that they "are, or have been, on this team", so this was an **app-side gate over a rule that does not exist** — and because it closed the whole sheet, a studio could not record what it had paid the person who runs it | 30 Sep 2026, the user: *"owners can also be paid from the studio."* No migration |
+| C92 | The public profile carries ONE white Schedule bar and nothing under it (S_profiletab `publicEntity`, 10919 — "the one white bar the page is for"); what is behind it is a separate screen | **NEXT SESSIONS — three class cards under that bar**, on a studio's public page, on a person's, and on your own tab (`NextSessions`, drawn only when there ARE any). ⚠ **NO door of its own**: the bar directly above goes exactly there, and a second door to one subject is the shape C31 and C51 each cost a push to undo. ⚠ **The card is the app's one `ClassTile`** off `tileClassOf`, the SAME conversion the schedule page uses — moved into `types/calendar.ts` the day this became its second caller, so a class cannot look like a different class on the page it is linked from. ⚠ **The same window as that page** (`publicScheduleToIso`), so the summary cannot name a class the page behind it does not list. ⚠ **Nothing is drawn when there is nothing**: an empty shelf under a heading reads as a measured zero ("this studio teaches nothing") where the truth is "nothing is published for the next three months" | 30 Sep 2026 — backlog #0aj, resolved as option (b). ⚠⚠ **It is the SMALL half of a question that had been asked the wrong way.** The row proposed folding the WHOLE public schedule in, and its cost was put to the user as *a query*; reading `CalendarScreen` corrected that — it is **1,085 lines with a `position: sticky` controls block the scroll helper MEASURES and a `position: fixed` scrim**, so folding it in nests a second screen inside a page section, which is the stacking-context family this repo has paid for four times. **A page-count target is not worth a worse page**, so what landed is the part that is only an improvement, and the page count is unchanged |
 
 ### UI parity backlog — gaps vs the prototype, tracked so none is forgotten
 
@@ -15827,6 +16069,8 @@ nothing to lift.
 
 | Gap | Prototype ref | Closes with |
 |-----|--------------|-------------|
+| **The analytics, the email ledger and NEXT SESSIONS — what they left (30 Sep 2026):** ⚠⚠ **`/api/webhooks/resend` DOES NOTHING UNTIL THE USER DOES TWO THINGS** (a webhook at resend.com pointing at it, and `RESEND_WEBHOOK_SECRET` in env) — unconfigured it answers 503, which is the honest state and not a working feature. ⚠ **NOTHING READS the three tables yet**: `search_terms_with_no_answer`, `impressions_for_business`, `email_history_for` and `email_delivery_pulse` are all live in the database and no screen calls one, so the rows accumulate and nobody can look at them — an admin desk is the next slice, and until it exists this is a recorder with no playback. ⚠ **The Artists tab records no impressions at all** (`subject_kind` admits `business \| class \| crew`; an artist is a `profiles` id since R24), so "how often was I shown?" is unanswerable for exactly the people most likely to ask — widening the CHECK is a migration and a decision. ⚠ **A search is logged once per DEBOUNCED keystroke burst**, so one person hunting a name writes several rows; the zero-result query that makes the table worth having is unaffected, and a `distinct on` would be the reader's job. ⚠ **`recordImpression` fires on every Discover render, including a pager step and a filter change** — which is correct (it WAS shown) and means the counts are impressions rather than sessions. ⚠ **NEXT SESSIONS costs a real read on the public studio page**: `findPublicBusinessSchedule` is four bounded queries, and it rides the batch the page already awaited so it adds no wall clock — but it is four more round trips on the surface strangers land on, and if that ever matters the honest fix is one aggregate RPC rather than dropping the summary. ⚠ **A crew's public page has no summary**: a crew's calendar is its PRACTICES, which are deliberately never public (R53), so there is nothing to preview. ⚠ **And a plain user's page draws none**, correctly — `personScheduleBusiness` answers null, so the bar is not drawn either | — | an admin desk for the three tables; the Artists impression is a CHECK widening and a decision |
+| **The two CI greps — what they leave (30 Sep 2026):** ⚠ **`audit-reads.mjs` is a GREP, not a parser**: it slices from `.from("x")` to the next `.from(` or `;`, so a query built across statements, or through a variable, is invisible to it — it catches the SHAPE this repo has actually shipped twice, and claims nothing more. ⚠ **`SCOPE_COLUMNS` is generous on purpose** (any `.eq`/`.in`/`.neq` on a scoping column, embed prefix allowed), so it asks "does this state a scope at all" rather than "is the scope right" — a read scoped to the WRONG business would pass it. ⚠ **`repositories/admin.ts` is exempt as a whole file**, so a non-admin read added there would not be caught; it is one exemption with one true reason (every read in it is a platform admin's, guarded by `requireAdmin()`) rather than four identical `audit-ok` comments, which is the noise that gets a check switched off. ⚠ **It does not run in the e2e or the proofs** — it is `npm run audit:reads`, in CI between typecheck and the build | — | a parser only if the grep ever misses something real |
 | **The classes slice, what it left (30 Sep 2026):** ⚠⚠ **A TEAM MEMBER STILL CANNOT BOOK A CLASS AT THEIR OWN STUDIO, AND IS TOLD NOTHING** — `showBar = !isMember` on the class page, and the DATABASE refuses no such thing (`book_class_session` has no membership test). For an owner that is right and silent; for FACULTY who want to train where they teach it is a dead end with no sentence. **Left as a DECISION rather than guessed**, because the two honest answers differ (say *"your place here is the register, not a seat"*, or let them book) and only the user can pick; a line drawn for every owner on every class page would be noise. ⚠ **Deleting a published class still leaves its bookings live and creates no refund rows** — the register's own sheet says *"N enrolled students must be refunded"* and nothing refunds them; the held migration's notification therefore promises nothing about money. ⚠ **`updateClassDetails` is two updates with no transaction** (the class, then its session), so a failure between them leaves a class edited and its time not — an RPC would fix it and is a migration. ⚠ **The Roster page and the class page's Attendance tab are still two lists of the same people behind two different gates** (owner\|manager vs `can_run_register_for_class`, which also admits a trainer); **kept deliberately** — the happy path drives the Roster pill and Rule 14 protects the address, so collapsing it is not worth breaking a working story. ⚠ **`findPublishedClasses` now INNER-joins the session**, so a legacy class with no session row drops off both shelves; it could not be booked either, and nothing in production has one. ⚠ **A class's `status` column still never reaches `'completed'`** — every screen derives it, so anything reading the column directly (an export, a future report) still sees `published` for ever | S_class 12405; S_classesmod 15048 | a decision on the member's bar; a refund slice; an RPC for the edit; a cron only if something reads the column |
 | ~~**THE HISTORY LIBRARY AND THE FOUR LEADERBOARDS ARE NOT REACHABLE**~~ — ✅ **CLOSED 30 Sep 2026, AND THE ROW LASTED ONE DAY.** It was written on 29 Sep when C86 deleted `StatsScreen`, and it said the thing that turned out to matter: *"a board or a history screen is a SCREEN away rather than a rebuild"*, which is exactly what it cost to put them back — the four reads were kept and marked `⚠ NO CALLER` for this reason and every one of them has a caller again. ⚠ **The lesson is the 28 Sep sweep's own, paid off twice in two days: "an export nothing calls is sometimes a feature nobody can reach."** Keeping them is what made the restore a re-wire rather than a rewrite | S_profiletab 9708, 9610 | closed |
 | **The three-column restore, what it LEAVES (30 Sep 2026):** ⚠⚠ **the graphs, the number grid's LISTS and the whole History column are the CALLER's own** — `my_session_history` and `my_dance_stats` take no `p_user_id` by Step 25's design and there is no per-studio or per-crew equivalent at all, so on anybody else's record those columns say which read is missing rather than drawing an empty shelf. ⚠⚠ **AND THIS IS A DECISION NOW, NOT A PENDING ITEM (30 Sep 2026): the user chose to LEAVE IT** — *"the columns are honest as they are"* — having been shown the shape they had already picked (*taught + assisted only* for a person, since their teaching is already public through `person_teaches_at` and on class pages while the classes they TOOK are a movement log; a studio's own sessions public, being published classes; and ⚠ a crew's practices NEVER, R53). **So no migration is owed here.** What somebody else's record shows is the figures and the full Rankings board, with History saying whose it is — and the day that stops being enough, the shape is already decided and the reads are named above. ⚠ **A studio's and a crew's Record is its BOARD ROW**, which is thinner than a person's three sides and is thin honestly rather than padded — a crew's is one term since the events removal took "Event entered · +3 pts". ⚠ **`stats.artists` is hard-coded 0 by `publicPerson.ts`** because `person_dance_stats` returns no such column, which is why "Assisted for" / "Trained under" are LEFT OUT of somebody else's grid rather than drawn as zeros. ⚠ **No shoot script drives the three columns for a SIGNED-IN reader** — the happy path does, and the live probe covers a stranger | S_profiletab 9862, 9708, 9610 | one migration, when the user says go |

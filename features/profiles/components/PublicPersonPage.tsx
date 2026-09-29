@@ -3,7 +3,8 @@ import { ReportButton } from "@/features/reports/components/ReportButton";
 import { DOS_UI, INK, LILAC } from "@/lib/design/tokens";
 import { photoUrl } from "@/lib/media/photo";
 import type { HeaderPhoto } from "@/repositories/headerPhotos";
-import type { PublicPerson } from "@/repositories/publicPerson";
+import { personScheduleBusiness, type PublicPerson } from "@/repositories/publicPerson";
+import type { CalendarEntry } from "@/types/calendar";
 import { KIND_WORD, heroMetaWords, kindOf, memberNoWords } from "@/types/profile";
 import { EntityBand, Figure } from "./profile-band";
 import { ActionRow, CallButton, MailButton, MessageButton, whatsappHrefOf } from "./ContactButtons";
@@ -62,6 +63,7 @@ export function PublicPersonPage({
   signedIn,
   memberships = [],
   artistTeam = [],
+  nextSessions = [],
 }: {
   person: PublicPerson;
   /** THE HEADER PICTURES — this person's own, as many as their kind shows */
@@ -75,6 +77,10 @@ export function PublicPersonPage({
      2026) — went with organizations on 29 Sep */
   /** the people seated on this artist's own page (27 Sep 2026) */
   artistTeam?: PublicTeamMember[];
+  /** the first few classes behind the Schedule bar (30 Sep 2026, #0aj) — read by
+   *  the route off `personScheduleBusiness`, which is also what the bar's href
+   *  is built from, so the preview and the door name one business */
+  nextSessions?: CalendarEntry[];
 }) {
   const { profile } = person;
   /* the word over the name is the KIND's: an artist while the plan is live, a user */
@@ -95,6 +101,16 @@ export function PublicPersonPage({
      missing button did not just go missing — it resized the ones left, and the
      page you reach from Home's eye laid out differently from the same page
      reached from Discover. */
+  /* ⚠ AND A STRANGER GETS THE SCHEDULE TOO (20 Sep 2026, found by reading this
+     very page on the live site after the push). `runs` comes from
+     `business_members`, which RLS admits to a business's OWN MEMBERS — so for
+     anybody else it is empty and the white Schedule bar was never drawn at all.
+     On an ARTIST that is a real loss: `artist_page_of` is a definer read that
+     answers anybody and returns only a LISTED page, and `/artist/{id}/schedule`
+     is public, so the bar can be offered to the person it is FOR.
+     ⚠ The rule moved into `personScheduleBusiness` on 30 Sep 2026, when the
+     route had to read that same business's sessions for the summary below. */
+  const schedule = personScheduleBusiness(person);
   const asksGoHere = kind === "artist" && Boolean(person.artistPageId);
   const canAsk = !isMe && asksGoHere;
 
@@ -247,22 +263,10 @@ export function PublicPersonPage({
           signedIn={signedIn}
           memberships={memberships}
           artistTeam={artistTeam}
-          /* ⚠ AND A STRANGER GETS THE SCHEDULE TOO (20 Sep 2026, found by reading
-             this very page on the live site after the push). `runs` comes from
-             `business_members`, which RLS admits to a business's OWN MEMBERS —
-             so for anybody else it is empty and the white Schedule bar was never
-             drawn at all. On an ARTIST that is a real loss: `artist_page_of` is
-             a definer read that answers anybody and returns only a LISTED page,
-             and `/artist/{id}/schedule` is public, so the bar can be offered to
-             the person it is FOR. Without this, "Schedule is above Memberships"
-             was true and invisible to every visitor. */
-          scheduleHref={
-            person.runs.length
-              ? `/${person.runs[0].businessType === "studio" ? "studio" : "artist"}/${person.runs[0].businessId}/schedule`
-              : person.artistPageId
-                ? `/artist/${person.artistPageId}/schedule`
-                : null
-          }
+          scheduleHref={schedule ? `/${schedule.type === "studio" ? "studio" : "artist"}/${schedule.id}/schedule` : null}
+          /* the first few classes behind that bar (30 Sep 2026, #0aj) — read by
+             the route, because this component has no client of its own */
+          nextSessions={nextSessions}
           accent={RC}
         />
       </div>

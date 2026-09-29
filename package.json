@@ -8,6 +8,7 @@
     "start": "next start",
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
+    "audit:reads": "node scripts/audit-reads.mjs",
     "test:e2e": "playwright test"
   },
   "dependencies": {

@@ -1,6 +1,7 @@
 import { notFound, redirect } from "next/navigation";
 import { publicProfilePath, publicSchedulePath } from "@/lib/routes/publicProfile";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { findNextPublicSessions } from "@/repositories/calendar";
 import { findBusinessFollowers, isFollowingBusiness } from "@/repositories/follows";
 import { findBusinessHeaderPhotos } from "@/repositories/headerPhotos";
 import { findMembershipsOnSale } from "@/repositories/memberships";
@@ -35,7 +36,7 @@ export async function PublicBusinessPage({ businessId, expect }: { businessId: s
      drawn disabled for one — and an organization follows since
      `20260920180000_an_organization_follows`. One round trip fewer on a page
      strangers open. */
-  const [following, role, header, memberships, ownerCounts] = await Promise.all([
+  const [following, role, header, memberships, ownerCounts, nextSessions] = await Promise.all([
     user ? isFollowingBusiness(supabase, businessId) : Promise.resolve(false),
     user ? findMyMembershipRole(supabase, businessId) : Promise.resolve(null),
     /* THE HEADER (15 Sep 2026): the pictures that swipe across the top — the
@@ -57,6 +58,11 @@ export async function PublicBusinessPage({ businessId, expect }: { businessId: s
       const owner = profile.team.find((m) => m.role === "owner");
       return owner ? findPersonFollowerCounts(supabase, [owner.userId]).catch(() => new Map()) : new Map();
     })(),
+    /* ⚠ THE FIRST FEW CLASSES BEHIND THE SCHEDULE BAR (30 Sep 2026, #0aj) — it
+       rides the batch this page was already awaiting, so it costs no wall clock
+       on a page strangers open. The function says why it is the schedule page's
+       own, and why a failure here is nothing rather than a 500. */
+    findNextPublicSessions(supabase, businessId, { name: profile.business.name, city: profile.business.city }),
   ]);
   const ownerId0 = profile.team.find((m) => m.role === "owner")?.userId ?? null;
   const followingN = ownerId0 ? (ownerCounts.get(ownerId0)?.following ?? null) : null;
@@ -83,6 +89,7 @@ export async function PublicBusinessPage({ businessId, expect }: { businessId: s
       canEdit={role === "owner"}
       followers={followers}
       scheduleHref={publicSchedulePath(profile.business)}
+      nextSessions={nextSessions}
       manageHref={profile.business.type === "studio" ? `/business/${businessId}` : `/business/${businessId}/classes`}
       memberships={memberships}
     />

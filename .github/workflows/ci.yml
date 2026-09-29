@@ -29,5 +29,14 @@ jobs:
       - name: Typecheck
         run: pnpm typecheck
 
+      # Two shapes no type checker can see and this repo has shipped more than
+      # once: a read of a table whose RLS admits more than the caller with
+      # nothing saying whose rows it wants (seven times), and a write whose RLS
+      # refusal comes back as zero rows and no error (twice, most recently a
+      # Delete that told a manager the class was gone while it was still there).
+      # The script says what each one is and how to excuse an honest exception.
+      - name: Audit reads and writes
+        run: pnpm audit:reads
+
       - name: Build
         run: pnpm build

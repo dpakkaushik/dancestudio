@@ -8,7 +8,8 @@ import { kindOf } from "@/types/profile";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { findPersonHeaderPhotos } from "@/repositories/headerPhotos";
 import { findMembershipsOnSale } from "@/repositories/memberships";
-import { findPublicPerson, isFollowingPerson } from "@/repositories/publicPerson";
+import { findNextPublicSessions } from "@/repositories/calendar";
+import { findPublicPerson, isFollowingPerson, personScheduleBusiness } from "@/repositories/publicPerson";
 import { findPublicStudioTeam } from "@/repositories/publicProfile";
 import { ensureArtistPage, findMyMemberships as findMyTeams } from "@/repositories/businesses";
 
@@ -92,7 +93,12 @@ export default async function PersonPage({ params }: { params: Promise<{ userId:
      not read for it — one round trip fewer on every person's page. You do not
      follow yourself, and that is the whole of the test now that the
      organization half of it has gone (29 Sep 2026). */
-  const [following, header, memberships, artistTeam] = await Promise.all([
+  /* ⚠ THE SAME BUSINESS THE SCHEDULE BAR OPENS (30 Sep 2026, #0aj) — the rule
+     lives in `personScheduleBusiness` precisely so this read and that href name
+     one business. A preview of somebody else's schedule under a bar that opens
+     this one's would be a lie nothing on the page could correct. */
+  const schedule = personScheduleBusiness(person);
+  const [following, header, memberships, artistTeam, nextSessions] = await Promise.all([
     !isMe && user ? isFollowingPerson(supabase, userId) : Promise.resolve(false),
     /* THE HEADER (15 Sep 2026): their own pictures, as many as their KIND shows —
        one for a user, five for an artist (19 Sep 2026) */
@@ -108,7 +114,12 @@ export default async function PersonPage({ params }: { params: Promise<{ userId:
        would have hidden.
        ⚠ The organizations-that-name-them read went with organizations (29 Sep). */
     person.artistPageId ? findPublicStudioTeam(supabase, person.artistPageId).catch(() => []) : Promise.resolve([]),
+    /* the first few classes behind the Schedule bar — nothing at all when there
+       is no business to have a schedule (a plain user) */
+    schedule
+      ? findNextPublicSessions(supabase, schedule.id, { name: schedule.name, city: schedule.city })
+      : Promise.resolve([]),
   ]);
 
-  return <PublicPersonPage person={person} header={header} isMe={isMe} following={following} signedIn={Boolean(user)} memberships={memberships} artistTeam={artistTeam} />;
+  return <PublicPersonPage person={person} header={header} isMe={isMe} following={following} signedIn={Boolean(user)} memberships={memberships} artistTeam={artistTeam} nextSessions={nextSessions} />;
 }

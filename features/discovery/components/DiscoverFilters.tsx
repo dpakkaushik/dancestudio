@@ -3,7 +3,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { searchEverythingAction } from "@/features/discovery/server-actions/search";
 import { gradientOf } from "@/features/profiles/components/profile-kit";
 import { photoUrl } from "@/lib/media/photo";
@@ -90,11 +90,25 @@ export function DiscoverFilters({ tab, city, filters, styleOrder, tabs, as = nul
   useCloseOnBack(() => setOpen(false), open, { spend: false });
   const term = q.trim();
 
+  /* ⚠ THE CITY IS A PASSENGER, NOT AN INPUT (30 Sep 2026). It rides along for
+     the LOG alone — the search itself is national — so it is read through a ref
+     at send time rather than listed as a dependency: as a dependency it would
+     claim the results depend on it, and a city change with a term still in the
+     box would fire a SECOND identical query on the app's most-visited public
+     surface. ⚠ Synced in its own effect, because this repo's lint forbids a ref
+     write during render (react-hooks/refs). */
+  const cityRef = useRef(city);
+  useEffect(() => {
+    cityRef.current = city;
+  }, [city]);
+
   useEffect(() => {
     if (term.length < 2) return;
     let live = true;
     const t = setTimeout(async () => {
-      const out = await searchEverythingAction({ term });
+      /* `search_events.city` is what makes a zero-result row answerable
+         ("nobody in Pune can find salsa") rather than merely sad */
+      const out = await searchEverythingAction({ term, city: cityRef.current });
       if (live) setAnswer({ term, hits: out.hits });
     }, 220);
     return () => {

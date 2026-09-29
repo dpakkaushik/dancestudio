@@ -7,6 +7,7 @@ import { CARD, DOS_UI, INK, LILAC, MUTED, SKY, SUB } from "@/lib/design/tokens";
 import { photoUrl } from "@/lib/media/photo";
 import type { MembershipOnSale } from "@/repositories/memberships";
 import type { PublicPerson } from "@/repositories/publicPerson";
+import type { CalendarEntry } from "@/types/calendar";
 import type { FollowedCrew, PersonFollowRow } from "@/repositories/follows";
 import type { FollowedBusiness } from "@/types/follow";
 import { KIND_WORD, heroMetaWords, kindOf, memberNoWords } from "@/types/profile";
@@ -74,6 +75,7 @@ export function MyProfilePage({
   followingBusinesses,
   followingCrews = [],
   scheduleHref,
+  nextSessions = [],
   owned = [],
   memberships = [],
   artistTeam = [],
@@ -93,6 +95,11 @@ export function MyProfilePage({
    *  Following sheet. ⚠ `followingOrgs` sat beside it and went on 29 Sep 2026. */
   followingCrews?: FollowedCrew[];
   scheduleHref: string | null;
+  /** the first few classes behind that bar (30 Sep 2026, #0aj). ⚠ Drawn on THIS
+   *  screen as well as on `/person/{id}` on purpose: the two draw the same
+   *  person, and a thing given to one and not the other is how they drifted five
+   *  ways before `PersonBody` was extracted. */
+  nextSessions?: CalendarEntry[];
   /* ⚠ `businesses` — every business this account is on the team of — went on
      29 Sep 2026. It was picked from for `scheduleHref`, which the caller works
      out now, and for an organization's event-hosting row, which is gone. */
@@ -332,6 +339,7 @@ export function MyProfilePage({
           memberships={memberships}
           artistTeam={artistTeam}
           scheduleHref={scheduleHref}
+          nextSessions={nextSessions}
           accent={RC}
           beforeGroups={
             /* ⚠⚠ WHAT YOU RUN, AND IT IS DRAWN FOR EVERYBODY NOW (27 Sep 2026,
