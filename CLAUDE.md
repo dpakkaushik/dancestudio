@@ -2,7 +2,135 @@
 
 ## LAST SESSION (29 Sep 2026) — replaced on every push (Rule 13)
 
-> ### ORGANIZATIONS AND EVENTS ARE GONE — THE APP SIDE, WHOLE (29 Sep 2026) — ⚠⚠ THE MIGRATION AND THE PRODUCTION SWEEP ARE **HELD** (NEXT TO DO #0ay)
+> ### SIX THINGS, AND A "DRY RUN" THAT COMMITTED TO PRODUCTION (29 Sep 2026, latest) — ⚠ ONE MIGRATION APPLIED (`20260929110000`), ⚠⚠ AND IT WENT IN BY MISTAKE
+> The user, in one message: *"1. top pink hue enquiries should be removed from
+> all profiles. 2. Team payment history to be a button called History which
+> should show all transactions with that particular person on a different page.
+> 3. fix follow following list when it opens shows inaccurate details and counts.
+> 4 stats - should only have one view when looking at your profile or someone
+> else, charts when looking at someone elses profile also should have a view with
+> that paerson rankings. 4. classes - when clicking on the poster right now we
+> getposter and a qr code for the class which should not happen- should just open
+> poster in that. share should be part of the details with qr code with link and
+> option to copy the link as well for the class. scan this at door text not
+> required as your personal qr ocde for user or artist profile is being used to
+> enter the classes. 5. when scanning a profile for attendance in a class should
+> show view stats and profile in opposite color to the theme."* Two were asked
+> back rather than guessed: item 1 is **the pink wash**, and item 4's stats is
+> **"yours becomes theirs"**, chosen with its cost named on the option.
+> * ⚠⚠⚠ **THE WORST THING FIRST: MY DRY RUN COMMITTED, AND I ONLY FOUND OUT
+>   BECAUSE A LATER MEASUREMENT DISAGREED WITH THE CATALOG.** The migration file
+>   opens `begin;` and closes `commit;`. The dry-run script wrapped it in its own
+>   `begin … rollback` — and **Postgres does not nest transactions**, so the
+>   file's `commit` ENDED THE OUTER TRANSACTION: everything the script had done
+>   up to that line became permanent and the final `rollback` had nothing left to
+>   undo. It printed *"ROLLED BACK, nothing persisted"*, which the harness could
+>   not tell was a lie. **Two things went live that should not have**: a migration
+>   the user had not seen, and a real account — the demo-world profile the run had
+>   planted as its case — left SOFT-DELETED on production. Both repaired within
+>   the hour and read back off the live catalog (the account restored, all 29
+>   follow rows intact, the ledger row written so `db-push` and reality agree).
+>   ⚠ **One row in that window was NOT mine and was left alone**: a
+>   `visiting_faculty` seat soft-deleted four minutes before my first write, on a
+>   table none of my scripts touches. **A cleanup that cannot tell its own damage
+>   from somebody else's is not a cleanup** — so it is named rather than swept.
+> * ⚠⚠ **AND THE HARNESS IS FIXED RATHER THAN REMEMBERED.**
+>   `scripts/dry-run-migration.js` probes with a **SAVEPOINT** after the file
+>   applies — outside a transaction block that raises `25P01`, which is exactly
+>   the question — and REFUSES to report success if the transaction is gone,
+>   proven by running it against this very file. ⚠ **The real fix is upstream:
+>   `supabase db push` wraps each file itself, so `begin;`/`commit;` in a
+>   migration buys nothing and is the whole of the trap. Counted: 9 of 121 files
+>   carry them and EIGHT are from the last three days** — a habit that crept in,
+>   not the house style. The nine that exist stay (Rule 4).
+> * ⚠⚠ **3 · THE FOLLOW LISTS WERE WRONG FIVE WAYS, AND THE NUMBER AND THE LIST
+>   DISAGREED BY CONSTRUCTION.** Measured on production: **29 live follows, 8
+>   naming a deleted business and 6 made by a deleted account.** Soft delete is
+>   this app's rule, so a follow outlives what it names — and every read filtered
+>   the FOLLOW and none filtered the thing followed, **except `findMyFollowedCrews`,
+>   which did**, which is why a dead crew never showed and a dead studio always
+>   did. On screen: a Following sheet listing studios that are gone, and a
+>   Followers sheet whose unreadable rows were drawn as **"Someone"**, a person
+>   who does not exist. ⚠ Plus two smaller lies in the same list: a followed
+>   business drew as INITIALS for ever (`photoPath: null` hard-coded at three call
+>   sites while the people and crews beside it carried theirs — the read never
+>   selected the column) and said only its KIND where a person's row says their
+>   city. ⚠⚠ **And the COUNT is the database's half**: all three
+>   `*_follower_counts` functions count follow rows and never looked at the other
+>   party either, so the header said 12 while the list drew 7 — which is the
+>   prototype's own rule broken in the app's own numbers (*"a number and the list
+>   behind it are THE SAME NUMBER"*, 9950). `20260929110000` closes it, and the
+>   two halves are ONE change because filtering in either alone would widen the
+>   gap. ⚠ **The stale rows are KEPT** — a follow of a deleted studio is a record
+>   of something that happened; what changed is that nothing counts them.
+> * ⚠⚠ **4 · TWO STATS SCREENS BECAME ONE, AND THE RICHER ONE WAS REACHABLE ONLY
+>   BY NOT NAMING YOURSELF.** `/person/{id}/stats` forked: your own id drew
+>   `StatsScreen` (the record, a History library, four boards with city, metric
+>   and style filters) and anybody else's drew `EntityStatsPage`. One question,
+>   two screens — C32 and C40's own shape, one page further on. `EntityStatsPage`
+>   is both now, and the second clause of the ask was already what it does: a
+>   standing card per scope IS that person's rankings. ⚠ **The cost was named
+>   before it was chosen**: the History library and browsing the boards go.
+>   ⚠ Every read behind them is KEPT and marked `⚠ NO CALLER` (the 28 Sep
+>   precedent) and every SQL function is untouched, so a board is a SCREEN away
+>   rather than a rebuild. ⚠⚠ **And two doors had to move with it**: the crew
+>   home's Stats chip pointed at `/stats?tab=charts&seg=crew` — the crew BOARD, on
+>   the PERSON's screen, which is the studio chip's own bug of 21 Sep in a second
+>   place — and `EntityStatsPage`'s own "See the whole board ›" would have walked
+>   a visitor from somebody else's record to their own, because `/stats` redirects
+>   to the READER. **A door that arrives somewhere other than its name is worse
+>   than no door.**
+> * ⚠⚠ **4 (classes) · THE POSTER OPENED A TICKET, AND THE TICKET CLAIMED
+>   SOMETHING NO DOOR HAS EVER ACCEPTED.** From 24 Aug the poster opened the art,
+>   the booking link AND a `DOS-CL-####` entry code under *"Scan this at the
+>   door."* — "one place instead of three" (prototype 12001) — which is why the
+>   obvious act, **look at the poster**, was the one thing it did not do. ⚠ And
+>   the entry code was a credential nothing reads: the register's scanner resolves
+>   a **PERSON's** profile link and `can_run_register_for_class` decides, which is
+>   the user's own sentence. So: the poster opens the POSTER (`PosterSheet`, which
+>   ⚠ takes the whole `PosterItem` so an UPLOADED poster opens as the picture it
+>   is — `PassSheet` typed a narrower shape and silently drew the design over
+>   somebody's photograph); **SHARE is a block in the details** with the QR, the
+>   address in words and one press to copy; and the entry-code pass is gone from
+>   the class page AND Home's deck, `PassSheet.tsx` deleted with no caller left.
+>   ⚠ The share square is **148px because a smaller one would not scan** — a
+>   `/c/{slug}` link is a version-3 or -4 code, so under ~125px `QRBlock` marks
+>   itself `small`, and the one thing that block exists for is a camera.
+>   ⚠ `QRBlock`'s own default label was **"Entry code"** and is neutral now: every
+>   live caller names its square, so what the default governs is the NEXT one.
+> * **1 · THE PINK WASH IS OFF EVERY PROFILE.** `heroWash` is deleted, the hero's
+>   ground is the page's own, and the two texts that were white-on-tint are `SUB`
+>   and `MUTED`. `tint` left the props and seven callers.
+> * **2 · TEAM PAYMENTS ARE A PAGE.** The member sheet drew `slice(0, 6)` under a
+>   heading that counted ALL of them, so a studio paying somebody monthly read
+>   twelve payments over six rows with no way to reach the rest — and a sheet is
+>   82vh of a phone with a form under it, which is the wrong shape for a ledger.
+>   `/business/{id}/staff/{userId}`, owner-only and re-checked there (a URL is a
+>   request, never an authority), ⚠ with **which sessions each payment covered**,
+>   which the desk's row only counts — and a `record_team_payment` row says *"not
+>   against sessions"* rather than drawing an empty list, because it has none by
+>   design (R35). ⚠ Settled and not-yet are **two figures**, never one "paid".
+> * **5 · THE SCAN SHEET'S TWO DOORS ARE THE THEME'S INVERSE** — `var(--text)` on
+>   `var(--solid)`, the pair anything drawn on a card uses here.
+> * **Verified:** typecheck 0 · lint 0 · `next build` green · the follow-count fix
+>   **read back off the LIVE catalog 8/8** (all three functions testing the other
+>   party, the count equal to the list for EVERY listed business, the 29 rows
+>   intact, the restored account, the ledger truthful, PostgREST reloaded) ·
+>   **the whole e2e suite 56/56 in ONE run, 6.3 min on one worker, no red at any
+>   point** — the happy path 19/19 by itself first, every re-cut assertion driving
+>   the new behaviour · **`shoot-hero` 186/186** · **`shoot-tiles` 130/130** ·
+>   **`shoot-register` 41/41** · **`shoot-invert` 18/18** · **`shoot-discover`
+>   43/43** · **`shoot-seats` 21/21** · **`shoot-practice` 38/38** · **all 30
+>   proofs green**.
+> * ⚠ **AND `shoot-practice`'s FOUR REDS WERE A STALE SCRIPT, ONE DAY OLD.**
+>   Practice became its own COLUMN on the Crews hub on 28 Sep and
+>   `SegmentedPanels` **mounts only the shown panel**, so the practices are not in
+>   the DOM until the second pill is pressed — the script asked `/crews` and read
+>   `isVisible()`, which is the right answer to the wrong question. It uses the
+>   segment's own href now. **A proof is only true the last time it ran**, and
+>   nobody re-ran this between the change and today.
+
+> ### ORGANIZATIONS AND EVENTS ARE GONE — THE APP SIDE, WHOLE (29 Sep 2026, earlier) — ⚠⚠ THE MIGRATION AND THE PRODUCTION SWEEP ARE **HELD** (NEXT TO DO #0ay)
 > The user: *"do as you suggested for the 2 questions. Remove Organization and
 > Events completely from the system. all mechanisms , stats , discover
 > everything related to them should be wiped out without hampering the other
@@ -9479,6 +9607,33 @@ for the database schema. **The UI is not redesigned** — see Rule 2.
 
 ### Progress tracker — update after EVERY push (Rule 11)
 
+- **SIX THINGS, AND A "DRY RUN" THAT COMMITTED — 29 Sep 2026, no step number ⚠
+  (Rule 9: three definer functions, and a migration that went in unapproved) —
+  ONE MIGRATION APPLIED (`20260929110000`), read back live 8/8.** The user's
+  six-item list. ⚠⚠⚠ **The worst of it first: my dry run committed.** The
+  migration file opens `begin;` and closes `commit;`; Postgres does not nest, so
+  that `commit` ended the runner's own transaction — a migration the user had not
+  seen went live, and a real account the run had planted as its case was left
+  soft-deleted. Both repaired within the hour and read back off the live catalog;
+  one row in the same window was NOT mine and was named rather than swept.
+  `scripts/dry-run-migration.js` probes with a SAVEPOINT and refuses to report
+  success if the file committed (**Rule 18**, new). ⚠⚠ **The follow lists were
+  wrong five ways and the number and the list disagreed by construction** — 29
+  live follows, 8 naming a deleted business and 6 by a deleted account, drawn as
+  studios that are gone and people called "Someone"; the counts are the database's
+  half and the reads are the app's, and they are ONE change. **Two stats screens
+  became one** (C86), at the user's choice, with the History library and the
+  boards named as the cost. **The class poster opens the poster** and share is a
+  block in the details with the QR, the link and Copy (C87) — ⚠ the entry code it
+  replaced was a credential no door in this app has ever read. **The pink wash is
+  off every profile** (C83), **team payments are a page** (C84), and the scan
+  sheet's two doors are the theme's inverse. **typecheck 0 · lint 0 · build green
+  · the whole e2e suite 56/56 in ONE run, 6.3 min, no red at any point ·
+  `shoot-hero` 186/186 · `shoot-tiles` 130/130 · `shoot-register` 41/41 ·
+  `shoot-invert` 18/18 · `shoot-discover` 43/43 · `shoot-seats` 21/21 ·
+  `shoot-practice` 38/38 · all 30 proofs green.** ⚠ `shoot-practice`'s four reds
+  were a script one day stale — practice became a segment on 28 Sep and
+  `SegmentedPanels` mounts only the shown panel.
 - **ORGANIZATIONS AND EVENTS ARE GONE — 29 Sep 2026, no step number ⚠ (Rule 9:
   the migration drops policies and definer functions; the sweep soft-deletes
   production rows) — BUILT, APPLIED, SWEPT, PUSHED AND LIVE (`4798963`).** The user: *"Remove Organization and Events completely
@@ -14174,6 +14329,11 @@ Home. **Do not "restore parity" on these.**
 | R56 | A studio's seats are Owner · Faculty · Visiting faculty · Assistant · Other team member (R37, 20 Sep 2026), and an organization's team is Owner · Event team · Other team member — all of them LABELS with no authority (R28), the one exception being the `studio_owner` label R48 deleted | **MANAGER, AND IT IS THE FIRST LABEL SINCE R36 THAT CARRIES ANYTHING** (`20260928110000`). ⚠ The rule is one line so no site is a judgement call: **wherever `trainer` may act, `manager` may; wherever only `owner` may, `manager` may not** — so a manager runs the register, the rooms, the events door and the pictures, reads the ledgers, and moves none of the money, the plan or the badge. It is INVITABLE (accepting is the consent, and managing is not owning) where `owner` still is not — Step 12b's rule kept. ⚠⚠ **And an organization's OWNER label finally means something**: R36 made the studio equivalent a real `business_members` row, R48 removed that path on 26 Sep, and the word was left granting nothing — **two people on production held it and neither could open the organization**. Owner and Manager write a real seat on the ORGANIZATION now, made when the person says yes and taken away when the label changes or they leave, with `prior_member_role` remembering what it replaced; ⚠ the seat is REVIVED rather than re-inserted, because `business_members` carries a PLAIN unique key on `(business_id, user_id)` and a soft-deleted row still holds the slot. ⚠ Event team is still a label with no seat, deliberately: `can_run_events` reads that word directly, so it needs none | 28 Sep 2026, the user: *"make sure in Organization or Studio Teams are able to add another Owner & Manger as options"*. ⚠ Nothing is backfilled — not one seat becomes a manager, and the two existing org Owners are not given seats either, because handing somebody authority over a live business is not a thing a migration should do behind its owner's back |
 | R57 | R48 (26 Sep 2026): an ORGANIZATION is a business a person opens — `businesses.type = 'org'`, its GST number on the row, public while verified and paying ₹5,000 a month, with its own home, its own team (R28, R36, R56), its own public page (R23), its own stats (R29), its own enquiries (R25) and its own Discover presence | **THERE IS NO ORGANIZATION.** The Organizations hub and tile, `/org/{id}` and its stats, the org business's own home and Team desk, `/business/{id}/gst`, `/business/stats`, `/business/earnings`, `/business/team`, `OrgHome`, `OrganizationPublicPage`, `repositories/{organizationTeam,gst,publicOrganization}.ts`, `lib/gst/` and `features/orgs/` are all gone; `HomeKind` is `"user" \| "artist"`. ⚠ **The admin's Businesses desk KEEPS its `org` rows**, labelled RETIRED with the name as a `<span>` and no visibility switch or comp — a desk shows what the DATABASE holds, and until the sweep runs it holds twenty. ⚠ `profiles.role`'s CHECK keeps `'org'` (52 soft-deleted rows carry it) and `businesses.type`'s keeps it too | 29 Sep 2026, the user: *"Remove Organization and Events completely from the system. all mechanisms , stats , discover everything related to them should be wiped out without hampering the other parts of the system. remove all organization profiles as well."* ⚠ **The MIGRATION and the production SWEEP are HELD** (#0ay): the app side needs neither, because nothing left selects a column or calls a function they would drop |
 | R58 | Step 21 (28 Aug 2026): an EVENT is a record with two sides — entries by format and ticket tiers — hosted by an organization (R15/R23), paid through the Cashfree rail (17 Sep), on Discover's Events tab, on the calendar's second half, on a crew's battle record, in the Inbox as a duet ask, and in a person's `/my-events` | **THERE IS NO EVENT.** `types/event.ts`, `repositories/events.ts`, `features/events/`, `/e/{slug}`, `/my-events`, the events desk, the manager and the two-step form, the Events tile on every grid, Discover's Events tab and its kind chips, the calendar's Events half, the crews' battle record and `CrewManager`'s `section` fork, `DOS_LINK_WHAT.partner`, and `add_event_walk_in`'s whole surface are gone. ⚠⚠ **The four event TABLES and `orders.event_id` STAY** — 4 paid event orders with 4 captured payments are on production, and a `DROP TABLE` would cascade them away. `repositories/earnings.ts` keeps its events bucket and `repositories/invoices.ts`/`refunds.ts` keep the row's description; only the dead hrefs went. ⚠ `NotificationKind` keeps `"event"` (162 rows), and `CREW_POINT_RULES` lost its "Event entered · +3 pts" line, so a crew's points are its confirmed members | Same message. ⚠ **What it costs, said rather than discovered**: the one demonstration of a `pending_payment` booking that is never captured went with the seeder's unpaid entry, and a crew's public page now shows its roster with nothing under it |
+| C83 | The identity hero wears a WASH off the entity's colour — `heroWash`, `linear-gradient(180deg, ${tint}b8 … ${LILAC})` — on all eight surfaces that draw a profile, with the eyebrow and the account number in white against it | **NO WASH ON ANY PROFILE.** `heroWash` is deleted, the hero's ground is `LILAC` (the page's own), and the two texts that were white-on-tint are `SUB` and `MUTED` — the tokens every other quiet line in the app uses, so they are legible on the page rather than on a colour that is no longer there. `tint` left `IdentityHero`'s props and its seven callers | 29 Sep 2026, the user: *"top pink hue enquiries should be removed from all profiles"*, and, asked which of two readings, **"The pink wash at the top"**. ⚠ It read as an ARTIST thing because `DOS_TINT.trainer` is `#EC4899` and an artist page is the commonest profile with a wash; a studio's was blue and a crew's red, so what looked like one colour was the mechanism |
+| C84 | A team member's payment history is six rows inside the member sheet (19 Sep 2026, R35), under a heading counting all of them | **A "History" BUTTON OPENING `/business/{id}/staff/{userId}`.** Every payment, with ⚠ **which sessions each covered** — the desk's row has only a count, which on a page about one person is precisely the number you then go looking for the detail of. ⚠ Owner-only and **re-checked on the page**: `runsTheBusiness` admits a manager to the Team desk (R55/R56) and what somebody is PAID is the owner's, so a URL is a request and never an authority. ⚠ **Settled and not-yet are two figures**, never one "paid" total — the split `otherPaidInr` exists to stop making that claim (20 Sep). ⚠ A `record_team_payment` row says *"not against sessions — recorded as an amount"* rather than drawing an empty list, because it carries no lines BY DESIGN | 29 Sep 2026, the user: *"Team payment history to be a button called History which should show all transactions with that particular person on a different page"*. A studio paying somebody monthly read twelve payments over six rows with no way to reach the rest, and a sheet is 82vh of a phone with a form under it |
+| C85 | R25 / C27: the Followers and Following figures open a list; C29's sheet header prints the SQL count beside the rows | **A FOLLOW IS ONLY COUNTED AND ONLY LISTED WHILE BOTH ENDS STILL EXIST.** Every read filters the thing followed and the follower on `deleted_at`, the three `*_follower_counts` functions do the same (`20260929110000`), and the "Someone" fallback is gone — a row whose person is gone is not a row. ⚠ A followed business carries its PICTURE and its city, which the read never selected and the row builder hard-coded null at three call sites. ⚠ **The stale rows are KEPT**: a follow of a deleted studio is a record of something that happened, and nothing rewrites history to tidy a figure | 29 Sep 2026, the user: *"fix follow following list when it opens shows inaccurate details and counts"*. Measured: **29 live follows, 8 naming a deleted business, 6 by a deleted account** — so the header said one number and the list drew another, which is the prototype's own *"86 students over a list of five"* complaint in the app's own numbers |
+| C86 | R29 / C40: `/person/{id}/stats` draws `StatsScreen` for its owner (the record, a History library, four boards with city, metric and style filters) and `EntityStatsPage` for everybody else | **ONE SCREEN, WHOEVER IS LOOKING** — `EntityStatsPage` for both. ⚠ **What it costs was named before it was chosen**: the History library and browsing the boards go with `StatsScreen`, which is deleted. Every read behind them is kept and marked `⚠ NO CALLER` and every SQL function is untouched, so a board is a screen away rather than a rebuild. ⚠ Two doors moved with it — the crew home's Stats chip (which pointed at the crew BOARD on the PERSON's screen, the studio chip's own bug of 21 Sep in a second place) and the page's own "See the whole board ›", which would have walked a visitor from somebody else's record to their own because `/stats` redirects to the READER. `/stats` stays an address (Rule 14) and still carries its query, which now buys nothing and costs a line | 29 Sep 2026, the user: *"stats — should only have one view when looking at your profile or someone else, charts when looking at someone else's profile also should have a view with that person's rankings"*, and, asked which way to converge, **"Yours becomes theirs"**. The second clause was already true of the surviving screen: a standing card per scope IS that person's rankings |
+| C87 | The class poster opens the PASS (24 Aug 2026, prototype 12001 "one place instead of three"): the art, the booking link, and for a booked viewer a `DOS-CL-####` entry code under "Scan this at the door." | **THE POSTER OPENS THE POSTER**, share is a BLOCK IN THE DETAILS (the QR, the address in words, one press to copy), and the entry code is gone from the class page AND Home's deck — `PassSheet.tsx` deleted with no caller left. ⚠ **The entry code was a credential nothing accepts**: the register's scanner resolves a PERSON's profile link and `can_run_register_for_class` decides. What survives is the string it encoded, printed where it already was as the booking REFERENCE it always was. ⚠ `PosterSheet` takes the whole `PosterItem`, so an UPLOADED poster opens as the picture it is — `PassSheet` typed a narrower shape and silently drew the design over somebody's photograph. ⚠ The share square is **148px**, because a `/c/{slug}` link is a version-3 or -4 code and under ~125px `QRBlock` marks itself `small` | 29 Sep 2026, the user: *"when clicking on the poster right now we get poster and a qr code for the class which should not happen — should just open poster in that. share should be part of the details with qr code with link and option to copy the link as well … scan this at door text not required as your personal qr code for user or artist profile is being used to enter the classes"* |
 | C82 | A room's capacity is a NUMBER in component state on the Rooms desk and in the New-studio sheet's rooms editor | **TEXT-BACKED, NORMALISED ON BLUR** — `Number("") \|\| 0` makes an emptied box a hard 0, so backspacing over `20` snapped to `0` and typing `15` gave `015`. The same defect as the class form's price and session-pay fields, in the two places that morning's fix did not reach | 28 Sep 2026, the user's *"fix these 2 as well"*. ⚠ It is a bigger lie on a room than on a price: capacity is the one field on that desk the DATABASE enforces on every booking (`assert_room_ok` caps a class by its room), so a 0 there is a room nobody can book into |
 
 ### UI parity backlog — gaps vs the prototype, tracked so none is forgotten
@@ -14194,6 +14354,8 @@ nothing to lift.
 
 | Gap | Prototype ref | Closes with |
 |-----|--------------|-------------|
+| ⚠⚠ **THE HISTORY LIBRARY AND THE FOUR LEADERBOARDS ARE NOT REACHABLE (29 Sep 2026).** They went with `StatsScreen` when the two stats screens became one (C86), at the user's own choice with the cost named on the option. **Nothing about the data moved**: `my_dance_stats`, `my_session_history`, `dance_chart` and `my_chart_place` are live and untouched (Step 25), and `findMyStats` / `findMyHistory` / `findChart` / `findMyPlace` are kept and marked `⚠ NO CALLER` for exactly this reason — the 28 Sep sweep's own finding, that "an export nothing calls is sometimes a feature nobody can reach". ⚠ What is gone is a SCREEN: the library of what somebody has already danced (S_profiletab `classesOnly`, with its side and style filters) and browsing Studios · Artists · Crews · Dancers by city, metric and style (`chartsOnly`). ⚠ `/stats` still carries its whole query and nothing reads it, so an old `?tab=charts&seg=crew` bookmark lands on a real record rather than a 404 — and the day a board comes back, the parameters are already arriving | S_profiletab 9708, 9610 | one screen, when the user asks for it — the reads and the SQL are waiting |
+| **The six-item batch, what it left (29 Sep 2026):** ⚠ **The follow COUNTS and the follow LISTS now agree and the stale ROWS are still there** — 8 naming a deleted business and 6 by a deleted account — so a sweep of those 14 is available and was deliberately not taken (a follow is a record of something that happened). ⚠ **`findMyFollowing` drops `type = 'org'` rows and there are none**, so that guard protects the shape rather than data; the 20 org business tombstones would otherwise have drawn as "Artist" and opened nothing. ⚠ **A followed business's row still has no distance, no follower count and no verified tick**, which the Discover card has — the sheet is a list of names and the card is a card. ⚠ **The team History page has no CSV and no paging** (4,000-row guard, reported); ⚠ it cannot VOID a payment — that is the Earnings desk's, so correcting a mistake is still two screens away. ⚠ **`PersonPayments` is the OWNER's alone and a manager reaching it is redirected with no sentence**, the same silent bounce the Earnings tile has. ⚠ **The class SHARE block is published-only**, so a draft's owner has no code to hand anybody — right, and it means the one person who can see a draft cannot show it. ⚠ **Nothing measures the hero's contrast without the wash**: `shoot-invert` reads the page's three tiers and the panel, not the hero, and the eyebrow moved from white-on-tint to `SUB`-on-page, which the tier check covers by construction rather than by a measurement of that element | — | a sweep, a CSV, a void, a sentence — each when somebody asks |
 | **Organizations and events, what their removal leaves (29 Sep 2026):** ⚠⚠ **THE MIGRATION AND THE SWEEP ARE HELD** (#0ay), so until they run the DATABASE still offers every door the app stopped drawing: `save_event`, `book_event`, `ask_organization_member`, `public_organization`, `verify_business_gstin` and the rest are all still callable straight through PostgREST by anybody with a token, and the twenty live org businesses are still `org_is_public`. **What changed today is that the app stops handing it over** — which is the same sentence R44 and R55 each had to write, and it is the weakest of the three states this repo recognises. ⚠ **Nine proofs and both e2e specs now assert the ABSENCE of a feature the database still has**, so they are red until the apply and are deliberately not run. ⚠ **The four event tables, `orders.event_id`/`event_booking_id` and `apply_captured_payment`'s event branch stay for ever**, because four paid orders name them — so a reader of the schema will find an events model with no way to reach it, which is why each of them carries a tombstone comment saying so. ⚠ **`admin_dashboard` still returns `events_live` and `event_bookings_week`** and nothing draws them; **`plan_catalog` still holds `org_monthly`** and six granted mandates name it. ⚠ **A crew's public page has a roster and nothing under it** (the battle record was counted from event entries), and **the demo world lost its one `pending_payment` booking that was never captured** — the only row in it showing that state. ⚠ And **`event_bookings.crew_id` / `partner_id` exist with nothing that can write them**: Step 22 paid two of Step 21's debts and both are now unreachable | — | #0ay; the schema tombstones are permanent by design |
 | **The clean cut and Manager, what they leave (28 Sep 2026):** ⚠ **The two existing organization "Owners" on production still hold a label with no seat** — the migration deliberately backfills nobody, so each needs one relabel on the org's Team desk before they can open it; **that is the user's to do, and it is one press per person**. ⚠ **`MEMBER_GRANTS`' manager line is a claim nothing tests** — "the ledgers to read, and none of its money to move" is made true by `role === "owner"` on five desks and on every control of three more, and no check ties the sentence back to them. ⚠ **A manager cannot be invited BY EMAIL** — `invite_to_business` still offers `trainer \| staff` only, narrower than the picker's six, so somebody with no DanceOS account cannot be asked as one at all. ⚠ **An organization's Event team still carries no seat** (deliberately: `can_run_events` reads the label directly), so one of its four labels works differently from the other two — and **`studio_owner` is still in its CHECK with nothing able to write it**. ⚠⚠ **AND IT IS STILL A PRESENTATION GATE**, said plainly: the reads under these desks are RLS-bounded to every MEMBER (Step 9's payments, `leads`, `attendance`, `business_members`), so a determined faculty seat with an API client still reaches a studio's students and its takings — narrowing that is a policy change on four tables and is not this slice; what changed today is that the app stops handing it over. ⚠ **`invite_to_business` (the by-EMAIL door) still offers `trainer \| staff` only** — narrower than the picker's five and now than the six, so somebody with no DanceOS account cannot be invited as a manager at all. ⚠ **An organization's Event team still carries no seat**, deliberately: `can_run_events` has an org branch that reads the label directly, so it needs none — but it means that one label works differently from the other two. ⚠ And **`studio_owner` is still in the organization CHECK with nothing able to write it** (`set_organization_member_role` has refused it since 26 Sep); narrowing it would refuse an UPDATE of any historical row still carrying the word, for no gain | — (the prototype has one studio and one kind of seat) | one relabel each for the two org Owners (the user's); a policy change on four tables if the ceiling ever matters; the email door when somebody asks |
 | ⚠⚠ **A MEMBERSHIP CANNOT BE TAKEN OFF SALE (found 28 Sep 2026 by the dead-code sweep).** `delete_membership` exists in the database, `deleteMembership` in the repository and `deleteMembershipAction` as a server action — and **no screen offers any of them**, so once a seller creates a membership it is on their public page for ever. `total_count` counts passes SOLD rather than passes live, so it cannot be used to close one either. ⚠ The action is KEPT unused on purpose rather than swept, because deleting it would bury the gap | S_memberships 16846 | a Remove / Take off sale control on the memberships desk — one button, the door already exists all the way down |
@@ -14638,6 +14800,21 @@ server action → UI, finished and verified before the next begins.
     The cheap tells, worth checking after any bulk edit: `git diff --stat` for a
     line count that cannot be right, a grep for `â€`, and — for a markdown
     table — **the number of `|` per row**.
+18. **A MIGRATION NEVER WRITES `begin;`/`commit;`, AND A DRY RUN ASSERTS ITS OWN
+    TRANSACTION IS STILL OPEN.** (29 Sep 2026, learnt the expensive way.)
+    `supabase db push` wraps each file in a transaction already, so a file's own
+    `begin`/`commit` buys nothing — and **Postgres does not nest transactions**,
+    so inside a dry run's `BEGIN … ROLLBACK` the file's `begin` is a warning and
+    **its `commit` ends the OUTER transaction**. Everything the runner did up to
+    that line becomes permanent, the final `rollback` has nothing to undo, and
+    the run prints "ROLLED BACK, nothing persisted" — a lie no harness could
+    detect. It put a migration the user had not approved onto production and
+    left a real account soft-deleted; both were found only because a later
+    measurement disagreed with the catalog's own function body, and repaired
+    within the hour. Use **`scripts/dry-run-migration.js`**, which probes with a
+    SAVEPOINT (outside a transaction block that raises `25P01`) and refuses to
+    report success if the file committed. ⚠ And plant nothing destructive before
+    the apply, whatever the runner says.
     ⚠⚠ **AND THE CHECK ITSELF CAN LIE, WHICH IS THE PART THAT NEARLY GOT AWAY.**
     `Set-Content -Encoding UTF8` WRITES A BOM, and PowerShell's `>` redirect adds
     one too — so `git show HEAD:file > tmp` and then comparing leading bytes

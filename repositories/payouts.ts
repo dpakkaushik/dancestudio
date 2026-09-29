@@ -6,7 +6,9 @@ import type {
   PayoutMethod,
   PayoutRecord,
   PayoutStatus,
+  PersonPayHistory,
   PersonPayLedger,
+  PayoutWithSessions,
   StudioEarning,
   TenantPayLedger,
 } from "@/types/payout";
@@ -227,6 +229,111 @@ export async function findTenantPayLedger(
       (sessionsRes.data?.length ?? 0) < MAX_SESSIONS &&
       (linesRes.data?.length ?? 0) < MAX_LINES &&
       (payoutsRes.data?.length ?? 0) < MAX_PAYOUTS,
+  };
+}
+
+/** ⚠⚠ EVERY PAYMENT THIS BUSINESS HAS MADE TO ONE PERSON (29 Sep 2026, the
+ *  user: "Team payment history to be a button called History which should show
+ *  all transactions with that particular person on a different page").
+ *
+ *  The member sheet drew the last SIX inline and had no way to reach the rest —
+ *  so a studio that had paid somebody monthly for a year could see half of it
+ *  and the total said something the list did not show. This is the whole of it,
+ *  with the SESSIONS each payment covered, which is the one thing the desk's
+ *  `PayoutRecord` only counts.
+ *
+ *  ⚠ NARROW ON PURPOSE. `findTenantPayLedger` reads the studio's whole ledger
+ *  (four queries, up to 4,000 rows each) to answer "who is owed what"; this
+ *  answers one person and reads only what that needs. A page about one person
+ *  must not cost the desk's read.
+ *
+ *  ⚠ RLS IS THE CEILING AND `user_id` IS SAID OUT LOUD. `payouts` admits the
+ *  business's owner AND the payee, so leaning on the policy to mean "this
+ *  person" would hand an owner every payout on the business — the fifth time
+ *  this file's own rule has had to be written down. */
+export async function findPersonPayHistory(
+  supabase: SupabaseClient,
+  tenantId: string,
+  userId: string
+): Promise<PersonPayHistory> {
+  const [payoutsRes, linesRes] = await Promise.all([
+    supabase
+      .from("payouts")
+      .select(PAYOUT_SELECT)
+      .eq("business_id", tenantId)
+      .eq("user_id", userId)
+      .is("deleted_at", null)
+      .order("paid_on", { ascending: false })
+      .limit(MAX_PAYOUTS),
+    supabase
+      .from("payout_lines")
+      .select("payout_id, session_id, rate_inr, class_sessions (starts_at, classes (style, level))")
+      .eq("business_id", tenantId)
+      .eq("user_id", userId)
+      .is("deleted_at", null)
+      .limit(MAX_LINES),
+  ]);
+  for (const [what, res] of [
+    ["payouts", payoutsRes],
+    ["lines", linesRes],
+  ] as const) {
+    if (res.error) {
+      throw new Error(`payouts.findPersonHistory(${what}) failed: ${res.error.message}`);
+    }
+  }
+
+  const rows = (payoutsRes.data ?? []) as unknown as PayoutRow[];
+  const lines = (linesRes.data ?? []) as unknown as Array<{
+    payout_id: string;
+    session_id: string;
+    rate_inr: number;
+    class_sessions: { starts_at: string; classes: { style: string; level: string } | null } | null;
+  }>;
+
+  const byPayout = new Map<string, PayoutWithSessions["sessions"]>();
+  for (const l of lines) {
+    const list = byPayout.get(l.payout_id) ?? [];
+    list.push({
+      sessionId: l.session_id,
+      classTitle: l.class_sessions?.classes
+        ? dosClassLabel(l.class_sessions.classes.style, l.class_sessions.classes.level)
+        : "Class",
+      startsAt: l.class_sessions?.starts_at ?? "",
+      rateInr: l.rate_inr,
+    });
+    byPayout.set(l.payout_id, list);
+  }
+  for (const list of byPayout.values()) list.sort((a, b) => b.startsAt.localeCompare(a.startsAt));
+
+  const payouts: PayoutWithSessions[] = rows.map((p) => {
+    const sessions = byPayout.get(p.id) ?? [];
+    return {
+      id: p.id,
+      userId: p.user_id,
+      personName: p.profiles?.full_name ?? "Someone",
+      amountInr: p.amount_inr,
+      status: p.status,
+      method: p.method,
+      providerRef: p.provider_ref,
+      paidOn: p.paid_on,
+      note: p.note,
+      sessionCount: sessions.length,
+      sessions,
+    };
+  });
+
+  return {
+    userId,
+    personName: rows[0]?.profiles?.full_name ?? "",
+    payouts,
+    /* ⚠ SETTLED AND NOT-YET ARE TWO FIGURES, never one "paid" total: a payout
+       recorded `in_transit` is money the studio says it has SENT, and printing
+       it beside money that landed is the claim `otherPaidInr` was split out to
+       stop making (20 Sep 2026). */
+    paidInr: payouts.filter((p) => p.status === "done").reduce((a, p) => a + p.amountInr, 0),
+    pendingInr: payouts.filter((p) => p.status !== "done").reduce((a, p) => a + p.amountInr, 0),
+    sessionsPaid: lines.length,
+    complete: rows.length < MAX_PAYOUTS && lines.length < MAX_LINES,
   };
 }
 

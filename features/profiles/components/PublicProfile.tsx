@@ -155,7 +155,6 @@ export function PublicProfile({
           testId="public-hero"
           name={tenant.name}
           grad={RG}
-          tint={RC}
           eyebrow={tenant.type === "studio" ? "Studio" : "Artist"}
           eyebrowSub={tenant.memberNo ? <HeroId>{memberNoWords(tenant.memberNo)}</HeroId> : null}
           /* the tick is DanceOS's to give — set when a verification actually clears (DosVerified 10592) */

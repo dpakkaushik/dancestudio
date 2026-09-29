@@ -11,20 +11,21 @@ import { createSupabaseServerClient } from "@/lib/supabase/server";
  *  the pair C32 found drifting five ways on the profile and C40 collapsed;
  *  this is the same pair one page further on.
  *
- *  ⚠ THE ROUTE STAYS, AND MUST (Rule 14). A crew's home opens
- *  `/stats?tab=charts&seg=crew` and does not know the VIEWER's id — which is
- *  the whole reason `/profile` survives too. A bookmark and the installed TWA's
- *  last URL are the rest of it. (The crew DESK's "See crew ranking" was the
- *  other such control and went with the battle record on 29 Sep 2026.)
- *  ⚠ `OrgDashboard`, which opened `…&seg=studio`, went with organizations on
- *  29 Sep 2026, and the profile read that chose between `/org` and `/person`
- *  went with it: this is one hop and no round trip.
+ *  ⚠ THE ROUTE STAYS, AND MUST (Rule 14): a bookmark, a link somebody was
+ *  handed and the installed TWA's last URL all still open it. Every CONTROL
+ *  that pointed here is gone — the crew desk's "See crew ranking" went with the
+ *  battle record and `OrgDashboard` with organizations (both 29 Sep 2026), and
+ *  the crew home's chip and the stats page's own "see the whole board" went the
+ *  same day with the boards.
  *
- *  ⚠⚠ AND THE QUERY RIDES ALONG, WHICH IS MOST OF THE POINT. Every tab, board,
- *  city, metric and style on that screen is URL state (19 Sep 2026), so a
- *  redirect that dropped the parameters would have answered every "see the crew
- *  ranking" with somebody's own record instead — a silent half-fix that only a
- *  press finds, exactly as `?settings=1` would have been on `/profile`. */
+ *  ⚠⚠ THE QUERY STILL RIDES ALONG, AND IT NOW BUYS NOTHING — WHICH IS WHY IT IS
+ *  KEPT RATHER THAN DROPPED. Every tab, board, city, metric and style was URL
+ *  state (19 Sep 2026) and the screen that read them went on 29 Sep, when the
+ *  two stats screens became one (the user: "should only have one view when
+ *  looking at your profile or someone else"). `EntityStatsPage` ignores them.
+ *  Carrying them costs a line and means an old `?tab=charts&seg=crew` bookmark
+ *  lands on a real record rather than a 404 — and the day a board screen comes
+ *  back, the parameters are already arriving. */
 export default async function StatsPage({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
   const supabase = await createSupabaseServerClient();
   const {

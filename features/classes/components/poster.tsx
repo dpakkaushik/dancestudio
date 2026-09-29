@@ -204,7 +204,10 @@ export function DosPosterSleeve({
   heroGone = 0,
   size = 246,
   onOpen,
-  label = "Open the pass",
+  /* ⚠ "Open the pass" until 29 Sep 2026 — the poster opened a TICKET (the art,
+     the booking link and an entry code). It opens the poster now, and its one
+     caller names it; this default is what a caller gets if it forgets to. */
+  label = "Open the poster",
   children,
 }: {
   item: PosterItem;

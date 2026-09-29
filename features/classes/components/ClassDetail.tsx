@@ -40,7 +40,8 @@ import type { ClassMoney, PaidReceipt } from "@/types/payment";
 import type { RefundRequest } from "@/types/refund";
 import { AddAssistant, AssistantControls } from "./ClassTeamControls";
 import { ScanSheet, type ScanOutcome } from "@/features/people/components/ScanSheet";
-import { PassSheet } from "./PassSheet";
+import { ClassShare } from "./ClassShare";
+import { PosterSheet } from "./PosterSheet";
 import { DOS_POSTERS, DOS_SLEEVE, DosPosterSleeve, PosterBlock, dosPosterAuto, useDosFold } from "./poster";
 import { dosKey } from "./ShareSheet";
 
@@ -101,10 +102,14 @@ const subscribeToHtmlClass = (onChange: () => void): (() => void) => {
 const readIsDark = () => document.documentElement.className !== "light";
 const readServerIsDark = () => true;
 
-/* the page's own host, read the sanctioned way (same pattern as ShareSheet) */
+/* the page's own address, read the sanctioned way (same pattern as ShareSheet).
+   ⚠ The ORIGIN, not the host: the share block copies this string, and a
+   scheme-less address pasted into a chat is text rather than a link. Read
+   through the store rather than off `window` during render — this repo's lint
+   forbids the second, and the server snapshot is the empty string. */
 const subscribeNever = () => () => {};
-const readHost = () => window.location.host;
-const readServerHost = () => "";
+const readOrigin = () => window.location.origin;
+const readServerOrigin = () => "";
 
 /* one section shape for the whole page — prototype DSecTint (11545-11551) */
 function Sec({ icon, label, col, children }: { icon: ReactNode; label: string; col: string; children: ReactNode }) {
@@ -250,7 +255,10 @@ export function ClassDetail({
     setToast(m);
     setTimeout(() => setToast(null), 2400);
   };
-  const [passOpen, setPassOpen] = useState(false);
+  /* ⚠ NOT `posterOpen`, which is the owner's poster PICKER further down — this
+     is the poster being LOOKED at, which is what pressing it does since
+     29 Sep 2026 */
+  const [posterViewOpen, setPosterViewOpen] = useState(false);
   const [flowOpen, setFlowOpen] = useState(false);
   /* which membership pass is being spent right now — the row says so and every
      row is disabled, because a seat is taken once */
@@ -273,7 +281,7 @@ export function ClassDetail({
    *  answers from what this sheet itself has done, so the words are true whether
    *  or not the server has caught up. */
   const scannedIn = useRef<Set<string>>(new Set());
-  const host = useSyncExternalStore(subscribeNever, readHost, readServerHost);
+  const origin = useSyncExternalStore(subscribeNever, readOrigin, readServerOrigin);
 
   const [enrollState, enrollForm, enrollPending] = useActionState(enrollAction, initialState);
   const [cancelState, cancelForm, cancelPending] = useActionState(cancelEnrollmentAction, initialState);
@@ -393,19 +401,27 @@ export function ClassDetail({
   const showDetails = !ownerTabs || ownerSeg === "details";
   const checkedInCount = register?.checkedInCount ?? 0;
 
-  /* the pass behind the poster (prototype dosCodeFor, 115-121): a booked viewer
-     gets their entry code, everyone else the booking link */
-  const shareLink = `${host || ""}/c/${c.shareSlug}`;
-  const pass =
-    booked && mine
-      ? { code: bookingCodeOf(mine.id), label: "Entry code", note: "Scan this at the door." }
-      : {
-          code: shareLink,
-          label: "Booking link",
-          note: isMember
-            ? "Anyone who scans this can book your class."
-            : "Anyone who scans this can book this class.",
-        };
+  /** ⚠⚠ THE POSTER OPENS THE POSTER, AND SHARING IS A BLOCK IN THE DETAILS
+   *  (29 Sep 2026, the user: "when clicking on the poster right now we get
+   *  poster and a qr code for the class which should not happen — should just
+   *  open poster in that. share should be part of the details with qr code with
+   *  link and option to copy the link as well … scan this at door text not
+   *  required as your personal qr code for user or artist profile is being used
+   *  to enter the classes").
+   *
+   *  Three things were behind the poster from 24 Aug (prototype 12001, "one
+   *  place instead of three"): the art, the booking link, and — for a booked
+   *  viewer — a DOS-CL-#### entry code under "Scan this at the door." The
+   *  entry-code half was a claim the product does not keep: a door scans the
+   *  PERSON's own profile code (`ScanSheet` → `can_run_register_for_class`),
+   *  never a per-booking square, so nothing anywhere ever read one. It is gone
+   *  rather than restyled — the code itself survives as what it always really
+   *  was, a booking reference printed beside "You're booked".
+   *
+   *  ⚠ The link is built with the scheme, because it is the thing COPIED and a
+   *  scheme-less string pasted into a chat is not a link. `ClassShare` drops the
+   *  scheme for the eye and copies what it was given. */
+  const shareLink = `${origin}/c/${c.shareSlug}`;
 
   const answerClaim = async (claimId: string, accept: boolean) => {
     if (opPending) return;
@@ -489,14 +505,15 @@ export function ClassDetail({
       }}
     >
       {/* ── THE SLEEVE, LIT LIKE A PLAYER (prototype 11799-11814). Tapping the
-          poster opens the pass — sharing, the QR and the entry code live behind
-          it now, one place instead of three (12001). ── */}
+          poster opens THE POSTER — sharing is a block in the details and entry
+          is the person's own profile code (29 Sep 2026; see `shareLink`). ── */}
       <DosPosterSleeve
         item={posterItem}
         design={posterK}
         col={col}
         heroGone={heroGone}
-        onOpen={!isDraft ? () => setPassOpen(true) : undefined}
+        onOpen={() => setPosterViewOpen(true)}
+        label="Open the poster"
       >
         {canManage && !done ? (
           <button
@@ -989,7 +1006,15 @@ export function ClassDetail({
                 {bookingCodeOf(mine.id)}
               </span>
             </div>
-            <div style={{ fontSize: 9.5, color: "var(--muted)", marginTop: 3 }}>Tap the poster above for your code.</div>
+            {/* ⚠ This read "Tap the poster above for your code" until 29 Sep
+                2026, when the poster stopped being a ticket. What gets somebody
+                through the door is their OWN profile code, which the register's
+                scanner reads — so the line says where that is, and the mono
+                string above it is what it always really was: a reference for
+                this booking, not a credential. */}
+            <div style={{ fontSize: 9.5, color: "var(--muted)", marginTop: 3 }}>
+              Your own profile QR is what gets you in — it is on your profile.
+            </div>
             {/* one bordered pill, two segments, a hairline between */}
             <div
               style={{
@@ -1393,6 +1418,28 @@ export function ClassDetail({
                       : "Not accepted — this one is booked seat by seat"
               }
             />
+          </Sec>
+        )}
+
+        {/* ── SHARE — the code, the address and one press to copy (29 Sep 2026;
+            the reasoning is on `shareLink`). ⚠ PUBLISHED ONLY: a draft's
+            `/c/{slug}` resolves for the studio's own people and 404s for
+            everybody else, so handing its owner a code to point somebody at
+            would be a link that works for exactly the person holding it. ── */}
+        {!isDraft && (
+          <Sec
+            col={col}
+            label="SHARE"
+            icon={
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke={col} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                <circle cx="18" cy="5" r="2.6" />
+                <circle cx="6" cy="12" r="2.6" />
+                <circle cx="18" cy="19" r="2.6" />
+                <path d="M8.4 10.8 15.6 6.4M8.4 13.2l7.2 4.4" />
+              </svg>
+            }
+          >
+            <ClassShare link={shareLink} title={c.title} fire={fire} />
           </Sec>
         )}
           </>
@@ -1975,18 +2022,15 @@ export function ClassDetail({
           onClose={() => setScanOpen(false)}
         />
       )}
-      {passOpen && (
-        <PassSheet
+      {posterViewOpen && (
+        <PosterSheet
           posterItem={posterItem}
           posterK={posterK}
           col={col}
           title={c.title}
           styleName={c.style}
           levelWord={levelWord}
-          pass={pass}
-          slug={c.shareSlug}
-          fire={fire}
-          onClose={() => setPassOpen(false)}
+          onClose={() => setPosterViewOpen(false)}
         />
       )}
       {flowOpen && c.session && (

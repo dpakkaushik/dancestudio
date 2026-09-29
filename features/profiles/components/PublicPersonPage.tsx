@@ -106,7 +106,6 @@ export function PublicPersonPage({
           testId="person-hero"
           name={profile.fullName}
           grad={ring}
-          tint={RC}
           /* ⚠ `KIND_WORD`, THE MAP THE OTHER FOUR SCREENS READ (20 Sep 2026, the
              user: "when looking at your own profile from somewhere should also
              look same as profile page"). This page read `KIND_BADGE` ("ARTIST")

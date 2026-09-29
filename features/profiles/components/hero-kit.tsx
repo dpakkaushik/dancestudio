@@ -5,7 +5,7 @@ import { HeroRail, ProfileDisc, type HeroShot } from "@/features/profiles/compon
 import { TYPE, mapsHref } from "@/features/profiles/components/profile-kit";
 import { VerifiedTick } from "@/features/settings/components/settings-kit";
 import { dosStyleColor } from "@/lib/constants/styles";
-import { INK, LILAC, LINE } from "@/lib/design/tokens";
+import { INK, LILAC, LINE, MUTED, SUB } from "@/lib/design/tokens";
 
 /** THE IDENTITY HERO — one object, every profile page (14 Sep 2026; re-cut
  *  15 Sep 2026).
@@ -41,9 +41,23 @@ import { INK, LILAC, LINE } from "@/lib/design/tokens";
  *  through (one picture for a user, ten for an artist, the photos of its space
  *  for a studio, nothing for an organization); and the meta line. */
 
-export const heroWash = (tint: string) => `linear-gradient(180deg, ${tint}b8 0%, ${tint}55 46%, ${tint}18 74%, ${LILAC} 100%)`;
-
-export const HERO_EYEBROW: CSSProperties = { fontSize: 9.5, fontWeight: 900, letterSpacing: 2.2, textTransform: "uppercase", color: "rgba(255,255,255,.9)" };
+/** ⚠⚠ THE COLOURED WASH IS GONE (29 Sep 2026, the user: "top pink hue … should
+ *  be removed from all profiles").
+ *
+ *  `heroWash(tint)` painted a gradient down from the profile's own tint —
+ *  `linear-gradient(180deg, ${tint}b8, ${tint}55, ${tint}18, ${LILAC})` — and
+ *  `DOS_TINT.artist` is `#EC4899`, so every artist's profile opened on a band of
+ *  pink. The hero stands on the page's own ground now, on all seven surfaces
+ *  that draw it, and the `tint` prop went with it rather than being left unread.
+ *
+ *  ⚠ AND THE TWO THINGS THAT STOOD ON IT HAD TO MOVE WITH IT, which is the half
+ *  a colour change usually forgets: the eyebrow and the account number were
+ *  `rgba(255,255,255,.9)` and `.72` — WHITE, legible only because the wash was
+ *  dark behind them. On the light theme's near-white ground they would have been
+ *  invisible, with nothing failing and nothing to see. They read the theme's own
+ *  two quiet tiers now, which keeps the same hierarchy (the word louder than the
+ *  number) and is legible on either ground. */
+export const HERO_EYEBROW: CSSProperties = { fontSize: 9.5, fontWeight: 900, letterSpacing: 2.2, textTransform: "uppercase", color: SUB };
 
 /** the place, underlined in the line's own grey, and it opens Maps (10694-10698) */
 export function HeroPlace({ text, query }: { text: string; query?: string }) {
@@ -92,7 +106,9 @@ export function HeroId({ children }: { children: ReactNode }) {
         fontSize: 10.5,
         fontWeight: 800,
         letterSpacing: 1.1,
-        color: "rgba(255,255,255,.72)",
+        /* the quieter of the two tiers — it was rgba(255,255,255,.72) against
+           the wash that went on 29 Sep 2026 (see HERO_EYEBROW) */
+        color: MUTED,
         fontVariantNumeric: "tabular-nums",
       }}
     >
@@ -104,7 +120,6 @@ export function HeroId({ children }: { children: ReactNode }) {
 export function IdentityHero({
   name,
   grad,
-  tint,
   eyebrow,
   eyebrowSub = null,
   verified,
@@ -126,8 +141,9 @@ export function IdentityHero({
   name: string;
   /** the two colours the disc's initials and an empty header are painted in */
   grad: [string, string];
-  /** the colour that bleeds off the top of the screen — the entity's own */
-  tint: string;
+  /* ⚠ `tint` — the colour that bled off the top of the screen — went with the
+     wash on 29 Sep 2026. It fed nothing else, so it is removed rather than left
+     unread: a dead prop is a lie to the next reader. */
   /** the micro caps over the name */
   eyebrow: string;
   /** the line directly UNDER the eyebrow and above the name — the account number
@@ -215,7 +231,7 @@ export function IdentityHero({
      ARTIST / STUDIO / ORGANIZATION share one baseline, which is how every
      profile screen people already know lays this out. */
   return (
-    <div data-testid={testId} style={{ margin: "0 -16px", position: "relative", overflow: "hidden", background: heroWash(tint) }}>
+    <div data-testid={testId} style={{ margin: "0 -16px", position: "relative", overflow: "hidden", background: LILAC }}>
       {/* THE CORNER IS A COLUMN (19 Sep 2026, the user: "give an eye to view
           profile on the home tab below edit on top right") — the pencil, then
           the eye under it, on every page that has both */}

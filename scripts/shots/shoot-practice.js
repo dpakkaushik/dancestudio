@@ -248,7 +248,16 @@ const tomorrowIst = () => {
        that a member who does not lead the crew cannot open the desk and their
        calendar row goes to the crew's public page instead. A backlog row naming
        a defect is not a decision to accept it. ── */
-    await member.goto(`${BASE}/crews`, { waitUntil: "networkidle" });
+    /* ⚠⚠ `?show=practices`, NOT `/crews` — AND THIS CHECK WAS STALE FOR A DAY
+       (29 Sep 2026). Practice became its own COLUMN on the hub on 28 Sep (the
+       user: "practice flow should be managed in a seprate column in crew
+       section"), and `SegmentedPanels` mounts only the shown panel — so the hub
+       opens on Crews and the practices are not in the DOM at all until the
+       second pill is pressed. The script asked `/crews` and read `isVisible()`,
+       which is exactly the right answer to the wrong question, and nobody
+       re-ran it between the change and today. The segment's own href is what a
+       link into it uses, and the SERVER honours it. */
+    await member.goto(`${BASE}/crews?show=practices`, { waitUntil: "networkidle" });
     check(await member.getByTestId("my-practices").isVisible().catch(() => false), "the Crews hub carries YOUR PRACTICES for somebody who only BELONGS to a crew");
     check(await member.getByText("Studio 4, Baner").first().isVisible().catch(() => false), "…with the practice on it, where and when");
     check(await member.getByText(crewName).first().isVisible().catch(() => false), "…and WHICH CREW, because this list can hold three crews' practices in one evening");
@@ -264,7 +273,7 @@ const tomorrowIst = () => {
 
     /* the leader's own hub shows the same practice with the door to the register
        instead of an answer they were never asked for */
-    await leader.goto(`${BASE}/crews`, { waitUntil: "networkidle" });
+    await leader.goto(`${BASE}/crews?show=practices`, { waitUntil: "networkidle" });
     check(await leader.getByTestId("my-practices").isVisible().catch(() => false), "the leader's hub carries it too — one list, every crew");
     check((await leader.getByRole("link", { name: /^Open the register for/ }).count()) === 1, "…with Register › to their own desk");
     check((await leader.getByRole("button", { name: /^Coming to/ }).count()) === 0, "…and no answer pair, because they arranged it");

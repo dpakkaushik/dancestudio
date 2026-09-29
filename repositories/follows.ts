@@ -8,7 +8,29 @@ import type { TenantType } from "@/types/tenant";
  *  the followed business's members'); the COUNT is public through the
  *  aggregate-only `follower_counts`. Every "mine" query says `follower_id =
  *  auth.uid()` out loud — RLS is a ceiling, not a scope: a studio member reads
- *  their tenant's follows too, and would otherwise see them as their own. */
+ *  their tenant's follows too, and would otherwise see them as their own.
+ *
+ *  ⚠⚠ A FOLLOW OUTLIVES WHAT IT NAMES, AND EVERY READ HERE HAS TO SAY SO
+ *  (29 Sep 2026, the user: *"fix follow following list when it opens shows
+ *  inaccurate details and counts"*).
+ *
+ *  Soft delete is this app's rule (Rule 3), so deleting a studio or an account
+ *  leaves its `follows` rows live and pointing at a row with a `deleted_at`.
+ *  Every read below filtered the FOLLOW and none of them filtered the thing
+ *  followed — except `findMyFollowedCrews`, which did, which is why a dead crew
+ *  never showed and a dead studio always did. Measured on production the day
+ *  this was fixed: **29 live follows, 8 of them naming a deleted business and 6
+ *  made by a deleted account.**
+ *
+ *  What that looked like on screen is exactly the complaint: a Following sheet
+ *  listing studios that are gone, and a Followers sheet whose rows had no name
+ *  to read — so they were drawn as "Someone", a person who does not exist.
+ *
+ *  ⚠ THE COUNT IS FIXED IN THE DATABASE, NOT HERE (`20260929110000`). The three
+ *  `*_follower_counts` functions count follow rows and never looked at the other
+ *  party either, so the header said 12 while the list drew 7. A filter applied
+ *  in one of the two places would have made the disagreement worse, not better —
+ *  which is why the migration and this file are one change. */
 
 const MAX_LIST = 500;
 
@@ -21,15 +43,55 @@ interface MyFollowRow {
   id: string;
   business_id: string;
   created_at: string;
-  businesses: { type: TenantType; name: string; area: string | null; city: string | null } | null;
+  businesses: {
+    /** ⚠ `| "org"` because the COLUMN still holds it and `TenantType` no longer
+     *  does: 20 `businesses` rows carry `type = 'org'` as tombstones, soft-
+     *  deleted by the 29 Sep sweep (the money on them is why the rows stay).
+     *  Typing this as the app's own union would be the app telling itself a
+     *  word cannot arrive that the database can still send. */
+    type: TenantType | "org";
+    name: string;
+    area: string | null;
+    city: string | null;
+    profile_photo_path: string | null;
+    deleted_at: string | null;
+  } | null;
 }
 
 interface FollowerRow {
   id: string;
   follower_id: string;
   created_at: string;
-  profiles: { full_name: string; role: ProfileRole; city: string | null; profile_photo_path: string | null } | null;
+  profiles: {
+    full_name: string;
+    role: ProfileRole;
+    city: string | null;
+    profile_photo_path: string | null;
+    deleted_at: string | null;
+  } | null;
 }
+
+/** The columns every follower row reads — one list, so a sheet cannot come to
+ *  draw a different person from the sheet beside it. `deleted_at` is in it
+ *  because the row is DROPPED on it; see the note at the top of this file. */
+const FOLLOWER_PROFILE = "full_name, role, city, profile_photo_path, deleted_at";
+
+/** A follower row, once — three sheets read the same shape and each used to map
+ *  it by hand, and one of the three invented "Someone" for a row it could not
+ *  read. Nothing is invented here: a row whose person is gone is not a row. */
+const liveFollowers = <T extends FollowerRow>(rows: T[], artists: Set<string>): TenantFollower[] =>
+  rows
+    .filter((r) => r.profiles && !r.profiles.deleted_at)
+    .map((r) => ({
+      followId: r.id,
+      userId: r.follower_id,
+      name: r.profiles!.full_name,
+      role: r.profiles!.role,
+      isArtist: artists.has(r.follower_id),
+      city: r.profiles!.city,
+      avatarPath: r.profiles!.profile_photo_path,
+      followedAt: r.created_at,
+    }));
 
 /** Live follower counts — a number, never a name. Listed businesses answer for
  *  everybody; an unlisted one only for its own members (the function decides). */
@@ -91,7 +153,7 @@ export async function findMyFollowing(supabase: SupabaseClient): Promise<Followe
   }
   const { data, error } = await supabase
     .from("follows")
-    .select("id, business_id, created_at, businesses (type, name, area, city)")
+    .select("id, business_id, created_at, businesses (type, name, area, city, profile_photo_path, deleted_at)")
     .eq("follower_id", user.id)
     .not("business_id", "is", null)
     .is("deleted_at", null)
@@ -100,17 +162,32 @@ export async function findMyFollowing(supabase: SupabaseClient): Promise<Followe
   if (error) {
     throw new Error(`follows.findMine failed: ${error.message}`);
   }
-  return ((data ?? []) as unknown as MyFollowRow[])
-    .filter((r) => r.businesses)
-    .map((r) => ({
-      followId: r.id,
-      tenantId: r.business_id,
-      tenantType: r.businesses!.type,
-      tenantName: r.businesses!.name,
-      tenantArea: r.businesses!.area,
-      tenantCity: r.businesses!.city,
-      followedAt: r.created_at,
-    }));
+  /* ⚠ A `flatMap` rather than filter-then-map, so the narrowing survives: the
+     one thing being dropped is a `type` the app's own union no longer has, and
+     a `.filter()` predicate does not carry that knowledge into `.map()`. */
+  return ((data ?? []) as unknown as MyFollowRow[]).flatMap((r) => {
+    const b = r.businesses;
+    /* ⚠ `!deleted_at` is the fix of 29 Sep 2026 — eight of these on production
+       named a studio that had been deleted, and the sheet listed every one with
+       a working-looking link to a page that 404s. ⚠ And `!== "org"`, for the
+       same reason one layer along: the row builders map anything that is not a
+       studio to `/artist/{id}`, so an old org follow drew as an Artist and
+       opened nothing. Measured the same day: zero such rows, so this guards the
+       shape rather than data — which is what makes it worth writing down. */
+    if (!b || b.deleted_at || b.type === "org") return [];
+    return [
+      {
+        followId: r.id,
+        tenantId: r.business_id,
+        tenantType: b.type,
+        tenantName: b.name,
+        tenantArea: b.area,
+        tenantCity: b.city,
+        tenantPhotoPath: b.profile_photo_path,
+        followedAt: r.created_at,
+      },
+    ];
+  });
 }
 
 /** Who follows this business — RLS admits its members and nobody else. The
@@ -123,7 +200,7 @@ export async function findTenantFollowers(
 ): Promise<TenantFollower[]> {
   const { data, error } = await supabase
     .from("follows")
-    .select("id, follower_id, created_at, profiles!follows_follower_id_fkey (full_name, role, city, profile_photo_path)")
+    .select(`id, follower_id, created_at, profiles!follows_follower_id_fkey (${FOLLOWER_PROFILE})`)
     .eq("business_id", tenantId)
     .is("deleted_at", null)
     .order("created_at", { ascending: false })
@@ -133,16 +210,7 @@ export async function findTenantFollowers(
   }
   const rows = (data ?? []) as unknown as FollowerRow[];
   const artists = await findArtistIds(supabase, rows.map((r) => r.follower_id));
-  return rows.map((r) => ({
-    followId: r.id,
-    userId: r.follower_id,
-    name: r.profiles?.full_name ?? "Someone",
-    role: r.profiles?.role ?? "user",
-    isArtist: artists.has(r.follower_id),
-    city: r.profiles?.city ?? null,
-    avatarPath: r.profiles?.profile_photo_path ?? null,
-    followedAt: r.created_at,
-  }));
+  return liveFollowers(rows, artists);
 }
 
 /** WHO FOLLOWS THIS CREW (27 Sep 2026) — the business read's twin, on the other
@@ -155,7 +223,7 @@ export async function findTenantFollowers(
 export async function findCrewFollowers(supabase: SupabaseClient, crewId: string): Promise<TenantFollower[]> {
   const { data, error } = await supabase
     .from("follows")
-    .select("id, follower_id, created_at, profiles!follows_follower_id_fkey (full_name, role, city, profile_photo_path)")
+    .select(`id, follower_id, created_at, profiles!follows_follower_id_fkey (${FOLLOWER_PROFILE})`)
     .eq("crew_id", crewId)
     .is("deleted_at", null)
     .order("created_at", { ascending: false })
@@ -165,16 +233,7 @@ export async function findCrewFollowers(supabase: SupabaseClient, crewId: string
   }
   const rows = (data ?? []) as unknown as FollowerRow[];
   const artists = await findArtistIds(supabase, rows.map((r) => r.follower_id));
-  return rows.map((r) => ({
-    followId: r.id,
-    userId: r.follower_id,
-    name: r.profiles?.full_name ?? "Someone",
-    role: r.profiles?.role ?? "user",
-    isArtist: artists.has(r.follower_id),
-    city: r.profiles?.city ?? null,
-    avatarPath: r.profiles?.profile_photo_path ?? null,
-    followedAt: r.created_at,
-  }));
+  return liveFollowers(rows, artists);
 }
 
 /** One person in a person's Followers / Following sheet (S_profiletab 11335). */
@@ -200,7 +259,7 @@ export async function findMyPersonFollowers(supabase: SupabaseClient): Promise<P
   if (!user) return [];
   const { data, error } = await supabase
     .from("follows")
-    .select("id, follower_id, created_at, profiles!follows_follower_id_fkey (full_name, role, city, profile_photo_path)")
+    .select(`id, follower_id, created_at, profiles!follows_follower_id_fkey (${FOLLOWER_PROFILE})`)
     .eq("followee_id", user.id)
     .is("deleted_at", null)
     .order("created_at", { ascending: false })
@@ -208,9 +267,9 @@ export async function findMyPersonFollowers(supabase: SupabaseClient): Promise<P
   if (error) {
     throw new Error(`follows.myFollowers failed: ${error.message}`);
   }
-  const rows = ((data ?? []) as unknown as Array<{ id: string; follower_id: string; created_at: string; profiles: { full_name: string; role: ProfileRole; city: string | null; profile_photo_path: string | null } | null }>).filter((r) => r.profiles);
+  const rows = (data ?? []) as unknown as FollowerRow[];
   const artists = await findArtistIds(supabase, rows.map((r) => r.follower_id));
-  return rows.map((r) => ({ followId: r.id, userId: r.follower_id, name: r.profiles!.full_name, role: r.profiles!.role, isArtist: artists.has(r.follower_id), city: r.profiles!.city, avatarPath: r.profiles!.profile_photo_path, followedAt: r.created_at }));
+  return liveFollowers(rows, artists);
 }
 
 /** The PEOPLE the signed-in person follows (the businesses are findMyFollowing). */
@@ -221,7 +280,7 @@ export async function findMyFollowedPeople(supabase: SupabaseClient): Promise<Pe
   if (!user) return [];
   const { data, error } = await supabase
     .from("follows")
-    .select("id, followee_id, created_at, profiles!follows_followee_id_fkey (full_name, role, city, profile_photo_path)")
+    .select(`id, followee_id, created_at, profiles!follows_followee_id_fkey (${FOLLOWER_PROFILE})`)
     .eq("follower_id", user.id)
     .not("followee_id", "is", null)
     .is("deleted_at", null)
@@ -230,7 +289,10 @@ export async function findMyFollowedPeople(supabase: SupabaseClient): Promise<Pe
   if (error) {
     throw new Error(`follows.myFollowedPeople failed: ${error.message}`);
   }
-  const rows = ((data ?? []) as unknown as Array<{ id: string; followee_id: string; created_at: string; profiles: { full_name: string; role: ProfileRole; city: string | null; profile_photo_path: string | null } | null }>).filter((r) => r.profiles);
+  /* the one read whose person is the FOLLOWEE — `liveFollowers` keys on
+     `follower_id`, so this maps its own rather than pretending the shapes match */
+  const rows = ((data ?? []) as unknown as Array<{ id: string; followee_id: string; created_at: string; profiles: FollowerRow["profiles"] }>)
+    .filter((r) => r.profiles && !r.profiles.deleted_at);
   const artists = await findArtistIds(supabase, rows.map((r) => r.followee_id));
   return rows.map((r) => ({ followId: r.id, userId: r.followee_id, name: r.profiles!.full_name, role: r.profiles!.role, isArtist: artists.has(r.followee_id), city: r.profiles!.city, avatarPath: r.profiles!.profile_photo_path, followedAt: r.created_at }));
 }

@@ -2,14 +2,10 @@
 
 import { useRouter } from "next/navigation";
 import { useState, type ReactNode } from "react";
-import { QRBlock } from "@/components/ui/QRBlock";
 import { ClassTile } from "@/features/classes/components/ClassTile";
-import { PassSheet } from "@/features/classes/components/PassSheet";
-import { dosPosterAuto } from "@/features/classes/components/poster";
 import { dosKey } from "@/features/classes/components/ShareSheet";
 import { InvoiceSheet, bookingCodeOf } from "@/features/payments/components/InvoiceSheet";
 import { RefundSheet } from "@/features/payments/components/RefundSheet";
-import { DOS_LEVEL_LABEL, dosStyleColor } from "@/lib/constants/styles";
 import { DOS_UI, GREEN, LINE, PINK } from "@/lib/design/tokens";
 import { dateParts, timeRangeOf } from "@/lib/format/session";
 import type { DeckClassItem, DeckItem } from "@/types/home";
@@ -23,12 +19,20 @@ const DOS_MONO = 'ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mon
  *  says what the session is to you and, on exactly one of them, the Live badge.
  *  ⚠ It drew an `EventCard` too until 29 Sep 2026, when events were removed.
  *
- *  A booked card carries its BookingActions strip (6399-6448): the drawn code
- *  (tap it and the ticket opens full screen — the same PassSheet the class page
- *  keeps behind its poster), "You're booked" with the entry code, and the one
- *  segmented pill for the money side of the booking — Invoice, and Cancel
- *  booking. Nothing here is a second implementation: the sheets are the class
- *  page's own. */
+ *  A booked card carries its BookingActions strip (6399-6448): "You're booked"
+ *  with the booking's own reference, and the one segmented pill for the money
+ *  side of the booking — Invoice, and Cancel booking. Nothing here is a second
+ *  implementation: the sheets are the class page's own.
+ *
+ *  ⚠⚠ THE DRAWN CODE AND THE TICKET SHEET WENT ON 29 Sep 2026, with the same
+ *  claim on the class page (the user: "scan this at door text not required as
+ *  your personal qr code for user or artist profile is being used to enter the
+ *  classes"). The strip drew a 54px QR of `bookingCodeOf(…)` that opened a
+ *  full-screen `PassSheet` reading "Scan this at the door." — and **no door in
+ *  this app has ever read one**: `ScanSheet` resolves a PERSON's profile link
+ *  and `can_run_register_for_class` decides, so a per-booking square was a
+ *  credential nothing accepted. What survives is the string it encoded, which
+ *  was always a reference rather than a key, printed where it already was. */
 
 /* one grammar for the money sheets — the same date and time the card prints */
 const whenTextOf = (startsAt: string, endsAt: string) => {
@@ -45,49 +49,28 @@ const whenTextOf = (startsAt: string, endsAt: string) => {
  *  code, the green DOT carrying "confirmed", the entry code — and the two money
  *  actions merged into one segmented pill, when the booking has a money side. */
 function BookingStrip({
-  title,
   code,
   going,
-  onCode,
   onInvoice,
   onCancel,
 }: {
-  title: string;
   code: string;
   going: boolean;
-  onCode: () => void;
   onInvoice?: () => void;
   onCancel?: () => void;
 }) {
   return (
     <div style={{ width: "100%" }}>
-      <div style={{ display: "flex", alignItems: "center", gap: 11 }}>
-        <span
-          role="button"
-          tabIndex={0}
-          onKeyDown={dosKey}
-          aria-label={`Show the entry code for ${title}`}
-          onClick={onCode}
-          style={{ display: "inline-flex", alignItems: "center", gap: 6, cursor: "pointer", lineHeight: 0, flexShrink: 0 }}
-        >
-          {/* ⚠ 54px is a THUMBNAIL, and deliberately so: an entry code is a
-              version-1 square, so this is under two pixels a module and no
-              camera will read it — but nobody points one at this. It is the
-              control that OPENS the pass sheet, where the same code is drawn at
-              168 and is scannable. The one place the small square would be a
-              lie is the students invite, whose own line says "they scan it";
-              that one grew instead. */}
-          <QRBlock code={code} size={54} />
-        </span>
-        <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 6, minWidth: 0 }}>
-            <span style={{ width: 8, height: 8, borderRadius: 4, background: GREEN, flexShrink: 0 }} />
-            <span style={{ fontSize: 12.5, fontWeight: 900, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-              You’re {going ? "going" : "booked"}
-            </span>
-            <span style={{ fontFamily: DOS_MONO, fontSize: 10, color: "var(--muted)", marginLeft: "auto", flexShrink: 0 }}>{code}</span>
-          </div>
-          <div style={{ fontSize: 9.5, color: "var(--muted)", marginTop: 3 }}>Tap the code to show it full screen.</div>
+      <div style={{ minWidth: 0 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 6, minWidth: 0 }}>
+          <span style={{ width: 8, height: 8, borderRadius: 4, background: GREEN, flexShrink: 0 }} />
+          <span style={{ fontSize: 12.5, fontWeight: 900, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+            You’re {going ? "going" : "booked"}
+          </span>
+          <span style={{ fontFamily: DOS_MONO, fontSize: 10, color: "var(--muted)", marginLeft: "auto", flexShrink: 0 }}>{code}</span>
+        </div>
+        <div style={{ fontSize: 9.5, color: "var(--muted)", marginTop: 3 }}>
+          Your own profile QR is what gets you in.
         </div>
       </div>
       {onInvoice && onCancel ? (
@@ -123,7 +106,6 @@ function BookingStrip({
 export function PassDeck({ items }: { items: DeckItem[] }) {
   const router = useRouter();
   const [at, setAt] = useState(0);
-  const [pass, setPass] = useState<DeckItem | null>(null);
   const [inv, setInv] = useState<DeckClassItem | null>(null);
   const [ref, setRef] = useState<DeckClassItem | null>(null);
   const [toast, setToast] = useState<string | null>(null);
@@ -149,10 +131,8 @@ export function PassDeck({ items }: { items: DeckItem[] }) {
         actions={
           booked && p.enrollment ? (
             <BookingStrip
-              title={c.title}
               code={bookingCodeOf(p.enrollment.id)}
               going={false}
-              onCode={() => setPass(p)}
               onInvoice={() => setInv(p)}
               onCancel={() => setRef(p)}
             />
@@ -164,29 +144,8 @@ export function PassDeck({ items }: { items: DeckItem[] }) {
 
   /* ⚠ `eventCard` was here and went with events (29 Sep 2026) — the one card in
      this rail that was not a class, drawn by `EventCard` with the role chip and
-     the ticket strip under it. */
-
-  /* the ticket — the class page's own sheet. ⚠ It forked on `p.kind` until
-     29 Sep 2026, because an event's pass wore its kind's tint and opened `/e/`. */
-  const passSheet = (p: DeckItem) => {
-    const c = p.danceClass;
-    const col = dosStyleColor(c.style);
-    return (
-      <PassSheet
-        posterItem={{ title: c.title, style: c.style, styleColor: col }}
-        posterK={c.poster && c.poster !== "none" ? c.poster : dosPosterAuto(c.title)}
-        col={col}
-        title={c.title}
-        styleName={c.style}
-        levelWord={DOS_LEVEL_LABEL[c.level] ?? c.level}
-        pass={{ code: bookingCodeOf(p.enrollment?.id ?? ""), label: "Entry code", note: "Scan this at the door." }}
-        slug={c.shareSlug}
-        path="c"
-        fire={fire}
-        onClose={() => setPass(null)}
-      />
-    );
-  };
+     the ticket strip under it. `passSheet` went the same day, with the ticket
+     itself (see the note at the head of this file). */
 
   return (
     <>
@@ -223,7 +182,6 @@ export function PassDeck({ items }: { items: DeckItem[] }) {
         </div>
       ) : null}
 
-      {pass ? passSheet(pass) : null}
       {inv && inv.enrollment ? (
         <InvoiceSheet
           title={inv.danceClass.title}

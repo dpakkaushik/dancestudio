@@ -154,7 +154,6 @@ export function StudioHome({
           testId="studio-hero"
           name={tenant.name}
           grad={RG}
-          tint={RG[1]}
           eyebrow="Studio"
           /* the number beside the word, exactly as a person's Home prints theirs
              (20 Sep 2026, the user: "Id should be besides profile type on home

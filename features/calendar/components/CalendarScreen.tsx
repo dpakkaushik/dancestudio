@@ -37,9 +37,9 @@ import type { DanceClass } from "@/types/class";
  *  is not built). ⚠ The prototype's Classes/Events switch was BUILT on 18 Sep
  *  2026 and is a Classes/Practice switch since 29 Sep, events being gone — the
  *  control is the prototype's and the second half is not.
- *  The History chip LANDED 30 Aug 2026: the record page it waited for
- *  has existed since Step 25, so the chip is the prototype's own (9071-9075) and
- *  it opens /stats?tab=history — the library of what you have already danced. */
+ *  ⚠ The History chip landed 30 Aug 2026, came off this hero on 19 Sep at the
+ *  user's word, and the LIBRARY it opened went on 29 Sep with the second stats
+ *  screen. Nothing here draws it; the note below says where it stood. */
 
 /* the tile that opens this page is painted in the calendar's own colour, and
    the page wears the same paint (DOS_TOOLS 2932). Deepened from #5AC8FA with
@@ -627,8 +627,10 @@ export function CalendarScreen({ mode, months, todayKey, entries, practices = []
             </div>
             {/* ⚠ NO HISTORY CHIP (19 Sep 2026, the user's list). It opened
                 `/stats?tab=history`, which the Stats chip on every hero already
-                opens — the calendar looks forward, and the way back was a second
-                door to one screen. The route is untouched (Rule 14). */}
+                opened — the calendar looks forward, and the way back was a
+                second door to one screen. ⚠ The library itself went on 29 Sep
+                2026 with the second stats screen, so that door now leads
+                nowhere in particular; the route is untouched (Rule 14). */}
           </div>
         )}
 

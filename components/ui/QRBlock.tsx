@@ -37,10 +37,16 @@ const QUIET = 4;
  *  but it stops claiming to be scannable. */
 const SCANNABLE_PX_PER_MODULE = 3;
 
+/** ⚠ THE DEFAULT IS NEUTRAL, AND THAT IS A CORRECTION (29 Sep 2026). It read
+ *  "Entry code" — the prototype's own word (6460) — and on 29 Sep the last
+ *  caller that meant it went: a DOS-CL-#### square claiming to be a class's
+ *  door key, which no door in this app has ever read. Every live caller names
+ *  its own square (an invite code, a profile, a booking link), so what this
+ *  default governs is the NEXT one, and it must not hand it a claim. */
 export function QRBlock({
   code,
   size = 96,
-  label = "Entry code",
+  label = "QR code",
 }: {
   code: string;
   size?: number;

@@ -188,9 +188,13 @@ export function EntityStatsPage({
         ))}
       </div>
 
-      <Link href={`/stats?tab=charts&seg=${segment}`} aria-label={`Open the ${SEG_WORD[segment].many} board`} style={{ position: "relative", display: "block", marginTop: 14, textAlign: "center", padding: "12px", borderRadius: 12, background: "var(--text)", color: "var(--solid)", fontWeight: 900, fontSize: 12.5, textDecoration: "none" }}>
-        See the whole {SEG_WORD[segment].many} board ›
-      </Link>
+      {/* ⚠ "See the whole {segment} board ›" stood here and went on 29 Sep 2026
+          with the board itself. It opened `/stats?tab=charts&seg=…`, and `/stats`
+          is a redirect to the READER's own stats — so once this page became the
+          only stats screen (the user: "should only have one view"), that button
+          would have taken a visitor from somebody else's record to their own. A
+          door that arrives somewhere other than its name is worse than no door;
+          the backlog carries the board. */}
     </div>
   );
 }

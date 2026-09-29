@@ -81,7 +81,6 @@ export function CrewHome({ crew, members, header = [], followers = 0, followingN
           testId="crew-hero"
           name={crew.name}
           grad={CREW_GRAD}
-          tint={CREW_GRAD[1]}
           eyebrow="Crew"
           /* the crew's own number beside the word (20 Sep 2026) */
           eyebrowSub={crew.memberNo ? <HeroId>{memberNoWords(crew.memberNo)}</HeroId> : null}
@@ -174,8 +173,16 @@ export function CrewHome({ crew, members, header = [], followers = 0, followingN
             chips={
               <>
                 {/* FOLLOW · STATS · QR · SHARE (21 Sep 2026) — no bell on your
-                    own crew's home */}
-                <StatsChip href="/stats?tab=charts&seg=crew" />
+                    own crew's home.
+                    ⚠ THE CHIP OPENS THIS CREW'S OWN STATS (29 Sep 2026). It
+                    pointed at `/stats?tab=charts&seg=crew` — the crew BOARD,
+                    on the person's stats screen — which is the same shape as
+                    the studio chip's bug of 21 Sep: a chip on a crew's home
+                    opening a page about everybody. `/crew/{id}/stats` is the
+                    page built for exactly this and shows this crew's own place
+                    nationally and in its city; the board went the same day
+                    (see `EntityStatsPage`). */}
+                <StatsChip href={`/crew/${crew.id}/stats`} />
                 <ProfileShare path={`/crew/${crew.id}`} name={crew.name} />
                 <ProfileLink path={`/crew/${crew.id}`} name={crew.name} />
               </>

@@ -265,12 +265,20 @@ export function ScanSheet({
                 </div>
               </div>
               {/* the two doors the user asked for — both open in a new tab, so
-                  looking somebody up does not throw away the scan you just made */}
+                  looking somebody up does not throw away the scan you just made.
+                  ⚠ INVERTED AGAINST THE THEME (29 Sep 2026, the user: "when
+                  scanning a profile for attendance in a class should show view
+                  stats and profile in opposite color to the theme"). They wore
+                  `--card` on `--text`, which is the QUIETEST pair this app has —
+                  and on a door, mid-scan, with somebody waiting, the two things
+                  you might want to check should not be the faintest thing on the
+                  sheet. `--text` on `--solid` is the app's own "opposite", the
+                  same pair Confirm below them uses. */}
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginBottom: 10 }}>
-                <Link href={`/person/${found.id}`} target="_blank" rel="noreferrer" aria-label={`View ${found.fullName}'s profile`} style={{ textAlign: "center", padding: "11px 8px", borderRadius: 12, background: "var(--card)", border: "1.5px solid var(--el)", color: "var(--text)", fontSize: 12, fontWeight: 900, textDecoration: "none" }}>
+                <Link href={`/person/${found.id}`} target="_blank" rel="noreferrer" aria-label={`View ${found.fullName}'s profile`} style={{ textAlign: "center", padding: "11px 8px", borderRadius: 12, background: "var(--text)", border: "none", color: "var(--solid)", fontSize: 12, fontWeight: 900, textDecoration: "none" }}>
                   View profile
                 </Link>
-                <Link href={`/person/${found.id}/stats`} target="_blank" rel="noreferrer" aria-label={`${found.fullName}'s record and rank`} style={{ textAlign: "center", padding: "11px 8px", borderRadius: 12, background: "var(--card)", border: "1.5px solid var(--el)", color: "var(--text)", fontSize: 12, fontWeight: 900, textDecoration: "none" }}>
+                <Link href={`/person/${found.id}/stats`} target="_blank" rel="noreferrer" aria-label={`${found.fullName}'s record and rank`} style={{ textAlign: "center", padding: "11px 8px", borderRadius: 12, background: "var(--text)", border: "none", color: "var(--solid)", fontSize: 12, fontWeight: 900, textDecoration: "none" }}>
                   Stats
                 </Link>
               </div>

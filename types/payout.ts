@@ -78,6 +78,34 @@ export interface TenantPayLedger {
   complete: boolean;
 }
 
+/** ONE PAYMENT ON THE HISTORY PAGE (29 Sep 2026, the user: "Team payment
+ *  history to be a button called History which should show all transactions
+ *  with that particular person on a different page").
+ *
+ *  A `PayoutRecord` says a payment happened and how many sessions it covered;
+ *  this says WHICH — because on a page whose whole job is one person's history,
+ *  "3 sessions" is the number you would then go looking for the detail of. */
+export interface PayoutWithSessions extends PayoutRecord {
+  sessions: Array<{ sessionId: string; classTitle: string; startsAt: string; rateInr: number }>;
+}
+
+/** Everything one business has paid one person, for that person's own page. */
+export interface PersonPayHistory {
+  userId: string;
+  personName: string;
+  payouts: PayoutWithSessions[];
+  /** settled — what the studio has actually handed over */
+  paidInr: number;
+  /** recorded but not yet landed (in transit / on hold / failed) */
+  pendingInr: number;
+  /** sessions covered across every payment */
+  sessionsPaid: number;
+  /** ⚠ false when the read's guard was filled — the totals are then SHORT, and
+   *  the page says so rather than printing a figure that looks finished (the
+   *  rule both earnings halves have followed since 21 Sep 2026). */
+  complete: boolean;
+}
+
 /** One studio's line on a teacher's own earnings screen — the prototype's
  *  "EEE Dance Studio · 14 sessions · ₹900 · ₹12,600 paid ✓". */
 export interface StudioEarning {

@@ -1039,12 +1039,33 @@ test.describe.serial("DanceOS, end to end", () => {
     await expect(owner.getByText("Poster set — Split")).toBeVisible();
     await posterSheet.getByRole("button", { name: "Done" }).click();
 
-    // sharing lives behind the poster now — the pass sheet carries the link (Step 10)
-    await owner.getByRole("button", { name: "Open the pass" }).click();
-    const sheet = owner.getByRole("dialog", { name: "Class pass" });
-    await expect(sheet).toBeVisible();
-    await expect(sheet.getByText(`/c/${shareSlug}`)).toBeVisible();
-    await sheet.getByRole("button", { name: "Done" }).click();
+    /* ⚠⚠ THE POSTER OPENS THE POSTER, AND SHARING IS A BLOCK IN THE DETAILS
+       (29 Sep 2026, the user: "when clicking on the poster right now we get
+       poster and a qr code for the class which should not happen — should just
+       open poster in that. share should be part of the details with qr code
+       with link and option to copy the link as well"). From 24 Aug the poster
+       opened a TICKET carrying the art, the booking link and an entry code —
+       "one place instead of three" (prototype 12001) — which is why the obvious
+       act, look at the poster, was the one thing it did not do. Both ends. */
+    await owner.getByRole("button", { name: "Open the poster" }).click();
+    const posterView = owner.getByRole("dialog", { name: `Poster for ${classTitle}` });
+    await expect(posterView).toBeVisible();
+    await expect(posterView.getByRole("img", { name: /^(Booking link|Entry code)/ })).toHaveCount(0);
+    await posterView.getByRole("button", { name: "Done" }).click();
+    await expect(posterView).toHaveCount(0);
+
+    /* the SHARE block: the code somebody points a camera at, the address in
+       words, and one press to copy. ⚠ The square is asserted SCANNABLE — a
+       `/c/{slug}` link is a version-3 or -4 code, so under ~125px `QRBlock`
+       marks itself "small" and the one thing this block exists for is somebody
+       holding a camera up to it. */
+    await expect(owner.getByText("SHARE")).toBeVisible();
+    const shareQr = owner.getByRole("img", { name: `Booking link for ${classTitle}` });
+    await expect(shareQr).toBeVisible();
+    await expect(shareQr).toHaveAttribute("data-qr-scannable", "yes");
+    await expect(owner.getByText(new RegExp(`/c/${shareSlug}$`))).toBeVisible();
+    await owner.getByRole("button", { name: "Copy the booking link" }).click();
+    await expect(owner.getByText("Copied ✓")).toBeVisible();
 
     // ---- learner: signup → onboard → open the shared link → book ----------
     learnerId = await signUp(learner, `e2e-learner-${stamp}@example.com`);
@@ -1070,7 +1091,10 @@ test.describe.serial("DanceOS, end to end", () => {
        simply late. The same fifteen the style chip and "Since 2016" already
        carry, for the same reason. */
     await expect(learner.getByText(/You.re booked/)).toBeVisible({ timeout: 15000 });
-    await expect(learner.getByText("Tap the poster above for your code.")).toBeVisible();
+    /* ⚠ "Tap the poster above for your code" until 29 Sep 2026, when the poster
+       stopped being a ticket. What gets somebody through a door is their OWN
+       profile code, which the register's scanner reads. */
+    await expect(learner.getByText("Your own profile QR is what gets you in — it is on your profile.")).toBeVisible();
     // and the owner's register now reads the seat's meta: a free seat
     await owner.reload();
     await owner.getByRole("button", { name: "Attendance", exact: true }).click();
@@ -1526,68 +1550,60 @@ test.describe.serial("DanceOS, end to end", () => {
     await expect(trainer.getByRole("button", { name: /^People — / })).toHaveCount(0);
   });
 
-  test("stats: the record, the history library and the boards", async () => {
+  test("stats: one screen, whoever is looking", async () => {
     // ---- Step 25: stats ----
-    // Nothing this story creates has ENDED (every session it books is in the future),
-    // so the record is honestly empty — and saying so is the assertion. What is real is
-    // the crew the story built, which is why the Crews board can rank it, place beside
-    // population.
+    // ⚠⚠ THIS SEGMENT WAS "the record, the history library and the boards" AND
+    // DESCRIBED A SCREEN THAT NO LONGER EXISTS (29 Sep 2026, the user: "stats —
+    // should only have one view when looking at your profile or someone else,
+    // charts when looking at someone else's profile also should have a view with
+    // that person's rankings"). `/person/{id}/stats` forked: your own id drew
+    // `StatsScreen` (the record, a History library, four leaderboards with city,
+    // metric and style filters) and anybody else's drew `EntityStatsPage`. One
+    // question, two screens — so the richer one was reachable only by NOT naming
+    // yourself. `EntityStatsPage` is both now, and the History library and the
+    // boards went with `StatsScreen`; the reads behind them are kept and marked.
+    //
+    // Nothing this story creates has ENDED (every session it books is in the
+    // future), so the record is honestly empty — and saying so is the assertion.
     await learner.goto("/stats");
-    await expect(learner.getByTestId("stats-points")).toBeVisible();
-    await expect(learner.getByTestId("stat-attended")).toHaveText("0");
-    await expect(learner.getByText(/Nothing has happened yet/)).toBeVisible();
-    /* ⚠⚠ A ZERO IS DRAWN NOW (27 Sep 2026, the user: "show all metrics for that
-       particular profile type even if its 0"), which reverses the prototype's
-       own rule at 10017 — and this assertion was the rule written down. Until
-       today a record read as a different SHAPE for every person (three cards or
-       four) with no way to tell a missing metric from a zero one, while the
-       three BIG cards beside them had always drawn theirs.
-       ⚠ WHAT IS STILL REFUSED IS A RANK OF ZERO, which is a different claim and
-       is asserted a few lines down on the board. */
-    await expect(learner.getByRole("button", { name: /open the list/ })).toHaveCount(4);
-    /* ⚠⚠ AND A PRESS OPENS A SHEET, NOT THE GRID (27 Sep 2026, the user: *"the
-       grid which show numbers for styles, assisted for, trained under studios
-       etc should open lists like follow following instead of opening and closing
-       inside the stats grid"*). It used to expand IN PLACE — which is why the
-       next line could click History straight afterwards with the list still
-       open, and why this segment went red the moment the sheet arrived: the
-       scrim intercepted the click, and Playwright reported it as the page being
-       closed rather than as a covered link. The sheet IS the decision, so the
-       fix is to close it the way a person does.
-       ⚠ A ZERO CARD OPENS AN HONEST EMPTY SHEET rather than nothing — the rule
-       the drawer carried, kept word for word, and asserted here. */
-    await learner.getByRole("button", { name: /^Styles — 0, open the list$/ }).click();
-    const stylesSheet = learner.getByRole("dialog", { name: "Styles" });
-    await expect(stylesSheet).toBeVisible();
-    await expect(stylesSheet.getByText("Nothing here yet")).toBeVisible();
-    await stylesSheet.getByRole("button", { name: "Done" }).click();
-    await expect(stylesSheet).toBeHidden();
-    await learner.getByRole("link", { name: "History" }).click();
-    await learner.waitForURL(/tab=history/);
-    await expect(learner.getByText("Nothing on the record yet")).toBeVisible();
-    await expect(learner.getByTestId("history-count")).toHaveText("0 of 0");
-    // the charts: the crew the story made is on its board, with the denominator printed
-    await learner.getByRole("link", { name: "Charts" }).click();
-    await learner.waitForURL(/tab=charts/);
-    /* ⚠ THE POINTS RULES ARE A DISCLOSURE (27 Sep 2026, the user: "fix the
-       rankings section properly. make it better") — they stood full-width
-       between the controls and the board on every load. Both ends: not on the
-       screen until pressed, there after. */
-    await expect(learner.getByText("How points work")).toHaveCount(0);
-    await learner.getByRole("button", { name: "Points", exact: true }).click();
-    await expect(learner.getByRole("button", { name: "Hide points", exact: true })).toBeVisible();
-    await learner.getByRole("link", { name: "Crews" }).click();
-    await learner.waitForURL(/seg=crew/);
-    /* the crew board scores what a crew IS — no wins, because nothing records a
-       score, and ⚠ no "Event entered · +3 pts" since 29 Sep 2026, which was the
-       first of its two rules. What is left is the roster, so a crew's points are
-       its confirmed members and the board is thinner than it was. */
+    /* ⚠ `/stats` IS STILL AN ADDRESS (Rule 14) and lands on your own record —
+       proved as a redirect, not assumed. */
+    await learner.waitForURL(new RegExp(`/person/${learnerId}/stats`));
+    await expect(learner.getByRole("heading", { name: learnerName })).toBeVisible();
+    /* the three sides, and A ZERO IS DRAWN (27 Sep 2026, the user: "show all
+       metrics for that particular profile type even if its 0") */
+    await expect(learner.getByLabel(/^Classes taken — 0 sessions/)).toBeVisible();
+    await expect(learner.getByLabel(/^Classes taught — 0 sessions/)).toBeVisible();
+    /* WHERE THEY STAND — a place is never printed without its denominator, and
+       "#0" is refused in words (Step 25's own rule, kept) */
+    const standings = learner.getByTestId("standing-card");
+    await expect(standings.first()).toBeVisible();
+    await expect(standings.first()).toContainText("Everywhere");
+    await expect(learner.getByText("How points work")).toBeVisible();
+    /* ⚠⚠ AND THE BOARD LINK IS GONE (29 Sep 2026). It opened
+       `/stats?tab=charts&seg=…`, and `/stats` redirects to the READER's own
+       stats — so on somebody else's record that button would have walked a
+       visitor to their own. Both ends: absent here, and the screen it opened
+       is absent too (the History link below). */
+    await expect(learner.getByRole("link", { name: /See the whole .* board/ })).toHaveCount(0);
+    await expect(learner.getByRole("link", { name: "History", exact: true })).toHaveCount(0);
+
+    /* ⚠ THE SAME SCREEN FOR SOMEBODY ELSE — which is the whole of the ask. The
+       trainer's record is read by the learner, and it carries THEIR rankings. */
+    await learner.goto(`/person/${trainerId}/stats`);
+    await expect(learner.getByRole("heading", { name: trainerName })).toBeVisible();
+    await expect(learner.getByTestId("standing-card").first()).toBeVisible();
+    await expect(learner.getByRole("link", { name: `Back to ${trainerName}` })).toBeVisible();
+
+    /* and a crew's own page ranks the crew, which is where the crew home's chip
+       points since the board went (29 Sep 2026) */
+    await learner.goto(`/crew/${crewId}/stats`);
+    await expect(learner.getByRole("heading", { name: crewName })).toBeVisible();
+    await expect(learner.getByTestId("standing-card").first()).toBeVisible();
+    /* the crew's points are its confirmed members — ⚠ no "Event entered · +3 pts"
+       since 29 Sep 2026, when events went */
     await expect(learner.getByText("Event entered", { exact: true })).toHaveCount(0);
     await expect(learner.getByText("Confirmed member", { exact: true })).toBeVisible();
-    const crewRow = learner.getByRole("link", { name: new RegExp(`^${crewName} — place \\d+ of \\d+$`) });
-    await expect(crewRow).toBeVisible();
-    await crewRow.click();
-    await learner.waitForURL(new RegExp(`/crew/${crewId}$`));
   });
 
   test("person pages: the doors that had nowhere to go", async () => {
@@ -2104,7 +2120,7 @@ test.describe.serial("DanceOS, end to end", () => {
     await expect(learner.getByLabel(/^Kathak — a style .+ dances$/)).toBeVisible();
     await expect(learner.getByRole("link", { name: "Instagram — @rheamoves" })).toHaveAttribute("href", "https://instagram.com/rheamoves");
   });
-  test("Home’s PassDeck: today’s sessions as swiped cards, with the pass and the invoice on the card", async () => {
+  test("Home’s PassDeck: today’s sessions as swiped cards, with the invoice on the card", async () => {
     // ---- parity slice H10: PassDeck 6863-7204 ----
     // Nothing the story books is today, so Home's deck has been honest and empty
     // all along. Put the class the learner booked on the clock — running right
@@ -2136,13 +2152,17 @@ test.describe.serial("DanceOS, end to end", () => {
     await expect(card.getByText("Booked", { exact: true })).toBeVisible();
     await expect(card.getByText("Live", { exact: true })).toBeVisible();
     await expect(card.getByText(/You.re booked/)).toBeVisible();
-    // the drawn code on the card opens the ticket — the same pass the class page keeps behind its poster
-    await card.getByRole("button", { name: `Show the entry code for ${classTitle}` }).click();
-    const passSheet = learner.getByRole("dialog", { name: "Class pass" });
-    await expect(passSheet.getByRole("img", { name: /^Entry code DOS-CL-\d{4}$/ })).toBeVisible();
-    await expect(passSheet.getByText("Scan this at the door.")).toBeVisible();
-    await passSheet.getByRole("button", { name: "Done" }).click();
-    await expect(passSheet).toHaveCount(0);
+    /* ⚠⚠ THE ENTRY-CODE TICKET IS GONE (29 Sep 2026, the user: "scan this at
+       door text not required as your personal qr code for user or artist
+       profile is being used to enter the classes"). The card drew a 54px QR of
+       `bookingCodeOf(…)` that opened a full-screen pass reading "Scan this at
+       the door." — and **no door in this app has ever read one**: the register's
+       scanner resolves a PERSON's profile link and `can_run_register_for_class`
+       decides. What survives is the string it encoded, which was always a
+       booking REFERENCE rather than a key, printed where it already was. */
+    await expect(learner.getByRole("button", { name: `Show the entry code for ${classTitle}` })).toHaveCount(0);
+    await expect(card.getByText(/^DOS-CL-\d{4}$/)).toBeVisible();
+    await expect(card.getByText("Your own profile QR is what gets you in.")).toBeVisible();
     // and the invoice, without leaving Home — a free trial prints Free
     await card.getByRole("button", { name: "Invoice" }).click();
     const invoice = learner.getByRole("dialog", { name: "Invoice" });
@@ -2284,26 +2304,30 @@ test.describe.serial("DanceOS, end to end", () => {
     await expect(learner.getByRole("button", { name: /see who/ })).toHaveCount(0);
 
     /* ⚠ THE HISTORY CHIP IS OFF THE CALENDAR (19 Sep 2026, the user: "Calendar —
-       remove History button"). The destination is untouched (Rule 14): the Stats
-       chip in the calendar's own hero opens the record, and History is a segment
-       of it — which is the one place a library of past sessions belongs. */
+       remove History button"). ⚠⚠ AND SINCE 29 Sep 2026 SO IS THE LIBRARY IT
+       OPENED: the two stats screens became one and `StatsScreen` went with it,
+       so `/stats?tab=history` lands on the record rather than a library. Both
+       ends, because a chip reappearing on the calendar is the regression and a
+       library reappearing is not what was asked for. */
     await learner.goto("/calendar");
     await expect(learner.getByRole("link", { name: "History" })).toHaveCount(0);
     await learner.goto("/stats?tab=history");
-    await expect(learner.getByTestId("history-count")).toBeVisible();
+    await learner.waitForURL(new RegExp(`/person/${learnerId}/stats`));
+    await expect(learner.getByTestId("standing-card").first()).toBeVisible();
 
-    /* ⚠ THE DOOR TO THE CREW BOARD IS THE STATS CHIP ON THE CREW'S OWN HOME.
-       It was "See crew ranking" under the BATTLE RECORD on the crew's Events
-       desk from 18 Sep 2026 until 29 Sep, when the battle record went with
-       events and took that desk with it. The destination is unchanged, which is
-       the point of this check: `/stats` survives as an address precisely
-       because a control that opens it does not know the viewer's id. */
+    /* ⚠⚠ THE STATS CHIP ON A CREW'S OWN HOME OPENS THAT CREW'S OWN STATS
+       (29 Sep 2026). It pointed at `/stats?tab=charts&seg=crew` — the crew
+       BOARD, drawn on the PERSON's stats screen — which is the studio chip's
+       own bug of 21 Sep in a second place: a chip on a crew's home opening a
+       page about everybody. With the boards gone that link would have walked
+       the leader to their own record. */
     await learner.goto(`/crews/${crewId}/manage`);
     const rankingBtn = learner.getByRole("link", { name: "Stats", exact: true });
-    await expect(rankingBtn).toHaveAttribute("href", "/stats?tab=charts&seg=crew");
+    await expect(rankingBtn).toHaveAttribute("href", `/crew/${crewId}/stats`);
     await rankingBtn.click();
-    await learner.waitForURL(/seg=crew/);
-    await expect(learner.getByRole("link", { name: new RegExp(`^${crewName} — place \\d+ of \\d+$`) })).toBeVisible();
+    await learner.waitForURL(new RegExp(`/crew/${crewId}/stats`));
+    await expect(learner.getByRole("heading", { name: crewName })).toBeVisible();
+    await expect(learner.getByTestId("standing-card").first()).toBeVisible();
 
     /* ⚠ THE RANK IS OFF BOTH SCREENS (19 Sep 2026 — "remove rank from profile
        tab", then "Remove rank from home"). Where you stand is the Stats chip's
@@ -2637,9 +2661,29 @@ test.describe.serial("DanceOS, end to end", () => {
        so what has been paid is visible without opening anything (20 Sep 2026) */
     await owner.reload();
     await expect(owner.getByText(/₹2,500 paid · 1 payment/).first()).toBeVisible({ timeout: 15_000 });
+
+    /* ⚠⚠ AND THE HISTORY IS A PAGE (29 Sep 2026, the user: "Team payment history
+       to be a button called History which should show all transactions with that
+       particular person on a different page"). The member sheet drew
+       `paidTo(user).slice(0, 6)` under a heading that counted ALL of them, so a
+       studio paying somebody monthly read twelve payments over six rows with no
+       way to reach the rest — and a sheet is the wrong shape for a ledger. Both
+       ends: the button is on the sheet, and the rows are on the page. */
     await owner.getByRole("button", { name: `Manage ${learnerName}` }).click();
-    await expect(memberSheet.getByText("September")).toBeVisible({ timeout: 15_000 });
-    await owner.reload();
+    await expect(memberSheet.getByText("September")).toHaveCount(0);
+    await memberSheet.getByRole("link", { name: `Payment history for ${learnerName}` }).click();
+    await owner.waitForURL(new RegExp(`/business/${tenantId}/staff/[0-9a-f-]+$`));
+    await expect(owner.getByRole("heading", { name: "Team" })).toBeVisible();
+    await expect(owner.getByText(learnerName).first()).toBeVisible();
+    await expect(owner.getByText("₹2,500").first()).toBeVisible();
+    await expect(owner.getByText("September")).toBeVisible();
+    /* ⚠ `record_team_payment` writes a payout with NO session lines ON PURPOSE
+       (19 Sep 2026, R35) — it is a salary, not a bill for sessions — so the page
+       says that rather than drawing an empty list under it. */
+    await expect(owner.getByText("Not against sessions — recorded as an amount.")).toBeVisible();
+    await owner.getByRole("link", { name: "Back to the team" }).click();
+    await owner.waitForURL(new RegExp(`/business/${tenantId}/staff$`));
+
     await owner.goto(`/business/${tenantId}/earnings`);
     await expect(owner.getByText("₹2,500").first()).toBeVisible({ timeout: 15_000 });
 

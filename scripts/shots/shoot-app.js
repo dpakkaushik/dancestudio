@@ -154,8 +154,8 @@ async function signUp(page, email) {
       ["discover", "/discover"],
       ["discover-classes", "/discover?tab=classes"],
       ["stats", "/stats"],
-      ["stats-history", "/stats?tab=history"],
-      ["stats-charts", "/stats?tab=charts&seg=artist"],
+      /* ⚠ the History and Charts tabs went with `StatsScreen` on 29 Sep 2026,
+         when the two stats screens became one — `/stats` is the whole of it */
       ["inbox", "/inbox"],
       ["notifications", "/notifications"],
       ["my-classes", "/my-classes"],

@@ -93,7 +93,6 @@ export function CrewPublicPage({
           testId="crew-public-hero"
           name={crew.name}
           grad={RG}
-          tint={RC}
           eyebrow="Crew"
           eyebrowSub={crew.memberNo ? <HeroId>{memberNoWords(crew.memberNo)}</HeroId> : null}
           verified={false}

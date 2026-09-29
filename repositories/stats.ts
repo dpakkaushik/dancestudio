@@ -54,7 +54,22 @@ interface ChartRawRow {
   population: number;
 }
 
-/** The signed-in person's record. */
+/* ⚠⚠ NO CALLER — 29 Sep 2026, AND KEPT ON PURPOSE.
+ *
+ *  `findMyStats`, `findMyHistory`, `findChart` and `findMyPlace` are the four
+ *  reads behind `StatsScreen`, which was deleted the day the two stats screens
+ *  became one (the user: "stats — should only have one view when looking at your
+ *  profile or someone else"). What went with it is the HISTORY LIBRARY and
+ *  browsing the four leaderboards; the user was shown that cost and chose it.
+ *
+ *  ⚠ DO NOT SWEEP THESE AS DEAD CODE. Every SQL function they call is live and
+ *  untouched (`my_dance_stats`, `my_session_history`, `dance_chart`,
+ *  `my_chart_place` — Step 25), so a board or a history screen is a SCREEN away
+ *  rather than a rebuild. The 28 Sep sweep's own finding applies: "an export
+ *  nothing calls is sometimes a feature nobody can reach", and these are that.
+ *  `findEntityChartRow` below IS called — by all three `/…/stats` pages. */
+
+/** The signed-in person's record. ⚠ no caller — see the note above. */
 export async function findMyStats(supabase: SupabaseClient): Promise<DanceStats> {
   const { data, error } = await supabase.rpc("my_dance_stats");
   if (error) {

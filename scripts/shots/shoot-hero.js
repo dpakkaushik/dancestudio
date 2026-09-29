@@ -1110,11 +1110,17 @@ const enterEdit = async (page) => {
       await me.waitForURL(/\/person\/[^/]+\/stats\?/, { timeout: 15_000 }).catch(() => {});
       const carried = new URL(me.url());
       check(carried.pathname === `/person/${userId}/stats` && carried.searchParams.get("tab") === "charts" && carried.searchParams.get("seg") === "crew", `/stats carries its whole query through the redirect (read ${carried.pathname}${carried.search})`);
-      /* and the screen it lands on builds its OWN links off the new address —
-         otherwise every tab press would be a round trip back through the
-         redirect to land where it already was */
-      const histHref = await me.getByRole("link", { name: "History" }).first().getAttribute("href").catch(() => "");
-      check(String(histHref).startsWith(`/person/${userId}/stats?`), `the screen's own tabs are built off the address it is read at (read ${histHref})`);
+      /* ⚠⚠ AND IT LANDS ON THE ONE STATS SCREEN (29 Sep 2026, the user: "stats —
+         should only have one view when looking at your profile or someone
+         else"). This asked for the screen's own History TAB and the tab strip
+         went with `StatsScreen`; the query is still carried (it costs a line,
+         and an old bookmark lands on a real record rather than a 404) and
+         nothing reads it. What is asserted is that the page under it is the
+         same one a visitor gets: a standing card, and no tab strip. */
+      const standings = await me.getByTestId("standing-card").count().catch(() => 0);
+      check(standings > 0, `the address lands on the one stats screen — ${standings} standing card(s)`);
+      const tabs = await me.getByRole("link", { name: "History", exact: true }).count().catch(() => 0);
+      check(tabs === 0, `and it has no tab strip — the History library went with the second screen (read ${tabs})`);
     } else {
       console.log("HEADER  the picture did not land in 25 s — is migration 20260915090000 on the database?");
       fail += 1;

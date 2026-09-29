@@ -106,11 +106,29 @@ export async function loadFollowingAction(): Promise<FollowListResult> {
     /* the same three kinds the person's own sheet lists, in the same order, so
        the two sheets cannot come to disagree about what "following" means.
        ⚠ The organizations segment was the fourth and went on 29 Sep 2026; the
-       `follows` rows naming one are the sweep's. */
+       `follows` rows naming one are the sweep's.
+
+       ⚠⚠ A BUSINESS ROW DREW AS INITIALS AND SAID ONLY ITS KIND (fixed 29 Sep
+       2026, the user: "fix follow following list when it opens shows inaccurate
+       details and counts"). `photoPath` was hard-coded null while the people and
+       crews on either side of it carried theirs, so a studio you follow was the
+       one row in the sheet with no face — the read never selected the column.
+       And the sub-line said "Studio" where a person's says their CITY, which is
+       both less informative and inconsistent: the kind is said with the place
+       now, the way every other list in this app says it. */
     const rows: FollowListResult["rows"] = [
       ...people.map((f) => ({ id: f.followId, name: f.name, sub: f.city, href: `/person/${f.userId}`, photoPath: f.avatarPath })),
-      ...tenants.map((t) => ({ id: t.followId, name: t.tenantName, sub: t.tenantType === "studio" ? "Studio" : "Artist", href: `/${t.tenantType === "studio" ? "studio" : "artist"}/${t.tenantId}`, photoPath: null })),
-      ...crews.map((c) => ({ id: c.followId, name: c.name, sub: "Crew", href: `/crew/${c.crewId}`, photoPath: c.photo })),
+      ...tenants.map((t) => {
+        const kind = t.tenantType === "studio" ? "Studio" : "Artist";
+        return {
+          id: t.followId,
+          name: t.tenantName,
+          sub: t.tenantCity ? `${kind} · ${t.tenantCity}` : kind,
+          href: `/${t.tenantType === "studio" ? "studio" : "artist"}/${t.tenantId}`,
+          photoPath: t.tenantPhotoPath,
+        };
+      }),
+      ...crews.map((c) => ({ id: c.followId, name: c.name, sub: c.city ? `Crew · ${c.city}` : "Crew", href: `/crew/${c.crewId}`, photoPath: c.photo })),
     ];
     return { error: null, rows };
   } catch {

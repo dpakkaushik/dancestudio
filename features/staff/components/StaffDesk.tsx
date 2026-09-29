@@ -953,21 +953,31 @@ export function StaffDesk({
                     })()}
                   </span>
                 </div>
-                {paidTo(openMember.userId).slice(0, 6).map((p) => (
-                  <div key={p.id} style={{ display: "flex", alignItems: "center", gap: 8, padding: "7px 0", borderBottom: `1.5px solid ${EL}` }}>
-                    <span style={{ flex: 1, minWidth: 0 }}>
-                      <span style={{ display: "block", fontSize: 12, fontWeight: 800 }}>{rupees(p.amountInr)}</span>
-                      <span style={{ display: "block", fontSize: 10, color: SUB, marginTop: 1 }}>
-                        {p.paidOn} · {p.method.replace("_", " ")}
-                        {p.sessionCount > 0 ? ` · ${p.sessionCount} ${p.sessionCount === 1 ? "session" : "sessions"}` : ""}
-                        {p.note ? ` · ${p.note}` : ""}
-                      </span>
-                    </span>
-                    <span style={{ flexShrink: 0, fontSize: 9, fontWeight: 900, padding: "3px 8px", borderRadius: 999, background: p.status === "done" ? "rgba(34,197,94,.16)" : EL, color: p.status === "done" ? "#22C55E" : SUB }}>
-                      {p.status === "done" ? "PAID" : p.status === "in_transit" ? "IN TRANSIT" : "ON HOLD"}
-                    </span>
-                  </div>
-                ))}
+                {/* ⚠⚠ THE LIST LEFT THIS SHEET FOR A PAGE (29 Sep 2026, the
+                    user: "Team payment history to be a button called History
+                    which should show all transactions with that particular
+                    person on a different page").
+                    It drew `slice(0, 6)` under a heading that counted ALL of
+                    them, so a studio paying somebody monthly read twelve
+                    payments over six rows with no way to reach the rest — and a
+                    sheet is 82vh of a phone with a form under it, which is the
+                    wrong shape for a ledger. ⚠ The button is drawn whether or
+                    not there is anything yet: "nothing paid yet" is a fact
+                    about this person, and a control that appears only once
+                    somebody has been paid is one nobody learns is there. */}
+                <Link
+                  href={`/business/${tenantId}/staff/${openMember.userId}`}
+                  aria-label={`Payment history for ${openMember.name}`}
+                  style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 4, padding: "11px 13px", borderRadius: 14, background: "var(--card)", border: `1.5px solid ${EL}`, color: "var(--text)", textDecoration: "none", fontWeight: 800, fontSize: 12.5 }}
+                >
+                  <span style={{ flex: 1, minWidth: 0 }}>History</span>
+                  <span style={{ flexShrink: 0, fontSize: 10.5, color: SUB }}>
+                    {paidTo(openMember.userId).length === 0
+                      ? "nothing yet"
+                      : `${paidTo(openMember.userId).length} ${paidTo(openMember.userId).length === 1 ? "payment" : "payments"}`}
+                  </span>
+                  <span aria-hidden="true" style={{ flexShrink: 0, color: SUB }}>›</span>
+                </Link>
                 <button
                   type="button"
                   /* ⚠ NOT "Pay {name}" — the ROW carries that name since 20 Sep

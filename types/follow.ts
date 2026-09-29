@@ -5,7 +5,10 @@ import type { TenantType } from "@/types/tenant";
  *  list is the business's own (prototype: DOS_FOLLOWERS pill on Discover 4277,
  *  the Followers figure and sheet on the profile 10708, 11336). */
 
-/** One business the signed-in person follows — the Following sheet's row. */
+/** One business the signed-in person follows — the Following sheet's row.
+ *  ⚠ `tenantPhotoPath` arrived 29 Sep 2026: the sheet drew a business as
+ *  initials for ever while the people and crews beside it wore their faces,
+ *  because the read never selected the column and the action hard-coded null. */
 export interface FollowedTenant {
   followId: string;
   tenantId: string;
@@ -13,6 +16,7 @@ export interface FollowedTenant {
   tenantName: string;
   tenantArea: string | null;
   tenantCity: string | null;
+  tenantPhotoPath: string | null;
   followedAt: string;
 }
 

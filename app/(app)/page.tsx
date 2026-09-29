@@ -194,7 +194,6 @@ export default async function HomePage() {
         <IdentityHero
           name={profile.fullName}
           grad={ring}
-          tint={ring[1]}
           /* ⚠ ONE MAP FOR BOTH SCREENS, AND IT IS THE TITLE-CASED ONE (19 Sep
              2026). Home read `KIND_WORD` ("Artist") and the Profile tab
              `KIND_BADGE` ("ARTIST"); `HERO_EYEBROW` uppercases either, so the
