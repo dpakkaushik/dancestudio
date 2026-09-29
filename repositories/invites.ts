@@ -213,4 +213,34 @@ export async function removeMember(
   }
 }
 
+/** WHO MAY REMOVE ANOTHER OWNER — the DATABASE's own rule, asked rather than
+ *  re-derived on the screen, so the button and the RPC cannot disagree. Null
+ *  when it cannot be read, which draws no button: a door that would be refused
+ *  is not offered (21 Sep's tile audit). */
+export async function findPrincipalOwner(supabase: SupabaseClient, businessId: string): Promise<string | null> {
+  const { data, error } = await supabase.rpc("business_principal_owner", { p_business_id: businessId });
+  if (error) {
+    return null;
+  }
+  return (data as string | null) ?? null;
+}
+
+/** ⚠ THE PRINCIPAL OWNER REMOVES ANOTHER OWNER (30 Sep 2026). A separate door
+ *  from `removeMember` because `remove_business_member` refuses every owner by
+ *  design and that refusal is KEPT — the new RPC demotes and then calls it, so
+ *  there is still exactly one removal path and the `class_people` cascade is
+ *  inherited rather than written twice. */
+export async function removeOwner(
+  supabase: SupabaseClient,
+  input: { businessId: string; userId: string }
+): Promise<void> {
+  const { error } = await supabase.rpc("remove_business_owner", {
+    p_business_id: input.businessId,
+    p_user_id: input.userId,
+  });
+  if (error) {
+    throw new Error(error.message);
+  }
+}
+
 export type { MemberRole };

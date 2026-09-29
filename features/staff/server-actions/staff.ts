@@ -10,6 +10,7 @@ import {
   invitePersonToBusiness,
   inviteToBusiness,
   removeMember,
+  removeOwner,
   revokeInvite,
   setMemberRole,
 } from "@/repositories/invites";
@@ -263,6 +264,30 @@ export async function removeMemberAction(input: {
   const supabase = await requireUser();
   try {
     await removeMember(supabase, parsed.data);
+    revalidateDesk(parsed.data.businessId);
+    return { error: null };
+  } catch (error: unknown) {
+    return { error: message(error, "Could not remove them") };
+  }
+}
+
+/** ⚠ THE PRINCIPAL OWNER REMOVES ANOTHER OWNER (30 Sep 2026, the user: "main
+ *  person who created the studio should be able to remove the other owner").
+ *  Its own action because it is its own door: `remove_business_member` still
+ *  refuses every owner, and the RPC behind this one demotes first and then calls
+ *  it. Every guard — not yourself, not the last owner, only the principal — is
+ *  the DATABASE's, and its words are what the desk prints on a refusal. */
+export async function removeOwnerAction(input: {
+  businessId: string;
+  userId: string;
+}): Promise<StaffActionResult> {
+  const parsed = memberSchema.safeParse(input);
+  if (!parsed.success) {
+    return { error: "Invalid member" };
+  }
+  const supabase = await requireUser();
+  try {
+    await removeOwner(supabase, parsed.data);
     revalidateDesk(parsed.data.businessId);
     return { error: null };
   } catch (error: unknown) {

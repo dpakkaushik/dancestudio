@@ -2,7 +2,81 @@
 
 ## LAST SESSION (30 Sep 2026) — replaced on every push (Rule 13)
 
-> ### THE STATS PAGE IS THREE COLUMNS AGAIN, ON EVERY PROFILE — AND FIVE MORE (30 Sep 2026) — no migration applied; ⚠ ONE WRITTEN AND HELD (NEXT TO DO #0b1)
+> ### THE FOUNDER CAN TAKE IT BACK — THREE MIGRATIONS APPLIED AND THE WORLD SWEPT (30 Sep 2026, latest) — ⚠ `20260929140000` · `20260929150000` · `20260930090000`, read back live **14/14**
+> The user, on the three things put to them with a recommendation each: **"All
+> three"** (apply the pending migrations), **"Leave it"** (the stats-history
+> migration — *"the columns are honest as they are"*) and **"Sweep it, kept set
+> first"**.
+> * ⚠⚠ **THE FOUNDER CONTROLS ARE LIVE, AND THE REMOVAL IS A DELEGATION RATHER
+>   THAN A SECOND REMOVAL PATH.** `remove_business_owner` demotes the owner to
+>   `staff` and then **calls `remove_business_member`, which is untouched** — so
+>   the `class_people` cascade, the audit columns and every future change to
+>   offboarding are inherited rather than re-typed. **That is the 28 Sep lesson
+>   applied rather than re-learnt**: five of six re-typed live function bodies
+>   were wrong that day, and the cheapest way not to differ from a function is
+>   not to write it twice.
+> * ⚠⚠ **AND THE PRINCIPAL IS THE OLDEST LIVE OWNER SEAT, NOT `businesses.created_by`**,
+>   which was the obvious choice and is the wrong one: `shift-studio-owner.js`
+>   moves a seat and leaves `created_by` alone, and the 26 Sep retirement
+>   soft-deleted the accounts that created half the studios on production — so
+>   `created_by` can name a deleted person, and keying on it would strand exactly
+>   the studios this fix exists for. `business_principal_owner` is one definer
+>   read, `order by created_at asc, id asc`.
+> * ⚠ **`reclaim_crew` IS THE SAME DOOR FOR A CREW**, and it is the honest form of
+>   an ask that could not be built as described (a crew cannot have two leaders —
+>   the bullet below). Only `crews.created_by`, never when they already lead it,
+>   and **they must still be a confirmed member** — a founder who LEFT does not
+>   get a key back. `MemberColumn` is where it sits, because that is where a
+>   founder who handed their crew over now finds it.
+> * **Dry run 27/27, rolled back** (incl. check 0, the Rule 18 probe): check 3
+>   reproduced the two-owner deadlock BEFORE, check 9 removed the owner AFTER,
+>   check 11 proved the seat took its `class_people` rows with it, **anon 39 → 39
+>   and policies 103 → 103**. ⚠ Two of its own checks were wrong first: one
+>   expected "they are not on your team" where the PRINCIPAL test correctly
+>   catches a seatless caller first, and one hit `invalid input syntax for type
+>   json` — **`''` is not "no claims", `'{}'` is** (the 19 Sep lesson, and it
+>   still cost a run).
+> * ✅ **APPLIED — `db-push -DryRun` listed exactly the three, the apply printed
+>   all three on the FIRST try, and they were read back off the LIVE CATALOG
+>   14/14** rather than off the apply's own output, with **PostgREST's cache
+>   reloaded** in the same script. Proofs `staff` + `crews` **2/2**.
+> * **THE LEFTOVER PILE WAS SWEPT FOR THE FIFTH TIME** — `--show-kept` printed
+>   the kept set by email first (33 profiles, 12 businesses), then **12 businesses
+>   and 0 profiles** soft-deleted, every one a `Mod Studio *` or `Panel Studio *`,
+>   and `ensure-test-phone-profiles` ran after. ⚠ **It regrows about one row per
+>   proof run**, which is why this is a standing chore rather than a one-off.
+> * ⚠ **AND THE STATS-HISTORY MIGRATION IS A DECISION NOW, NOT A BACKLOG ITEM.**
+>   The shape had already been chosen (*taught + assisted only* for a person, a
+>   studio's own sessions public, a crew's practices never) and the user chose to
+>   **leave it**: what somebody else's record shows is the figures and the whole
+>   Rankings board, with History saying whose it is. **No migration is owed.**
+> * ⚠⚠ **AND THE APP SIDE IS DRIVEN, BECAUSE BOTH HALVES ARE A CONTROL THAT IS
+>   DRAWN OR NOT DRAWN** — `scripts/shots/shoot-founder.js` (new, **20/20 first
+>   run**). The RPCs were proven by the dry run and typecheck, lint and the build
+>   are green whether the button appears for the right person, the wrong person or
+>   nobody, which is the 21 Sep tile audit's exact shape. It builds a studio with
+>   TWO REAL OWNERS through the real doors and asserts: the founder's desk opens
+>   the other owner's sheet and offers **Remove** (and **Pay**, which the same
+>   gate closed for every owner until today); the principal is offered no way to
+>   remove **themselves**; **the second owner's desk offers none at all**; the
+>   removal lands, the database keeps one owner seat and **the removed owner's
+>   switcher stops offering the studio** — which is what a seat on a business
+>   actually buys (R55). Then a crew handed over: it is in the founder's
+>   **You-are-in** column with the reason on the row, **Take it back** is offered
+>   to the founder and to NOBODY else — not even the person now leading it — and
+>   one press puts it back with **exactly one leader row** and the previous leader
+>   still a **member**: taking it back is not taking it away.
+> * ⚠ **AND EVERY ABSENCE IS ASSERTED WITH THE SHEET OPEN**, because "no Remove"
+>   and "the sheet never opened" are indistinguishable from outside — the 28 Sep
+>   lesson that a control which does not exist is a stall rather than a red.
+> * **Verified:** typecheck 0 · lint 0 · `next build` green · dry run **27/27
+>   rolled back** · applied first try · live read-back **14/14** · proofs `staff`
+>   + `crews` **2/2** · **`shoot-founder` 20/20** · **the whole e2e suite 56/56 in
+>   ONE run, 16.8 min on one worker, no red at any point** — on the bundle
+>   carrying the founder controls, against the migrated database and the swept
+>   world, which is what makes those sixteen minutes worth spending.
+>
+> ### THE STATS PAGE IS THREE COLUMNS AGAIN, ON EVERY PROFILE — AND FIVE MORE (30 Sep 2026, earlier) — no migration in this half
 > The user, opening on a defect: *"you messed up with the stats page it was
 > supposed to be the one with the graphs and number grid, history and rankings in
 > 3 columns for all profiles"*, then five more asks across the session and
@@ -79,7 +153,7 @@
 >   refuses anybody whose role is `leader`. What IS true is worse and is the real
 >   equivalent: **handing a crew over is a ONE-WAY DOOR** — the founder becomes a
 >   plain member, `is_crew_leader` answers false, and they can never take it
->   back. `reclaim_crew` is in the held migration.
+>   back. `reclaim_crew` closes it, and is applied (the block above).
 
 ## LAST SESSION (29 Sep 2026) — history
 
@@ -8398,15 +8472,29 @@ summary; the report has the evidence.
 
 ## NEXT TO DO — replaced on every push (Rule 13)
 
-0b1. **⚠⚠ ONE MIGRATION WRITTEN AND HELD — `20260930090000_the_founder_can_take_it_back.sql`.**
+0b1. **~~ONE MIGRATION WRITTEN AND HELD~~ — ✅ APPLIED 30 Sep 2026** on the user's
+   *"All three"*, after its list and its 27/27 dry run had been in front of them.
    ⚠ Rule 9: it widens who may remove whom. The user: *"main person who created
    the studio should be able to remove the other owner. same applies for crew
    when 2 or more crew leaders are there."*
-   ⚠⚠ **THREE FILES ARE PENDING NOW, NOT ONE** — this plus #0b0's two
-   (`20260929140000`, `20260929150000`) — and **`db-push` applies EVERY pending
-   file**. If only some are approved, move the others to the scratchpad and
-   re-run `-DryRun` until it lists exactly what was approved (the 27 Sep trap,
-   recorded twice).
+   **All THREE pending files went in together** — this plus #0b0's two
+   (`20260929140000`, `20260929150000`) — which is what the user chose when told
+   that **`db-push` applies EVERY pending file**. `db-push` listed exactly those
+   three and applied them on the FIRST try; **read back off the LIVE catalog
+   14/14** and **PostgREST's cache reloaded**, which an apply does not do.
+   ⚠ The read-back's own point: the two analytics tables have **RLS on and NOT
+   ONE POLICY**, **no grant to anon or authenticated**, all three tables EMPTY
+   (nothing writes to them yet, and that is said rather than implied), anon's
+   executable set still **39**, public policies still **103** — and
+   ⚠⚠ `remove_business_owner` **still delegates** while `remove_business_member`
+   is **untouched and still refuses every owner by itself**, which is the one
+   thing that could have silently drifted. Proofs after: **staff and crews 2/2**.
+   ✅ **AND THE APP SIDE WENT IN THE SAME PUSH, which is the half a migration
+   alone does not deliver**: the Team desk's Remove is drawn on an OWNER's row
+   for the PRINCIPAL owner alone (`findPrincipalOwner` asks the database, so the
+   button and the RPC cannot disagree; a null draws nothing), and the Crews hub's
+   "You are in" column carries **Take it back** on a crew you founded and handed
+   over, with the RPC's own refusal printed if it says no.
    * **WHAT IT FIXES.** `set_member_role` has handed the owner seat out from a
      studio's own desk since 20 Sep (R39) and `remove_business_member` refuses
      EVERY owner — one rule written when there could only be one. So a studio
@@ -8465,8 +8553,18 @@ summary; the report has the evidence.
      not offered on an owner's row and `reclaim_crew` has no control at all. The
      StaffDesk comment names the held migration where the button will go.
 
-0b0. **⚠⚠ TWO MIGRATIONS WRITTEN, DRY-RUN AND HELD FOR THE USER'S WORD — backlog
-   #5, the records a marketplace keeps and this one does not.** ⚠ Rule 9: both
+0b0. **~~TWO MIGRATIONS WRITTEN, DRY-RUN AND HELD~~ — ✅ BOTH APPLIED 30 Sep 2026**
+   with #0b1, on the user's *"All three"*. Read back off the live catalog (the
+   tally is in #0b1): the three tables exist, **RLS on and not one policy**,
+   **nothing granted to anon or authenticated**, all three EMPTY.
+   ⚠⚠ **NOTHING WRITES TO THEM YET, AND THAT IS THE WHOLE OF WHAT IS LEFT** —
+   the tables and the reads were the half that needed a migration; the
+   server-side recording on Discover and the search box, and
+   `/api/webhooks/resend` with its Svix signature check, are app code and are
+   their own slice. ⚠ And the email log does nothing at all until two things the
+   USER owns are done: a webhook at resend.com pointing at
+   `/api/webhooks/resend`, and its signing secret in env.
+   **The list as it was approved, kept for the record:** ⚠ Rule 9: both
    add tables, and one of them stores a search term, which is personal data.
    The user chose *"write and dry-run, show me the list"*, so here it is.
    * **`20260929140000_what_people_looked_for_and_what_they_were_shown.sql` —
@@ -9668,8 +9766,18 @@ summary; the report has the evidence.
    DELETE's status — one leaked studio per COMPLETED run since 10 Sep, not per
    killed run. **A cleanup that does not read its own status is not a cleanup.**
 
-0aa. **~~NINE PROOFS CANNOT RUN: THE 15-STUDIO CAP~~ — ✅ SWEPT 20 Sep 2026, AGAIN
-   22 Sep, AGAIN 29 Sep, AND ONCE MORE 29 Sep (FOURTH RUN)** — the last on the
+0aa. **~~NINE PROOFS CANNOT RUN: THE 15-STUDIO CAP~~ — SWEPT AGAIN 30 Sep 2026
+   (FIFTH RUN), on the user's *"Sweep it, kept set first"*: 12 businesses, 0
+   profiles**, after `--show-kept` had printed the kept set by email. ⚠ The 12
+   were every `Mod Studio *` and `Panel Studio *` — the rows that had put
+   **`Mod Studio ms7dca` at the top of Pune's Discover shelf**, which is how this
+   came up at all. What stays is exactly the genuine set: **33 profiles and 12
+   businesses** — the user's five real accounts, the demo world's six studios and
+   six artist pages, and the test-phone pair. `ensure-test-phone-profiles` ran
+   after, which is the standing rule. ⚠ **It regrows about one row per proof and
+   e2e run**, so this is a standing chore, not a one-off: 479 → 88 → 13 → 12 over
+   eight days.
+   **Earlier runs:** ✅ 20 Sep 2026, AGAIN 22 Sep, AGAIN 29 Sep, AND ONCE MORE 29 Sep** — the last on the
    user's *"fix all of them"*: **13 businesses, 1 profile, 4 seats and 2
    sessions**, after the kept set had been printed by email (33 profiles, 12
    businesses — the user's own accounts, the fifteen demo accounts, the
@@ -10501,8 +10609,34 @@ for the database schema. **The UI is not redesigned** — see Rule 2.
 
 ### Progress tracker — update after EVERY push (Rule 11)
 
-- **THE STATS PAGE IS THREE COLUMNS AGAIN, ON EVERY PROFILE — 30 Sep 2026, no
-  step number — no migration applied; ⚠ ONE WRITTEN AND HELD (#0b1).** The user:
+- **THE FOUNDER CAN TAKE IT BACK, AND THREE MIGRATIONS GO IN — 30 Sep 2026, no
+  step number ⚠ (Rule 9: who may remove an owner, and two tables with no policy
+  at all) — THREE MIGRATIONS APPLIED** (`20260929140000`, `20260929150000`,
+  `20260930090000`), on the user's **"All three"** after their list had been in
+  front of them. ⚠⚠ **`remove_business_owner` DEMOTES AND THEN DELEGATES** to the
+  untouched `remove_business_member`, so the `class_people` cascade is inherited
+  rather than re-typed — the 28 Sep lesson (five of six re-typed live bodies were
+  wrong) applied instead of re-learnt. ⚠⚠ **The principal is the OLDEST LIVE
+  OWNER SEAT, not `businesses.created_by`**, which can name a deleted account
+  after `shift-studio-owner.js` or the 26 Sep retirement — keying on it would
+  strand the very studios this fixes. `reclaim_crew` is the same door for a crew
+  and refuses a founder who has LEFT it. **Dry run 27/27 rolled back** (check 3
+  reproduced the deadlock BEFORE, check 9 removed the owner AFTER, check 11 proved
+  the seat took its claims, anon 39 → 39, policies 103 → 103) · `db-push -DryRun`
+  listed exactly the three · applied first try · **read back off the LIVE catalog
+  14/14** with PostgREST's cache reloaded · proofs `staff` + `crews` 2/2 ·
+  typecheck 0 · lint 0 · a new **`shoot-founder` 20/20** driving both doors in a
+  browser (two real owners, Remove offered to the principal and to NOBODY else,
+  the switcher losing the studio; a crew handed over, taken back, one leader row
+  and the previous leader still a member) · **the whole e2e suite 56/56 in ONE
+  run, 16.8 min on one worker, no red at any point**, on the migrated database and
+  the swept world. **And the leftover pile was swept for the fifth time** —
+  the kept set printed by email first (33 profiles, 12 businesses), then 12
+  businesses and 0 profiles soft-deleted, `ensure-test-phone-profiles` after.
+  ⚠ The stats-history migration is now a **decision** — the user chose to leave
+  it, so nothing is owed there.
+- **THE STATS PAGE IS THREE COLUMNS AGAIN, ON EVERY PROFILE — 30 Sep 2026,
+  earlier, no step number — no migration in this half.** The user:
   *"you messed up with the stats page — it was supposed to be the one with the
   graphs and number grid, history and rankings in 3 columns for all profiles."*
   ⚠⚠ **C86 collapsed the two stats screens the wrong way round**: the ask had
@@ -10525,7 +10659,7 @@ for the database schema. **The UI is not redesigned** — see Rule 2.
   block was an app-side gate over a rule that does not exist. ⚠ **One ask could
   not be built as described and is corrected rather than reinterpreted: a crew
   cannot have two leaders** — the real defect is that handing one over is a
-  ONE-WAY door, and `reclaim_crew` is in the held migration. **typecheck 0 ·
+  ONE-WAY door, closed by `reclaim_crew` in the bullet above. **typecheck 0 ·
   lint 0 · build green · the happy path 19/19 in ONE run (13.3 min) and the
   other 37 specs (5.8 min) — all 56 on the same bundle.**
 - **A SEAT PAID WITH A PASS SAYS SO, AND TWO MIGRATIONS ARE HELD — 29 Sep 2026,
@@ -15481,7 +15615,7 @@ nothing to lift.
 | Gap | Prototype ref | Closes with |
 |-----|--------------|-------------|
 | ~~**THE HISTORY LIBRARY AND THE FOUR LEADERBOARDS ARE NOT REACHABLE**~~ — ✅ **CLOSED 30 Sep 2026, AND THE ROW LASTED ONE DAY.** It was written on 29 Sep when C86 deleted `StatsScreen`, and it said the thing that turned out to matter: *"a board or a history screen is a SCREEN away rather than a rebuild"*, which is exactly what it cost to put them back — the four reads were kept and marked `⚠ NO CALLER` for this reason and every one of them has a caller again. ⚠ **The lesson is the 28 Sep sweep's own, paid off twice in two days: "an export nothing calls is sometimes a feature nobody can reach."** Keeping them is what made the restore a re-wire rather than a rewrite | S_profiletab 9708, 9610 | closed |
-| **The three-column restore, what it LEAVES (30 Sep 2026):** ⚠⚠ **the graphs, the number grid's LISTS and the whole History column are the CALLER's own** — `my_session_history` and `my_dance_stats` take no `p_user_id` by Step 25's design and there is no per-studio or per-crew equivalent at all, so on anybody else's record those columns say which read is missing rather than drawing an empty shelf. **The migration that closes it is #0b1's sibling and is NOT WRITTEN**; the user has already chosen its shape — *taught + assisted only* for a person (their teaching is already public through `person_teaches_at` and on class pages; the classes they TOOK stay theirs, because that is a movement log), a studio's own sessions public (they are published classes), and ⚠ a crew's practices NEVER (R53: no anon policy, no anon grant — a rehearsal schedule is the crew's own business). ⚠ **A studio's and a crew's Record is its BOARD ROW**, which is thinner than a person's three sides and is thin honestly rather than padded — a crew's is one term since the events removal took "Event entered · +3 pts". ⚠ **`stats.artists` is hard-coded 0 by `publicPerson.ts`** because `person_dance_stats` returns no such column, which is why "Assisted for" / "Trained under" are LEFT OUT of somebody else's grid rather than drawn as zeros. ⚠ **No shoot script drives the three columns for a SIGNED-IN reader** — the happy path does, and the live probe covers a stranger | S_profiletab 9862, 9708, 9610 | one migration, when the user says go |
+| **The three-column restore, what it LEAVES (30 Sep 2026):** ⚠⚠ **the graphs, the number grid's LISTS and the whole History column are the CALLER's own** — `my_session_history` and `my_dance_stats` take no `p_user_id` by Step 25's design and there is no per-studio or per-crew equivalent at all, so on anybody else's record those columns say which read is missing rather than drawing an empty shelf. ⚠⚠ **AND THIS IS A DECISION NOW, NOT A PENDING ITEM (30 Sep 2026): the user chose to LEAVE IT** — *"the columns are honest as they are"* — having been shown the shape they had already picked (*taught + assisted only* for a person, since their teaching is already public through `person_teaches_at` and on class pages while the classes they TOOK are a movement log; a studio's own sessions public, being published classes; and ⚠ a crew's practices NEVER, R53). **So no migration is owed here.** What somebody else's record shows is the figures and the full Rankings board, with History saying whose it is — and the day that stops being enough, the shape is already decided and the reads are named above. ⚠ **A studio's and a crew's Record is its BOARD ROW**, which is thinner than a person's three sides and is thin honestly rather than padded — a crew's is one term since the events removal took "Event entered · +3 pts". ⚠ **`stats.artists` is hard-coded 0 by `publicPerson.ts`** because `person_dance_stats` returns no such column, which is why "Assisted for" / "Trained under" are LEFT OUT of somebody else's grid rather than drawn as zeros. ⚠ **No shoot script drives the three columns for a SIGNED-IN reader** — the happy path does, and the live probe covers a stranger | S_profiletab 9862, 9708, 9610 | one migration, when the user says go |
 | **The two-column hubs and the Practice tile, what they leave (30 Sep 2026):** ⚠ **`SegmentedPanels` mounts only the shown panel**, so anything in the second column is not in the DOM until it is asked for — which made `shoot-practice` stale for a day when Practice became a column, and cost `shoot-seats` a re-cut here. **Any check that reads a second column must carry its `?show=`.** ⚠ **A studio's hub has no third column for taught-at**: it rides in "Where you learned" under its own head, so the pill's count is both lists and the label names one of them. ⚠ **`/crews?show=practices` is a dead parameter now** — it lands on the Yours column rather than 404ing, which is Rule 14's spirit, and nothing redirects it to `/practice`. ⚠ **Practice's repaint moved the DESK's hero and the calendar's practice rows too**, which is correct (a tile and the desk it opens read one vocabulary) and is the widest blast radius a colour change has had here | — | a redirect if anybody misses it; a third column only if a studio asks |
 | **The six-item batch, what it left (29 Sep 2026):** ⚠ **The follow COUNTS and the follow LISTS now agree and the stale ROWS are still there** — 8 naming a deleted business and 6 by a deleted account — so a sweep of those 14 is available and was deliberately not taken (a follow is a record of something that happened). ⚠ **`findMyFollowing` drops `type = 'org'` rows and there are none**, so that guard protects the shape rather than data; the 20 org business tombstones would otherwise have drawn as "Artist" and opened nothing. ⚠ **A followed business's row still has no distance, no follower count and no verified tick**, which the Discover card has — the sheet is a list of names and the card is a card. ⚠ **The team History page has no CSV and no paging** (4,000-row guard, reported); ⚠ it cannot VOID a payment — that is the Earnings desk's, so correcting a mistake is still two screens away. ⚠ **`PersonPayments` is the OWNER's alone and a manager reaching it is redirected with no sentence**, the same silent bounce the Earnings tile has. ⚠ **The class SHARE block is published-only**, so a draft's owner has no code to hand anybody — right, and it means the one person who can see a draft cannot show it. ⚠ **Nothing measures the hero's contrast without the wash**: `shoot-invert` reads the page's three tiers and the panel, not the hero, and the eyebrow moved from white-on-tint to `SUB`-on-page, which the tier check covers by construction rather than by a measurement of that element | — | a sweep, a CSV, a void, a sentence — each when somebody asks |
 | **Organizations and events, what their removal leaves (29 Sep 2026):** ⚠⚠ **THE MIGRATION AND THE SWEEP ARE HELD** (#0ay), so until they run the DATABASE still offers every door the app stopped drawing: `save_event`, `book_event`, `ask_organization_member`, `public_organization`, `verify_business_gstin` and the rest are all still callable straight through PostgREST by anybody with a token, and the twenty live org businesses are still `org_is_public`. **What changed today is that the app stops handing it over** — which is the same sentence R44 and R55 each had to write, and it is the weakest of the three states this repo recognises. ⚠ **Nine proofs and both e2e specs now assert the ABSENCE of a feature the database still has**, so they are red until the apply and are deliberately not run. ⚠ **The four event tables, `orders.event_id`/`event_booking_id` and `apply_captured_payment`'s event branch stay for ever**, because four paid orders name them — so a reader of the schema will find an events model with no way to reach it, which is why each of them carries a tombstone comment saying so. ⚠ **`admin_dashboard` still returns `events_live` and `event_bookings_week`** and nothing draws them; **`plan_catalog` still holds `org_monthly`** and six granted mandates name it. ⚠ **A crew's public page has a roster and nothing under it** (the battle record was counted from event entries), and **the demo world lost its one `pending_payment` booking that was never captured** — the only row in it showing that state. ⚠ And **`event_bookings.crew_id` / `partner_id` exist with nothing that can write them**: Step 22 paid two of Step 21's debts and both are now unreachable | — | #0ay; the schema tombstones are permanent by design |

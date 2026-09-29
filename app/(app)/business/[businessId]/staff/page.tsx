@@ -4,6 +4,7 @@ import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { findPendingInvites } from "@/repositories/invites";
 import { findBusinessPayLedger } from "@/repositories/payouts";
 import { findMyMemberships, findBusinessTeam, runsTheBusiness } from "@/repositories/businesses";
+import { findPrincipalOwner } from "@/repositories/invites";
 
 /* the clock, stamped once outside render (react-hooks/purity) */
 const stampNowIso = (): string => new Date().toISOString();
@@ -35,7 +36,7 @@ export default async function BusinessStaffPage({
   const business = seat.business;
   const myRole = seat.memberRole;
 
-  const [team, invites, ledger] = await Promise.all([
+  const [team, invites, ledger, principalOwnerId] = await Promise.all([
     findBusinessTeam(supabase, businessId),
     findPendingInvites(supabase, businessId),
     /* WHAT THIS BUSINESS HAS PAID ITS PEOPLE (19 Sep 2026, the user: "able to pay
@@ -44,6 +45,12 @@ export default async function BusinessStaffPage({
        than a query per person opened. It fails soft: a Team desk must not break
        over a money read. */
     findBusinessPayLedger(supabase, businessId, stampNowIso()).catch(() => null),
+    /* ⚠ WHO MAY REMOVE ANOTHER OWNER (30 Sep 2026) — the oldest live owner seat,
+       asked of the database so the button and `remove_business_owner` cannot
+       disagree. Rides the batch this desk already awaited, so it costs one round
+       trip in parallel rather than one in series, and it fails soft: a Team desk
+       must not break over it, and a null simply draws no button. */
+    findPrincipalOwner(supabase, businessId).catch(() => null),
   ]);
 
   return (
@@ -57,6 +64,7 @@ export default async function BusinessStaffPage({
       // asking and removing are the owner's alone (§10.9); everyone else reads
       isOwner={myRole === "owner"}
       meUserId={user.id}
+      principalOwnerId={principalOwnerId}
     />
   );
 }

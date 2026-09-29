@@ -15,6 +15,7 @@ import {
   inviteToBusinessAction,
   payTeamMemberAction,
   removeMemberAction,
+  removeOwnerAction,
   reorderMembersAction,
   revokeInviteAction,
   setMemberPowersAction,
@@ -155,6 +156,7 @@ export function StaffDesk({
   payments = [],
   isOwner,
   meUserId,
+  principalOwnerId = null,
 }: {
   businessId: string;
   businessName: string;
@@ -166,6 +168,10 @@ export function StaffDesk({
   payments?: PayoutRecord[];
   isOwner: boolean;
   meUserId: string;
+  /** ⚠ THE OLDEST LIVE OWNER SEAT, READ FROM THE DATABASE (30 Sep 2026) — the
+   *  only person who may remove ANOTHER owner. Null when it could not be read,
+   *  which simply draws no button rather than guessing. */
+  principalOwnerId?: string | null;
 }) {
   /** the invite link is this deployment's own /join/{code} */
   const origin = useSyncExternalStore(subscribeNever, readOrigin, readServerOrigin);
@@ -1005,26 +1011,34 @@ export function StaffDesk({
             ) : null}
 
             <div style={{ display: "flex", gap: 8, marginTop: 14 }}>
-              {/* ⚠ NOT OFFERED FOR AN OWNER, BECAUSE THE DATABASE REFUSES IT
-                  (`remove_business_member`: "an owner cannot be removed from
-                  their own business" — one rule covering "not yourself" and
-                  "never the last owner"). A door that would be refused is not
-                  offered (21 Sep's tile audit).
-                  ⚠⚠ THIS IS THE HALF THE USER ASKED FOR AND IT NEEDS A MIGRATION
-                  (29 Sep 2026: *"main person who created the studio should be
-                  able to remove the other owner"*). With two owners neither can
-                  remove the other today, so a studio that hands out a second
-                  owner seat can never take it back — the migration that lets the
-                  FOUNDING owner do it is written and held for the user's word. */}
-              {openMember.role !== "owner" ? (
+              {/* ⚠⚠ AN OWNER IS REMOVED BY THE PRINCIPAL OWNER, THROUGH A
+                  DIFFERENT DOOR (30 Sep 2026, the user: *"main person who created
+                  the studio should be able to remove the other owner"*).
+                  `remove_business_member` still refuses EVERY owner — that
+                  refusal is what stops a plain owner-on-owner removal, and it is
+                  kept — so an owner row calls `remove_business_owner`, which
+                  demotes and then calls it. One removal path either way.
+                  ⚠ WHO THE PRINCIPAL IS COMES FROM THE DATABASE
+                  (`business_principal_owner`, the oldest live owner seat), not
+                  from anything derived here, so this button and the RPC cannot
+                  disagree — and it is not drawn for anybody else, because a door
+                  that would be refused is not offered (21 Sep's tile audit).
+                  ⚠ Never on your OWN row: the RPC refuses that too, and the
+                  desk's own rule has always been that a row offers only what it
+                  can actually change. */}
+              {openMember.role !== "owner" || (principalOwnerId === meUserId && openMember.userId !== meUserId) ? (
               <span
                 role="button"
                 tabIndex={0}
                 onKeyDown={dosKey}
                 aria-label={`Remove ${openMember.name} from the team`}
                 onClick={async () => {
+                  const owner = openMember.role === "owner";
                   const done = await run(
-                    () => removeMemberAction({ businessId, userId: openMember.userId }),
+                    () =>
+                      owner
+                        ? removeOwnerAction({ businessId, userId: openMember.userId })
+                        : removeMemberAction({ businessId, userId: openMember.userId }),
                     `${openMember.name} taken off the team`
                   );
                   if (done) setOpenMember(null);

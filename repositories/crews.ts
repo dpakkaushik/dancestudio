@@ -142,12 +142,18 @@ export async function findMyLedCrews(supabase: SupabaseClient): Promise<CrewSumm
 
 /** The crews the signed-in person is merely IN (confirmed, not leading) —
  *  the hub's second list. */
-export async function findMyMemberCrews(supabase: SupabaseClient): Promise<Array<CrewSummary & { since: string }>> {
+export async function findMyMemberCrews(supabase: SupabaseClient): Promise<Array<CrewSummary & { since: string; foundedByMe: boolean }>> {
   const me = await currentUserId(supabase);
   if (!me) return [];
   const { data, error } = await supabase
     .from("crew_members")
-    .select(`created_at, role, crews (${CREW_COLUMNS}, deleted_at)`)
+    /* ⚠ `created_by` IS ASKED FOR HERE AND NOT ADDED TO `CREW_COLUMNS`
+       (30 Sep 2026). That constant feeds the PUBLIC crew reads too, and a
+       founder's user id is not something a crew's page needs to hand out —
+       narrower is the honest default, even though RLS already admits the whole
+       row to anybody who can read the crew, so this widens no policy. It is
+       read on this ONE screen, for the one control it decides. */
+    .select(`created_at, role, crews (${CREW_COLUMNS}, created_by, deleted_at)`)
     .eq("user_id", me)
     .eq("status", "confirmed")
     .neq("role", "leader")
@@ -157,14 +163,26 @@ export async function findMyMemberCrews(supabase: SupabaseClient): Promise<Array
   if (error) {
     throw new Error(`crews.findMyMember failed: ${error.message}`);
   }
-  const rows = ((data ?? []) as unknown as Array<{ created_at: string; crews: (CrewRow & { deleted_at: string | null }) | null }>).filter(
+  const rows = ((data ?? []) as unknown as Array<{ created_at: string; crews: (CrewRow & { created_by: string | null; deleted_at: string | null }) | null }>).filter(
     (r) => r.crews && !r.crews.deleted_at
   );
   const crews = await withCounts(
     supabase,
     rows.map((r) => r.crews!)
   );
-  return crews.map((c, i) => ({ ...c, since: rows[i].created_at }));
+  /* ⚠ `foundedByMe` rather than the id itself: the screen needs to know whether
+     to draw one control, not who the founder is, and handing a user id to a
+     component that has no other use for it invites a second use later. */
+  return crews.map((c, i) => ({ ...c, since: rows[i].created_at, foundedByMe: rows[i].crews!.created_by === me }));
+}
+
+/** ⚠ THE FOUNDER TAKES THE CREW BACK (30 Sep 2026) — the other end of "Make
+ *  leader", which was a one-way door. Every guard is `reclaim_crew`'s own. */
+export async function reclaimCrew(supabase: SupabaseClient, crewId: string): Promise<void> {
+  const { error } = await supabase.rpc("reclaim_crew", { p_crew_id: crewId });
+  if (error) {
+    throw new Error(error.message);
+  }
 }
 
 /** Discover's Crews tab: live crews in a city, newest first. */

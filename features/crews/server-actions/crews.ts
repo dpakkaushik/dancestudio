@@ -7,6 +7,7 @@ import { createSupabaseServerClient } from "@/lib/supabase/server";
 import {
   askCrewMember,
   createCrew,
+  reclaimCrew,
   removeCrewMember,
   reorderCrewMembers,
   respondToCrewAsk,
@@ -203,6 +204,32 @@ export async function removeCrewMemberAction(input: { memberId: string; crewId?:
     return { error: null };
   } catch (error: unknown) {
     return { error: error instanceof Error ? error.message : "Could not remove them" };
+  }
+}
+
+/** ⚠⚠ THE FOUNDER TAKES THE CREW BACK (30 Sep 2026).
+ *
+ *  "Make leader" hands a crew over — `set_crew_member_role` demotes the
+ *  incumbent and moves `crews.leader_id` in the same statement — and until now
+ *  that was a ONE-WAY DOOR: the founder became a plain member, `is_crew_leader`
+ *  answered false for them, and they could not take it back, remove the new
+ *  leader, or hand it on. ⚠ The user asked for this as "when 2 or more crew
+ *  leaders are there", and a crew CANNOT have two; this is the same deadlock in
+ *  the shape the database actually has.
+ *
+ *  Every guard is the RPC's — only `crews.created_by`, never when they already
+ *  lead it, and they must still be a confirmed member — and its words are what
+ *  the screen prints on a refusal. */
+export async function reclaimCrewAction(input: { crewId: string }): Promise<CrewActionResult> {
+  const parsed = z.object({ crewId: uuid }).safeParse(input);
+  if (!parsed.success) return { error: "Invalid request" };
+  const supabase = await requireUser();
+  try {
+    await reclaimCrew(supabase, parsed.data.crewId);
+    revalidateCrews(parsed.data.crewId);
+    return { error: null };
+  } catch (error: unknown) {
+    return { error: error instanceof Error ? error.message : "Could not take the crew back" };
   }
 }
 

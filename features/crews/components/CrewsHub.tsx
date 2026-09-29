@@ -4,6 +4,7 @@ import { CREW_TINT, type CrewSummary } from "@/types/crew";
 import { DeskAddButton } from "@/features/settings/components/settings-kit";
 import { SegmentedPanels } from "@/features/shell/components/SegmentedNav";
 import { CrewI, dosToolPaint } from "./crew-kit";
+import { ReclaimCrewButton } from "./ReclaimCrewButton";
 
 /** The Crews hub — prototype S_bizhub with kind="crews" (2585-2691): TWO LISTS,
  *  BECAUSE THERE ARE TWO RELATIONSHIPS. "A crew you lead and a crew you dance in
@@ -54,12 +55,24 @@ function LedColumn({ led }: { led: CrewSummary[] }) {
   );
 }
 
-/** THE CREWS YOU DANCE IN — somebody else's to run, yours to be on. */
-function MemberColumn({ member }: { member: Array<CrewSummary & { since: string }> }) {
+/** THE CREWS YOU DANCE IN — somebody else's to run, yours to be on.
+ *
+ *  ⚠ …EXCEPT ONE: a crew you FOUNDED and handed over is in this column, because
+ *  you are a member of it now. That is where "Take it back" belongs, and it is
+ *  the only place a founder can reach it (30 Sep 2026). */
+function MemberColumn({ member }: { member: Array<CrewSummary & { since: string; foundedByMe: boolean }> }) {
   return member.length ? (
     <>
       {member.map((c) => (
-        <Row key={c.id} crew={c} own={false} sub={`${c.style} · ${c.city} · member since ${sinceWords(c.since)}`} />
+        <div key={c.id}>
+          <Row crew={c} own={false} sub={`${c.style} · ${c.city} · member since ${sinceWords(c.since)}`} />
+          {c.foundedByMe ? (
+            <div style={{ margin: "-4px 2px 12px" }}>
+              <div style={{ fontSize: 10.5, color: SUB, marginBottom: 2 }}>You started this crew and handed it over.</div>
+              <ReclaimCrewButton crewId={c.id} crewName={c.name} />
+            </div>
+          ) : null}
+        </div>
       ))}
     </>
   ) : (
@@ -73,7 +86,7 @@ export function CrewsHub({
   show = "led",
 }: {
   led: CrewSummary[];
-  member: Array<CrewSummary & { since: string }>;
+  member: Array<CrewSummary & { since: string; foundedByMe: boolean }>;
   /** ⚠⚠ TWO COLUMNS, AND THEY ARE THE TWO RELATIONSHIPS (29 Sep 2026, the user:
    *  *"crew tab should have 2 colums for where you have created the crew and
    *  where you are a part of in the other column"*).
