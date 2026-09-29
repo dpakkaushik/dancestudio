@@ -273,6 +273,55 @@ const valueOf = (page, label) => page.getByLabel(label).inputValue();
     const strangerAtt = await rows(owner.h, `attendance?class_id=eq.${cls.id}&user_id=eq.${stranger.id}&deleted_at=is.null&select=id`);
     check(strangerAtt.length === 1, `and they are on the register in the same press (found ${strangerAtt.length})`);
 
+    /* ── 3b. THE WALK-IN WITH NO ACCOUNT AT ALL (29 Sep 2026, shape 2) ───────
+       The scanner can do nothing for somebody off the street — there is no code
+       to scan — so the register asks for a name. */
+    const walkName = `Walk In ${stamp}`;
+    const nameField = page.getByTestId("walk-in-name");
+    await nameField.waitFor({ timeout: 20000 });
+    check(
+      (await page.getByTestId("walk-in-add").getAttribute("aria-label")) === "Type a name first",
+      "⚠ the Add button NAMES the missing answer while the field is empty — this app's own form grammar"
+    );
+    await nameField.fill(walkName);
+    await page.getByTestId("walk-in-add").click();
+    await page.getByText(`${walkName} is in`, { exact: false }).waitFor({ timeout: 20000 });
+    check(true, "⚠⚠ somebody with NO DanceOS account is recorded at the door by name");
+
+    /* the database's own answer, not the screen's */
+    const wRow = await rows(
+      owner.h,
+      `class_bookings?class_id=eq.${cls.id}&attendee_name=eq.${encodeURIComponent(walkName)}&deleted_at=is.null&select=id,status,user_id,attendee_name,created_by`
+    );
+    check(wRow.length === 1, `the walk-in holds exactly one seat (found ${wRow.length})`);
+    check(wRow[0] && wRow[0].user_id === null, "⚠ and it names NO PERSON — the column is nullable now");
+    check(wRow[0] && wRow[0].attendee_name === walkName, "the name is on the booking, which is the one place it lives");
+    check(wRow[0] && wRow[0].created_by === owner.id, "and the row records who opened the door");
+    const wAtt = await rows(owner.h, `attendance?class_booking_id=eq.${wRow[0].id}&deleted_at=is.null&select=id,user_id`);
+    check(wAtt.length === 1, "they are checked in in the same press");
+    check(wAtt[0] && wAtt[0].user_id === null, "⚠ and the attendance row names nobody either");
+
+    /* the register draws them, and NOT as a door to /person/null */
+    await page.reload({ waitUntil: "networkidle" });
+    await page.getByRole("button", { name: "Attendance", exact: true }).click();
+    await page.getByText(walkName, { exact: false }).first().waitFor({ timeout: 20000 });
+    check(
+      (await page.locator('a[href="/person/null"]').count()) === 0,
+      "⚠⚠ and the row is NOT a link to /person/null — a template literal swallows a null and nothing typed can see it"
+    );
+
+    /* ⚠ AND IT CAN BE TAKEN BACK OFF, which a real learner's seat cannot be:
+       they cancel their own, and a walk-in has no account to do it. */
+    await page.getByRole("button", { name: `Remove ${walkName} from the register` }).click();
+    await page.getByText("removed", { exact: false }).first().waitFor({ timeout: 20000 });
+    const wGone = await rows(
+      owner.h,
+      `class_bookings?id=eq.${wRow[0].id}&deleted_at=is.null&select=id`
+    );
+    check(wGone.length === 0, "the walk-in's seat is released");
+    const wAttGone = await rows(owner.h, `attendance?class_booking_id=eq.${wRow[0].id}&deleted_at=is.null&select=id`);
+    check(wAttGone.length === 0, "⚠ and the attendance row goes with it — the register stops counting somebody who was never here");
+
     /* ── 4. THE NAME EVERY DRILL PAGE LOST ──────────────────────────────────── */
     const NAMED = [
       ["/notifications", "notifications"],

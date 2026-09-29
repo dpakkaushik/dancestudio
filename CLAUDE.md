@@ -2,7 +2,108 @@
 
 ## LAST SESSION (29 Sep 2026) — replaced on every push (Rule 13)
 
-> ### A CLASS HAS A DOOR (29 Sep 2026, latest) — ⚠ ONE MIGRATION APPLIED (`20260929120000`), dry run **24/24** rolled back first, read back live **14/14**
+> ### A WALK-IN HAS A NAME, AND TWO "LEFTOVERS" THAT WERE NOT (29 Sep 2026, latest) — ⚠ ONE MIGRATION APPLIED (`20260929130000`), dry run **32/32** rolled back first, read back live **17/17**
+> The user: *"fix all and push to live"*, then *"ask me if something needs my
+> input"* — so what "all" covered was ASKED rather than guessed, and they chose
+> **everything**: shape 2 of the class door, plus the four small leftovers the
+> previous block named.
+> * ⚠⚠ **TWO OF THE FOUR "LEFTOVERS" WERE NOT DEFECTS, AND ONLY CHECKING SHOWED
+>   IT.** *"`PersonPayments` is the owner's alone and a manager reaching it is
+>   redirected with no sentence"* — the History link lives inside
+>   `{isOwner ? …}` on the Team desk, so **a manager never sees the door**; what
+>   is left is a typed URL, which is what seventeen other desks do, and the app's
+>   own rule is that a URL is a request and never an authority. Adding a sentence
+>   would have made ONE page inconsistent with all of them. And *"a followed
+>   business's row has no follower count or tick"* carries its own reason in the
+>   same line — *the sheet is a list of names and the card is a card*. **Both
+>   rows are corrected rather than acted on**: this is the 21 Sep lesson
+>   (*"reading a superseded migration is how a correct line gets 'fixed'"*) and
+>   the #0al lesson, met a third time in a week.
+> * **THE TEAM HISTORY PAGE EXPORTS.** Invoices and the month statements have had
+>   a real CSV since 29 Aug and this ledger had none, so a studio reconciling a
+>   year of somebody's pay was reading twelve cards on a phone. ⚠ **One line per
+>   SESSION, not per payment**, because this is the only screen that knows WHICH
+>   sessions a payment covered — and a `record_team_payment` row carries none by
+>   design (R35), so it writes one row with the session columns EMPTY rather than
+>   inventing them. ⚠ A client child on a server page, so the ledger's markup is
+>   not shipped twice.
+> * ⚠⚠ **AND `shoot-invert` MEASURES THE HERO AT LAST, WHICH IS THE 27 Sep
+>   FINDING REPEATING.** When `heroWash` went (C83) the eyebrow and the account
+>   number moved from white-on-tint to `--sub` and `--muted` on the page's own
+>   ground — and this script read the panel, a shelf count, a card, a tile and a
+>   control, **every one of them on Discover**, so the one surface the colour
+>   change actually touched was the one it never looked at. It asserts BOTH
+>   halves now: the eyebrow at 4.5:1 or better, **and that the hero's ground IS
+>   the page's**, so a tint creeping back fails even though it would probably
+>   still measure fine. **22/22** (18 before).
+> * ⚠⚠ **SHAPE 2 — A WALK-IN BY NAME — AND THE 31-FUNCTION AUDIT IS THE WORK.**
+>   `class_bookings.user_id` and `attendance.user_id` are nullable now,
+>   `attendee_name` with a CHECK that exactly one is set, `add_class_walk_in` and
+>   `remove_class_walk_in`. Every function reading those two tables was
+>   classified BEFORE a line was written: **10 safe** (they never name `user_id`,
+>   or filter `= auth.uid()`, and NULL never equals anything — a walk-in simply
+>   never counts as "mine", which is right), **5 inserting** (only `check_in`
+>   copies a booking's user through, and it tolerates NULL once the column
+>   allows it), **3 that JOIN `profiles`** so a walk-in drops out — correct in all
+>   three, though it means ⚠ **`routine_students` does not count walk-ins**, said
+>   out loud — and **13 read by eye**, none assuming a user.
+> * ⚠⚠ **AND THE AUDIT HAD A HOLE THAT COST NOTHING ONLY BECAUSE IT WAS FOUND: A
+>   TEXT SEARCH MISSES EVERY TRIGGER FUNCTION**, because a trigger says
+>   `new`/`old` and never names its table. `notify_class_booking` was **absent
+>   from the list entirely** — and without the fix a studio would have been told
+>   **"Somebody booked Bollywood · Beginner"** about a walk-in whose name was
+>   sitting on the row. Its body is the catalog's own with one clause added
+>   (`coalesce(v_who, new.attendee_name, 'Somebody')`) and a guard so the
+>   waitlist branch cannot notify nobody. **Audit the TRIGGERS on a table
+>   separately from the functions that name it.**
+> * ⚠⚠ **AND MAKING `user_id` NULLABLE SILENTLY DISARMED THE UNIQUE INDEX.**
+>   `class_bookings_one_live_per_session` is unique on `(session_id, user_id)`
+>   and **Postgres treats NULLs as DISTINCT** — so the moment the column allows
+>   NULL it stops protecting walk-ins entirely and the same person could be added
+>   five times. A second partial index keyed on `lower(btrim(attendee_name))` is
+>   that rule for them; ⚠ the read-back asserts **the original index is still
+>   there**, so real people kept their protection.
+> * ⚠⚠ **AND A ONE-WAY DOOR WOULD HAVE BEEN MINE TO CREATE.** A real learner
+>   cancels their own seat (`cancel_class_booking` is `user_id = auth.uid()`), so
+>   a studio has never needed to — and **a walk-in has no account to do it**, so
+>   a name typed wrongly at a door would have held a seat for ever.
+>   `remove_class_walk_in` closes it and **refuses any booking carrying a
+>   `user_id`**, so it can never reach a real person's.
+> * ⚠⚠ **AND THE APP SIDE HAD A DEFECT NOTHING TYPED COULD SEE**: the register
+>   row is `href={`/person/${r.userId}`}`, and **a template literal swallows a
+>   null** — every walk-in would have been a dead link to `/person/null`, green
+>   through typecheck, lint and the build. The identity block is a Link only when
+>   there is somebody to link to. ⚠ And the money line had to say something true:
+>   a walk-in has no `payments` row, so `paidSet` says no, which on a priced
+>   class would have printed **"₹300 due" in amber about somebody who had just
+>   handed over cash** — it reads *"walk-in · ₹300 at the door"*.
+> * **Verified:** typecheck 0 · lint 0 · `next build` green · dry run **32/32
+>   rolled back** (⚠ including check 0, the Rule 18 probe) · applied on the FIRST
+>   try, `db-push -DryRun` listing **exactly the one file** · read back off the
+>   **LIVE catalog 17/17** — ⚠ including **not one existing booking lost its
+>   person** (nothing backfilled), the original index intact, anon still **39**,
+>   and **PostgREST reloaded**, which matters more than usual because the app now
+>   SELECTS a new column · **7/7 proofs** (attendance, classes, notifications,
+>   rooms-people, stats, enrollments, memberships) · **`shoot-register` 57/57**
+>   (46 before — the eleven new ones drive the door by name end to end and read
+>   the seat, the NULL user and the attendance row out of the database).
+> * ⚠ **AND A FLAKE THAT TAUGHT SOMETHING REAL ABOUT THE POOLER.** The shape-2
+>   dry run passed, then threw `invalid input syntax for type json` on a seed
+>   that had not changed. The cause: `guard_person_only` does
+>   `current_setting('request.jwt.claims', true)::jsonb`, where an UNSET setting
+>   is NULL (fine) and an **EMPTY STRING throws** — and a pooled backend that has
+>   just served a PostgREST request can present exactly that. **The e2e suite was
+>   hitting production through the same pooler in between.** The dry run sets
+>   `'{}'` — what nobody looks like (19 Sep) — before it touches anything, which
+>   makes it deterministic. ⚠ The guard's own fragility is pre-existing and is
+>   named rather than swept into this migration.
+> * ⚠ **AND ONE RED IN THE B SUITE WAS INFRASTRUCTURE, PROVEN NOT ASSUMED**:
+>   `generate_link` answered **522** — a Cloudflare connection timeout from
+>   Supabase's auth API — taking 8 serial tests down with it; the spec then
+>   passed **9/9 alone**, so all 56 were green across the two runs on one bundle
+>   with nothing changed between them.
+
+> ### A CLASS HAS A DOOR (29 Sep 2026, earlier) — ⚠ ONE MIGRATION APPLIED (`20260929120000`), dry run **24/24** rolled back first, read back live **14/14**
 > The user picked the class walk-in (#0aw) off the backlog. ⚠⚠ **THE FIRST ACT
 > WAS TO RE-MEASURE THE ROW RATHER THAN BUILD FROM IT, AND THREE OF ITS CLAIMS
 > HAD GONE STALE IN ONE DAY.** It was written on 28 Sep and the organizations
@@ -8202,19 +8303,23 @@ summary; the report has the evidence.
    did carry no user, so it was true when measured; and the blast radius is
    **30 functions**, not "six more reads". **Re-measure a backlog row before
    building on it** (#0al's lesson, met again and this time nearly acted on).
-   ⚠ **WHAT IS STILL OWED IS SHAPE 2 — a walk-in BY NAME, with no DanceOS
-   account** — which the user chose to take as its own slice. It needs
-   `class_bookings.user_id` and `attendance.user_id` nullable, an
-   `attendee_name`, a CHECK that exactly one is set, and an audit of the 30
-   functions reading those tables for NULL-user assumptions. ⚠ Two facts found
-   while building shape 1 that shape 2 must start from: **`attendance.class_booking_id`
-   is NOT NULL and unique per booking**, so a walk-in needs a booking row
-   whichever shape; and **the live-unique index stops protecting walk-ins**
-   (`(session_id, user_id)` with NULLs treated as distinct), so the same person
-   could be added twice unless the name is in the key. ⚠ And the Students desk
-   already has the `source: "added"` path with `userId: null` and no writer, so
-   that is where a named walk-in would land if the fourth decision is ever
-   revisited. The original list, kept for shape 2:
+   ✅ **AND SHAPE 2 IS APPLIED AND LIVE TOO — `20260929130000_a_walk_in_has_a_name`**
+   (dry run 32/32 rolled back, read back live 17/17), on the user's *"fix all"*.
+   Both halves of the door exist: shape 1 books somebody who IS on DanceOS,
+   shape 2 records somebody who is not, by name. ⚠ **Both predictions this row
+   made were right and both mattered**: `attendance.class_booking_id` being NOT
+   NULL is why the name lives on the BOOKING and `attendance` carries no copy;
+   and the live-unique index really did stop protecting walk-ins the moment
+   `user_id` could be NULL, so a second partial index keyed on
+   `lower(btrim(attendee_name))` is their half of that rule.
+   ⚠ **What shape 2 costs, said rather than discovered:** `routine_students`
+   does not count walk-ins (it lists dancers BY NAME and an unnamed profile is
+   not one), and a walk-in on a priced class shows on the class's Earnings tab
+   as a seat with no payment — which is what "collected at the door" means.
+   ⚠ **And the Students desk's `source: "added"` path still has no writer**: the
+   user's fourth decision was *attendance only*, so a walk-in is on the register
+   and nowhere else. Revisiting that is one `leads` insert. The original list,
+   kept because its reasoning is the record of how the two shapes were chosen:
 
 0aw-old. **⚠⚠ A CLASS HAS NO WALK-IN, AND IT NEEDS A MIGRATION — THE TWO SHAPES AND
    THE FOUR DECISIONS, IN FRONT OF THE USER RATHER THAN GUESSED (28 Sep 2026).**
@@ -9801,6 +9906,32 @@ for the database schema. **The UI is not redesigned** — see Rule 2.
 
 ### Progress tracker — update after EVERY push (Rule 11)
 
+- **A WALK-IN HAS A NAME — 29 Sep 2026, no step number ⚠ (Rule 9: two core
+  columns made nullable, two new definer doors, one live trigger function
+  rewritten) — ONE MIGRATION APPLIED (`20260929130000`), dry run 32/32 rolled
+  back first, read back live 17/17.** Shape 2 of the class door: somebody with
+  no DanceOS account, recorded by name. ⚠⚠ **The work is the 31-function audit**,
+  done before a line was written — 10 safe, 5 inserting, 3 that correctly drop a
+  walk-in, 13 read by eye — **and the audit had a hole**: a text search misses
+  every TRIGGER function, because a trigger says `new`/`old` and never names its
+  table, so `notify_class_booking` was absent from the list and a studio would
+  have been told *"Somebody booked …"* about a walk-in whose name was on the row.
+  ⚠⚠ Making `user_id` nullable also **silently disarmed the unique index**
+  (Postgres treats NULLs as distinct), so a second partial index keyed on the
+  name is that rule for walk-ins — and the read-back asserts the original is
+  still there. ⚠⚠ And a **one-way door** would have been mine to create: a real
+  learner cancels their own seat and a walk-in has no account to, so
+  `remove_class_walk_in` closes it and refuses anything carrying a `user_id`.
+  ⚠ The app side had a defect nothing typed could see — `/person/${r.userId}`
+  renders **`/person/null`** for a walk-in, because a template literal swallows a
+  null. **Also in this push:** the team History page **exports a CSV** (one line
+  per session, because it is the only screen that knows which), and
+  ⚠⚠ **`shoot-invert` measures the HERO** at last — the one surface C83's colour
+  change touched and the one thing that script never looked at. ⚠ Two of the
+  four "leftovers" turned out **not to be defects** and the backlog rows are
+  corrected rather than acted on. **typecheck 0 · lint 0 · build green · dry run
+  32/32 · live read-back 17/17 · 7/7 proofs · `shoot-register` 57/57 ·
+  `shoot-invert` 22/22 · `shoot-hero` 186/186.**
 - **A CLASS HAS A DOOR — 29 Sep 2026, no step number ⚠ (Rule 9: a new definer
   function that books a seat for somebody else) — ONE MIGRATION APPLIED
   (`20260929120000`), dry run 24/24 rolled back first, read back live 14/14.**
@@ -14575,6 +14706,8 @@ Home. **Do not "restore parity" on these.**
 | C82 | A room's capacity is a NUMBER in component state on the Rooms desk and in the New-studio sheet's rooms editor | **TEXT-BACKED, NORMALISED ON BLUR** — `Number("") \|\| 0` makes an emptied box a hard 0, so backspacing over `20` snapped to `0` and typing `15` gave `015`. The same defect as the class form's price and session-pay fields, in the two places that morning's fix did not reach | 28 Sep 2026, the user's *"fix these 2 as well"*. ⚠ It is a bigger lie on a room than on a price: capacity is the one field on that desk the DATABASE enforces on every booking (`assert_room_ok` caps a class by its room), so a 0 there is a room nobody can book into |
 
 | R59 | Step 12 (25 Aug 2026) made it a **deliberate non-feature**: *"a studio CANNOT book a seat for somebody. Enrolling is the learner's own act … faking an enrollment here would have put a name on a roster that never agreed to it."* A trial was recorded as which class and which day, and the lead was marked Converted when they turned up for real | **A DOOR MAY BOOK SOMEBODY WHO IS STANDING AT IT** (29 Sep 2026, `book_class_session_for_person`): whoever may run the register books a person who IS on DanceOS, and they are checked in in the same press. ⚠⚠ **THE WINDOW IS WHAT MAKES THE REVERSAL HONEST, and it is the REGISTER'S OWN** — copied out of `check_in` rather than invented: from thirty minutes before the session until it ends. **Outside it a studio still cannot book anybody for anything**, so the reversal reaches exactly the circumstance the consent argument covers: the person is physically there and has handed over their own profile code, which is consent in person rather than consent by proxy. Step 12's reasoning is untouched for the case it was written about — a desk inventing bookings at leisure. ⚠ **Capacity is real** (full is refused; `assert_room_ok` caps a class by its room and a door that overfills a room is a fire-safety claim this app must not make), **nobody is waitlisted** (putting the person in front of you on a list is not an answer), and **a priced class books at ₹0** with the money collected at the door — the one rule it does NOT share with `book_class_session`, which refuses a priced class outright so the seat goes through Cashfree. ⚠ Shape 1 of two: a walk-in with **no account** needs a nullable `user_id` and is its own slice (#0aw) | 29 Sep 2026, the user's own four decisions when the two shapes were put to them: **both, shape 1 first · full is full · ₹0 at the door · no leads row** — and their 28 Sep wording, *"after confirmation only should check them in **or add them**"*, which is why it is ONE press: the scan sheet's confirm card is the consent step and a second prompt would be the same question twice |
+
+| R60 | R59 (29 Sep 2026) let a door book somebody who IS on DanceOS; a seat has always been a PERSON — `class_bookings.user_id` and `attendance.user_id` both NOT NULL references to `profiles` | **A SEAT NEED NOT BE A PERSON** (`add_class_walk_in`): both columns are nullable, `class_bookings.attendee_name` holds a walk-in recorded at the door, and a CHECK keeps exactly one of the two set. ⚠ **`attendance` carries NO copy of the name** — `class_booking_id` is NOT NULL and unique there, so the name is reachable through the booking and lives in one place; a name stored twice is a name that can disagree with itself. ⚠⚠ **Making the column nullable silently disarmed the unique index**: `class_bookings_one_live_per_session` is `(session_id, user_id)` and Postgres treats NULLs as DISTINCT, so walk-ins lost that protection entirely — a second partial index on `lower(btrim(attendee_name))` is their half of the rule, and the original still bites for real people. ⚠⚠ **And `remove_class_walk_in` exists because the door would otherwise be ONE-WAY**: a real learner cancels their own seat and a walk-in has no account to, so a mistyped name would hold a seat for ever; it refuses any booking carrying a `user_id`, so it can never reach a real person's. ⚠ Costs, stated: `routine_students` does not count walk-ins (it lists dancers by name), and a walk-in on a priced class is a seat with no payment on the Earnings tab | 29 Sep 2026, the user's *"fix all"* after choosing **both shapes, shape 1 first**. ⚠⚠ The audit is the feature: 31 functions read those two tables and every one was classified first — and **a text search missed every TRIGGER function**, because a trigger says `new`/`old` and never names its table, so `notify_class_booking` was absent from the list and would have told a studio *"Somebody booked …"* about a walk-in whose name was on the row |
 
 ### UI parity backlog — gaps vs the prototype, tracked so none is forgotten
 

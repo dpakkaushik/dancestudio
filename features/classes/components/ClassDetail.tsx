@@ -3,12 +3,14 @@
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useActionState, useRef, useState, useSyncExternalStore, type ReactNode } from "react";
+import { useActionState, useRef, useState, useSyncExternalStore, type CSSProperties, type ReactNode } from "react";
 import {
+  addWalkInAction,
   bookAtTheDoorAction,
   checkInAction,
   giveSpotAction,
   removeFromWaitlistAction,
+  removeWalkInAction,
   undoCheckInAction,
 } from "@/features/attendance/server-actions/attendance";
 import { respondToClaimAction } from "@/features/claims/server-actions/claims";
@@ -340,6 +342,9 @@ export function ClassDetail({
   const canRef = assisting && (Boolean(myClaim?.canRefunds) || standingRefunds);
   const paidSet = new Set(paidUserIds);
   const [posterOpen, setPosterOpen] = useState(false);
+  /* the walk-in name field on the register (29 Sep 2026, shape 2) */
+  const [walkName, setWalkName] = useState("");
+  const [walkBusy, setWalkBusy] = useState(false);
   const [posterBusy, setPosterBusy] = useState(false);
   useCloseOnBack(() => setPosterOpen(false), posterOpen);
   const initialsOf = (name: string) => name.split(" ").filter(Boolean).map((x) => x[0]).slice(0, 2).join("").toUpperCase();
@@ -496,6 +501,34 @@ export function ClassDetail({
     scannedIn.current.add(personId);
     router.refresh();
     return { ok: true, message: `✓ ${row.learnerName} checked in` };
+  };
+
+  /** ⚠ THE OTHER HALF OF THE DOOR (29 Sep 2026, shape 2): somebody with no
+   *  DanceOS account at all. The scanner cannot help them — there is no code to
+   *  scan — so the register asks for a name instead, and recording them checks
+   *  them in in the same press, exactly as a scan does. */
+  const addWalkIn = async () => {
+    const name = walkName.trim();
+    if (!name || walkBusy || !c.session) return;
+    setWalkBusy(true);
+    const out = await addWalkInAction({ sessionId: c.session.id, name });
+    setWalkBusy(false);
+    if (out.error) {
+      fire(out.error);
+      return;
+    }
+    setWalkName("");
+    fire(`✓ ${name} is in`);
+    router.refresh();
+  };
+
+  const removeWalkIn = async (enrollmentId: string, name: string) => {
+    if (opPending) return;
+    setOpPending(enrollmentId);
+    const out = await removeWalkInAction({ enrollmentId });
+    setOpPending(null);
+    fire(out.error ?? `${name} removed`);
+    router.refresh();
   };
 
   const runRegisterOp = async (
@@ -1594,6 +1627,43 @@ export function ClassDetail({
               </button>
             )}
 
+            {/* ⚠⚠ AND THE PERSON WITH NO CODE TO SCAN (29 Sep 2026, shape 2).
+                The scanner resolves a DanceOS profile, so it can do nothing at
+                all for somebody who walks in off the street — the commonest
+                thing at a door. A name is what there is, so a name is what it
+                asks for, and recording them checks them in in the same press.
+                ⚠ The button NAMES the missing answer while the field is empty,
+                which is this app's own form grammar (`ClassForm`, 21 Sep). */}
+            {sessionPhase !== "ended" && c.session ? (
+              <div style={{ display: "flex", gap: 6, marginBottom: 10 }}>
+                <input
+                  value={walkName}
+                  onChange={(e) => setWalkName(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      e.preventDefault();
+                      void addWalkIn();
+                    }
+                  }}
+                  maxLength={80}
+                  placeholder="Somebody at the door…"
+                  aria-label="The name of somebody walking in"
+                  data-testid="walk-in-name"
+                  style={{ flex: 1, minWidth: 0, padding: "11px 13px", borderRadius: 999, border: "1.5px solid var(--el)", background: "var(--card)", color: "var(--text)", fontFamily: "inherit", fontSize: 12.5, textTransform: "none" }}
+                />
+                <button
+                  type="button"
+                  onClick={() => void addWalkIn()}
+                  disabled={walkName.trim().length === 0 || walkBusy}
+                  aria-label={walkName.trim().length === 0 ? "Type a name first" : `Add ${walkName.trim()} at the door`}
+                  data-testid="walk-in-add"
+                  style={{ flexShrink: 0, padding: "11px 15px", borderRadius: 999, border: "none", background: walkName.trim().length === 0 ? "var(--el)" : "var(--text)", color: walkName.trim().length === 0 ? "var(--sub)" : "var(--solid)", fontWeight: 900, fontSize: 12.5, fontFamily: "inherit", cursor: walkName.trim().length === 0 ? "default" : "pointer", opacity: walkBusy ? 0.5 : 1 }}
+                >
+                  {walkName.trim().length === 0 ? "Name first" : walkBusy ? "Adding…" : "Add"}
+                </button>
+              </div>
+            ) : null}
+
             {/* the waitlist is a queue of real people — the owner hands a freed
                 spot to the next one (12080-12099) */}
             {register.waitlist.length > 0 && (
@@ -1698,18 +1768,30 @@ export function ClassDetail({
                   }}
                 />
               </div>
-              {register.rows.map((r, i) => (
-                <div
-                  key={r.enrollmentId}
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: 10,
-                    padding: "7px 0",
-                    borderBottom: i === register.rows.length - 1 ? "none" : "1.5px solid var(--el)",
-                  }}
-                >
-                  <Link href={`/person/${r.userId}`} aria-label={`Open ${r.learnerName}`} style={{ display: "flex", alignItems: "center", gap: 10, flex: 1, minWidth: 0, color: "var(--text)", textDecoration: "none" }}>
+              {register.rows.map((r, i) => {
+                /* ⚠⚠ A WALK-IN HAS NO PAGE TO OPEN (29 Sep 2026, shape 2).
+                   `href={`/person/${r.userId}`}` renders `/person/null` for one,
+                   and NOTHING TYPED CAN SEE IT — a template literal swallows a
+                   null without complaint. So the identity block is a Link only
+                   when there is somebody to link to, and a plain row otherwise. */
+                const identityStyle: CSSProperties = { display: "flex", alignItems: "center", gap: 10, flex: 1, minWidth: 0, color: "var(--text)", textDecoration: "none" };
+                /* ⚠ AND THE MONEY LINE HAS TO SAY SOMETHING TRUE ABOUT A WALK-IN.
+                   They have no `payments` row, so `paidSet` says no — which on a
+                   priced class would print "₹300 due" in amber about somebody who
+                   handed over cash at the door. The door collected it; DanceOS
+                   did not move it (Step 13's limit), and that is what it says. */
+                const paid = r.userId !== null && paidSet.has(r.userId);
+                const meta = r.walkIn
+                  ? isFree
+                    ? "walk-in"
+                    : `walk-in · ${price} at the door`
+                  : isFree
+                    ? "free seat"
+                    : paid
+                      ? `paid · ${price}`
+                      : `${price} due`;
+                const identity = (
+                  <>
                     <span
                       style={{
                         width: 28,
@@ -1731,11 +1813,28 @@ export function ClassDetail({
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <div style={{ fontSize: 12, fontWeight: 800 }}>{r.learnerName}</div>
                       {/* the payment meta (12126-12127): what the seat cost and whether it is in */}
-                      <div style={{ fontSize: 9.5, color: !isFree && !paidSet.has(r.userId) ? "#F59E0B" : "var(--sub)" }}>
-                        {isFree ? "free seat" : paidSet.has(r.userId) ? `paid · ${price}` : `${price} due`}
-                      </div>
+                      <div style={{ fontSize: 9.5, color: !isFree && !paid && !r.walkIn ? "#F59E0B" : "var(--sub)" }}>{meta}</div>
                     </div>
-                  </Link>
+                  </>
+                );
+                return (
+                <div
+                  key={r.enrollmentId}
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 10,
+                    padding: "7px 0",
+                    borderBottom: i === register.rows.length - 1 ? "none" : "1.5px solid var(--el)",
+                  }}
+                >
+                  {r.userId !== null ? (
+                    <Link href={`/person/${r.userId}`} aria-label={`Open ${r.learnerName}`} style={identityStyle}>
+                      {identity}
+                    </Link>
+                  ) : (
+                    <div style={identityStyle}>{identity}</div>
+                  )}
                   {sessionPhase === "ended" ? (
                     <span
                       style={{
@@ -1778,8 +1877,28 @@ export function ClassDetail({
                       {r.checkedIn ? "✓ In" : "Check in"}
                     </span>
                   )}
+                  {/* ⚠⚠ A WALK-IN IS THE ONE SEAT A STUDIO MAY TAKE BACK OFF.
+                      A real learner cancels their own (`cancel_class_booking` is
+                      `user_id = auth.uid()`), so a studio has never needed to —
+                      but a walk-in has NO account to do it, and a name typed
+                      wrongly at a door would otherwise hold a seat for ever.
+                      `remove_class_walk_in` refuses anything with a user_id, so
+                      this control cannot reach a real person's booking. */}
+                  {r.walkIn && sessionPhase !== "ended" ? (
+                    <span
+                      role="button"
+                      tabIndex={0}
+                      onKeyDown={dosKey}
+                      aria-label={`Remove ${r.learnerName} from the register`}
+                      onClick={() => void removeWalkIn(r.enrollmentId, r.learnerName)}
+                      style={{ fontSize: 10, fontWeight: 800, padding: "6px 10px", borderRadius: 999, cursor: "pointer", flexShrink: 0, background: "var(--el)", color: "var(--sub)", opacity: opPending === r.enrollmentId ? 0.5 : 1 }}
+                    >
+                      ✕
+                    </span>
+                  ) : null}
                 </div>
-              ))}
+                );
+              })}
               {register.rows.length === 0 && (
                 <div style={{ fontSize: 11, color: "var(--muted)" }}>Nobody has booked yet.</div>
               )}

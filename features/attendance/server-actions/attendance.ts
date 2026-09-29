@@ -5,10 +5,12 @@ import { redirect } from "next/navigation";
 import { z } from "zod";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import {
+  addWalkIn,
   bookForPerson,
   checkIn,
   giveSpot,
   removeFromWaitlist,
+  removeWalkIn,
   undoCheckIn,
 } from "@/repositories/attendance";
 
@@ -126,4 +128,48 @@ export async function bookAtTheDoorAction(input: {
 
   revalidateRegisterSurfaces();
   return { error: null };
+}
+
+/** THE DOOR, SHAPE 2: a walk-in with no account, recorded by name and checked
+ *  in as one act — the same shape as `bookAtTheDoorAction` and for the same
+ *  reason. A half-done door is reported honestly: the seat stands if the
+ *  check-in then fails, because the seat is the thing that matters. */
+const walkInSchema = z.object({
+  sessionId: z.string().uuid(),
+  name: z.string().trim().min(1).max(80),
+});
+
+export async function addWalkInAction(input: {
+  sessionId: string;
+  name: string;
+}): Promise<RegisterActionResult> {
+  const parsed = walkInSchema.safeParse(input);
+  if (!parsed.success) {
+    return { error: "Give the walk-in a name" };
+  }
+  const supabase = await requireUser();
+
+  let enrollmentId: string;
+  try {
+    enrollmentId = await addWalkIn(supabase, parsed.data.sessionId, parsed.data.name);
+  } catch (error: unknown) {
+    return { error: error instanceof Error ? error.message : "Could not record the walk-in" };
+  }
+
+  try {
+    await checkIn(supabase, enrollmentId);
+  } catch (error: unknown) {
+    revalidateRegisterSurfaces();
+    const why = error instanceof Error ? error.message : "the register would not take it";
+    return { error: `They have a seat, but the check-in did not go through — ${why}` };
+  }
+
+  revalidateRegisterSurfaces();
+  return { error: null };
+}
+
+export async function removeWalkInAction(input: {
+  enrollmentId: string;
+}): Promise<RegisterActionResult> {
+  return runRegisterOp(removeWalkIn, input);
 }
