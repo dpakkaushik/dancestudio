@@ -49,6 +49,22 @@ const PAGES = [
   ["subscriptions", "/admin/subscriptions"],
   ["plans", "/admin/plans"],
   ["communication", "/admin/communication"],
+  /* REACH (30 Sep 2026) — all three tabs, plus the two states that only appear
+     once something is typed: the business list a term returns on Shown, and the
+     one-address history on Email. A desk whose every tab is a different table is
+     a desk where opening one proves nothing about the other two. */
+  ["reach", "/admin/reach"],
+  ["reach-7d", "/admin/reach?days=7"],
+  ["reach-shown", "/admin/reach?tab=shown"],
+  ["reach-shown-q", "/admin/reach?tab=shown&q=dance"],
+  /* ⚠ A REAL BUSINESS WITH REAL IMPRESSIONS, so the one read a static URL list
+     would otherwise never reach is actually made. EEE Dance Studio is the demo
+     world's and carried 14 shelves at the time this was written; if the demo
+     world is re-seeded the id moves and this page draws the business list
+     instead of the figures — which still proves the tab, just not the read. */
+  ["reach-shown-one", "/admin/reach?tab=shown&q=EEE&id=2f2dba3e-52f7-419f-ba8a-46336a647de6"],
+  ["reach-email", "/admin/reach?tab=email"],
+  ["reach-email-q", "/admin/reach?tab=email&q=nobody%40example.com"],
   ["accounts", "/admin/accounts"],
   ["businesses", "/admin/businesses"],
   ["audit", "/admin/audit"],
@@ -82,18 +98,54 @@ const PAGES = [
     if (r.status() >= 500) problems.push(`${r.status()} ${r.url()}`);
   });
 
-  await page.goto(`${BASE}/auth/confirm?token_hash=${link.hashed_token}&type=${link.verification_type ?? "magiclink"}`);
-  await page.waitForLoadState("networkidle");
+  try {
+    await page.goto(`${BASE}/auth/confirm?token_hash=${link.hashed_token}&type=${link.verification_type ?? "magiclink"}`);
+    await page.waitForURL((u) => !u.pathname.startsWith("/auth/confirm"), { timeout: 30000 });
 
-  for (const [name, href] of PAGES) {
-    await page.goto(`${BASE}${href}`, { waitUntil: "networkidle" });
-    await page.screenshot({ path: path.join(OUT, `admin-${name}.png`), fullPage: true });
-    const heading = await page.locator("h1, b").first().textContent().catch(() => null);
-    console.log(`  admin-${name}.png  ${href}  ${(heading || "").slice(0, 40)}`);
+    for (const [name, href] of PAGES) {
+      /* ⚠ `domcontentloaded` AND THEN THE HEADING, NEVER `networkidle` (30 Sep
+         2026). Two runs died on it, on two DIFFERENT pre-existing pages, before
+         reaching the screens being verified — so the wait was failing rather
+         than the product. `networkidle` asks the whole network to go quiet for
+         half a second, which an RSC prefetch or a font can keep from happening;
+         the `<h1>` is the thing that actually says the desk rendered, and it is
+         what every desk has carried since 22 Sep. */
+      try {
+        await page.goto(`${BASE}${href}`, { waitUntil: "domcontentloaded", timeout: 30000 });
+        await page.locator("h1").first().waitFor({ state: "visible", timeout: 20000 });
+        await page.screenshot({ path: path.join(OUT, `admin-${name}.png`), fullPage: true });
+        const heading = await page.locator("h1").first().textContent().catch(() => null);
+        console.log(`  admin-${name}.png  ${href}  ${(heading || "").slice(0, 40)}`);
+      } catch (e) {
+        /* ⚠ ONE SLOW PAGE IS NOT THE WHOLE RUN. It used to abort the loop, which
+           is why the run never reached the later desks AND never reached its own
+           cleanup — three throwaway admins were live on production because of
+           it, which is the 29 Sep lesson in miniature. */
+        problems.push(`${href}: ${String(e.message || e).split("\n")[0]}`);
+        console.log(`  admin-${name}.png  ${href}  FAILED`);
+      }
+    }
+  } finally {
+    await browser.close().catch(() => {});
+    /* ⚠⚠ THE RIGHT GOES BEFORE THE ACCOUNT, AND BOTH STATUSES ARE READ. A
+       cleanup that does not read its own status is not a cleanup (20 Sep 2026),
+       and an admin right left standing is the most expensive thing this script
+       can leak. The revoke is a soft delete because `is_platform_admin()` tests
+       `deleted_at`, so it bites at once and one UPDATE puts it back. */
+    const revoked = await fetch(`${SUPABASE}/rest/v1/platform_admins?user_id=eq.${link.id}`, {
+      method: "PATCH",
+      headers: { ...headers, Prefer: "return=representation" },
+      body: JSON.stringify({ deleted_at: new Date().toISOString() }),
+    });
+    const revokedRows = await revoked.json().catch(() => null);
+    if (!revoked.ok || !Array.isArray(revokedRows) || revokedRows.length !== 1) {
+      problems.push(`the throwaway admin's RIGHT was not revoked: ${revoked.status} ${JSON.stringify(revokedRows)}`);
+    }
+    const gone = await fetch(`${SUPABASE}/auth/v1/admin/users/${link.id}`, { method: "DELETE", headers });
+    if (!gone.ok) {
+      problems.push(`the throwaway admin's ACCOUNT was not deleted: ${gone.status}`);
+    }
   }
-
-  await browser.close();
-  await fetch(`${SUPABASE}/auth/v1/admin/users/${link.id}`, { method: "DELETE", headers });
 
   if (problems.length) {
     console.log("\nPROBLEMS:");

@@ -47,6 +47,12 @@ export const DESKS: AdminDesk[] = [
   { href: "/admin/subscriptions", label: "Subscriptions", what: "Every recurring plan and its state", k: "subscriptions", badge: "money", tone: "#EF4444" },
   { href: "/admin/plans", label: "Plans", what: "What a plan costs, and whether it is on offer", k: "plans" },
   { href: "/admin/communication", label: "Communication", what: "What the platform said, and who read it", k: "communication" },
+  /* ⚠ REACH IS NOT COMMUNICATION, AND THE TWO SIT TOGETHER SO THE DIFFERENCE IS
+     READABLE (30 Sep 2026). Communication is what DanceOS SAID — notifications
+     it raised and whether they were opened. Reach is what people LOOKED FOR,
+     what they were SHOWN, and whether the mail actually arrived: three tables
+     that had writers and, until this desk, no reader at all. */
+  { href: "/admin/reach", label: "Reach", what: "What people looked for, what they were shown, what arrived", k: "reach" },
   { href: "/admin/accounts", label: "Accounts", what: "Every person and organization", k: "accounts" },
   { href: "/admin/businesses", label: "Businesses", what: "Every studio and artist page", k: "businesses" },
   { href: "/admin/audit", label: "Audit", what: "Every decision an admin has made", k: "audit" },

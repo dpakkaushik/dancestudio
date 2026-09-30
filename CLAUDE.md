@@ -2,7 +2,71 @@
 
 ## LAST SESSION (30 Sep 2026) — replaced on every push (Rule 13)
 
-> ### DISCOVER IS CLEAN, A MEMBER MAY DANCE WHERE THEY TEACH, AND EDITING A CLASS IS ONE ACT (30 Sep 2026, latest) — ⚠ ONE MIGRATION APPLIED (`20260930120000`), dry run **14/14** rolled back first, read back live **11/11**
+> ### THE THREE TABLES HAVE A READER AT LAST — AND A HARNESS THAT LEAKED ADMIN RIGHTS (30 Sep 2026, latest) — no migration
+> The user: *"fix all push to live . leave 2nd point in whats left"* — so the one
+> item on that list that was MINE was built, and the sandbox items that are
+> theirs were left alone.
+> * ⚠⚠ **`search_events`, `impressions` AND `email_events` HAD WRITERS SINCE
+>   29 Sep AND NO READER AT ALL.** Four SECURITY DEFINER reads shipped with those
+>   migrations and **not one had a caller** — which is the 28 Sep sweep's own
+>   lesson pointing the other way: *"an export nothing calls is sometimes a
+>   feature nobody can reach."* `/admin/reach` is that reader: **Searches** (the
+>   terms that found nothing), **Shown** (a business's impressions by surface,
+>   with where in the shelf), **Email** (the delivery pulse, and one address's
+>   history). All state in the address (`?tab=&q=&days=`).
+> * ⚠⚠ **EVERY READ USES THE ADMIN'S OWN CLIENT, AND THAT IS NOT A STYLE
+>   CHOICE.** All four functions are gated on `is_platform_admin()`, and such a
+>   function **answers the SERVICE ROLE with EMPTINESS rather than an error**
+>   (10 Sep 2026) — so a service-role read would have drawn a desk of zeros and
+>   read as "no traffic". It is also why no script could verify this desk from
+>   outside: the only thing that can is a browser signed in as a real admin.
+> * ⚠⚠ **AND THE EMAIL TAB'S WHOLE JOB IS TO SAY WHICH OF TWO ZEROS IT IS.**
+>   `email_events` is EMPTY, and an empty ledger reads as *"nothing bounced"*
+>   when what it means is *"nothing is being recorded"* — the route answers 503
+>   without its secret. The desk asks `isResendWebhookConfigured()`, the same
+>   question the route asks, and says so in words. **A measured zero and an
+>   unplugged sensor look identical, and only one of them is good news.**
+> * ⚠ **MY SURFACE MAP WAS INVENTED AND THE DATA SAID SO.** I wrote
+>   `discover_studios | discover_classes | discover_crews`; the writer's union is
+>   **`discover | search | followed | nearby`**, so every row would have drawn its
+>   raw key. It is `satisfies Record<ImpressionSurface, string>` now, so a fifth
+>   surface **fails to compile** rather than appearing unnamed — the 27 Sep
+>   `GLYPH` lesson, which cost two Home tiles an empty chip for a fortnight.
+> * ⚠ **AND THE TINT WAS MEASURED RATHER THAN PICKED.** The obvious teal sits
+>   **2° of hue** from Businesses on the admin grid; `#A21CAF` is **33° from its
+>   nearest saturated neighbour** and carries **6.32:1** against the hero's white
+>   text, the best of the twelve. R20's test is per-GRID, and this is a grid.
+> * ⚠⚠⚠ **AND THE RUN THAT VERIFIED IT EXPOSED A HARNESS THAT LEAKED ADMIN
+>   RIGHTS — THE 29 Sep DISASTER IN MINIATURE.** `shoot-admin` waited on
+>   **`networkidle`**, which died on two DIFFERENT pre-existing pages in two runs
+>   *before reaching the screens under test* — and it had **no `finally`**, so
+>   each abort left its throwaway `platform_admins` row AND its account live.
+>   **Three were live on production**, one from an earlier day. Cleared (right
+>   revoked first — `is_platform_admin()` tests `deleted_at`, so it bites at
+>   once — then the account), **1 live platform admin remains and it is
+>   `ai@eeetaxi.com`.** The script now waits for the **`<h1>`** (the thing that
+>   actually says a desk rendered), records a slow page instead of aborting, and
+>   cleans up in a `finally` **reading both statuses**. ⚠ *A cleanup that does
+>   not read its own status is not a cleanup*, met for the third time.
+> * ⚠ **AND `shoot-admin` COULD NOT HAVE PROVEN THIS DESK ANYWAY**: it fails on a
+>   console error, and **a desk drawing three empty states passes that** — the
+>   28 Sep lesson that *a fact a check prints but does not judge is a fact nobody
+>   is checking*. `scripts/shots/shoot-reach.js` (new) judges the content:
+>   **24/24**, including **14 shelves read back** for a real business through the
+>   definer function, the surface in words, the median explained as a median, and
+>   the unrecorded ledger saying so.
+> * ⚠ **Two of its own checks were wrong first, both the right kind**: one
+>   clicked and then waited for an `<h1>` **the page it was leaving already had**,
+>   so it read the old URL; and one looked for a field's PLACEHOLDER in
+>   `innerText`, which is an attribute and never appears there — it asserts the
+>   heading and the field's accessible NAME now.
+> * **Verified:** typecheck 0 · lint 0 · `audit:reads` **0 unexplained** ·
+>   `next build` green with `/admin/reach` in the manifest · **`shoot-admin`
+>   26/26 screens clean** (19 before — the seven new ones are all three tabs plus
+>   the three states that only exist once something is typed) · **`shoot-reach`
+>   24/24**.
+>
+> ### DISCOVER IS CLEAN, A MEMBER MAY DANCE WHERE THEY TEACH, AND EDITING A CLASS IS ONE ACT (30 Sep 2026, earlier) — ⚠ ONE MIGRATION APPLIED (`20260930120000`), dry run **14/14** rolled back first, read back live **11/11**
 > The user: *"give suggestions for whats left with options to decide and proceed
 > with remaining issues / check again."* So every claim was re-measured before it
 > was offered — and the re-measurement is what produced the list.
@@ -8911,6 +8975,42 @@ summary; the report has the evidence.
 
 ## NEXT TO DO — replaced on every push (Rule 13)
 
+0b6. **⚠ WHAT IS LEFT IS THE USER'S, AND IT IS ALL OPS (30 Sep 2026).** Nothing
+   in the tree is half-built and no migration is pending — `db-push -DryRun`
+   lists none. The five open items each need an account or a dashboard the agent
+   has no access to, and the user has twice said to leave them:
+   * **The Resend webhook** — a webhook at resend.com pointing at
+     `/api/webhooks/resend`, and its signing secret as `RESEND_WEBHOOK_SECRET` in
+     Vercel. ⚠ Until both exist the route answers **503** and `email_events`
+     cannot fill; `/admin/reach`'s Email tab says exactly that rather than
+     drawing a zero that would read as "nothing bounced".
+   * **A billed Google Maps key** (#7) — the demo key's daily quota has failed a
+     check three times, and for a real user it is an outage.
+   * **The Cashfree Payment Gateway webhook sub-tab** (#8) — without it a
+     refund's terminal state is never heard, so an automatic refund sits
+     `pending` on the ledger for ever. ⚠ **This one now has live rows behind
+     it**: the 30 Sep call-off wrote real refunds.
+   * **The Supabase email templates** (#13) and **a verified Resend domain**
+     (#14) — until the domain is verified, auth mail reaches only the Resend
+     account owner.
+
+0b5. **⚠ THE THROWAWAY-ADMIN SWEEP IS A STANDING CHORE, NOT A ONE-OFF (30 Sep
+   2026).** `scripts/shots/shoot-admin.js` and `shoot-reach.js` each name a
+   real `platform_admins` row for the length of a run, and `rls-proof-studio-verification.ps1`
+   makes an `sv-admin-*`. All three clean up **and read their own status** now —
+   but a run killed by hand still leaks one, and an admin right is the most
+   expensive thing in this repo to leak (**484 were live on production on
+   29 Sep**, one of them signing in with a password committed in this repo).
+   **The check is two lines and should be run after any interrupted shoot:**
+```
+   # every live platform admin, by email — anything but ai@eeetaxi.com is junk
+   # (the 30 Sep script is in the session scratchpad; the query is the point)
+   GET /rest/v1/platform_admins?select=user_id&deleted_at=is.null
+```
+   ⚠ **Revoke before deleting**: `is_platform_admin()` tests `deleted_at`, so a
+   soft delete bites at once and one UPDATE puts it back — where deleting the
+   auth account first leaves an orphan row that still answers true.
+
 0b3. **~~ONE MIGRATION WRITTEN, DRY-RUN 21/21 AND HELD~~ — ✅ APPLIED, WIRED AND
    PUSHED 30 Sep 2026**, on the user's **"Apply + wire + push"** after the
    corrected list had been in front of them. ⚠⚠ Rule 9: **MONEY.** Re-dry-run
@@ -11230,6 +11330,32 @@ for the database schema. **The UI is not redesigned** — see Rule 2.
 
 ### Progress tracker — update after EVERY push (Rule 11)
 
+- **THE THREE TABLES HAVE A READER — 30 Sep 2026, no step number ⚠ (Rule 9: it
+  cleared three live platform-admin rights) — no migration.** The user: *"fix all
+  push to live . leave 2nd point in whats left."* ⚠⚠ The analytics tables have had
+  writers since 29 Sep and **no reader at all** — four definer functions with no
+  caller, which is *"an export nothing calls is sometimes a feature nobody can
+  reach"* pointing the other way. `/admin/reach` is **Searches · Shown · Email**,
+  all state in the address. ⚠⚠ **Every read uses the ADMIN's own client**, because
+  a function gated on `is_platform_admin()` answers the service role with
+  **emptiness rather than an error** — a service-role read would have drawn zeros
+  and read as no traffic, which is also why nothing but a signed-in browser can
+  verify this desk. ⚠⚠ **The email tab's job is to say WHICH of two zeros it is**:
+  the ledger is empty because the webhook is unconfigured (the route answers 503),
+  not because nothing bounced. ⚠ My surface map was **invented** and the data said
+  so — `satisfies Record<ImpressionSurface, string>` now, so a fifth surface fails
+  to compile. ⚠ The tint was **measured**: the obvious teal is 2° of hue from
+  Businesses, this is 33° clear. ⚠⚠⚠ **And verifying it found a harness leaking
+  ADMIN RIGHTS** — `shoot-admin` waited on `networkidle`, which died on two
+  unrelated pages before reaching the screens under test, and it had **no
+  `finally`**, so three throwaway `platform_admins` rows were live on production
+  (one from an earlier day). Cleared, right revoked first; **1 live admin remains
+  and it is `ai@eeetaxi.com`.** The script waits for the `<h1>` now, records a
+  slow page instead of aborting, and cleans up **reading both statuses**.
+  **typecheck 0 · lint 0 · `audit:reads` 0 unexplained · `next build` green with
+  the route in the manifest · `shoot-admin` 26/26 screens clean (19 before) · a
+  new `shoot-reach` 24/24**, which judges the CONTENT because a console-error
+  check passes a desk of three empty states.
 - **DISCOVER IS CLEAN, A MEMBER MAY DANCE WHERE THEY TEACH, AND EDITING A CLASS
   IS ONE ACT — 30 Sep 2026, no step number ⚠ (Rule 9: a production sweep) — ONE
   MIGRATION APPLIED (`20260930120000`), dry run 14/14 rolled back first, read
@@ -16336,7 +16462,7 @@ nothing to lift.
 
 | Gap | Prototype ref | Closes with |
 |-----|--------------|-------------|
-| **The analytics, the email ledger and NEXT SESSIONS — what they left (30 Sep 2026):** ⚠⚠ **`/api/webhooks/resend` DOES NOTHING UNTIL THE USER DOES TWO THINGS** (a webhook at resend.com pointing at it, and `RESEND_WEBHOOK_SECRET` in env) — unconfigured it answers 503, which is the honest state and not a working feature. ⚠ **NOTHING READS the three tables yet**: `search_terms_with_no_answer`, `impressions_for_business`, `email_history_for` and `email_delivery_pulse` are all live in the database and no screen calls one, so the rows accumulate and nobody can look at them — an admin desk is the next slice, and until it exists this is a recorder with no playback. ⚠ **The Artists tab records no impressions at all** (`subject_kind` admits `business \| class \| crew`; an artist is a `profiles` id since R24), so "how often was I shown?" is unanswerable for exactly the people most likely to ask — widening the CHECK is a migration and a decision. ⚠ **A search is logged once per DEBOUNCED keystroke burst**, so one person hunting a name writes several rows; the zero-result query that makes the table worth having is unaffected, and a `distinct on` would be the reader's job. ⚠ **`recordImpression` fires on every Discover render, including a pager step and a filter change** — which is correct (it WAS shown) and means the counts are impressions rather than sessions. ⚠ **NEXT SESSIONS costs a real read on the public studio page**: `findPublicBusinessSchedule` is four bounded queries, and it rides the batch the page already awaited so it adds no wall clock — but it is four more round trips on the surface strangers land on, and if that ever matters the honest fix is one aggregate RPC rather than dropping the summary. ⚠ **A crew's public page has no summary**: a crew's calendar is its PRACTICES, which are deliberately never public (R53), so there is nothing to preview. ⚠ **And a plain user's page draws none**, correctly — `personScheduleBusiness` answers null, so the bar is not drawn either | — | an admin desk for the three tables; the Artists impression is a CHECK widening and a decision |
+| **The analytics, the email ledger and NEXT SESSIONS — what they left (30 Sep 2026):** ⚠⚠ **`/api/webhooks/resend` DOES NOTHING UNTIL THE USER DOES TWO THINGS** (a webhook at resend.com pointing at it, and `RESEND_WEBHOOK_SECRET` in env) — unconfigured it answers 503, which is the honest state and not a working feature. ~~⚠ **NOTHING READS the three tables yet**~~ — **CLOSED 30 Sep 2026: `/admin/reach`** calls all four reads (`shoot-reach` 24/24, `shoot-admin` 26/26). ⚠ **What THAT leaves**: the desk can only ask the four questions those functions were written to answer, so there is deliberately **no "total searches" figure** — nothing exposes one, and inventing it would mean opening a table whose whole security is RLS-on-with-no-policies; **Shown is one business at a time** rather than a league table of who is shown most (the same reason); and **the email tab has no per-message thread**, only a pulse and one address's history. ⚠ **The Artists tab records no impressions at all** (`subject_kind` admits `business \| class \| crew`; an artist is a `profiles` id since R24), so "how often was I shown?" is unanswerable for exactly the people most likely to ask — widening the CHECK is a migration and a decision. ⚠ **A search is logged once per DEBOUNCED keystroke burst**, so one person hunting a name writes several rows; the zero-result query that makes the table worth having is unaffected, and a `distinct on` would be the reader's job. ⚠ **`recordImpression` fires on every Discover render, including a pager step and a filter change** — which is correct (it WAS shown) and means the counts are impressions rather than sessions. ⚠ **NEXT SESSIONS costs a real read on the public studio page**: `findPublicBusinessSchedule` is four bounded queries, and it rides the batch the page already awaited so it adds no wall clock — but it is four more round trips on the surface strangers land on, and if that ever matters the honest fix is one aggregate RPC rather than dropping the summary. ⚠ **A crew's public page has no summary**: a crew's calendar is its PRACTICES, which are deliberately never public (R53), so there is nothing to preview. ⚠ **And a plain user's page draws none**, correctly — `personScheduleBusiness` answers null, so the bar is not drawn either | — | an admin desk for the three tables; the Artists impression is a CHECK widening and a decision |
 | **The two CI greps — what they leave (30 Sep 2026):** ⚠ **`audit-reads.mjs` is a GREP, not a parser**: it slices from `.from("x")` to the next `.from(` or `;`, so a query built across statements, or through a variable, is invisible to it — it catches the SHAPE this repo has actually shipped twice, and claims nothing more. ⚠ **`SCOPE_COLUMNS` is generous on purpose** (any `.eq`/`.in`/`.neq` on a scoping column, embed prefix allowed), so it asks "does this state a scope at all" rather than "is the scope right" — a read scoped to the WRONG business would pass it. ⚠ **`repositories/admin.ts` is exempt as a whole file**, so a non-admin read added there would not be caught; it is one exemption with one true reason (every read in it is a platform admin's, guarded by `requireAdmin()`) rather than four identical `audit-ok` comments, which is the noise that gets a check switched off. ⚠ **It does not run in the e2e or the proofs** — it is `npm run audit:reads`, in CI between typecheck and the build | — | a parser only if the grep ever misses something real |
 | **The classes slice, what it left (30 Sep 2026):** ~~⚠⚠ **A TEAM MEMBER STILL CANNOT BOOK A CLASS AT THEIR OWN STUDIO**~~ — **CLOSED 30 Sep 2026** (deviation row R61): the user chose *let them book*, so `showBar` tests `runsThisClass` (the owner, or anybody confirmed on THIS class) instead of `isMember`. ⚠ It removed an inconsistency rather than adding a rule — the learner shelf had always drawn a Book button with no membership gate, so only the class page refused. ~~⚠ **Deleting a published class still leaves its bookings live and creates no refund rows**~~ — **CLOSED 30 Sep 2026** (`20260930110000`, applied and wired in one push): every live seat is cancelled and every PAID one refunded automatically, the refund filed against the PAYER with the owner as its actor, and `shoot-classes` reads it back out of the database (52/52). ~~⚠ **`updateClassDetails` is two updates with no transaction**~~ — **CLOSED 30 Sep 2026** (`20260930120000`, applied and wired in one push): `update_class_with_session` does both inside one plpgsql body, so both land or neither does. ⚠ The dry run proved it the only way that means anything — a refused session move (the room clash guard) rolled the CLASS row back, where two loose updates left `Bollywood/₹777/12` on a class whose time never moved. ⚠⚠ And **nothing had ever driven the edit FORM** — the shoot checked the Edit link's presence and no test ever submitted it — so `shoot-classes` drives it now. ⚠ **The Roster page and the class page's Attendance tab are still two lists of the same people behind two different gates** (owner\|manager vs `can_run_register_for_class`, which also admits a trainer); **kept deliberately** — the happy path drives the Roster pill and Rule 14 protects the address, so collapsing it is not worth breaking a working story. ⚠ **`findPublishedClasses` now INNER-joins the session**, so a legacy class with no session row drops off both shelves; it could not be booked either, and nothing in production has one. ⚠ **A class's `status` column still never reaches `'completed'`** — every screen derives it, so anything reading the column directly (an export, a future report) still sees `published` for ever | S_class 12405; S_classesmod 15048 | a decision on the member's bar; a refund slice; an RPC for the edit; a cron only if something reads the column |
 | ~~**THE HISTORY LIBRARY AND THE FOUR LEADERBOARDS ARE NOT REACHABLE**~~ — ✅ **CLOSED 30 Sep 2026, AND THE ROW LASTED ONE DAY.** It was written on 29 Sep when C86 deleted `StatsScreen`, and it said the thing that turned out to matter: *"a board or a history screen is a SCREEN away rather than a rebuild"*, which is exactly what it cost to put them back — the four reads were kept and marked `⚠ NO CALLER` for this reason and every one of them has a caller again. ⚠ **The lesson is the 28 Sep sweep's own, paid off twice in two days: "an export nothing calls is sometimes a feature nobody can reach."** Keeping them is what made the restore a re-wire rather than a rewrite | S_profiletab 9708, 9610 | closed |

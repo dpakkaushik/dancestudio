@@ -696,3 +696,133 @@ export async function countReports(supabase: SupabaseClient): Promise<ReportCoun
   const [open, actioned, dismissed] = await Promise.all([one("open"), one("actioned"), one("dismissed")]);
   return { open, actioned, dismissed };
 }
+
+/* ── THE REACH DESK (30 Sep 2026) ────────────────────────────────────────────
+ *
+ * ⚠⚠ THE THREE ANALYTICS TABLES HAD WRITERS AND NO READER. `search_events`,
+ * `impressions` and `email_events` were applied on 29 Sep and given writers the
+ * same day, and the four definer reads below shipped WITH THEM and were called
+ * by nothing — so the rows accumulated where nobody could look at them. A
+ * recorder with no playback is not an instrument.
+ *
+ * ⚠ Every one is `is_platform_admin()` INSIDE the function, so each answers the
+ * SERVICE ROLE with emptiness rather than an error (the 10 Sep lesson) — which
+ * is why these are read with the CALLER's client, never the admin one. */
+
+export interface SearchTermRow {
+  term: string;
+  searches: number;
+  lastAt: string;
+}
+
+/** What people searched for and DanceOS could not answer. ⚠ The one report
+ *  these tables exist for: every row is either a studio that should be here or
+ *  a word the search box does not understand. */
+export async function findSearchTermsWithNoAnswer(
+  supabase: SupabaseClient,
+  input: { days?: number; limit?: number } = {}
+): Promise<DeskResult<SearchTermRow[]>> {
+  const { data, error } = await supabase.rpc("search_terms_with_no_answer", {
+    p_days: input.days ?? 30,
+    p_limit: input.limit ?? 50,
+  });
+  if (error) {
+    if (missingFunction(error)) {
+      return { rows: [], needsMigration: true };
+    }
+    throw new Error(`admin.searchTerms failed: ${error.message}`);
+  }
+  const rows = (data ?? []) as { term: string; searches: number | string; last_at: string }[];
+  return {
+    rows: rows.map((r) => ({ term: r.term, searches: Number(r.searches), lastAt: r.last_at })),
+    needsMigration: false,
+  };
+}
+
+export interface ImpressionRow {
+  surface: string;
+  shown: number;
+  /** where in the shelf, 1-based; null when the figure cannot be formed */
+  medianPosition: number | null;
+}
+
+/** How often one business was SHOWN, and where in the shelf. ⚠ Median, not
+ *  mean: one long shelf moves a mean and says nothing. */
+export async function findImpressionsForBusiness(
+  supabase: SupabaseClient,
+  businessId: string,
+  days = 30
+): Promise<DeskResult<ImpressionRow[]>> {
+  const { data, error } = await supabase.rpc("impressions_for_business", {
+    p_business_id: businessId,
+    p_days: days,
+  });
+  if (error) {
+    if (missingFunction(error)) {
+      return { rows: [], needsMigration: true };
+    }
+    throw new Error(`admin.impressions failed: ${error.message}`);
+  }
+  const rows = (data ?? []) as { surface: string; shown: number | string; median_position: number | string | null }[];
+  return {
+    rows: rows.map((r) => ({
+      surface: r.surface,
+      shown: Number(r.shown),
+      medianPosition: r.median_position === null ? null : Number(r.median_position),
+    })),
+    needsMigration: false,
+  };
+}
+
+export interface EmailPulseRow {
+  eventType: string;
+  n: number;
+}
+
+/** What Resend has told us happened to the mail, by kind. ⚠ EMPTY IS THE
+ *  HONEST STATE until the webhook is configured — the route answers 503 rather
+ *  than accepting unsigned posts, so nothing writes to this table yet, and the
+ *  desk says which of the two it is rather than drawing a measured zero. */
+export async function findEmailDeliveryPulse(
+  supabase: SupabaseClient,
+  days = 7
+): Promise<DeskResult<EmailPulseRow[]>> {
+  const { data, error } = await supabase.rpc("email_delivery_pulse", { p_days: days });
+  if (error) {
+    if (missingFunction(error)) {
+      return { rows: [], needsMigration: true };
+    }
+    throw new Error(`admin.emailPulse failed: ${error.message}`);
+  }
+  const rows = (data ?? []) as { event_type: string; n: number | string }[];
+  return { rows: rows.map((r) => ({ eventType: r.event_type, n: Number(r.n) })), needsMigration: false };
+}
+
+export interface EmailEventRow {
+  at: string;
+  eventType: string;
+  subject: string | null;
+  detail: string | null;
+  messageId: string | null;
+}
+
+/** Every delivery DanceOS has heard about for ONE address — the question
+ *  "did they get it?" asked about the person who says they did not. */
+export async function findEmailHistoryFor(
+  supabase: SupabaseClient,
+  email: string,
+  limit = 50
+): Promise<DeskResult<EmailEventRow[]>> {
+  const { data, error } = await supabase.rpc("email_history_for", { p_email: email, p_limit: limit });
+  if (error) {
+    if (missingFunction(error)) {
+      return { rows: [], needsMigration: true };
+    }
+    throw new Error(`admin.emailHistory failed: ${error.message}`);
+  }
+  const rows = (data ?? []) as { at: string; event_type: string; subject: string | null; detail: string | null; message_id: string | null }[];
+  return {
+    rows: rows.map((r) => ({ at: r.at, eventType: r.event_type, subject: r.subject, detail: r.detail, messageId: r.message_id })),
+    needsMigration: false,
+  };
+}

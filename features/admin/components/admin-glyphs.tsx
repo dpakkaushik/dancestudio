@@ -27,6 +27,7 @@ export type AdminGlyphKey =
   | "accounts"
   | "businesses"
   | "audit"
+  | "reach"
   | "overview";
 
 export function AdminGlyph({ k, size = 22 }: { k: AdminGlyphKey; size?: number }) {
@@ -134,6 +135,17 @@ export function AdminGlyph({ k, size = 22 }: { k: AdminGlyphKey; size?: number }
         </>,
         size
       );
+    case "reach":
+      /* a magnifier — what people LOOKED FOR, which is the question the whole
+         desk is built on. The only one of the twelve that is a search shape,
+         and deliberately not a chart: the figures desk already owns bars. */
+      return I(
+        <>
+          <circle cx="11" cy="11" r="6.5" />
+          <path d="m15.8 15.8 4.2 4.2" />
+        </>,
+        size
+      );
     case "overview":
     default:
       return I(
@@ -161,6 +173,9 @@ export const DESK_TINT: Record<AdminGlyphKey, string> = {
   subscriptions: "#F59E0B",
   plans: "#EC4899",
   communication: "#8B5CF6",
+  /* ⚠ 33 degrees of hue from the nearest saturated desk (support), measured
+     rather than picked — the obvious teal sits 2 degrees from businesses. */
+  reach: "#A21CAF",
   accounts: "#3B82F6",
   businesses: "#0D9488",
   audit: "#64748B",
