@@ -1,7 +1,7 @@
 import { notFound, redirect } from "next/navigation";
 import { MembershipUsagePage } from "@/features/memberships/components/MembershipUsagePage";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
-import { findBusinessMemberships, findMembershipClassUsage, findMembershipHolders } from "@/repositories/memberships";
+import { findBusinessMemberships, findMembershipClassUsage, findMembershipHolders, findPassUsesMany } from "@/repositories/memberships";
 import { findMyMemberships as findMyTeams } from "@/repositories/businesses";
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -37,10 +37,13 @@ export default async function MembershipUsageRoute({ params }: { params: Promise
     findMembershipHolders(supabase, membershipId),
     findMembershipClassUsage(supabase, membershipId),
   ]);
+  /* which classes EACH holder spent theirs on (30 Sep 2026) — one `pass_uses`
+     per holder who has spent anything, in parallel; the RPC admits the seller's team */
+  const usesByPass = await findPassUsesMany(supabase, holders);
   /* ⚠ THE OWNER SEAT, not merely a seat on the seller's team (28 Sep 2026):
      this page admits every member — a trainer reads the usage — and
      `delete_membership` admits the OWNER alone. Offering the control to a
      trainer would be a button whose only possible answer is a refusal. */
   const isOwner = teams.some((t) => t.business.id === owned[sellerIdx].id && t.memberRole === "owner");
-  return <MembershipUsagePage membership={membership} holders={holders} classes={classes} canManage={isOwner} />;
+  return <MembershipUsagePage membership={membership} holders={holders} classes={classes} canManage={isOwner} usesByPass={usesByPass} />;
 }

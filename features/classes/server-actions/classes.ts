@@ -17,6 +17,7 @@ import {
 import { findRoomsByBusiness } from "@/repositories/rooms";
 import { searchEverything } from "@/repositories/search";
 import { reconcileClassPeople } from "@/services/classPeople";
+import { sendUnsentRefunds } from "@/services/refundRail";
 
 export interface ClassActionState {
   error: string | null;
@@ -328,7 +329,21 @@ export async function deleteClassAction(
     return { error: error instanceof Error ? error.message : "Could not delete" };
   }
 
+  /* ⚠⚠ AND THE MONEY IS ACTUALLY SENT BACK (30 Sep 2026). `softDeleteClass`
+     calls the class off, which files one `pending` refund per paid seat — and
+     until today NOTHING THEN ASKED THE RAIL FOR THE MONEY. The learner's own
+     cancel fires `refundCashfreePayment`; an approved request fires it; the
+     call-off wrote the ledger row and stopped, so every refund a delete filed
+     sat "PROCESSING · awaiting the rail" for ever, with "Mark refunded at the
+     desk" as its only exit — the studio paying back by hand money Cashfree was
+     never asked for. The seats are already cancelled and the delete has landed
+     by here, so a rail failure costs nothing but the send itself: the row stays
+     `pending` and unsent, and the Refunds desk offers to send it again. */
+  await sendUnsentRefunds(supabase, { classId: parsed.data.classId }, "The studio cancelled this class");
+
   revalidatePath(`/business/${parsed.data.businessId}/classes`);
+  revalidatePath(`/business/${parsed.data.businessId}/refunds`);
+  revalidatePath(`/business/${parsed.data.businessId}/earnings`);
   return { error: null };
 }
 

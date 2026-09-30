@@ -4,8 +4,8 @@ import { DOS_LEVEL_LABEL } from "@/lib/constants/styles";
 import { DOS_UI, INK, LILAC, SUB } from "@/lib/design/tokens";
 import { money as rupees } from "@/features/payouts/components/earnings-kit";
 import { photoUrl } from "@/lib/media/photo";
-import type { MembershipClassUse, MembershipHolder, MembershipWithUsage } from "@/repositories/memberships";
-import { ProgressBar } from "./MembershipsScreen";
+import type { MembershipClassUse, MembershipHolder, MembershipWithUsage, PassUse } from "@/repositories/memberships";
+import { ProgressBar, SpentOn } from "./MembershipsScreen";
 import { MembershipOffSale } from "./MembershipOffSale";
 
 /** ONE MEMBERSHIP AND ITS USAGE (19 Sep 2026, the user: "make sure able to track
@@ -21,8 +21,24 @@ import { MembershipOffSale } from "./MembershipOffSale";
 const card = { background: "var(--card)", border: "1.5px solid var(--el)", borderRadius: 16, padding: "13px 14px", marginBottom: 10 } as const;
 const unitWord = (unit: "classes" | "hours", n: number) => (unit === "hours" ? `${n} ${n === 1 ? "hour" : "hours"}` : `${n} ${n === 1 ? "class" : "classes"}`);
 
-export function MembershipUsagePage({ membership, holders, classes, canManage = false }: { membership: MembershipWithUsage; holders: MembershipHolder[]; classes: MembershipClassUse[]; canManage?: boolean }) {
+export function MembershipUsagePage({
+  membership,
+  holders,
+  classes,
+  canManage = false,
+  usesByPass = {},
+}: {
+  membership: MembershipWithUsage;
+  holders: MembershipHolder[];
+  classes: MembershipClassUse[];
+  canManage?: boolean;
+  /** WHICH classes each holder spent theirs on (30 Sep 2026) — the cross of the
+   *  two lists below, which is the question a seller actually asks about a person */
+  usesByPass?: Record<string, PassUse[]>;
+}) {
   const m = membership;
+  /* what was sold and has not been danced yet — the seller's standing promise */
+  const unspent = Math.max(0, m.unitsSold - m.unitsUsed);
   return (
     <div style={{ background: LILAC, color: INK, maxWidth: 430, margin: "0 auto", fontFamily: DOS_UI, minHeight: "100vh", padding: "14px 16px 40px", boxSizing: "border-box" }}>
       <div style={{ borderRadius: 22, padding: 18, background: "linear-gradient(135deg,#B45309,#7C3AED)", color: "#fff", marginBottom: 12 }}>
@@ -48,6 +64,12 @@ export function MembershipUsagePage({ membership, holders, classes, canManage = 
         <div style={card}>
           <div style={{ fontSize: 9.5, fontWeight: 900, letterSpacing: 0.9, color: "var(--muted)", marginBottom: 2 }}>HOW MUCH OF WHAT WAS SOLD HAS BEEN DANCED</div>
           <ProgressBar used={m.unitsUsed} total={m.unitsSold} tint="#8B5CF6" testId="usage-progress" />
+          {/* ⚠ THE OTHER SIDE OF THE SAME BAR, SAID AS WHAT IT IS (30 Sep 2026): what
+              was sold and not yet danced is a class the studio still OWES — the
+              liability behind the money under "Taken". Counted, never stored. */}
+          <div data-testid="usage-unspent" style={{ fontSize: 10.5, color: SUB, marginTop: 6 }}>
+            {unspent === 0 ? "Everything sold has been danced." : `${unitWord(m.unit, unspent)} still owed to the people holding one.`}
+          </div>
         </div>
       ) : null}
 
@@ -94,6 +116,7 @@ export function MembershipUsagePage({ membership, holders, classes, canManage = 
                   <span style={{ flexShrink: 0, fontSize: 9, fontWeight: 900, color: h.status === "active" ? "#22C55E" : SUB }}>{h.status === "used_up" ? "USED UP" : h.status.toUpperCase()}</span>
                 </Link>
                 <ProgressBar used={h.unitsUsed} total={h.unitsTotal} testId="holder-progress" />
+                <SpentOn uses={usesByPass[h.passId] ?? []} unit={h.unit} />
               </div>
             );
           })

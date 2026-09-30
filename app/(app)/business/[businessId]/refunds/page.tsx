@@ -4,6 +4,7 @@ import { RefundsLedger } from "@/features/settings/components/RefundsLedger";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { findRefundsByBusiness } from "@/repositories/refunds";
 import { findMyMemberships, runsTheBusiness } from "@/repositories/businesses";
+import { reconcileRailRefunds } from "@/services/refundRail";
 
 export const metadata: Metadata = { title: "Refunds — DanceOS" };
 
@@ -25,6 +26,9 @@ export default async function BusinessRefundsPage({ params, searchParams }: { pa
   const seat = (await findMyMemberships(supabase)).find((m) => m.business.id === businessId);
   if (!seat || !runsTheBusiness(seat.memberRole)) redirect("/business");
   const role = seat.memberRole;
+  /* the rail is asked about every pending refund with a reference BEFORE the
+     ledger is read, so "PROCESSING" here means Cashfree still says so (30 Sep 2026) */
+  await reconcileRailRefunds(supabase, { businessId });
   const rows = await findRefundsByBusiness(supabase, businessId);
   return <RefundsLedger rows={rows} side="business" canSettle={role === "owner"} focusClassId={focus && /^[0-9a-f-]{36}$/i.test(focus) ? focus : null} />;
 }

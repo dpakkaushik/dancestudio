@@ -179,6 +179,38 @@ export async function findMyMemberships(supabase: SupabaseClient): Promise<MyPas
   }));
 }
 
+/** EVERY SESSION ONE PASS HAS BEEN SPENT ON (`pass_uses`, 19 Sep 2026 — with
+ *  no caller until 30 Sep). The holder's own history, and the seller's answer
+ *  to "which classes did THIS person spend theirs on": the class-wise and the
+ *  student-wise lists on the usage page each answered half of that, and the
+ *  question a seller actually asks is the cross of the two. The RPC admits the
+ *  holder and the seller's team and nobody else; a refusal reads as nothing. */
+export async function findPassUses(supabase: SupabaseClient, passId: string): Promise<PassUse[]> {
+  const { data, error } = await supabase.rpc("pass_uses", { p_pass_id: passId });
+  if (error) return [];
+  return ((data ?? []) as Array<Record<string, unknown>>).map((r) => ({
+    classId: String(r.class_id),
+    shareSlug: String(r.share_slug),
+    style: String(r.style),
+    level: String(r.level),
+    businessName: String(r.business_name ?? ""),
+    startsAt: String(r.starts_at),
+    units: n(r.units),
+  }));
+}
+
+/** the uses of several passes at once, keyed by pass — ONE call per pass that
+ *  has spent anything, in parallel, never one for a pass that has spent nothing */
+export async function findPassUsesMany(supabase: SupabaseClient, passes: Array<{ passId: string; unitsUsed: number }>): Promise<Record<string, PassUse[]>> {
+  const spent = passes.filter((p) => p.unitsUsed > 0).slice(0, 60);
+  const lists = await Promise.all(spent.map((p) => findPassUses(supabase, p.passId)));
+  const out: Record<string, PassUse[]> = {};
+  spent.forEach((p, i) => {
+    out[p.passId] = lists[i];
+  });
+  return out;
+}
+
 /** which of my passes this session takes — the booking sheet's one question */
 export async function findPassesForSession(supabase: SupabaseClient, sessionId: string): Promise<PassForSession[]> {
   const { data, error } = await supabase.rpc("passes_for_session", { p_session_id: sessionId });

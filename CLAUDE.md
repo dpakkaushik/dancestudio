@@ -2,7 +2,94 @@
 
 ## LAST SESSION (30 Sep 2026) — replaced on every push (Rule 13)
 
-> ### THE THREE TABLES HAVE A READER AT LAST — AND A HARNESS THAT LEAKED ADMIN RIGHTS (30 Sep 2026, latest) — no migration
+> ### THE MONEY IS ASKED FOR, A PASS SAYS WHERE IT WENT, AND AN UNPAID PASS IS NOT A SALE (30 Sep 2026, latest) — ⚠⚠ ONE MIGRATION WRITTEN, DRY-RUN **24/24** AND **HELD** (NEXT TO DO #0b7)
+> The user: *"leave whats left and fix others completely, there should be no
+> pending isuues related to classes, refunds and memberships once you are done.
+> check from previous chat."* "What's left" is #0b6, the five ops items, and
+> they were left. Everything else open on those three topics was re-read from
+> the code rather than from the backlog, and the two worst findings were ones no
+> backlog row had.
+> * ⚠⚠⚠ **CALLING A CLASS OFF FILED REFUNDS AND NEVER ASKED CASHFREE FOR THE
+>   MONEY.** `cancel_class_bookings_for_class` (applied that morning, #0b3)
+>   writes one `pending` refund per paid seat — and `deleteClassAction` stopped
+>   there. The learner's own cancel fires `refundCashfreePayment`; an approved
+>   request fires it; the third door wrote the ledger row and did nothing else.
+>   So every refund a delete filed read *"PROCESSING · awaiting the rail"* for
+>   ever, and the ledger's only exit was **"Mark refunded at the desk"** — the
+>   studio paying back BY HAND money the rail was never asked for. A morning's
+>   own migration proven 27/27 and driven 52/52 in a browser, and the thing it
+>   promised still did not happen, because **the dry run proves the database and
+>   the shoot read the ROW — neither can see that nobody called the rail.**
+>   `services/refundRail.ts` is the missing call: the delete sends every unsent
+>   refund, one by one (twenty parallel POSTs to a gateway is how one gets
+>   rate-limited into "failed"), and a failed send leaves the row `pending` and
+>   UNSENT rather than pretending.
+> * ⚠⚠ **AND THE LEDGER CAN NOW TELL "NOT YET WITH CASHFREE" FROM "WITH
+>   CASHFREE", AND ASKS CASHFREE ITSELF.** The two used to read alike. A pending
+>   row with no rail reference says so and the studio's desk offers **Send through
+>   Cashfree** beside the desk settlement; a pending row WITH a reference is
+>   reconciled against the rail when either ledger or the class's own queue is
+>   opened — `reconcileRailRefunds` fetches the refund and lands a terminal
+>   answer through `apply_refund_update`, **the webhook's own idempotent
+>   applier**, so a webhook arriving later is a no-op and the two can never
+>   disagree. ⚠ That makes #8 (the PG webhook sub-tab, the user's) a matter of
+>   latency rather than of truth: a refund Cashfree has paid stops reading
+>   "processing" the moment somebody looks. ⚠ The admin client is used for the
+>   one RPC granted to the service role alone, on rows the caller's own RLS read
+>   handed back a moment earlier — nobody reaches a row this way they could not
+>   see.
+> * ⚠⚠ **AN ABANDONED CHECKOUT COUNTED AS A SOLD PASS.** `buy_membership` writes
+>   a priced pass `pending_payment` and opens the window; close the window and
+>   the pass stayed — and `why_no_membership`, `public_memberships.left_count`,
+>   `business_memberships.sold` and `apply_membership_payment`'s cap all counted
+>   `status <> 'cancelled'`, which includes it. **Twenty closed windows sold out a
+>   twenty-count membership with nobody having paid a rupee**, and the same
+>   person pressing Buy again made a SECOND pending pass. The fix is SQL and is
+>   HELD (#0b7): a pass counts once PAID (`active` / `used_up`), and Buy again
+>   RESUMES the unpaid pass at today's price. ⚠ The dry run's own point (check 16):
+>   when the late payer's money lands after the last real place has gone, the
+>   applier **refunds under the lock** rather than handing out a third of two —
+>   which the 19 Sep migration already wrote for exactly this case.
+> * ⚠⚠ **AND THE DRY RUN FOUND A FLAW IN MY OWN TRIGGER BEFORE IT COST ANYBODY.**
+>   The same migration keeps the form's *no backdating* rule at the row
+>   (`class_sessions_start_ahead`), and my first cut compared `starts_at` to the
+>   microsecond — **the form's control is HH:MM, so re-saving a class that has
+>   already run drops the seconds (measured 5–10 s that morning) and the trigger
+>   refused the PRICE edit of every past class.** Check 21 went red on exactly
+>   that; it compares to the minute now. The service role stays exempt, which is
+>   how the seeder, the proofs and the shoots plant history — and two harness
+>   plants that asked the RPC for a past start directly (`rls-proof-classes`'s
+>   hard-coded `2026-09-01`, `shoot-classes`' `-180` minutes) are re-cut to the
+>   seeder's shape ahead of the apply.
+> * **`pass_uses` HAD NO CALLER.** The 19 Sep migration shipped it for the
+>   holder's history and nothing read it — the seller's page said WHICH classes
+>   and WHO holds one and never which classes WHICH person spent theirs on. It is
+>   **SPENT ON** under every holder's bar on the usage page and under your own
+>   pass on the Memberships tile, and the usage page says what is still **owed**
+>   (sold and not yet danced) — #0a2's liability wish, one line.
+> * ⚠ **Three things checked and left, said rather than skipped:** the Roster
+>   page and the Attendance tab stay two lists (a working story drives one);
+>   `classes.status` still never reaches `'completed'`, deliberately — the public
+>   SELECT policy admits `published`, so a cron writing `completed` would take
+>   every past class's page away from the people who took it; and #8 stays the
+>   user's.
+> * **Verified:** typecheck 0 · lint 0 · `audit:reads` **0 unexplained** (two
+>   scoped-through-a-variable reads carry their reason) · `next build` green · the
+>   held migration's dry run **24/24 rolled back**, ⚠ with check 7 diffing all five
+>   re-typed bodies against the LIVE catalog and printing the whole diff (one
+>   clause each, plus the resume block) · **`shoot-classes` 73/73** (61 before —
+>   the twelve new ones drive the refused send end to end with a rail order
+>   Cashfree has never seen, the desk's retry and its refusal in words, the
+>   learner's own ledger, and a pass spent and read back at both ends) · proofs
+>   `classes` · `refunds` · `memberships` · `payments` · `enrollments`.
+> * ⚠ Two shoot reds on the way were the CHECK: the learner had become
+>   `visiting_faculty` by accepting a class, so the database rightly refused them
+>   a membership (a fresh buyer now), and a 2.4 s toast was read after a 4 s sleep
+>   (it is waited for). ⚠ Two dry-run reds were the harness — the live signature
+>   of `create_business_with_owner` is `(p_name, p_type, …)`, read off the
+>   catalog rather than remembered.
+>
+> ### THE THREE TABLES HAVE A READER AT LAST — AND A HARNESS THAT LEAKED ADMIN RIGHTS (30 Sep 2026, earlier) — no migration
 > The user: *"fix all push to live . leave 2nd point in whats left"* — so the one
 > item on that list that was MINE was built, and the sandbox items that are
 > theirs were left alone.
@@ -8985,9 +9072,61 @@ summary; the report has the evidence.
 
 ## NEXT TO DO — replaced on every push (Rule 13)
 
+0b7. **⚠⚠ ONE MIGRATION WRITTEN, DRY-RUN 24/24 AND HELD FOR THE USER'S WORD —
+   `20260930130000_an_unpaid_pass_is_not_sold_and_a_class_starts_ahead`.**
+   ⚠ Rule 9: it changes what counts as a SOLD membership, which is money. It is
+   the ONLY pending file (`db-push -DryRun` must list exactly it). **The app is
+   safe against today's database either way** — nothing in the bundle selects a
+   column or calls a function this adds; what the apply changes is which passes
+   count and whether the RPC lets a class start in the past.
+   **THE WHOLE OF THE FILE, so it is read before it is applied:**
+   * **1 · AN UNPAID PASS IS NOT A SOLD PASS** — five bodies, one clause each,
+     `create or replace` with unchanged signatures so **not one grant moves**
+     (asserted): `why_no_membership`, `public_memberships` (the public page's
+     "N left"), `business_memberships` (the seller's "sold") and
+     `apply_membership_payment` (the cap under the lock) count
+     `status in ('active', 'used_up')` where they counted `<> 'cancelled'`; and
+     `buy_membership` gains one block — a caller with an unpaid pass on this
+     membership gets THAT pass back, refreshed to today's price and size, rather
+     than a second row. ⚠ `membership_holders` already left `pending_payment`
+     out and `my_memberships` deliberately keeps it in (the "Pay ₹X" button);
+     neither moves. ⚠ **Nothing is backfilled and no row changes** — the
+     `pending_payment` rows on production simply stop counting.
+   * **2 · A CLASS STARTS AHEAD** — one trigger function (executable by no client
+     role) and one `before insert or update of starts_at` trigger on
+     `class_sessions`: a start more than a minute in the past is refused with
+     the form's own sentence, on INSERT and on an UPDATE that moves the start to
+     a different MINUTE. ⚠ **Service role exempt**, so the seeder, the proofs and
+     the shoots keep planting history by back-dating as the service role; ⚠ a
+     past class's price and people stay editable (an unchanged minute passes —
+     check 21 is exactly that, and it was red before the minute rule).
+   * **NOTHING ELSE MOVES**: no table, no column, no policy, no grant on anything
+     that exists. **Dry run 24/24, rolled back**: exactly one function added,
+     anon's executable set unchanged at **39**, public policies unchanged at
+     **103**, one trigger added on `class_sessions` (3 → 4), ⚠ **every re-typed
+     body diffed against the LIVE catalog** (check 7 prints the whole diff), an
+     abandoned window leaving "2 left" on the page and "0 sold" on the desk, Buy
+     again resuming the same row at the new price, two real payments filling it,
+     the third payer REFUNDED under the lock, the past start refused for the
+     owner and allowed for the service role, the old class still editable, a
+     move backwards refused and a move ahead allowed.
+   **On your word:**
+```
+   $env:NODE_PATH="<any scratchpad with pg>\node_modules"
+   node scripts/dry-run-checks/20260930130000.snapshot.js          # writes before.json beside it — the LIVE bodies, for the diff
+   node scripts/dry-run-migration.js supabase/migrations/20260930130000_an_unpaid_pass_is_not_sold_and_a_class_starts_ahead.sql scripts/dry-run-checks/20260930130000.js   # 24/24, rolled back
+   powershell -NoProfile -ExecutionPolicy Bypass -File scripts/db-push.ps1 -DryRun   # must list exactly this one file
+   powershell -NoProfile -ExecutionPolicy Bypass -File scripts/db-push.ps1 2>&1 | Select-String -NotMatch 'Skipping migration|Warning: failed to cache|prerequisite for local'
+   powershell -NoProfile -ExecutionPolicy Bypass -File scripts/run-proofs.ps1 memberships classes rooms-people
+```
+   ⚠ The snapshot script writes `before.json` into `scripts/dry-run-checks/`
+   (gitignored by name below it) and the checks read it from there. ⚠ No
+   PostgREST reload is needed (no column, no table) and no rebuild — the app
+   already reads these functions; the database starts answering differently.
+
 0b6. **⚠ WHAT IS LEFT IS THE USER'S, AND IT IS ALL OPS (30 Sep 2026).** Nothing
-   in the tree is half-built and no migration is pending — `db-push -DryRun`
-   lists none. The five open items each need an account or a dashboard the agent
+   in the tree is half-built and **one migration is pending — #0b7, held for the
+   list above**. The five open items each need an account or a dashboard the agent
    has no access to, and the user has twice said to leave them:
    * **The Resend webhook** — a webhook at resend.com pointing at
      `/api/webhooks/resend`, and its signing secret as `RESEND_WEBHOOK_SECRET` in
@@ -8997,9 +9136,11 @@ summary; the report has the evidence.
    * **A billed Google Maps key** (#7) — the demo key's daily quota has failed a
      check three times, and for a real user it is an outage.
    * **The Cashfree Payment Gateway webhook sub-tab** (#8) — without it a
-     refund's terminal state is never heard, so an automatic refund sits
-     `pending` on the ledger for ever. ⚠ **This one now has live rows behind
-     it**: the 30 Sep call-off wrote real refunds.
+     refund's terminal state is never DELIVERED. ⚠ Since 30 Sep 2026 that is a
+     matter of latency rather than truth: both refund ledgers and the class's
+     queue ask Cashfree directly for every pending refund that is with it when
+     they are opened (`reconcileRailRefunds`), through the webhook's own
+     applier. The webhook still matters for the ledger nobody has opened.
    * **The Supabase email templates** (#13) and **a verified Resend domain**
      (#14) — until the domain is verified, auth mail reaches only the Resend
      account owner.
@@ -10763,12 +10904,14 @@ summary; the report has the evidence.
    migration**: `membership_uses` carries `class_id` itself, and the policy *"a
    business reads uses on its own classes"* has admitted this studio's members
    since 19 Sep 2026. ⚠ Drawn only when there are any.
-   **⚠ WHAT IS LEFT, AND BOTH ARE WISHES RATHER THAN DEFECTS:** a period chip or
-   a filter by source on the statement, and **how much of what a studio sold is
-   still UNSPENT** — a real liability figure, and the more interesting of the two,
-   since a studio that has taken ₹80,000 of passes owes that many classes. It is
-   countable today (`memberships.units` × live passes, less `membership_uses`)
-   and needs a screen and a decision about where it belongs, not schema.
+   **⚠ WHAT IS LEFT IS ONE WISH:** a period chip or a filter by source on the
+   statement. ~~**how much of what a studio sold is still UNSPENT**~~ — **DONE
+   30 Sep 2026**: the usage page says it under the sold-versus-danced bar
+   (*"N classes still owed to the people holding one"*), counted from the same
+   two numbers, on the one screen that is about that membership. ⚠ It is
+   per-membership, not a studio-wide liability total — that would be a figure on
+   the Earnings desk and a decision about what "what is left" means with a debt
+   of classes in it.
 
 0s. **~~THE FIVE PROFILE-PAGE MIGRATIONS ARE NOT APPLIED~~ — APPLIED 19 Sep 2026**
    on the user's third "push to live" (the top block: the classifier accepted the
@@ -11340,6 +11483,24 @@ for the database schema. **The UI is not redesigned** — see Rule 2.
 
 ### Progress tracker — update after EVERY push (Rule 11)
 
+- **THE MONEY IS ASKED FOR, A PASS SAYS WHERE IT WENT, AND AN UNPAID PASS IS NOT
+  A SALE — 30 Sep 2026, no step number ⚠ (Rule 9: MONEY) — app half PUSHED; ONE
+  MIGRATION WRITTEN, DRY-RUN 24/24 AND HELD (#0b7).** The user: *"leave whats
+  left and fix others completely, there should be no pending issues related to
+  classes, refunds and memberships."* ⚠⚠⚠ **Calling a class off filed refunds and
+  never asked Cashfree for the money** — that morning's own `#0b3`, proven 27/27
+  and driven 52/52, wrote the row and stopped; every call-off refund read
+  "processing" for ever and the only exit was the studio paying by hand.
+  `services/refundRail.ts`: the delete SENDS every unsent refund, the desk offers
+  **Send through Cashfree** for one the rail refused, and both ledgers and the
+  class queue RECONCILE pending refunds against Cashfree through the webhook's own
+  idempotent applier — so #8 is latency, not truth. ⚠⚠ **An abandoned checkout
+  counted as a sold pass** in every membership count and cap; the SQL fix is the
+  held migration, whose dry run also caught a flaw in my own backdate trigger (it
+  compared to the microsecond and the form drops the seconds). `pass_uses`
+  finally has callers — SPENT ON at both ends, and what is still owed. **typecheck
+  0 · lint 0 · `audit:reads` 0 unexplained · build green · `shoot-classes` 73/73 ·
+  dry run 24/24 rolled back.**
 - **THE THREE TABLES HAVE A READER — 30 Sep 2026, no step number ⚠ (Rule 9: it
   cleared three live platform-admin rights) — no migration.** The user: *"fix all
   push to live . leave 2nd point in whats left."* ⚠⚠ The analytics tables have had
@@ -16477,7 +16638,8 @@ nothing to lift.
 |-----|--------------|-------------|
 | **The analytics, the email ledger and NEXT SESSIONS — what they left (30 Sep 2026):** ⚠⚠ **`/api/webhooks/resend` DOES NOTHING UNTIL THE USER DOES TWO THINGS** (a webhook at resend.com pointing at it, and `RESEND_WEBHOOK_SECRET` in env) — unconfigured it answers 503, which is the honest state and not a working feature. ~~⚠ **NOTHING READS the three tables yet**~~ — **CLOSED 30 Sep 2026: `/admin/reach`** calls all four reads (`shoot-reach` 24/24, `shoot-admin` 26/26). ⚠ **What THAT leaves**: the desk can only ask the four questions those functions were written to answer, so there is deliberately **no "total searches" figure** — nothing exposes one, and inventing it would mean opening a table whose whole security is RLS-on-with-no-policies; **Shown is one business at a time** rather than a league table of who is shown most (the same reason); and **the email tab has no per-message thread**, only a pulse and one address's history. ⚠ **The Artists tab records no impressions at all** (`subject_kind` admits `business \| class \| crew`; an artist is a `profiles` id since R24), so "how often was I shown?" is unanswerable for exactly the people most likely to ask — widening the CHECK is a migration and a decision. ⚠ **A search is logged once per DEBOUNCED keystroke burst**, so one person hunting a name writes several rows; the zero-result query that makes the table worth having is unaffected, and a `distinct on` would be the reader's job. ⚠ **`recordImpression` fires on every Discover render, including a pager step and a filter change** — which is correct (it WAS shown) and means the counts are impressions rather than sessions. ⚠ **NEXT SESSIONS costs a real read on the public studio page**: `findPublicBusinessSchedule` is four bounded queries, and it rides the batch the page already awaited so it adds no wall clock — but it is four more round trips on the surface strangers land on, and if that ever matters the honest fix is one aggregate RPC rather than dropping the summary. ⚠ **A crew's public page has no summary**: a crew's calendar is its PRACTICES, which are deliberately never public (R53), so there is nothing to preview. ⚠ **And a plain user's page draws none**, correctly — `personScheduleBusiness` answers null, so the bar is not drawn either | — | an admin desk for the three tables; the Artists impression is a CHECK widening and a decision |
 | **The two CI greps — what they leave (30 Sep 2026):** ⚠ **`audit-reads.mjs` is a GREP, not a parser**: it slices from `.from("x")` to the next `.from(` or `;`, so a query built across statements, or through a variable, is invisible to it — it catches the SHAPE this repo has actually shipped twice, and claims nothing more. ⚠ **`SCOPE_COLUMNS` is generous on purpose** (any `.eq`/`.in`/`.neq` on a scoping column, embed prefix allowed), so it asks "does this state a scope at all" rather than "is the scope right" — a read scoped to the WRONG business would pass it. ⚠ **`repositories/admin.ts` is exempt as a whole file**, so a non-admin read added there would not be caught; it is one exemption with one true reason (every read in it is a platform admin's, guarded by `requireAdmin()`) rather than four identical `audit-ok` comments, which is the noise that gets a check switched off. ⚠ **It does not run in the e2e or the proofs** — it is `npm run audit:reads`, in CI between typecheck and the build | — | a parser only if the grep ever misses something real |
-| **The classes slice, what it left (30 Sep 2026):** ~~⚠⚠ **A TEAM MEMBER STILL CANNOT BOOK A CLASS AT THEIR OWN STUDIO**~~ — **CLOSED 30 Sep 2026** (deviation row R61): the user chose *let them book*, so `showBar` tests `runsThisClass` (the owner, or anybody confirmed on THIS class) instead of `isMember`. ⚠ It removed an inconsistency rather than adding a rule — the learner shelf had always drawn a Book button with no membership gate, so only the class page refused. ~~⚠ **Deleting a published class still leaves its bookings live and creates no refund rows**~~ — **CLOSED 30 Sep 2026** (`20260930110000`, applied and wired in one push): every live seat is cancelled and every PAID one refunded automatically, the refund filed against the PAYER with the owner as its actor, and `shoot-classes` reads it back out of the database (52/52). ~~⚠ **`updateClassDetails` is two updates with no transaction**~~ — **CLOSED 30 Sep 2026** (`20260930120000`, applied and wired in one push): `update_class_with_session` does both inside one plpgsql body, so both land or neither does. ⚠ The dry run proved it the only way that means anything — a refused session move (the room clash guard) rolled the CLASS row back, where two loose updates left `Bollywood/₹777/12` on a class whose time never moved. ⚠⚠ And **nothing had ever driven the edit FORM** — the shoot checked the Edit link's presence and no test ever submitted it — so `shoot-classes` drives it now. ⚠ **The Roster page and the class page's Attendance tab are still two lists of the same people behind two different gates** (owner\|manager vs `can_run_register_for_class`, which also admits a trainer); **kept deliberately** — the happy path drives the Roster pill and Rule 14 protects the address, so collapsing it is not worth breaking a working story. ⚠ **`findPublishedClasses` now INNER-joins the session**, so a legacy class with no session row drops off both shelves; it could not be booked either, and nothing in production has one. ⚠ **A class's `status` column still never reaches `'completed'`** — every screen derives it, so anything reading the column directly (an export, a future report) still sees `published` for ever | S_class 12405; S_classesmod 15048 | a decision on the member's bar; a refund slice; an RPC for the edit; a cron only if something reads the column |
+| **The classes slice, what it left (30 Sep 2026):** ~~⚠⚠ **A TEAM MEMBER STILL CANNOT BOOK A CLASS AT THEIR OWN STUDIO**~~ — **CLOSED 30 Sep 2026** (deviation row R61): the user chose *let them book*, so `showBar` tests `runsThisClass` (the owner, or anybody confirmed on THIS class) instead of `isMember`. ⚠ It removed an inconsistency rather than adding a rule — the learner shelf had always drawn a Book button with no membership gate, so only the class page refused. ~~⚠ **Deleting a published class still leaves its bookings live and creates no refund rows**~~ — **CLOSED 30 Sep 2026** (`20260930110000`, applied and wired in one push): every live seat is cancelled and every PAID one refunded automatically, the refund filed against the PAYER with the owner as its actor, and `shoot-classes` reads it back out of the database (52/52). ~~⚠ **`updateClassDetails` is two updates with no transaction**~~ — **CLOSED 30 Sep 2026** (`20260930120000`, applied and wired in one push): `update_class_with_session` does both inside one plpgsql body, so both land or neither does. ⚠ The dry run proved it the only way that means anything — a refused session move (the room clash guard) rolled the CLASS row back, where two loose updates left `Bollywood/₹777/12` on a class whose time never moved. ⚠⚠ And **nothing had ever driven the edit FORM** — the shoot checked the Edit link's presence and no test ever submitted it — so `shoot-classes` drives it now. ⚠ **The Roster page and the class page's Attendance tab are still two lists of the same people behind two different gates** (owner\|manager vs `can_run_register_for_class`, which also admits a trainer); **kept deliberately** — the happy path drives the Roster pill and Rule 14 protects the address, so collapsing it is not worth breaking a working story. ⚠ **`findPublishedClasses` now INNER-joins the session**, so a legacy class with no session row drops off both shelves; it could not be booked either, and nothing in production has one. ⚠ **A class's `status` column still never reaches `'completed'`** — every screen derives it, so anything reading the column directly (an export, a future report) still sees `published` for ever. ⚠ **AND THAT IS A DECISION NOW, NOT A GAP (30 Sep 2026)**: the public SELECT policy admits `published` classes of listed businesses, so a cron writing `completed` would take every past class's page (`/c/{slug}`, the History library's doors) away from the people who took it. Nothing reads the column directly today. ~~⚠ **A class can still be backdated through the DATABASE**~~ — **the rule is written and HELD in `20260930130000`** (#0b7): `class_sessions_start_ahead` refuses a past start on insert and a move into the past on update, to the MINUTE (the form drops the seconds), service role exempt | S_class 12405; S_classesmod 15048 | #0b7 on the user's word; nothing else |
+| **The refund rail, what the 30 Sep fix left:** ⚠ **a refund the rail REFUSED is still the studio's to notice** — the row reads "not yet with Cashfree" and offers Send through Cashfree, and nobody is told the send failed (the delete's toast says the class is gone, not that a send did not land). ⚠ **Reconciliation runs when a ledger is OPENED and nowhere else**: a refund Cashfree paid on Monday reads "processing" until somebody looks, so #8's webhook is still what makes it true for a ledger nobody opens — latency, not truth. ⚠ **It asks the rail one call per pending row with a reference, in parallel**: a ledger of fifty open refunds is fifty GETs on open, which nothing on production is near; a cache or a cron is the answer if one ever is. ⚠ **A membership refund filed by `apply_membership_payment`** (wrong amount, cap reached under the lock) is sent by nobody — the capture path fires `refundCashfreePayment` for a CLASS seat and the membership branch returns `refunded` without it; the row reads "not yet with Cashfree" on the seller's desk with the retry offered, which is honest and is one call away from automatic | — | a notification on a failed send; the membership branch's send when the applier is next opened |
 | ~~**THE HISTORY LIBRARY AND THE FOUR LEADERBOARDS ARE NOT REACHABLE**~~ — ✅ **CLOSED 30 Sep 2026, AND THE ROW LASTED ONE DAY.** It was written on 29 Sep when C86 deleted `StatsScreen`, and it said the thing that turned out to matter: *"a board or a history screen is a SCREEN away rather than a rebuild"*, which is exactly what it cost to put them back — the four reads were kept and marked `⚠ NO CALLER` for this reason and every one of them has a caller again. ⚠ **The lesson is the 28 Sep sweep's own, paid off twice in two days: "an export nothing calls is sometimes a feature nobody can reach."** Keeping them is what made the restore a re-wire rather than a rewrite | S_profiletab 9708, 9610 | closed |
 | **The three-column restore, what it LEAVES (30 Sep 2026):** ⚠⚠ **the graphs, the number grid's LISTS and the whole History column are the CALLER's own** — `my_session_history` and `my_dance_stats` take no `p_user_id` by Step 25's design and there is no per-studio or per-crew equivalent at all, so on anybody else's record those columns say which read is missing rather than drawing an empty shelf. ⚠⚠ **AND THIS IS A DECISION NOW, NOT A PENDING ITEM (30 Sep 2026): the user chose to LEAVE IT** — *"the columns are honest as they are"* — having been shown the shape they had already picked (*taught + assisted only* for a person, since their teaching is already public through `person_teaches_at` and on class pages while the classes they TOOK are a movement log; a studio's own sessions public, being published classes; and ⚠ a crew's practices NEVER, R53). **So no migration is owed here.** What somebody else's record shows is the figures and the full Rankings board, with History saying whose it is — and the day that stops being enough, the shape is already decided and the reads are named above. ⚠ **A studio's and a crew's Record is its BOARD ROW**, which is thinner than a person's three sides and is thin honestly rather than padded — a crew's is one term since the events removal took "Event entered · +3 pts". ⚠ **`stats.artists` is hard-coded 0 by `publicPerson.ts`** because `person_dance_stats` returns no such column, which is why "Assisted for" / "Trained under" are LEFT OUT of somebody else's grid rather than drawn as zeros. ⚠ **No shoot script drives the three columns for a SIGNED-IN reader** — the happy path does, and the live probe covers a stranger | S_profiletab 9862, 9708, 9610 | one migration, when the user says go |
 | **The two-column hubs and the Practice tile, what they leave (30 Sep 2026):** ⚠ **`SegmentedPanels` mounts only the shown panel**, so anything in the second column is not in the DOM until it is asked for — which made `shoot-practice` stale for a day when Practice became a column, and cost `shoot-seats` a re-cut here. **Any check that reads a second column must carry its `?show=`.** ⚠ **A studio's hub has no third column for taught-at**: it rides in "Where you learned" under its own head, so the pill's count is both lists and the label names one of them. ⚠ **`/crews?show=practices` is a dead parameter now** — it lands on the Yours column rather than 404ing, which is Rule 14's spirit, and nothing redirects it to `/practice`. ⚠ **Practice's repaint moved the DESK's hero and the calendar's practice rows too**, which is correct (a tile and the desk it opens read one vocabulary) and is the widest blast radius a colour change has had here | — | a redirect if anybody misses it; a third column only if a studio asks |
@@ -16515,7 +16677,7 @@ nothing to lift.
 | **The chips, the ID and the moved cancel door, what they left (20 Sep 2026):** the Follow bell's **count is invisible** — it rides as `data-followers` for the suite and the figure beside it is the page's own Followers, so on a page whose count read fails the bell says nothing about how many; `cannotFollow` is a **`title` and an `aria-label`**, not a visible sentence, so an organization account presses nothing and reads nothing unless it hovers or uses a screen reader; **a stranger's bell links to `/login` with no `next=`**, so signing in to follow lands on Home rather than back on the page they were looking at. The chips row **wraps** on a very narrow screen because `FIGURE_ROW` has `flexWrap`, and three 44px chips plus two figures is about 300px — which is the honest behaviour and not the designed one. `/subscription` for an organization **lists every studio it owns with no paging**, which is fine at the 15-studio cap and would not be at fifty; it reads `why_not_public` once per studio, so N+1 round trips on that screen. And **nothing on a studio's home says where its subscription went** — the tile grid is the only hint, and Settings is two taps. ⚠ **`FollowToggle`'s `pill` branch has no caller left** — all five screens pass `variant="chip"` — so the prototype's own Follow button (10930) is dead code in this file; left standing deliberately rather than deleted in the same push as the change that orphaned it, but it is dead, and this repo's own rule is that a branch no screen renders is the same bug as a field no screen reads | S_profiletab 10688, 10930; 16935-16990 | a `next=` on the bell's sign-in; a visible reason; a batched `why_not_public` if a pilot organization ever has ten studios |
 | **The granted powers, the number and the history, what they left (20 Sep 2026):** the two powers are **standing and studio-wide** — "run the register on any class here", not on one class, which is what the per-class `class_people` grant is for; there is no screen that lists WHO holds a standing power across a studio's classes, and no audit line when one is given or taken (the toast is the only trace). **A grant dies with the seat** and is not restored if somebody is re-seated — deliberate, but nothing says so on the screen. **An organization's Event team can run every event the organization hosts**, with no per-event scoping, because there is no table that would hold one (E7's "YOU ARE HELPING WITH THIS ONE" is the same missing thing). **`person_associations.ended` shows a past seat only where a confirmed class proves it** — so somebody who was on a team for two years and taught under a colleague's name has nothing, and the row prints no dates either way. **A business's `member_no` is printed but never searched** — the people picker matches a person's name and number, and nothing matches a studio's. **The Bio column still exists and is still readable through the API**; it is only unwritable through the app, so an old paragraph sits on the row until somebody decides whether to drop the column | 18428-18433; S_profiletab 10834 | a per-studio powers list and an audit line; per-event rights with E7; a decision on dropping `about` |
 | **The team by profile type, what it left (20 Sep 2026):** there is **no e2e segment** for any of it (NEXT TO DO #0ae) and **no rolled-back dry run** for its migration (#0ac), so nothing checks that anon's executable set did not grow — the behaviour's cover is `rls-proof-org-team` (12/12), which found a real defect in the door on its first run. **A studio owner can be given only to somebody who is already on the organization's team** — there is no "make this person the owner of this studio" from the studio's own desk, and the studio's Team desk does not say that seat came from the organization; **relabelling away from Studio owner takes the seat back silently** (the row's word changes and nothing on the screen says a seat moved). **`assistant` has no powers of its own** — it is `staff`'s power set with a different name, so the Permissions block prints the same five lines for both; whether an assistant should hold attendance by default is a decision nobody has made. **A person's two new association groups are seats, not a history**: leaving a team removes the row, so a studio somebody taught at for two years disappears from their page the day they leave, while "Studios taught at" (published classes) keeps them. And **an organization's Event team carries no event powers** — it is a published label, exactly as R28 said, so somebody on it still cannot save or run an event | — (the prototype has one studio and no organization) | a proof, a segment, and a decision on each of the three |
-| **Memberships, what the slice left (19 Sep 2026):** a membership has **no expiry** — it is units, not months, so a pass bought today is still spendable next year (the user's four things named no date, and inventing one would change what people hold); **no refund path** — a `pending_payment` pass that is never paid simply stays unpaid and takes no place, and a paid pass cannot be handed back (a refund on a membership order is a decision about money nobody has made); **a membership is not a seat guarantee** — spending a unit books an ordinary seat under the ordinary capacity lock, so a full class refuses a pass exactly as it refuses a payment, and there is no members-only allocation; **no pause or transfer**; **the seller cannot see WHICH units a holder spent** from the holder's row (the class-wise list answers it from the other side); **`total_count` counts passes SOLD, never passes live**, so cancelling one does not put it back on sale; **a priced membership on an artist's page is bought from the profile, not from a class** — a class page offers only passes already held; and the **statement's source split is two rows** (Classes · Memberships) with no chips to filter by, which is the rest of the 28 Aug source-bar row | S_memberships 16846 | an expiry and a refund path are product decisions; the rest are their own slices |
+| **Memberships, what the slice left (19 Sep 2026):** a membership has **no expiry** — it is units, not months, so a pass bought today is still spendable next year (the user's four things named no date, and inventing one would change what people hold); **no refund path** — a paid pass cannot be handed back (a refund on a membership order is a decision about money nobody has made); ~~a `pending_payment` pass that is never paid simply stays unpaid and takes no place~~ — ⚠⚠ **THAT WAS FALSE, found 30 Sep 2026: it TOOK A PLACE** in every count and cap (`status <> 'cancelled'` includes it), so abandoned windows sold a membership out and Buy again made a second one; **the fix is the HELD migration `20260930130000`** (#0b7), after which an unpaid pass counts nowhere and Buy again resumes it; **a membership is not a seat guarantee** — spending a unit books an ordinary seat under the ordinary capacity lock, so a full class refuses a pass exactly as it refuses a payment, and there is no members-only allocation; **no pause or transfer**; ~~**the seller cannot see WHICH units a holder spent** from the holder's row~~ — **DONE 30 Sep 2026** (`pass_uses`, shipped 19 Sep with no caller, is SPENT ON under every holder's bar and under the holder's own pass); **`total_count` counts passes SOLD, never passes live**, so cancelling one does not put it back on sale; **a priced membership on an artist's page is bought from the profile, not from a class** — a class page offers only passes already held; and the **statement's source split is two rows** (Classes · Memberships) with no chips to filter by, which is the rest of the 28 Aug source-bar row | S_memberships 16846 | an expiry and a refund path are product decisions; the rest are their own slices |
 | **The 28-point list, what it left (19 Sep 2026):** a **studio's styles are not on its Discover card** — `nearby_businesses` hands back its own shape and does not carry the column, so a card still draws the styles of the studio's published classes and a style-less studio still shows none there (the PROFILE pages, which is what the user named, read the field); the **twelve style-less studios stay listed** until their owner next saves; **a team member's payment cannot be edited or voided from the Team desk** (`void_payout` exists and only the Earnings desk offers it), there is no **payment reminder** or "what you still owe them" figure beside the history, and a payment is still a RECORD — no money moves (Step 13's limit, unchanged); the **permissions block is a statement, not a switch** — the five lines are the rules the database keeps and nothing on that screen can change one, so a per-person grant (the prototype's own open row, S4) is still not built; **the team order is the owner's alone** and a trainer sees it without the ▲▼; a **student's figures are booked and attended only** — no progress, no last-seen, no per-style breakdown, and a walk-in has none at all because there is no record to count; **a lead cannot be linked to a person after the fact** (`converted_user_id` still has no screen); the **Followers / Following sheet on Home has no paging** past what one read returns; and **Edit profile being in Settings means a profile-less admin cannot reach it**, which is right (they have no profile) but means the tile is simply absent rather than explained | S_profiletab 10613, 11402; settings 18428-18433; S_earn 18195 | a Discover read that carries the column; a per-person grant is decision (c); the rest are their own slices |
 | **An organization cannot book, and four smaller places still do not say so** (19 Sep 2026): the **calendar's** Train-side button and **/my-classes** draw a booking control only for a booking that already exists, and an organization can hold none — correct today, and it would be wrong the moment either screen offered a NEW booking; a **crew** and an **enquiry** are refused by `guard_person_only` with no sentence in front of them (an organization is not offered Create crew, and the Enquiry button is drawn on a public page whatever the viewer is); and **nothing tells an organization why** on a page it cannot act on other than the two booking bars | — (the prototype has one kind of person) | a sentence at each remaining door, when one turns out to be reachable |
 | **Routines, what the slice left (19 Sep 2026):** a routine's VIDEO is a link only — the user's own list says so, and a video file would be a second bucket with its own size and its own player; there is no EDIT sheet on a routine's page yet (make a new one, or delete — `save_routine` already takes an id, so the sheet is a form away); a routine carries no PARTS, no notes and no price (the prototype's `choreography:"broken into 4 parts"` and its ₹499 routine sale are a marketplace this app does not have); the desk has no Live/Draft filter (a draft wears its badge in the list); a routine is never shown on a PUBLIC page — only on the class page, to people who can read the class — so "the routines this artist teaches" is not a thing a stranger browses; and the usage counts a person ONCE PER CLASS through attendance rows, so somebody who danced the same routine at two studios is two rows in TAUGHT IN and one row in DANCERS, which is the honest reading of "how many people" | S_choreos 17115, S_routinedetail 17215, 7546 | an edit sheet is a form; parts/notes/price need fields and a decision; a public routines list is a privacy decision |

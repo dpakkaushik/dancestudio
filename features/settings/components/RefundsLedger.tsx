@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
-import { decideRefundAction, settleRefundOfflineAction } from "@/features/payments/server-actions/refunds";
+import { decideRefundAction, sendRefundToRailAction, settleRefundOfflineAction } from "@/features/payments/server-actions/refunds";
 import type { RefundLedgerRow } from "@/repositories/refunds";
 import { REFUND_WORD, type RefundStatus } from "@/types/refund";
 import { BizPage, BizToast, bizCard, chip, dayWords, ghostBtn, rupees } from "./settings-kit";
@@ -124,7 +124,11 @@ export function RefundsLedger({ rows, side, canSettle = false, focusClassId = nu
                 )}
               </div>
               <div style={{ fontSize: 10, color: "var(--muted)", marginTop: 1 }}>
-                RF-{r.id.slice(0, 4).toUpperCase()} · {dayWords(r.createdAt)} · {r.settledOffline ? "cash at the desk" : r.hasRailReference ? "Cashfree" : "awaiting the rail"}
+                {/* ⚠ "NOT YET WITH CASHFREE" IS A DIFFERENT FACT FROM "WITH CASHFREE"
+                    (30 Sep 2026): a pending row with no reference was filed and never
+                    SENT — which every call-off refund was until today — and the
+                    two used to read alike. */}
+                RF-{r.id.slice(0, 4).toUpperCase()} · {dayWords(r.createdAt)} · {r.settledOffline ? "cash at the desk" : r.hasRailReference ? "with Cashfree" : r.status === "pending" ? "not yet with Cashfree" : "awaiting a decision"}
               </div>
             </div>
             <div style={{ textAlign: "right", flexShrink: 0 }}>
@@ -144,21 +148,45 @@ export function RefundsLedger({ rows, side, canSettle = false, focusClassId = nu
             </div>
           ) : null}
           {canSettle && r.status === "pending" && !r.hasRailReference ? (
-            <button
-              type="button"
-              disabled={pending}
-              onClick={() =>
-                start(async () => {
-                  const out = await settleRefundOfflineAction({ refundId: r.id });
-                  if (out.error) return fire(out.error);
-                  fire(out.message ?? "Marked refunded");
-                  router.refresh();
-                })
-              }
-              style={{ marginTop: 9, width: "100%", textAlign: "center", fontSize: 11, fontWeight: 800, padding: 9, borderRadius: 999, background: "var(--el)", color: "var(--text)", cursor: "pointer", border: "none", fontFamily: "inherit" }}
-            >
-              Mark refunded at the desk
-            </button>
+            <div style={{ display: "flex", gap: 7, marginTop: 9 }}>
+              {/* ⚠ SEND IT THROUGH THE RAIL FIRST (30 Sep 2026). Until today the only
+                  exit from "pending, never sent" was the desk settlement — the studio
+                  paying back by hand money Cashfree was never asked for. Offered only
+                  when the payment actually went through Cashfree; a row that never
+                  reached the rail (a legacy or planted order) has nothing to send. */}
+              {r.provider === "cashfree" && r.providerOrderId ? (
+                <button
+                  type="button"
+                  disabled={pending}
+                  onClick={() =>
+                    start(async () => {
+                      const out = await sendRefundToRailAction({ refundId: r.id });
+                      if (out.error) return fire(out.error);
+                      fire(out.message ?? "Sent");
+                      router.refresh();
+                    })
+                  }
+                  style={{ flex: 1.3, textAlign: "center", fontSize: 11, fontWeight: 800, padding: 9, borderRadius: 999, background: "var(--text)", color: "var(--solid)", cursor: "pointer", border: "none", fontFamily: "inherit" }}
+                >
+                  Send through Cashfree
+                </button>
+              ) : null}
+              <button
+                type="button"
+                disabled={pending}
+                onClick={() =>
+                  start(async () => {
+                    const out = await settleRefundOfflineAction({ refundId: r.id });
+                    if (out.error) return fire(out.error);
+                    fire(out.message ?? "Marked refunded");
+                    router.refresh();
+                  })
+                }
+                style={{ flex: 1, textAlign: "center", fontSize: 11, fontWeight: 800, padding: 9, borderRadius: 999, background: "var(--el)", color: "var(--text)", cursor: "pointer", border: "none", fontFamily: "inherit" }}
+              >
+                Mark refunded at the desk
+              </button>
+            </div>
           ) : null}
           {r.status === "processed" && r.classShareSlug ? (
             <Link href={`/c/${r.classShareSlug}`} style={{ display: "block", marginTop: 9, textAlign: "center", fontSize: 11, fontWeight: 800, padding: 9, borderRadius: 999, background: "var(--el)", color: "var(--text)", textDecoration: "none" }}>
@@ -170,7 +198,7 @@ export function RefundsLedger({ rows, side, canSettle = false, focusClassId = nu
       {list.length === 0 ? (
         <div style={{ ...bizCard, textAlign: "center", border: "1.5px dashed var(--el)", padding: "22px 16px" }}>
           <div style={{ fontSize: 13, fontWeight: 900, marginBottom: 5 }}>{rows.length === 0 ? "No refunds yet" : "Nothing in that state"}</div>
-          <div style={{ fontSize: 11.5, color: "var(--sub)", lineHeight: 1.5 }}>{side === "mine" ? "Cancel a paid booking from its class or event page and the request lands here." : "A cancellation inside the 48-hour window lands here for you to decide; outside it the rail refunds by itself."}</div>
+          <div style={{ fontSize: 11.5, color: "var(--sub)", lineHeight: 1.5 }}>{side === "mine" ? "Cancel a paid booking from its class page and the request lands here." : "A cancellation inside the 48-hour window lands here for you to decide; outside it the rail refunds by itself."}</div>
         </div>
       ) : null}
       <BizToast msg={toast} />

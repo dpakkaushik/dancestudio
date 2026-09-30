@@ -1,5 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { dosClassLabel } from "@/lib/constants/styles";
+import type { PaymentProvider } from "@/types/payment";
 import type { RefundRequest, RefundStatus } from "@/types/refund";
 
 /** The refund queue for one class. RLS already admits the studio's members to
@@ -17,14 +18,21 @@ interface RefundRow {
   decided_at: string | null;
   decision_note: string | null;
   settled_offline: boolean;
+  provider: PaymentProvider | null;
   provider_refund_id: string | null;
   profiles: { full_name: string } | null;
+  /** the payment's rail id — what `apply_refund_update` is keyed on */
+  payments: { provider_payment_id: string } | null;
 }
 
 /* an order names a class session OR an event (17 Sep 2026) — both are embedded,
-   and whichever is there is what the row is "against" */
+   and whichever is there is what the row is "against".
+   ⚠ THE RAIL'S THREE IDS RIDE ALONG since 30 Sep 2026 — the order's, the
+   payment's and the refund's — because a ledger that cannot say whether a
+   `pending` refund was ever SENT to Cashfree, or ask Cashfree what became of
+   it, is a ledger that reads "processing" for ever (see services/refundRail.ts). */
 const REFUND_SELECT =
-  "id, user_id, amount_inr, reason, status, created_at, decided_at, decision_note, settled_offline, provider_refund_id, profiles (full_name), orders!inner (class_id, event_id, business_id, classes (style, level, share_slug), events (title), businesses (name))";
+  "id, user_id, amount_inr, reason, status, created_at, decided_at, decision_note, settled_offline, provider, provider_refund_id, profiles (full_name), payments (provider_payment_id), orders!inner (class_id, event_id, business_id, provider_order_id, classes (style, level, share_slug), events (title), businesses (name))";
 
 /** a refund with the class — or, since 17 Sep 2026, the event — it is against;
  *  the ledger's row (16665-16680). The `class*` names are kept for the class
@@ -41,12 +49,22 @@ export interface RefundLedgerRow extends RefundRequest {
   classStyle: string;
   classShareSlug: string | null;
   businessName: string;
+  /** WHERE THE MONEY IS, in the rail's own terms (30 Sep 2026). A `pending`
+   *  row with no `providerRefundId` was filed and NEVER SENT — the studio's
+   *  desk offers to send it; one with an id is with Cashfree, whose answer the
+   *  ledger fetches when it is opened. Null `providerOrderId` means the order
+   *  never reached the rail (a planted or legacy row) and nothing can be sent. */
+  provider: PaymentProvider | null;
+  providerOrderId: string | null;
+  providerPaymentId: string | null;
+  providerRefundId: string | null;
 }
 interface LedgerRow extends RefundRow {
   orders: {
     class_id: string | null;
     event_id: string | null;
     business_id: string;
+    provider_order_id: string | null;
     classes: { style: string; level: string; share_slug: string } | null;
     events: { title: string } | null;
     businesses: { name: string } | null;
@@ -64,6 +82,10 @@ const toLedger = (r: LedgerRow): RefundLedgerRow => ({
   decisionNote: r.decision_note,
   settledOffline: r.settled_offline,
   hasRailReference: r.provider_refund_id !== null,
+  provider: r.provider ?? null,
+  providerOrderId: r.orders?.provider_order_id ?? null,
+  providerPaymentId: r.payments?.provider_payment_id ?? null,
+  providerRefundId: r.provider_refund_id,
   classId: r.orders?.class_id ?? "",
   businessId: r.orders?.business_id ?? "",
   /* a class is called "{style} · {level}", never a stored name (types/class.ts); an event keeps its title */
@@ -137,6 +159,106 @@ export async function findRefundsByClass(
     settledOffline: r.settled_offline,
     hasRailReference: r.provider_refund_id !== null,
   }));
+}
+
+/** WHOSE PENDING REFUNDS TO ASK THE RAIL ABOUT — one class's queue, one
+ *  business's ledger, or the caller's own (30 Sep 2026). Every shape names its
+ *  scope out loud: `refunds` admits a business's members to the whole studio's
+ *  rows, and RLS is a ceiling, not a scope. */
+export type RefundRailScope = { classId: string } | { businessId: string } | { mine: string };
+
+/** A `pending` refund as the rail needs it: which of its ids it carries. */
+export interface RailRefund {
+  id: string;
+  amountInr: number;
+  provider: PaymentProvider | null;
+  providerOrderId: string | null;
+  providerPaymentId: string | null;
+  providerRefundId: string | null;
+}
+
+interface RailRow {
+  id: string;
+  amount_inr: number;
+  provider: PaymentProvider | null;
+  provider_refund_id: string | null;
+  payments: { provider_payment_id: string } | null;
+  orders: { class_id: string | null; business_id: string; provider_order_id: string | null } | null;
+}
+
+const RAIL_SELECT = "id, amount_inr, provider, provider_refund_id, payments (provider_payment_id), orders!inner (class_id, business_id, provider_order_id)";
+
+const toRail = (r: RailRow): RailRefund => ({
+  id: r.id,
+  amountInr: r.amount_inr,
+  provider: r.provider ?? null,
+  providerOrderId: r.orders?.provider_order_id ?? null,
+  providerPaymentId: r.payments?.provider_payment_id ?? null,
+  providerRefundId: r.provider_refund_id,
+});
+
+/* the scope column and value, stated once; the embed prefix is how a scope on
+   `refunds` names the order it hangs off (the audit understands the prefix) */
+const railScopeColumn = (scope: RefundRailScope): [string, string] =>
+  "classId" in scope ? ["orders.class_id", scope.classId] : "businessId" in scope ? ["orders.business_id", scope.businessId] : ["user_id", scope.mine];
+
+/** `pending` refunds that carry a rail reference — the ones whose outcome only
+ *  Cashfree knows. Small, usually empty, and read before a ledger is drawn. */
+export async function findRailPendingRefunds(supabase: SupabaseClient, scope: RefundRailScope): Promise<RailRefund[]> {
+  const [col, val] = railScopeColumn(scope);
+  /* audit-ok: the scope IS stated — `railScopeColumn` is exactly one of
+     `orders.class_id`, `orders.business_id` or `user_id`, every one a scope
+     column; the grep cannot see through the variable, a reader can */
+  const { data, error } = await supabase
+    .from("refunds")
+    .select(RAIL_SELECT)
+    .eq(col, val)
+    .eq("status", "pending")
+    .not("provider_refund_id", "is", null)
+    .is("deleted_at", null)
+    .limit(200);
+  if (error) {
+    throw new Error(`refunds.railPending failed: ${error.message}`);
+  }
+  return ((data ?? []) as unknown as RailRow[]).map(toRail);
+}
+
+/** `pending` refunds that were filed and NEVER SENT — no rail reference yet.
+ *  These are what calling a class off leaves behind, and what the studio's
+ *  desk can push through by hand if the send failed. */
+export async function findUnsentRefunds(supabase: SupabaseClient, scope: RefundRailScope): Promise<RailRefund[]> {
+  const [col, val] = railScopeColumn(scope);
+  /* audit-ok: same as above — the scope is one of three named columns through
+     `railScopeColumn`, stated on the line the grep cannot read */
+  const { data, error } = await supabase
+    .from("refunds")
+    .select(RAIL_SELECT)
+    .eq(col, val)
+    .eq("status", "pending")
+    .is("provider_refund_id", null)
+    .is("deleted_at", null)
+    .order("created_at", { ascending: true })
+    .limit(200);
+  if (error) {
+    throw new Error(`refunds.unsent failed: ${error.message}`);
+  }
+  return ((data ?? []) as unknown as RailRow[]).map(toRail);
+}
+
+/** one unsent refund by id — the desk's "Send through Cashfree" retry */
+export async function findUnsentRefund(supabase: SupabaseClient, refundId: string): Promise<RailRefund | null> {
+  const { data, error } = await supabase
+    .from("refunds")
+    .select(RAIL_SELECT)
+    .eq("id", refundId)
+    .eq("status", "pending")
+    .is("provider_refund_id", null)
+    .is("deleted_at", null)
+    .maybeSingle();
+  if (error) {
+    throw new Error(`refunds.unsentOne failed: ${error.message}`);
+  }
+  return data ? toRail(data as unknown as RailRow) : null;
 }
 
 export interface RefundDecision {

@@ -52,3 +52,6 @@ android/*.aab
 # belongs in a password manager or a secret store, not here.
 *.keystore
 *.jks
+
+# the live-catalog snapshot a dry run diffs against (scripts/dry-run-checks/*.snapshot.js writes it)
+scripts/dry-run-checks/before.json

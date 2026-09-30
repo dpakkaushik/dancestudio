@@ -35,7 +35,11 @@ $stamp = Get-Date -Format "HHmmss"
 # A owns a fresh studio; a draft class goes on it via the atomic RPC
 $ta = New-Studio $a.access_token "Class Studio $stamp" "Kothrud" "Pune"
 Subscribe-Studio ([string]$ta.id)
-$clsBody = @{ p_business_id = $ta.id; p_title = "Hip-Hop - Beginner $stamp"; p_style = "Hip-Hop"; p_level = "beginner"; p_room = "Studio A"; p_price_inr = 300; p_capacity = 20; p_status = "draft"; p_starts_at = "2026-09-01T19:00:00+05:30"; p_ends_at = "2026-09-01T20:00:00+05:30" }
+# a date AHEAD, computed: the hard-coded 2026-09-01 this carried went into the
+# past on 1 Sep 2026, and a class cannot start in the past (the form since
+# 28 Sep 2026, the database since 20260930130000)
+$clsDay = (Get-Date).AddDays(30).ToString("yyyy-MM-dd")
+$clsBody = @{ p_business_id = $ta.id; p_title = "Hip-Hop - Beginner $stamp"; p_style = "Hip-Hop"; p_level = "beginner"; p_room = "Studio A"; p_price_inr = 300; p_capacity = 20; p_status = "draft"; p_starts_at = "${clsDay}T19:00:00+05:30"; p_ends_at = "${clsDay}T20:00:00+05:30" }
 $cls = Invoke-RestMethod -Method Post -Uri "$base/rest/v1/rpc/create_class_with_session" -Headers (Api $a.access_token) -Body ($clsBody | ConvertTo-Json)
 "1. A created draft class '$($cls.title)' on '$($ta.name)'"
 if (-not $cls.id) { $pass = $false }

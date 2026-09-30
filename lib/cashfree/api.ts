@@ -154,3 +154,16 @@ export async function refundCashfreePayment(params: { providerOrderId: string; r
     }),
   });
 }
+
+/** ONE REFUND, READ BACK FROM CASHFREE (30 Sep 2026). The rail's own answer to
+ *  "did that refund land" — SUCCESS · PENDING · CANCELLED · ONHOLD — for a refund
+ *  we filed under OUR id (`rf_<refund row id>`). It exists because the
+ *  REFUND_STATUS_WEBHOOK is registered on a dashboard sub-tab the user owns
+ *  (NEXT TO DO #8), and until that is done a `pending` refund's terminal state
+ *  is never heard. Asking the rail directly when a ledger is opened is the
+ *  webhook's answer fetched rather than delivered — same fact, same applier. */
+export async function fetchCashfreeRefund(providerOrderId: string, refundId: string): Promise<CashfreeRefund> {
+  return cashfreeFetch<CashfreeRefund>(
+    `/orders/${encodeURIComponent(providerOrderId)}/refunds/${encodeURIComponent(providerRefundIdFor(refundId))}`
+  );
+}

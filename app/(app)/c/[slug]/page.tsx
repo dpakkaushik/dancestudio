@@ -15,6 +15,7 @@ import { countEnrolledBySession, findMyEnrolledSessionIds } from "@/repositories
 import { findClassMoney, findPaidReceiptByClassBooking, findPaidUserIdsBySession } from "@/repositories/payments";
 import { findRefundsByClass } from "@/repositories/refunds";
 import { findRoomById } from "@/repositories/rooms";
+import { reconcileRailRefunds } from "@/services/refundRail";
 import { findMySeat } from "@/repositories/businesses";
 import type { ClassBookingStatus } from "@/types/classBooking";
 
@@ -188,6 +189,9 @@ export default async function ClassSharePage({
      ride the grantable jobs beside it. A trainer running the register has no
      business reading the studio's take, which is the same line /business/{id}/earnings
      already draws. Both reads in one round trip. */
+  /* the class's own queue asks the rail about its pending rows first, the way
+     both ledgers do (30 Sep 2026) — a refund Cashfree has paid is not "processing" */
+  if (canSettleRefunds) await reconcileRailRefunds(supabase, { classId: danceClass.id });
   const [refunds, classMoney] = await Promise.all([
     canSettleRefunds ? findRefundsByClass(supabase, danceClass.id) : Promise.resolve([]),
     role === "owner" ? findClassMoney(supabase, danceClass.id) : Promise.resolve(null),

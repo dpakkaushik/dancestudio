@@ -11,7 +11,8 @@ import { DeskAddButton } from "@/features/settings/components/settings-kit";
 import { DISC_RADIUS, DOS_UI, INK, LILAC, SUB } from "@/lib/design/tokens";
 import { photoUrl } from "@/lib/media/photo";
 import { money as rupees } from "@/features/payouts/components/earnings-kit";
-import type { MembershipWithUsage, MyPass } from "@/repositories/memberships";
+import { DOS_LEVEL_LABEL } from "@/lib/constants/styles";
+import type { MembershipWithUsage, MyPass, PassUse } from "@/repositories/memberships";
 
 /** MEMBERSHIPS (19 Sep 2026, the user: "Users should be able to buy from Studio
  *  and Artist Profile Pages and track from memberships section in tools. Artist
@@ -52,6 +53,33 @@ export function ProgressBar({ used, total, tint = "#22C55E", testId }: { used: n
 }
 
 const unitWord = (unit: "classes" | "hours", n: number) => (unit === "hours" ? `${n} ${n === 1 ? "hour" : "hours"}` : `${n} ${n === 1 ? "class" : "classes"}`);
+
+const dayWords = (iso: string) => new Intl.DateTimeFormat("en-IN", { day: "numeric", month: "short", timeZone: "Asia/Kolkata" }).format(new Date(iso));
+
+/** WHAT ONE PASS WAS SPENT ON (30 Sep 2026) — `pass_uses`, the RPC the 19 Sep
+ *  migration shipped for exactly this and nothing ever called. The bar says how
+ *  far through a pass is; this says WHERE it went, one line per seat, newest
+ *  first. Drawn under a holder's bar on the seller's usage page and under your
+ *  own pass on the Memberships tile, so both ends read the same rows.
+ *  ⚠ Not drawn at all for a pass nothing has been spent on — an empty "Spent on"
+ *  under a full bar would be the heading said twice. */
+export function SpentOn({ uses, unit }: { uses: PassUse[]; unit: "classes" | "hours" }) {
+  if (uses.length === 0) return null;
+  return (
+    <div data-testid="spent-on" style={{ marginTop: 8, paddingTop: 8, borderTop: "1.5px solid var(--el)" }}>
+      <div style={{ fontSize: 8.5, fontWeight: 900, letterSpacing: 0.9, color: "var(--muted)", marginBottom: 4 }}>SPENT ON</div>
+      {uses.map((u) => (
+        <Link key={`${u.classId}-${u.startsAt}`} href={`/c/${u.shareSlug}`} aria-label={`Open ${u.style} · ${DOS_LEVEL_LABEL[u.level] ?? u.level}`} style={{ display: "flex", justifyContent: "space-between", gap: 10, padding: "4px 0", fontSize: 10.5, textDecoration: "none", color: INK }}>
+          <span style={{ minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+            <b>{u.style}</b> · {DOS_LEVEL_LABEL[u.level] ?? u.level}
+            <span style={{ color: SUB }}> · {dayWords(u.startsAt)}</span>
+          </span>
+          <span style={{ flexShrink: 0, color: SUB }}>{unitWord(unit, u.units)}</span>
+        </Link>
+      ))}
+    </div>
+  );
+}
 
 /** WHO SOLD IT — the seller's face beside their name (28 Sep 2026, the user:
  *  "membership should have studio or artist photo with name"). A pass is a
@@ -100,6 +128,7 @@ export function MembershipsScreen({
   canSell,
   business = null,
   sellerPhotos = {},
+  usesByPass = {},
 }: {
   /** what this person HOLDS */
   passes: MyPass[];
@@ -116,6 +145,9 @@ export function MembershipsScreen({
    *  a STUDIO's own desk passes none at all, because that side sells rather than
    *  holds and the page it is on already says whose it is. */
   sellerPhotos?: Record<string, string | null>;
+  /** what each of YOUR passes has been spent on, keyed by pass id (30 Sep 2026);
+   *  a pass missing from the map has spent nothing and draws no list */
+  usesByPass?: Record<string, PassUse[]>;
   /* ⚠ NO `sellerId` / `sellerName` ANY MORE (21 Sep 2026): the form left this
      desk for `/memberships/new`, which resolves whose membership it is on the
      server rather than taking it from a prop. A dead prop is a lie. */
@@ -205,7 +237,10 @@ export function MembershipsScreen({
                   Pay {rupees(p.priceInr)}
                 </button>
               ) : (
-                <ProgressBar used={p.unitsUsed} total={p.unitsTotal} testId="pass-progress" />
+                <>
+                  <ProgressBar used={p.unitsUsed} total={p.unitsTotal} testId="pass-progress" />
+                  <SpentOn uses={usesByPass[p.passId] ?? []} unit={p.unit} />
+                </>
               )}
             </div>
           ))}

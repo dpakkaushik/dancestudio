@@ -87,8 +87,15 @@ const signIn = async (ctx, email) => {
 
 const iso = (minutes) => new Date(Date.now() + minutes * 60000).toISOString();
 
-/** a draft class through the one creation door */
+/** a draft class through the one creation door.
+ *  ⚠ A CLASS IN THE PAST IS PLANTED THE SEEDER'S WAY (30 Sep 2026): created
+ *  AHEAD as the owner, then its session back-dated by the SERVICE ROLE. The
+ *  database refuses a past start from anybody else (`class_sessions_start_ahead`,
+ *  20260930130000 — the form's own 28 Sep rule, kept by the row), and this
+ *  script used to ask the RPC for `-180` minutes directly, which is exactly the
+ *  door that migration closes. */
 const draftClass = async (h, businessId, roomId, style, fromMin, toMin) => {
+  const past = fromMin < 0;
   const c = await rpc(h, "create_class_with_session", {
     p_business_id: businessId,
     p_title: `${style} · All levels`,
@@ -98,8 +105,8 @@ const draftClass = async (h, businessId, roomId, style, fromMin, toMin) => {
     p_price_inr: 0,
     p_capacity: 10,
     p_status: "draft",
-    p_starts_at: iso(fromMin),
-    p_ends_at: iso(toMin),
+    p_starts_at: iso(past ? fromMin + 60 * 24 * 30 : fromMin),
+    p_ends_at: iso(past ? toMin + 60 * 24 * 30 : toMin),
     p_room_id: roomId,
     p_poster: null,
     p_venue_business_id: null,
@@ -107,6 +114,9 @@ const draftClass = async (h, businessId, roomId, style, fromMin, toMin) => {
     p_lng: null,
     p_maps_url: null,
   });
+  if (past) {
+    await patch(H_SERVICE, `class_sessions?class_id=eq.${c.id}`, { starts_at: iso(fromMin), ends_at: iso(toMin) }, "back-date the session");
+  }
   return c.id;
 };
 
@@ -386,10 +396,15 @@ const BOOK_ON_PAGE = /^Book (free trial|this class)$/;
       session_id: pricedSes, class_id: priced, business_id: studio.id,
       user_id: learner.id, status: "enrolled", created_by: learner.id, updated_by: learner.id,
     }, "the paid seat");
+    /* ⚠ WITH A RAIL ORDER ID (30 Sep 2026), so the delete's new SEND is actually
+       attempted: `dos_…` is our grammar, Cashfree has never heard of this order,
+       and its refusal is the deterministic way to prove the FAILURE path — the
+       row stays pending and unsent, and the desk offers to send it again. */
     const order = await call("POST", "/rest/v1/orders", H_SERVICE, {
       business_id: studio.id, user_id: learner.id, amount_inr: 300,
       class_id: priced, session_id: pricedSes, class_booking_id: seat[0].id,
-      status: "paid", provider: "cashfree", created_by: learner.id, updated_by: learner.id,
+      status: "paid", provider: "cashfree", provider_order_id: `dos_shoot${stamp}`,
+      created_by: learner.id, updated_by: learner.id,
     }, "the paid order");
     await call("POST", "/rest/v1/payments", H_SERVICE, {
       order_id: order[0].id, user_id: learner.id, provider_payment_id: `shoot_${stamp}`,
@@ -439,6 +454,70 @@ const BOOK_ON_PAGE = /^Book (free trial|this class)$/;
     check(after[0]?.status === "pending", "…AUTOMATIC, not 'requested': the 48-hour rule is about a learner cancelling late, not a class the studio called off");
     check(after[0]?.user_id === learner.id, "⚠⚠ …filed against the LEARNER whose money it is, not the owner who pressed the button");
     check(after[0]?.created_by === owner.id, "…while the owner is the actor on it — the two identities stayed apart");
+
+    /* ══ 9b · AND THE MONEY IS ASKED FOR — THE RAIL, AND THE DESK'S RETRY (30 Sep) ══
+       ⚠⚠ Until today the call-off wrote the row above and STOPPED: nothing asked
+       Cashfree for the ₹300, so it read "PROCESSING · awaiting the rail" for ever
+       and the only exit was the owner paying it back by hand. The delete now sends
+       every unsent refund; here Cashfree refuses (it has never seen `dos_shoot…`),
+       so what a browser can prove is the honest failure path — the row is still
+       pending, still unsent, and the desk says so and offers the retry. */
+    const sent = await rows(H_SERVICE, `refunds?order_id=eq.${order[0].id}&select=status,provider_refund_id`);
+    check(sent[0]?.status === "pending" && sent[0]?.provider_refund_id === null, "a send the rail refused leaves the row pending and UNSENT — nothing pretended it landed");
+
+    await oPage.goto(`${BASE}/business/${studio.id}/refunds`, { waitUntil: "networkidle" });
+    const ledger = await text(oPage);
+    check(/not yet with Cashfree/.test(ledger), "⚠ the studio's ledger says the refund is NOT YET WITH CASHFREE — a different fact from 'with Cashfree', and the two used to read alike");
+    const sendBtn = oPage.getByRole("button", { name: "Send through Cashfree", exact: true });
+    check((await sendBtn.count()) === 1, "⚠⚠ …and offers to SEND it through Cashfree, beside the desk settlement that used to be the only exit");
+    check((await oPage.getByRole("button", { name: "Mark refunded at the desk", exact: true }).count()) === 1, "…with Mark refunded at the desk still there for money that never went through the rail");
+    await sendBtn.click();
+    /* the toast lives 2.4 s, so it is WAITED FOR rather than read after a sleep */
+    const refusedInWords = await oPage
+      .getByRole("status")
+      .filter({ hasText: /did not take the refund/ })
+      .waitFor({ timeout: 15000 })
+      .then(() => true)
+      .catch(() => false);
+    check(refusedInWords, "…and pressing it reports the rail's refusal in words rather than claiming the money moved");
+    const stillUnsent = await rows(H_SERVICE, `refunds?order_id=eq.${order[0].id}&select=status,provider_refund_id`);
+    check(stillUnsent[0]?.status === "pending" && stillUnsent[0]?.provider_refund_id === null, "…and the row is exactly as it was — a refused send changes nothing");
+
+    /* the LEARNER reads their own side of the same row */
+    await lPage.goto(`${BASE}/refunds`, { waitUntil: "networkidle" });
+    check(/PROCESSING/.test(await text(lPage)) && /Cls Studio/.test(await text(lPage)), "the learner's own Refunds ledger carries the ₹300 as PROCESSING, against the studio that owes it");
+
+    /* ══ 12 · WHAT A PASS WAS SPENT ON, BOTH ENDS (30 Sep 2026) ═══════════════
+       `pass_uses` shipped on 19 Sep with no caller: the seller's page said WHICH
+       classes and WHO holds one, and never which classes WHICH person spent
+       theirs on; the holder's own card had a bar and no history. */
+    const passCls = await draftClass(owner.h, studio.id, roomA[0].id, "Bharatanatyam", 60 * 24 * 6, 60 * 24 * 6 + 60);
+    await rpc(owner.h, "ask_class_person", { p_class_id: passCls, p_user_id: owner.id, p_kind: "artist" });
+    await patch(owner.h, `classes?id=eq.${passCls}`, { status: "published" }, "publish the pass class");
+    const passSes = (await rows(owner.h, `class_sessions?class_id=eq.${passCls}&select=id`))[0].id;
+    const mem = await rpc(owner.h, "save_membership", { p_membership_id: null, p_business_id: studio.id, p_name: `Shoot Pass ${stamp}`, p_unit: "classes", p_units: 2, p_price_inr: 0, p_total_count: 5, p_status: "live" });
+    /* ⚠ A FRESH BUYER, not the learner: accepting a class in segment 7 seated the
+       learner `visiting_faculty` (R19), and the database rightly refuses a member
+       of the seller's team a membership — "a membership is for the people who
+       come to dance". The first run of this segment was that refusal. */
+    const buyer = await account(`shot.cls.buy.${stamp}@example.com`, `Cls Buyer ${stamp}`, "Pune");
+    made.users.push(buyer.id);
+    const passRow = await rpc(buyer.h, "buy_membership", { p_membership_id: mem.id });
+    await rpc(buyer.h, "book_with_membership", { p_session_id: passSes, p_pass_id: passRow.id });
+
+    const bCtx = await browser.newContext();
+    const bPage = await signIn(bCtx, buyer.email);
+    bPage.on("pageerror", (e) => errs.push(String(e)));
+    await bPage.goto(`${BASE}/memberships`, { waitUntil: "networkidle" });
+    const myPass = bPage.getByTestId("my-pass").filter({ hasText: `Shoot Pass ${stamp}` });
+    check((await myPass.getByTestId("spent-on").count()) === 1, "the holder's own pass card carries SPENT ON under its bar");
+    check(/Bharatanatyam/.test(await myPass.innerText()), "…naming the class the unit went on");
+    check((await myPass.getByTestId("pass-progress").getAttribute("aria-label")) === "1 of 2 used", "…and the bar agrees with the list — one number (Step 25)");
+
+    await oPage.goto(`${BASE}/memberships/${mem.id}`, { waitUntil: "networkidle" });
+    const holder = oPage.getByTestId("membership-holder");
+    check((await holder.count()) === 1 && (await holder.getByTestId("spent-on").count()) === 1, "⚠ the seller's usage page says which class THIS holder spent theirs on — the cross of its two lists");
+    check(/1 class still owed to the people holding one/.test(await text(oPage)), "…and says what is still OWED: one class sold and not yet danced");
 
     /* ══ 10 · EDITING A CLASS IS ONE ACT (#0b4) ═══════════════════════════════
        ⚠⚠ NOTHING HAD EVER DRIVEN THIS FORM. The register's Edit LINK is checked

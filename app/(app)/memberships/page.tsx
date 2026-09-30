@@ -3,7 +3,7 @@ import { MembershipForm } from "@/features/memberships/components/MembershipForm
 import { MembershipsScreen } from "@/features/memberships/components/MembershipsScreen";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { findBusinessCardFacts } from "@/repositories/discovery";
-import { findBusinessMemberships, findMyMemberships } from "@/repositories/memberships";
+import { findBusinessMemberships, findMyMemberships, findPassUsesMany } from "@/repositories/memberships";
 import { findMyMemberships as findMyTeams } from "@/repositories/businesses";
 
 /** /memberships — the Memberships tile (18 Sep 2026's grid), built 19 Sep 2026.
@@ -50,7 +50,11 @@ export default async function MembershipsPage({ searchParams }: { searchParams: 
    *  with no photo and the row draws initials — the rule the Faculty list has
    *  followed since Step 15. A pass is still a pass without a face on it. */
   const sellerIds = [...new Set(passes.map((p) => p.businessId))];
-  const sellerFacts = sellerIds.length > 0 ? await findBusinessCardFacts(supabase, sellerIds).catch(() => new Map()) : new Map();
+  const [sellerFacts, usesByPass] = await Promise.all([
+    sellerIds.length > 0 ? findBusinessCardFacts(supabase, sellerIds).catch(() => new Map()) : Promise.resolve(new Map()),
+    /* what each pass you hold was spent on (30 Sep 2026) — the holder's own history */
+    findPassUsesMany(supabase, passes),
+  ]);
   const sellerPhotos: Record<string, string | null> = {};
   sellerIds.forEach((id) => {
     sellerPhotos[id] = sellerFacts.get(id)?.photoPath ?? null;
@@ -62,7 +66,7 @@ export default async function MembershipsPage({ searchParams }: { searchParams: 
      gate is re-checked because a query param is a thing anybody can type. */
   return (
     <>
-      <MembershipsScreen passes={passes} selling={selling} canSell={Boolean(owned)} sellerPhotos={sellerPhotos} />
+      <MembershipsScreen passes={passes} selling={selling} canSell={Boolean(owned)} sellerPhotos={sellerPhotos} usesByPass={usesByPass} />
       {opening && owned ? <MembershipForm sellerId={owned.id} sellerName={owned.name} backTo="/memberships" sheet /> : null}
     </>
   );
