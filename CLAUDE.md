@@ -65,6 +65,16 @@
 >   26/26 screens clean** (19 before — the seven new ones are all three tabs plus
 >   the three states that only exist once something is typed) · **`shoot-reach`
 >   24/24**.
+> * ✅ **PUSHED AND LIVE (`eec4b37`), read back off the DEPLOYMENT rather than
+>   assumed:** Vercel's own list for THIS sha, **BUILDING → READY in ~70 s** · the
+>   production alias confirmed on `eec4b37` **through the API**, because a
+>   behavioural probe cannot tell a streamed 200 from a matched route ·
+>   **`shoot-reach` 24/24 ON THE DEPLOYMENT** — a real admin made on production,
+>   the desk opened from the Overview block, and **14 shelves read back for EEE
+>   Dance Studio through the definer function against the live database**, which
+>   is the one read no script can make with the service key · **`stranger-smoke`
+>   8/8**, so the new desk widened nothing for anybody signed out. ⚠ My own
+>   `next start` on :3100 was stopped afterwards.
 >
 > ### DISCOVER IS CLEAN, A MEMBER MAY DANCE WHERE THEY TEACH, AND EDITING A CLASS IS ONE ACT (30 Sep 2026, earlier) — ⚠ ONE MIGRATION APPLIED (`20260930120000`), dry run **14/14** rolled back first, read back live **11/11**
 > The user: *"give suggestions for whats left with options to decide and proceed
@@ -11355,7 +11365,10 @@ for the database schema. **The UI is not redesigned** — see Rule 2.
   **typecheck 0 · lint 0 · `audit:reads` 0 unexplained · `next build` green with
   the route in the manifest · `shoot-admin` 26/26 screens clean (19 before) · a
   new `shoot-reach` 24/24**, which judges the CONTENT because a console-error
-  check passes a desk of three empty states.
+  check passes a desk of three empty states. **PUSHED AND LIVE (`eec4b37`), read
+  back off the deployment:** Vercel's own list for THIS sha BUILDING → READY, the
+  alias confirmed through the API, **`shoot-reach` 24/24 ON THE DEPLOYMENT** with
+  14 shelves read back against the live database, and **`stranger-smoke` 8/8**.
 - **DISCOVER IS CLEAN, A MEMBER MAY DANCE WHERE THEY TEACH, AND EDITING A CLASS
   IS ONE ACT — 30 Sep 2026, no step number ⚠ (Rule 9: a production sweep) — ONE
   MIGRATION APPLIED (`20260930120000`), dry run 14/14 rolled back first, read
