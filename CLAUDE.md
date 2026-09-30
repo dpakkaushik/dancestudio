@@ -82,6 +82,19 @@
 >   unexplained · dry run **14/14 rolled back** · applied first try · live
 >   read-back **11/11** with PostgREST reloaded and ⚠ **the RPC's argument names
 >   proven by a real call** (`P0001`, not `PGRST202`) · **`shoot-classes` 61/61**.
+> * ✅ **PUSHED AND LIVE (`dab1a3f`), read back off the DEPLOYMENT rather than
+>   assumed:** typecheck, lint and `audit:reads` re-run first (the shoot script
+>   moved after the last pass) · Vercel's own API polled until the production
+>   alias resolved to a **READY** deployment on this sha · **`stranger-smoke`
+>   8/8** · **`shoot-classes` 61/61 ON THE DEPLOYMENT** — the edit form driven on
+>   the live bundle with both halves read back out of production, and all three
+>   booking cases (a manager offered a seat, the owner not, the person taking the
+>   class not).
+> * ⚠ **And the world was left as it was found:** Discover reads **10 listed
+>   businesses, every one genuine** (the user's `11ft down` and the nine demo
+>   studios and artist pages); `test2` unlisted with its 2 classes, 1 enrolled
+>   seat, 3 payments and 1 pass **all intact**; the shoot's own leftovers gone;
+>   my `next start` on :3100 stopped.
 >
 > ### THE DELETE SHEET'S PROMISE IS TRUE AT LAST (30 Sep 2026, earlier) — ⚠⚠ THE HELD MIGRATION APPLIED (`20260930110000`), dry run **27/27** rolled back first, read back live **13/13**
 > The user: *"continue what was left in previous chat and suggestions for what is
