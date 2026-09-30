@@ -86,6 +86,20 @@
 >   52/52**. ⚠ The e2e suite was NOT re-run and that is a checked decision rather
 >   than an omission: **no spec drives the class delete at all**, so nothing in it
 >   reaches the changed path.
+> * ✅ **PUSHED AND LIVE (`b5c35c6`), read back off the DEPLOYMENT rather than
+>   assumed:** typecheck 0 and lint 0 re-run first, because the shoot script was
+>   edited after the last pass and **a proof is only true the last time it ran** ·
+>   Vercel's own API polled until the production alias resolved to a **READY**
+>   deployment whose `githubCommitSha` is this one (a green push is not a
+>   deployment — the webhook has silently not fired twice) · **`stranger-smoke`
+>   8/8** · **`shoot-classes` 52/52 ON THE DEPLOYMENT** — a real studio, a real
+>   published class, a real paid seat, and the delete pressed on the live bundle
+>   against production, with the cancelled seat and the ₹300 `pending` refund read
+>   back out of the database.
+> * ⚠ **And the world was left as it was found:** the shoot's own cleanup verified
+>   (0 live `Cls Studio` businesses, 0 profiles, 0 classes — its leftovers would
+>   be studios on Discover, #0aa), **the 13 stranded seats still 13 with 0 refunds
+>   against them**, and my own `next start` on :3100 stopped.
 > The user: *"fix all and push to live in order apart from the sand box items.
 > and give suggestions where you need my help."* — so the ranked order was run,
 > and the one thing at the top of it that moves money is written, proven and
