@@ -112,6 +112,13 @@ const draftClass = async (h, businessId, roomId, style, fromMin, toMin) => {
 
 const text = async (page) => (await page.locator("body").innerText()).replace(/\s+/g, " ");
 
+/** ⚠ THE CLASS PAGE'S OWN BOOK CONTROL, WHICH IS NOT THE SHELF'S. The shelf
+ *  draws `EnrollButton` ("Book a spot"); the page's booking bar reads "Book free
+ *  trial" on a free class and "Book this class" on a priced one (ClassDetail
+ *  2143). Asking a class page for "Book a spot" counts 0 forever — which is how
+ *  one check here passed for the wrong reason until 30 Sep 2026. */
+const BOOK_ON_PAGE = /^Book (free trial|this class)$/;
+
 (async () => {
   const stamp = Date.now().toString(36);
   const made = { users: [], businesses: [] };
@@ -299,7 +306,12 @@ const text = async (page) => (await page.locator("body").innerText()).replace(/\
 
     await lPage.goto(`${BASE}/c/${liveSlug}`, { waitUntil: "networkidle" });
     check((await lPage.getByTestId("class-already-started").count()) === 1, "⚠⚠ …and its own page SAYS it has started rather than offering a press the database refuses");
-    check((await lPage.getByRole("button", { name: "Book a spot" }).count()) === 0, "…with no Book button left to press");
+    /* ⚠⚠ THIS ASKED FOR "Book a spot" UNTIL 30 Sep 2026 AND PASSED VACUOUSLY.
+       That is the SHELF's label (`EnrollButton`); the class page's own control
+       reads "Book free trial" on a free class and "Book this class" on a priced
+       one, so the count was 0 whether or not a bar was drawn. A check that can
+       pass for the wrong reason is not a check (11 Sep 2026). */
+    check((await lPage.getByRole("button", { name: BOOK_ON_PAGE }).count()) === 0, "…with no Book button left to press");
 
     /* ══ 6 · A LEARNER'S SEAT IS NOT THE OWNER'S ══════════════════════════════ */
     await lPage.goto(`${BASE}/classes`, { waitUntil: "networkidle" });
@@ -427,6 +439,91 @@ const text = async (page) => (await page.locator("body").innerText()).replace(/\
     check(after[0]?.status === "pending", "…AUTOMATIC, not 'requested': the 48-hour rule is about a learner cancelling late, not a class the studio called off");
     check(after[0]?.user_id === learner.id, "⚠⚠ …filed against the LEARNER whose money it is, not the owner who pressed the button");
     check(after[0]?.created_by === owner.id, "…while the owner is the actor on it — the two identities stayed apart");
+
+    /* ══ 10 · EDITING A CLASS IS ONE ACT (#0b4) ═══════════════════════════════
+       ⚠⚠ NOTHING HAD EVER DRIVEN THIS FORM. The register's Edit LINK is checked
+       above (drawn for the owner, absent for a manager) and no test has ever
+       SUBMITTED it — so `updateClassDetails` had no cover at all, and it was
+       just rewired from two loose updates onto one RPC. That is the same shape
+       as the delete above, found the same way: by grepping for what drives it.
+
+       ⚠ The atomicity itself is the dry run's (check 10: a refused session move
+       rolled the class row back). What a browser answers is the half a dry run
+       cannot: that the form still reaches the door, under the argument names
+       PostgREST resolves by, and that BOTH halves land. */
+    const wasAt = (await rows(owner.h, `class_sessions?class_id=eq.${asked}&select=starts_at`))[0].starts_at;
+    await oPage.goto(`${BASE}/business/${studio.id}/classes/${asked}/edit`, { waitUntil: "networkidle" });
+    check(/\/edit$/.test(new URL(oPage.url()).pathname), "the owner reaches the class edit form");
+
+    /* the style is changed too, because the class's TITLE is derived from it —
+       so this proves the label the database stores still follows the form.
+       ⚠ The style is `DosStylePicker`, not a row of chips: a CLOSED row carrying
+       aria-label "Dance style" that opens onto the registry (30 Aug 2026), so it
+       has to be opened before the style is a button at all. */
+    await oPage.getByLabel("Dance style", { exact: true }).click();
+    await oPage.getByRole("button", { name: "Kathak", exact: true }).first().click();
+    await oPage.getByRole("button", { name: "Continue" }).click();
+    await oPage.waitForTimeout(400);
+    await oPage.getByLabel("Price per session").fill("450");
+    await oPage.getByRole("button", { name: "Save changes" }).click();
+    await oPage.waitForURL((u) => !/\/edit$/.test(new URL(u).pathname), { timeout: 30000 });
+    check(true, "…and Save changes lands rather than hanging on a door that is not there");
+
+    await oPage.waitForTimeout(1500);
+    const edited = (await rows(owner.h, `classes?id=eq.${asked}&select=style,title,price_inr`))[0];
+    check(edited.price_inr === 450, "⚠ the CLASS half of the edit landed (price 450)", JSON.stringify(edited));
+    check(edited.style === "Kathak", "…and the style with it");
+    check(
+      edited.title === "Kathak · All levels",
+      "…and the stored TITLE followed the style, which is what the database's own words read from",
+      edited.title
+    );
+    /* ⚠ THE SAME MINUTE, NOT THE SAME INSTANT, AND THAT IS THE HONEST CLAIM.
+       The form's time control is HH:MM, so re-submitting an unchanged time drops
+       the SECONDS the row was created with — pre-existing, true of every save
+       this form has ever made, and nothing to do with the RPC. Asserting
+       equality to the millisecond failed on a correct result; what this is
+       really proving is that the session statement RAN and did not move the
+       class to some other hour. */
+    const stillAt = (await rows(owner.h, `class_sessions?class_id=eq.${asked}&select=starts_at`))[0].starts_at;
+    const driftMs = Math.abs(new Date(stillAt).getTime() - new Date(wasAt).getTime());
+    check(
+      driftMs < 60000,
+      `⚠ …and the SESSION half ran in the same act, leaving the time where it was (${Math.round(driftMs / 1000)}s of HH:MM rounding, not a move)`
+    );
+
+    /* ══ 11 · A TEAM MEMBER MAY BOOK A CLASS AT THEIR OWN STUDIO ══════════════
+       ⚠⚠ `showBar = !isMember` gave faculty who wanted to TRAIN where they teach
+       a page with nothing to press and no sentence saying why — while the LEARNER
+       SHELF has always drawn them a Book button with no membership gate at all,
+       so the two surfaces disagreed and the database refused neither
+       (`book_class_session` has no membership test).
+
+       What is still refused is a seat on a class you are RUNNING, and these three
+       checks are the three people that rule has to tell apart. */
+    await mPage.goto(`${BASE}/c/${aheadSlug}`, { waitUntil: "networkidle" });
+    check(
+      (await mPage.getByRole("button", { name: BOOK_ON_PAGE }).count()) > 0,
+      "⚠⚠ a MANAGER — on the team, not the owner, not on this class — is offered a seat at their own studio"
+    );
+
+    await oPage.goto(`${BASE}/c/${aheadSlug}`, { waitUntil: "networkidle" });
+    check(
+      (await oPage.getByRole("button", { name: BOOK_ON_PAGE }).count()) === 0,
+      "…the OWNER is not: it is their class, and selling somebody their own seat is not a thing to offer"
+    );
+
+    /* ⚠ THE CLAUSE THAT IS NOT THE OWNER TEST, ISOLATED. The learner accepted an
+       ask to TAKE `second` two segments ago, which seats them `visiting_faculty`
+       (R19) — so they are a member, they are NOT the owner, and without the
+       confirmed-classPerson clause this change would have offered the teacher a
+       ticket to the class they are about to teach. */
+    const secondSlug = await slugOf(second);
+    await lPage.goto(`${BASE}/c/${secondSlug}`, { waitUntil: "networkidle" });
+    check(
+      (await lPage.getByRole("button", { name: BOOK_ON_PAGE }).count()) === 0,
+      "⚠⚠ …and the person TAKING a class is offered no seat on it, though they are a member and not the owner"
+    );
 
     check(errs.length === 0, `no page error on any of it${errs.length ? ` — ${errs.slice(0, 3).join(" | ")}` : ""}`);
   } catch (error) {

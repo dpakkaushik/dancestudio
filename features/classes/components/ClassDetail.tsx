@@ -146,7 +146,7 @@ export interface ClassDetailProps {
   /** Session window contains now — computed server-side, page renders per request. */
   liveNow: boolean;
   isSignedIn: boolean;
-  /** Viewer belongs to the class's business — sees share, never the booking bar. */
+  /** Viewer belongs to the class's business — sees the asks and the share. */
   isMember: boolean;
   /** Viewer is owner/trainer — sees the draft footer's Edit class. */
   canManage: boolean;
@@ -188,7 +188,9 @@ export interface ClassDetailProps {
   /** on a priced class, the learners whose seat is paid — the register row's
    *  meta line (12126); empty for a free class and for anyone not running it */
   paidUserIds?: string[];
-  /** the business's OWNER — the jobs an assistant holds are theirs to hand out (18 Sep 2026) */
+  /** the business's OWNER — the jobs an assistant holds are theirs to hand out
+   *  (18 Sep 2026), and since 30 Sep 2026 the one member who is NOT offered a
+   *  seat on this class, because it is theirs (`runsThisClass`). */
   isOwner?: boolean;
   /** the owner, or the class's confirmed teacher: the two who may add an assistant (18 Sep 2026) */
   canAddAssistant?: boolean;
@@ -378,9 +380,25 @@ export function ClassDetail({
   const time = c.session ? timeRangeOf(c.session.startsAt, c.session.endsAt) : null;
   const durNice = c.session ? durText(c.session.startsAt, c.session.endsAt) : null;
 
-  /* the booking bar is the one thing you can press — drawn only when there is
-     something to press (prototype 12405: not yours, not over, and a session exists) */
-  const showBar = !isMember && !done && c.session !== null && !waitlisted;
+  /* ⚠⚠ A TEAM MEMBER MAY BOOK A CLASS AT THEIR OWN STUDIO (30 Sep 2026, the
+     user's decision). This was `!isMember`, which is the prototype's own rule
+     (12405: "not yours") — and the DATABASE has never refused it:
+     `book_class_session` has no membership test of any kind. So faculty who
+     wanted to TRAIN where they teach met a page with nothing to press and no
+     sentence saying why, which is the dead end that was reported.
+
+     What is still refused is a seat on a class you are RUNNING, and that is two
+     different people rather than one:
+       · the OWNER of the business — it is their class, so a Book button on it
+         would be the app offering to sell them their own seat;
+       · anybody CONFIRMED on this class, whichever kind. An outside artist who
+         accepts is seated `visiting_faculty` (R19), so without this clause the
+         change would have offered the teacher a ticket to the class they are
+         about to teach.
+     ⚠ A trainer or a manager NOT on this class is a dancer here like anybody
+     else, which is the whole point of the change. */
+  const runsThisClass = isOwner || myClassPerson?.status === "confirmed";
+  const showBar = !runsThisClass && !done && c.session !== null && !waitlisted;
 
   const ground = `linear-gradient(150deg, ${col}47 0%, ${col}24 55%, ${col}17 100%)`;
   const weave = `repeating-linear-gradient(45deg, ${col}1a 0 6px, transparent 6px 12px)`;
@@ -1058,7 +1076,11 @@ export function ClassDetail({
             the confirmed dot, and the two money actions MERGED into one segmented
             pill — the invoice and the cancel-and-refund are two halves of one
             subject. Waitlist rows keep their simple leave button. ── */}
-        {mine && !isMember && !done && booked && (
+        {/* ⚠ `runsThisClass`, not `isMember` (30 Sep 2026): a member who books is
+            offered the bar now, so gating their own booked card on membership
+            would have taken the seat AND hidden it — no code, no invoice and no
+            way to cancel. Whoever may book may see what they booked. */}
+        {mine && !runsThisClass && !done && booked && (
           <div style={{ background: "var(--card)", border: "1.5px solid var(--el)", borderRadius: 16, padding: "12px", marginBottom: 10 }}>
             <div style={{ display: "flex", alignItems: "center", gap: 6, minWidth: 0 }}>
               <span style={{ width: 8, height: 8, borderRadius: 4, background: GREEN, flexShrink: 0 }} />
@@ -1136,7 +1158,7 @@ export function ClassDetail({
             </div>
           </div>
         )}
-        {mine && !isMember && !done && !booked && (
+        {mine && !runsThisClass && !done && !booked && (
           <div style={{ background: "var(--card)", border: "1.5px solid var(--el)", borderRadius: 16, padding: "12px", marginBottom: 10 }}>
             <div style={{ display: "flex", alignItems: "center", gap: 6, minWidth: 0 }}>
               <span style={{ width: 8, height: 8, borderRadius: 4, background: GOLD, flexShrink: 0 }} />

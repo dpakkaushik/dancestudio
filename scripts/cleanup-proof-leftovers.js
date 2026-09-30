@@ -45,8 +45,20 @@ const SHOW_KEPT = process.argv.includes("--show-kept");
    real can match whatever the prefix. Hyphenated prefixes are the proofs' and
    the e2e's; `sv-admin-` is the studio-verification proof's admin; `shot.` is
    the shot scripts' (dotted). */
+/* ⚠ THREE MORE FAMILIES, ADDED 30 Sep 2026 — the 18 Sep lesson repeating, found
+   the same way (by reading what the sweep KEPT rather than what it took). Each
+   was traced to the script that makes it before it was added, because a filter
+   widened on a guess is the defect this file warns about:
+     · `staffproof-` — rls-proof-staff.ps1:85-89 (owner/join/rival/ghost)
+     · `tiles.`      — scripts/shots/shoot-tiles.js:39, `tiles.${who}.${stamp}@…`
+     · `em-`         — the event-money proof, introduced by 27908d8 and deleted
+                       with the events removal in e556eef, so nothing makes them
+                       any more and the eleven on production are pure residue.
+   ⚠ All three are `@example.com`, which is the rail: a real person never is, so
+   however broad a prefix looks it cannot reach one. `demo.*` is anchored
+   separately by isDemo() and is unaffected. */
 const JUNK_EMAIL =
-  /^((ev|mng|pp|follow|srch|e2e|prof|st|stats|crew|evt|enq|mgd|pay|rf|wh|inv|cls|near|sl|mod|panel|shots|orghome|proof|att|set|rooms|leads|enroll|ratecheck|sv-admin)-[^@]*|shot\.[^@]*)@example\.com$/i;
+  /^((ev|mng|pp|follow|srch|e2e|prof|st|stats|crew|evt|enq|mgd|pay|rf|wh|inv|cls|near|sl|mod|panel|shots|orghome|proof|att|set|rooms|leads|enroll|ratecheck|sv-admin|staffproof|em)-[^@]*|(shot|tiles)\.[^@]*)@example\.com$/i;
 const JUNK_NAMES = new Set(["Studio Test", "Priya Test"]);
 
 /* THE BUSINESSES THE PROOF SCRIPTS NAME, verbatim. Ownership alone is not

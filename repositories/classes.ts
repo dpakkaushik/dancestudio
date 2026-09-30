@@ -348,57 +348,53 @@ export interface UpdateClassInput {
   allowsArtistMemberships: boolean;
 }
 
-/** Edit a class's fields and move its session — two updates, both RLS-guarded. */
+/** Edit a class's fields and move its session — ONE act.
+ *
+ *  ⚠⚠ THIS USED TO BE TWO ROUND TRIPS WITH NOTHING JOINING THEM (fixed 30 Sep
+ *  2026): an `update classes …` and then an `update class_sessions …`, so
+ *  anything that refused the second left a class whose style, price and capacity
+ *  had moved and whose TIME had not, with nothing on screen to say so. And the
+ *  second is the LIKELIER to be refused — `class_sessions` carries the room
+ *  clash guard, so moving a class into an hour another class already holds
+ *  failed after the first write had already landed.
+ *
+ *  `update_class_with_session` is those same two updates, in the same order,
+ *  inside one plpgsql body — so both land or neither does. ⚠ It re-checks that
+ *  the caller owns the business itself, because a definer function does not run
+ *  the `classes` UPDATE policy that used to be the guard, and it raises the same
+ *  sentence this function raised before so the form's message is unchanged. */
 export async function updateClassDetails(
   supabase: SupabaseClient,
   classId: string,
   input: UpdateClassInput
 ): Promise<void> {
-  const { data, error } = await supabase
-    .from("classes")
-    .update({
-      /* renamed with its style or level, so the database's own words (the
-         notification triggers, the admin desks) follow the label */
-      title: dosClassLabel(input.style, input.level),
-      style: input.style,
-      level: input.level,
-      room: input.room,
-      room_id: input.roomId,
-      poster: input.poster,
-      price_inr: input.priceInr,
-      capacity: input.capacity,
-      /* a different venue or room is a new ask — the database resets the
-         venue's answer, and refuses to move a published class (18 Sep 2026) */
-      venue_business_id: input.venueBusinessId,
-      lat: input.lat,
-      lng: input.lng,
-      maps_url: input.mapsUrl,
-      allows_studio_memberships: input.allowsStudioMemberships,
-      allows_artist_memberships: input.allowsArtistMemberships,
-    })
-    .eq("id", classId)
-    .is("deleted_at", null)
-    .select("id");
+  const { error } = await supabase.rpc("update_class_with_session", {
+    p_class_id: classId,
+    /* renamed with its style or level, so the database's own words (the
+       notification triggers, the admin desks) follow the label */
+    p_title: dosClassLabel(input.style, input.level),
+    p_style: input.style,
+    p_level: input.level,
+    p_room: input.room,
+    p_price_inr: input.priceInr,
+    p_capacity: input.capacity,
+    p_starts_at: input.startsAt,
+    p_ends_at: input.endsAt,
+    p_room_id: input.roomId,
+    p_poster: input.poster,
+    /* a different venue or room is a new ask — the database resets the
+       venue's answer, and refuses to move a published class (18 Sep 2026) */
+    p_venue_business_id: input.venueBusinessId,
+    p_lat: input.lat,
+    p_lng: input.lng,
+    p_maps_url: input.mapsUrl,
+    p_allows_studio_memberships: input.allowsStudioMemberships,
+    p_allows_artist_memberships: input.allowsArtistMemberships,
+  });
 
+  /* the door's own words, not a reworded version of them (27 Sep 2026) */
   if (error) {
-    throw new Error(`classes.update failed: ${error.message}`);
-  }
-  if (!data || data.length === 0) {
-    throw new Error("Class not found or not yours to edit");
-  }
-
-  /* audit-ok: the UPDATE directly above reads ITS result back and throws
-     "Class not found or not yours to edit" on zero rows, so authority over this
-     class is already proven one statement earlier — and `class_sessions`' own
-     policy admits the same owner. The guard is the statement above. */
-  const { error: sessionError } = await supabase
-    .from("class_sessions")
-    .update({ starts_at: input.startsAt, ends_at: input.endsAt })
-    .eq("class_id", classId)
-    .is("deleted_at", null);
-
-  if (sessionError) {
-    throw new Error(`classes.updateSession failed: ${sessionError.message}`);
+    throw new Error(error.message);
   }
 }
 
