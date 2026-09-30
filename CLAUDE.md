@@ -88,6 +88,18 @@
 >   (it is waited for). ⚠ Two dry-run reds were the harness — the live signature
 >   of `create_business_with_owner` is `(p_name, p_type, …)`, read off the
 >   catalog rather than remembered.
+> * ✅ **PUSHED AND LIVE (`0fb9746`), read back off the DEPLOYMENT rather than
+>   assumed:** typecheck 0, lint 0 and `audit:reads` 0 re-run first · proofs
+>   `classes` · `enrollments` · `memberships` · `payments` · `refunds` **5/5** on
+>   the live database · Vercel's own list for THIS sha, **BUILDING → READY in
+>   ~25 s** · the production alias confirmed on `0fb9746` **through the API** ·
+>   **`stranger-smoke` 8/8** · **`shoot-classes` 73/73 ON THE DEPLOYMENT** — a
+>   real studio, a real paid seat, the class called off on the live bundle, the
+>   refund's rail send refused by the real Cashfree sandbox (an order it has never
+>   seen), the row read back `pending` and unsent, the desk's retry refused in
+>   words, and a real pass spent on a real seat with SPENT ON read at both ends.
+>   ⚠ **THE MIGRATION IS NOT APPLIED** — `db-push -DryRun` lists exactly it, and
+>   its list is #0b7. My own `next start` on :3100 was stopped afterwards.
 >
 > ### THE THREE TABLES HAVE A READER AT LAST — AND A HARNESS THAT LEAKED ADMIN RIGHTS (30 Sep 2026, earlier) — no migration
 > The user: *"fix all push to live . leave 2nd point in whats left"* — so the one
@@ -11499,8 +11511,11 @@ for the database schema. **The UI is not redesigned** — see Rule 2.
   held migration, whose dry run also caught a flaw in my own backdate trigger (it
   compared to the microsecond and the form drops the seconds). `pass_uses`
   finally has callers — SPENT ON at both ends, and what is still owed. **typecheck
-  0 · lint 0 · `audit:reads` 0 unexplained · build green · `shoot-classes` 73/73 ·
-  dry run 24/24 rolled back.**
+  0 · lint 0 · `audit:reads` 0 unexplained · build green · proofs 5/5 ·
+  `shoot-classes` 73/73 · dry run 24/24 rolled back. PUSHED AND LIVE
+  (`0fb9746`)**, read back off the deployment: the alias on this sha through
+  Vercel's API, `stranger-smoke` 8/8, **`shoot-classes` 73/73 ON THE
+  DEPLOYMENT**.
 - **THE THREE TABLES HAVE A READER — 30 Sep 2026, no step number ⚠ (Rule 9: it
   cleared three live platform-admin rights) — no migration.** The user: *"fix all
   push to live . leave 2nd point in whats left."* ⚠⚠ The analytics tables have had
