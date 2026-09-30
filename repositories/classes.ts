@@ -402,16 +402,53 @@ export async function updateClassDetails(
   }
 }
 
+/** What calling a class off did: every live seat cancelled, every PAID one
+ *  refunded. `refunds` is never more than `seats`, and is 0 on a free class. */
+export interface ClassCallOff {
+  seats: number;
+  refunds: number;
+  amountInr: number;
+}
+
 /** Soft delete — the class and its sessions get deleted_at, nothing is ever dropped.
  *  No `.select()` after the update: a soft-deleted row satisfies no SELECT policy,
- *  so asking for it back (RETURNING) would make Postgres reject the whole update. */
+ *  so asking for it back (RETURNING) would make Postgres reject the whole update.
+ *  ⚠ It CALLS THE CLASS OFF FIRST — see the block inside. */
 export async function softDeleteClass(
   supabase: SupabaseClient,
   classId: string
-): Promise<void> {
+): Promise<ClassCallOff> {
   const mine = await findClassById(supabase, classId);
   if (!mine) {
     throw new Error("Class not found or not yours to delete");
+  }
+
+  /* ⚠⚠ THE SEATS COME OFF FIRST, AND THE MONEY GOES BACK WITH THEM (30 Sep 2026).
+     The delete sheet has read "{n} enrolled students must be refunded — you'll
+     settle each refund on the next screen" since 29 Aug 2026, its button reads
+     "Delete & manage refunds", and it then sends the owner to the money desk —
+     and NOT ONE REFUND ROW WAS EVER WRITTEN BY ANY OF IT. They arrived at the
+     desk and there was nothing there; the learner's seat stayed `enrolled` on a
+     class that no longer existed and their money stayed where it was.
+
+     ⚠ BEFORE the delete, not after, and not as a trigger on it:
+       · `cancel_class_bookings_for_class` re-checks that this caller OWNS the
+         business and raises in WORDS if not — so a manager (a seat the register
+         has admitted since 28 Sep) is refused before a single seat is touched,
+         rather than cancelling a room full of people for a delete that is then
+         refused two statements later;
+       · money moving as a side effect of a soft delete could carry no reason and
+         could not be refused, which is why it is a call and not a trigger.
+
+     ⚠ The refusal is passed through in the DATABASE'S OWN WORDS rather than
+     reworded here — a refusal in the database's words is not an explanation to
+     be tidied away (27 Sep 2026). */
+  const { data: calledOff, error: callOffError } = await supabase.rpc(
+    "cancel_class_bookings_for_class",
+    { p_class_id: classId, p_reason: "The studio cancelled this class" }
+  );
+  if (callOffError) {
+    throw new Error(callOffError.message);
   }
 
   const deletedAt = new Date().toISOString();
@@ -456,6 +493,14 @@ export async function softDeleteClass(
   if (sessionError) {
     throw new Error(`classes.deleteSessions failed: ${sessionError.message}`);
   }
+
+  /* what the call-off actually did, so a caller can say it rather than guess.
+     The RPC counts as it goes; nothing here re-counts it. */
+  return {
+    seats: Number(calledOff?.seats ?? 0),
+    refunds: Number(calledOff?.refunds ?? 0),
+    amountInr: Number(calledOff?.amount_inr ?? 0),
+  };
 }
 
 /** The styles each business teaches, off its PUBLISHED classes — what Discover's

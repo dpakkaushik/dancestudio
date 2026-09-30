@@ -2,7 +2,90 @@
 
 ## LAST SESSION (30 Sep 2026) — replaced on every push (Rule 13)
 
-> ### THE RECORDS A MARKETPLACE KEEPS, A TASTE OF THE SCHEDULE, AND TWO GREPS THAT FOUND TWO MORE SILENT REFUSALS (30 Sep 2026, latest) — ⚠⚠ ONE MIGRATION WRITTEN, DRY-RUN **21/21** AND **HELD** (NEXT TO DO #0b3)
+> ### THE DELETE SHEET'S PROMISE IS TRUE AT LAST (30 Sep 2026, latest) — ⚠⚠ THE HELD MIGRATION APPLIED (`20260930110000`), dry run **27/27** rolled back first, read back live **13/13**
+> The user: *"continue what was left in previous chat and suggestions for what is
+> left."* What was left was one held migration and one decision, so the first act
+> was to establish what is actually true rather than work from the handoff.
+> * ⚠⚠ **THE HANDOFF WAS MISSING A FACT AND CARRYING A STALE NUMBER, AND BOTH ARE
+>   BUGS BY THIS FILE'S OWN RULE 13.** The previous block never recorded a push —
+>   and `067b696` **is** on origin and **is** live: Vercel's own API resolves the
+>   production alias to a **READY** deployment whose `githubCommitSha` is that
+>   sha, read that way rather than by a behavioural probe, because a streamed 200
+>   cannot be told from a matched route (29 Sep). The record says so now.
+> * ⚠⚠ **AND RE-MEASURING THE DECISION'S OWN PREMISE IS WHAT CHANGED THE
+>   DECISION.** NEXT TO DO #0b3 said *"13 live seats … 6 paid orders worth
+>   ₹1,800 … real people's money and that decision is the user's"*. Production
+>   answers **13 seats, but FOUR paid orders worth ₹1,200** — the money figure was
+>   a third out — and, far more to the point, **every one of the ten people
+>   holding those seats is a test, proof, demo or the user's own account**: four
+>   seats are the test-phone learner (three paid), six are SOFT-DELETED `E2E
+>   Learner` profiles, one is Deepak's own, one is Alisha's demo account. ⚠ Two of
+>   the four payments sit on `provider = razorpay`, a rail this app left on 28 Aug
+>   2026, so they are e2e fixtures by construction. **There is no real customer in
+>   that list: it is the proof-leftover pile (#0aa) in a money-shaped hat.** The
+>   user chose **file nothing**, and nothing was filed. **A decision the user makes
+>   on a premise I supplied is my premise to check before it is executed** — the
+>   29 Sep lesson, and the first thing this session did.
+> * ⚠ **IT DOES NOT WEAKEN THE MIGRATION BY ONE LINE.** The defect is real and
+>   untouched by who happens to be holding the stranded seats: the delete sheet has
+>   read *"{n} enrolled students **must be refunded** — you'll settle each refund
+>   on the next screen"* since 29 Aug 2026, its button reads **"Delete & manage
+>   refunds"**, it navigates to the money desk — and **no refund row was ever
+>   written by any of it**. What re-measuring settled was only the BACKFILL.
+> * **Dry run 27/27, rolled back** — the previous session's list re-proven plus
+>   six the re-write added, ⚠ including **check 0, the Rule 18 probe**. The ones
+>   that matter: the payer's door is byte-identical on **both sides of the 48-hour
+>   window**; a learner still cannot cancel somebody else's seat; **a normal cancel
+>   still promotes the waitlist and a called-off one promotes NOBODY** (tested
+>   through the core, so the flag is isolated); a non-owner is refused **in words
+>   with not one seat touched**; ⚠⚠ **`refunds.user_id` is the PAYER while
+>   `created_by` is the ACTOR** — the substitution that would have been a money
+>   bug; the refund is **'pending' though the class is INSIDE 48 hours**, so the
+>   flag beats the clock; calling the same class off twice is a no-op; **anon 39,
+>   policies 103, `class_bookings` still with no write policy**; and **nothing
+>   backfilled**.
+> * ⚠ **TWO OF THE RUN'S OWN REDS WERE THE CHECK, WHICH IS THE RIGHT KIND.** A
+>   planted class with a capital letter in its slug hit `classes_share_slug_check`
+>   (the harness, not the migration); and the live read-back's backfill check
+>   joined refunds→orders→classes **with no seat filter** and read 2 — Deepak's own
+>   **17 Sep** cancellations (*"Injury or illness"*, *"Travelling"*) on classes the
+>   26 Sep retirement later deleted, whose bookings are `cancelled` and which were
+>   never this migration's. Proven rather than waved away: **the newest refund
+>   anywhere in the table predates the apply**. Scoped to the stranded seats it is
+>   0. **A check that cries wolf is worse than none.**
+> * ⚠⚠ **AND THE APP HALF IS THE HALF THAT WAS ACTUALLY MISSING.**
+>   `softDeleteClass` calls `cancel_class_bookings_for_class` **before** the
+>   delete — not after, and not as a trigger: the RPC re-checks that the caller
+>   OWNS the business and raises in words, so a **manager** (a seat the register
+>   has admitted since 28 Sep) is refused before a single seat is touched rather
+>   than cancelling a room full of people for a delete that is then refused two
+>   statements later. ⚠ The refusal is passed through in the **database's own
+>   words** rather than reworded, which is 27 Sep's rule.
+> * ⚠⚠ **AND THE ONE THING TYPECHECK COULD NEVER SEE WAS PROVEN DIRECTLY:
+>   PostgREST resolves an RPC by its argument NAMES against a cached signature**,
+>   so `p_class_id` / `p_reason` being wrong would be a **PGRST202 at runtime** on
+>   a tree that is green everywhere. A probe called the live function with exactly
+>   the keys the repository sends and got **`P0001 not authenticated`** — a raise
+>   from INSIDE the function, so it resolved and ran. ⚠ The probe's own first
+>   assertion expected *"only the owner"* and reported UNEXPECTED on a correct
+>   result: the **not-authenticated guard fires first**. The check was wrong, not
+>   the wiring.
+> * ⚠⚠ **AND NOTHING HAD EVER DRIVEN THE DELETE — NO e2e AND NO SHOOT TOUCHES IT**
+>   (grepped, not assumed), which is precisely how the promise stayed broken for a
+>   month under green checks. `shoot-classes` now drives it end to end and is
+>   **52/52** (40 before): a paid seat on a published class with no refund against
+>   it, the sheet still making its promise, **"Delete & manage refunds"** pressed,
+>   the landing on the money desk — and then the database read back: the class
+>   deleted, **the learner's seat CANCELLED** where it used to stay `enrolled` on a
+>   class that no longer existed, **one refund row, ₹300, `pending`, filed against
+>   the LEARNER**, with the owner as its actor.
+> * **Verified:** typecheck 0 · lint 0 · `next build` green · **`audit:reads` 0
+>   unexplained over 397 files** · dry run **27/27 rolled back** · applied first
+>   try · live read-back **13/13** with PostgREST reloaded · **4/4 proofs**
+>   (`payments`, `refunds`, `enrollments`, `class-earnings`) · **`shoot-classes`
+>   52/52**. ⚠ The e2e suite was NOT re-run and that is a checked decision rather
+>   than an omission: **no spec drives the class delete at all**, so nothing in it
+>   reaches the changed path.
 > The user: *"fix all and push to live in order apart from the sand box items.
 > and give suggestions where you need my help."* — so the ranked order was run,
 > and the one thing at the top of it that moves money is written, proven and
@@ -123,6 +206,14 @@
 >   fire a second identical query on the app's most-visited public surface. It is
 >   read through a ref at send time, synced in its own effect because this repo's
 >   lint forbids a ref write during render.
+> * ✅ **PUSHED AND LIVE (`067b696`)** — recorded 30 Sep 2026 by the NEXT session,
+>   because the block above never carried the line and **Rule 13 calls a top block
+>   that does not say what happened a bug**. Read back off Vercel's own API rather
+>   than from a behavioural probe (the 29 Sep lesson: a streamed 200 cannot be told
+>   from a matched route): the production alias `dancestudio-orcin.vercel.app`
+>   resolves to deployment `dpl_R2KNoZcq…`, state **READY**, `githubCommitSha`
+>   **067b696**. `origin/main` is that sha and the tree is clean, so nothing was
+>   left behind locally either.
 
 > ### CLASSES, END TO END — TEN FINDINGS, EIGHT FIXED, ONE RETRACTED (30 Sep 2026, earlier) — ⚠ ITS MIGRATION IS APPLIED NOW (the block above)
 > The user: *"check end to end flow for the classes and its permissions and logics
@@ -8712,11 +8803,16 @@ summary; the report has the evidence.
 
 ## NEXT TO DO — replaced on every push (Rule 13)
 
-0b3. **⚠⚠ ONE MIGRATION WRITTEN, DRY-RUN 21/21 AND HELD FOR YOUR WORD —
-   `20260930110000_calling_off_a_class_gives_the_money_back`.** ⚠⚠ Rule 9:
-   **MONEY.** It is the only pending file. Its app half is deliberately NOT
-   written, so nothing in the tree calls it and applying it changes what nobody
-   sees until that half lands in the same push.
+0b3. **~~ONE MIGRATION WRITTEN, DRY-RUN 21/21 AND HELD~~ — ✅ APPLIED, WIRED AND
+   PUSHED 30 Sep 2026**, on the user's **"Apply + wire + push"** after the
+   corrected list had been in front of them. ⚠⚠ Rule 9: **MONEY.** Re-dry-run
+   **27/27 rolled back** (the previous session's 21 plus six the re-write added),
+   applied on the FIRST try with `db-push -DryRun` listing exactly the one file,
+   **read back off the LIVE catalog 13/13** with PostgREST's cache reloaded, and
+   its app half wired in the SAME push — `softDeleteClass` calls
+   `cancel_class_bookings_for_class` BEFORE the delete, so the promise the sheet
+   has made since 29 Aug 2026 is true for the first time. The list is kept below
+   as the record of what was approved.
    **THE CASE, MEASURED ON PRODUCTION BEFORE A LINE WAS WRITTEN:**
    * ⚠⚠ **THE APP HAS PROMISED THIS SINCE 29 Aug 2026 AND NOTHING EVER DID IT.**
      `ClassesManager`'s delete sheet reads, word for word: *"{class} · {n}
@@ -8725,10 +8821,31 @@ summary; the report has the evidence.
      it navigates to `/business/{id}/earnings` "so the refunds are settled from
      the money desk". **No refund row is created by any of it.** The studio
      arrives at the money desk and there is nothing there.
-   * **13 live `enrolled` seats on 13 soft-deleted classes, held by 10 people;
-     6 paid orders worth ₹1,800** against classes that are gone. Their seat
-     still says `enrolled` on a class that does not exist, and their money is
-     where it was.
+   * ⚠⚠ **RE-MEASURED 30 Sep 2026 BY THE NEXT SESSION BEFORE PUTTING THE DECISION
+     UP, AND THE FIGURE HAD MOVED — WHICH IS WHY THE RULE EXISTS.** The row was
+     written as *"13 seats … 6 paid orders worth ₹1,800"*; production answers
+     **13 live `enrolled` seats on 13 soft-deleted classes across 13 businesses,
+     held by 10 people, and FOUR paid orders worth ₹1,200** (each with a captured
+     payment, so each is one the migration really would refund; **0 refunds have
+     ever been filed against them**). The money figure was a third out. **A
+     decision the user makes on a premise I supplied is my premise to check
+     before it is executed** — #0al's lesson, and the reason it is checked here
+     rather than after.
+   * ⚠⚠ **AND THE COMPOSITION IS THE FINDING, NOT THE COUNT: THERE IS NO REAL
+     CUSTOMER IN THAT LIST.** Named, one by one: **Proof Learner (test number)**
+     holds 4 seats, 3 of them paid (₹900); **Proof Owner (test number)** 1 free
+     seat; **six E2E Learner accounts**, every one a SOFT-DELETED test profile,
+     1 free seat each; **Deepak Kaushik** — the user's own account — 1 free seat;
+     and **Alisha Maini**, a demo account, 1 paid seat (₹300). ⚠ Two of the four
+     payments are `provider = razorpay`, a rail this app left on 28 Aug 2026
+     (`pay_e2emtciy1ej`), so they are e2e fixtures by construction; the other two
+     are Cashfree **sandbox**. **So this is the proof-leftover pile (#0aa) wearing
+     a money-shaped hat, and the "real people's money" framing was wrong.** It
+     does not weaken the migration by one line — the app has promised a refund
+     since 29 Aug 2026 and delivers none, and the next REAL studio to delete a
+     class with people on it meets exactly this — it settles only the BACKFILL
+     question, which is now: **file nothing.** Backfilling would put four
+     sandbox refunds on a real money desk for somebody to settle by hand.
    * ⚠ **IT COULD NOT BE WIRED RATHER THAN BUILT.** `cancel_class_booking_with_reason`
      does all of this correctly and is scoped `where e.user_id = auth.uid()` —
      the PAYER's door by design (Step 9) — so a studio has never been able to
@@ -8779,9 +8896,14 @@ summary; the report has the evidence.
    powershell -NoProfile -ExecutionPolicy Bypass -File scripts/db-push.ps1 2>&1 | Select-String -NotMatch 'Skipping migration|Warning: failed to cache|prerequisite for local'
    powershell -NoProfile -ExecutionPolicy Bypass -File scripts/run-proofs.ps1 payments refunds enrollments class-earnings
 ```
-   ⚠ No PostgREST reload is needed (no column, no table). **Then the app half in
-   the SAME push**: `softDeleteClass` calls it before deleting, and the delete
-   sheet's promise becomes true for the first time.
+   ⚠⚠ **AND THE LINE ABOVE THIS ONE USED TO SAY "No PostgREST reload is needed
+   (no column, no table)", WHICH IS WRONG AND WAS CORRECTED ON THE APPLY.** The
+   rule is not about columns and tables: **PostgREST resolves an RPC by its
+   argument NAMES against a CACHED signature**, so the app calling a function
+   that did not exist a minute ago is exactly the case that needs
+   `notify pgrst, 'reload schema'` — the 19 Sep PGRST202 lesson, which the
+   original note had filed under the wrong heading. The read-back does it, and a
+   probe afterwards proved the resolution rather than assuming it (below).
 
 0b2. **~~ONE MIGRATION WRITTEN, DRY-RUN 20/20 AND HELD~~ — ✅ APPLIED 30 Sep 2026**
    on the user's *"fix all and push to live in order"*, its list having been this
@@ -11000,6 +11122,24 @@ for the database schema. **The UI is not redesigned** — see Rule 2.
 
 ### Progress tracker — update after EVERY push (Rule 11)
 
+- **THE DELETE SHEET'S PROMISE IS TRUE AT LAST — 30 Sep 2026, no step number ⚠
+  (Rule 9: MONEY) — ONE MIGRATION APPLIED (`20260930110000`), dry run 27/27
+  rolled back first, read back live 13/13, app half wired in the same push.**
+  The delete sheet has promised a refund since 29 Aug 2026 and nothing ever
+  filed one. ⚠⚠ **Re-measuring the decision's own premise is what changed it**:
+  the row said "13 seats, 6 paid orders, ₹1,800, real people's money"; production
+  says **4 paid orders / ₹1,200**, and **every one of the ten people holding
+  those seats is a test, proof, demo or the user's own account** — six are
+  soft-deleted `E2E Learner` profiles and two payments sit on the retired
+  razorpay rail. So the user chose **file nothing**, and nothing was. ⚠⚠ The app
+  half calls the door **before** the delete, so a manager is refused in words
+  before a seat is touched; and **PostgREST resolving the RPC by argument name
+  was proven directly** (`P0001`, not `PGRST202`), which typecheck can never see.
+  ⚠⚠ **No e2e or shoot had ever driven the delete** — which is how it stayed
+  broken for a month under green checks — so `shoot-classes` does now:
+  **52/52** (40 before), reading the cancelled seat and the ₹300 `pending`
+  refund, **filed against the learner**, back out of the database. typecheck 0 ·
+  lint 0 · build green · `audit:reads` 0 unexplained · 4/4 proofs.
 - **THE RECORDS A MARKETPLACE KEEPS, A TASTE OF THE SCHEDULE, AND TWO GREPS —
   30 Sep 2026, no step number ⚠ (Rule 9: `20260930100000` APPLIED; and the HELD
   `20260930110000` moves money) — the ranked order the user asked for, run.**

@@ -347,6 +347,87 @@ const text = async (page) => (await page.locator("body").innerText()).replace(/\
     const sumY = await lPage.getByTestId("next-sessions").evaluate((el) => el.getBoundingClientRect().top);
     check(sumY > barY, `…drawn UNDER the bar rather than above it (bar ${Math.round(barY)}, summary ${Math.round(sumY)})`);
 
+    /* ══ 9 · CALLING A CLASS OFF GIVES THE MONEY BACK (#0b3) ══════════════════
+       ⚠⚠ THE SHEET HAS PROMISED THIS SINCE 29 Aug 2026 AND NOTHING DID IT. It
+       reads "{n} enrolled students must be refunded — you'll settle each refund
+       on the next screen", its button reads "Delete & manage refunds", and it
+       then sends the owner to the money desk — where there was nothing, because
+       no refund row was ever written by any of it.
+
+       ⚠ Nothing above could catch that. The migration's own dry run was 27/27
+       and typecheck, lint and the build are green whether or not `softDeleteClass`
+       ever calls the door — which is this repo's oldest shape (28 Sep: a green
+       migration and a green typecheck, both true while the feature did nothing).
+       Only a browser pressing the button answers it. */
+    const priced = await draftClass(owner.h, studio.id, roomA[0].id, "Contemporary", 60 * 24 * 7, 60 * 24 * 7 + 60);
+    await patch(owner.h, `classes?id=eq.${priced}`, { price_inr: 300 }, "price the class");
+    await rpc(owner.h, "ask_class_person", { p_class_id: priced, p_user_id: owner.id, p_kind: "artist" });
+    await patch(owner.h, `classes?id=eq.${priced}`, { status: "published" }, "publish the priced class");
+    const pricedSes = (await rows(owner.h, `class_sessions?class_id=eq.${priced}&select=id`))[0].id;
+
+    /* ⚠ A PAID SEAT, PLANTED THE WAY `demo-data.js` PLANTS ONE: a learner cannot
+       book a priced class directly (Step 9 refuses it — the money comes first),
+       so the service role stands in for the Cashfree webhook, which is the only
+       thing that ever writes this state. What is under test is the DELETE, not
+       the booking path, which `rls-proof-payments` covers. */
+    const seat = await call("POST", "/rest/v1/class_bookings", H_SERVICE, {
+      session_id: pricedSes, class_id: priced, business_id: studio.id,
+      user_id: learner.id, status: "enrolled", created_by: learner.id, updated_by: learner.id,
+    }, "the paid seat");
+    const order = await call("POST", "/rest/v1/orders", H_SERVICE, {
+      business_id: studio.id, user_id: learner.id, amount_inr: 300,
+      class_id: priced, session_id: pricedSes, class_booking_id: seat[0].id,
+      status: "paid", provider: "cashfree", created_by: learner.id, updated_by: learner.id,
+    }, "the paid order");
+    await call("POST", "/rest/v1/payments", H_SERVICE, {
+      order_id: order[0].id, user_id: learner.id, provider_payment_id: `shoot_${stamp}`,
+      amount_inr: 300, status: "captured", method: "upi", business_id: studio.id,
+      provider: "cashfree", created_by: learner.id, updated_by: learner.id,
+    }, "the captured payment");
+
+    const before = await rows(H_SERVICE, `refunds?order_id=eq.${order[0].id}&select=id`);
+    check(before.length === 0, "a paid seat on a published class, and NO refund against it yet");
+
+    await oPage.goto(`${BASE}/business/${studio.id}/classes`, { waitUntil: "networkidle" });
+    await oPage.getByRole("button", { name: /^Published,/ }).click();
+    await oPage.waitForTimeout(400);
+    /* ⚠ THE ROW IS THE CONTAINER THAT HOLDS BOTH THE TITLE AND THE BUTTON.
+       Filtering on the text alone matches an inner box that holds no button
+       (and an outer one that holds every row's), so it is narrowed by BOTH and
+       `.last()` takes the deepest — document order puts an ancestor first. */
+    const row = oPage
+      .locator("div")
+      .filter({ hasText: "Contemporary" })
+      .filter({ has: oPage.getByRole("button", { name: "Delete", exact: true }) })
+      .last();
+    await row.getByRole("button", { name: "Delete", exact: true }).click();
+    await oPage.waitForTimeout(400);
+
+    const sheet = await text(oPage);
+    check(/1 enrolled student must be refunded/.test(sheet), "⚠ the sheet still makes the promise it has made since 29 Aug 2026");
+    const go = oPage.getByRole("button", { name: "Delete & manage refunds", exact: true });
+    check((await go.count()) === 1, "…and the button still names the refunds");
+    await go.click();
+
+    /* the desk the sheet sends them to — where there was never anything to settle */
+    await oPage.waitForURL(/\/earnings$/, { timeout: 30000 });
+    check(/\/earnings$/.test(new URL(oPage.url()).pathname), "…and it lands on the money desk, as it always said it would");
+
+    /* ⚠ READ IT BACK OUT OF THE DATABASE. The screen navigating proves nothing
+       about whether a refund exists — that was true for a month. */
+    await oPage.waitForTimeout(2000);
+    const gone = await rows(H_SERVICE, `classes?id=eq.${priced}&select=deleted_at`);
+    check(gone[0].deleted_at !== null, "the class really is deleted");
+    const seatAfter = await rows(H_SERVICE, `class_bookings?id=eq.${seat[0].id}&select=status,updated_by`);
+    check(seatAfter[0].status === "cancelled", "⚠⚠ the learner's seat is CANCELLED — it used to stay `enrolled` on a class that no longer existed");
+    check(seatAfter[0].updated_by === owner.id, "…with the OWNER recorded as the actor who did it");
+    const after = await rows(H_SERVICE, `refunds?order_id=eq.${order[0].id}&select=status,amount_inr,user_id,created_by`);
+    check(after.length === 1, "⚠⚠ ONE REFUND ROW EXISTS — the thing the sheet has promised since 29 Aug and never delivered");
+    check(after[0]?.amount_inr === 300, "…for the full ₹300 that was actually captured");
+    check(after[0]?.status === "pending", "…AUTOMATIC, not 'requested': the 48-hour rule is about a learner cancelling late, not a class the studio called off");
+    check(after[0]?.user_id === learner.id, "⚠⚠ …filed against the LEARNER whose money it is, not the owner who pressed the button");
+    check(after[0]?.created_by === owner.id, "…while the owner is the actor on it — the two identities stayed apart");
+
     check(errs.length === 0, `no page error on any of it${errs.length ? ` — ${errs.slice(0, 3).join(" | ")}` : ""}`);
   } catch (error) {
     check(false, `threw: ${error.message}`);
