@@ -32,6 +32,11 @@
 >   Kabir: three studios with a teacher list, opening onto *"Aditya Pillai — 3
 >   classes"* · `shoot-tiles` 134/134 · `shoot-classes` 79/79 · `shoot-hero`
 >   186/186 · happy path 19/19.
+> * ✅ **PUSHED AND LIVE (`db7d717`)**, read back off the deployment: the alias
+>   on this sha through Vercel's API, and ON THE LIVE SITE — Deepak's own profile
+>   renders, Done 17 rows with 0 duplicate-key warnings and every class card
+>   wearing its teacher, Kabir's three teacher lists opening · `shoot-tiles`
+>   134/134 · `shoot-classes` 79/79 · `stranger-smoke` green.
 > * ⚠ **Deepak's artist page is still UNLISTED and still named `test2`** (the
 >   user's 30 Sep choice) — so his own classes are not on Discover and the page
 >   name shows on them. A decision, put to the user rather than changed.
