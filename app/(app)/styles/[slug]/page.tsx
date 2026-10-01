@@ -1,10 +1,10 @@
-import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { StyleArt } from "@/features/styles/components/StyleArt";
 import { StyleBoards } from "@/features/styles/components/StyleBoards";
 import { SegmentedPanels } from "@/features/shell/components/SegmentedNav";
 import { dosStyleColor } from "@/lib/constants/styles";
-import { styleFromSlug, styleInfo, stylePhoto } from "@/lib/constants/styleInfo";
+import { styleFromSlug, styleInfo } from "@/lib/constants/styleInfo";
 import { DOS_UI, INK, SUB, TAB_TITLE } from "@/lib/design/tokens";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { findChart } from "@/repositories/stats";
@@ -37,7 +37,6 @@ export default async function StylePage({
   const style = styleFromSlug(slug);
   if (!style) notFound();
   const info = styleInfo(style);
-  const photo = stylePhoto(style);
   const color = dosStyleColor(style);
 
   const supabase = await createSupabaseServerClient();
@@ -63,32 +62,14 @@ export default async function StylePage({
 
   const details = (
     <div>
-      {/* PHOTOS — the one picture, with the credit its licence asks for */}
+      {/* THE DANCER — drawn in the style's costume, pose and props (2 Oct 2026,
+          replacing the photo). A square on the style's own colour, the figure
+          fitted whole inside it. */}
       <div style={card}>
-        <div style={head}>PHOTOS</div>
-        {photo ? (
-          <>
-            {/* ⚠ THE WHOLE PHOTO, AT ITS OWN SHAPE (2 Oct 2026, the user: "should fit
-                properly in … detail pages"): a fixed 3:2 box cropped every portrait
-                photo to the dancer's middle. A very tall one is capped and shown
-                whole inside the cap rather than cut. */}
-            <div style={{ position: "relative", width: "100%", aspectRatio: `${photo.width} / ${photo.height}`, maxHeight: 520, borderRadius: 12, overflow: "hidden", background: "var(--el)" }}>
-              <Image src={photo.src} alt={`${style} — ${photo.title.replace(/^File:/, "").replace(/\.[a-z]+$/i, "")}`} fill sizes="(max-width: 430px) 92vw, 400px" style={{ objectFit: "contain" }} />
-            </div>
-            <div style={{ fontSize: 10.5, color: SUB, marginTop: 7, lineHeight: 1.45 }} data-testid="style-photo-credit">
-              Photo: {photo.credit} ·{" "}
-              {photo.licenseUrl ? (
-                <a href={photo.licenseUrl} target="_blank" rel="noreferrer" style={{ color: SUB }}>{photo.license}</a>
-              ) : (
-                photo.license
-              )}{" "}
-              ·{" "}
-              <a href={photo.source} target="_blank" rel="noreferrer" style={{ color: SUB }}>Wikimedia Commons</a>
-            </div>
-          </>
-        ) : (
-          <div style={{ fontSize: 12.5, color: SUB }}>No photo of {style} yet.</div>
-        )}
+        <div style={head}>THE DANCE</div>
+        <div data-testid="style-art-frame" style={{ position: "relative", width: "100%", aspectRatio: "1 / 1", borderRadius: 12, overflow: "hidden", background: `linear-gradient(160deg, ${color}, ${color}88)` }}>
+          <StyleArt style={style} frame="page" label={`${style} dancer in costume`} />
+        </div>
       </div>
 
       {/* INFO — the four facts, each on the style's own colour edge (9508-9513) */}

@@ -1,15 +1,13 @@
-import Image from "next/image";
 import Link from "next/link";
 import { DOS_DISPLAY } from "@/lib/design/tokens";
 import { dosStyleColor } from "@/lib/constants/styles";
-import { styleInfo, stylePhoto, styleSlug } from "@/lib/constants/styleInfo";
+import { styleInfo, styleSlug } from "@/lib/constants/styleInfo";
+import { StyleArt } from "./StyleArt";
 
-/** a dance style on Discover's Styles tab (2 Oct 2026): its photo, its name
- *  across the photo's foot, its family above — a door to the style's own page.
- *  ⚠ A style with no honest free photo draws its OWN COLOUR instead, the colour
- *  the registry gives it everywhere else, rather than a wrong picture. */
+/** a dance style on Discover's Styles tab (2 Oct 2026): its drawn dancer on the
+ *  style's own colour, its name across the foot, its family above — a door to
+ *  the style's own page. */
 export function StyleCard({ style, classes, city }: { style: string; classes: number; city: string }) {
-  const photo = stylePhoto(style);
   const color = dosStyleColor(style);
   const { family } = styleInfo(style);
   return (
@@ -19,11 +17,12 @@ export function StyleCard({ style, classes, city }: { style: string; classes: nu
       data-testid="style-card"
       style={{ position: "relative", display: "block", aspectRatio: "4 / 5", borderRadius: 18, overflow: "hidden", textDecoration: "none", background: `linear-gradient(150deg, ${color}, ${color}99)`, border: "1.5px solid var(--el)" }}
     >
-      {/* ⚠ FRAMED ON THE TOP THIRD, NOT THE CENTRE (2 Oct 2026, the user: "should
-          fit properly in discover"): a dancer's head and hands are what make a
-          pose read, and a centred crop of a portrait photo cut them off */}
-      {photo ? <Image src={photo.src} alt="" fill sizes="(max-width: 430px) 45vw, 190px" style={{ objectFit: "cover", objectPosition: "50% 22%" }} /> : null}
-      <span aria-hidden="true" style={{ position: "absolute", inset: 0, background: "linear-gradient(180deg, rgba(0,0,0,0) 40%, rgba(0,0,0,.78) 100%)" }} />
+      <span aria-hidden="true" style={{ position: "absolute", inset: 0, background: "linear-gradient(180deg, rgba(0,0,0,0) 55%, rgba(0,0,0,.72) 100%)" }} />
+      {/* ⚠ THE DANCER IS FITTED, NOT CROPPED (2 Oct 2026): the card frame keeps the
+          whole figure above the name, its feet on the floor of that box — every
+          style's outline is measured, so a Breaking freeze and a Ghoomar skirt
+          both fill it whole */}
+      <StyleArt style={style} frame="card" />
       <span style={{ position: "absolute", left: 11, right: 11, bottom: 10, color: "#fff" }}>
         <span style={{ display: "block", fontSize: 9, fontWeight: 900, letterSpacing: 0.8, textTransform: "uppercase", opacity: 0.85 }}>{family}</span>
         <span style={{ display: "block", fontFamily: DOS_DISPLAY, fontWeight: 900, fontSize: 17, letterSpacing: -0.4, lineHeight: 1.1, marginTop: 2, overflowWrap: "anywhere" }}>{style}</span>

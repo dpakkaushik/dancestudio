@@ -2,6 +2,36 @@
 
 ## LAST SESSION (2 Oct 2026) — replaced on every push (Rule 13)
 
+> ### THE STYLES ARE DRAWN DANCERS NOW, NOT PHOTOS (2 Oct 2026, latest) — no migration, ⚠ COMMITTED LOCALLY, NOT PUSHED (with `e355a8a` before it)
+> The user: *"instead of photos can you use icons with dance styles in their
+> particular costume with the pose for that dance style and props for it as
+> well. and fit that on both photos and discover cards and fit them properly."*
+> * **One parametric dancer, 49 specs.** `lib/styleArt/figure.ts` draws a body
+>   from ANGLES (0 = down, 90 = right, 180 = up; "a" = screen-left) and dresses
+>   it — skirts with tiers/mirror dots/fringe, the classical dhoti fan, the
+>   Manipuri potloi, a tutu; 30 headgear (Kathakali kireedam, Sufi sikke, pagg,
+>   apple cap, top hat, samba feathers, odhni, pot on the head…); props (dandiya
+>   sticks, Flamenco fan, tap cane, Belly-dance veil, ribbon, rumal, Kuchipudi
+>   brass plate). `lib/styleArt/specs.ts` is each style's costume, pose and props.
+>   **All 49 have a picture** — Afrobeats, Locking, Waacking and Jazz Funk too.
+> * ⚠ **FITTED BY MEASUREMENT**: every drawn point is recorded and the figure is
+>   scaled into its box, feet on the floor — a Breaking freeze and a Ghoomar
+>   skirt each fill the frame with no per-style number. A white sticker outline
+>   (an SVG `feMorphology` filter) keeps a costume legible on its own style's
+>   colour. Card frame keeps the dancer above the name; the style page draws it
+>   in a square on the style colour under **THE DANCE**.
+> * **The photos are gone**: `public/styles/*.jpg`, `stylePhotos.json`,
+>   `scripts/fetch-style-photos.js` and `stylePhoto()` deleted (in git history).
+> * **Check by eye**: `node scripts/style-art-sheet.mjs` writes a contact sheet
+>   (`scripts/shots/shots/style-art*.png`) — four styles were re-posed off it.
+> * **Verified:** typecheck 0 · lint 0 · build green · a browser check on `:3100`
+>   in both themes (49 cards, 49 dancers, no `<img>` left, every dancer whole
+>   inside its card and above the name, smallest fills 52% of the card height,
+>   the page's square fitted, no page error) — ⚠ Breaking "failed" the first
+>   cut of that check because a ROTATED group's `getBoundingClientRect` is the
+>   box around its rotated box; its painted geometry measured point by point is
+>   inside · `shoot-discover` 45/45.
+
 > ### THE STYLE PHOTOS ARE DANCERS, THEY FIT, AND THE CLASSICAL FORMS LEAD (2 Oct 2026, latest) — no migration, ⚠ COMMITTED LOCALLY, NOT PUSHED
 > The user: *"dance style photos should be of a dance pose from that syle and
 > should fit ptoperly in discover and detail pages. mix order of dance styles as

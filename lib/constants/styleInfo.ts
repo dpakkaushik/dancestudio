@@ -1,5 +1,4 @@
 import { DOS_STYLE_NAMES } from "./styles";
-import PHOTOS from "./stylePhotos.json";
 
 /** WHAT A DANCE STYLE IS — the Styles section on Discover and each style's own
  *  page (2 Oct 2026, the user: "New section in discover called Styles. All dance
@@ -14,9 +13,8 @@ import PHOTOS from "./stylePhotos.json";
  *  ⚠ EVERY NAME IS A WIDELY DOCUMENTED FIGURE IN THAT FORM, and where a date is a
  *  range or a tradition the field says so — an encyclopedia line that cannot be
  *  checked is worse than a shorter one. ⚠ At most FIVE names, the user's number.
- *  ⚠ The photo is NOT here: it lives in `stylePhotos.json`, written by
- *  `scripts/fetch-style-photos.js` with the credit the licence requires, and a
- *  style with no honest free photo simply has none — the card draws its colour. */
+ *  ⚠ The PICTURE is not here: since 2 Oct 2026 every style is a drawn dancer
+ *  (`lib/styleArt/specs.ts`), which replaced the Commons photos. */
 export interface StyleInfo {
   /** the family the registry groups it under */
   family: string;
@@ -27,38 +25,12 @@ export interface StyleInfo {
   notable: string[];
 }
 
-export interface StylePhoto {
-  src: string;
-  title: string;
-  credit: string;
-  license: string;
-  licenseUrl: string | null;
-  source: string;
-  /** the stored file's own size, so the style's page draws it WHOLE at its
-   *  natural shape rather than cropping the dancer (2 Oct 2026) */
-  width: number;
-  height: number;
-}
-
 export const styleSlug = (style: string): string =>
   style.toLowerCase().replace(/&/g, "and").replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
 
 const BY_SLUG = new Map(DOS_STYLE_NAMES.map((s) => [styleSlug(s), s]));
 /** the style a slug names, or null — a URL is a request, the registry decides */
 export const styleFromSlug = (slug: string): string | null => BY_SLUG.get(slug) ?? null;
-
-/* ⚠ THE FILE NAME CARRIES A FINGERPRINT OF THE PHOTO (2 Oct 2026). Re-picking a
-   style's photo under the same `<slug>.jpg` kept serving the OLD picture — Next's
-   image cache, the CDN and every browser key on the URL — so a new photo must be
-   a new URL. `file` is `<slug>-<8 hex of the Commons title>.jpg`. */
-type PhotoRow = Omit<StylePhoto, "src"> & { file: string };
-const PHOTO_ROWS = PHOTOS as Record<string, PhotoRow>;
-export const stylePhoto = (style: string): StylePhoto | null => {
-  const row = PHOTO_ROWS[styleSlug(style)];
-  if (!row) return null;
-  const { file, ...rest } = row;
-  return { src: `/styles/${file}`, ...rest };
-};
 
 const IC = "Indian classical";
 const IF = "Indian folk";
