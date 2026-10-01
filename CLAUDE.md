@@ -17,7 +17,13 @@
 > ⚠ **The happy path's one red was the CHECK**: the person page's figures are
 > buttons now ("Followers — 0"), so `getByRole("button", { name: "Follow" })`
 > matched three controls (the substring trap, fifth time); both person-page sites
-> use the `follow-toggle` test id.
+> use the `follow-toggle` test id. **Happy path 19/19 in 13.2 min** on a fresh
+> bundle — ⚠ after a `next start` from the previous chat (01:53) was found still
+> holding :3100, so the first re-run was driving old code and was stopped.
+> ✅ **PUSHED AND LIVE (`c53f156`)**, read back off the deployment: Vercel's own
+> list for this sha BUILDING → READY, the alias confirmed on it through the API,
+> **`stranger-smoke` 8/8**, and on the live site the follow list (2 = count 2,
+> 401 signed out) and Kathak on Gurugram's shelf and off New Delhi's.
 > The user's five-part list: earnings breakup collapsible and shown at ₹0;
 > better practice cards with the crew's photo; the enquiry system redesigned
 > (status, quote mechanism, quote history, photos, cards, shorter forms);
