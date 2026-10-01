@@ -24,6 +24,10 @@
 > * **Verified:** typecheck 0 · lint 0 · build green · `shoot-classes` **79/79**
 >   (73 before) · `shoot-practice` **43/43** (38 before) · `shoot-tiles`
 >   **134/134** · happy path **19/19**.
+> * ✅ **PUSHED AND LIVE (`eba30f7`)**, read back off the deployment: Vercel's own
+>   list for this sha BUILDING → READY, the alias confirmed on it through the API,
+>   and **`shoot-classes` 79/79 · `shoot-practice` 43/43 · `shoot-tiles` 134/134
+>   · `stranger-smoke` all green ON THE DEPLOYMENT**.
 
 > ### THE STATS PAGE GOES BACK IN ONE STEP, AND AN UNPAID PASS IS NOT A SALE (1 Oct 2026) — ✅ `20260930130000` APPLIED (dry run 24/24 re-run first, read back live 11/11)
 > The user: *"fix back swipe on stats page. fix code as well and the database"*,
