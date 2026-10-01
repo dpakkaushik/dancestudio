@@ -76,9 +76,23 @@ export default async function PersonPage({ params }: { params: Promise<{ userId:
      the owner now returns early, so leaving this below would have made your own
      visit stop provisioning the page — silently, and only findable by an artist
      whose Enquiry button never appeared. */
+  /* ⚠⚠ REDIRECT ONLY WHEN A PAGE WAS ACTUALLY MADE (1 Oct 2026, the user: "when
+     checking discover for your own profile in artist is giving a blank page").
+     `person.artistPageId` is the PUBLIC read, which answers null for an artist
+     page that is UNLISTED — and `ensureArtistPage` hands back the id of the page
+     the person already OWNS. So an artist whose page is unlisted (Deepak's
+     `test2`, unlisted on 30 Sep) got "no page" → "here is your page" → redirect
+     to this same address → "no page" again, for ever: the route was fetched
+     twenty times in six seconds and drew nothing but the top bar. The decision
+     is made off the person's OWN seats now, and the redirect fires only after a
+     row was created. */
   if (isMe && person.isArtist && !person.artistPageId) {
-    const made = await ensureArtistPage(supabase, person.profile, await findMyTeams(supabase).catch(() => []));
-    if (made) redirect(`/person/${userId}`);
+    const teams = await findMyTeams(supabase).catch(() => []);
+    const alreadyOwns = teams.some((m) => m.memberRole === "owner" && m.business.type === "artist_page");
+    if (!alreadyOwns) {
+      const made = await ensureArtistPage(supabase, person.profile, teams);
+      if (made) redirect(`/person/${userId}`);
+    }
   }
   /* ⚠ YOUR OWN PROFILE IS THIS ADDRESS NOW (21 Sep 2026, the user: "reduce the
      no. of pages per profile type without changing functionality"). `/profile`

@@ -24,6 +24,7 @@ import { publicProfilePath } from "@/lib/routes/publicProfile";
 import { priceWords, type PlanCatalogRow } from "@/repositories/plans";
 import type { StudioSubscriptionState } from "@/repositories/subscriptions";
 import type { MyMembership } from "@/repositories/businesses";
+import type { LearnedFrom } from "@/repositories/classBookings";
 import { DOS_TOOLS, SHEET_ANIMATION, dosToolPaint } from "./biz-kit";
 
 /* Icons lifted from the prototype (DanceOSApp.jsx:3136-3142). */
@@ -125,8 +126,11 @@ export function BusinessHub({
   studioVerification = {},
   userId = null,
   attended = [],
+  teachersByStudio = {},
   show = "own",
 }: {
+  /** who taught you at each studio you learned at, keyed by studio id (1 Oct 2026) */
+  teachersByStudio?: Record<string, LearnedFrom[]>;
   /** ⚠ WHICH COLUMN IS OPEN (29 Sep 2026) — `?show=learned`, the URL as the
    *  state, like every other segmented desk in the app. */
   show?: "own" | "learned";
@@ -429,6 +433,24 @@ export function BusinessHub({
     </div>
   );
 
+  /* ⚠⚠ A STUDIO YOU LEARNED AT CARRIES WHO TAUGHT YOU THERE (1 Oct 2026, the
+     user: *"where you learned in studios should have studio list and collapsible
+     teacher list in it to see the record of from who you learned where"*). The
+     same card, and under its identity a disclosure — "Learned from N teachers"
+     — that opens onto each teacher with how many of your classes they took. It
+     sits ABOVE the card's stretched link (z-index 2), like the studio card's own
+     work, so pressing it opens the list rather than the studio's page. */
+  const learnedCard = (t: MyMembership["business"]) => {
+    const teachers = teachersByStudio[t.id] ?? [];
+    return (
+      <div key={t.id} style={cardStyle(false)}>
+        {openLink(publicProfilePath(t), `${t.name} — open the profile`)}
+        {identity(t, false)}
+        {teachers.length > 0 ? <LearnedFromList studio={t.name} teachers={teachers} /> : null}
+      </div>
+    );
+  };
+
   const setRoom = (i: number, patch: Partial<RoomDraft>) =>
     setRooms((rs) => rs.map((r, j) => (j === i ? { ...r, ...patch } : r)));
 
@@ -581,7 +603,7 @@ export function BusinessHub({
                   {learnt.length > 0 ? (
                     <>
                       <Head>STUDIOS YOU HAVE LEARNT AT</Head>
-                      {learnt.map((t) => plainCard(t))}
+                      {learnt.map((t) => learnedCard(t))}
                     </>
                   ) : null}
                   {/* every studio whose team you are on — a trainer's seat, or the
@@ -863,6 +885,58 @@ export function BusinessHub({
         </div>
       )}
       {toast ? <div role="status" style={{ position: "fixed", bottom: 28, left: "50%", transform: "translateX(-50%)", background: "#241B33", color: "#fff", padding: "11px 18px", borderRadius: 999, fontSize: 13, fontWeight: 700, zIndex: 700, maxWidth: 360, textAlign: "center" }}>{toast}</div> : null}
+    </div>
+  );
+}
+
+/** WHO TAUGHT YOU AT ONE STUDIO, folded shut until asked (1 Oct 2026). A real
+ *  `<button aria-expanded>` with the list it controls, so a screen reader hears
+ *  the same disclosure a finger opens; each teacher is a door to their profile. */
+function LearnedFromList({ studio, teachers }: { studio: string; teachers: LearnedFrom[] }) {
+  const [open, setOpen] = useState(false);
+  const id = `learned-${studio.replace(/[^a-z0-9]+/gi, "-").toLowerCase()}`;
+  const day = (iso: string) => new Intl.DateTimeFormat("en-IN", { timeZone: "Asia/Kolkata", day: "numeric", month: "short", year: "numeric" }).format(new Date(iso));
+  return (
+    <div style={{ position: "relative", zIndex: 2, marginTop: 10, borderTop: "1.5px solid var(--el)", paddingTop: 8 }} data-testid="learned-from">
+      <button
+        type="button"
+        aria-expanded={open}
+        aria-controls={id}
+        aria-label={`${open ? "Hide" : "Show"} who taught you at ${studio}`}
+        onClick={() => setOpen((o) => !o)}
+        style={{ display: "flex", alignItems: "center", gap: 6, width: "100%", background: "none", border: "none", padding: "2px 0", color: SUB, fontSize: 11, fontWeight: 800, cursor: "pointer", fontFamily: "inherit", textAlign: "left" }}
+      >
+        <span style={{ flex: 1 }}>
+          Learned from {teachers.length} teacher{teachers.length === 1 ? "" : "s"}
+        </span>
+        <span aria-hidden="true" style={{ transition: "transform .15s", transform: open ? "rotate(90deg)" : "none" }}>›</span>
+      </button>
+      {open ? (
+        <div id={id} style={{ marginTop: 6 }}>
+          {teachers.map((a) => {
+            const src = photoUrl(a.avatarPath);
+            return (
+              <Link
+                key={a.userId}
+                href={`/person/${a.userId}`}
+                aria-label={`${a.name} — ${a.classes} class${a.classes === 1 ? "" : "es"} at ${studio}`}
+                style={{ display: "flex", alignItems: "center", gap: 9, padding: "6px 0", color: INK, textDecoration: "none" }}
+              >
+                <span style={{ width: 30, height: 30, borderRadius: 9, flexShrink: 0, position: "relative", overflow: "hidden", background: "var(--el)", display: "inline-flex", alignItems: "center", justifyContent: "center", fontSize: 11, fontWeight: 900, color: SUB }}>
+                  {src ? <Image src={src} alt="" fill sizes="30px" style={{ objectFit: "cover" }} /> : a.name.split(/\s+/).map((w) => w[0]).slice(0, 2).join("").toUpperCase()}
+                </span>
+                <span style={{ flex: 1, minWidth: 0 }}>
+                  <span style={{ display: "block", fontSize: 12.5, fontWeight: 800, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{a.name}</span>
+                  <span style={{ display: "block", fontSize: 10, color: MUTED, marginTop: 1 }}>
+                    {a.classes} class{a.classes === 1 ? "" : "es"} · last {day(a.last)}
+                  </span>
+                </span>
+                <span aria-hidden="true" style={{ color: MUTED, fontSize: 13 }}>›</span>
+              </Link>
+            );
+          })}
+        </div>
+      ) : null}
     </div>
   );
 }

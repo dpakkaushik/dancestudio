@@ -3,7 +3,7 @@ import { InboxScreen } from "@/features/inbox/components/InboxScreen";
 import { buildRequests } from "@/features/inbox/requestItems";
 import { gradientOf } from "@/features/profiles/components/profile-kit";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
-import { findAskedClassPeopleForBusinesses } from "@/repositories/classPeople";
+import { findAskedClassPeopleForBusinesses, findClassArtists } from "@/repositories/classPeople";
 import { findVenueRequestsForBusinesses } from "@/repositories/classes";
 import { findPendingInvites } from "@/repositories/invites";
 import { findMyMemberships, runsTheBusiness } from "@/repositories/businesses";
@@ -58,6 +58,9 @@ export default async function StudioInboxPage({ params }: { params: Promise<{ bu
     findPendingInvites(supabase, businessId).then((rows) => rows.map((i) => ({ ...i, businessName: business.name }))),
   ]);
   const { requestsIn, requestsOut } = buildRequests({ venueIn, classPeopleOut, invitesOut });
+  /* the teacher each class card wears — one read for the whole desk (1 Oct 2026) */
+  const classIds = [...new Set([...requestsIn, ...requestsOut].map((r) => r.danceClass?.id).filter((x): x is string => Boolean(x)))];
+  const artists = Object.fromEntries(await findClassArtists(supabase, classIds).catch(() => new Map()));
 
-  return <InboxScreen accent={gradientOf(business.name)[1]} requestsIn={requestsIn} requestsOut={requestsOut} enquiriesIn={[]} enquiriesOut={[]} nowIso={stampNowIso()} />;
+  return <InboxScreen accent={gradientOf(business.name)[1]} requestsIn={requestsIn} requestsOut={requestsOut} artists={artists} enquiriesIn={[]} enquiriesOut={[]} nowIso={stampNowIso()} />;
 }

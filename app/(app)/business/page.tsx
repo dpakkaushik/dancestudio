@@ -6,7 +6,7 @@ import { findProfileById } from "@/repositories/profiles";
 import { findDiscoverCities } from "@/repositories/cities";
 import { findWhyNoStudio } from "@/repositories/orgStanding";
 import { countRoomsByBusinesses } from "@/repositories/rooms";
-import { findStudiosAttended } from "@/repositories/classBookings";
+import { findStudiosAttended, findTeachersByStudioAttended } from "@/repositories/classBookings";
 import { findStudioVerificationStates } from "@/repositories/studioVerification";
 import { findMyStudioSubscriptions } from "@/repositories/subscriptions";
 import { findMyMemberships } from "@/repositories/businesses";
@@ -58,7 +58,7 @@ export default async function BusinessPage({ searchParams }: { searchParams: Pro
   ]);
   const owned = memberships.filter((m) => m.memberRole === "owner").map((m) => m.business);
   const studioIds = owned.filter((t) => t.type === "studio").map((t) => t.id);
-  const [roomCounts, studioSubscriptions, studioVerification, attended] = await Promise.all([
+  const [roomCounts, studioSubscriptions, studioVerification, attended, teachersByStudio] = await Promise.all([
     countRoomsByBusinesses(supabase, owned.map((t) => t.id)),
     findMyStudioSubscriptions(supabase, studioIds).catch(() => ({})),
     /* WHERE EACH STUDIO STANDS WITH DANCEOS (11 Sep 2026): its badge, its
@@ -70,11 +70,14 @@ export default async function BusinessPage({ searchParams }: { searchParams: Pro
     ),
     /* the Studios tile's second list for a person (18 Sep 2026): where they have been a student */
     findStudiosAttended(supabase, user.id).catch(() => []),
+    /* …and who taught you at each (1 Oct 2026) — off the same bookings */
+    findTeachersByStudioAttended(supabase, user.id).catch(() => ({})),
   ]);
   return (
     <BusinessHub
       memberships={memberships}
       attended={attended}
+      teachersByStudio={teachersByStudio}
       show={show}
       roomCounts={roomCounts}
       isArtist={Boolean(plan?.active)}

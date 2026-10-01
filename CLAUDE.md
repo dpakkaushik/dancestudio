@@ -2,6 +2,40 @@
 
 ## LAST SESSION (1 Oct 2026) — replaced on every push (Rule 13)
 
+> ### AN ARTIST'S OWN PROFILE WAS A REDIRECT LOOP, DONE DREW EVERY SELF-ASK TWICE, AND "WHERE YOU LEARNED" SAYS WHO TAUGHT YOU (1 Oct 2026, latest) — no migration
+> * ⚠⚠ **DEEPAK'S OWN PROFILE WAS BLANK BECAUSE IT REDIRECTED TO ITSELF FOR
+>   EVER.** `/person/{id}` provisions an artist's page when the PUBLIC read
+>   (`artistPageId`) says there is none — and that read answers null for an
+>   UNLISTED page (`test2`, unlisted 30 Sep). `ensureArtistPage` then handed back
+>   the id of the page he already OWNS, the route took any id as "just made" and
+>   redirected to the same address: twenty fetches in six seconds, nothing drawn
+>   but the top bar, and no error anywhere (found only in the dev server's
+>   request log). It decides off the person's own seats now and redirects only
+>   after a row was created. ⚠ Home was never affected — it never redirects.
+> * ⚠⚠ **DONE DREW EVERY SELF-ASK TWICE, WITH ONE REACT KEY.** An owner naming
+>   themselves on their own studio's class (R47) holds that ask on BOTH sides, so
+>   Done listed it as "asked of you" and "you asked yourself" — **30 rows where
+>   17 are real**, and React's own warning is that duplicate keys get children
+>   "duplicated and/or omitted". One row per ask now (the received side), and
+>   every key carries its direction. ⚠ **And every class card's centre was an
+>   empty square**: the Inbox has drawn `ClassTile` with no `artist` since 27 Sep;
+>   both Inbox pages read `findClassArtists` once for the desk now.
+> * **WHERE YOU LEARNED NAMES WHO TAUGHT YOU.** `findTeachersByStudioAttended` —
+>   the same bookings as `findStudiosAttended`, cancelled seats left out, each
+>   class's confirmed artist — gives every studio card a collapsible
+>   *"Learned from N teachers"* (`aria-expanded`), each teacher a door to their
+>   profile with how many of your classes they took and the latest. A studio
+>   whose classes had no confirmed teacher draws no list rather than an empty one.
+> * **Verified:** typecheck 0 · lint 0 · build green · as Deepak on a dev server:
+>   own profile renders (`<h1>` Deepak Kaushik), Done **30 → 17 rows, 0
+>   duplicate-key warnings, every class card with a face** · as the demo learner
+>   Kabir: three studios with a teacher list, opening onto *"Aditya Pillai — 3
+>   classes"* · `shoot-tiles` 134/134 · `shoot-classes` 79/79 · `shoot-hero`
+>   186/186 · happy path 19/19.
+> * ⚠ **Deepak's artist page is still UNLISTED and still named `test2`** (the
+>   user's 30 Sep choice) — so his own classes are not on Discover and the page
+>   name shows on them. A decision, put to the user rather than changed.
+
 > ### AN ARTIST HAS ONE PROFILE, IN EVERY SENTENCE (1 Oct 2026, latest) — ✅ `20261001090000` APPLIED (dry run 8/8 first, read back live 9/9, `classes` proof green)
 > The user: *"are artist profile and artist page 2 seprate things?"* — no (R24) —
 > then *"yeah please fix this part"*. The words "artist page" were still reaching

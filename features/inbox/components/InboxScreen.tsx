@@ -12,6 +12,7 @@ import { ClassTile } from "@/features/classes/components/ClassTile";
 import { DeskHero } from "@/features/businesses/components/biz-kit";
 import { DOS_DISPLAY, DOS_UI, LILAC, SKY } from "@/lib/design/tokens";
 import type { DanceClass } from "@/types/class";
+import type { ClassArtist } from "@/types/classPerson";
 import {
   ENQ_STAGES,
   ENQ_STAGE_WORD,
@@ -166,6 +167,7 @@ export function InboxScreen({
   desk = "inbox",
   deskSub = null,
   settings = null,
+  artists = {},
 }: {
   /** the profile-tinted wash the rest of the app opens on (5681) */
   accent: string;
@@ -195,6 +197,12 @@ export function InboxScreen({
    *  Inbox desk has no settings and this file should not learn what an
    *  `enquiry_types` column is to draw one. */
   settings?: ReactNode;
+  /** ⚠ THE TEACHER EACH CLASS CARD WEARS IN ITS CENTRE (1 Oct 2026), keyed by
+   *  class id — one read for the whole desk (`findClassArtists`). The Inbox drew
+   *  `ClassTile` with no artist since 27 Sep, so every card's middle was an empty
+   *  square: the other half of *"a lot of blank class cards"*. A class nobody has
+   *  accepted yet still has none, and the square is the honest picture of that. */
+  artists?: Record<string, ClassArtist>;
 }) {
   const router = useRouter();
   const [sect, setSect] = useState<"req" | "join" | "enq" | "done">(desk === "enquiries" ? "enq" : "req");
@@ -259,7 +267,25 @@ export function InboxScreen({
      closed enquiry, and one "Done" list spanning two tabs would be a third
      place to look for either. */
   const onEnq = desk === "enquiries";
-  const doneReq = onEnq ? [] : [...requestsIn, ...requestsOut].filter(isDone);
+  /* ⚠⚠ ONE ROW PER ASK, NOT ONE PER SIDE (1 Oct 2026, the user: *"when checking
+     done section in inbox a lot of blank class cards"*). Somebody who owns a
+     studio and names THEMSELVES on its class (R47 — born confirmed, kept as a
+     log) holds that ask on BOTH sides, so Done drew it twice with one React key
+     each time — "you were asked" and "you asked yourself" — and React's own
+     warning is that duplicate keys get children "duplicated and/or omitted",
+     which is the blank card. The received side wins: it is the one that says
+     what you agreed to. */
+  const doneReq = onEnq
+    ? []
+    : (() => {
+        const seen = new Set<string>();
+        return [...requestsIn, ...requestsOut].filter(isDone).filter((r) => {
+          const k = `${r.kind}-${r.id}`;
+          if (seen.has(k)) return false;
+          seen.add(k);
+          return true;
+        });
+      })();
   const doneEnq = onEnq ? [...enquiriesIn, ...enquiriesOut].filter((e) => ["won", "lost"].includes(enquiryStage(e))) : [];
   const doneN = doneReq.length + doneEnq.length;
   const SECT: Array<["req" | "join" | "enq" | "done", string, number, string]> = onEnq
@@ -408,9 +434,9 @@ export function InboxScreen({
   const askCard = (r: RequestItem) => {
     if (r.danceClass) {
       return (
-        <div key={`${r.kind}-${r.id}`} data-testid="request-row" style={{ marginBottom: 12 }}>
+        <div key={`${r.kind}-${r.dir}-${r.id}`} data-testid="request-row" style={{ marginBottom: 12 }}>
           {askWho(r)}
-          <ClassTile danceClass={r.danceClass} href={r.href ?? undefined} roleLabel={r.what.toUpperCase()} actions={askActions(r)} />
+          <ClassTile danceClass={r.danceClass} artist={artists[r.danceClass.id] ?? null} href={r.href ?? undefined} roleLabel={r.what.toUpperCase()} actions={askActions(r)} />
           {r.note ? <div style={{ fontSize: 10.5, color: "var(--muted)", margin: "2px 2px 0", lineHeight: 1.45 }}>{r.note}</div> : null}
         </div>
       );
@@ -433,7 +459,7 @@ export function InboxScreen({
          somebody else's row and synchronises nothing. A test that means "THIS ask
          was answered" has to scope to the row, and nothing else here identifies
          one. */
-      <Row key={`${r.kind}-${r.id}`} c={c} testId="request-row">
+      <Row key={`${r.kind}-${r.dir}-${r.id}`} c={c} testId="request-row">
         <div style={{ display: "flex", alignItems: "center", gap: 9, marginBottom: 8 }}>
           <span style={{ fontSize: 9, fontWeight: 900, letterSpacing: 0.8, padding: "3px 8px", borderRadius: 999, background: `${c}22`, color: c }}>{r.subjectKind}</span>
           <span style={{ fontSize: 9.5, fontWeight: 800, color: "var(--muted)", textTransform: "capitalize" }}>{KIND_WORD[r.kind]}</span>
@@ -538,7 +564,7 @@ export function InboxScreen({
     const answered = r.status && r.status !== "asked";
     return (
       <div
-        key={`${r.kind}-${r.id}`}
+        key={`${r.kind}-${r.dir}-${r.id}`}
         data-testid="request-row"
         style={{ background: "var(--card)", border: `1.5px solid ${c}55`, borderRadius: 18, padding: "13px 14px", marginBottom: 10, boxShadow: `0 2px 10px ${c}14` }}
       >

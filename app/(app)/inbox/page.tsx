@@ -3,7 +3,7 @@ import { InboxScreen } from "@/features/inbox/components/InboxScreen";
 import { buildRequests } from "@/features/inbox/requestItems";
 import { DOS_TINT } from "@/lib/design/tokens";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
-import { findAskedClassPeopleForBusinesses, findMyPendingClassPeople } from "@/repositories/classPeople";
+import { findAskedClassPeopleForBusinesses, findClassArtists, findMyPendingClassPeople } from "@/repositories/classPeople";
 import { findMyVenueAsks, findVenueRequestsForBusinesses } from "@/repositories/classes";
 import { findAskedForMyCrews, findMyPendingCrewAsks } from "@/repositories/crews";
 import { findMyCrewPractices } from "@/repositories/crewPractices";
@@ -85,6 +85,10 @@ export default async function InboxPage() {
     crewOut,
   });
 
+  /* the teacher each class card wears — one read for the whole desk (1 Oct 2026) */
+  const classIds = [...new Set([...requestsIn, ...requestsOut].map((r) => r.danceClass?.id).filter((x): x is string => Boolean(x)))];
+  const artists = Object.fromEntries(await findClassArtists(supabase, classIds).catch(() => new Map()));
+
   const accent = DOS_TINT[kindOf(Boolean(plan?.active))];
 
   return (
@@ -92,6 +96,7 @@ export default async function InboxPage() {
       accent={accent}
       requestsIn={requestsIn}
       requestsOut={requestsOut}
+      artists={artists}
       enquiriesIn={[]}
       enquiriesOut={[]}
       nowIso={stampNowIso()}

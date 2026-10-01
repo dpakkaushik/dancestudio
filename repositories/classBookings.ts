@@ -4,6 +4,7 @@ import type { ClassLevel, ClassStatus } from "@/types/class";
 import type { ClassBookingStatus, MyClassBooking, RosterEntry } from "@/types/classBooking";
 import type { Business } from "@/types/business";
 import { TENANT_COLUMNS, toBusiness, type BusinessRow } from "./businesses";
+import { findClassArtists } from "./classPeople";
 
 interface MyClassBookingRow {
   id: string;
@@ -141,6 +142,57 @@ export async function findStudiosAttended(supabase: SupabaseClient, userId: stri
     out.push(toBusiness(b));
   }
   return out;
+}
+
+/** WHO TAUGHT YOU, AND WHERE (1 Oct 2026, the user: *"where you learned in
+ *  studios should have studio list and collapsible teacher list in it to see the
+ *  record of from who you learned where"*).
+ *
+ *  Keyed by studio id: the teachers of the classes YOU booked there, each with
+ *  how many of those classes they took and the latest one. ⚠ The SAME bookings
+ *  as `findStudiosAttended` above — `user_id = me`, live rows — so a studio in
+ *  that list and its teachers here are counted off one set and cannot disagree.
+ *  ⚠ The teacher is the class's CONFIRMED artist (`findClassArtists`, one query
+ *  for the whole history); a class nobody took, or whose teacher's profile a
+ *  reader may not see, adds nobody rather than a "Someone". A cancelled seat is
+ *  not a class you learned in, so it is left out of these counts. */
+export interface LearnedFrom {
+  userId: string;
+  name: string;
+  avatarPath: string | null;
+  classes: number;
+  last: string;
+}
+export async function findTeachersByStudioAttended(supabase: SupabaseClient, userId: string): Promise<Record<string, LearnedFrom[]>> {
+  const { data, error } = await supabase
+    .from("class_bookings")
+    .select("class_id, business_id, created_at, status")
+    .eq("user_id", userId)
+    .is("deleted_at", null)
+    .neq("status", "cancelled")
+    .order("created_at", { ascending: false })
+    .limit(300);
+  if (error) {
+    throw new Error(`class_bookings.teachersByStudio failed: ${error.message}`);
+  }
+  const rows = (data ?? []) as Array<{ class_id: string; business_id: string; created_at: string }>;
+  const artists = await findClassArtists(supabase, rows.map((r) => r.class_id));
+  const byStudio = new Map<string, Map<string, LearnedFrom>>();
+  /* one class booked twice (two sessions) is two classes taught — count per seat */
+  for (const r of rows) {
+    const a = artists.get(r.class_id);
+    if (!a) continue;
+    const s = byStudio.get(r.business_id) ?? new Map<string, LearnedFrom>();
+    const cur = s.get(a.userId);
+    if (cur) {
+      cur.classes += 1;
+      if (r.created_at > cur.last) cur.last = r.created_at;
+    } else {
+      s.set(a.userId, { userId: a.userId, name: a.name, avatarPath: a.avatarPath, classes: 1, last: r.created_at });
+    }
+    byStudio.set(r.business_id, s);
+  }
+  return Object.fromEntries([...byStudio].map(([k, m]) => [k, [...m.values()].sort((x, y) => y.classes - x.classes || y.last.localeCompare(x.last))]));
 }
 
 /** Session ids of the learner's live bookings — marks tiles on the public listing.
