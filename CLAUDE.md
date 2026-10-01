@@ -2,7 +2,14 @@
 
 ## LAST SESSION (2 Oct 2026) — replaced on every push (Rule 13)
 
-> ### THE STYLES ARE DRAWN DANCERS NOW, NOT PHOTOS (2 Oct 2026, latest) — no migration, ⚠ COMMITTED LOCALLY, NOT PUSHED (with `e355a8a` before it)
+> ### THE STYLES ARE DRAWN DANCERS NOW, NOT PHOTOS (2 Oct 2026, latest) — no migration, ✅ PUSHED AND LIVE (`d72c94b`, with `e355a8a` before it)
+> ✅ Read back off the deployment: Vercel's list for this sha BUILDING → READY,
+> the alias confirmed on it through the API, and ON THE LIVE SITE in both
+> themes — 49 cards, 49 dancers, no photo left, **every dancer whole inside its
+> card and above the name measured from its painted shapes** (smallest fills
+> 52%), the style page's square fitted, no page error · `stranger-smoke` 8/8.
+> ⚠ A bounding-box check read one light-theme run as "NaN%" before the page
+> settled; waiting for `networkidle` and measuring paint is the check to use.
 > The user: *"instead of photos can you use icons with dance styles in their
 > particular costume with the pose for that dance style and props for it as
 > well. and fit that on both photos and discover cards and fit them properly."*
