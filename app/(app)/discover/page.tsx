@@ -5,6 +5,7 @@ import { CrewCard } from "@/features/crews/components/CrewCard";
 import { CrewI } from "@/features/crews/components/crew-kit";
 import { EnrollButton } from "@/features/classBookings/components/EnrollButton";
 import { CompactCard } from "@/features/discovery/components/CompactCard";
+import { StyleCard, StyleI } from "@/features/styles/components/StyleCard";
 import { DiscoverFilters } from "@/features/discovery/components/DiscoverFilters";
 import { DiscoverTabs } from "@/features/discovery/components/DiscoverTabs";
 import { FollowedShelf, type FollowedTile } from "@/features/discovery/components/FollowedShelf";
@@ -59,6 +60,11 @@ const TABS = [
   ["artists", "Artists", ArtistI],
   ["crews", "Crews", CrewI],
   ["classes", "Classes", ClassI],
+  /* ⚠ STYLES (2 Oct 2026, the user: "New section in discover called Styles").
+     Its shelf is every style in the registry, each opening its own page; it
+     reads nothing of its own — the class list this page already reads for the
+     style rail is what orders it and counts each style's classes. */
+  ["styles", "Styles", StyleI],
 ] as const;
 
 /* ⚠ `stampNowIso` went with the events shelf (29 Sep 2026) — it dated the one
@@ -314,8 +320,8 @@ export default async function DiscoverPage({
         grad: gradientOf(f.businessName),
       }));
 
-  const shelfHead = tab === "classes" ? "Upcoming classes" : tab === "artists" ? "Artists" : tab === "crews" ? "Crews" : "Studios near you";
-  const shelfCount = tab === "classes" ? classes.length : tab === "crews" ? crews.length : tab === "artists" ? artists.length : businesses.length;
+  const shelfHead = tab === "styles" ? "Dance styles" : tab === "classes" ? "Upcoming classes" : tab === "artists" ? "Artists" : tab === "crews" ? "Crews" : "Studios near you";
+  const shelfCount = tab === "styles" ? styleOrder.length : tab === "classes" ? classes.length : tab === "crews" ? crews.length : tab === "artists" ? artists.length : businesses.length;
   const narrowed = filters.styles.length > 0 || Object.keys(params).some((k) => ["sort", "dist", "when", "dur", "price", "cat", "fmt", "q"].includes(k));
   /* the shelf's foot (18 Sep 2026): the Studios and Artists shelves are paged —
      "Next page" while a FULL page came back (a shorter one is the end), "Previous"
@@ -429,7 +435,7 @@ export default async function DiscoverPage({
           <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", padding: "0 0 10px" }}>
             <div style={{ fontSize: 15, fontWeight: 800, fontFamily: DOS_DISPLAY, letterSpacing: -0.3 }}>{shelfHead}</div>
             <div style={{ fontSize: 11, fontWeight: 800, color: SUB }} data-testid="shelf-count">
-              {shelfCount} in {city}
+              {tab === "styles" ? `${shelfCount} styles` : `${shelfCount} in ${city}`}
             </div>
           </div>
         }
@@ -495,6 +501,15 @@ export default async function DiscoverPage({
               verified={Boolean(a.verifiedAt)}
               foot={<DosFollowers n={personCounts.get(a.id)?.followers ?? 0} size={11} />}
             />
+          ))}
+        </div>
+      )}
+
+      {/* every style, busiest in this city first (the same order the style rail uses) */}
+      {tab === "styles" && (
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+          {styleOrder.map((s) => (
+            <StyleCard key={s} style={s} classes={styleCount.get(s) ?? 0} city={city} />
           ))}
         </div>
       )}

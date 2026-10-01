@@ -1,7 +1,15 @@
 /**
- * The dance style registry — lifted verbatim from prototype/DanceOSApp.jsx:1630-1669
- * (DOS_STYLE_REG). 66 styles; a style's colour lives HERE and nowhere else, so every
- * card, chip and band that names a style draws it the same way.
+ * The dance style registry — lifted from prototype/DanceOSApp.jsx:1630-1669
+ * (DOS_STYLE_REG). A style's colour lives HERE and nowhere else, so every card,
+ * chip and band that names a style draws it the same way.
+ *
+ * ⚠ 49 STYLES, NOT 66 (2 Oct 2026, the user: "remove some unpopular dance
+ * styles", and their pick of the list). Gone: Litefeet, Tutting, Animation,
+ * Voguing, Merengue, Cha-Cha, Rumba, Kizomba, Jive, Swing, Lindy Hop, Waltz,
+ * Acro, Musical Theatre, Capoeira, Chhau, Yakshagana. ⚠ Not one of them was
+ * used by any class, profile, studio, crew or routine on production when they
+ * went (counted first), so nothing a person has saved names a style that is no
+ * longer here. The database holds styles as free text, so nothing there moved.
  */
 export const DOS_STYLE_REG: ReadonlyArray<readonly [string, string]> = [
   /* Indian classical */
@@ -11,32 +19,26 @@ export const DOS_STYLE_REG: ReadonlyArray<readonly [string, string]> = [
   /* Indian folk */
   ["Bhangra", "#F06705"], ["Garba", "#CD3300"], ["Dandiya Raas", "#AF3020"],
   ["Ghoomar", "#974811"], ["Kalbelia", "#C76F43"], ["Lavani", "#AE4072"],
-  ["Bihu", "#50722C"], ["Chhau", "#FF5C54"], ["Giddha", "#E46696"],
-  ["Yakshagana", "#008100"], ["Sufi Whirling", "#4563F4"],
+  ["Bihu", "#50722C"], ["Giddha", "#E46696"], ["Sufi Whirling", "#4563F4"],
   /* Bollywood */
   ["Bollywood", "#D4766B"],
   /* Street */
   ["Hip-Hop", "#0065A2"], ["Breaking", "#1A6C3A"], ["Popping", "#009AF6"],
   ["Locking", "#A58918"], ["House", "#00A855"], ["Waacking", "#808CD6"],
-  ["Krump", "#C53562"], ["Voguing", "#984636"], ["Litefeet", "#B34500"],
-  ["Tutting", "#1CA812"], ["Animation", "#E157DE"],
+  ["Krump", "#C53562"],
   /* Global street */
   ["Dancehall", "#5D7000"], ["Afrobeats", "#625499"], ["Reggaeton", "#F4104C"],
   ["K-pop", "#534FC0"],
   /* Latin */
-  ["Salsa", "#CB687B"], ["Bachata", "#FE4F7A"], ["Merengue", "#266C12"],
-  ["Cha-Cha", "#6E3FCD"], ["Samba", "#CB8000"], ["Rumba", "#5DA132"],
-  ["Kizomba", "#B60D6C"],
+  ["Salsa", "#CB687B"], ["Bachata", "#FE4F7A"], ["Samba", "#CB8000"],
   /* Ballroom */
-  ["Ballroom", "#9570EA"], ["Tango", "#FF158A"], ["Waltz", "#81994E"],
-  ["Jive", "#B764F7"], ["Swing", "#FF5E36"], ["Lindy Hop", "#A09145"],
+  ["Ballroom", "#9570EA"], ["Tango", "#FF158A"],
   /* Studio */
   ["Contemporary", "#009ECE"], ["Modern", "#833EAC"], ["Jazz", "#966200"],
   ["Jazz Funk", "#6C5E12"], ["Ballet", "#8D447B"], ["Tap", "#CB0020"],
   ["Lyrical", "#005FC3"], ["Commercial", "#8A50A2"], ["Heels", "#9F3C51"],
-  ["Musical Theatre", "#E37034"], ["Acro", "#A028BA"],
   /* World */
-  ["Flamenco", "#B40096"], ["Belly Dance", "#C079B4"], ["Capoeira", "#D867C1"],
+  ["Flamenco", "#B40096"], ["Belly Dance", "#C079B4"],
   /* Fitness & open */
   ["Zumba", "#869A00"], ["Freestyle", "#6E88FF"], ["Open format", "#A03992"],
 ] as const;

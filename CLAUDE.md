@@ -2,7 +2,47 @@
 
 ## LAST SESSION (2 Oct 2026) — replaced on every push (Rule 13)
 
-> ### "WHAT YOU RUN" OFF THE PROFILE, CLEANER ARTIST/CREW CARDS, AND ONE TAB HEADING (2 Oct 2026, latest) — no migration
+> ### A STYLES SECTION ON DISCOVER, A PAGE PER STYLE, AND 17 STYLES RETIRED (2 Oct 2026, latest) — no migration
+> The user: *"1. remove some unpopular dance styles. 2. New section in discover
+> called Styles. 3. All dance styles cards on this page with a photo of that
+> particular dance style. page opens dance style — column 1: Photos, info,
+> History, country, and Notable names — max 5 names, column 2 rankings for that
+> particular dance style."* Asked, they chose **remove 17 niche styles** and
+> **free-licence photos, credited**.
+> * **The registry is 49 styles** (`lib/constants/styles.ts`). Gone: Litefeet,
+>   Tutting, Animation, Voguing, Merengue, Cha-Cha, Rumba, Kizomba, Jive, Swing,
+>   Lindy Hop, Waltz, Acro, Musical Theatre, Capoeira, Chhau, Yakshagana. ⚠
+>   Counted first: **not one was used** by any class, profile, studio, crew or
+>   routine on production, and styles are free text in the database, so nothing
+>   moved there. `/styles/waltz` is a 404.
+> * **Discover has a fifth tab, Styles** — every style as a photo card, busiest in
+>   the city first (the style rail's own order), with no style rail or filters on
+>   that tab. It reads nothing new.
+> * **`/styles/{slug}`** is the prototype's `StylePage` (9432-9544): the style's
+>   colour as the room, then **Details** (Photos with the credit · Family ·
+>   Country · Origin · Era · History · up to five Notable names · Find classes)
+>   and **Rankings** (`dance_chart` with the style, Studios · Artists · Crews ·
+>   Dancers, read in one server pass). Public; the boards are signed-in only
+>   (Step 25), so a stranger is told where they are.
+> * ⚠⚠ **THE PHOTOS ARE CHECKED BY EYE, NOT TRUSTED FROM A SEARCH.**
+>   `scripts/fetch-style-photos.js` takes Wikimedia Commons files under PD, CC0,
+>   CC BY and CC BY-SA only, stores them in `public/styles/` and their credit in
+>   `lib/constants/stylePhotos.json`. The first automatic pass put **an engineer's
+>   portrait on Locking, buildings on House and Waacking, bands on Jazz** — and
+>   reading the contact sheet is what caught it; 19 were re-picked by hand.
+>   **44 styles have a photo; Afrobeats, Locking, Waacking, Dandiya Raas and Jazz
+>   Funk draw their colour** because no honest free photo exists, which beats a
+>   wrong one. ⚠ The Afrobeats pick turned out to be Puerto Rican *bomba* and was
+>   dropped for that reason.
+> * **The content is `lib/constants/styleInfo.ts`**, all 49, written to what is
+>   well documented; ⚠ where a name could not be stood behind (Ghoomar) the list is
+>   empty rather than guessed.
+> * **Verified:** typecheck 0 · lint 0 · build green · a browser check **20/20**
+>   (49 cards, **44/44 photos loaded**, no filters on the tab, removed styles
+>   gone and 404, the five headings in column 1, the credit, the signed-out and
+>   signed-in Rankings) · `shoot-discover` 45/45 · `shoot-classes` 79/79.
+
+> ### "WHAT YOU RUN" OFF THE PROFILE, CLEANER ARTIST/CREW CARDS, AND ONE TAB HEADING (2 Oct 2026, earlier) — no migration
 > The user: *"1. what you run section can be removed from profiles as already
 > mentioned below. 2. artist and crew discover cards text can be adjusted better
 > below the pic. 3. Dance near you to be changed to - Dance First, Think Later !

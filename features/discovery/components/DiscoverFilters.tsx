@@ -229,6 +229,11 @@ export function DiscoverFilters({ tab, city, filters, styleOrder, tabs, as = nul
       {/* the five section tabs — the page hands them in, so they sit under the search box as they do in the prototype (4571) */}
       {tabs}
 
+      {/* ⚠ THE STYLES TAB (2 Oct 2026) HAS NO STYLE RAIL AND NO FILTERS: its
+          shelf IS every style, so narrowing it by style or by price would be a
+          control that filters nothing. */}
+      {tab !== "styles" ? (
+      <>
       {/* THE STYLE RAIL — the app's one style tile, in three rows (4596) */}
       <div style={{ overflowX: "auto", scrollbarWidth: "none", padding: "9px 7px 8px", margin: "0 -7px" }}>
         {[0, 1, 2].map((rw) => (
@@ -273,6 +278,8 @@ export function DiscoverFilters({ tab, city, filters, styleOrder, tabs, as = nul
           </div>
         ) : null}
       </div>
+      </>
+      ) : null}
 
       {/* ⚠ THE EVENTS TAB'S OWN SEARCH BOX (S_eventslist 13551) WENT WITH EVENTS
           (29 Sep 2026) — title, style or organiser, debounced into `?q=`. It was
