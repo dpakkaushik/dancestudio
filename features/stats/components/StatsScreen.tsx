@@ -443,7 +443,34 @@ export function StatsScreen({
             one and this screen never did, because it was only ever reached from
             your own Stats chip — it is reached from anybody's now, and a record
             three taps inside somebody else's profile needs the door home. */}
-        <Link href={backHref} aria-label={`Back to ${name}`} style={{ display: "inline-block", marginTop: 12, fontSize: 11, fontWeight: 800, color: SUB, textDecoration: "none" }}>
+        {/* ⚠⚠ IT GOES BACK, IT DOES NOT GO FORWARD (1 Oct 2026, the user: *"fix
+            back swipe on stats page"*). It was a plain Link, so it PUSHED the
+            profile on top of the stats page: profile → Stats chip → this link →
+            the profile again, and the back swipe from there landed on stats, whose
+            link sent you forward again — the corner loop of 21 Sep (C37) in a new
+            coat. And from Home's chip it pushed the PUBLIC page, which is not where
+            you came from at all. It is a real back step now, the same one the
+            gesture and the chrome's back chip take; the href stays for a new tab
+            and for a deep link with nothing behind it, which is the one case that
+            replaces instead. ⚠ "Nothing behind it" is not `history.length > 1`:
+            a new tab counts its own blank page, so that test stepped back OUT of
+            the app. What is asked is whether this document was LOADED somewhere
+            else and reached this screen in-app — only then is the step behind us
+            ours. */}
+        <Link
+          href={backHref}
+          replace
+          onClick={(e) => {
+            const nav = performance.getEntriesByType("navigation")[0] as PerformanceNavigationTiming | undefined;
+            const loadedHere = nav ? new URL(nav.name).pathname === window.location.pathname : true;
+            if (!loadedHere && window.history.length > 1) {
+              e.preventDefault();
+              router.back();
+            }
+          }}
+          aria-label={`Back to ${name}`}
+          style={{ display: "inline-block", marginTop: 12, fontSize: 11, fontWeight: 800, color: SUB, textDecoration: "none" }}
+        >
           ‹ Back to the page
         </Link>
       </div>
@@ -464,7 +491,11 @@ export function StatsScreen({
               ["charts", "Rankings"],
             ] as Array<[Tab, string]>
           ).map(([k, l]) => (
-            <Link key={k} href={tabHref(k)} aria-pressed={tab === k} style={{ flex: 1, textAlign: "center", padding: "8px 4px", borderRadius: 9, fontSize: 11.5, fontWeight: 800, textDecoration: "none", background: tab === k ? LILAC : "transparent", color: tab === k ? INK : SUB, boxShadow: tab === k ? "0 1px 4px rgba(0,0,0,.3)" : "none" }}>
+            /* ⚠ A TAB IS A SETTING OF THIS PAGE, SO IT REPLACES (1 Oct 2026) —
+               a push per tap made the back swipe walk Rankings → History →
+               Record before it ever left the screen. The 19 Sep rule, which the
+               metric chips below already followed and these did not. */
+            <Link key={k} href={tabHref(k)} replace scroll={false} aria-pressed={tab === k} style={{ flex: 1, textAlign: "center", padding: "8px 4px", borderRadius: 9, fontSize: 11.5, fontWeight: 800, textDecoration: "none", background: tab === k ? LILAC : "transparent", color: tab === k ? INK : SUB, boxShadow: tab === k ? "0 1px 4px rgba(0,0,0,.3)" : "none" }}>
               {l}
             </Link>
           ))}
@@ -896,7 +927,7 @@ export function StatsScreen({
               {CHART_SEGMENTS.map((s) => {
                 const on = segment === s.k;
                 return (
-                  <Link key={s.k} href={chartHref({ seg: s.k })} aria-pressed={on} style={{ flex: 1, textAlign: "center", padding: "9px 2px", borderRadius: 12, fontSize: 11.5, fontWeight: 800, textDecoration: "none", background: on ? INK : CARD, color: on ? LILAC : SUB, border: `1.5px solid ${on ? INK : LINE}` }}>
+                  <Link key={s.k} href={chartHref({ seg: s.k })} replace scroll={false} aria-pressed={on} style={{ flex: 1, textAlign: "center", padding: "9px 2px", borderRadius: 12, fontSize: 11.5, fontWeight: 800, textDecoration: "none", background: on ? INK : CARD, color: on ? LILAC : SUB, border: `1.5px solid ${on ? INK : LINE}` }}>
                     {s.label}
                   </Link>
                 );
@@ -930,7 +961,7 @@ export function StatsScreen({
                 {chartStyles.map((st) => {
                   const on = styleFilter === st;
                   return (
-                    <Link key={st} href={chartHref({ style: on ? null : st })} aria-pressed={on} aria-label={`Only ${st}`} style={{ padding: "6px 12px", borderRadius: 999, fontSize: 11, fontWeight: 800, whiteSpace: "nowrap", flexShrink: 0, display: "inline-flex", alignItems: "center", gap: 6, textDecoration: "none", background: on ? INK : LINE, color: on ? LILAC : SUB }}>
+                    <Link key={st} href={chartHref({ style: on ? null : st })} replace scroll={false} aria-pressed={on} aria-label={`Only ${st}`} style={{ padding: "6px 12px", borderRadius: 999, fontSize: 11, fontWeight: 800, whiteSpace: "nowrap", flexShrink: 0, display: "inline-flex", alignItems: "center", gap: 6, textDecoration: "none", background: on ? INK : LINE, color: on ? LILAC : SUB }}>
                       <span style={{ width: 9, height: 9, borderRadius: 5, background: dosStyleColor(st) }} />
                       {st}
                     </Link>
