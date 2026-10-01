@@ -32,7 +32,19 @@ export interface FollowListResult {
   rows: Array<{ id: string; name: string; sub: string | null; href: string; photoPath: string | null }>;
 }
 
-const input = z.object({ kind: z.enum(["business", "crew"]), id: z.string().uuid() });
+const input = z.object({ kind: z.enum(["business", "crew", "person"]), id: z.string().uuid() });
+
+/* ⚠⚠ A FOLLOW LIST IS AS READABLE AS ITS COUNT (2 Oct 2026, the user: "accurate
+   follower following list on all profiles"). Step 15's "the count is public,
+   the list is not" meant somebody else's Followers figure printed a number and
+   opened onto nobody — a list disagreeing with the count above it. Two
+   signed-in-only definer reads (`20261002090000`) hand back exactly the rows the
+   three count functions count, so the two cannot disagree.
+   ⚠ Each read FALLS BACK to the old RLS-bounded one when the function is not
+   there (PGRST202 before the migration is applied), so this bundle is safe on
+   either side of the apply. */
+type ProfileFollowerRow = { user_id: string; full_name: string | null; profile_photo_path: string | null; city: string | null };
+type ProfileFollowingRow = { kind: "person" | "business" | "crew"; id: string; name: string | null; photo_path: string | null; city: string | null; business_type: string | null };
 
 export async function loadFollowersAction(raw: unknown): Promise<FollowListResult> {
   const parsed = input.safeParse(raw);
@@ -45,6 +57,22 @@ export async function loadFollowersAction(raw: unknown): Promise<FollowListResul
      policy would hand back anyway. A sheet must never be the reason a public
      page shows an error. */
   if (!user) return { error: null, rows: [] };
+  const viaDefiner = await supabase.rpc("profile_followers", { p_kind: parsed.data.kind, p_id: parsed.data.id });
+  if (!viaDefiner.error) {
+    return {
+      error: null,
+      rows: ((viaDefiner.data ?? []) as ProfileFollowerRow[]).map((r) => ({
+        id: r.user_id,
+        name: r.full_name ?? "Someone",
+        sub: r.city,
+        href: `/person/${r.user_id}`,
+        photoPath: r.profile_photo_path,
+      })),
+    };
+  }
+  /* a person's list has no RLS-bounded fallback — say so rather than drawing an
+     empty sheet under a count that is not zero */
+  if (parsed.data.kind === "person") return { error: "That list could not be read just now.", rows: [] };
   try {
     const rows =
       parsed.data.kind === "business"
@@ -91,12 +119,34 @@ export async function loadFollowersAction(raw: unknown): Promise<FollowListResul
  *  no public SELECT policy — so a door there could never open for anybody but
  *  its owner, and a control that is always empty is worse than no control. Step
  *  15's rule stands: the count is public, the list is not. */
-export async function loadFollowingAction(): Promise<FollowListResult> {
+export async function loadFollowingAction(raw?: unknown): Promise<FollowListResult> {
   const supabase = await createSupabaseServerClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) return { error: null, rows: [] };
+  /* SOMEBODY ELSE'S LIST (2 Oct 2026) — through the definer read, the same rows
+     `person_follower_counts` counts as following */
+  const who = z.object({ userId: z.string().uuid() }).safeParse(raw);
+  if (who.success && who.data.userId !== user.id) {
+    const { data, error } = await supabase.rpc("profile_following", { p_user_id: who.data.userId });
+    if (error) return { error: "That list could not be read just now.", rows: [] };
+    return {
+      error: null,
+      rows: ((data ?? []) as ProfileFollowingRow[]).map((r) => {
+        if (r.kind === "person") return { id: `p-${r.id}`, name: r.name ?? "Someone", sub: r.city, href: `/person/${r.id}`, photoPath: r.photo_path };
+        if (r.kind === "crew") return { id: `c-${r.id}`, name: r.name ?? "A crew", sub: r.city ? `Crew · ${r.city}` : "Crew", href: `/crew/${r.id}`, photoPath: r.photo_path };
+        const kind = r.business_type === "studio" ? "Studio" : "Artist";
+        return {
+          id: `b-${r.id}`,
+          name: r.name ?? "A business",
+          sub: r.city ? `${kind} · ${r.city}` : kind,
+          href: `/${r.business_type === "studio" ? "studio" : "artist"}/${r.id}`,
+          photoPath: r.photo_path,
+        };
+      }),
+    };
+  }
   try {
     const [people, businesses, crews] = await Promise.all([
       findMyFollowedPeople(supabase),

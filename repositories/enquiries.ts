@@ -35,16 +35,16 @@ interface EnquiryRow {
   mobile: string | null;
   status: EnquiryStatus;
   created_at: string;
-  businesses: { name: string; type: BusinessType; phone: string | null } | null;
-  crews: { name: string } | null;
-  profiles: { full_name: string } | null;
+  businesses: { name: string; type: BusinessType; phone: string | null; profile_photo_path: string | null } | null;
+  crews: { name: string; photo: string | null } | null;
+  profiles: { full_name: string; profile_photo_path: string | null } | null;
   enquiry_quotes: QuoteRow[] | null;
 }
 
 /* an enquiry names a business OR a crew (18 Sep 2026): both embeds ride along and
    exactly one comes back non-null */
 const ENQUIRY_SELECT =
-  "id, business_id, crew_id, from_user_id, type_key, fields, dates, where_text, message, mobile, status, created_at, businesses (name, type, phone), crews (name), profiles (full_name), enquiry_quotes (id, n, cost_inr, advance_pct, advance_inr, status, advance_paid_at, full_paid_at, created_at, deleted_at)";
+  "id, business_id, crew_id, from_user_id, type_key, fields, dates, where_text, message, mobile, status, created_at, businesses (name, type, phone, profile_photo_path), crews (name, photo), profiles (full_name, profile_photo_path), enquiry_quotes (id, n, cost_inr, advance_pct, advance_inr, status, advance_paid_at, full_paid_at, created_at, deleted_at)";
 
 const toQuote = (q: QuoteRow): EnquiryQuote => ({
   id: q.id,
@@ -78,6 +78,8 @@ const toEnquiry = (r: EnquiryRow): Enquiry => ({
   crewId: r.crew_id,
   fromUserId: r.from_user_id,
   fromName: r.profiles?.full_name ?? "Someone",
+  fromPhotoPath: r.profiles?.profile_photo_path ?? null,
+  toPhotoPath: r.crew_id ? (r.crews?.photo ?? null) : (r.businesses?.profile_photo_path ?? null),
   typeKey: r.type_key,
   fields: toFields(r.fields),
   dates: r.dates ?? [],

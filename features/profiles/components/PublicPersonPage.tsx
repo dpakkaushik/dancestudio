@@ -11,6 +11,8 @@ import { ActionRow, CallButton, MailButton, MessageButton, whatsappHrefOf } from
 import type { MembershipOnSale as MembershipOnSaleRow } from "@/repositories/memberships";
 import type { PublicTeamMember } from "@/types/publicProfile";
 import { FollowToggle } from "./FollowToggle";
+import { FollowerFigure } from "./FollowerFigure";
+import { FollowingFigure } from "./FollowingFigure";
 import type { HeroShot } from "./HeroRail";
 import { PersonBody } from "./PersonBody";
 import { ProfileLink, ProfileShare } from "./ProfileShare";
@@ -181,10 +183,22 @@ export function PublicPersonPage({
               stays off the links, because a number is not a public handle (10778). ── */}
           <EntityBand
             figures={
-              <>
-                <Figure n={person.followers} label={person.followers === 1 ? "Follower" : "Followers"} />
-                <Figure n={person.following} label="Following" />
-              </>
+              /* ⚠ DOORS FOR A SIGNED-IN READER (2 Oct 2026, the user: "accurate
+                 follower following list on all profiles") — both lists read
+                 through `profile_followers` / `profile_following`, the same rows
+                 the counts count. A stranger keeps the plain figures: the count is
+                 public and the list is a signed-in reader's. */
+              signedIn ? (
+                <>
+                  <FollowerFigure n={person.followers} kind="person" id={profile.id} name={profile.fullName} testId="person-followers" />
+                  <FollowingFigure n={person.following} userId={profile.id} testId="person-following" />
+                </>
+              ) : (
+                <>
+                  <Figure n={person.followers} label={person.followers === 1 ? "Follower" : "Followers"} />
+                  <Figure n={person.following} label="Following" />
+                </>
+              )
             }
             /* the three chips (20 Sep 2026). ⚠ An ORGANIZATION read through this
                page has no QR: the page to share is `/org/{id}`, and this one is

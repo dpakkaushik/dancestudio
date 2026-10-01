@@ -239,36 +239,62 @@ export async function findClassById(
    ⚠ A class that has STARTED goes too, not just one that has ended: it cannot be
    booked either, so a shelf whose job is "what can I book" has no business
    drawing it. Its own page still opens at `/c/{slug}` and says it is live. */
+/* ⚠⚠ A CLASS IS IN THE CITY IT IS HELD IN, NOT THE CITY ITS OWNER IS FROM
+   (1 Oct 2026, the user: "classes available for gurgaon but not shown in
+   discover … a class published should reflect on all 3 after published").
+   An artist's class accepted into a studio's room is held at THAT studio, and
+   this read filtered on the OWNER's city alone — so Deepak's Bharatanatyam,
+   owned by his page in New Delhi and held at 11ft down in Gurugram, was on
+   Gurugram's shelf for nobody and on New Delhi's for a class nobody there could
+   walk to. PostgREST cannot OR a filter across two embeds, so it is two reads —
+   owned in the city, and HELD in the city — merged, and each row is kept only
+   if the city it is HELD in is this one. */
+const heldCity = (row: PublicClassRow): string | null =>
+  row.venue_business_id && row.venue_status === "accepted" && row.venue ? row.venue.city ?? null : row.businesses?.city ?? null;
+
 export async function findPublishedClasses(
   supabase: SupabaseClient,
   limit = 50,
   city?: string | null
 ): Promise<PublicClassListing[]> {
-  let query = supabase
-    .from("classes")
-    /* ⚠ THE KEY IS NAMED (18 Sep 2026): `classes` gains a second foreign key
-       into `businesses` — the VENUE an artist's class is held at — and PostgREST
-       answers 300 Multiple Choices to an unqualified embed through an ambiguous
-       relationship (the 28 Aug lesson, `follows` → `profiles`). Every embed
-       from classes to businesses says which key it means. */
-    .select(`${CLASS_COLUMNS_DATED}, ${OWNER_AND_VENUE(Boolean(city))}`)
-    .eq("status", "published")
-    .is("deleted_at", null)
-    .is("class_sessions.deleted_at", null)
-    .gt("class_sessions.starts_at", new Date().toISOString());
+  const base = (embed: string) =>
+    supabase
+      .from("classes")
+      /* ⚠ THE KEY IS NAMED (18 Sep 2026): `classes` gains a second foreign key
+         into `businesses` — the VENUE an artist's class is held at — and PostgREST
+         answers 300 Multiple Choices to an unqualified embed through an ambiguous
+         relationship (the 28 Aug lesson, `follows` → `profiles`). Every embed
+         from classes to businesses says which key it means. */
+      .select(`${CLASS_COLUMNS_DATED}, ${embed}`)
+      .eq("status", "published")
+      .is("deleted_at", null)
+      .is("class_sessions.deleted_at", null)
+      .gt("class_sessions.starts_at", new Date().toISOString());
 
-  if (city) {
-    query = query.eq("businesses.city", city);
+  const reads = city
+    ? [
+        base(OWNER_AND_VENUE(true)).eq("businesses.city", city),
+        base(`businesses!classes_business_id_fkey (name, area, city, type), venue:businesses!classes_venue_business_id_fkey!inner (name, area, city)`)
+          .eq("venue_status", "accepted")
+          .eq("venue.city", city),
+      ]
+    : [base(OWNER_AND_VENUE(false))];
+
+  const results = await Promise.all(reads.map((q) => q.order("created_at", { ascending: false }).limit(limit)));
+  const seen = new Set<string>();
+  const rows: Array<PublicClassRow & { created_at?: string }> = [];
+  for (const { data, error } of results) {
+    if (error) {
+      throw new Error(`classes.findPublished failed: ${error.message}`);
+    }
+    for (const row of (data ?? []) as unknown as PublicClassRow[]) {
+      if (seen.has(row.id)) continue;
+      if (city && heldCity(row) !== city) continue;
+      seen.add(row.id);
+      rows.push(row);
+    }
   }
-
-  const { data, error } = await query
-    .order("created_at", { ascending: false })
-    .limit(limit);
-
-  if (error) {
-    throw new Error(`classes.findPublished failed: ${error.message}`);
-  }
-  return (data as unknown as PublicClassRow[]).map((row) => ({
+  return rows.slice(0, limit).map((row) => ({
     ...toClass(row),
     businessName: row.businesses?.name ?? "",
     businessType: row.businesses?.type ?? "studio",

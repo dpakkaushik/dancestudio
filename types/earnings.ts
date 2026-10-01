@@ -18,7 +18,8 @@ import type { Period } from "@/lib/format/month";
  *                  with a row per source and a row per studio.
  *
  *  ⚠ ONE RULE HOLDS ACROSS ALL FOUR: a line is only drawn when the app can
- *  actually count it. The prototype's S_earn prints a DanceOS fee, GST on the
+ *  actually count it — and since 2 Oct 2026 a line it CAN count is drawn at ₹0
+ *  too, so the breakup always says what the total is made of. The prototype's S_earn prints a DanceOS fee, GST on the
  *  fee and TDS; none of those exists — there is no platform fee and no rate a
  *  studio has set — so printing them at ₹0 would be a classPerson about money rather
  *  than a measurement of it. The backlog carries them. */
@@ -32,7 +33,17 @@ export type MoneyLine = {
   href?: string;
   /** printed under the label when the number needs a word to be honest */
   note?: string;
+  /** ⚠ THE ROWS BEHIND THE NUMBER (2 Oct 2026, the user: *"Revenue and expenses
+   *  also give breakup of all parts as collapsible. should also be visible even if
+   *  0. so can identify what all has been put in it for both"*). Each line opens
+   *  onto what it is made of — which class, which membership, who was paid, which
+   *  asset — newest first, so a total is never a number you have to take on
+   *  trust. Empty for a line that carried nothing in this period. */
+  items?: MoneyItem[];
 };
+
+/** one row behind a line: what it was, how much, and when */
+export type MoneyItem = { label: string; amountInr: number; at: string };
 
 /** ⚠ THE TINTS LIVE HERE, AS DATA, so the repository can name a line without
  *  importing a client module — and so a source wears one colour wherever it is

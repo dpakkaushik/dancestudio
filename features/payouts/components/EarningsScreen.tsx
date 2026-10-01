@@ -53,40 +53,80 @@ function Breakup({ title, lines, total, tone, empty }: { title: string; lines: M
           </b>
         }
       />
-      {lines.map((l) => {
-        const row = (
-          <>
-            <div style={{ display: "flex", alignItems: "baseline", gap: 8 }}>
-              <span style={{ flex: 1, minWidth: 0, fontSize: 12.5, fontWeight: 800, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                {l.label}
-                {l.href ? <span style={{ color: SUB, fontWeight: 700 }}> ›</span> : null}
-              </span>
-              <b style={{ flexShrink: 0, fontSize: 12.5 }}>{money(l.amountInr)}</b>
-            </div>
-            {/* the bar is share of the BIGGEST line, so the breakup has a shape
-                you can read at a glance rather than four numbers to compare */}
-            <div style={{ height: 5, borderRadius: 999, background: "var(--el)", overflow: "hidden", marginTop: 5 }}>
-              <div style={{ width: `${Math.round((l.amountInr / max) * 100)}%`, height: "100%", borderRadius: 999, background: EARNING_TINT[l.key] ?? tone }} />
-            </div>
-            {l.note ? <div style={{ fontSize: 9.5, color: "var(--muted)", marginTop: 4 }}>{l.note}</div> : null}
-          </>
-        );
-        return (
-          <div key={l.key} style={{ marginBottom: 10 }} data-testid="earn-line">
-            {l.href ? (
-              <Link href={l.href} aria-label={`${l.label} — ${money(l.amountInr)}`} style={{ display: "block", color: INK, textDecoration: "none" }}>
-                {row}
-              </Link>
-            ) : (
-              row
-            )}
-          </div>
-        );
-      })}
+      {lines.map((l) => (
+        <BreakupLine key={l.key} line={l} max={max} tone={tone} />
+      ))}
       {lines.length === 0 ? <div style={{ fontSize: 11.5, color: SUB, lineHeight: 1.5, marginTop: 6 }}>{empty}</div> : null}
     </div>
   );
 }
+
+/** ONE LINE OF A BREAKUP, AND THE ROWS BEHIND IT (2 Oct 2026, the user:
+ *  "Revenue and expenses also give breakup of all parts as collapsible. should
+ *  also be visible even if 0").
+ *
+ *  ⚠ The ROW is the disclosure now, so the desk link moved inside the opened
+ *  panel — a link and a toggle cannot be the same press. A line that carried
+ *  nothing in this period still opens, and says so, which is the point: you can
+ *  see that DanceOS is counting it and that it was zero, rather than wondering
+ *  whether it was counted at all. */
+function BreakupLine({ line: l, max, tone }: { line: MoneyLine; max: number; tone: string }) {
+  const [open, setOpen] = useState(false);
+  const items = l.items ?? [];
+  const tint = EARNING_TINT[l.key] ?? tone;
+  return (
+    <div style={{ marginBottom: 10 }} data-testid="earn-line">
+      <button
+        type="button"
+        onClick={() => setOpen((o) => !o)}
+        aria-expanded={open}
+        aria-label={`${l.label} — ${money(l.amountInr)}${items.length ? `, ${items.length} ${items.length === 1 ? "entry" : "entries"}` : ""}`}
+        style={{ display: "block", width: "100%", textAlign: "left", background: "none", border: 0, padding: 0, color: INK, cursor: "pointer", font: "inherit" }}
+      >
+        <div style={{ display: "flex", alignItems: "baseline", gap: 8 }}>
+          <span style={{ flex: 1, minWidth: 0, fontSize: 12.5, fontWeight: 800, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", color: l.amountInr === 0 ? SUB : INK }}>
+            {l.label}
+            <span style={{ color: "var(--muted)", fontWeight: 700 }}> · {items.length}</span>
+          </span>
+          <b style={{ flexShrink: 0, fontSize: 12.5, color: l.amountInr === 0 ? SUB : INK }}>{money(l.amountInr)}</b>
+          <span aria-hidden style={{ flexShrink: 0, fontSize: 11, color: SUB, transform: open ? "rotate(90deg)" : "none", transition: "transform .15s" }}>
+            ›
+          </span>
+        </div>
+        {/* the bar is share of the BIGGEST line, so the breakup has a shape
+            you can read at a glance rather than four numbers to compare */}
+        <div style={{ height: 5, borderRadius: 999, background: "var(--el)", overflow: "hidden", marginTop: 5 }}>
+          <div style={{ width: `${Math.round((l.amountInr / max) * 100)}%`, height: "100%", borderRadius: 999, background: tint }} />
+        </div>
+      </button>
+      {l.note ? <div style={{ fontSize: 9.5, color: "var(--muted)", marginTop: 4 }}>{l.note}</div> : null}
+      {open ? (
+        <div data-testid="earn-items" style={{ marginTop: 7, paddingLeft: 9, borderLeft: `2px solid ${tint}` }}>
+          {items.length === 0 ? (
+            <div style={{ fontSize: 11, color: SUB, padding: "3px 0" }}>Nothing in this period.</div>
+          ) : (
+            items.map((it, i) => (
+              <div key={`${it.at}-${i}`} style={{ display: "flex", alignItems: "baseline", gap: 8, padding: "3px 0", fontSize: 11.5 }}>
+                <span style={{ flex: 1, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{it.label}</span>
+                <span style={{ flexShrink: 0, fontSize: 10, color: "var(--muted)" }}>{dayWords(it.at)}</span>
+                <b style={{ flexShrink: 0, minWidth: 54, textAlign: "right" }}>{money(it.amountInr)}</b>
+              </div>
+            ))
+          )}
+          {l.href ? (
+            <Link href={l.href} style={{ display: "inline-block", marginTop: 5, fontSize: 11, fontWeight: 800, color: SUB, textDecoration: "none" }}>
+              Open the desk ›
+            </Link>
+          ) : null}
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+/** "2 Oct" in IST — a row's date, short enough to sit beside its amount */
+const dayWords = (iso: string): string =>
+  new Date(iso).toLocaleDateString("en-IN", { day: "numeric", month: "short", timeZone: "Asia/Kolkata" });
 
 export function EarningsScreen({
   report,

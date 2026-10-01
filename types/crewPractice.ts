@@ -40,6 +40,8 @@ export interface CrewPractice {
   /** how many have said they are coming, and how many were asked */
   going: number;
   asked: number;
+  /** the crew's picture (`crews.photo`), read beside the RPC — null draws initials */
+  crewPhotoPath: string | null;
 }
 
 /** One row of the register: who is on it, what they said, and whether they came. */

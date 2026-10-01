@@ -80,7 +80,10 @@ async function rest(method, pathname, body) {
     });
 
     // ── EXPENSES: a ₹1,000 payout today, and a ₹500 asset
-    const today = new Date().toISOString().slice(0, 10);
+    /* ⚠ TODAY IN IST, not UTC: the screen buckets by the IST day, and for five and
+       a half hours after IST midnight the UTC date is still yesterday — which put
+       the payout in yesterday's column and read as a missing expense (2 Oct 2026) */
+    const today = new Date(Date.now() + 5.5 * 3600_000).toISOString().slice(0, 10);
     await rest("POST", "/rest/v1/payouts", {
       business_id: businessId, user_id: userId, amount_inr: 1000, status: "done",
       method: "upi", paid_on: today, created_by: userId, updated_by: userId,
@@ -152,6 +155,20 @@ async function rest(method, pathname, body) {
     check(/Assets bought/.test(joined), "studio · and Assets bought — the price linked to expenses (21 Sep)");
     check(/DanceOS subscription/.test(joined), "studio · and the DanceOS subscription — what it pays to be on Discover, an expense no ledger had ever shown");
     check(!/Earn Mirrors/.test(joined) && /₹500/.test(joined), "studio · the ₹0 legacy asset adds nothing — only the ₹500 one is counted");
+
+    /* 2 Oct 2026: every line is drawn even at ₹0, and opens onto its rows */
+    check(/Memberships/.test(joined) && /Refunds/.test(joined) && /Enquiries/.test(joined), "studio · the ₹0 lines are drawn too — Memberships, Refunds, Enquiries");
+    check(!/Tickets & entries/.test(joined), "studio · except Tickets & entries, a feature that no longer exists, at ₹0");
+    const assetsBtn = page.getByRole("button", { name: /^Assets bought/ });
+    check((await assetsBtn.getAttribute("aria-expanded")) === "false", "studio · a line starts folded");
+    await assetsBtn.click();
+    check((await assetsBtn.getAttribute("aria-expanded")) === "true", "studio · and opens on a press");
+    const assetRows = (await page.getByTestId("earn-items").first().innerText());
+    check(/Earn Mirrors/.test(assetRows) && /already had it/.test(assetRows), "studio · Assets bought lists BOTH assets, the ₹0 one said as one already had");
+    await page.getByRole("button", { name: /^Memberships/ }).click();
+    check((await page.getByTestId("earn-items").filter({ hasText: "Nothing in this period" }).count()) === 1, "studio · a ₹0 line opens and says it carried nothing");
+    await page.getByRole("button", { name: /^Classes/ }).click();
+    check((await page.getByTestId("earn-items").count()) === 3, "studio · three lines open at once");
 
     // the four period filters are links, so the period is in the URL
     for (const p of ["day", "week", "month", "year"]) {

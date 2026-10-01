@@ -8,33 +8,28 @@ import {
   sendQuoteAction,
   setEnquiryStatusAction,
 } from "@/features/enquiries/server-actions/enquiries";
-import { DosHero, EnqIcon, Eyebrow, Figure, Surface, agoWords, dateWords, money, pressKey } from "@/features/inbox/components/inbox-kit";
+import { EnqFace, EnquiryRoad, stageTint } from "@/features/enquiries/components/enquiry-kit";
+import { DosHero, EnqIcon, Eyebrow, Surface, agoWords, dateWords, money, pressKey } from "@/features/inbox/components/inbox-kit";
 import { DOS_MONO } from "@/features/inbox/components/inbox-kit";
 import { DOS_UI, LILAC } from "@/lib/design/tokens";
-import {
-  ENQ_STAGES,
-  ENQ_STAGE_WORD,
-  ENQ_TINT,
-  enquiryStage,
-  enquiryTypeOf,
-  liveQuoteOf,
-  type Enquiry,
-  type EnquiryStatus,
-} from "@/types/enquiry";
+import { ENQ_STAGE_WORD, ENQ_TINT, enquiryStage, enquiryTypeOf, liveQuoteOf, type Enquiry, type EnquiryQuote, type EnquiryStatus } from "@/types/enquiry";
 
-/** One enquiry, lifted from prototype S_enqdetail (5380-5616). "mine" = the
- *  enquiry came TO me, so I am the one who prices it. An enquiry I SENT is one I
- *  can only answer. Every control below asks this question first.
+/** One enquiry, lifted from prototype S_enqdetail (5380-5616) and REDESIGNED on
+ *  2 Oct 2026 (the user: "better status update, quote mechanism, quote history,
+ *  profile photos of people"). "mine" = the enquiry came TO me, so I am the one
+ *  who prices it. An enquiry I SENT is one I can only answer.
  *
- *  THE QUOTE, FROM BOTH ENDS (5451-5462): the side decides what you see. On an
- *  enquiry that came IN you send quotes and watch for an answer. On one you SENT
- *  you are shown the price and asked. Either way the whole history is on the
- *  page, oldest first, so a revision reads as a revision.
+ *  The page is read top to bottom as the conversation it is:
+ *    WHO      — both faces, and a way to ring the other end (I4)
+ *    WHERE IT STANDS — the road (the six steps an enquiry travels, the current
+ *               one lit) and, for the business, the moves it may make by hand
+ *    WHAT     — what they asked for, and their message, one card
+ *    THE QUOTE — the live one as a price card with the one action this side
+ *               may take on it, then QUOTE HISTORY as a timeline, each revision
+ *               saying how far it moved from the one before
  *
  *  Money, honestly: the business RECORDS the advance and the balance as
- *  received (Step 13's limit — DanceOS records it, it does not move it). The
- *  sender's "Pay" becomes a real payment when the Cashfree rail reaches enquiries; until
- *  then it says so rather than pretending. */
+ *  received (Step 13's limit — DanceOS records it, it does not move it). */
 
 const bizBtn: React.CSSProperties = {
   width: "100%",
@@ -50,6 +45,19 @@ const bizBtn: React.CSSProperties = {
   fontFamily: "inherit",
 };
 
+const quoteWord = (q: EnquiryQuote): string =>
+  q.fullPaidAt ? "Paid in full" : q.advancePaidAt ? "Advance paid" : q.status === "accepted" ? "Accepted" : q.status === "declined" ? "Declined" : q.status === "superseded" ? "Replaced" : "Waiting on an answer";
+const quoteColour = (q: EnquiryQuote): string =>
+  q.advancePaidAt || q.fullPaidAt || q.status === "accepted" ? "#22C55E" : q.status === "declined" ? "#F87171" : q.status === "superseded" ? "var(--muted)" : "#F59E0B";
+
+/** the stages the business may set by hand — the rest follow the quote */
+const MANUAL: Array<{ s: EnquiryStatus; word: string }> = [
+  { s: "new", word: "New" },
+  { s: "in_talks", word: "In talks" },
+  { s: "won", word: "Close as won" },
+  { s: "lost", word: "Close as lost" },
+];
+
 export function EnquiryDetail({ enquiry: e, mine, nowIso }: { enquiry: Enquiry; mine: boolean; nowIso: string }) {
   const router = useRouter();
   const type = enquiryTypeOf(e.typeKey);
@@ -57,8 +65,8 @@ export function EnquiryDetail({ enquiry: e, mine, nowIso }: { enquiry: Enquiry; 
   const stage = enquiryStage(e);
   const live = liveQuoteOf(e);
   const hist = e.quotes;
+  const closed = stage === "won" || stage === "lost";
 
-  const [stOpen, setStOpen] = useState(false);
   const [qOpen, setQOpen] = useState(false);
   const [qCost, setQCost] = useState("");
   const [qAdv, setQAdv] = useState("30");
@@ -86,17 +94,21 @@ export function EnquiryDetail({ enquiry: e, mine, nowIso }: { enquiry: Enquiry; 
   };
 
   const who = mine ? e.fromName : e.businessName;
-  const worth = live ? `worth about ${money(live.costInr)}` : "no quote yet";
   const rows: Array<[string, string]> = [
     ...e.fields.filter(([k]) => k !== "Enquiry"),
     [e.dates.length > 1 ? "Dates" : "Date", e.dates.map(dateWords).join(", ")],
     ...(e.whereText ? ([["Where", e.whereText]] as Array<[string, string]>) : []),
   ];
-  /* WHOSE NUMBER IS ON THIS PAGE DEPENDS ON WHICH END OF IT YOU ARE (I4).
-     On an enquiry that came IN, the number is the one the sender typed. On one
-     you SENT, it is the business's published number — the same one its public
-     page prints, read through the join that already fetched its name. */
+  /* WHOSE NUMBER IS ON THIS PAGE DEPENDS ON WHICH END OF IT YOU ARE (I4). */
   const tel = String((mine ? e.mobile : e.businessPhone) ?? "").replace(/[^\d+]/g, "");
+
+  const openComposer = () => {
+    /* a revision starts from the price it revises — typing it again is how a
+       quote drifts by a zero */
+    setQCost(live ? String(live.costInr) : "");
+    setQAdv(live ? String(live.advancePct) : "30");
+    setQOpen(true);
+  };
 
   return (
     <div style={{ background: LILAC, maxWidth: 430, margin: "0 auto", color: "var(--text)", paddingBottom: 40, fontFamily: DOS_UI, minHeight: "100vh" }}>
@@ -104,7 +116,7 @@ export function EnquiryDetail({ enquiry: e, mine, nowIso }: { enquiry: Enquiry; 
         tint={tint}
         label={mine ? type?.label ?? e.typeKey : `${type?.label ?? e.typeKey} · you asked`}
         title={who}
-        sub={`${agoWords(e.createdAt, nowIso)} · ${worth}`}
+        sub={`${agoWords(e.createdAt, nowIso)} · ${live ? `quoted ${money(live.costInr)}` : "no quote yet"}`}
         right={
           <span style={{ width: 38, height: 38, borderRadius: 19, background: "rgba(255,255,255,.2)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
             <EnqIcon k={e.typeKey} size={19} color="#fff" sw={2} />
@@ -112,134 +124,115 @@ export function EnquiryDetail({ enquiry: e, mine, nowIso }: { enquiry: Enquiry; 
         }
       />
       <div style={{ padding: "12px 16px 0" }}>
-        {/* reach them — a toast saying "Calling…" is not a call; with a number on
-            the record this hands off to the dialler, without one it says so.
-            BOTH SIDES CAN RING NOW (I4): a business could call the person who
-            asked and the person who asked could not call back, which made the
-            conversation one-way for no reason anybody had decided. */}
-        {tel || mine ? (
-          <div style={{ display: "flex", gap: 8, marginBottom: 11 }}>
-            {tel ? (
-              <a
-                href={`tel:${tel}`}
-                aria-label={`Call ${who}`}
-                style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: 8, padding: 13, borderRadius: 999, background: "var(--card)", border: "1.5px solid var(--el)", fontWeight: 800, fontSize: 13, color: "var(--text)", textDecoration: "none" }}
-              >
-                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#22C55E" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                  <path d="M6.5 3.5h3l1.5 4-2 1.5a11 11 0 0 0 5.5 5.5l1.5-2 4 1.5v3a2 2 0 0 1-2.2 2A16 16 0 0 1 4.5 5.7a2 2 0 0 1 2-2.2z" />
-                </svg>
-                Call
-              </a>
-            ) : (
-              <div style={{ flex: 1, textAlign: "center", padding: 13, borderRadius: 999, background: "var(--card)", border: "1px dashed var(--el)", fontSize: 12, color: "var(--sub)" }}>
-                No number on this enquiry — quote them here instead
-              </div>
-            )}
+        {/* ── WHO ── both ends, with their faces, and the dialler */}
+        <Surface>
+          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+            <EnqFace path={e.fromPhotoPath} name={e.fromName} size={42} tint={tint} />
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ fontSize: 9, fontWeight: 900, letterSpacing: 0.8, color: "var(--muted)" }}>FROM</div>
+              <div style={{ fontSize: 13.5, fontWeight: 900, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{mine ? e.fromName : "You"}</div>
+            </div>
+            <span aria-hidden style={{ color: "var(--muted)", fontSize: 16 }}>→</span>
+            <div style={{ flex: 1, minWidth: 0, textAlign: "right" }}>
+              <div style={{ fontSize: 9, fontWeight: 900, letterSpacing: 0.8, color: "var(--muted)" }}>TO</div>
+              <div style={{ fontSize: 13.5, fontWeight: 900, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{mine ? "You" : e.businessName}</div>
+            </div>
+            <EnqFace path={e.toPhotoPath} name={e.businessName} size={42} tint="#64748B" />
           </div>
-        ) : null}
-        {mine && e.mobile ? <div style={{ fontFamily: DOS_MONO, fontSize: 11, color: "var(--sub)", textAlign: "center", marginBottom: 12 }}>{e.mobile}</div> : null}
+          {tel || mine ? (
+            <div style={{ marginTop: 11 }}>
+              {tel ? (
+                <a
+                  href={`tel:${tel}`}
+                  aria-label={`Call ${who}`}
+                  style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8, padding: 11, borderRadius: 999, background: "var(--solid)", border: "1.5px solid var(--el)", fontWeight: 800, fontSize: 13, color: "var(--text)", textDecoration: "none" }}
+                >
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#22C55E" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                    <path d="M6.5 3.5h3l1.5 4-2 1.5a11 11 0 0 0 5.5 5.5l1.5-2 4 1.5v3a2 2 0 0 1-2.2 2A16 16 0 0 1 4.5 5.7a2 2 0 0 1 2-2.2z" />
+                  </svg>
+                  Call {mine && e.mobile ? <span style={{ fontFamily: DOS_MONO, fontWeight: 600, color: "var(--sub)" }}>{e.mobile}</span> : null}
+                </a>
+              ) : (
+                <div style={{ textAlign: "center", padding: 11, borderRadius: 999, border: "1.5px dashed var(--el)", fontSize: 12, color: "var(--sub)" }}>No number on this enquiry — quote them here instead</div>
+              )}
+            </div>
+          ) : null}
+        </Surface>
 
-        {/* status — the business's to move by hand; the derived stage wins when a quote exists */}
-        <div style={{ position: "relative", marginBottom: 10 }}>
-          <div
-            role={mine ? "button" : undefined}
-            tabIndex={mine ? 0 : undefined}
-            aria-label={mine ? "Change the stage" : undefined}
-            onKeyDown={mine ? pressKey(() => setStOpen((v) => !v)) : undefined}
-            onClick={mine ? () => setStOpen((v) => !v) : undefined}
-            style={{ display: "flex", alignItems: "center", gap: 8, background: "var(--card)", border: "1.5px solid var(--el)", borderRadius: 12, padding: "11px 12px", cursor: mine ? "pointer" : "default" }}
-          >
-            <span style={{ fontSize: 9, fontWeight: 900, letterSpacing: 0.7, color: "var(--muted)" }}>STATUS</span>
-            <span data-testid="enquiry-stage" style={{ flex: 1, fontSize: 12.5, fontWeight: 900, color: tint }}>
+        {/* ── WHERE IT STANDS ── the road, and the moves the business may make */}
+        <Surface tint={stageTint(stage)}>
+          <div style={{ display: "flex", alignItems: "baseline", gap: 8, marginBottom: 10 }}>
+            <span style={{ fontSize: 9, fontWeight: 900, letterSpacing: 0.8, color: "var(--muted)" }}>WHERE IT STANDS</span>
+            <span data-testid="enquiry-stage" style={{ marginLeft: "auto", fontSize: 13, fontWeight: 900, color: stageTint(stage) }}>
               {ENQ_STAGE_WORD[stage]}
             </span>
-            {mine ? <span style={{ fontSize: 11, color: "var(--sub)" }}>▾</span> : null}
           </div>
-          {stOpen ? (
-            <div style={{ position: "absolute", top: "calc(100% + 5px)", left: 0, right: 0, zIndex: 60, background: "var(--solid)", border: "1.5px solid var(--el)", borderRadius: 12, padding: 5, boxShadow: "0 10px 26px rgba(0,0,0,.45)" }}>
-              {ENQ_STAGES.map((s: EnquiryStatus) => (
-                <div
-                  key={s}
-                  role="button"
-                  tabIndex={0}
-                  onKeyDown={pressKey(() => {
-                    setStOpen(false);
-                    void run(() => setEnquiryStatusAction({ enquiryId: e.id, status: s }), `Moved to ${ENQ_STAGE_WORD[s]}`);
-                  })}
-                  onClick={() => {
-                    setStOpen(false);
-                    void run(() => setEnquiryStatusAction({ enquiryId: e.id, status: s }), `Moved to ${ENQ_STAGE_WORD[s]}`);
-                  }}
-                  style={{ padding: "8px 9px", borderRadius: 9, cursor: "pointer", fontSize: 12, fontWeight: stage === s ? 900 : 600, background: stage === s ? "var(--el)" : "transparent" }}
+          <EnquiryRoad stage={stage} />
+          {mine ? (
+            <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginTop: 11 }}>
+              {MANUAL.filter((m) => m.s !== stage).map((m) => (
+                <button
+                  key={m.s}
+                  type="button"
+                  disabled={busy}
+                  aria-label={`Move to ${ENQ_STAGE_WORD[m.s]}`}
+                  onClick={() => void run(() => setEnquiryStatusAction({ enquiryId: e.id, status: m.s }), `Moved to ${ENQ_STAGE_WORD[m.s]}`)}
+                  style={{ padding: "7px 11px", borderRadius: 999, fontSize: 11, fontWeight: 800, cursor: "pointer", fontFamily: "inherit", background: "var(--solid)", color: m.s === "lost" ? "#F87171" : m.s === "won" ? "#22C55E" : "var(--sub)", border: "1.5px solid var(--el)" }}
                 >
-                  {ENQ_STAGE_WORD[s]}
-                </div>
+                  {m.word}
+                </button>
               ))}
             </div>
           ) : null}
-        </div>
+          {mine && live && !closed ? <div style={{ fontSize: 10, color: "var(--muted)", marginTop: 8, lineHeight: 1.45 }}>Quoted, Confirmed and Advance paid follow the quote on their own.</div> : null}
+        </Surface>
 
-        {/* what they asked for — exactly the fields this type collects */}
+        {/* ── WHAT ── the fields this type collected, and the message, one card */}
         <Surface tint={tint}>
           <Eyebrow tint={tint}>{mine ? "WHAT THEY ASKED FOR" : "WHAT YOU ASKED FOR"}</Eyebrow>
           {rows.map(([k, v], i) => (
-            <div key={`${k}·${i}`} style={{ display: "flex", justifyContent: "space-between", gap: 12, padding: "6px 0", borderBottom: i === rows.length - 1 ? "none" : "1.5px solid var(--el)", fontSize: 11.5 }}>
+            <div key={`${k}·${i}`} style={{ display: "flex", justifyContent: "space-between", gap: 12, padding: "6px 0", borderBottom: "1.5px solid var(--el)", fontSize: 11.5 }}>
               <span style={{ color: "var(--sub)" }}>{k}</span>
-              <b style={{ textAlign: "right", fontFamily: /date|perform|session|panel|judges/i.test(k) ? DOS_MONO : DOS_UI, fontWeight: 700 }}>{v}</b>
+              <b style={{ textAlign: "right", fontWeight: 700 }}>{v}</b>
             </div>
           ))}
-        </Surface>
-        <Surface>
-          <Eyebrow>{mine ? "THEIR MESSAGE" : "YOUR MESSAGE"}</Eyebrow>
-          <div style={{ fontSize: 12.5, lineHeight: 1.55 }}>{e.message}</div>
+          <div style={{ fontSize: 12.5, lineHeight: 1.55, marginTop: 9, color: "var(--text)" }}>“{e.message}”</div>
         </Surface>
 
-        {hist.length > 0 ? (
-          <Surface tint={live?.status === "declined" ? "#F87171" : "#22C55E"}>
-            <Eyebrow tint={live?.status === "declined" ? "#F87171" : "#22C55E"}>{hist.length > 1 ? `QUOTES · ${hist.length}` : "QUOTE"}</Eyebrow>
-            {hist.map((q) => {
-              const dead = q.status === "superseded";
-              const lab = q.fullPaidAt
-                ? "Paid in full"
-                : q.advancePaidAt
-                  ? "Advance paid"
-                  : q.status === "accepted"
-                    ? "Accepted"
-                    : q.status === "declined"
-                      ? "Declined"
-                      : dead
-                        ? "Replaced"
-                        : "Waiting on an answer";
-              const c2 = q.advancePaidAt || q.fullPaidAt || q.status === "accepted" ? "#22C55E" : q.status === "declined" ? "#F87171" : dead ? "var(--muted)" : "#F59E0B";
-              return (
-                <div key={q.id} style={{ padding: "8px 0", borderBottom: "1.5px solid var(--el)", opacity: dead ? 0.55 : 1 }}>
-                  <div style={{ display: "flex", alignItems: "baseline", gap: 8 }}>
-                    <span style={{ fontSize: 9, fontWeight: 900, color: "var(--muted)", fontFamily: DOS_MONO }}>#{q.n}</span>
-                    <Figure size={13}>{money(q.costInr)}</Figure>
-                    <span data-testid={`quote-${q.n}-state`} style={{ marginLeft: "auto", fontSize: 9.5, fontWeight: 800, color: c2 }}>
-                      {lab}
-                    </span>
-                  </div>
-                  <div style={{ fontSize: 10.5, color: "var(--sub)", marginTop: 2 }}>
-                    {q.advancePct > 0 ? `${money(q.advanceInr)} (${q.advancePct}%) up front · ${money(q.costInr - q.advanceInr)} on completion` : "No advance — the whole amount on completion"}
-                    {` · ${agoWords(q.createdAt, nowIso)}`}
-                  </div>
+        {/* ── THE QUOTE ── the live one as a price card, with this side's action */}
+        {live ? (
+          <Surface tint={quoteColour(live)}>
+            <div style={{ display: "flex", alignItems: "baseline", gap: 8 }}>
+              <span style={{ fontSize: 9, fontWeight: 900, letterSpacing: 0.8, color: "var(--muted)" }}>{hist.length > 1 ? `QUOTE #${live.n}` : "THE QUOTE"}</span>
+              <span style={{ marginLeft: "auto", fontSize: 10, fontWeight: 900, color: quoteColour(live) }}>{quoteWord(live)}</span>
+            </div>
+            <div style={{ fontSize: 30, fontWeight: 900, letterSpacing: -0.8, marginTop: 4 }}>{money(live.costInr)}</div>
+            <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
+              {(
+                [
+                  ["Advance", live.advanceInr ? `${money(live.advanceInr)} · ${live.advancePct}%` : "none", Boolean(live.advancePaidAt)],
+                  ["On completion", money(live.costInr - live.advanceInr), Boolean(live.fullPaidAt)],
+                ] as Array<[string, string, boolean]>
+              ).map(([k, v, paid]) => (
+                <div key={k} style={{ flex: 1, background: "var(--solid)", borderRadius: 11, padding: "8px 10px" }}>
+                  <div style={{ fontSize: 9, fontWeight: 900, color: "var(--muted)", letterSpacing: 0.6 }}>{k.toUpperCase()}</div>
+                  <div style={{ fontSize: 12.5, fontWeight: 900, marginTop: 2 }}>{v}</div>
+                  {paid ? <div style={{ fontSize: 9.5, fontWeight: 900, color: "#22C55E", marginTop: 2 }}>✓ received</div> : null}
                 </div>
-              );
-            })}
+              ))}
+            </div>
 
-            {/* what you can do about it */}
-            {live && live.status === "sent" ? (
+            {live.status === "sent" ? (
               mine ? (
-                <div style={{ fontSize: 11, color: "var(--sub)", marginTop: 9, lineHeight: 1.5 }}>Sent to {e.fromName}. You will see it here the moment they answer.</div>
+                <div style={{ fontSize: 11, color: "var(--sub)", marginTop: 10, lineHeight: 1.5 }}>Sent to {e.fromName}. You will see it here the moment they answer.</div>
               ) : (
-                <div style={{ display: "flex", gap: 7, marginTop: 10 }}>
+                <div style={{ display: "flex", gap: 7, marginTop: 11 }}>
                   <button
                     type="button"
                     disabled={busy}
                     aria-label="Decline this quote"
                     onClick={() => void run(() => answerQuoteAction({ quoteId: live.id, accept: false, enquiryId: e.id }), "Declined — they have been told")}
-                    style={{ flex: 1, textAlign: "center", fontSize: 11.5, fontWeight: 800, padding: 11, borderRadius: 999, background: "var(--el)", color: "var(--sub)", cursor: "pointer", border: "none", fontFamily: "inherit" }}
+                    style={{ flex: 1, textAlign: "center", fontSize: 12, fontWeight: 800, padding: 12, borderRadius: 999, background: "var(--el)", color: "var(--sub)", cursor: "pointer", border: "none", fontFamily: "inherit" }}
                   >
                     Decline
                   </button>
@@ -248,7 +241,7 @@ export function EnquiryDetail({ enquiry: e, mine, nowIso }: { enquiry: Enquiry; 
                     disabled={busy}
                     aria-label="Accept this quote"
                     onClick={() => void run(() => answerQuoteAction({ quoteId: live.id, accept: true, enquiryId: e.id }), live.advanceInr > 0 ? `Accepted — ${money(live.advanceInr)} due to start` : "Accepted")}
-                    style={{ flex: 1.4, textAlign: "center", fontSize: 11.5, fontWeight: 900, padding: 11, borderRadius: 999, background: "#22C55E", color: "#07240F", cursor: "pointer", border: "none", fontFamily: "inherit" }}
+                    style={{ flex: 1.4, textAlign: "center", fontSize: 12, fontWeight: 900, padding: 12, borderRadius: 999, background: "#22C55E", color: "#07240F", cursor: "pointer", border: "none", fontFamily: "inherit" }}
                   >
                     Accept {money(live.costInr)}
                   </button>
@@ -256,30 +249,23 @@ export function EnquiryDetail({ enquiry: e, mine, nowIso }: { enquiry: Enquiry; 
               )
             ) : null}
 
-            {live && live.status === "accepted" && !live.fullPaidAt ? (
+            {live.status === "accepted" && !live.fullPaidAt ? (
               mine ? (
-                <div style={{ display: "flex", gap: 7, marginTop: 10 }}>
-                  <button
-                    type="button"
-                    disabled={busy}
-                    onClick={() =>
-                      void run(
-                        () =>
-                          recordEnquiryPaymentAction({
-                            quoteId: live.id,
-                            part: live.advancePaidAt || live.advancePct === 0 ? "full" : "advance",
-                            enquiryId: e.id,
-                          }),
-                        live.advancePaidAt || live.advancePct === 0 ? "Paid in full" : `Advance received · ${money(live.advanceInr)}`
-                      )
-                    }
-                    style={{ flex: 1, textAlign: "center", fontSize: 11.5, fontWeight: 800, padding: 11, borderRadius: 999, background: "rgba(34,197,94,.2)", color: "#22C55E", cursor: "pointer", border: "none", fontFamily: "inherit" }}
-                  >
-                    {live.advancePaidAt ? "Mark balance received" : live.advancePct === 0 ? "Mark paid in full" : "Mark advance received"}
-                  </button>
-                </div>
+                <button
+                  type="button"
+                  disabled={busy}
+                  onClick={() =>
+                    void run(
+                      () => recordEnquiryPaymentAction({ quoteId: live.id, part: live.advancePaidAt || live.advancePct === 0 ? "full" : "advance", enquiryId: e.id }),
+                      live.advancePaidAt || live.advancePct === 0 ? "Paid in full" : `Advance received · ${money(live.advanceInr)}`
+                    )
+                  }
+                  style={{ ...bizBtn, marginTop: 11, background: "#22C55E", color: "#07240F" }}
+                >
+                  {live.advancePaidAt ? "Mark balance received" : live.advancePct === 0 ? "Mark paid in full" : "Mark advance received"}
+                </button>
               ) : (
-                <div style={{ marginTop: 10 }}>
+                <div style={{ marginTop: 11 }}>
                   <div style={{ ...bizBtn, background: "#22C55E", color: "#07240F", opacity: 0.55, cursor: "default" }} aria-disabled="true">
                     {live.advancePaidAt ? `Pay the balance · ${money(live.costInr - live.advanceInr)}` : live.advanceInr > 0 ? `Pay the advance · ${money(live.advanceInr)}` : `Pay ${money(live.costInr)}`}
                   </div>
@@ -289,14 +275,53 @@ export function EnquiryDetail({ enquiry: e, mine, nowIso }: { enquiry: Enquiry; 
                 </div>
               )
             ) : null}
-
-            {live?.fullPaidAt ? <div style={{ fontSize: 11.5, fontWeight: 800, color: "#22C55E", marginTop: 10 }}>✓ Settled in full — {money(live.costInr)}</div> : null}
+            {live.fullPaidAt ? <div style={{ fontSize: 11.5, fontWeight: 800, color: "#22C55E", marginTop: 10 }}>✓ Settled in full — {money(live.costInr)}</div> : null}
           </Surface>
         ) : null}
 
-        {/* only the side that is being asked can put a price on it — and a quote can be
-            revised whatever the stage (5525); the RPC refuses one on a closed enquiry with its own words */}
-        {mine ? (
+        {/* ── QUOTE HISTORY ── every quote, oldest first, as a timeline; each
+            revision says how far it moved, so a revision reads as one */}
+        {hist.length > 0 ? (
+          <Surface>
+            <Eyebrow>{`QUOTE HISTORY · ${hist.length}`}</Eyebrow>
+            <div data-testid="quote-history">
+              {hist.map((q, i) => {
+                const prev = hist[i - 1];
+                const delta = prev ? q.costInr - prev.costInr : 0;
+                const dead = q.status === "superseded";
+                return (
+                  <div key={q.id} style={{ display: "flex", gap: 10, opacity: dead ? 0.6 : 1 }}>
+                    <div style={{ display: "flex", flexDirection: "column", alignItems: "center", width: 14, flexShrink: 0 }}>
+                      <span style={{ width: 10, height: 10, borderRadius: 5, background: quoteColour(q), marginTop: 4 }} />
+                      {i < hist.length - 1 ? <span style={{ flex: 1, width: 2, background: "var(--el)", marginTop: 2 }} /> : null}
+                    </div>
+                    <div style={{ flex: 1, minWidth: 0, paddingBottom: i < hist.length - 1 ? 12 : 0 }}>
+                      <div style={{ display: "flex", alignItems: "baseline", gap: 7 }}>
+                        <span style={{ fontSize: 9.5, fontWeight: 900, color: "var(--muted)", fontFamily: DOS_MONO }}>#{q.n}</span>
+                        <b style={{ fontSize: 13, textDecoration: dead ? "line-through" : "none" }}>{money(q.costInr)}</b>
+                        {delta ? (
+                          <span style={{ fontSize: 10, fontWeight: 800, color: delta < 0 ? "#22C55E" : "#F59E0B" }}>
+                            {delta < 0 ? "▼" : "▲"} {money(Math.abs(delta))}
+                          </span>
+                        ) : null}
+                        <span data-testid={`quote-${q.n}-state`} style={{ marginLeft: "auto", fontSize: 9.5, fontWeight: 800, color: quoteColour(q) }}>
+                          {quoteWord(q)}
+                        </span>
+                      </div>
+                      <div style={{ fontSize: 10.5, color: "var(--sub)", marginTop: 2 }}>
+                        {q.advancePct > 0 ? `${money(q.advanceInr)} (${q.advancePct}%) up front` : "No advance"} · {agoWords(q.createdAt, nowIso)}
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </Surface>
+        ) : null}
+
+        {/* ── THE COMPOSER ── only the side being asked prices it; a revision
+            starts from the live price */}
+        {mine && !closed ? (
           qOpen ? (
             <Surface tint={tint}>
               <Eyebrow tint={tint}>{hist.length ? "REVISE THE QUOTE" : "SEND A QUOTE"}</Eyebrow>
@@ -332,6 +357,7 @@ export function EnquiryDetail({ enquiry: e, mine, nowIso }: { enquiry: Enquiry; 
               {(() => {
                 const cost = Number(qCost) || 0;
                 const adv = Math.round((cost * Number(qAdv)) / 100);
+                const change = live ? cost - live.costInr : 0;
                 return (
                   <div style={{ background: "var(--solid)", borderRadius: 11, padding: "9px 11px", marginBottom: 9 }}>
                     {(
@@ -339,6 +365,7 @@ export function EnquiryDetail({ enquiry: e, mine, nowIso }: { enquiry: Enquiry; 
                         ["Project cost", money(cost)],
                         ["Advance now", adv ? `${money(adv)} (${qAdv}%)` : "not required"],
                         ["On completion", money(cost - adv)],
+                        ...(live && cost && change ? ([["Against the last quote", `${change < 0 ? "▼" : "▲"} ${money(Math.abs(change))}`]] as Array<[string, string]>) : []),
                       ] as Array<[string, string]>
                     ).map(([k3, v3]) => (
                       <div key={k3} style={{ display: "flex", justifyContent: "space-between", gap: 10, padding: "3px 0", fontSize: 11.5 }}>
@@ -350,25 +377,27 @@ export function EnquiryDetail({ enquiry: e, mine, nowIso }: { enquiry: Enquiry; 
                 );
               })()}
               {error ? <div style={{ fontSize: 11, color: "#F87171", marginBottom: 8 }}>{error}</div> : null}
-              <button
-                type="button"
-                disabled={busy || !(Number(qCost) > 0)}
-                aria-label="Send this quote"
-                onClick={async () => {
-                  const cost = Number(qCost) || 0;
-                  const ok = await run(() => sendQuoteAction({ enquiryId: e.id, costInr: cost, advancePct: Number(qAdv) }), hist.length ? `Revised quote sent · ${money(cost)}` : `Quote sent · ${money(cost)}`);
-                  if (ok) {
-                    setQOpen(false);
-                    setQCost("");
-                  }
-                }}
-                style={{ ...bizBtn, opacity: Number(qCost) > 0 ? 1 : 0.5 }}
-              >
-                {hist.length ? "Send the revised quote" : "Send quote"}
-              </button>
+              <div style={{ display: "flex", gap: 7 }}>
+                <button type="button" onClick={() => setQOpen(false)} style={{ ...bizBtn, flex: 1, background: "var(--el)", color: "var(--sub)" }}>
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  disabled={busy || !(Number(qCost) > 0)}
+                  aria-label="Send this quote"
+                  onClick={async () => {
+                    const cost = Number(qCost) || 0;
+                    const ok = await run(() => sendQuoteAction({ enquiryId: e.id, costInr: cost, advancePct: Number(qAdv) }), hist.length ? `Revised quote sent · ${money(cost)}` : `Quote sent · ${money(cost)}`);
+                    if (ok) setQOpen(false);
+                  }}
+                  style={{ ...bizBtn, flex: 1.6, opacity: Number(qCost) > 0 ? 1 : 0.5 }}
+                >
+                  {hist.length ? "Send the revised quote" : "Send quote"}
+                </button>
+              </div>
             </Surface>
           ) : (
-            <button type="button" aria-label={hist.length ? "Revise the quote" : "Send a quote"} onClick={() => setQOpen(true)} style={{ ...bizBtn, background: tint, color: "#08060C" }}>
+            <button type="button" aria-label={hist.length ? "Revise the quote" : "Send a quote"} onClick={openComposer} style={{ ...bizBtn, background: tint, color: "#08060C" }}>
               {hist.length ? "Revise the quote" : "Send a quote"}
             </button>
           )

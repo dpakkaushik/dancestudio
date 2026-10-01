@@ -1198,13 +1198,13 @@ test.describe.serial("DanceOS, end to end", () => {
     await enqSheet.getByText("Private Sessions", { exact: true }).click();
     const inTenDays = new Date(Date.now() + 10 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
     await enqSheet.getByLabel("Date of event").fill(inTenDays);
-    await pick(enqSheet, "Session format", "One-on-one");
-    await pick(enqSheet, "Dance style", "Bollywood");
-    await pick(enqSheet, "Level", "Beginner");
-    await pick(enqSheet, "Where they train", "At the studio");
-    /* the sheet's city is the CityPicker — a Google city search with the typed
-       name as the way out; the old two clicks opened a hand-rolled dropdown */
-    await pickCity(enqSheet, "Pune");
+    /* ⚠ THE SHORTER FORM (2 Oct 2026, the user: "shorter forms for every kind of
+       enquiry"): a type's choices are one-tap chips in a labelled group, not
+       dropdowns; Level and Where-they-train are gone; Where is one optional
+       line, and the message is optional too. */
+    await enqSheet.getByRole("group", { name: "Session format" }).getByRole("button", { name: "One-on-one" }).click();
+    await enqSheet.getByRole("group", { name: "Dance style" }).getByRole("button", { name: "Bollywood", exact: true }).click();
+    await enqSheet.getByLabel("Where", { exact: true }).fill("Pune");
     await enqSheet.getByLabel("Message").fill("Eight evening sessions before a wedding.");
     await enqSheet.getByRole("button", { name: "Send enquiry" }).click();
     await expect(enqSheet.getByText("Enquiry sent")).toBeVisible();
@@ -1695,12 +1695,16 @@ test.describe.serial("DanceOS, end to end", () => {
     // never as a figure on the page (19 Sep 2026)
     const personFollow = learner.getByTestId("follow-toggle");
     await expect(personFollow).toHaveAttribute("data-followers", "0");
-    await learner.getByRole("button", { name: "Follow" }).click();
-    await expect(learner.getByRole("button", { name: /^Following/ })).toBeVisible();
+    /* The toggle by its test id, not by name: since 2 Oct 2026 the Followers and
+       Following FIGURES on a person's page are buttons too ("Followers — 0",
+       "Following — 0"), and a bare name is a case-insensitive SUBSTRING match,
+       so "Follow" found three controls and /^Following/ would find the figure. */
+    await personFollow.click();
+    await expect(personFollow).toHaveAttribute("aria-pressed", "true");
     await expect(personFollow).toHaveAttribute("data-followers", "1");
     // and it is really one bit: pressing again takes it back
-    await learner.getByRole("button", { name: /^Following/ }).click();
-    await expect(learner.getByRole("button", { name: "Follow" })).toBeVisible();
+    await personFollow.click();
+    await expect(personFollow).toHaveAttribute("aria-pressed", "false");
     await expect(personFollow).toHaveAttribute("data-followers", "0");
 
     // the search box offers people now — and the row opens the person
@@ -2294,7 +2298,8 @@ test.describe.serial("DanceOS, end to end", () => {
     await expect(editSheet.getByLabel("Phone")).toHaveValue("+91 98765 43210", { timeout: 15_000 });
     // somebody else's read of it: the trainer opens the learner's page — no Call on a user's page
     await trainer.goto(`/person/${learnerId}`);
-    await expect(trainer.getByRole("button", { name: "Follow" })).toBeVisible();
+    // the toggle by its test id: the person page's figures are buttons too (2 Oct 2026)
+    await expect(trainer.getByTestId("follow-toggle")).toBeVisible();
     await expect(trainer.getByRole("link", { name: "Call" })).toHaveCount(0);
     // and it is the person's to withdraw: an empty box saves null
     await editSheet.getByLabel("Phone").fill("");

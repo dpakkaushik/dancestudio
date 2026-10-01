@@ -2,15 +2,13 @@
 
 import Link from "next/link";
 import { useState } from "react";
-import { Pick } from "@/components/ui/PickSheet";
 import { sendEnquiryAction } from "@/features/enquiries/server-actions/enquiries";
-import { CityPicker } from "@/features/geo/components/CityPicker";
 import { CONTACT_BOX, CONTACT_LABEL } from "@/features/profiles/components/ContactButtons";
 import { DOS_UI } from "@/lib/design/tokens";
 import { useCloseOnBack } from "@/lib/hooks/useCloseOnBack";
 import { enquiryTypesFor, enquiryTypesForCrew, type EnquiryField, type EnquiryType } from "@/types/enquiry";
 import type { BusinessType } from "@/types/business";
-import { pressKey } from "@/features/inbox/components/inbox-kit";
+import { EnqIcon, pressKey } from "@/features/inbox/components/inbox-kit";
 
 /** The sender's sheet, lifted from the prototype's EnquirySheet (5051-5193):
  *  pick what it is for — only the kinds that make sense for who it is going TO
@@ -37,18 +35,6 @@ const inp: React.CSSProperties = {
 function Lab({ children }: { children: React.ReactNode }) {
   return <div style={{ fontSize: 9.5, fontWeight: 900, letterSpacing: 0.8, color: "var(--muted)", margin: "12px 0 6px" }}>{children}</div>;
 }
-
-const toggle = (on: boolean): React.CSSProperties => ({
-  flex: 1,
-  textAlign: "center",
-  padding: 9,
-  borderRadius: 10,
-  cursor: "pointer",
-  fontSize: 11.5,
-  fontWeight: 800,
-  background: on ? "var(--text)" : "var(--el)",
-  color: on ? "var(--solid)" : "var(--sub)",
-});
 
 /** The round trigger + the sheet, in one client island so the server-rendered
  *  profile stays a server component. */
@@ -155,12 +141,10 @@ export function EnquirySheet({
      three and keeps no preferences */
   const allowed = crewId ? enquiryTypesForCrew() : enquiryTypesFor(businessType).filter((t) => !enquiryTypes || enquiryTypes.includes(t.k));
   const [type, setType] = useState<EnquiryType | null>(null);
-  const [dateMode, setDateMode] = useState<"single" | "multi">("single");
   const [dates, setDates] = useState<string[]>([""]);
   const [vals, setVals] = useState<Record<string, string | number>>({});
   const [eventName, setEventName] = useState("");
-  const [addr, setAddr] = useState("");
-  const [city, setCity] = useState("");
+  const [where, setWhere] = useState("");
   const [mobile, setMobile] = useState("");
   const [msg, setMsg] = useState("");
   const [err, setErr] = useState("");
@@ -173,21 +157,26 @@ export function EnquirySheet({
   };
   const pickType = (t: EnquiryType) => {
     setType(t);
-    setDateMode("single");
     setDates([""]);
     setVals({});
     setErr("");
   };
 
+  /* ⚠⚠ SHORTER (2 Oct 2026, the user: "shorter forms for every kind of
+     enquiry"). What it asks now: the kind, a date, the kind's one or two own
+     questions (chips — one tap each, never a sheet over the sheet), and three
+     optional lines. Gone: the Single/Multiple toggle (one date, "＋ another date"
+     when there are more), the separate venue box AND the city search (one
+     "Where" line — `where_text` was always free text), and a REQUIRED message
+     (the database wants one, so an empty box sends a sentence built from the
+     answers, which says exactly what the form already knows). */
   const submit = async () => {
     if (!type || busy) return;
     const cleanDates = dates.filter(Boolean);
-    if (!cleanDates.length) return setErr("Add at least one date");
+    if (!cleanDates.length) return setErr("Pick a date");
     const missing = type.fields.find((f) => f.t === "select" && !vals[f.k]);
     if (missing) return setErr(`Choose ${missing.label.toLowerCase()}`);
     if (type.k === "judge" && !eventName.trim()) return setErr("Name the event");
-    if (!city) return setErr("Pick the city");
-    if (!msg.trim()) return setErr("Add a short message");
 
     const rows: Array<[string, string]> = [["Enquiry", type.label]];
     if (type.k === "judge") rows.push(["Event", eventName.trim()]);
@@ -196,6 +185,8 @@ export function EnquirySheet({
       const v = vals[f.k] !== undefined ? vals[f.k] : f.t === "count" ? f.def : "";
       if (v !== "") rows.push([f.label, String(v)]);
     });
+    const said = rows.slice(1).map(([, v]) => v).join(", ");
+    const message = msg.trim() || `${type.label}${said ? ` — ${said}` : ""}.`;
 
     setBusy(true);
     const out = await sendEnquiryAction({
@@ -204,8 +195,8 @@ export function EnquirySheet({
       typeKey: type.k,
       fields: rows,
       dates: cleanDates,
-      whereText: [addr.trim(), city].filter(Boolean).join(", ") || null,
-      message: msg.trim(),
+      whereText: where.trim() || null,
+      message,
       mobile: mobile.trim() || null,
     });
     setBusy(false);
@@ -217,9 +208,9 @@ export function EnquirySheet({
     const v = Number(vals[f.k] !== undefined ? vals[f.k] : f.def);
     const step = (d: number) => setV(f.k, Math.min(f.max, Math.max(f.min, v + d)));
     const btn: React.CSSProperties = {
-      width: 30,
-      height: 30,
-      borderRadius: 15,
+      width: 32,
+      height: 32,
+      borderRadius: 16,
       background: "var(--el)",
       display: "flex",
       alignItems: "center",
@@ -232,7 +223,7 @@ export function EnquirySheet({
       fontFamily: "inherit",
     };
     return (
-      <div style={{ display: "flex", alignItems: "center", gap: 12, background: "var(--card)", border: "1.5px solid var(--el)", borderRadius: 12, padding: "9px 12px" }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 12, background: "var(--card)", border: "1.5px solid var(--el)", borderRadius: 12, padding: "7px 10px" }}>
         <button type="button" aria-label={`Fewer ${f.label.toLowerCase()}`} onClick={() => step(-1)} style={btn}>
           −
         </button>
@@ -277,7 +268,7 @@ export function EnquirySheet({
             </div>
             <b style={{ fontSize: 17 }}>Enquiry sent</b>
             <div style={{ fontSize: 12, color: "var(--sub)", margin: "5px 0 16px", lineHeight: 1.5 }}>
-              {businessName} will reply in your Inbox.
+              {businessName} will reply in your Enquiries.
               <br />
               You&apos;ll get a quote you can accept or decline.
             </div>
@@ -291,25 +282,26 @@ export function EnquirySheet({
           </div>
         ) : !type ? (
           <>
-            <div style={{ fontSize: 10.5, fontWeight: 900, letterSpacing: 1.2, color: "var(--muted)" }}>SEND ENQUIRY</div>
             <div style={{ fontSize: 17, fontWeight: 900, marginBottom: 2 }}>What&apos;s it for?</div>
             <div style={{ fontSize: 11, color: "var(--sub)", marginBottom: 12 }}>To {businessName}</div>
-            {allowed.map((x) => (
-              <div
-                key={x.k}
-                role="button"
-                tabIndex={0}
-                onKeyDown={pressKey(() => pickType(x))}
-                onClick={() => pickType(x)}
-                style={{ display: "flex", alignItems: "center", gap: 12, background: "var(--card)", border: "1.5px solid var(--el)", borderLeft: `4px solid ${x.c}`, borderRadius: 14, padding: "12px 13px", marginBottom: 8, cursor: "pointer" }}
-              >
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontSize: 13.5, fontWeight: 900 }}>{x.label}</div>
-                  <div style={{ fontSize: 10.5, color: "var(--sub)", marginTop: 1 }}>{x.sub}</div>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+              {allowed.map((x) => (
+                <div
+                  key={x.k}
+                  role="button"
+                  tabIndex={0}
+                  onKeyDown={pressKey(() => pickType(x))}
+                  onClick={() => pickType(x)}
+                  style={{ background: "var(--card)", border: `1.5px solid ${x.c}55`, borderRadius: 14, padding: "12px 12px", cursor: "pointer" }}
+                >
+                  <span style={{ width: 30, height: 30, borderRadius: 10, display: "inline-flex", alignItems: "center", justifyContent: "center", background: `${x.c}1f` }}>
+                    <EnqIcon k={x.k} size={16} color={x.c} sw={2} />
+                  </span>
+                  <div style={{ fontSize: 13, fontWeight: 900, marginTop: 7 }}>{x.label}</div>
+                  <div style={{ fontSize: 10, color: "var(--sub)", marginTop: 1, lineHeight: 1.35 }}>{x.sub}</div>
                 </div>
-                <span style={{ fontSize: 16, color: "var(--muted)" }}>›</span>
-              </div>
-            ))}
+              ))}
+            </div>
             {allowed.length === 0 ? <div style={{ fontSize: 11.5, color: "var(--sub)", padding: "10px 2px" }}>They aren&apos;t taking enquiries right now.</div> : null}
           </>
         ) : (
@@ -323,35 +315,13 @@ export function EnquirySheet({
             >
               ‹ All types
             </div>
-            <div style={{ fontSize: 10.5, fontWeight: 900, letterSpacing: 1.2, color: type.c }}>{type.label.toUpperCase()}</div>
-            <div style={{ fontSize: 17, fontWeight: 900, marginBottom: 2 }}>Enquiry to {businessName}</div>
-
-            <Lab>{dateMode === "multi" ? "Event dates" : "Date of event"}</Lab>
-            <div style={{ display: "flex", gap: 7, marginBottom: 8 }}>
-              {(
-                [
-                  ["single", "Single date"],
-                  ["multi", "Multiple dates"],
-                ] as const
-              ).map(([k, l]) => (
-                <span
-                  key={k}
-                  role="button"
-                  tabIndex={0}
-                  onKeyDown={pressKey(() => {
-                    setDateMode(k);
-                    setDates(k === "single" ? [dates[0] || ""] : dates);
-                  })}
-                  onClick={() => {
-                    setDateMode(k);
-                    setDates(k === "single" ? [dates[0] || ""] : dates);
-                  }}
-                  style={toggle(dateMode === k)}
-                >
-                  {l}
-                </span>
-              ))}
+            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+              <EnqIcon k={type.k} size={16} color={type.c} sw={2} />
+              <div style={{ fontSize: 17, fontWeight: 900 }}>{type.label}</div>
             </div>
+            <div style={{ fontSize: 11, color: "var(--sub)", marginTop: 1 }}>To {businessName}</div>
+
+            <Lab>{dates.length > 1 ? "Dates" : "Date"}</Lab>
             {dates.map((d, i) => (
               <div key={i} style={{ display: "flex", gap: 8, marginBottom: 7 }}>
                 <input
@@ -377,33 +347,36 @@ export function EnquirySheet({
                 ) : null}
               </div>
             ))}
-            {dateMode === "multi" ? (
-              <div
-                role="button"
-                tabIndex={0}
-                onKeyDown={pressKey(() => setDates((a) => [...a, ""]))}
-                onClick={() => setDates((a) => [...a, ""])}
-                style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 11, fontWeight: 800, color: type.c, cursor: "pointer" }}
-              >
-                ＋ Add another date
-              </div>
-            ) : null}
+            <div
+              role="button"
+              tabIndex={0}
+              onKeyDown={pressKey(() => setDates((a) => [...a, ""]))}
+              onClick={() => setDates((a) => [...a, ""])}
+              style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 11, fontWeight: 800, color: type.c, cursor: "pointer" }}
+            >
+              ＋ Another date
+            </div>
 
             {type.fields.map((f) => (
               <div key={f.k}>
                 <Lab>{f.label}</Lab>
                 {f.t === "select" ? (
-                  /* ⚠ IN-APP (27 Sep 2026) — an enquiry sheet is already a sheet
-                     over a profile page, so each of these threw the OS's own
-                     full-screen picker over both. The type's own options, in the
-                     type's own order, under the field's own label. */
-                  <Pick
-                    ariaLabel={f.label}
-                    value={String(vals[f.k] ?? "")}
-                    rows={[{ value: "", label: "Choose…" }, ...f.opts.map((o) => ({ value: o, label: o }))]}
-                    onPick={(v) => setV(f.k, v)}
-                    style={inp}
-                  />
+                  <div role="group" aria-label={f.label} style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+                    {f.opts.map((o) => {
+                      const on = vals[f.k] === o;
+                      return (
+                        <button
+                          key={o}
+                          type="button"
+                          aria-pressed={on}
+                          onClick={() => setV(f.k, o)}
+                          style={{ padding: "7px 11px", borderRadius: 999, fontSize: 11.5, fontWeight: 800, cursor: "pointer", fontFamily: "inherit", background: on ? type.c : "var(--card)", color: on ? "#08060C" : "var(--sub)", border: `1.5px solid ${on ? type.c : "var(--el)"}` }}
+                        >
+                          {o}
+                        </button>
+                      );
+                    })}
+                  </div>
                 ) : f.t === "count" ? (
                   <Count f={f} />
                 ) : (
@@ -421,25 +394,13 @@ export function EnquirySheet({
               </div>
             ))}
 
-            <Lab>Location</Lab>
-            <input aria-label="Venue or address" value={addr} onChange={(e) => setAddr(e.target.value)} placeholder="Venue / address details" style={{ ...inp, marginBottom: 8 }} />
-            {/* ── THE CITY IS A SEARCH, NOT A LIST (11 Sep 2026) ─────────────
-                This was a hand-rolled dropdown over DOS_CITIES, so an enquiry
-                for an event in Kochi could not say where it was. Now it is a
-                Google city search — there is no address here to read one off. */}
-            <CityPicker
-              value={city || null}
-              label="City"
-              onChange={(next) => {
-                setCity(next ?? "");
-                setErr("");
-              }}
-            />
+            <Lab>Where (optional)</Lab>
+            <input aria-label="Where" value={where} onChange={(e) => setWhere(e.target.value)} placeholder="Venue, area, city" style={inp} />
 
             <Lab>Your number (optional)</Lab>
             <input aria-label="Your number" value={mobile} onChange={(e) => setMobile(e.target.value)} placeholder="+91 …  so they can call you back" inputMode="tel" style={inp} />
 
-            <Lab>Message</Lab>
+            <Lab>Anything else (optional)</Lab>
             <textarea
               aria-label="Message"
               value={msg}
@@ -447,7 +408,7 @@ export function EnquirySheet({
                 setMsg(e.target.value);
                 setErr("");
               }}
-              rows={3}
+              rows={2}
               placeholder="Tell them what you have in mind…"
               style={{ ...inp, resize: "none" }}
             />

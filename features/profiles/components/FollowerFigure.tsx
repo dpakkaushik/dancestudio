@@ -42,7 +42,8 @@ export function FollowerFigure({
    *  classPerson rather than a reading. This is not the 27 Sep "show it even if it is
    *  0" rule pulling the other way; that rule is about zeros. */
   n: number | null;
-  kind: "business" | "crew";
+  /** a person too since 2 Oct 2026 — `profile_followers` reads anybody's list */
+  kind: "business" | "crew" | "person";
   id: string;
   /** whose followers — the sheet says so, because a studio's home and its
    *  organization's look alike enough to be confused at a glance */

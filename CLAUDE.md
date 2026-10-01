@@ -1,6 +1,89 @@
 # CLAUDE.md — DanceOS
 
-## LAST SESSION (1 Oct 2026) — replaced on every push (Rule 13)
+## LAST SESSION (2 Oct 2026) — replaced on every push (Rule 13)
+
+> ### EARNINGS OPENS ONTO ITS ROWS, A CLASS IS IN THE CITY IT IS HELD IN, AND ENQUIRIES ARE REDESIGNED (2 Oct 2026, latest) — ✅ `20261002090000` APPLIED (dry run **10/10** re-run first, read back live **6/6**) AND `test2` RENAMED
+> ✅ **On the user's *"yes okay for last 2 points and push to live"*** (the previous
+> chat died on "Prompt is too long", so its final report was read out of the
+> transcript before acting on the "yes"): the follow-list migration applied on
+> the first try, `db-push -DryRun` listing exactly it; read back live — both
+> definer functions, authenticated yes / anon no, anon **39**, policies **103**,
+> PostgREST reloaded; a probe as the demo learner read Deepak's Following list
+> (**2 rows, count 2**) and the same call signed out answered **401**. And
+> Deepak's artist page is **"Deepak Kaushik" in Gurugram** (it was `test2` in New
+> Delhi, area "delhi" cleared): his Kathak is on Gurugram's Discover shelf and
+> off New Delhi's, checked by the class's own `/c/{slug}` link. ⚠ **It was LISTED,
+> not unlisted as the 30 Sep notes said** — visibility was left exactly as found.
+> ⚠ **The happy path's one red was the CHECK**: the person page's figures are
+> buttons now ("Followers — 0"), so `getByRole("button", { name: "Follow" })`
+> matched three controls (the substring trap, fifth time); both person-page sites
+> use the `follow-toggle` test id.
+> The user's five-part list: earnings breakup collapsible and shown at ₹0;
+> better practice cards with the crew's photo; the enquiry system redesigned
+> (status, quote mechanism, quote history, photos, cards, shorter forms);
+> accurate follower/following lists on all profiles; and classes held in
+> Gurugram missing from Discover — *"fix that not only for gurugram but all
+> states."*
+> * ⚠⚠ **THE DISCOVER BUG WAS TWO FILTERS ON THE OWNER'S CITY, AND THE SECOND
+>   UNDID THE FIX TO THE FIRST.** `findPublishedClasses` filtered on the class's
+>   OWNER — so Deepak's Bharatanatyam (his page in New Delhi, HELD at 11ft down
+>   in Gurugram) was on New Delhi's shelf and not Gurugram's. The read is two
+>   reads merged now (owned in the city, held in the city — PostgREST cannot OR
+>   across two embeds), kept where `heldCity` is this city. ⚠ **And it still
+>   showed nothing**, because `discover/page.tsx` filtered AGAIN on
+>   `c.businessCity` — measured on `:3100` city by city before and after, not
+>   assumed. The card prints the held city too. No city is special: it is one
+>   rule for all eight. ⚠ The studio's own page and its schedule already showed
+>   it (definer reads keyed on the venue); verified signed out.
+> * **EARNINGS: every line is a disclosure onto its rows** — which class and who
+>   paid, which membership, who was paid, which asset (a ₹0 one "already had
+>   it"), which enquiry's advance or balance — drawn at ₹0 too ("Nothing in this
+>   period"), so the breakup says what it counts. ⚠ Tickets & entries is the one
+>   line HIDDEN at zero: the feature is gone and a ₹0 row would be a claim about
+>   it. ⚠ The desk link moved inside the opened panel — a link and a toggle
+>   cannot be one press. ⚠ `shoot-earnings` stamped its payout with the UTC date,
+>   which for 5½ hours after IST midnight is yesterday — two reds that were the
+>   harness. **29/29.**
+> * **PRACTICE CARDS** lead with the crew's face and name, then a date block,
+>   time, place, note, and a turnout bar. The face is ONE `crews` read for the
+>   whole list beside the RPC (widening a RETURNS TABLE for a picture is a
+>   drop-and-recreate). **`shoot-practice` 44/44**, the card screenshotted.
+> * **ENQUIRIES** — `features/enquiries/components/enquiry-kit.tsx` is ONE card
+>   and ONE road for the desk and the detail page: both faces overlapped
+>   (`fromPhotoPath`/`toPhotoPath`, read on the same embed), the stage as a
+>   six-step track in the order an enquiry TRAVELS (`ENQ_ROAD` — the menu's order
+>   put Advance paid before Confirmed). The detail page: WHO with both faces and
+>   Call, WHERE IT STANDS with the road and the business's hand moves (New · In
+>   talks · Close as won · Close as lost), WHAT with the message folded in, THE
+>   QUOTE as a price card, QUOTE HISTORY as a timeline with each revision's ▲▼,
+>   and a composer that STARTS FROM the live price. ⚠⚠ **A real status bug,
+>   found while redesigning:** marking a quoted enquiry Lost changed the row and
+>   nothing on screen, because the quote-derived stage always won — a hand-set
+>   Won/Lost wins now. ⚠ Done mixes both ends, so which end a card is on is
+>   decided PER CARD (the old desk called an enquiry you sent "from" yourself).
+>   **The forms are shorter**: choices are one-tap chips, one date with
+>   "＋ Another date", one optional Where line (the city search is gone), an
+>   optional message (an empty one sends a sentence built from the answers —
+>   the database requires one). Dropped fields: a judge's panel size, a private
+>   session's level and where-they-train, a collaboration's "what's needed".
+>   Old enquiries keep every field they were sent with.
+> * ⚠⚠ **FOLLOW LISTS ON SOMEBODY ELSE'S PROFILE NEED A MIGRATION, AND IT IS
+>   HELD** (#0b9) — `follows` has no read policy beyond the row's two ends, so
+>   the count was public and the list read empty. `20261002090000` adds two
+>   signed-in-only definer reads returning exactly the rows the three count
+>   functions count; **dry run 10/10 on production: the list equals the count
+>   for all 13 listed businesses, 22 people (both directions) and 11 crews**,
+>   anon refused, anon 39 and policies 103 unchanged. ⚠ One dry-run red was the
+>   CHECK: `person_follower_counts` answers a session-less caller for an artist
+>   only, so the count had to be read as a signed-in user too. ⚠ **The app half
+>   is SAFE BEFORE THE APPLY**: each action tries the new read and falls back to
+>   the old RLS one, and a person's list says "could not be read" rather than
+>   drawing nobody under a count that is not zero.
+> * **Verified:** typecheck 0 · lint 0 · `audit:reads` 0 unexplained ·
+>   `next build` green · `shoot-earnings` 29/29 · `shoot-practice` 44/44 ·
+>   `shoot-classes` 79/79 · `shoot-hero` 186/186 · `stranger-smoke` 8/8 ·
+>   Discover checked city by city on `:3100` · the enquiry card and detail
+>   screenshotted on the demo world as both ends.
 
 > ### AN ARTIST'S OWN PROFILE WAS A REDIRECT LOOP, DONE DREW EVERY SELF-ASK TWICE, AND "WHERE YOU LEARNED" SAYS WHO TAUGHT YOU (1 Oct 2026, latest) — no migration
 > * ⚠⚠ **DEEPAK'S OWN PROFILE WAS BLANK BECAUSE IT REDIRECTED TO ITSELF FOR
@@ -9204,6 +9287,30 @@ summary; the report has the evidence.
 
 ## NEXT TO DO — replaced on every push (Rule 13)
 
+0b9. **~~ONE MIGRATION WRITTEN, DRY-RUN 10/10 AND HELD~~ — ✅ APPLIED 2 Oct 2026**
+   on the user's word, read back live 6/6, and `test2` renamed "Deepak Kaushik"
+   and moved to Gurugram. Nothing is pending in the database. The record of what
+   was approved — `20261002090000_a_follow_list_is_as_public_as_its_count`. ⚠ Rule 9: it
+   WIDENS what a signed-in reader may see — who follows a business, a person or
+   a crew, and what a person follows. Two SECURITY DEFINER functions,
+   `profile_followers(kind, id)` and `profile_following(user_id)`, executable by
+   `authenticated` only (anon refused, asserted), returning name, picture and
+   city — exactly the rows the three count functions count. Nothing else moves:
+   no table, policy, existing grant or row. The app is safe either side of the
+   apply (it falls back). **On the user's word:**
+```
+   $env:NODE_PATH="<scratchpad with pg>\node_modules"
+   node scripts/dry-run-migration.js supabase/migrations/20261002090000_a_follow_list_is_as_public_as_its_count.sql scripts/dry-run-checks/20261002090000.js
+   powershell -NoProfile -ExecutionPolicy Bypass -File scripts/db-push.ps1 -DryRun   # exactly this one file
+   powershell -NoProfile -ExecutionPolicy Bypass -File scripts/db-push.ps1 2>&1 | Select-String -NotMatch 'Skipping migration|Warning: failed to cache|prerequisite for local'
+   # then notify pgrst, 'reload schema' — the app calls two functions that did not exist
+```
+   ⚠ **And one open question for the user, not a migration yet:** Deepak's
+   artist page `test2` sits in **New Delhi** while his profile says Gurugram, so
+   Kathak (taught at his own place) is on New Delhi's Discover shelf. Renaming it
+   and moving its city is two fields; keeping an artist page's city in step with
+   its owner's is a trigger and a decision.
+
 0b8. **~~ONE MIGRATION WRITTEN AND HELD~~ — ✅ APPLIED 1 Oct 2026**
    (`20261001090000_an_artist_has_one_profile`, one literal in `why_no_class`),
    read back live 9/9. Nothing is pending in the database.
@@ -11626,6 +11733,16 @@ for the database schema. **The UI is not redesigned** — see Rule 2.
   24/24, read back live 11/11, proofs 3/3). The stats page's tabs, segments and
   style chips replace instead of push, and its back link is a real back step;
   probe 6/6, happy path 19/19.
+- **EARNINGS OPENS ONTO ITS ROWS, A CLASS IS IN THE CITY IT IS HELD IN, AND
+  ENQUIRIES ARE REDESIGNED — 2 Oct 2026, no step number ⚠ (Rule 9: the
+  migration widens who may read a follow list) — BUILT, `20261002090000`
+  APPLIED (dry run 10/10, read back live 6/6), `test2` renamed and moved to
+  Gurugram.** Every earnings line opens onto the
+  rows behind it and is drawn at ₹0; practice cards lead with the crew's face;
+  the enquiry system is one shared card and stage road, a detail page with a
+  quote timeline, and shorter forms; Discover places an artist's class in the
+  city of the studio that holds it (two owner-city filters, the second undoing
+  the first). Detail at the top.
 - **THE MONEY IS ASKED FOR, A PASS SAYS WHERE IT WENT, AND AN UNPAID PASS IS NOT
   A SALE — 30 Sep 2026, no step number ⚠ (Rule 9: MONEY) — app half PUSHED; ONE
   MIGRATION WRITTEN, DRY-RUN 24/24 AND HELD (#0b7).** The user: *"leave whats

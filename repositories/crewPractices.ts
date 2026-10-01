@@ -43,6 +43,7 @@ const toPractice = (r: PracticeRow): CrewPractice => ({
   myStatus: r.my_status,
   going: Number(r.going ?? 0),
   asked: Number(r.asked ?? 0),
+  crewPhotoPath: null,
 });
 
 /** Every practice of every crew the caller leads or is confirmed on, in time
@@ -64,7 +65,19 @@ export async function findMyCrewPractices(
     if (opts.strict) throw new Error(`my_crew_practices failed: ${error.message}`);
     return [];
   }
-  return ((data ?? []) as PracticeRow[]).map(toPractice);
+  const practices = ((data ?? []) as PracticeRow[]).map(toPractice);
+  /* ⚠ THE CREW'S FACE, IN ONE READ FOR THE WHOLE LIST (2 Oct 2026, the user:
+     "better practice cards, with crew profile photo"). The RPC returns no photo
+     and widening a RETURNS TABLE is a drop-and-recreate for a picture, so it is
+     a second query over the crews the list names — `crews` is publicly readable
+     — and it DEGRADES: a failed read draws the crew's initials, never an error. */
+  const crewIds = [...new Set(practices.map((p) => p.crewId))];
+  if (crewIds.length) {
+    const { data: crews } = await supabase.from("crews").select("id, photo").in("id", crewIds);
+    const photo = new Map(((crews ?? []) as Array<{ id: string; photo: string | null }>).map((c) => [c.id, c.photo]));
+    for (const p of practices) p.crewPhotoPath = photo.get(p.crewId) ?? null;
+  }
+  return practices;
 }
 
 /** One crew's, off the same read — the desk narrows rather than asking a second

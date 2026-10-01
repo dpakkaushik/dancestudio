@@ -19,14 +19,14 @@ import {
   ENQ_TINT,
   ENQ_TYPES,
   enquiryStage,
-  enquiryTypeOf,
   enquiryValueInr,
   liveQuoteOf,
   type Enquiry,
   type EnquiryStatus,
   type EnquiryTypeKey,
 } from "@/types/enquiry";
-import { DOS_MONO, EnqIcon, agoWords, dateWords, initialsOf, moneyShort, pressKey } from "./inbox-kit";
+import { DOS_MONO, EnqIcon, agoWords, initialsOf, moneyShort, pressKey } from "./inbox-kit";
+import { EnquiryCard } from "@/features/enquiries/components/enquiry-kit";
 
 /** The Inbox, lifted from prototype S_chats (5617-6098) after internal chat was
  *  removed from the product: "what remains is the work — something somebody has
@@ -705,58 +705,12 @@ export function InboxScreen({
    *  quiet line.
    *  ⚠ The accessible name is unchanged, so every locator that found the old
    *  row finds this. */
-  const enquiryCard = (e: Enquiry) => {
-    const stage = enquiryStage(e);
-    const tc = ENQ_TINT[e.typeKey];
-    const c = stage === "won" || stage === "confirmed" || stage === "advance_paid" ? "#22C55E" : stage === "lost" ? "#F87171" : stage === "quoted" ? "#F59E0B" : "#3B82F6";
-    const label = enquiryTypeOf(e.typeKey)?.label ?? e.typeKey;
-    const who = enqSide === "out" ? e.businessName : e.fromName;
-    const value = enquiryValueInr(e);
-    /* the occasion — every type's first field is what the thing IS ("Wedding",
-       "Brand shoot", "One-on-one"); a type with none falls back to its label */
-    const fields = e.fields.filter(([k]) => k !== "Enquiry");
-    const headline = fields[0]?.[1] ?? label;
-    const rest = fields.slice(1).map(([k, v]) => `${k}: ${v}`);
-    const when = e.dates.length ? `${dateWords(e.dates[0])}${e.dates.length > 1 ? ` +${e.dates.length - 1}` : ""}` : null;
-    return (
-      <Link
-        key={e.id}
-        href={`/inbox/enquiries/${e.id}`}
-        aria-label={`${label} enquiry ${enqSide === "out" ? "to" : "from"} ${who}`}
-        style={{ display: "block", background: "var(--card)", border: `1.5px solid ${tc}55`, borderRadius: 18, padding: "13px 14px", marginBottom: 10, boxShadow: `0 2px 10px ${tc}14`, color: "var(--text)", textDecoration: "none" }}
-      >
-        <div style={{ display: "flex", alignItems: "center", gap: 9, marginBottom: 9 }}>
-          <span style={{ width: 30, height: 30, borderRadius: 10, flexShrink: 0, background: `${tc}1f`, border: `1.5px solid ${tc}66`, display: "inline-flex", alignItems: "center", justifyContent: "center" }}>
-            <EnqIcon k={e.typeKey} size={15} color={tc} sw={2} />
-          </span>
-          <span style={{ fontSize: 9, fontWeight: 900, letterSpacing: 0.9, color: tc, textTransform: "uppercase" }}>Enquiry · {label}</span>
-          <span style={{ marginLeft: "auto", fontSize: 9.5, color: "var(--muted)" }}>{agoWords(e.createdAt, nowIso)}</span>
-        </div>
-
-        <div style={{ display: "flex", alignItems: "flex-start", gap: 10 }}>
-          <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={{ fontSize: 17, fontWeight: 900, letterSpacing: -0.5, lineHeight: 1.15, fontFamily: DOS_DISPLAY, overflowWrap: "anywhere" }}>{headline}</div>
-            <div style={{ fontSize: 11.5, color: "var(--sub)", marginTop: 4 }}>
-              {enqSide === "out" ? "you asked " : "from "}
-              <b style={{ color: "var(--text)" }}>{who}</b>
-            </div>
-          </div>
-          {/* WHAT IT IS WORTH AND WHERE IT STANDS — the two figures a desk of
-              these is scanned for, set like figures (10683) */}
-          <div style={{ textAlign: "right", flexShrink: 0 }}>
-            <div style={{ fontSize: 15, fontWeight: 900, fontFamily: DOS_MONO, color: value ? c : "var(--muted)" }}>{value ? moneyShort(value) : "—"}</div>
-            <span style={{ display: "inline-block", marginTop: 3, fontSize: 9, fontWeight: 900, letterSpacing: 0.4, padding: "3px 8px", borderRadius: 999, background: `${c}1e`, border: `1.5px solid ${c}55`, color: c, textTransform: "uppercase" }}>{ENQ_STAGE_WORD[stage]}</span>
-          </div>
-        </div>
-
-        {when || e.whereText || rest.length ? (
-          <div style={{ fontSize: 10.5, color: "var(--muted)", marginTop: 7, lineHeight: 1.5 }}>{[when, e.whereText, ...rest].filter(Boolean).join(" · ")}</div>
-        ) : null}
-        <div style={{ fontSize: 11.5, color: "var(--sub)", marginTop: 7, lineHeight: 1.45, overflow: "hidden", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical" }}>“{e.message}”</div>
-        <span style={{ display: "inline-block", marginTop: 8, fontSize: 10.5, fontWeight: 800, color: tc }}>Open the conversation ›</span>
-      </Link>
-    );
-  };
+  /* ⚠ THE CARD IS THE ENQUIRY KIT'S (2 Oct 2026) — one card for the desk and the
+     Done list, with both faces and the road on it. Which end the reader is on is
+     decided PER CARD: Done mixes both ends, so the desk's own `enqSide` would
+     have called an enquiry you SENT "from" yourself. */
+  const outIds = new Set(enquiriesOut.map((x) => x.id));
+  const enquiryCard = (e: Enquiry) => <EnquiryCard key={e.id} e={e} out={outIds.has(e.id)} nowIso={nowIso} />;
 
   /* ── enquiries desk ── */
   const side = enqSide === "out" ? enquiriesOut : enquiriesIn;

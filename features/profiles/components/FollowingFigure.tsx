@@ -31,7 +31,12 @@ import { figureLabel, figureNum } from "./profile-band";
 export function FollowingFigure({
   n,
   testId,
+  userId = null,
 }: {
+  /** ⚠ WHOSE LIST (2 Oct 2026): null is the reader's own, as it always was; a
+   *  person's id reads THEIR list through `profile_following`, which is what
+   *  makes the figure a door on somebody else's profile too */
+  userId?: string | null;
   /** ⚠ NULL DRAWS NOTHING, NEVER A ZERO — `Figure`'s rule since 20 Sep, kept
    *  here word for word: a count that could not be read is not a count of none,
    *  and every one of these reads is wrapped in a `.catch` so a home still
@@ -50,7 +55,7 @@ export function FollowingFigure({
     setOpen(true);
     if (state || busy) return;
     setBusy(true);
-    void loadFollowingAction().then((r) => {
+    void loadFollowingAction(userId ? { userId } : undefined).then((r) => {
       setState(r);
       setBusy(false);
     });

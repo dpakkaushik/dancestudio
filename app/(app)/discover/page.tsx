@@ -194,8 +194,13 @@ export default async function DiscoverPage({
   allClasses.forEach((c) => styleCount.set(c.style, (styleCount.get(c.style) ?? 0) + 1));
   const styleOrder = [...DOS_STYLE_NAMES].sort((a, b) => (styleCount.get(b) ?? 0) - (styleCount.get(a) ?? 0));
 
+  /* ⚠ NO SECOND CITY FILTER HERE (2 Oct 2026): `findPublishedClasses` already
+     narrows to the city a class is HELD in — the owner's, or the studio that
+     accepted it. This line used to re-filter on the OWNER's city and threw away
+     every artist's class held at a studio in another city, which is exactly the
+     class the user found missing from Gurugram. */
   const inCity = filterClasses(
-    allClasses.filter((c) => c.businessCity === city),
+    allClasses,
     filters
   );
 
@@ -433,7 +438,8 @@ export default async function DiscoverPage({
               danceClass={c}
               filled={filled}
               artist={classArtists.get(c.id) ?? null}
-              city={c.businessCity}
+              /* the city it is HELD in — a studio's room beats its owner's home */
+              city={c.venueStatus === "accepted" && c.venueCity ? c.venueCity : c.businessCity}
               href={withAs(`/c/${c.shareSlug}`, asRaw)}
               actions={
                 c.session ? (

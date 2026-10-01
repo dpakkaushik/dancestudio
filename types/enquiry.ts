@@ -23,6 +23,13 @@ export interface EnquiryType {
   fields: EnquiryField[];
 }
 
+/* ⚠⚠ SHORTER, ON PURPOSE (2 Oct 2026, the user: "shorter forms for every kind
+   of enquiry"). Each kind keeps only the questions that change the PRICE —
+   what it is, and how much of it — and the rest is the conversation the quote
+   starts. Gone: a judge's panel size, a private session's level and where they
+   train, a collaboration's "what's needed". Old enquiries keep every field they
+   were sent with, because `fields` stores [label, value] pairs and is read back
+   whole; nothing about them changes. */
 export const ENQ_TYPES: EnquiryType[] = [
   /* ⚠ AN ORGANIZATION COULD BE ASKED THREE OF THESE (19 Sep 2026) and cannot be
      asked anything now, because there is no organization (29 Sep 2026). What is
@@ -71,10 +78,7 @@ export const ENQ_TYPES: EnquiryType[] = [
     c: "#F59E0B",
     /* judging is a person's job — offered to artists only (4934) */
     to: ["artist_page"],
-    fields: [
-      { k: "event", t: "event", label: "Which event" },
-      { k: "panel", t: "count", label: "Judges on the panel", min: 1, max: 9, def: 3 },
-    ],
+    fields: [{ k: "event", t: "event", label: "Which event" }],
   },
   {
     k: "private",
@@ -90,8 +94,6 @@ export const ENQ_TYPES: EnquiryType[] = [
         label: "Dance style",
         opts: ["Hip-Hop", "Breaking", "Contemporary", "Bollywood", "Kathak", "Bharatanatyam", "Salsa", "Popping", "Freestyle"],
       },
-      { k: "level", t: "select", label: "Level", opts: ["Absolute beginner", "Beginner", "Intermediate", "Advanced"] },
-      { k: "mode", t: "select", label: "Where they train", opts: ["At the studio", "At my place", "Online"] },
       { k: "sessions", t: "count", label: "How many sessions", min: 1, max: 40, def: 8 },
     ],
   },
@@ -108,7 +110,6 @@ export const ENQ_TYPES: EnquiryType[] = [
         label: "Type of collaboration",
         opts: ["Content shoot", "Guest workshop", "Co-choreography", "Brand campaign", "Music video", "Festival showcase"],
       },
-      { k: "deliver", t: "select", label: "What's needed", opts: ["Choreography only", "Perform on camera", "Teach a batch", "Full production"] },
     ],
   },
 ];
@@ -149,6 +150,16 @@ export const ENQ_STAGE_WORD: Record<EnquiryStatus, string> = {
 
 export const ENQ_STAGES: EnquiryStatus[] = ["new", "in_talks", "quoted", "advance_paid", "confirmed", "won", "lost"];
 
+/** ⚠ THE ROAD AN ENQUIRY TRAVELS, in the order it is travelled (2 Oct 2026, the
+ *  user: "better status update"). `ENQ_STAGES` is the order the prototype's
+ *  status MENU lists them, which puts Advance paid before Confirmed — the
+ *  opposite of what happens. The tracker on every card and the detail page draws
+ *  THIS one; Lost is not a step on it but the road ending, drawn apart. */
+export const ENQ_ROAD: EnquiryStatus[] = ["new", "in_talks", "quoted", "confirmed", "advance_paid", "won"];
+
+/** how far along the road a stage is — Lost answers -1 */
+export const roadStep = (s: EnquiryStatus): number => ENQ_ROAD.indexOf(s);
+
 export type QuoteStatus = "sent" | "accepted" | "declined" | "superseded";
 
 export interface EnquiryQuote {
@@ -176,6 +187,11 @@ export interface Enquiry {
   crewId: string | null;
   fromUserId: string;
   fromName: string;
+  /** ⚠ BOTH FACES (2 Oct 2026, the user: "profile photos of people") — the
+   *  sender's profile picture, and the asked business's or crew's. Null draws
+   *  initials; a picture whose row the reader may not see is null, never an error */
+  fromPhotoPath: string | null;
+  toPhotoPath: string | null;
   typeKey: EnquiryTypeKey;
   /** the exact fields this type collected, as [label, value] pairs */
   fields: Array<[string, string]>;
@@ -199,6 +215,12 @@ export const enquiryStage = (e: { status: EnquiryStatus; quotes: EnquiryQuote[] 
   const live = liveQuoteOf(e);
   if (!live) return e.status;
   if (live.fullPaidAt) return "won";
+  /* ⚠ A HAND-SET CLOSE WINS (2 Oct 2026, found while redesigning the status
+     control): the business may close an enquiry as Won or Lost from its menu,
+     and with a live quote the derived stage used to override it — so pressing
+     "Lost" on a quoted enquiry changed the row and changed nothing on screen. A
+     close is a decision; the quote's own state is only the default. */
+  if (e.status === "lost" || e.status === "won") return e.status;
   if (live.advancePaidAt) return "advance_paid";
   if (live.status === "accepted") return "confirmed";
   if (live.status === "declined") return "lost";

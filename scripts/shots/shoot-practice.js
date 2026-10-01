@@ -207,6 +207,10 @@ const tomorrowIst = () => {
     /* ── 4 · THE REGISTER ── */
     await leader.goto(`${BASE}/crews/${crewId}/manage/practice`, { waitUntil: "networkidle" });
     check(await leader.getByText("1 of 1 coming").isVisible().catch(() => false), "the leader's desk counts the yes");
+    /* 2 Oct 2026: the card leads with the crew it is for, then a date block */
+    const card = leader.getByTestId("practice-card").first();
+    check((await card.innerText()).includes(crewName), "the practice card names its crew at the top");
+    await card.screenshot({ path: require("path").join(__dirname, "shots", "practice-card.png") }).catch(() => {});
     await leader.getByRole("button", { name: /^Register for/ }).first().click();
     await leader.waitForTimeout(1200);
     check(await leader.getByText(memberName).first().isVisible().catch(() => false), "the register lists the member, read ON THE PRESS");
