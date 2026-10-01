@@ -54,7 +54,7 @@ export const DESKS: AdminDesk[] = [
      that had writers and, until this desk, no reader at all. */
   { href: "/admin/reach", label: "Reach", what: "What people looked for, what they were shown, what arrived", k: "reach" },
   { href: "/admin/accounts", label: "Accounts", what: "Every person and organization", k: "accounts" },
-  { href: "/admin/businesses", label: "Businesses", what: "Every studio and artist page", k: "businesses" },
+  { href: "/admin/businesses", label: "Businesses", what: "Every studio and artist", k: "businesses" },
   { href: "/admin/audit", label: "Audit", what: "Every decision an admin has made", k: "audit" },
 ];
 

@@ -156,7 +156,7 @@ export function BusinessEditSheet({
   return (
     <Portal>
     <Sheet label="Edit business" onClose={onClose} maxHeight="88vh">
-      <b style={{ fontSize: 16.5, letterSpacing: -0.2 }}>Edit {isStudio ? "studio" : "artist page"}</b>
+      <b style={{ fontSize: 16.5, letterSpacing: -0.2 }}>Edit {isStudio ? "studio" : "details"}</b>
 
       {/* ── THE PICTURES (16 Sep 2026) ────────────────────────────────────────
           The round one first, because it is the one everybody sees on a card;

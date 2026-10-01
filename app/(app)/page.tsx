@@ -368,9 +368,13 @@ export default async function HomePage() {
                   Said in one sentence rather than left as tiles that open the hub. */}
               {isArtist && !pageId ? (
                 <div role="status" style={{ background: CARD, border: `1.5px solid ${GOLD}66`, borderLeft: `3px solid ${GOLD}`, borderRadius: 16, padding: "12px 14px", marginBottom: 10 }}>
-                  <span style={{ display: "block", fontSize: 12.5, fontWeight: 900, color: INK }}>Your artist page is still being set up</span>
+                  {/* ⚠ "ARTIST TOOLS", NOT "ARTIST PAGE" (1 Oct 2026): an artist has one
+                      profile (R24) and the business row behind it is never named to
+                      them — the user asked whether the two were separate things,
+                      which is what this sentence made them sound like. */}
+                  <span style={{ display: "block", fontSize: 12.5, fontWeight: 900, color: INK }}>Your artist tools are still being set up</span>
                   <span style={{ display: "block", fontSize: 11, color: SUB, marginTop: 3, lineHeight: 1.5 }}>
-                    Team, Students and Earnings run through it. It could not be made just now — open Home again in a moment, and if this stays, message DanceOS from Settings.
+                    Team, Students and Earnings open once they are ready. It could not be finished just now — open Home again in a moment, and if this stays, message DanceOS from Settings.
                   </span>
                 </div>
               ) : null}

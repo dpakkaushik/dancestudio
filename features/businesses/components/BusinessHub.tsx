@@ -324,7 +324,7 @@ export function BusinessHub({
     const loc = [t.area, t.city].filter(Boolean).join(", ");
     const n = roomCounts[t.id] ?? 0;
     const sub = own
-      ? [loc, t.type === "studio" ? `${n} room${n === 1 ? "" : "s"}` : "Your artist page"].filter(Boolean).join(" · ")
+      ? [loc, `${n} room${n === 1 ? "" : "s"}`].filter(Boolean).join(" · ")
       : [t.type === "studio" ? "Studio" : "Artist", loc].filter(Boolean).join(" · ");
     return (
       <div style={{ position: "relative", zIndex: 0, display: "flex", alignItems: "center", gap: 11 }}>
@@ -623,7 +623,7 @@ export function BusinessHub({
           <div
             role="dialog"
             aria-modal="true"
-            aria-label={isStudio ? "New studio" : "Your artist page"}
+            aria-label="New studio"
             onClick={(e) => e.stopPropagation()}
             style={{
               background: "var(--solid)",
@@ -639,26 +639,26 @@ export function BusinessHub({
             }}
           >
             <div style={{ width: 40, height: 4, borderRadius: 2, background: EL, margin: "0 auto 12px" }} />
-            <b style={{ fontSize: 17, fontFamily: DOS_DISPLAY }}>{isStudio ? "New studio" : "Your artist page"}</b>
+            <b style={{ fontSize: 17, fontFamily: DOS_DISPLAY }}>New studio</b>
             {/* ⚠ ONE CLAUSE (27 Sep 2026, "less details in creation forms for
                 everything should mostly just be headings"). What is kept is the
                 only thing somebody cannot discover by pressing on: that a studio
                 is born PRIVATE. The branch advice and the list of what lives
                 behind a page were describing the app to somebody already in it. */}
-            <div style={{ fontSize: 11.5, color: SUB, margin: "3px 0 14px", lineHeight: 1.5 }}>{isStudio ? "One studio = one location. It stays private until it is verified and subscribed." : "One page, and your classes and earnings live behind it."}</div>
+            <div style={{ fontSize: 11.5, color: SUB, margin: "3px 0 14px", lineHeight: 1.5 }}>One studio = one location. It stays private until it is verified and subscribed.</div>
 
             <form action={formAction}>
               {/* ⚠ THE ONE PLACE THE TEXT BECOMES A NUMBER — the payload the action parses */}
               <input type="hidden" name="rooms" value={JSON.stringify(isStudio ? rooms.map((r) => ({ name: r.name, capacity: capacityOf(r.capacity) })) : [])} />
 
               <div style={{ fontSize: 12, color: SUB, margin: "0 0 4px" }}>
-                {isStudio ? "Studio name" : "Page name"}
+                Studio name
               </div>
               <input
                 name="name"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
-                placeholder={isStudio ? "e.g. EEE Dance Studio — Andheri" : "e.g. Rhea Kapoor Dance Co."}
+                placeholder="e.g. EEE Dance Studio — Andheri"
                 style={inp}
               />
               {/* ── WHERE IT IS, RIGHT AFTER THE NAME (11 Sep 2026 — the user:
@@ -856,7 +856,7 @@ export function BusinessHub({
                   cursor: ok ? "pointer" : "default",
                 }}
               >
-                {isPending ? "Creating…" : isStudio ? "Create studio" : "Create my artist page"}
+                {isPending ? "Creating…" : "Create studio"}
               </button>
             </form>
           </div>

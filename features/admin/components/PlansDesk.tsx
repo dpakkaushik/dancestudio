@@ -12,7 +12,7 @@ const MUTED = "var(--muted)";
 const btn: React.CSSProperties = { height: 32, padding: "0 11px", borderRadius: 10, fontSize: 11, fontWeight: 800, cursor: "pointer", fontFamily: "inherit", border: `1.5px solid ${EL}`, background: CARD, color: INK };
 
 const KIND_WORDS: Record<PlanCatalogRow["kind"], { who: string; what: string; tone: string }> = {
-  artist: { who: "a user", what: "unlocks the artist tools and one artist page", tone: "#EC4899" },
+  artist: { who: "a user", what: "unlocks the artist tools and makes their profile public", tone: "#EC4899" },
   studio: { who: "a person, per studio", what: "puts ONE studio on Discover — two studios need two", tone: "#0E7490" },
   /* ⚠ RETIRED 29 Sep 2026 — organizations went, so nothing can buy this plan.
      The ROW is still on the price list (`plan_catalog` holds `org_monthly`, and

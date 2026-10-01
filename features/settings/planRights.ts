@@ -42,7 +42,11 @@ export const PLAN_RIGHTS: Record<PlanKind, Array<[icon: string, title: string, s
   artist: [
     /* `ensureArtistPage` + `public_artist` (R22, R24): the page is provisioned and
        a stranger can read it — without the plan there is no page to read */
-    ["👤", "Your artist page", "a public profile strangers can open, with your styles, links and posters"],
+    /* ⚠ SAID AS THE PROFILE, NOT A "PAGE" (1 Oct 2026, the user: "are artist
+       profile and artist page 2 seprate things?" — they are not, R24). What the
+       plan buys is that YOUR profile goes public; the business row behind it is
+       plumbing nobody should be told about. */
+    ["👤", "Your profile goes public", "strangers can open it, with your styles, links and posters"],
     /* `why_no_class` refuses a class on an artist page whose plan has lapsed */
     ["🗓", "Teach your own classes", "run them at a studio's room, or at a place of your own"],
     /* `discover_artists` lists the people with a live plan */

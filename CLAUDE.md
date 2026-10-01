@@ -2,6 +2,26 @@
 
 ## LAST SESSION (1 Oct 2026) — replaced on every push (Rule 13)
 
+> ### AN ARTIST HAS ONE PROFILE, IN EVERY SENTENCE (1 Oct 2026, latest) — ⚠ ONE MIGRATION WRITTEN, DRY-RUN 8/8 AND HELD (NEXT TO DO #0b8)
+> The user: *"are artist profile and artist page 2 seprate things?"* — no (R24) —
+> then *"yeah please fix this part"*. The words "artist page" were still reaching
+> people in five places and the switcher/Settings were checked and were already
+> clean (they list studios only).
+> * **App:** Home's provisioning card reads *"Your artist tools are still being
+>   set up"*; the Artist plan's first right is *"Your profile goes public"*; the
+>   admin desks say "artist(s)"; and the hub's New-studio sheet lost its dead
+>   artist-page branches (`isStudio` has been the constant `true` since 18 Sep, so
+>   "Your artist page" / "Create my artist page" were unreachable text).
+> * **Database (HELD):** `20261001090000_an_artist_has_one_profile` swaps the ONE
+>   user-visible sentence — `why_no_class`'s *"Classes on an artist page need a
+>   live Artist plan"*, drawn as the Create class pill when a plan lapses — for
+>   *"Teaching your own classes needs a live Artist plan — renew it from
+>   Subscription on Home"*. Catalog-driven, anchor asserted once, same signature
+>   and grants. ⚠ `create_business_with_owner`'s and `guard_business_type`'s
+>   artist-page refusals are deliberately left: no screen prints them.
+> * **Verified:** typecheck 0 · lint 0 · build green · dry run **8/8 rolled back**
+>   · `shoot-tiles` 134/134 · `shoot-hero` 186/186 · `shoot-admin` 26/26 clean.
+
 > ### CLASSES TAKEN ELSEWHERE FILED IN THEIR COLUMN, PRACTICE IN TWO COLUMNS, AND A DANCER FOR ROUTINES (1 Oct 2026, later) — no migration
 > The user: *"classes taken elsewhere … shown on all columns at the bottom. fix it
 > according to the column where it should be placed"*, then *"better icon for
@@ -9144,6 +9164,11 @@ summary; the report has the evidence.
   List / Unlist; no 18+ gate; the dead management token.
 
 ## NEXT TO DO — replaced on every push (Rule 13)
+
+0b8. **⚠ ONE MIGRATION WRITTEN, DRY-RUN 8/8 AND HELD —
+   `20261001090000_an_artist_has_one_profile`.** One literal in `why_no_class`
+   (old → new in the top block); nothing else moves. On the user's word:
+   `db-push -DryRun` (must list exactly it) → `db-push` → push `main`.
 
 0b7. **~~ONE MIGRATION WRITTEN, DRY-RUN 24/24 AND HELD~~ — ✅ APPLIED 1 Oct 2026**
    on the user's *"push to live"*, read back live 11/11 (the top block). The list

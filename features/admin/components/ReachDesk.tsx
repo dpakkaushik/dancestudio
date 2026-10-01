@@ -214,7 +214,7 @@ export function ReachDesk({
       {tab === "shown" ? (
         <>
           <DayPicker base={base} tab={tab} q={q} days={days} />
-          <SearchBar action={base} q={q} placeholder="Find a studio or artist page" keep={keep} />
+          <SearchBar action={base} q={q} placeholder="Find a studio or an artist" keep={keep} />
           {!q ? (
             <EmptyLine>
               Find a business to see how often it was shown, on which surface, and where in the shelf.

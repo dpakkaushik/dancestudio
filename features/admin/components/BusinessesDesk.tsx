@@ -129,7 +129,7 @@ export function BusinessesDesk({
         cols={3}
         figs={[
           { n: counts.studios, label: "studios", href: `${base}?tab=studios` },
-          { n: counts.artists, label: "artist pages", href: `${base}?tab=artists` },
+          { n: counts.artists, label: "artists", href: `${base}?tab=artists` },
           { n: counts.listed, label: "on Discover", href: `${base}?tab=public`, tone: "#22C55E" },
         ]}
       />
@@ -146,7 +146,7 @@ export function BusinessesDesk({
         ]}
       />
       <SearchBar action={base} q={q} keep={{ tab }} placeholder="A studio, an organization, a city, or an owner…" />
-      <CountLine shown={businesses.length} total={total} what={tab === "all" ? "businesses" : tab === "artists" ? "artist pages" : tab === "public" ? "on Discover" : tab === "private" ? "not public" : tab} q={q} />
+      <CountLine shown={businesses.length} total={total} what={tab === "all" ? "businesses" : tab === "artists" ? "artists" : tab === "public" ? "on Discover" : tab === "private" ? "not public" : tab} q={q} />
 
       {businesses.length === 0 ? (
         <div style={{ fontSize: 11.5, color: SUB }}>Nothing matches that.</div>
@@ -200,7 +200,7 @@ export function BusinessesDesk({
                     </div>
                     <div style={{ display: "flex", gap: 4, marginTop: 5, flexWrap: "wrap" }}>
                       <span style={{ ...chip, background: b.type === "studio" ? "#DBEAFE" : isOrg ? "#E5E5E5" : "#FCE7F3", color: b.type === "studio" ? "#1D4ED8" : isOrg ? "#525252" : "#BE185D" }}>
-                        {b.type === "studio" ? "STUDIO" : isOrg ? "ORGANIZATION · RETIRED" : "ARTIST PAGE"}
+                        {b.type === "studio" ? "STUDIO" : isOrg ? "ORGANIZATION · RETIRED" : "ARTIST"}
                       </span>
                       {isOrg ? null : <span style={{ ...chip, background: live ? "#DCFCE7" : "#FEF3C7", color: live ? "#15803D" : "#92400E" }}>{live ? "PUBLIC" : "NOT PUBLIC"}</span>}
                       {b.ownerSuspended ? <span style={{ ...chip, background: "#FEE2E2", color: "#B42318" }}>OWNER SUSPENDED</span> : null}
