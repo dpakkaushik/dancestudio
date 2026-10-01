@@ -41,6 +41,9 @@
 >   (49 cards, **44/44 photos loaded**, no filters on the tab, removed styles
 >   gone and 404, the five headings in column 1, the credit, the signed-out and
 >   signed-in Rankings) · `shoot-discover` 45/45 · `shoot-classes` 79/79.
+> * ✅ **PUSHED AND LIVE (`1841766`)**: Vercel's list for this sha BUILDING →
+>   READY, the alias confirmed on it through the API, the same browser check
+>   **20/20 on the live site** (44/44 photos loaded there) and `stranger-smoke` 8/8.
 
 > ### "WHAT YOU RUN" OFF THE PROFILE, CLEANER ARTIST/CREW CARDS, AND ONE TAB HEADING (2 Oct 2026, earlier) — no migration
 > The user: *"1. what you run section can be removed from profiles as already
