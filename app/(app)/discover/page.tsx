@@ -6,6 +6,7 @@ import { CrewI } from "@/features/crews/components/crew-kit";
 import { EnrollButton } from "@/features/classBookings/components/EnrollButton";
 import { CompactCard } from "@/features/discovery/components/CompactCard";
 import { StyleCard, StyleI } from "@/features/styles/components/StyleCard";
+import { stylesShelfOrder } from "@/lib/constants/styleInfo";
 import { DiscoverFilters } from "@/features/discovery/components/DiscoverFilters";
 import { DiscoverTabs } from "@/features/discovery/components/DiscoverTabs";
 import { FollowedShelf, type FollowedTile } from "@/features/discovery/components/FollowedShelf";
@@ -505,10 +506,12 @@ export default async function DiscoverPage({
         </div>
       )}
 
-      {/* every style, busiest in this city first (the same order the style rail uses) */}
+      {/* every style — the classical forms first, then the rest mixed across
+          families (2 Oct 2026, the user: "mix order of dance styles as all
+          classical infront") */}
       {tab === "styles" && (
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
-          {styleOrder.map((s) => (
+          {stylesShelfOrder().map((s) => (
             <StyleCard key={s} style={s} classes={styleCount.get(s) ?? 0} city={city} />
           ))}
         </div>

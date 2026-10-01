@@ -2,7 +2,34 @@
 
 ## LAST SESSION (2 Oct 2026) — replaced on every push (Rule 13)
 
-> ### A STYLES SECTION ON DISCOVER, A PAGE PER STYLE, AND 17 STYLES RETIRED (2 Oct 2026, latest) — no migration
+> ### THE STYLE PHOTOS ARE DANCERS, THEY FIT, AND THE CLASSICAL FORMS LEAD (2 Oct 2026, latest) — no migration, ⚠ COMMITTED LOCALLY, NOT PUSHED
+> The user: *"dance style photos should be of a dance pose from that syle and
+> should fit ptoperly in discover and detail pages. mix order of dance styles as
+> all classical infront . some photos missing."*
+> * **Photos reviewed on a contact sheet, not trusted from the search**: 16
+>   replaced or added (Kathak, Tap, Commercial, Heels, Samba, Zumba, Lavani,
+>   Popping, Salsa, Hip-Hop, Flamenco, Sattriya, Odissi, Dandiya Raas …) — the
+>   automatic picks had put an engineer on Locking, buildings on House and a
+>   Chhau photo on Semi-classical. **45 of 49 have a photo.** ⚠ **Afrobeats,
+>   Locking, Waacking and Jazz Funk still have none**: Commons has no honest
+>   free-licence picture of them and Openverse is blocked (Cloudflare, then
+>   401/429). They draw the style colour and the page says "No photo of X yet".
+>   ⚠ Heels is a 1965 showgirl promo (the Kessler twins) — dancers in heels, not
+>   a heels class.
+> * **Fit**: a card frames `50% 22%` (where a dancer's face is) and the style
+>   page draws the WHOLE photo at its own ratio (`contain`, the manifest now
+>   carries width/height). The fetch script's minimum is the SHORT side, so a
+>   portrait photo qualifies.
+> * ⚠ **A new photo is a new FILE NAME** (`<slug>-<sha1 of title>.jpg`): the same
+>   name kept serving the old picture from every cache, which made Popping look
+>   unfixed.
+> * **Order**: `stylesShelfOrder()` — Indian classical first, then the other
+>   families round-robin, so the shelf no longer reads as one family at a time.
+> * **Verified:** typecheck 0 · lint 0 · build green · a browser check 24/24
+>   (49 cards, 45 photos loaded, classical first, the fit on both pages) ·
+>   `shoot-discover` 45/45.
+
+> ### A STYLES SECTION ON DISCOVER, A PAGE PER STYLE, AND 17 STYLES RETIRED (2 Oct 2026, earlier) — no migration
 > The user: *"1. remove some unpopular dance styles. 2. New section in discover
 > called Styles. 3. All dance styles cards on this page with a photo of that
 > particular dance style. page opens dance style — column 1: Photos, info,

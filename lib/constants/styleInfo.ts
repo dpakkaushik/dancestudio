@@ -34,6 +34,10 @@ export interface StylePhoto {
   license: string;
   licenseUrl: string | null;
   source: string;
+  /** the stored file's own size, so the style's page draws it WHOLE at its
+   *  natural shape rather than cropping the dancer (2 Oct 2026) */
+  width: number;
+  height: number;
 }
 
 export const styleSlug = (style: string): string =>
@@ -43,12 +47,17 @@ const BY_SLUG = new Map(DOS_STYLE_NAMES.map((s) => [styleSlug(s), s]));
 /** the style a slug names, or null — a URL is a request, the registry decides */
 export const styleFromSlug = (slug: string): string | null => BY_SLUG.get(slug) ?? null;
 
-type PhotoRow = Omit<StylePhoto, "src">;
+/* ⚠ THE FILE NAME CARRIES A FINGERPRINT OF THE PHOTO (2 Oct 2026). Re-picking a
+   style's photo under the same `<slug>.jpg` kept serving the OLD picture — Next's
+   image cache, the CDN and every browser key on the URL — so a new photo must be
+   a new URL. `file` is `<slug>-<8 hex of the Commons title>.jpg`. */
+type PhotoRow = Omit<StylePhoto, "src"> & { file: string };
 const PHOTO_ROWS = PHOTOS as Record<string, PhotoRow>;
 export const stylePhoto = (style: string): StylePhoto | null => {
-  const slug = styleSlug(style);
-  const row = PHOTO_ROWS[slug];
-  return row ? { src: `/styles/${slug}.jpg`, ...row } : null;
+  const row = PHOTO_ROWS[styleSlug(style)];
+  if (!row) return null;
+  const { file, ...rest } = row;
+  return { src: `/styles/${file}`, ...rest };
 };
 
 const IC = "Indian classical";
@@ -507,6 +516,25 @@ export const STYLE_INFO: Record<string, StyleInfo> = {
     notable: [],
   },
 };
+
+/** THE ORDER OF THE STYLES SHELF (2 Oct 2026, the user: "mix order of dance
+ *  styles as all classical infront"). Every Indian classical form first, in the
+ *  registry's order, then the rest MIXED — one from each family in turn, so the
+ *  shelf does not read as nine blocks of the same kind of dance. ⚠ Deterministic:
+ *  the same order on every load, so a style is where you left it. */
+export function stylesShelfOrder(): string[] {
+  const classical = DOS_STYLE_NAMES.filter((s) => styleInfo(s).family === IC);
+  const byFamily = new Map<string, string[]>();
+  for (const s of DOS_STYLE_NAMES) {
+    const f = styleInfo(s).family;
+    if (f === IC) continue;
+    byFamily.set(f, [...(byFamily.get(f) ?? []), s]);
+  }
+  const queues = [...byFamily.values()];
+  const mixed: string[] = [];
+  while (queues.some((q) => q.length)) for (const q of queues) if (q.length) mixed.push(q.shift() as string);
+  return [...classical, ...mixed];
+}
 
 /** a style's record, or a plain one for anything the map has not been told about */
 export const styleInfo = (style: string): StyleInfo =>

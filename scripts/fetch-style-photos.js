@@ -7,8 +7,8 @@
  *   node scripts/fetch-style-photos.js Kathak     # just these (re-pick)
  *   node scripts/fetch-style-photos.js --file "Kathak=File:Some photo.jpg"
  *
- * Writes public/styles/<slug>.jpg and lib/constants/stylePhotos.json
- * ({ slug: { title, credit, license, licenseUrl, source } }).
+ * Writes public/styles/<slug>-<fingerprint>.jpg and lib/constants/stylePhotos.json
+ * ({ slug: { title, credit, license, licenseUrl, source, width, height, file } }).
  *
  * ⚠ ONLY A LICENCE THAT ALLOWS THIS USE IS ACCEPTED — public domain, CC0, CC BY
  * and CC BY-SA. Every one of those but PD/CC0 requires attribution, which is why
@@ -85,10 +85,15 @@ function judge(page) {
   if (!ALLOWED.test(license)) return null;
   if (/nc|nd/i.test(license.replace(/\bcc\b/i, ""))) return null;
   if (!/\.(jpe?g|png|webp)$/i.test(page.title)) return null;
-  if ((ii.width ?? 0) < 700 || (ii.height ?? 0) < 450) return null;
+  /* the SHORT side is what matters: a portrait photo 680 wide suits a portrait card */
+  if (Math.min(ii.width ?? 0, ii.height ?? 0) < 600) return null;
   return {
     title: page.title,
     thumb: ii.thumburl,
+    /* the thumbnail's own shape, so a page can draw the WHOLE photo at its
+       natural ratio instead of cropping the dancer out of it (2 Oct 2026) */
+    width: ii.thumbwidth ?? ii.width,
+    height: ii.thumbheight ?? ii.height,
     credit: strip(m.Artist?.value) || "Unknown author",
     license,
     licenseUrl: strip(m.LicenseUrl?.value) || null,
@@ -138,6 +143,15 @@ async function download(url, file) {
       forced.set(style, title);
     } else named.push(args[i]);
   }
+  /* `--refresh` re-reads every photo already chosen, by its own title, so a
+     manifest row written before width/height were recorded gets them */
+  if (args.includes("--refresh")) {
+    for (const s of all) {
+      const row = manifest[slugOf(s)];
+      if (row && !row.width) forced.set(s, row.title);
+    }
+    named.splice(named.indexOf("--refresh"), 1);
+  }
   const want = forced.size ? [...forced.keys()] : named.length ? named : all.filter((s) => !manifest[slugOf(s)]);
   const skip = Number(process.env.SKIP ?? 0);
 
@@ -151,8 +165,13 @@ async function download(url, file) {
         console.log(`SKIP  ${style} — no freely licensed photo found`);
         continue;
       }
-      await download(pick.thumb, path.join(OUT_DIR, `${slug}.jpg`));
-      manifest[slug] = { title: pick.title, credit: pick.credit, license: pick.license, licenseUrl: pick.licenseUrl, source: pick.source };
+      /* ⚠ a new photo is a new FILE NAME — the same name kept serving the old
+         picture from every cache between here and the screen */
+      const file = `${slug}-${require("node:crypto").createHash("sha1").update(pick.title).digest("hex").slice(0, 8)}.jpg`;
+      const old = manifest[slug]?.file;
+      await download(pick.thumb, path.join(OUT_DIR, file));
+      if (old && old !== file && fs.existsSync(path.join(OUT_DIR, old))) fs.unlinkSync(path.join(OUT_DIR, old));
+      manifest[slug] = { title: pick.title, credit: pick.credit, license: pick.license, licenseUrl: pick.licenseUrl, source: pick.source, width: pick.width, height: pick.height, file };
       console.log(`OK    ${style.padEnd(16)} ${pick.license.padEnd(14)} ${pick.title}`);
     } catch (e) {
       console.log(`FAIL  ${style} — ${e.message}`);

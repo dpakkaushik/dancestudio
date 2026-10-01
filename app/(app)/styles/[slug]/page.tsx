@@ -68,8 +68,12 @@ export default async function StylePage({
         <div style={head}>PHOTOS</div>
         {photo ? (
           <>
-            <div style={{ position: "relative", width: "100%", aspectRatio: "3 / 2", borderRadius: 12, overflow: "hidden", background: color }}>
-              <Image src={photo.src} alt={`${style} — ${photo.title.replace(/^File:/, "").replace(/\.[a-z]+$/i, "")}`} fill sizes="(max-width: 430px) 92vw, 400px" style={{ objectFit: "cover" }} />
+            {/* ⚠ THE WHOLE PHOTO, AT ITS OWN SHAPE (2 Oct 2026, the user: "should fit
+                properly in … detail pages"): a fixed 3:2 box cropped every portrait
+                photo to the dancer's middle. A very tall one is capped and shown
+                whole inside the cap rather than cut. */}
+            <div style={{ position: "relative", width: "100%", aspectRatio: `${photo.width} / ${photo.height}`, maxHeight: 520, borderRadius: 12, overflow: "hidden", background: "var(--el)" }}>
+              <Image src={photo.src} alt={`${style} — ${photo.title.replace(/^File:/, "").replace(/\.[a-z]+$/i, "")}`} fill sizes="(max-width: 430px) 92vw, 400px" style={{ objectFit: "contain" }} />
             </div>
             <div style={{ fontSize: 10.5, color: SUB, marginTop: 7, lineHeight: 1.45 }} data-testid="style-photo-credit">
               Photo: {photo.credit} ·{" "}
