@@ -15,7 +15,7 @@ import { filterClasses, filterCrews, filterBusinesses, filtersToParams, parseFil
 import { gradientOf } from "@/features/profiles/components/profile-kit";
 import { DOS_STYLE_NAMES } from "@/lib/constants/styles";
 import { INDIA_CENTRE, centreOf, findDiscoverCities } from "@/repositories/cities";
-import { DOS_DISPLAY, DOS_UI, INK, SKY, SUB } from "@/lib/design/tokens";
+import { DOS_DISPLAY, DOS_UI, INK, SKY, SUB, TAB_SUB, TAB_TITLE } from "@/lib/design/tokens";
 import { photoUrl } from "@/lib/media/photo";
 import { publicProfilePath } from "@/lib/routes/publicProfile";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
@@ -393,12 +393,17 @@ export default async function DiscoverPage({
           room to spare, and the sub-line ellipsises rather than pushing the chip
           off if a longer sentence ever lands there. The 5px keeps the measured
           rhythm the 27 Sep probe established. */}
-      <h1 data-testid="discover-title" style={{ margin: 0, fontSize: 34, fontWeight: 900, fontFamily: DOS_DISPLAY, letterSpacing: -1.1, lineHeight: 1.05, color: INK }}>
+      {/* ⚠ THE SUB-LINE IS THE PAGE'S LINE NOW (2 Oct 2026, the user: "Dance near
+          you to be changed to - Dance First, Think Later ! with a bit bigger
+          font"), and both it and the heading read `TAB_TITLE` / `TAB_SUB`, the
+          pair the Inbox reads too. ⚠ It still shares the chip's line and still
+          ellipsises before it pushes the chip off. */}
+      <h1 data-testid="discover-title" style={{ ...TAB_TITLE, color: INK }}>
         Discover
       </h1>
       <div data-testid="discover-place-row" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, marginTop: 5, minWidth: 0 }}>
-        <span data-testid="discover-sub" style={{ minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", fontSize: 12.5, fontWeight: 700, color: SUB }}>
-          Dance near you
+        <span data-testid="discover-sub" style={{ ...TAB_SUB, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+          Dance First, Think Later!
         </span>
         <PlaceChip city={city} cities={cities.map((c) => c.city)} tab={tab} extra={{ ...filtersToParams(filters), ...(asRaw ? { as: asRaw } : {}) }} near={near !== null} offerNearMe={wantsBusinesses} />
       </div>

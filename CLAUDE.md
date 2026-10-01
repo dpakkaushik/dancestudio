@@ -2,7 +2,29 @@
 
 ## LAST SESSION (2 Oct 2026) — replaced on every push (Rule 13)
 
-> ### EARNINGS OPENS ONTO ITS ROWS, A CLASS IS IN THE CITY IT IS HELD IN, AND ENQUIRIES ARE REDESIGNED (2 Oct 2026, latest) — ✅ `20261002090000` APPLIED (dry run **10/10** re-run first, read back live **6/6**) AND `test2` RENAMED
+> ### "WHAT YOU RUN" OFF THE PROFILE, CLEANER ARTIST/CREW CARDS, AND ONE TAB HEADING (2 Oct 2026, latest) — no migration
+> The user: *"1. what you run section can be removed from profiles as already
+> mentioned below. 2. artist and crew discover cards text can be adjusted better
+> below the pic. 3. Dance near you to be changed to - Dance First, Think Later !
+> with a bit bigger font. 4. font size match for heading and sub heading for
+> discover and inbox."*
+> * **What you run is gone** from your own profile (C72 reversed): the Studios
+>   group below already names what you own with its seat word, so a studio was
+>   listed twice. The `owned` prop and its read went with it.
+> * **`CompactCard`'s text**: the name is clamped to two lines with an ellipsis
+>   (it was cut at a fixed height with none), the tick rides its first line, the
+>   place sits under it, and the count is pinned to the foot under a hairline so a
+>   row lines up. ⚠ Reserving a second line for every name was tried and read as
+>   a hole under every short one.
+> * **"Dance First, Think Later!"** replaces "Dance near you", at 15px (was 12.5).
+> * **`TAB_TITLE` / `TAB_SUB` in `lib/design/tokens`** — one heading (34px) and one
+>   line under it (15px) read by BOTH Discover and the Inbox, measured equal in a
+>   browser; the Inbox was 27px over 11px. The Enquiries desk keeps its `DeskHero`.
+> * **Verified:** typecheck 0 · lint 0 · build green · `shoot-discover` 45/45
+>   (its sub-line check re-cut to the new words and size) · `shoot-hero` 186/186 ·
+>   the cards and both headings screenshotted.
+
+> ### EARNINGS OPENS ONTO ITS ROWS, A CLASS IS IN THE CITY IT IS HELD IN, AND ENQUIRIES ARE REDESIGNED (2 Oct 2026, earlier) — ✅ `20261002090000` APPLIED (dry run **10/10** re-run first, read back live **6/6**) AND `test2` RENAMED
 > ✅ **On the user's *"yes okay for last 2 points and push to live"*** (the previous
 > chat died on "Prompt is too long", so its final report was read out of the
 > transcript before acting on the "yes"): the follow-list migration applied on

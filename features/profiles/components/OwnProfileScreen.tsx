@@ -90,11 +90,8 @@ export async function OwnProfileScreen({ userId, loaded }: { userId: string; loa
   /* ⚠ the `type !== "org"` filter went with organizations (29 Sep 2026); every
      business left has a public page for `scheduleHref` to point at */
   const businesses = seats.map((m) => m.business);
-  /* ⚠⚠ WHAT YOU RUN (27 Sep 2026, the user: "user and artist profiles dont show
-     what they own on their profile"). The owner seat, so a studio somebody
-     merely teaches at is not in it — that one is an association and is listed as
-     one, with its seat word, further down the page. */
-  const owned = seats.filter((m) => m.memberRole === "owner").map((m) => m.business);
+  /* ⚠ "WHAT YOU RUN" (27 Sep 2026) WENT ON 2 Oct 2026 — the Studios group
+     further down already lists what you own, with its seat word. */
   /* ⚠ THE "WHICH BUSINESS" PICK LEFT THIS PAGE WITH SETTINGS (21 Sep 2026), and
      it is worth keeping the record of what it was: it read `businesses[0]` —
      the first business you are on the TEAM of — so a person who teaches
@@ -137,7 +134,6 @@ export async function OwnProfileScreen({ userId, loaded }: { userId: string; loa
       followingCrews={followingCrews}
       scheduleHref={scheduleHref}
       nextSessions={nextSessions}
-      owned={owned}
       memberships={memberships}
       artistTeam={artistTeam}
       plan={plan}

@@ -36,6 +36,26 @@ export const DOS_DISPLAY =
 export const DOS_UI =
   'var(--font-inter-tight), "Inter Tight", Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif';
 
+/** A TAB's page heading and the line under it (2 Oct 2026, the user: "font
+ *  size match for heading and sub heading for discover and inbox"). Discover
+ *  set its `<h1>` at 34px over a 12.5px line and the Inbox at 27px over 11px,
+ *  so the two tabs read as two apps. ⚠ One pair, declared here, read by both —
+ *  two literals that are meant to be equal are a coincidence, not a rule. */
+export const TAB_TITLE = {
+  margin: 0,
+  fontFamily: DOS_DISPLAY,
+  fontSize: 34,
+  fontWeight: 900,
+  letterSpacing: -1.1,
+  lineHeight: 1.05,
+} as const;
+export const TAB_SUB = {
+  fontSize: 15,
+  fontWeight: 700,
+  lineHeight: 1.35,
+  color: "var(--sub)",
+} as const;
+
 /** Per-KIND accent — prototype DOS_TINT (line 2704), re-keyed 8 Sep 2026 when
  *  the roles became user | org and "artist" became the plan's word: an artist
  *  wears the artist pink, a user the dancer cyan. Typed on PersonKind so a

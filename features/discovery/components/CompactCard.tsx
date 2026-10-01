@@ -53,16 +53,43 @@ export function CompactCard({
         )}
         <span style={{ position: "absolute", left: 8, bottom: 8, ...micro, color: "rgba(255,255,255,.92)", padding: "2px 7px", borderRadius: 999, background: "rgba(0,0,0,.36)", backdropFilter: "blur(6px)", WebkitBackdropFilter: "blur(6px)" }}>{label}</span>
       </div>
-      <div style={{ minWidth: 0 }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 5, minWidth: 0 }}>
-          <span style={{ display: "block", flex: 1, minWidth: 0, fontWeight: 900, fontSize: 14, letterSpacing: -0.3, lineHeight: 1.15, fontFamily: DOS_DISPLAY, color: INK, overflow: "hidden", maxHeight: "2.3em", overflowWrap: "normal" }}>{name}</span>
-          {verified ? <VerifiedTick size={13} /> : null}
+      {/* ⚠ THE TEXT UNDER THE PICTURE (2 Oct 2026, the user: "artist and crew
+          discover cards text can be adjusted better below the pic"). The name
+          was cut at a fixed height with no ellipsis — a long name lost half a
+          line with nothing saying so — and the block had no fixed shape, so two
+          cards side by side put their place line and their count at different
+          heights. Now: the name is CLAMPED to two lines with an ellipsis, the
+          tick rides its first line, the place sits right under it, and the count
+          is pushed to the card's foot under a hairline — the same place on every
+          card, which is what lines a row up. ⚠ Reserving a second line for every
+          name was tried and read as a hole under every short name. */}
+      <div style={{ minWidth: 0, padding: "2px 2px 0" }}>
+        <div style={{ display: "flex", alignItems: "flex-start", gap: 5, minWidth: 0, fontSize: 14.5, lineHeight: 1.2 }}>
+          <span
+            title={name}
+            style={{
+              flex: 1,
+              minWidth: 0,
+              fontWeight: 900,
+              letterSpacing: -0.3,
+              fontFamily: DOS_DISPLAY,
+              color: INK,
+              display: "-webkit-box",
+              WebkitLineClamp: 2,
+              WebkitBoxOrient: "vertical",
+              overflow: "hidden",
+              overflowWrap: "anywhere",
+            }}
+          >
+            {name}
+          </span>
+          {verified ? <span style={{ flex: "0 0 auto", marginTop: 2 }}><VerifiedTick size={13} /></span> : null}
         </div>
-        <div style={{ marginTop: 3 }}>
-          <DosWhere city={city} km={km ?? null} size={10.5} />
+        <div style={{ marginTop: 4, minWidth: 0, overflow: "hidden", whiteSpace: "nowrap", textOverflow: "ellipsis" }}>
+          <DosWhere city={city} km={km ?? null} size={11} />
         </div>
       </div>
-      {foot}
+      <div style={{ marginTop: "auto", paddingTop: 8, borderTop: "1.5px solid var(--el)", minWidth: 0 }}>{foot}</div>
     </Link>
   );
 }

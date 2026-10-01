@@ -273,7 +273,9 @@ const measureRail = (page, selector) =>
       check(h.font >= 32, `${theme}: set at the app's display scale — ${h.font}px`);
       check(h.oneLine, `${theme}: and still fits one line`);
       check(h.eyebrowGone, `${theme}: the old DISCOVER eyebrow is GONE — the half a check that only looked at the new place could not tell you`);
-      check(h.subText === "Dance near you", `${theme}: "Dance near you" is the small line — read "${h.subText}"`);
+      // 2 Oct 2026, the user: "Dance near you to be changed to - Dance First, Think Later !"
+      check(h.subText === "Dance First, Think Later!", `${theme}: "Dance First, Think Later!" is the line under the heading — read "${h.subText}"`);
+      check(h.subFont >= 14, `${theme}: a bit bigger than the old 12.5px — ${h.subFont}px`);
       check(h.subFont < h.font, `${theme}: and it is SMALLER than the heading — ${h.subFont}px against ${h.font}px, which is yesterday's hierarchy the other way up`);
       check(h.chipFound, `${theme}: the place chip is in that row`);
       check(h.sameLine, `${theme}: and SHARES its line — the row is ${h.rowH}px against a tallest child of ${h.tallest}px, so the two are side by side and not stacked`);

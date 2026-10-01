@@ -10,7 +10,7 @@ import { respondToPracticeAction } from "@/features/crews/server-actions/practic
 import { acceptInviteAction, declineInviteAction, revokeInviteAction } from "@/features/staff/server-actions/staff";
 import { ClassTile } from "@/features/classes/components/ClassTile";
 import { DeskHero } from "@/features/businesses/components/biz-kit";
-import { DOS_DISPLAY, DOS_UI, LILAC, SKY } from "@/lib/design/tokens";
+import { DOS_DISPLAY, DOS_UI, LILAC, SKY, TAB_SUB, TAB_TITLE } from "@/lib/design/tokens";
 import type { DanceClass } from "@/types/class";
 import type { ClassArtist } from "@/types/classPerson";
 import {
@@ -772,13 +772,15 @@ export function InboxScreen({
         {onEnq ? (
           <DeskHero tool="enquiries" as="h1" margin="0 0 2px" />
         ) : (
-          <h1 style={{ margin: 0, fontFamily: DOS_DISPLAY, fontSize: 27, fontWeight: 900, letterSpacing: -0.6, lineHeight: 1.08 }}>Inbox</h1>
+          /* ⚠ `TAB_TITLE` / `TAB_SUB` (2 Oct 2026): the same heading and the same
+             line under it as Discover's, read from one token pair. */
+          <h1 data-testid="inbox-title" style={TAB_TITLE}>Inbox</h1>
         )}
         {/* ⚠ WHOSE DESK, when a tool tile named one (27 Sep 2026). A list
             narrowed to one studio with nothing on screen saying so reads as a
             list that has lost rows — the same reason every tool hero names the
             business an organization is standing in. */}
-        <div style={{ fontSize: 11, fontWeight: 600, lineHeight: 1.45, color: "var(--sub)", margin: "4px 0 12px" }}>
+        <div data-testid="inbox-sub" style={{ ...TAB_SUB, margin: "5px 0 12px" }}>
           {deskSub ? `${deskSub} · ` : ""}
           {owed > 0 ? `${owed} waiting on you` : "Nothing waiting on you"}
         </div>

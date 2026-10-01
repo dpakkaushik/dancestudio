@@ -20,20 +20,12 @@ import { EnquiryButton } from "@/features/enquiries/components/EnquirySheet";
 import { ProfileLink, ProfileShare } from "./ProfileShare";
 import { StatsChip } from "./StatsChip";
 import type { ArtistPlan } from "@/repositories/plans";
-import type { Business } from "@/types/business";
 import type { PublicTeamMember } from "@/types/publicProfile";
 import type { HeaderPhoto } from "@/repositories/headerPhotos";
 import type { HeroShot } from "./HeroRail";
 import { HeroId, HeroPlace, IdentityHero } from "./hero-kit";
 import { EntityBand, figureLabel, figureNum } from "./profile-band";
-import { Group, ROLE_RING, RoleBadge, Row, Sheet, followTint, initialsOf, type FollowGlyph } from "./profile-kit";
-import type { BusinessType } from "@/types/business";
-
-/** What each kind of thing you run is CALLED on the "What you run" group
- *  (27 Sep 2026). ⚠ `satisfies`, so a fourth `BusinessType` cannot be added
- *  without this map being told — the `GLYPH` lesson of this same morning, where
- *  a `Record<string, …>` let two tiles name a key nobody had written. */
-const OWNED_WORD = { studio: "Studio", artist_page: "Artist page" } satisfies Record<BusinessType, string>;
+import { ROLE_RING, RoleBadge, Sheet, followTint, initialsOf, type FollowGlyph } from "./profile-kit";
 
 /** THE PROFILE TAB — prototype S_profiletab's OWN render (10565-11400), lifted
  *  whole: the profile lit like a player (the role's colour bleeding off the top;
@@ -76,7 +68,6 @@ export function MyProfilePage({
   followingCrews = [],
   scheduleHref,
   nextSessions = [],
-  owned = [],
   memberships = [],
   artistTeam = [],
   plan,
@@ -103,12 +94,8 @@ export function MyProfilePage({
   /* ⚠ `businesses` — every business this account is on the team of — went on
      29 Sep 2026. It was picked from for `scheduleHref`, which the caller works
      out now, and for an organization's event-hosting row, which is gone. */
-  /** ⚠ THE BUSINESSES THIS ACCOUNT **OWNS** (27 Sep 2026) — studios and its
-   *  artist page, public or not yet. A different list from
-   *  `businesses`, which is every seat: the group is about what you RUN, and a
-   *  studio you teach at is not that. The tab's alone — `findMyMemberships` is
-   *  the caller's own read, so there is nothing here a stranger could be shown. */
-  owned?: Business[];
+  /* ⚠ `owned` — the businesses this account OWNS, drawn as "What you run" —
+     went on 2 Oct 2026: the Studios group below already lists them. */
   /** what this artist has ON SALE (20 Sep 2026) — the public page has shown it
    *  since 19 Sep and this one showed nothing, which is one of the five ways the
    *  two screens had drifted */
@@ -341,52 +328,12 @@ export function MyProfilePage({
           scheduleHref={scheduleHref}
           nextSessions={nextSessions}
           accent={RC}
-          beforeGroups={
-            /* ⚠⚠ WHAT YOU RUN, AND IT IS DRAWN FOR EVERYBODY NOW (27 Sep 2026,
-               the user: *"user and artist profiles dont show what they own on
-               their profile"*).
-               They were right, and the cause is a retirement rather than an
-               omission: this block existed, it was headed "Your studios", and it
-               was gated on `isOrg` — a role **R48 retired on 26 Sep**, so from
-               that migration onward NOBODY matched it and every person's own
-               profile stopped showing the businesses they had opened. The same
-               shape as the dead booking gate found the same day: a value retired
-               from one column leaves every reader of it quietly answering the
-               wrong question.
-               ⚠ IT IS THE ONES YOU **OWN**, not the ones you are on the team of
-               — `owned` is filtered on the owner seat, so a studio you merely
-               teach at stays under "Studios" below with its seat word, where it
-               belongs. It carries STUDIOS and ARTIST PAGES; organizations were
-               the third until 29 Sep 2026.
-               ⚠ THE UNLISTED ONES ARE HERE ON PURPOSE. This is your own tab and
-               `findMyMemberships` is your own read, so a studio waiting on its
-               badge shows with "Not public yet" on it — which is the one place
-               in the app that answers "where did the studio I just opened go?".
-               A stranger's view of you never draws this group at all. */
-            owned.length ? (
-              <Group title="What you run" n={owned.length}>
-                {owned.map((t) => (
-                  <Row
-                    key={t.id}
-                    href={t.type === "studio" ? `/business/${t.id}` : `/business/${t.id}/classes`}
-                    markName={t.name}
-                    photo={t.photoPath ? photoUrl(t.photoPath) : null}
-                    title={t.name}
-                    sub={[t.area, t.city].filter(Boolean).join(", ") || OWNED_WORD[t.type]}
-                    /* ⚠ THE BADGE IS ONLY A FACT FOR THE TWO KINDS THAT ARE
-                       REVIEWED. A studio needs an admin's tick and an
-                       organization a verified GST number before either is
-                       public; an ARTIST PAGE is reviewed by nobody, so
-                       "Not verified yet" on one would be an alarm about a state
-                       that does not exist. `Business` carries no `visibility`, so
-                       the badge is what it honestly can be rather than a
-                       listed/unlisted classPerson the type cannot make. */
-                    right={t.type === "artist_page" || t.verifiedAt ? OWNED_WORD[t.type] : "Not verified yet"}
-                  />
-                ))}
-              </Group>
-            ) : null
-          }
+          /* ⚠ NO "WHAT YOU RUN" GROUP (2 Oct 2026, the user: *"what you run
+             section can be removed from profiles as already mentioned below"*).
+             C72 drew the businesses you OWN above the shared groups; the Studios
+             group under it already names them with their seat word, so the same
+             studio was listed twice on one page. A studio still waiting on its
+             badge is reached from the Studios hub, which is where it is set up. */
         />
 
         {/* Log out is in the Settings sheet, where the prototype keeps it (11416) —
