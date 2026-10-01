@@ -344,6 +344,26 @@ const BOOK_ON_PAGE = /^Book (free trial|this class)$/;
     const seated = await rows(owner.h, `class_people?class_id=eq.${second}&status=eq.confirmed&deleted_at=is.null&select=user_id`);
     check(seated.length === 1 && seated[0].user_id === learner.id, "…one press and they are on it, read back out of the database");
 
+    /* ══ 7b · A CLASS TAKEN ELSEWHERE IS FILED IN ITS OWN COLUMN (1 Oct 2026) ══
+       It was one block under the register, so every tab ended on the same list.
+       The class just accepted is a DRAFT at somebody else's studio: it belongs
+       under Draft and nowhere else. */
+    const [secondRow] = await rows(owner.h, `classes?id=eq.${second}&select=share_slug`);
+    await lPage.goto(`${BASE}/my-classes?show=manage`, { waitUntil: "networkidle" });
+    const draftPill = lPage.getByRole("button", { name: /^Draft, \d+ classes$/ });
+    const pubPill = lPage.getByRole("button", { name: /^Published, \d+ classes$/ });
+    check((await draftPill.count()) === 1 && (await pubPill.count()) === 1, "⚠⚠ somebody with NO page of their own now gets the register's columns over the classes they take");
+    check((await lPage.getByRole("button", { name: "Create class" }).count()) === 0 && (await lPage.getByTestId("why-no-class").count()) === 0, "…with no Create control, and no owner-only sentence about a studio they do not run");
+    const elsewhereHas = async () => (await lPage.locator(`[data-testid="classes-elsewhere"] a[href="/c/${secondRow.share_slug}"]`).count()) > 0;
+    check(!(await elsewhereHas()), "⚠⚠ the DRAFT they take elsewhere is NOT at the foot of Published");
+    await draftPill.click();
+    await lPage.waitForTimeout(400);
+    check(await elsewhereHas(), "…it is under Draft, where it belongs");
+    check(/Draft, 1 classes/.test((await draftPill.getAttribute("aria-label")) || ""), "…and the Draft pill counts it");
+    await lPage.getByRole("button", { name: /^Completed, \d+ classes$/ }).click();
+    await lPage.waitForTimeout(400);
+    check(!(await elsewhereHas()), "…and it is not under Completed either");
+
     /* ══ 8 · NEXT SESSIONS ON THE PUBLIC PAGE (#0aj) ══════════════════════════
        The backlog row wanted the whole public schedule folded into the profile
        page. It is a 1,085-line screen with a `position: sticky` controls block

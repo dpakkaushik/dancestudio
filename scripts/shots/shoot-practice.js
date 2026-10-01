@@ -279,6 +279,22 @@ const tomorrowIst = () => {
     check((await leader.getByRole("link", { name: /^Open the register for/ }).count()) === 1, "…with Register › to their own desk");
     check((await leader.getByRole("button", { name: /^Coming to/ }).count()) === 0, "…and no answer pair, because they arranged it");
 
+    /* ⚠ TWO COLUMNS (1 Oct 2026, the user: *"practice also in 2 columns"*) — the
+       Crews hub's own split. The pill's accessible name is its `aria` plus its
+       count, never the visible word (SegmentedNav:78). */
+    const yoursPill = (pg) => pg.getByRole("link", { name: /^Practices of the crews you lead/ });
+    const inPill = (pg) => pg.getByRole("link", { name: /^Practices of the crews you are a part of/ });
+    check((await yoursPill(leader).count()) === 1 && (await inPill(leader).count()) === 1, "⚠⚠ the Practice screen is two columns — Yours · You are in");
+    check(/[?&]show=/.test(leader.url()) === false && (await leader.getByRole("link", { name: /^Open the register for/ }).count()) === 1, "…the leader lands on Yours, where the practice they arranged is");
+    await inPill(leader).click();
+    await leader.waitForTimeout(500);
+    check((await leader.getByText("Studio 4, Baner").count()) === 0, "…and it is NOT under You are in — a practice sits in exactly one column");
+    await member.goto(`${BASE}/practice`, { waitUntil: "networkidle" });
+    check((await member.getByRole("button", { name: /^Coming to/ }).count()) === 1, "…while a member who leads nothing lands on You are in, with the practice and its answer pair");
+    await yoursPill(member).click();
+    await member.waitForTimeout(500);
+    check((await member.getByText("Studio 4, Baner").count()) === 0 && (await member.getByText(/practices you arrange/).count()) === 1, "…and their Yours column is empty and says what would land there");
+
     /* ⚠ AND THE CALENDAR ROW NOW OPENS A SCREEN THAT CAN ACT ON IT. A member's
        used to carry the crew's PUBLIC page — true, and useless: that page says
        nothing about practices and can answer none. */
@@ -289,7 +305,7 @@ const tomorrowIst = () => {
       const a = [...document.querySelectorAll("a")].find((x) => /Studio 4, Baner/.test(x.textContent || ""));
       return a ? a.getAttribute("href") : null;
     });
-    check(memberHref === "/crews", `a member's calendar row opens the hub, which can answer it — it reads ${memberHref}`);
+    check(memberHref === "/practice?show=in", `a member's calendar row opens the Practice screen's "You are in" column, which can answer it — it reads ${memberHref}`);
 
     /* ── 7 · CALLING IT OFF SAYS SO ── */
     await leader.goto(`${BASE}/crews/${crewId}/manage/practice`, { waitUntil: "networkidle" });

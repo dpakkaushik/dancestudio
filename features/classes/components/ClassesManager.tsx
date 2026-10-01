@@ -305,6 +305,8 @@ export function ClassesManager({
   canEdit = true,
   venueRequests = [],
   askedTeachers = {},
+  elsewhere = [],
+  offerCreate = true,
 }: {
   businessId: string;
   classes: DanceClass[];
@@ -352,6 +354,21 @@ export function ClassesManager({
    *  "⏳ {name} asked" can also take the ask back (30 Sep 2026). The chips have
    *  named these since 18 Sep and offered nothing to do about one. */
   askedTeachers?: Record<string, string>;
+  /** ⚠⚠ THE CLASSES YOU TAKE AT SOMEBODY ELSE'S STUDIO, FILED IN THE TAB THEY
+   *  BELONG TO (1 Oct 2026, the user: *"classes taken elsewhere … shown on all
+   *  columns at the bottom. fix it according to the column where it should be
+   *  placed"*). They were one block drawn UNDER this register, outside its tabs,
+   *  so Published, Draft and Completed all ended on the same list — last month's
+   *  class sitting under Draft, a draft under Completed. They go through the
+   *  SAME `bucketOf` as the register's own rows, are counted in each pill, obey
+   *  the live filter, and are drawn read-only (another business owns them: you
+   *  run the door, you do not publish, price or delete) with the studio named. */
+  elsewhere?: Array<{ id: string; danceClass: DanceClass; artist: ClassArtist | null; city: string | null; studio: string; when: string }>;
+  /** false for somebody with NO register of their own — a plain user a studio
+   *  put in front of a class. They get the same three columns over their
+   *  `elsewhere` rows and no Create control at all: there is nowhere for them to
+   *  create one, and the owner-only sentence would name a studio they do not run. */
+  offerCreate?: boolean;
 }) {
   const router = useRouter();
   const search = useSearchParams();
@@ -393,7 +410,7 @@ export function ClassesManager({
   }, [deleteState, router]);
 
   const nowMs = new Date(nowIso).getTime();
-  const liveN = classes.filter((c) => isLiveAt(c, nowMs)).length;
+  const liveN = classes.filter((c) => isLiveAt(c, nowMs)).length + elsewhere.filter((e) => isLiveAt(e.danceClass, nowMs)).length;
   /* WHICH TAB A CLASS BELONGS ON, off the clock rather than off `status` — a
      class that has run is Completed here even though nothing ever writes that
      word to the column (see `classPhaseAt`). Live counts as Published, because
@@ -403,7 +420,9 @@ export function ClassesManager({
     return p === "draft" ? "draft" : p === "over" ? "completed" : "published";
   };
   const countOf = (k: Tab) =>
-    k === "requests" ? venueRequests.length : classes.filter((c) => bucketOf(c) === k).length;
+    k === "requests"
+      ? venueRequests.length
+      : classes.filter((c) => bucketOf(c) === k).length + elsewhere.filter((e) => bucketOf(e.danceClass) === k).length;
   const tabs: Tab[] = venueRequests.length > 0 ? ["published", "draft", "completed", "requests"] : ["published", "draft", "completed"];
   /* ⚠ THE OPEN TAB CAN STOP EXISTING UNDER YOU (30 Sep 2026, found by reading
      this back): answering the LAST room request takes Requests out of the pill
@@ -413,6 +432,7 @@ export function ClassesManager({
   const tab: Tab = tabs.includes(rawTab) ? rawTab : "published";
   let list = tab === "requests" ? [] : classes.filter((c) => bucketOf(c) === tab);
   if (liveOnly) list = list.filter((c) => isLiveAt(c, nowMs));
+  const away = tab === "requests" ? [] : elsewhere.filter((e) => bucketOf(e.danceClass) === tab && (!liveOnly || isLiveAt(e.danceClass, nowMs)));
   const filledOf = (c: DanceClass) => (c.session ? filledBySession[c.session.id] ?? 0 : 0);
   const actionError = publishResult.error || deleteState.error || rowError;
 
@@ -498,7 +518,7 @@ export function ClassesManager({
             from the Home tab's Classes tile — and what goes is the CALENDAR's
             ＋ Add class, which created a class from a section that is not this
             one. It opens as a sheet over this register now. */}
-        {!canCreate ? (
+        {!offerCreate ? null : !canCreate ? (
           <div role="status" data-testid="why-no-class" style={{ ...bizBtn, cursor: "default", background: EL, color: INK, fontWeight: 700, fontSize: 12.5, lineHeight: 1.45, padding: "12px 16px", marginBottom: 12 }}>
             Only the owner of this studio creates and changes its classes. You can open any register you have been given, answer requests for its rooms, and see who is booked.
           </div>
@@ -559,7 +579,7 @@ export function ClassesManager({
           <div role="status" style={{ fontSize: 12, color: "#F59E0B", fontWeight: 700, margin: "8px 0" }}>{note}</div>
         ) : null}
 
-        {tab !== "requests" && list.length === 0 && (
+        {tab !== "requests" && list.length === 0 && away.length === 0 && (
           <div
             style={{
               textAlign: "center",
@@ -575,7 +595,9 @@ export function ClassesManager({
                 ? "Nothing is running right now — tap the live filter to show all."
                 : tab === "completed"
                   ? "Classes move here once their session is over."
-                  : "Create a class — it is saved as a draft, and published here once the yes it waits for is in."}
+                  : !offerCreate
+                    ? "Classes a studio puts you in front of land here once you say yes."
+                    : "Create a class — it is saved as a draft, and published here once the yes it waits for is in."}
             </div>
           </div>
         )}
@@ -761,6 +783,34 @@ export function ClassesManager({
             );
           })}
         </div>
+
+        {/* the classes you take elsewhere that belong in THIS tab — headed only
+            when your own rows are above them, so a tab holding nothing else
+            does not wear a heading over its one list */}
+        {away.length > 0 ? (
+          <div style={{ marginTop: list.length > 0 ? 18 : 8 }} data-testid="classes-elsewhere">
+            {list.length > 0 ? (
+              <div style={{ fontSize: 9.5, fontWeight: 900, letterSpacing: 1, color: SUB, margin: "0 0 9px" }}>AT OTHER STUDIOS · {away.length}</div>
+            ) : null}
+            {away.map((e) => (
+              <ClassTile
+                key={e.id}
+                danceClass={e.danceClass}
+                artist={e.artist}
+                city={e.city}
+                href={`/c/${e.danceClass.shareSlug}`}
+                actions={
+                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, flexBasis: "100%" }}>
+                    <span style={{ fontSize: 10.5, color: SUB }}>
+                      {e.studio} · {e.when}
+                    </span>
+                    <span style={{ flexShrink: 0, fontSize: 9.5, fontWeight: 900, letterSpacing: 0.6, textTransform: "uppercase", color: "#F59E0B" }}>Teaching</span>
+                  </div>
+                }
+              />
+            ))}
+          </div>
+        ) : null}
       </div>
 
       {ask?.kind === "publish" && (

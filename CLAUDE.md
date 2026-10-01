@@ -2,6 +2,29 @@
 
 ## LAST SESSION (1 Oct 2026) — replaced on every push (Rule 13)
 
+> ### CLASSES TAKEN ELSEWHERE FILED IN THEIR COLUMN, PRACTICE IN TWO COLUMNS, AND A DANCER FOR ROUTINES (1 Oct 2026, later) — no migration
+> The user: *"classes taken elsewhere … shown on all columns at the bottom. fix it
+> according to the column where it should be placed"*, then *"better icon for
+> routines … practice also in 2 columns"*.
+> * ⚠⚠ **THE OUTSIDE CLASSES WERE DRAWN UNDER THE REGISTER, NOT IN IT**, so
+>   Published, Draft and Completed all ended on the same block. `ClassesManager`
+>   takes them as `elsewhere`, files them with its OWN `bucketOf` clock rule,
+>   counts them in each pill, obeys the live filter, and draws them read-only
+>   under "AT OTHER STUDIOS · N" (headed only when the tab has its own rows too).
+>   ⚠ A plain user with NO page gets the same three columns too (`offerCreate=
+>   {false}` — no Create control, no owner-only sentence) instead of one undated pile.
+> * **PRACTICE IS TWO COLUMNS — Yours · You are in** — the Crews and Studios
+>   hubs' own split, each keeping Coming up / Over; it opens on the column that
+>   has something, leading first. ⚠ Two leftovers from the 29 Sep move fixed on
+>   the way: a member's calendar row still opened `/crews` (now
+>   `/practice?show=in`), and answering a practice never revalidated `/practice`.
+> * **ROUTINES IS A DANCER MID-MOVE**, not music notes — rendered at 20px beside
+>   `students` and `team` before it went in; two earlier cuts read as a runner
+>   and as somebody cheering.
+> * **Verified:** typecheck 0 · lint 0 · build green · `shoot-classes` **79/79**
+>   (73 before) · `shoot-practice` **43/43** (38 before) · `shoot-tiles`
+>   **134/134** · happy path **19/19**.
+
 > ### THE STATS PAGE GOES BACK IN ONE STEP, AND AN UNPAID PASS IS NOT A SALE (1 Oct 2026) — ✅ `20260930130000` APPLIED (dry run 24/24 re-run first, read back live 11/11)
 > The user: *"fix back swipe on stats page. fix code as well and the database"*,
 > then *"push to live just leave sandbox items"*.

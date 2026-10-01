@@ -46,7 +46,18 @@ const TINT = DOS_TOOLS.practice.c;
  *  them. Then it was a SEGMENT, whose pill named it; it is a PAGE now, whose
  *  `DeskHero` names it. In all three the head would be the heading said twice —
  *  the `TODAY` badge lesson in a third place. */
-export function MyPractices({ practices, todayIso, bare = false }: { practices: CrewPractice[]; todayIso: string; bare?: boolean }) {
+export function MyPractices({
+  practices,
+  todayIso,
+  bare = false,
+  empty = "Nothing arranged yet — when a crew you are on arranges one you are asked here.",
+}: {
+  practices: CrewPractice[];
+  todayIso: string;
+  bare?: boolean;
+  /** what an empty list says — each of `/practice`'s two columns has its own */
+  empty?: string;
+}) {
   const [toast, setToast] = useState<string | null>(null);
   const [, start] = useTransition();
   const now = new Date(todayIso).getTime();
@@ -100,7 +111,7 @@ export function MyPractices({ practices, todayIso, bare = false }: { practices: 
       {bare ? null : <div style={{ ...PRACTICE_HEAD, margin: "2px 0 8px" }}>YOUR PRACTICES</div>}
       {coming.length === 0 && over.length === 0 ? (
         <div style={{ ...bizCard, textAlign: "center", fontSize: 12, color: "var(--sub)", border: "1.5px dashed var(--el)", lineHeight: 1.5 }}>
-          Nothing arranged yet — when a crew you are on arranges one you are asked here.
+          {empty}
         </div>
       ) : null}
       {coming.length ? (

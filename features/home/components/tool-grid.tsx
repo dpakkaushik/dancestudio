@@ -131,13 +131,25 @@ export const GLYPH = {
       <path d="M20.5 15.5l-4.6-4.6a1.5 1.5 0 0 0-2.1 0L6.5 18.2" />
     </>
   ),
-  /* the three desks named on 18 Sep 2026 before they exist: a routine is a
-     piece of music you move to, a membership is a card, an asset is a box */
+  /* the three desks named on 18 Sep 2026 before they exist: a membership is a
+     card, an asset is a box.
+     ⚠ A ROUTINE IS A DANCER MID-MOVE (1 Oct 2026, the user: *"better icon for
+     routines should be something related to dance as its a dance routine"*). It
+     was a pair of music notes — true of the SONG a routine is set to, and the
+     one thing on the tile that said nothing about dancing. A dancer's line: one
+     arm curved overhead, one extended, the standing leg and the working leg
+     lifted, with a motion arc behind. ⚠ Deliberately NOT `students`' bust or
+     `team`'s two heads — those stand still; this is the only figure on any grid
+     that is moving, which is what tells the three apart at 20px. Rendered at
+     20px beside both before it went in — a first cut with straight limbs read
+     as a RUNNER, and a second with both arms up read as somebody cheering. */
   routines: I(
     <>
-      <path d="M9 18V6l9-2v12" />
-      <circle cx="6.5" cy="18" r="2.5" />
-      <circle cx="15.5" cy="16" r="2.5" />
+      <circle cx="13" cy="4" r="1.9" />
+      <path d="M12.6 7c-.5 2.1-.7 4-.4 6" />
+      <path d="M12.5 8.4c-2.3-.4-4-1.7-4.8-4.1M12.5 8.4c2.2.3 4.2 1.1 6 2.6" />
+      <path d="M12.2 13l-1.4 7.5M12.2 13c1.9.3 3.6 1.1 5 2.4l-1.2 2.3" />
+      <path d="M4 14.5c.9 1.7 2.3 2.9 4.2 3.5" />
     </>
   ),
   memberships: I(

@@ -106,8 +106,11 @@ export function practiceToCalendar(p: CrewPractice): CalendarPracticeEntry {
        now, where `MyPractices` carries the same card with the same two buttons.
        A member cannot open `/crews/{id}/manage/practice` at all: `requireLedCrew`
        fronts every route under `manage`, and a link that bounces is worse than a
-       link somewhere true. */
-    href: p.iLead ? `/crews/${p.crewId}/manage/practice` : "/crews",
+       link somewhere true.
+       ⚠ AND THAT SCREEN IS `/practice` NOW, IN ITS "You are in" COLUMN (1 Oct
+       2026): practice left the Crews hub for its own Home tile on 29 Sep and this
+       line went on pointing at a hub that no longer carries any practice. */
+    href: p.iLead ? `/crews/${p.crewId}/manage/practice` : "/practice?show=in",
   };
 }
 

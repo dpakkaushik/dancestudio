@@ -42,6 +42,9 @@ function revalidatePractice(crewId?: string) {
   revalidatePath("/calendar");
   revalidatePath("/inbox");
   revalidatePath("/crews");
+  /* the Practice tile's own screen since 29 Sep 2026 — it is where a member
+     answers, so a write that skipped it left the answer stale there */
+  revalidatePath("/practice");
   if (crewId) {
     revalidatePath(`/crews/${crewId}/manage/practice`);
     revalidatePath(`/crews/${crewId}/manage/calendar`);

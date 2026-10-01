@@ -194,6 +194,17 @@ export default async function MyClassesPage({ searchParams }: { searchParams: Pr
         })()
       : null;
 
+  /* the classes a studio put you in front of, in the register's own row shape */
+  const nowIso = new Date().toISOString();
+  const elsewhere = teaching.map((c) => ({
+    id: c.id,
+    danceClass: askToTileClass(c),
+    artist: bookedArtists.get(c.classId) ?? null,
+    city: c.businessCity,
+    studio: c.businessName,
+    when: when(c.startsAt),
+  }));
+
   return (
     <div
       style={{
@@ -283,38 +294,21 @@ export default async function MyClassesPage({ searchParams }: { searchParams: Pr
                           ))}
                         </div>
                       ) : null}
+                      {/* ⚠⚠ THE CLASSES YOU TAKE ELSEWHERE ARE FILED IN THE
+                          REGISTER'S OWN COLUMNS (1 Oct 2026, the user: *"shown on
+                          all columns at the bottom. fix it according to the
+                          column where it should be placed"*). They were one block
+                          drawn under the register, outside its Published · Draft ·
+                          Completed tabs, so every tab ended on the same list. The
+                          register now takes them as `elsewhere`, sorts them with
+                          its own clock rule, counts them in each pill and draws
+                          them read-only — another business owns them (28 Sep).
+                          ⚠ And somebody with NO page gets the same three columns
+                          instead of one undated pile, with no Create control. */}
                       {myPage && manage ? (
-                        <ClassesManager embedded businessId={myPage.id} classes={manage.classes} filledBySession={manage.filled} artists={manage.artists} publishState={manage.state} whyNoClass={manage.whyNoClass} nowIso={new Date().toISOString()} />
-                      ) : null}
-                      {teaching.length > 0 ? (
-                        <div style={{ marginTop: myPage ? 22 : 0 }}>
-                          {/* ⚠ A TILE, NOT A SECOND REGISTER (28 Sep 2026). These
-                              classes belong to somebody else's business: you may
-                              run the door, and you may not publish, price or
-                              delete them. The card opens the class, where the
-                              register and everything else you are allowed lives —
-                              the same door `ClassesManager`'s own rows open. */}
-                          {myPage ? (
-                            <div style={{ fontSize: 9.5, fontWeight: 900, letterSpacing: 1, color: MUTED, margin: "0 0 9px" }}>CLASSES YOU TAKE ELSEWHERE</div>
-                          ) : null}
-                          {teaching.map((c) => (
-                            <ClassTile
-                              key={c.id}
-                              danceClass={askToTileClass(c)}
-                              artist={bookedArtists.get(c.classId) ?? null}
-                              city={c.businessCity}
-                              href={`/c/${c.classShareSlug}`}
-                              actions={
-                                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
-                                  <span style={{ fontSize: 10.5, color: SUB }}>
-                                    {c.businessName} · {when(c.startsAt)}
-                                  </span>
-                                  <span style={{ flexShrink: 0, fontSize: 9.5, fontWeight: 900, letterSpacing: 0.6, textTransform: "uppercase", color: "#F59E0B" }}>Teaching</span>
-                                </div>
-                              }
-                            />
-                          ))}
-                        </div>
+                        <ClassesManager embedded businessId={myPage.id} classes={manage.classes} filledBySession={manage.filled} artists={manage.artists} publishState={manage.state} whyNoClass={manage.whyNoClass} nowIso={nowIso} elsewhere={elsewhere} />
+                      ) : teaching.length > 0 ? (
+                        <ClassesManager embedded businessId="" classes={[]} nowIso={nowIso} elsewhere={elsewhere} offerCreate={false} />
                       ) : null}
                       {myPageClasses.length === 0 && teaching.length === 0 && askedToTake.length === 0 ? (
                         <div style={{ textAlign: "center", padding: "40px 20px", color: SUB, border: "1.5px dashed var(--el)", borderRadius: 20, fontSize: 13, lineHeight: 1.5 }}>
