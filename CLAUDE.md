@@ -1,6 +1,40 @@
 # CLAUDE.md — DanceOS
 
-## LAST SESSION (30 Sep 2026) — replaced on every push (Rule 13)
+## LAST SESSION (1 Oct 2026) — replaced on every push (Rule 13)
+
+> ### THE STATS PAGE GOES BACK IN ONE STEP, AND AN UNPAID PASS IS NOT A SALE (1 Oct 2026) — ✅ `20260930130000` APPLIED (dry run 24/24 re-run first, read back live 11/11)
+> The user: *"fix back swipe on stats page. fix code as well and the database"*,
+> then *"push to live just leave sandbox items"*.
+> * ⚠⚠ **THE STATS PAGE PUSHED A HISTORY ENTRY PER TAP.** Record / History /
+>   Rankings, the board segments and the style chips were plain `<Link>`s, so a
+>   back swipe walked back through every tap before it left the screen; the
+>   metric chips and the city picker already replaced and these four did not.
+>   All of them `replace scroll={false}` now — the 19 Sep rule (*a setting of a
+>   page replaces, never pushes*) met for the fourth time.
+> * ⚠⚠ **AND "‹ Back to the page" WENT FORWARD**, pushing the profile on top of
+>   stats — so back from the profile landed on stats again (C37's loop in a new
+>   coat), and from Home's chip it opened the PUBLIC page, which is not where you
+>   came from. It is a real `router.back()` when this screen was reached in-app,
+>   and a replace of its href otherwise. ⚠ "Reached in-app" is NOT
+>   `history.length > 1` — a new tab counts its own blank page, and the probe
+>   caught that stepping back OUT of the app; the test is whether the document
+>   was LOADED at another path (`performance` navigation entry).
+> * **`20260930130000` IS APPLIED** (#0b7): an unpaid pass counts nowhere and Buy
+>   again resumes it; a class session cannot start more than a minute in the past
+>   (service role exempt; a past class stays editable to the minute). Dry run
+>   **24/24** re-run against a fresh snapshot of the live bodies, `db-push -DryRun`
+>   listing exactly the one file, applied first try, **read back live 11/11**
+>   (paid-only counts in all four bodies, the trigger bound and executable by no
+>   client role, anon **39**, policies **103**, PostgREST reloaded). **0 unpaid
+>   passes were on production**, so nothing anybody holds changed. Proofs
+>   `memberships` · `classes` · `rooms-people` **3/3**.
+> * **Verified:** typecheck 0 · lint 0 · build green · a browser probe **6/6**
+>   (five taps leave ONE entry where they left five; one back swipe exits; no
+>   loop; a deep link still reaches the page; no page error) · happy path
+>   **19/19**. ⚠ A stale `next start` from 30 Sep was holding :3100 again.
+> * **Left, at the user's word:** the five sandbox / ops items (#0b6).
+
+## LAST SESSION (30 Sep 2026) — history
 
 > ### THE MONEY IS ASKED FOR, A PASS SAYS WHERE IT WENT, AND AN UNPAID PASS IS NOT A SALE (30 Sep 2026, latest) — ⚠⚠ ONE MIGRATION WRITTEN, DRY-RUN **24/24** AND **HELD** (NEXT TO DO #0b7)
 > The user: *"leave whats left and fix others completely, there should be no
@@ -9084,8 +9118,10 @@ summary; the report has the evidence.
 
 ## NEXT TO DO — replaced on every push (Rule 13)
 
-0b7. **⚠⚠ ONE MIGRATION WRITTEN, DRY-RUN 24/24 AND HELD FOR THE USER'S WORD —
-   `20260930130000_an_unpaid_pass_is_not_sold_and_a_class_starts_ahead`.**
+0b7. **~~ONE MIGRATION WRITTEN, DRY-RUN 24/24 AND HELD~~ — ✅ APPLIED 1 Oct 2026**
+   on the user's *"push to live"*, read back live 11/11 (the top block). The list
+   is kept below as the record of what was approved —
+   `20260930130000_an_unpaid_pass_is_not_sold_and_a_class_starts_ahead`.
    ⚠ Rule 9: it changes what counts as a SOLD membership, which is money. It is
    the ONLY pending file (`db-push -DryRun` must list exactly it). **The app is
    safe against today's database either way** — nothing in the bundle selects a
@@ -11495,6 +11531,11 @@ for the database schema. **The UI is not redesigned** — see Rule 2.
 
 ### Progress tracker — update after EVERY push (Rule 11)
 
+- **THE STATS PAGE GOES BACK IN ONE STEP, AND AN UNPAID PASS IS NOT A SALE — 1 Oct
+  2026, no step number ⚠ (Rule 9: money) — `20260930130000` APPLIED** (dry run
+  24/24, read back live 11/11, proofs 3/3). The stats page's tabs, segments and
+  style chips replace instead of push, and its back link is a real back step;
+  probe 6/6, happy path 19/19.
 - **THE MONEY IS ASKED FOR, A PASS SAYS WHERE IT WENT, AND AN UNPAID PASS IS NOT
   A SALE — 30 Sep 2026, no step number ⚠ (Rule 9: MONEY) — app half PUSHED; ONE
   MIGRATION WRITTEN, DRY-RUN 24/24 AND HELD (#0b7).** The user: *"leave whats
