@@ -224,7 +224,9 @@ test.describe("the admin panel: support, trust, accountability", () => {
     /* creating lands on the new studio's own Subscription screen (27 Sep 2026,
        "pay at creation, verify after") — this spec is about support, so it
        comes straight back to the hub */
-    await org.waitForURL(/\/business\/[0-9a-f-]{36}\/subscription$/, { timeout: 30_000 });
+    /* ⚠ under the welcome bow since 2 Oct 2026 (`?welcome=studio`) — the goto
+       below leaves it behind */
+    await org.waitForURL(/\/business\/[0-9a-f-]{36}\/subscription(\?welcome=studio)?$/, { timeout: 30_000 });
     await org.goto("/business");
     await expect(org.getByText(studioName, { exact: true })).toBeVisible();
     await expect(org.getByTestId("studio-verification")).toHaveAttribute("aria-label", "Studio verification: Not verified");

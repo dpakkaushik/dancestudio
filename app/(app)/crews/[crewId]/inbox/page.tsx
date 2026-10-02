@@ -16,7 +16,7 @@ const stampNowIso = (): string => new Date().toISOString();
 export default async function CrewInboxPage({ params, searchParams }: { params: Promise<{ crewId: string }>; searchParams: Promise<{ show?: string }> }) {
   const { crewId } = await params;
   const { supabase, crew } = await requireLedCrew(crewId);
-  const [askedAll, enq, { show }] = await Promise.all([findAskedForMyCrews(supabase), loadEnquiries(supabase, { kind: "crew", id: crewId }), searchParams]);
+  const [askedAll, enq, { show }] = await Promise.all([findAskedForMyCrews(supabase, ["asked", "confirmed", "rejected"], { withdrawn: true }), loadEnquiries(supabase, { kind: "crew", id: crewId }), searchParams]);
   const asked = askedAll.filter((m) => m.crewId === crewId);
   const { requestsIn, requestsOut } = buildRequests({ crewOut: asked });
   return (

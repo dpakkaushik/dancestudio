@@ -14,6 +14,12 @@ export interface RegisterRow {
   avatarPath: string | null;
   /** recorded at the door by name, with no DanceOS account */
   walkIn: boolean;
+  /** ⚠ A SEAT TAKEN AT THE DOOR (2 Oct 2026) — a walk-in, or a person the
+   *  register booked in (`created_by` is not the person). Only such a seat can be
+   *  marked Paid; a seat the person booked themselves is the payment rail's. */
+  atDoor: boolean;
+  /** when the door recorded it paid — `set_door_paid` (20261002140000) */
+  doorPaidAt: string | null;
 }
 
 export interface WaitlistRow {
@@ -41,6 +47,8 @@ interface RegisterQueryRow {
   user_id: string | null;
   attendee_name: string | null;
   status: "enrolled" | "waitlisted";
+  created_by?: string | null;
+  door_paid_at?: string | null;
   profiles: { full_name: string; profile_photo_path?: string | null } | null;
   attendance: Array<{ id: string; deleted_at: string | null }>;
 }
@@ -59,14 +67,23 @@ export async function findClassRegister(
   supabase: SupabaseClient,
   classId: string
 ): Promise<ClassRegister> {
-  const { data, error } = await supabase
-    .from("class_bookings")
-    .select("id, user_id, attendee_name, status, profiles (full_name, profile_photo_path), attendance (id, deleted_at)")
-    .eq("class_id", classId)
-    .in("status", ["enrolled", "waitlisted"])
-    .is("deleted_at", null)
-    .order("created_at", { ascending: true })
-    .limit(500);
+  const read = (cols: string) =>
+    supabase
+      .from("class_bookings")
+      .select(cols)
+      .eq("class_id", classId)
+      .in("status", ["enrolled", "waitlisted"])
+      .is("deleted_at", null)
+      .order("created_at", { ascending: true })
+      .limit(500);
+  const BASE = "id, user_id, attendee_name, status, created_by, profiles (full_name, profile_photo_path), attendance (id, deleted_at)";
+  /* ⚠ `door_paid_at` arrives with 20261002140000; until it is applied the read
+     answers "column does not exist", so it falls back to the read without it
+     rather than taking the register down (the 27 Sep `poster_path` lesson) */
+  let { data, error } = await read(`${BASE}, door_paid_at`);
+  if (error && /door_paid_at/.test(error.message)) {
+    ({ data, error } = await read(BASE));
+  }
   if (error) {
     throw new Error(`attendance.register failed: ${error.message}`);
   }
@@ -81,6 +98,8 @@ export async function findClassRegister(
       avatarPath: r.profiles?.profile_photo_path ?? null,
       /** a walk-in: no account, and the only row the studio may take back off */
       walkIn: r.user_id === null,
+      atDoor: r.user_id === null || (r.created_by != null && r.created_by !== r.user_id),
+      doorPaidAt: r.door_paid_at ?? null,
     }));
   const waitlist = all
     .filter((r) => r.status === "waitlisted")
@@ -94,6 +113,18 @@ export async function findClassRegister(
     waitlist,
     checkedInCount: rows.filter((r) => r.checkedIn).length,
   };
+}
+
+/** PAID AT THE DOOR (2 Oct 2026) — the register records a door seat as paid, or
+ *  takes it back. Every rule is the RPC's (who may run the register, a free class,
+ *  a self-booked or online-paid seat). ⚠ Before 20261002140000 is applied the RPC
+ *  does not exist, and PostgREST answers PGRST202 — said in words, not raw. */
+export async function setDoorPaid(supabase: SupabaseClient, classBookingId: string, paid: boolean): Promise<void> {
+  const { error } = await supabase.rpc("set_door_paid", { p_class_booking_id: classBookingId, p_paid: paid });
+  if (error) {
+    if (error.code === "PGRST202") throw new Error("Marking a seat paid is not switched on yet");
+    throw new Error(error.message);
+  }
 }
 
 export async function checkIn(supabase: SupabaseClient, classBookingId: string): Promise<void> {

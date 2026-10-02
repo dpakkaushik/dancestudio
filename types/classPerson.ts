@@ -40,6 +40,9 @@ export interface ClassPerson {
 /** An ask waiting for the signed-in person's answer, with enough of the class
  *  to decide (prototype: "They want you on the schedule as the artist"). */
 export interface MyClassPersonAsk extends ClassPerson {
+  /** ⚠ the ask was WITHDRAWN before it was answered (2 Oct 2026) — the row is
+   *  soft-deleted, kept so the Inbox's Completed can say so rather than lose it */
+  withdrawn?: boolean;
   classTitle: string;
   classStyle: string;
   classShareSlug: string;

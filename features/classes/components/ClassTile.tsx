@@ -66,7 +66,21 @@ export interface ClassTileProps {
    *  section … with checked in on the class card") — Home's deck sets it off
    *  your live attendance row; a green stamp in the role chip's place */
   checkedIn?: boolean;
+  /** ⚠ HOME'S DECK ONLY (2 Oct 2026, the user: "completed status same as live
+   *  with red border on cards, upcoming classes yellow border") — where this
+   *  card stands in today, decided by the deck's list. `live` keeps the green
+   *  frame; `done` is red with COMPLETED, `upcoming` amber with UPCOMING. Every
+   *  other surface passes none, so Discover, the calendar and the register keep
+   *  their frames */
+  deckState?: "done" | "live" | "upcoming";
 }
+
+/* the deck's two non-live frames — red and amber that read on both grounds */
+const DECK_FRAME = {
+  done: { c: "#EF4444", ink: "#fff", glow: "rgba(239,68,68,.16)", word: "Completed", testId: "done-badge" },
+  /* dark ink on amber — white on #F59E0B is ~2:1 and would not read */
+  upcoming: { c: "#F59E0B", ink: "#1a1406", glow: "rgba(245,158,11,.16)", word: "Upcoming", testId: "upcoming-badge" },
+} as const;
 
 /**
  * The one class card, app-wide — anatomy lifted from the prototype's BookingCard
@@ -77,7 +91,9 @@ export interface ClassTileProps {
  * width of the card, go the two facts that belong to none of them: how full, and
  * what it costs.
  */
-export function ClassTile({ danceClass: c, filled = 0, artist, isToday = false, actions, href, roleLabel = null, live = false, checkedIn = false }: ClassTileProps) {
+export function ClassTile({ danceClass: c, filled = 0, artist, isToday = false, actions, href, roleLabel = null, live: liveProp = false, checkedIn = false, deckState }: ClassTileProps) {
+  const live = deckState ? deckState === "live" : liveProp;
+  const frame = deckState === "done" || deckState === "upcoming" ? DECK_FRAME[deckState] : null;
   const bc = dosStyleColor(c.style);
   const dark = useDosDark();
   const ink = dosStyleInk(bc, dark);
@@ -431,6 +447,7 @@ export function ClassTile({ danceClass: c, filled = 0, artist, isToday = false, 
       data-card="session"
       data-kind="class"
       data-live={live ? "yes" : undefined}
+      data-deck-state={deckState}
       style={{
         position: "relative",
         overflow: "hidden",
@@ -439,13 +456,45 @@ export function ClassTile({ danceClass: c, filled = 0, artist, isToday = false, 
         opacity: isPast ? 0.6 : 1,
         /* ⚠ A LIVE CARD IS FRAMED GREEN (2 Oct 2026) — the whole card says it,
            where a small chip on the third line used to */
-        border: live ? "2.5px solid #22C55E" : `1.5px solid ${LINE}`,
+        /* ⚠ and on Home's deck a finished card is framed red, a coming one amber
+           (2 Oct 2026) — the same weight as live, a quieter glow */
+        border: live ? "2.5px solid #22C55E" : frame ? `2.5px solid ${frame.c}` : `1.5px solid ${LINE}`,
         borderRadius: 20,
         display: "flex",
         flexDirection: "column",
-        boxShadow: live ? "0 0 0 3px rgba(34,197,94,.18), 0 4px 16px -4px rgba(34,197,94,.45)" : "0 2px 10px -2px rgba(0,0,0,.28)",
+        boxShadow: live
+          ? "0 0 0 3px rgba(34,197,94,.18), 0 4px 16px -4px rgba(34,197,94,.45)"
+          : frame
+            ? `0 0 0 3px ${frame.glow}, 0 2px 10px -2px rgba(0,0,0,.28)`
+            : "0 2px 10px -2px rgba(0,0,0,.28)",
       }}
     >
+      {frame ? (
+        /* COMPLETED / UPCOMING in the LIVE button's own place and clothes */
+        <span
+          data-testid={frame.testId}
+          style={{
+            position: "absolute",
+            top: 7,
+            left: 7,
+            zIndex: 3,
+            pointerEvents: "none",
+            display: "inline-flex",
+            alignItems: "center",
+            fontSize: 9,
+            fontWeight: 900,
+            letterSpacing: 0.6,
+            textTransform: "uppercase",
+            padding: "3px 8px",
+            borderRadius: 999,
+            background: frame.c,
+            color: frame.ink,
+            boxShadow: "0 2px 6px rgba(0,0,0,.25)",
+          }}
+        >
+          {frame.word}
+        </span>
+      ) : null}
       {live ? (
         /* the LIVE button, top left, over the date block — `pointerEvents: none`
            so the sleeve's own link still opens the class under it */

@@ -68,10 +68,15 @@ const emailShape = z.string().trim().email("That is not an email address").max(2
    login"). `create_crew` keeps its four arguments; the two land through
    `update_crew` the moment the row exists — two doors rather than a changed
    creation signature, exactly as a studio's pin and an organization's number do. */
+/* ⚠ THE STYLES ARE A LIST (2 Oct 2026, the user: "dance style filter while
+   creating studio and crew should be multi filter"). `create_crew` still takes
+   ONE style and keeps it as `crews.style`, so the FIRST is sent there — the main
+   style, which the trigger also makes the list — and the rest land through
+   `set_crew_styles` once the row exists. Twelve is the column's own CHECK. */
 const createSchema = z.object({
   name: z.string().trim().min(1, "Name your crew first").max(64),
   city,
-  style,
+  styles: z.array(style).min(1, "Pick a dance style").max(12, "Twelve styles at most"),
   phone: phoneShape,
   email: emailShape,
   memberIds: z.array(uuid).max(50),
@@ -82,17 +87,32 @@ export async function createCrewAction(input: z.input<typeof createSchema>): Pro
   if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "Check the crew's details" };
   const supabase = await requireUser();
   try {
-    const { phone, email, ...rest } = parsed.data;
+    const { phone, email, styles, ...base } = parsed.data;
+    /* one live copy of each, in the order picked — the first is the main style */
+    const list = [...new Set(styles)];
+    const rest = { ...base, style: list[0] };
     const crew = await createCrew(supabase, rest);
-    /* the number and the address, last: a crew that exists with neither is still
-       a crew, so a refusal here is reported rather than undoing the row */
+    /* the number and the address, then the rest of the styles: a crew that
+       exists with neither is still a crew, so a refusal here is reported rather
+       than undoing the row — each said in words, never swallowed */
+    const missed: string[] = [];
     try {
       await updateCrew(supabase, { crewId: crew.id, name: rest.name, city: rest.city, style: rest.style, contactEmail: email, phone, phonePublic: false });
     } catch (error: unknown) {
-      revalidateCrews(crew.id);
-      return { error: null, crewId: crew.id, note: `Crew created. Its number and email could not be saved just now — ${error instanceof Error ? error.message : "add them from the crew's home"}.` };
+      missed.push(`its number and email could not be saved just now — ${error instanceof Error ? error.message : "add them from the crew's home"}`);
+    }
+    /* ⚠ AFTER `update_crew`, deliberately: that door rewrites `style`, and the
+       list is written last so nothing after it can touch it. Only when there is
+       more than the first — the trigger has already made the list `[style]`. */
+    if (list.length > 1) {
+      try {
+        await setCrewStyles(supabase, crew.id, list);
+      } catch (error: unknown) {
+        missed.push(`only ${rest.style} was kept as its style — ${error instanceof Error ? error.message : "add the others from the crew's home"}`);
+      }
     }
     revalidateCrews(crew.id);
+    if (missed.length) return { error: null, crewId: crew.id, note: `Crew created, but ${missed.join("; and ")}.` };
     return { error: null, crewId: crew.id };
   } catch (error: unknown) {
     return { error: error instanceof Error ? error.message : "Could not create the crew" };

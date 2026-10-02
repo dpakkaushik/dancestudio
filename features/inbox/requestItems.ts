@@ -1,7 +1,7 @@
 import type { RequestItem } from "@/features/inbox/components/InboxScreen";
 import { sessionDayLabel } from "@/lib/format/session";
 import type { VenueRequest } from "@/repositories/classes";
-import type { findMyPendingInvites, findPendingInvites } from "@/repositories/invites";
+import type { AnsweredInvite, findMyPendingInvites, findSentInvites } from "@/repositories/invites";
 import { askToTileClass, type MyClassPersonAsk } from "@/types/classPerson";
 import type { CrewMember, MyCrewAsk } from "@/types/crew";
 import { practiceWhen, type CrewPractice } from "@/types/crewPractice";
@@ -51,12 +51,14 @@ export const PRACTICE_WORDS = { what: "at the practice", verb: "have you at a pr
    (29 Sep 2026) — a practice ask carries its own instant instead */
 
 type MyPendingInvite = Awaited<ReturnType<typeof findMyPendingInvites>>[number];
-type SentInvite = Awaited<ReturnType<typeof findPendingInvites>>[number] & { businessName: string };
+type SentInvite = Awaited<ReturnType<typeof findSentInvites>>[number] & { businessName: string };
 
 export interface RequestSources {
   venueIn?: VenueRequest[];
   classPeopleIn?: MyClassPersonAsk[];
   invitesIn?: MyPendingInvite[];
+  /** the invites put to me that are over (accepted · declined · withdrawn) */
+  invitesInAnswered?: AnsweredInvite[];
   crewIn?: MyCrewAsk[];
   venueOut?: VenueRequest[];
   classPeopleOut?: MyClassPersonAsk[];
@@ -78,7 +80,16 @@ const newestFirst = (a: RequestItem, b: RequestItem) => b.at.localeCompare(a.at)
 /* the three tables say yes and no in three vocabularies — one word each here
    (19 Sep 2026: an answered ask stays on the desk with its answer on it) */
 const askStatus = (s: string | null | undefined): RequestItem["status"] =>
-  s === "confirmed" || s === "accepted" ? "confirmed" : s === "rejected" || s === "declined" ? "rejected" : "asked";
+  s === "confirmed" || s === "accepted"
+    ? "confirmed"
+    : s === "rejected" || s === "declined"
+      ? "rejected"
+      : /* ⚠ an invite the studio took back (2 Oct 2026) — it is over, not pending */
+        s === "revoked"
+        ? "withdrawn"
+        : "asked";
+/* a withdrawn ask is a soft-deleted row still `asked` — the reads mark it */
+const statusOf = (s: string, withdrawn: boolean | undefined): RequestItem["status"] => (withdrawn ? "withdrawn" : askStatus(s));
 
 export function buildRequests(s: RequestSources): { requestsIn: RequestItem[]; requestsOut: RequestItem[] } {
   const requestsIn: RequestItem[] = [
@@ -115,7 +126,7 @@ export function buildRequests(s: RequestSources): { requestsIn: RequestItem[]; r
       at: c.createdAt,
       note: c.payPerSessionInr > 0 ? `₹${c.payPerSessionInr.toLocaleString("en-IN")} a session` : null,
       classPersonId: c.id,
-      status: askStatus(c.status),
+      status: statusOf(c.status, c.withdrawn),
       danceClass: askToTileClass(c),
     })),
     ...(s.invitesIn ?? []).map((i): RequestItem => ({
@@ -149,7 +160,27 @@ export function buildRequests(s: RequestSources): { requestsIn: RequestItem[]; r
       at: c.createdAt,
       note: "Adding you to the crew roster — this shows on their public page.",
       memberId: c.id,
-      status: askStatus(c.status),
+      status: statusOf(c.status, c.withdrawn),
+    })),
+    /* an invite put to you that is over — accepted, declined, or withdrawn by
+       the studio (2 Oct 2026, `my_answered_invites`). Without it an answered
+       invite vanished from the desk, because the invitee holds no policy on
+       the table and `my_pending_invites` is pending-only. */
+    ...(s.invitesInAnswered ?? []).map((i): RequestItem => ({
+      kind: "invite",
+      id: i.inviteId,
+      dir: "in",
+      who: i.businessName,
+      what: TEAM_WORDS.what,
+      verb: TEAM_WORDS.verb,
+      subjectKind: "STUDIO",
+      subjectTitle: i.businessName,
+      when: null,
+      href: i.status === "accepted" ? `/studio/${i.businessId}` : null,
+      at: i.answeredAt,
+      note: null,
+      role: roleWord(i.memberRole),
+      status: askStatus(i.status),
     })),
     /* a practice your crew has arranged (27 Sep 2026) — an ask about ONE
        EVENING, answered here or on the crew's own desk, whichever you reach
@@ -207,7 +238,7 @@ export function buildRequests(s: RequestSources): { requestsIn: RequestItem[]; r
       at: c.createdAt,
       note: null,
       classPersonId: c.id,
-      status: askStatus(c.status),
+      status: statusOf(c.status, c.withdrawn),
       danceClass: askToTileClass(c),
     })),
     ...(s.invitesOut ?? []).map((i): RequestItem => ({
@@ -229,6 +260,9 @@ export function buildRequests(s: RequestSources): { requestsIn: RequestItem[]; r
       role: roleWord(i.memberRole),
       inviteId: i.id,
       businessId: i.businessId,
+      /* ⚠ every sent invite now, not just the pending ones (2 Oct 2026) — the
+         answer is the row's status, so an accepted one moves to Completed */
+      status: askStatus(i.status),
     })),
     ...(s.crewOut ?? []).map((c): RequestItem => ({
       kind: "crew",
@@ -245,7 +279,7 @@ export function buildRequests(s: RequestSources): { requestsIn: RequestItem[]; r
       note: null,
       memberId: c.id,
       crewId: c.crewId,
-      status: askStatus(c.status),
+      status: statusOf(c.status, c.withdrawn),
     })),
   ].sort(newestFirst);
 

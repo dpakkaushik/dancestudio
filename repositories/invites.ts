@@ -38,6 +38,52 @@ const toInvite = (row: InviteRow): BusinessInvite => ({
   createdAt: row.created_at,
 });
 
+/** EVERY INVITE A STUDIO HAS SENT, ANSWERED OR NOT (2 Oct 2026, the user: "check
+ *  … visible in the right section and doesnt get removed from the system") — the
+ *  Inbox's Sent side was `findPendingInvites`, so an accepted, declined or
+ *  withdrawn invite vanished from it. Members read their own desk (Step 12b). */
+export async function findSentInvites(supabase: SupabaseClient, businessId: string): Promise<BusinessInvite[]> {
+  const { data, error } = await supabase
+    .from("business_invites")
+    .select(INVITE_COLUMNS)
+    .eq("business_id", businessId)
+    .is("deleted_at", null)
+    .order("created_at", { ascending: false })
+    .limit(100);
+  if (error) {
+    throw new Error(`invites.findSent failed: ${error.message}`);
+  }
+  return (data as InviteRow[]).map(toInvite);
+}
+
+/** THE INVITES PUT TO ME THAT ARE OVER — accepted, declined or withdrawn
+ *  (`my_answered_invites`, 20261002140000). The invitee holds no policy on the
+ *  table, so this is the only door. ⚠ Before that migration is applied the RPC
+ *  does not exist (PGRST202), and the answer is simply none — an Inbox must not
+ *  fail over its history. */
+export interface AnsweredInvite {
+  inviteId: string;
+  businessId: string;
+  businessName: string;
+  memberRole: InvitableRole;
+  status: Exclude<InviteStatus, "pending">;
+  createdAt: string;
+  answeredAt: string;
+}
+export async function findMyAnsweredInvites(supabase: SupabaseClient): Promise<AnsweredInvite[]> {
+  const { data, error } = await supabase.rpc("my_answered_invites");
+  if (error) return [];
+  return ((data ?? []) as Array<{ invite_id: string; business_id: string; business_name: string; member_role: InvitableRole; status: Exclude<InviteStatus, "pending">; created_at: string; answered_at: string }>).map((r) => ({
+    inviteId: r.invite_id,
+    businessId: r.business_id,
+    businessName: r.business_name,
+    memberRole: r.member_role,
+    status: r.status,
+    createdAt: r.created_at,
+    answeredAt: r.answered_at,
+  }));
+}
+
 /** The asks still outstanding on one studio's desk. Answered ones are kept as
  *  history but the desk shows the live queue. */
 export async function findPendingInvites(

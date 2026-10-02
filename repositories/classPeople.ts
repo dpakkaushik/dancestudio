@@ -141,6 +141,7 @@ export async function findClassesWithArtist(
 }
 
 interface MyAskRow extends ClassPersonRow {
+  deleted_at?: string | null;
   classes: {
     id: string;
     style: string;
@@ -160,11 +161,12 @@ interface MyAskRow extends ClassPersonRow {
  *  class cards in same way" — and the ask's own STATUS, so an answered ask can
  *  still be listed in the Inbox ("enquiries and requests don't get removed
  *  after accepting"). */
-const ASK_SELECT = `${CLAIM_COLUMNS}, classes (id, style, level, share_slug, room, price_inr, capacity, status, businesses!classes_business_id_fkey (name, city), class_sessions (id, starts_at, ends_at))`;
+const ASK_SELECT = `${CLAIM_COLUMNS}, deleted_at, classes (id, style, level, share_slug, room, price_inr, capacity, status, businesses!classes_business_id_fkey (name, city), class_sessions (id, starts_at, ends_at))`;
 const toAsk = (r: MyAskRow): MyClassPersonAsk => {
   const first = [...(r.classes!.class_sessions ?? [])].sort((a, b) => a.starts_at.localeCompare(b.starts_at))[0] ?? null;
   return {
     ...toClassPerson(r),
+    withdrawn: Boolean(r.deleted_at) && r.status === "asked",
     classTitle: dosClassLabel(r.classes!.style, r.classes!.level),
     classStyle: r.classes!.style,
     classShareSlug: r.classes!.share_slug,
@@ -190,19 +192,26 @@ export type AskStatus = "asked" | "confirmed" | "rejected";
  *  asks waiting for the owner. The fourth time this lesson has surfaced: RLS is
  *  a ceiling, not a scoping mechanism. (No caller hit it yet; fixed at Step 14
  *  while the calendar was reading the same table.) */
-export async function findMyPendingClassPeople(supabase: SupabaseClient, statuses: AskStatus[] = ["asked"]): Promise<MyClassPersonAsk[]> {
+/** ⚠ `withdrawn` (2 Oct 2026, the user: "check … doesnt get removed from the
+ *  system"): a withdrawn ask is SOFT-deleted while still `asked`, and both ends'
+ *  SELECT policies admit a deleted row — so the Inbox can keep it under Completed
+ *  as "Withdrawn" rather than have it vanish. A confirmed row deleted later (the
+ *  seat ended) is not an ask any more and stays out. */
+const liveOrWithdrawn = "deleted_at.is.null,status.eq.asked";
+
+export async function findMyPendingClassPeople(supabase: SupabaseClient, statuses: AskStatus[] = ["asked"], opts: { withdrawn?: boolean } = {}): Promise<MyClassPersonAsk[]> {
   const {
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) {
     return [];
   }
-  const { data, error } = await supabase
+  const base = supabase
     .from("class_people")
     .select(ASK_SELECT)
     .eq("user_id", user.id)
-    .in("status", statuses)
-    .is("deleted_at", null)
+    .in("status", statuses);
+  const { data, error } = await (opts.withdrawn ? base.or(liveOrWithdrawn) : base.is("deleted_at", null))
     .order("created_at", { ascending: false })
     .limit(50);
 
@@ -322,16 +331,16 @@ export async function setClassPersonPowers(
  *  the reason a class of yours is still a draft, so it says so"). Says which
  *  businesses out loud: members read their business's classPeople under RLS, and a person
  *  on two teams would otherwise see both as one list. */
-export async function findAskedClassPeopleForBusinesses(supabase: SupabaseClient, businessIds: string[], statuses: AskStatus[] = ["asked"]): Promise<MyClassPersonAsk[]> {
+export async function findAskedClassPeopleForBusinesses(supabase: SupabaseClient, businessIds: string[], statuses: AskStatus[] = ["asked"], opts: { withdrawn?: boolean } = {}): Promise<MyClassPersonAsk[]> {
   if (businessIds.length === 0) {
     return [];
   }
-  const { data, error } = await supabase
+  const base = supabase
     .from("class_people")
     .select(ASK_SELECT)
     .in("business_id", businessIds)
-    .in("status", statuses)
-    .is("deleted_at", null)
+    .in("status", statuses);
+  const { data, error } = await (opts.withdrawn ? base.or(liveOrWithdrawn) : base.is("deleted_at", null))
     .order("created_at", { ascending: false })
     .limit(100);
 

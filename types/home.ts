@@ -20,6 +20,14 @@ import type { ClassBookingStatus } from "@/types/classBooking";
  *  ⚠ `Spectator`, `Competing` and `Running` went with events (29 Sep 2026). */
 export type DeckRole = "Booked" | "Waitlisted" | "Assisting" | "Teaching" | "At your studio";
 
+/** Where a card stands in today (2 Oct 2026, the user: "once class completed for
+ *  today it should move on the left … completed status same as live with red
+ *  border … upcoming classes yellow border"). Decided by the LIST off the clock
+ *  the server already read, never by the card: `done` has ended, `live` is the
+ *  one winner, `upcoming` is everything else — which includes a session that has
+ *  started but lost the Live dead heat, because exactly one card is live. */
+export type DeckState = "done" | "live" | "upcoming";
+
 interface DeckBase {
   /** "class:<sessionId>" — unique in the rail */
   key: string;
@@ -30,6 +38,8 @@ interface DeckBase {
   endsAt: string;
   /** exactly one card in the deck is live, decided by the list (7084-7104) */
   live: boolean;
+  /** done · live · upcoming — the card's frame on Home, and its place in the rail */
+  state: DeckState;
   /** where the card's sleeve opens */
   href: string;
 }

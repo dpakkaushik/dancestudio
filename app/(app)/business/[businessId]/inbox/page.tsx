@@ -7,7 +7,7 @@ import { gradientOf } from "@/features/profiles/components/profile-kit";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { findAskedClassPeopleForBusinesses, findClassArtists } from "@/repositories/classPeople";
 import { findVenueRequestsForBusinesses } from "@/repositories/classes";
-import { findPendingInvites } from "@/repositories/invites";
+import { findSentInvites } from "@/repositories/invites";
 import { findMyMemberships, runsTheBusiness } from "@/repositories/businesses";
 
 const stampNowIso = (): string => new Date().toISOString();
@@ -55,9 +55,10 @@ export default async function StudioInboxPage({ params, searchParams }: { params
      inbox from home tools for all profiles") — the studio's enquiries are this
      Inbox's third desk, read through the loader the person's Inbox shares */
   const [venueIn, classPeopleOut, invitesOut, enq, { show }] = await Promise.all([
-    findVenueRequestsForBusinesses(supabase, [businessId]).catch(() => []),
-    findAskedClassPeopleForBusinesses(supabase, [businessId]),
-    findPendingInvites(supabase, businessId).then((rows) => rows.map((i) => ({ ...i, businessName: business.name }))),
+    /* ⚠ every status, so an answered or withdrawn one moves to Completed rather than vanishing (2 Oct 2026) */
+    findVenueRequestsForBusinesses(supabase, [businessId], ["requested", "accepted", "declined"]).catch(() => []),
+    findAskedClassPeopleForBusinesses(supabase, [businessId], ["asked", "confirmed", "rejected"], { withdrawn: true }),
+    findSentInvites(supabase, businessId).then((rows) => rows.map((i) => ({ ...i, businessName: business.name }))),
     loadEnquiries(supabase, { kind: "business", id: businessId, memberships }),
     searchParams,
   ]);

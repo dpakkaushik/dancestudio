@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
+import { WelcomeFromUrl } from "@/components/ui/WelcomeBow";
 import { PlanRights } from "@/features/settings/components/PlanRights";
 import { BizPage } from "@/features/settings/components/settings-kit";
 import { StudioSubscriptionStrip } from "@/features/businesses/components/StudioSubscriptionStrip";
@@ -72,6 +73,25 @@ export default async function BusinessSubscriptionPage({ params }: { params: Pro
           price and nothing beside it; the artist's had a list that promised a
           0.9% fee nobody charges and events an artist cannot host. */}
       <PlanRights kind="studio" />
+      {/* THE BOW ON CREATION (2 Oct 2026, the user: "on creation similar welcome
+          message for studio and crew profiles as we get on sign up for users").
+          Opened by `?welcome=studio`, which the New-studio sheet adds and
+          nothing else does; presentation only — this page has already decided
+          its reader is the owner. */}
+      <WelcomeFromUrl
+        kind="studio"
+        label={`Welcome, ${business.name}`}
+        emoji="🏛️"
+        title={`Welcome, ${business.name}!`}
+        subtitle="Your studio is on DanceOS — the floor is yours."
+        pills={(business.styles ?? []).slice(0, 5).map((label) => ({ label }))}
+        pillsCaption={(business.styles ?? []).length > 0 ? "what it dances" : undefined}
+        note={
+          <>
+            Two steps to <b style={{ color: "#F5F2FA" }}>Discover</b>: DanceOS verifies it (Settings › Verification), and its own subscription — right here — puts it live.
+          </>
+        }
+      />
     </BizPage>
   );
 }

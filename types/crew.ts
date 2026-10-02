@@ -45,6 +45,9 @@ export interface Crew {
 
 export interface CrewMember {
   id: string;
+  /** ⚠ an ask WITHDRAWN before it was answered (2 Oct 2026) — soft-deleted, read
+   *  back only by the Inbox so its Completed can say so */
+  withdrawn?: boolean;
   /** the member's own photo, so a roster shows faces (parity slice 2) */
   avatarPath?: string | null;
   crewId: string;

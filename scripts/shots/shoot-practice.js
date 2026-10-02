@@ -136,7 +136,8 @@ const tomorrowIst = () => {
     await leader.getByRole("link", { name: "Create crew", exact: true }).click();
     await leader.getByRole("heading", { name: "Create crew" }).waitFor();
     await leader.getByLabel("Crew name").fill(crewName);
-    await leader.getByLabel("Dance style", { exact: true }).click();
+    /* a crew dances a LIST since 2 Oct 2026: the multi picker's add control */
+    await leader.getByRole("button", { name: "Add a dance style", exact: true }).click();
     await leader.getByRole("button", { name: "Hip-Hop", exact: true }).click();
     await leader.getByLabel("Mobile", { exact: true }).fill("+91 90000 44440");
     await leader.getByLabel("Email", { exact: true }).fill(`prac-crew-${stamp}@example.com`);
@@ -145,8 +146,10 @@ const tomorrowIst = () => {
     await leader.getByRole("button", { name: `Add ${memberName} to the crew` }).click();
     await leader.getByRole("button", { name: "Create crew", exact: true }).click();
     await leader.getByRole("dialog", { name: "Create this crew?" }).getByRole("button", { name: "Create crew", exact: true }).click();
-    await leader.waitForURL(/\/crews\/[0-9a-f-]+\/manage$/, { timeout: 30000 });
-    crewId = leader.url().match(/\/crews\/([0-9a-f-]+)\/manage$/)[1];
+    /* ⚠ under the welcome bow since 2 Oct 2026 (`?welcome=crew`); the goto to
+       the crew's home below leaves it behind */
+    await leader.waitForURL(/\/crews\/[0-9a-f-]+\/manage(\?welcome=crew)?$/, { timeout: 30000 });
+    crewId = leader.url().match(/\/crews\/([0-9a-f-]+)\/manage/)[1];
 
     /* the member confirms the SEAT — only a confirmed member is asked to a practice */
     await member.goto(`${BASE}/inbox`, { waitUntil: "networkidle" });

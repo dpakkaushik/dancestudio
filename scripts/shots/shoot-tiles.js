@@ -221,8 +221,16 @@ async function personOpensAStudio(page, who, acc, stamp) {
    *  than a second errand somebody has to go and find. Asserted rather than
    *  merely navigated around — this IS the feature, and the hub checks below
    *  would otherwise quietly pass on whatever page they landed on. */
-  await page.waitForURL(/\/business\/[0-9a-f-]{36}\/subscription$/, { timeout: 20_000 }).catch(() => {});
-  check(/\/subscription$/.test(page.url()), `${who} · creating a studio lands on its own Subscription screen (${page.url().replace(BASE, "")})`);
+  /* ⚠ and it lands UNDER THE WELCOME BOW (2 Oct 2026, `?welcome=studio`):
+     asserted, then closed with its own Continue, which drops the param */
+  await page.waitForURL(/\/business\/[0-9a-f-]{36}\/subscription(\?welcome=studio)?$/, { timeout: 20_000 }).catch(() => {});
+  check(/\/subscription(\?welcome=studio)?$/.test(page.url()), `${who} · creating a studio lands on its own Subscription screen (${page.url().replace(BASE, "")})`);
+  const bow = page.getByTestId("welcome-bow");
+  await bow.waitFor({ timeout: 15_000 }).catch(() => {});
+  check(await bow.isVisible().catch(() => false), `${who} · with the welcome bow over it`);
+  await bow.getByRole("button", { name: "Continue" }).click().catch(() => {});
+  await page.waitForURL(/\/subscription$/, { timeout: 10_000 }).catch(() => {});
+  check((await page.getByTestId("welcome-bow").count()) === 0, `${who} · and Continue closes the bow`);
   /* ⚠ WAITS, NOT ONE-SHOT COUNTS — the page streams behind a loading boundary,
      so the URL changes before its content arrives; a bare `.count()` here read
      zero three times and looked like a missing feature (19 Sep's own lesson) */
@@ -308,8 +316,9 @@ async function personOpensAStudio(page, who, acc, stamp) {
      rule and the whole point of this check; it has simply moved off the live
      desk so Requests holds only what still needs somebody. */
   await page.goto(`${BASE}/inbox`, { waitUntil: "networkidle" });
-  /* "Completed" since 2 Oct 2026, opening on its Received side */
-  await page.getByRole("button", { name: /^Completed/ }).click().catch(() => {});
+  /* Requests › Completed since later on 2 Oct 2026 — Completed is a side of each column */
+  await page.getByRole("button", { name: /^Requests — / }).click().catch(() => {});
+  await page.getByRole("button", { name: "Completed requests" }).click().catch(() => {});
   const inbox = await page.locator("body").innerText().catch(() => "");
   /* ⚠ "Accepted", not "Confirmed" (27 Sep 2026): a class ask is drawn as the
      app's own class card with Accept / Reject under it, so the answer it wears

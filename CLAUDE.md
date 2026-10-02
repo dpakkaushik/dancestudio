@@ -2,6 +2,47 @@
 
 ## LAST SESSION (2 Oct 2026) — replaced on every push (Rule 13)
 
+> ### THREE INBOX COLUMNS, A DAY THAT READS LEFT TO RIGHT, A WELCOME FOR WHAT YOU CREATE, A MULTI-STYLE PICKER, AND "PAID" AT THE DOOR (2 Oct 2026, latest) — ✅ `20261002140000` APPLIED (dry run 17/17 re-run first, read back live 7/7, PostgREST reloaded)
+> Built by the previous chat, which ran out of room ("Prompt is too long")
+> after putting the migration's list in front of the user; this session read
+> that list back from its transcript, then applied the migration and pushed on
+> *"lets push to live"*.
+> * **The Inbox is three columns — Enquiries · Requests · Invites** — opening
+>   on Enquiries, each with **Received · Sent · Completed** (C96, superseding
+>   C94). A studio's and a crew's Enquiries is Received · Completed.
+>   * ⚠ Nothing leaves when its status changes: a withdrawn ask or a revoked
+>     invite is a grey **Withdrawn** stamp under Completed, and answered room
+>     requests and answered sent invites land there too.
+>   * ⚠ A pre-existing bug the probe found: a crew leader's own seat read as an
+>     invitation they had "joined". Fixed both ways.
+> * **Home's deck reads left to right** (C97): ended cards first with a red
+>   frame and COMPLETED, the live one green, upcoming amber; the rail scrolls
+>   to the first card not yet over.
+> * **A welcome bow** after creating a studio or a crew, and after becoming an
+>   artist (C98, `WelcomeBow`, `?welcome=`). ⚠ An artist paying on a phone that
+>   returns by full-page redirect sees no bow.
+> * **One multi-style picker** on the studio and crew forms (C99,
+>   `DosStyleMultiPicker`): chips, the first marked MAIN, eight at most.
+> * **`20261002140000_paid_at_the_door_and_answered_invites`:**
+>   * `class_bookings.door_paid_at` / `door_paid_by` (no FK into
+>     `auth.users`) and `set_door_paid`, the register's **Paid** button. It works
+>     for walk-ins and seats booked in at the door only; it refuses a free class,
+>     a self-booked seat and a seat paid online, each in words. DanceOS still
+>     moves no money — it records that the door collected it.
+>   * `my_answered_invites`: an invite you accepted or declined stays in your
+>     own Completed (the invitee holds no policy on `business_invites`).
+>   * No policy and no existing function touched; anon 39 → 39, policies
+>     103 → 103; nothing backfilled.
+> * **Verified:** typecheck 0 · lint 0 · build green · `shoot-inbox` 34/34 ·
+>   `shoot-register` 57/57 · `shoot-tiles` 136/136 · the whole e2e suite
+>   **46 passed / 1 failed / 9 not run**, then **the happy path alone 19/19 in
+>   12.4 min** — all 56 green across the two runs.
+>   * ⚠ The one red was a TEST: `goto("/profile")` redirects to `/person/{id}`,
+>     and the gear was pressed before React had claimed it (the snapshot showed
+>     the page fully drawn). It waits for the address and retries the press now.
+> * ⚠ **The Paid button has no browser check** — only the dry run covers its
+>   rules. `shoot-register` is where it belongs next time it is opened.
+
 > ### ENQUIRIES ARE BACK IN EVERY INBOX, DONE IS "COMPLETED" BY RECEIVED · SENT, AND DISCOVER LOOKS IN ALL CITIES (2 Oct 2026, latest) — no migration, ✅ PUSHED AND LIVE (`66ecd32`: Vercel READY, alias confirmed on the sha through the API, `stranger-smoke` 8/8 and `shoot-inbox` 29/29 ON THE LIVE SITE)
 > The user, in a run of messages: *"shift back enquiries to in box from home
 > tools for all profiles"*, *"lost enquiries also in done section"*, *"done
@@ -17287,6 +17328,10 @@ Home. **Do not "restore parity" on these.**
 | C93 | C70 (27 Sep 2026): Enquiries is a TOOL tile on every grid, its desk at `/enquiries`, `/business/{id}/enquiries` and `/crews/{id}/manage/enquiries` | **ENQUIRIES ARE THE INBOX'S THIRD DESK AGAIN, ON EVERY PROFILE'S INBOX**: Requests · Invites · Enquiries · Completed, read through one loader (`loadEnquiries`) that keeps the old desk's scoping, so a person's, a studio's and a crew's enquiries never overlap. The tile is gone from every grid; the three old addresses redirect to `?show=enquiries` (Rule 14). The settings moved with the desk | 2 Oct 2026, the user: *"i think we should shift back enquiries to in box from home tools for all profiles will simply managing it"* — it reverses C70 and C68 at the same person's word |
 | C94 | C68 (27 Sep 2026): a fourth section, **Done**, each desk's own kind | **COMPLETED, SPLIT RECEIVED · SENT, THE KINDS MIXED** — what was put to you and what you put to others, newest first, the card saying which kind it is. It holds closed enquiries too, won and lost | 2 Oct 2026, the user: *"done should be called completed and should be section with received and sent not with request invites and enquiries"*, and *"lost enquiries also in done section"* |
 | C95 | Discover's place chip offers Near me and the cities (C45) | **AND ALL CITIES** — `?city=all`, the list's own "none" row: every read given no city, studios a nationwide radius with no distance printed, the sentences "in all cities" | 2 Oct 2026, the user: *"location drop down on discover should also have option to view for all cities together called all"* |
+| C96 | C94 (that same day): Completed is a fourth pill, split Received · Sent, the kinds mixed | **THREE COLUMNS — Enquiries · Requests · Invites — and Completed is a SIDE of each**: Received · Sent · Completed, each Completed holding that kind's closed rows both ways. The Inbox opens on Enquiries. A studio's and a crew's Enquiries is Received · Completed. ⚠ **Withdrawn is a third answer**, stamped grey — an ask taken back, or an invite revoked, is neither a yes nor a no | 2 Oct 2026, the user: *"completed not in line with enquiries invites and request but with received and sent in their respective section. enquiry should be first. all requests, invites and enquiries should be 3 columns"* — superseding C94 at the same person's word |
+| C97 | Home's deck opens on the live card and paints only it (a green frame, C-series 2 Oct) | **THE DAY READS LEFT TO RIGHT**: what has ended first, framed red with COMPLETED; the live one green; what is still to come amber with UPCOMING — and the rail scrolls itself to the first card not yet over | 2 Oct 2026, the user: *"once class completed for today it should move on the left … completed status same as live with red border on cards, upcoming classes yellow border"* |
+| C98 | Onboarding's "Take a bow" (3926) is the only welcome | **A BOW ON CREATING A STUDIO, A CREW, AND ON BECOMING AN ARTIST** (`WelcomeBow`, `?welcome=studio\|crew\|artist`, cleared by a replace so back never re-opens it). ⚠ An artist mandate returning by full-page redirect (phones) is not confirmed on that screen, so it shows no bow | 2 Oct 2026, the user: *"on creation similar welcome message for studio and crew profiles as we get on sign up for users and same should be once converted and subscribed for being an artist"* |
+| C99 | A studio and a crew pick their style one at a time (the single `DosStylePicker`, re-opened per style) | **ONE MULTI-PICKER** (`DosStyleMultiPicker`, the prototype's own `multi` mode, 3554): chips with ×, the first marked MAIN with ★ to promote, a searchable list that ticks, eight at most at creation | 2 Oct 2026, the user: *"dance style filter while creating studio and crew should be multi filter and better way to handle in the form"* |
 
 ### UI parity backlog — gaps vs the prototype, tracked so none is forgotten
 

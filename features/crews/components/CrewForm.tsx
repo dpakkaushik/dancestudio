@@ -5,7 +5,7 @@ import { useState } from "react";
 import { createCrewAction } from "@/features/crews/server-actions/crews";
 import { PeoplePicker, personGradient, personInitials } from "@/features/people/components/PeoplePicker";
 import { CityPicker } from "@/features/geo/components/CityPicker";
-import { DosStylePicker } from "@/components/ui/DosStyleKit";
+import { DOS_ALL_STYLES, DosStyleMultiPicker } from "@/components/ui/DosStyleKit";
 import {
   EL,
   FORM_LABEL,
@@ -49,7 +49,13 @@ export function CrewForm({ defaultCity, sheet = false }: { defaultCity: string |
   /* the leader's own city to start with; a crew has no address to read one off,
      so the field is the app's one city control (11 / 19 Sep 2026) */
   const [city, setCity] = useState<string>(defaultCity?.trim() || "");
-  const [style, setStyle] = useState("");
+  /* A CREW DANCES A LIST (2 Oct 2026, the user: "dance style filter while
+     creating studio and crew should be multi filter"). The first is its main
+     style — what `create_crew` takes and `crews.style` keeps — and the rest land
+     through `set_crew_styles` inside the same action. Nothing picked is "All
+     styles", as it always was. */
+  const [styles, setStyles] = useState<string[]>([]);
+  const mainStyle = styles[0] || DOS_ALL_STYLES;
   /* THE CREW'S OWN NUMBER AND ADDRESS (26 Sep 2026): required, and never the
      leader's login details — they are what its page's Call and Mail open */
   const [phone, setPhone] = useState("");
@@ -73,7 +79,7 @@ export function CrewForm({ defaultCity, sheet = false }: { defaultCity: string |
   const create = async () => {
     if (busy) return;
     setBusy(true);
-    const out = await createCrewAction({ name: name.trim(), city, style: style || "All styles", phone: phone.trim(), email: email.trim(), memberIds: members.map((m) => m.id) });
+    const out = await createCrewAction({ name: name.trim(), city, styles: styles.length ? styles : [DOS_ALL_STYLES], phone: phone.trim(), email: email.trim(), memberIds: members.map((m) => m.id) });
     setBusy(false);
     setConfirm(false);
     if (out.error || !out.crewId) {
@@ -88,7 +94,10 @@ export function CrewForm({ defaultCity, sheet = false }: { defaultCity: string |
        form over the hub. That is the looping shape this app has been bitten by
        twice already; `replace` spends the sheet's entry instead. */
     setTimeout(() => {
-      const to = `/crews/${out.crewId}/manage`;
+      /* `?welcome=crew` (2 Oct 2026, the user: "on creation similar welcome
+         message for studio and crew profiles as we get on sign up") — the
+         crew's home draws the bow over itself and Continue drops it */
+      const to = `/crews/${out.crewId}/manage?welcome=crew`;
       if (sheet) router.replace(to);
       else router.push(to);
     }, 700);
@@ -103,9 +112,10 @@ export function CrewForm({ defaultCity, sheet = false }: { defaultCity: string |
           <div style={FORM_LABEL}>CITY</div>
           <CityPicker value={city || null} label="City" onChange={(next) => setCity(next ?? "")} />
 
-          <div style={FORM_LABEL}>DANCE STYLE</div>
-          {/* the app's one style picker (9561) — searchable, "All styles" above the list */}
-          <DosStylePicker value={style} onChange={setStyle} all placeholder="Dance style" />
+          <div style={FORM_LABEL}>DANCE STYLES</div>
+          {/* the app's one style list (9561), several at once since 2 Oct 2026 —
+              searchable, "All styles" above the list and exclusive both ways */}
+          <DosStyleMultiPicker value={styles} onChange={setStyles} all max={8} />
 
           {/* THE CREW'S NUMBER AND ADDRESS (26 Sep 2026) — the crew's own, asked
               for here rather than copied off the leader's login; both editable
@@ -184,8 +194,8 @@ export function CrewForm({ defaultCity, sheet = false }: { defaultCity: string |
           onConfirm={() => void create()}
         >
           <FormSummary
-            tint={dosStyleColor(style || "All styles")}
-            head={<span style={{ fontSize: 11.5, fontWeight: 800 }}>👥 {style || "All styles"} · {city}</span>}
+            tint={dosStyleColor(mainStyle)}
+            head={<span style={{ fontSize: 11.5, fontWeight: 800 }}>👥 {(styles.length ? styles : [DOS_ALL_STYLES]).join(", ")} · {city}</span>}
           >
             <b style={{ fontSize: 15 }}>{name.trim()}</b>
             <div style={{ fontSize: 12, color: SUB, marginTop: 4 }}>

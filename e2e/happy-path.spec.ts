@@ -471,7 +471,16 @@ test.describe.serial("DanceOS, end to end", () => {
        studio is still unverified, which is the whole of the new order:
        `20260927100000` took `subscribe`'s badge refusal out, and
        `guard_business_visibility` still decides Discover. */
-    await owner.waitForURL(/\/business\/[0-9a-f-]{36}\/subscription$/, { timeout: 30_000 });
+    /* ⚠ AND IT LANDS WITH THE BOW (2 Oct 2026, the user: "on creation similar
+       welcome message for studio and crew profiles as we get on sign up") —
+       `?welcome=studio` draws it over the Subscription screen; Continue drops
+       the param with a replace and the screen is underneath, untouched */
+    await owner.waitForURL(/\/business\/[0-9a-f-]{36}\/subscription\?welcome=studio$/, { timeout: 30_000 });
+    const studioBow = owner.getByTestId("welcome-bow");
+    await expect(studioBow).toContainText(`Welcome, ${studioName}!`, { timeout: 15_000 });
+    await studioBow.getByRole("button", { name: "Continue" }).click();
+    await owner.waitForURL(/\/business\/[0-9a-f-]{36}\/subscription$/);
+    await expect(owner.getByTestId("welcome-bow")).toHaveCount(0);
     await expect(owner.getByText("What it buys")).toBeVisible({ timeout: 15_000 });
     await expect(owner.getByRole("button", { name: /^Subscribe · / })).toBeVisible({ timeout: 15_000 });
     await owner.goto("/business");
@@ -1336,8 +1345,10 @@ test.describe.serial("DanceOS, end to end", () => {
     await expect(learner.getByRole("heading", { name: "Create crew" })).toBeVisible();
     await expect(learner.getByRole("button", { name: "Name your crew first" })).toBeVisible();
     await learner.getByLabel("Crew name").fill(crewName);
-    await learner.getByLabel("Dance style", { exact: true }).click();
-    await learner.getByRole("button", { name: "Hip-Hop", exact: true }).click();
+    /* a crew dances a LIST since 2 Oct 2026 — the multi picker's one add control,
+       the same name the New-studio sheet's has */
+    await pick(learner, "Add a dance style", "Hip-Hop");
+    await expect(learner.getByRole("button", { name: "Remove Hip-Hop", exact: true })).toBeVisible();
     /* THE CREW'S OWN NUMBER AND EMAIL, REQUIRED (26 Sep 2026) — the bar names each
        missing answer before it offers Create crew */
     await expect(learner.getByRole("button", { name: "Add the crew's mobile number" })).toBeVisible();
@@ -1350,8 +1361,14 @@ test.describe.serial("DanceOS, end to end", () => {
     await expect(learner.getByText("MEMBERS · 1 added")).toBeVisible();
     await learner.getByRole("button", { name: "Create crew", exact: true }).click();
     await learner.getByRole("dialog", { name: "Create this crew?" }).getByRole("button", { name: "Create crew", exact: true }).click();
+    /* the crew's home opens under its welcome bow (2 Oct 2026) — `?welcome=crew`,
+       closed by Continue, which drops the param */
+    await learner.waitForURL(/\/crews\/[0-9a-f-]+\/manage\?welcome=crew$/);
+    crewId = learner.url().match(/\/crews\/([0-9a-f-]+)\/manage/)![1];
+    const crewBow = learner.getByTestId("welcome-bow");
+    await expect(crewBow).toContainText("is ready!", { timeout: 15_000 });
+    await crewBow.getByRole("button", { name: "Continue" }).click();
     await learner.waitForURL(/\/crews\/[0-9a-f-]+\/manage$/);
-    crewId = learner.url().match(/\/crews\/([0-9a-f-]+)\/manage$/)![1];
     // the crew's HOME (18 Sep 2026): the hero, the Team and Events tiles, the crew's own bar
     await expect(learner.getByTestId("crew-hero")).toBeVisible();
     await expect(learner.getByRole("navigation", { name: "Crew" }).getByRole("link", { name: "Inbox" })).toBeVisible();
@@ -1419,8 +1436,11 @@ test.describe.serial("DanceOS, end to end", () => {
        because a check that only looks at the new place cannot tell you the old
        one was cleared. */
     await expect(trainer.getByRole("button", { name: `Join ${crewName}` })).toHaveCount(0, { timeout: 15_000 });
-    /* ⚠ "Completed" since 2 Oct 2026 — and Received is the side it opens on */
-    await pressPill(trainer, /^Completed/);
+    /* ⚠ COMPLETED IS A SIDE OF EACH COLUMN since later on 2 Oct 2026 (the user:
+       "completed … with received and sent in their respective section") — so
+       the answered invitation is under Invites › Completed, not a pill of its own */
+    await expect(trainer.getByRole("button", { name: /^Completed — / })).toHaveCount(0);
+    await trainer.getByRole("button", { name: "Completed invitations" }).click();
     const crewAsk = trainer.getByTestId("request-row").filter({ hasText: crewName }).filter({ hasText: `invited by ${learnerName}` });
     await expect(crewAsk.getByText("Joined — you said yes")).toBeVisible({ timeout: 15_000 });
     await expect(crewAsk.getByRole("button", { name: `Join ${crewName}` })).toHaveCount(0);
@@ -2032,9 +2052,19 @@ test.describe.serial("DanceOS, end to end", () => {
     // `/profile?settings=1` and let THAT page open the sheet, which is exactly
     // why Settings could only ever be about that person. It opens the sheet over
     // whatever you are looking at now, so a studio gets a studio's settings.
-    await trainer.getByRole("button", { name: "Settings", exact: true }).click();
+    /* ⚠ `/profile` is a REDIRECT to `/person/{id}`, so a press straight after
+       the goto can land before React has claimed the gear and do nothing (2 Oct
+       2026: one whole-suite run lost this segment that way, the page fully drawn
+       in the snapshot). Wait for the address, and retry the press until the
+       sheet answers — a click before hydration is not a click. */
+    await trainer.waitForURL(/\/person\//);
     const settings = trainer.getByRole("dialog", { name: "Settings" });
-    await expect(settings).toBeVisible();
+    await expect(async () => {
+      if (!(await settings.isVisible())) {
+        await trainer.getByRole("button", { name: "Settings", exact: true }).click();
+      }
+      await expect(settings).toBeVisible({ timeout: 2_000 });
+    }).toPass({ timeout: 15_000 });
     /* ⚠ NO "YOUR PLAN" SINCE 26 Sep 2026 — the plan is the Subscription tile on Home */
     await expect(settings.getByText("YOUR PLAN")).toHaveCount(0);
     await expect(settings.getByText("ACCOUNT")).toBeVisible();
@@ -2226,6 +2256,11 @@ test.describe.serial("DanceOS, end to end", () => {
        its line */
     await expect(card.getByTestId("live-badge")).toBeVisible();
     await expect(card.locator('[data-live="yes"]')).toHaveCount(1);
+    /* ⚠ the deck frames every card by where it stands today (2 Oct 2026) — done
+       red, live green, upcoming amber — and a live card wears neither of the other two */
+    await expect(card.locator('[data-deck-state="live"]')).toHaveCount(1);
+    await expect(card.getByTestId("done-badge")).toHaveCount(0);
+    await expect(card.getByTestId("upcoming-badge")).toHaveCount(0);
     /* ⚠⚠ AND NOTHING UNDER THE CARD (2 Oct 2026, the user: "should not show
        invoice and cancel booking option on todays schedule tile on home … can
        also remove you are booked an everything in that section below the bar").

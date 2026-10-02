@@ -65,7 +65,7 @@ const pressed = async (loc) => (await loc.getAttribute("aria-pressed").catch(() 
 
 (async () => {
   const stamp = Date.now().toString(36);
-  const made = { users: [], businesses: [], enquiries: [] };
+  const made = { users: [], businesses: [], enquiries: [], crews: [] };
   const browser = await chromium.launch();
   try {
     const owner = await makeAccount(stamp, "owner", `Kappa Owner ${stamp}`);
@@ -96,15 +96,43 @@ const pressed = async (loc) => (await loc.getAttribute("aria-pressed").catch(() 
 
     /* a team invite for the sender, through the owner's own door */
     await call("POST", "/rest/v1/rpc/invite_person_to_business", owner.h, { p_business_id: studio.id, p_user_id: sender.id, p_role: "trainer" });
+    /* ⚠ and a SECOND invite the sender DECLINES, from a second studio — the
+       owner's Sent side must keep it, under Invites › Completed (2 Oct 2026: a
+       sent invite was a pending-only read, so an answered one vanished) */
+    const studio2 = await call("POST", "/rest/v1/rpc/create_business_with_owner", owner.h, { p_type: "studio", p_name: `Lambda Hall ${stamp}`, p_area: "Baner", p_city: "Pune", p_styles: ["Hip-Hop"] });
+    made.businesses.push(studio2.id);
+    const inv2 = await call("POST", "/rest/v1/rpc/invite_person_to_business", owner.h, { p_business_id: studio2.id, p_user_id: sender.id, p_role: "staff" });
+    await call("POST", "/rest/v1/rpc/decline_business_invite", sender.h, { p_code: inv2.code });
+    /* ⚠ and a crew ask the leader WITHDRAWS — a soft delete, which both Inboxes
+       used to drop on the floor */
+    const crew = await call("POST", "/rest/v1/rpc/create_crew", owner.h, { p_name: `Mu Crew ${stamp}`, p_city: "Pune", p_style: "Hip-Hop", p_member_ids: [sender.id] });
+    made.crews.push(crew.id);
+    const [ask] = await call("GET", `/rest/v1/crew_members?crew_id=eq.${crew.id}&user_id=eq.${sender.id}&select=id`, svc);
+    await call("POST", "/rest/v1/rpc/withdraw_crew_ask", owner.h, { p_member_id: ask.id });
 
     /* ── THE SENDER'S OWN INBOX ── */
     const sp = await (await browser.newContext({ viewport: { width: 430, height: 932 } })).newPage();
     await signIn(sp, sender);
     await sp.goto(`${BASE}/inbox`, { waitUntil: "networkidle" });
-    for (const w of ["Requests", "Invites", "Enquiries", "Completed"]) check((await pill(sp, new RegExp(`^${w} — `)).count()) === 1, `sender inbox: the ${w} pill is there`);
-    check((await sp.getByRole("button", { name: /^Done — / }).count()) === 0, "sender inbox: there is no Done pill any more");
-
-    await pill(sp, /^Invites — /).click();
+    /* ⚠ THREE COLUMNS, ENQUIRIES FIRST, NO COMPLETED PILL (2 Oct 2026, the user:
+       "completed … with received and sent in their respective section. enquiry
+       should be first. all requests, invites and enquiries should be 3 columns") */
+    const order = await sp.getByRole("button", { name: /^(Enquiries|Requests|Invites|Completed) — / }).evaluateAll((els) => els.map((e) => e.getAttribute("aria-label").split(" — ")[0]));
+    check(order.join(",") === "Enquiries,Requests,Invites", `sender inbox: the columns are Enquiries · Requests · Invites (${order.join(" · ")})`);
+    check(await pressed(pill(sp, /^Enquiries — /)), "sender inbox: it opens on Enquiries, the first column");
+    for (const noun of ["enquiries", "requests", "invitations"]) {
+      if (noun === "requests") await pill(sp, /^Requests — /).click();
+      if (noun === "invitations") await pill(sp, /^Invites — /).click();
+      const sides = ["Received", "Sent", "Completed"].map((s) => sp.getByRole("button", { name: `${s} ${noun}`, exact: true }));
+      check((await Promise.all(sides.map((l) => l.count()))).every((n) => n === 1), `${noun}: Received · Sent · Completed inside the column`);
+    }
+    /* the withdrawn crew ask is NOT live and IS under Invites › Completed */
+    check((await sp.getByRole("button", { name: `Join Mu Crew ${stamp}` }).count()) === 0, "a withdrawn crew ask offers no Join");
+    await sp.getByRole("button", { name: "Completed invitations", exact: true }).click();
+    const gone = sp.getByTestId("request-row").filter({ hasText: `Mu Crew ${stamp}` });
+    check((await gone.getByTestId("answer-stamp").getAttribute("data-status").catch(() => null)) === "withdrawn", `invitee › Invites › Completed: the withdrawn crew ask is still there, stamped (${(await gone.first().innerText().catch(() => "missing")).replace(/\s+/g, " ").slice(0, 90)})`);
+    check((await sp.getByTestId("request-row").filter({ hasText: `Lambda Hall ${stamp}` }).count()) <= 1, "invitee: the declined invite is at most once (it needs the held migration to show here)");
+    await sp.getByRole("button", { name: "Received invitations", exact: true }).click();
     const inv = sp.getByTestId("request-row").filter({ hasText: `Kappa Hall ${stamp}` });
     await inv.first().waitFor({ timeout: 15000 }).catch(() => {});
     const invText = await inv.first().innerText().catch(() => "");
@@ -120,11 +148,8 @@ const pressed = async (loc) => (await loc.getAttribute("aria-pressed").catch(() 
     const sentText = await sentCard.first().innerText().catch(() => "");
     check(/\bKH\b/.test(sentText) && !/\bZQ\b/.test(sentText), `enquiry card: the studio's face, not your own (${/\bKH\b/.test(sentText) ? "KH" : "-"} / ${/\bZQ\b/.test(sentText) ? "ZQ shown" : "no ZQ"})`);
 
-    await pill(sp, /^Completed — /).click();
-    const sentSide = sp.getByRole("button", { name: "Sent completed" });
-    check((await sentSide.count()) === 1 && (await sp.getByRole("button", { name: "Received completed" }).count()) === 1, "Completed: split Received · Sent");
-    await sentSide.click();
-    check((await sp.getByRole("link", { name: `Private Sessions enquiry to Kappa Hall ${stamp}` }).count()) === 1, "Completed › Sent: the LOST enquiry is here");
+    await sp.getByRole("button", { name: "Completed enquiries", exact: true }).click();
+    check((await sp.getByRole("link", { name: `Private Sessions enquiry to Kappa Hall ${stamp}` }).count()) === 1, "Enquiries › Completed: the LOST enquiry is here");
 
     /* ── THE STUDIO'S INBOX ── */
     const op = await (await browser.newContext({ viewport: { width: 430, height: 932 } })).newPage();
@@ -137,8 +162,19 @@ const pressed = async (loc) => (await loc.getAttribute("aria-pressed").catch(() 
     check(/\bZQ\b/.test(recvText) && !/\bKH\b/.test(recvText), "studio's card: the sender's face, not the studio's own");
     check((await op.getByRole("button", { name: /^Enquiry settings/ }).count()) === 1, "studio inbox: the studio's Enquiry settings moved with the desk");
     check((await op.getByRole("button", { name: "Sent enquiries" }).count()) === 0, "studio inbox: no Sent enquiries side — a studio sends none");
-    await pill(op, /^Completed — /).click();
-    check((await op.getByRole("link", { name: `Private Sessions enquiry from Zed Quill ${stamp}` }).count()) === 1, "studio › Completed › Received: the LOST enquiry is here");
+    await op.getByRole("button", { name: "Completed enquiries", exact: true }).click();
+    check((await op.getByRole("link", { name: `Private Sessions enquiry from Zed Quill ${stamp}` }).count()) === 1, "studio › Enquiries › Completed: the LOST enquiry is here");
+
+    /* ── THE OWNER'S OWN INBOX: what they sent, answered or withdrawn ── */
+    await op.goto(`${BASE}/inbox`, { waitUntil: "networkidle" });
+    await pill(op, /^Invites — /).click();
+    await op.getByRole("button", { name: "Completed invitations", exact: true }).click();
+    const declined = op.getByTestId("request-row").filter({ hasText: `Lambda Hall ${stamp}` });
+    check((await declined.getByTestId("answer-stamp").getAttribute("data-status").catch(() => null)) === "rejected", "owner › Invites › Completed: the DECLINED invite is kept, stamped");
+    const withdrew = op.getByTestId("request-row").filter({ hasText: `Mu Crew ${stamp}` });
+    check(/You withdrew it/.test(await withdrew.first().innerText().catch(() => "")), "owner › Invites › Completed: the crew ask they took back says so");
+    await op.getByRole("button", { name: "Sent invitations", exact: true }).click();
+    check((await op.getByTestId("request-row").filter({ hasText: `Kappa Hall ${stamp}` }).count()) === 1, "owner › Invites › Sent: the invite still waiting is live, and only there");
 
     /* the personal Inbox of the same owner does NOT carry the studio's enquiries */
     await op.goto(`${BASE}/inbox?show=enquiries`, { waitUntil: "networkidle" });
@@ -181,6 +217,10 @@ const pressed = async (loc) => (await loc.getAttribute("aria-pressed").catch(() 
     for (const id of made.enquiries) {
       const r = await fetch(`${SUPA}/rest/v1/enquiries?id=eq.${id}`, { method: "DELETE", headers: svc });
       if (!r.ok) console.log(`  ⚠ cleanup enquiry ${id}: ${r.status}`);
+    }
+    for (const id of made.crews) {
+      const r = await fetch(`${SUPA}/rest/v1/crews?id=eq.${id}`, { method: "DELETE", headers: svc });
+      if (!r.ok) console.log(`  ⚠ cleanup crew ${id}: ${r.status} ${(await r.text()).slice(0, 160)}`);
     }
     for (const id of made.businesses) {
       const r = await fetch(`${SUPA}/rest/v1/businesses?id=eq.${id}`, { method: "DELETE", headers: svc });

@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { WelcomeFromUrl } from "@/components/ui/WelcomeBow";
 import { ArrangeTools } from "@/features/home/components/ArrangeTools";
 import type { Tile } from "@/features/home/components/home-kit";
 import { arrangeTiles, orderOf, toolsLayoutKey } from "@/features/home/toolOrder";
@@ -240,6 +241,26 @@ export function CrewHome({ crew, members, header = [], followers = 0, order = nu
       </div>
       {/* the form Settings sends you to, over the home it belongs to */}
       {editOpen ? <CrewEditFromUrl crew={crew} /> : null}
+      {/* THE BOW ON CREATION (2 Oct 2026, the user: "on creation similar welcome
+          message for studio and crew profiles as we get on sign up for users").
+          Opened by `?welcome=crew`, which Create crew adds and nothing else does;
+          presentation only — `requireLedCrew` has already said this is the leader. */}
+      <WelcomeFromUrl
+        kind="crew"
+        label={`${crew.name} is ready`}
+        emoji="🔥"
+        title={`${crew.name} is ready!`}
+        subtitle="Your crew is on DanceOS — and you lead it."
+        pills={(crew.styles.length ? crew.styles : crew.style ? [crew.style] : []).slice(0, 5).map((label) => ({ label }))}
+        pillsCaption="what it dances"
+        note={
+          <>
+            {asked > 0 ? `${asked} ${asked === 1 ? "person has" : "people have"} been asked to join — they confirm from their Inbox. ` : null}
+            Bring your dancers in from <b style={{ color: "#F5F2FA" }}>Team</b>, then arrange a <b style={{ color: "#F5F2FA" }}>Practice</b>.
+          </>
+        }
+        secondary={{ label: "Invite members ›", href: `/crews/${crew.id}/manage/team` }}
+      />
     </div>
     </RecordListsProvider>
     </EditModeProvider>

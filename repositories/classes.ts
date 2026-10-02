@@ -747,13 +747,20 @@ const VENUE_SELECT = `${CLASS_COLUMNS}, created_at`;
 
 /** The asks waiting on a set of STUDIOS for their rooms — the Requests desk's
  *  Received side for whoever runs them. Says which studios out loud. */
-export async function findVenueRequestsForBusinesses(supabase: SupabaseClient, businessIds: string[]): Promise<VenueRequest[]> {
+export async function findVenueRequestsForBusinesses(
+  supabase: SupabaseClient,
+  businessIds: string[],
+  /** the register's Requests tab wants the live queue; the Inbox wants all three */
+  statuses: Array<"requested" | "accepted" | "declined"> = ["requested"]
+): Promise<VenueRequest[]> {
   if (businessIds.length === 0) return [];
   const { data, error } = await supabase
     .from("classes")
     .select(VENUE_SELECT)
     .in("venue_business_id", businessIds)
-    .eq("venue_status", "requested")
+    /* ⚠ the Inbox asks for answered ones too (2 Oct 2026) — an accepted or
+       declined room request used to vanish from it; it belongs under Completed */
+    .in("venue_status", statuses)
     .is("deleted_at", null)
     .order("created_at", { ascending: false })
     .limit(100);
@@ -771,7 +778,8 @@ export async function findMyVenueAsks(supabase: SupabaseClient, pageIds: string[
     .from("classes")
     .select(VENUE_SELECT)
     .in("business_id", pageIds)
-    .in("venue_status", ["requested", "declined"])
+    /* ⚠ accepted too (2 Oct 2026) — a yes used to vanish from the artist's Sent */
+    .in("venue_status", ["requested", "accepted", "declined"])
     .is("deleted_at", null)
     .order("created_at", { ascending: false })
     .limit(100);

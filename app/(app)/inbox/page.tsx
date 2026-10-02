@@ -9,7 +9,7 @@ import { findAskedClassPeopleForBusinesses, findClassArtists, findMyPendingClass
 import { findMyVenueAsks, findVenueRequestsForBusinesses } from "@/repositories/classes";
 import { findAskedForMyCrews, findMyPendingCrewAsks } from "@/repositories/crews";
 import { findMyCrewPractices } from "@/repositories/crewPractices";
-import { findMyPendingInvites, findPendingInvites } from "@/repositories/invites";
+import { findMyAnsweredInvites, findMyPendingInvites, findSentInvites } from "@/repositories/invites";
 import { findMyMemberships } from "@/repositories/businesses";
 import { findMyArtistPlan } from "@/repositories/plans";
 import { kindOf } from "@/types/profile";
@@ -58,14 +58,25 @@ export default async function InboxPage({ searchParams }: { searchParams: Promis
      of its own invention (27 Sep) — and the organization team asks from both
      ends (push 2, 19 Sep; keyed on the businesses owned since 26 Sep). */
   const ALL = ["asked", "confirmed", "rejected"] as const;
-  const [classPeopleIn, invitesIn, classPeopleOut, invitesOutByBusiness, crewIn, crewOut, venueIn, venueOut] = await Promise.all([
-    findMyPendingClassPeople(supabase, [...ALL]),
+  /* ⚠⚠ NOTHING ANSWERED LEAVES THE DESK (2 Oct 2026, the user: "check … if
+     changing their status is … visible in the right section and doesnt get
+     removed from the system"). Four kinds used to vanish once their status
+     moved: a WITHDRAWN class or crew ask (a soft delete — `withdrawn: true`
+     reads them back), an ANSWERED room request (the read was `requested`
+     only), an answered or revoked SENT invite (pending-only), and an answered
+     RECEIVED invite (no policy at all — `my_answered_invites`, the held
+     20261002140000, which answers none until it is applied). Each now lands
+     under its column's Completed. */
+  const VENUE_ALL: Array<"requested" | "accepted" | "declined"> = ["requested", "accepted", "declined"];
+  const [classPeopleIn, invitesIn, invitesInAnswered, classPeopleOut, invitesOutByBusiness, crewIn, crewOut, venueIn, venueOut] = await Promise.all([
+    findMyPendingClassPeople(supabase, [...ALL], { withdrawn: true }),
     findMyPendingInvites(supabase),
-    findAskedClassPeopleForBusinesses(supabase, businessIds, [...ALL]),
-    Promise.all(businesses.map(async (t) => (await findPendingInvites(supabase, t.id)).map((i) => ({ ...i, businessName: t.name })))),
-    findMyPendingCrewAsks(supabase, [...ALL]),
-    findAskedForMyCrews(supabase, [...ALL]),
-    findVenueRequestsForBusinesses(supabase, ownedStudioIds).catch(() => []),
+    findMyAnsweredInvites(supabase),
+    findAskedClassPeopleForBusinesses(supabase, businessIds, [...ALL], { withdrawn: true }),
+    Promise.all(businesses.map(async (t) => (await findSentInvites(supabase, t.id)).map((i) => ({ ...i, businessName: t.name })))),
+    findMyPendingCrewAsks(supabase, [...ALL], { withdrawn: true }),
+    findAskedForMyCrews(supabase, [...ALL], { withdrawn: true }),
+    findVenueRequestsForBusinesses(supabase, ownedStudioIds, VENUE_ALL).catch(() => []),
     findMyVenueAsks(supabase, ownedPageIds).catch(() => []),
   ]);
 
@@ -75,12 +86,21 @@ export default async function InboxPage({ searchParams }: { searchParams: Promis
      filtered out because the database never asks them — `my_status` is `leader`
      — so the list is asks and nothing else. It answers an empty list rather than
      throwing; an Inbox must not fail over a crew's rehearsals. */
-  const practiceIn = (await findMyCrewPractices(supabase, { from: stampNowIso() })).filter((p) => p.myStatus !== "leader" && p.status !== "cancelled");
+  /* ⚠ AND THE ONES YOU ANSWERED STAY, for sixty days back (2 Oct 2026): a yes
+     or a no to a practice is a decision like any other, so it moves to
+     Completed rather than vanishing the moment the evening passes. A PAST
+     practice nobody answered is left out — it waits on nobody now, and a
+     Reject button on last Tuesday would be a control that means nothing. */
+  const nowIso = stampNowIso();
+  const practiceIn = (await findMyCrewPractices(supabase, { from: new Date(Date.parse(nowIso) - 60 * 86400000).toISOString() })).filter(
+    (p) => p.myStatus !== "leader" && p.status !== "cancelled" && (p.startsAt >= nowIso || p.myStatus !== "asked")
+  );
 
   const { requestsIn, requestsOut } = buildRequests({
     venueIn,
     classPeopleIn,
     invitesIn,
+    invitesInAnswered,
     crewIn,
     practiceIn,
     venueOut,
@@ -105,7 +125,7 @@ export default async function InboxPage({ searchParams }: { searchParams: Promis
       enquiriesOut={enq.enquiriesOut}
       settings={<EnquirySettings businesses={enq.settingsFor} />}
       initialSection={show === "enquiries" ? "enq" : show === "done" ? "done" : undefined}
-      nowIso={stampNowIso()}
+      nowIso={nowIso}
     />
   );
 }

@@ -2,6 +2,8 @@
 
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
+import { WelcomeFromUrl } from "@/components/ui/WelcomeBow";
+import { DOS_TOOLS } from "@/features/businesses/components/biz-kit";
 import { SubscribeButton } from "@/features/payments/components/SubscribeButton";
 import { cancelSubscriptionAction } from "@/features/payments/server-actions/subscriptions";
 import { PlanRights } from "@/features/settings/components/PlanRights";
@@ -26,6 +28,10 @@ import { BizPage, BizToast, bizBtn, bizCard, dateWords } from "./settings-kit";
  *  is retired, so every reader of this screen is a person. What they OWN —
  *  each studio and each organization, with its own mandate — is listed under
  *  their plan, priced by kind. */
+
+/** what becoming an artist unlocks, named off the tile table so the bow and
+ *  the grid cannot disagree (2 Oct 2026) */
+const ARTIST_TOOLS = ["classes", "routines", "students", "earn"] as const;
 
 const DOS_MONO = 'ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace';
 
@@ -67,12 +73,19 @@ export function SubscriptionScreen({
     setToast(m);
     setTimeout(() => setToast(null), 2600);
   };
+  /* THE BOW ON BECOMING AN ARTIST (2 Oct 2026, the user: "same should be once
+     converted and subscribed for being an artist"). `?welcome=artist` on THIS
+     address, set only once the plan is ACTIVE — a paid mandate the server has
+     confirmed, or the free path's own success — and the bow below reads it.
+     A replace, so back does not re-open it. */
+  const welcomeArtist = () => router.replace("/subscription?welcome=artist", { scroll: false });
   const takeFree = (p: PlanCatalogRow) =>
     start(async () => {
       const out = await activateArtistPlanAction({ plan: p.period });
       if (out.error) return fire(out.error);
       fire("👩‍🏫 Artist tools on — same profile, now with teaching, classes & earnings");
       router.refresh();
+      welcomeArtist();
     });
   const cancel = (s: Subscription) =>
     start(async () => {
@@ -174,7 +187,7 @@ export function SubscriptionScreen({
           <PlanRights kind="artist" />
           {pick ? (
             pick.priceInr > 0 ? (
-              <SubscribeButton planKey={pick.key} label={`Subscribe · ${priceWords(pick.priceInr, pick.period)}`} onDone={fire} style={{ width: "100%", padding: 13, fontSize: 13.5, borderRadius: 999, display: "block" }} />
+              <SubscribeButton planKey={pick.key} label={`Subscribe · ${priceWords(pick.priceInr, pick.period)}`} onDone={fire} onSubscribed={welcomeArtist} style={{ width: "100%", padding: 13, fontSize: 13.5, borderRadius: 999, display: "block" }} />
             ) : (
               <button type="button" disabled={pending} onClick={() => takeFree(pick)} style={bizBtn}>
                 {pending ? "Starting…" : "Start — this plan is free right now"}
@@ -210,6 +223,23 @@ export function SubscriptionScreen({
           `org_monthly` is a plan nothing can buy now — the six live org
           subscriptions on production are the sweep's, not this screen's. */}
       <BizToast msg={toast} />
+      {/* the bow `welcomeArtist` opens (2 Oct 2026) — the tools the plan unlocks
+          as its pills, in their own tile colours */}
+      <WelcomeFromUrl
+        kind="artist"
+        label="You're an artist on DanceOS"
+        emoji="👩‍🏫"
+        title="You're an artist on DanceOS!"
+        subtitle="Same profile — now with the artist tools."
+        pills={ARTIST_TOOLS.map((k) => ({ label: DOS_TOOLS[k].name, color: DOS_TOOLS[k].c }))}
+        pillsCaption="unlocked on your Home"
+        note={
+          <>
+            ⭐ Teach your own <b style={{ color: "#F5F2FA" }}>Classes</b>, build <b style={{ color: "#F5F2FA" }}>Routines</b>, see your <b style={{ color: "#F5F2FA" }}>Students</b> and what you <b style={{ color: "#F5F2FA" }}>earn</b> — every tile is on Home.
+          </>
+        }
+        secondary={{ label: "Open Home ›", href: "/" }}
+      />
     </BizPage>
   );
 }

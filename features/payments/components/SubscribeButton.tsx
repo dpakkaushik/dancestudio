@@ -18,6 +18,7 @@ export function SubscribeButton({
   businessId,
   label,
   onDone,
+  onSubscribed,
   style,
   disabled = false,
 }: {
@@ -27,6 +28,8 @@ export function SubscribeButton({
   /** what the button says, e.g. "Subscribe · ₹1,200/mo" */
   label: string;
   onDone?: (message: string) => void;
+  /** called once the server has confirmed the subscription is ACTIVE */
+  onSubscribed?: () => void;
   style?: React.CSSProperties;
   disabled?: boolean;
 }) {
@@ -71,6 +74,10 @@ export function SubscribeButton({
           : "The authorisation did not go through — nothing was charged";
     if (onDone) onDone(said);
     router.refresh();
+    /* the moment the plan is ACTIVE, and only then (2 Oct 2026) — the Artist
+       plan's welcome bow hangs off this; a pending or failed mandate says its
+       sentence and nothing more */
+    if (out.outcome === "subscribed" && onSubscribed) onSubscribed();
   };
 
   return (

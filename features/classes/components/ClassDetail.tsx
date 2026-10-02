@@ -11,6 +11,7 @@ import {
   giveSpotAction,
   removeFromWaitlistAction,
   removeWalkInAction,
+  setDoorPaidAction,
   undoCheckInAction,
 } from "@/features/attendance/server-actions/attendance";
 import { respondToClassAskAction } from "@/features/classPeople/server-actions/classPeople";
@@ -1809,13 +1810,22 @@ export function ClassDetail({
                    priced class would print "₹300 due" in amber about somebody who
                    handed over cash at the door. The door collected it; DanceOS
                    did not move it (Step 13's limit), and that is what it says. */
-                const paid = r.userId !== null && paidSet.has(r.userId);
-                const meta = r.walkIn
-                  ? isFree
+                const paidOnline = r.userId !== null && paidSet.has(r.userId);
+                /* ⚠ A SEAT TAKEN AT THE DOOR CAN BE MARKED PAID (2 Oct 2026, the
+                   user: "option to complete due in attendance sheet for walk in
+                   students with button next to check in called paid. for booked
+                   students it cant change") — a walk-in, or somebody the register
+                   booked in. A seat the person booked themselves is the rail's. */
+                const doorSeat = r.atDoor && !paidOnline && !isFree;
+                const paid = paidOnline || (doorSeat && r.doorPaidAt !== null);
+                const meta = isFree
+                  ? r.walkIn
                     ? "walk-in"
-                    : `walk-in · ${price} at the door`
-                  : isFree
-                    ? "free seat"
+                    : "free seat"
+                  : doorSeat
+                    ? r.doorPaidAt
+                      ? `${r.walkIn ? "walk-in · " : ""}paid at the door · ${price}`
+                      : `${r.walkIn ? "walk-in · " : ""}${price} due at the door`
                     : paid
                       ? `paid · ${price}`
                       : `${price} due`;
@@ -1842,7 +1852,7 @@ export function ClassDetail({
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <div style={{ fontSize: 12, fontWeight: 800 }}>{r.learnerName}</div>
                       {/* the payment meta (12126-12127): what the seat cost and whether it is in */}
-                      <div style={{ fontSize: 9.5, color: !isFree && !paid && !r.walkIn ? "#F59E0B" : "var(--sub)" }}>{meta}</div>
+                      <div data-testid="register-money" style={{ fontSize: 9.5, color: !isFree && !paid ? "#F59E0B" : paid && doorSeat ? "#22C55E" : "var(--sub)" }}>{meta}</div>
                     </div>
                   </>
                 );
@@ -1864,6 +1874,37 @@ export function ClassDetail({
                   ) : (
                     <div style={identityStyle}>{identity}</div>
                   )}
+                  {/* PAID, beside Check in — a door seat only, and it can be
+                      taken back the same way (a cash slip is easily mis-pressed) */}
+                  {doorSeat ? (
+                    <span
+                      role="button"
+                      tabIndex={0}
+                      onKeyDown={dosKey}
+                      aria-pressed={r.doorPaidAt !== null}
+                      aria-label={r.doorPaidAt ? `Mark ${r.learnerName} not paid` : `Mark ${r.learnerName} paid`}
+                      onClick={() =>
+                        void runRegisterOp(
+                          r.classBookingId,
+                          (input) => setDoorPaidAction({ ...input, paid: r.doorPaidAt === null }),
+                          r.doorPaidAt ? `${r.learnerName} marked not paid` : `${r.learnerName} paid · ${price}`
+                        )
+                      }
+                      style={{
+                        fontSize: 10,
+                        fontWeight: 800,
+                        padding: "6px 12px",
+                        borderRadius: 999,
+                        cursor: "pointer",
+                        flexShrink: 0,
+                        background: r.doorPaidAt ? "rgba(34,197,94,.22)" : "rgba(245,158,11,.16)",
+                        color: r.doorPaidAt ? "#22C55E" : "#F59E0B",
+                        opacity: opPending === r.classBookingId ? 0.5 : 1,
+                      }}
+                    >
+                      {r.doorPaidAt ? "✓ Paid" : "Paid"}
+                    </span>
+                  ) : null}
                   {sessionPhase === "ended" ? (
                     <span
                       style={{

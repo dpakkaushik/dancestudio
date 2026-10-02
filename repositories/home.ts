@@ -2,7 +2,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { addDays, dayKeyOf } from "@/lib/format/month";
 import type { CalendarEntry } from "@/types/calendar";
 import type { DanceClass } from "@/types/class";
-import type { DeckClassItem, DeckItem, DeckRole } from "@/types/home";
+import type { DeckClassItem, DeckItem, DeckRole, DeckState } from "@/types/home";
 import type { Business } from "@/types/business";
 import { findMyCalendar, findBusinessCalendar } from "./calendar";
 
@@ -82,6 +82,7 @@ const classItem = (e: CalendarEntry, roleLabel: DeckRole, host: boolean, checked
   startsAt: e.startsAt,
   endsAt: e.endsAt,
   live: false,
+  state: "upcoming",
   href: `/c/${e.shareSlug}`,
   danceClass: classOf(e),
   filled: e.filled,
@@ -96,16 +97,26 @@ const classItem = (e: CalendarEntry, roleLabel: DeckRole, host: boolean, checked
  *  winner is the live session that started most recently — the room you are
  *  actually in — and yours wins a dead heat. Every other card is told it is not
  *  live, so two rows the clock cannot tell apart can never both wear the badge.
- *  The rest of the day follows in the order the day happens. */
+ *
+ *  ⚠ THE RAIL READS LEFT TO RIGHT AS THE DAY (2 Oct 2026, the user: "once class
+ *  completed for today it should move on the left"): what has ENDED first, then
+ *  the live one, then what is still to come — each group in time order. The deck
+ *  no longer opens on the live card; it opens on the morning. */
+const STATE_ORDER: Record<DeckState, number> = { done: 0, live: 1, upcoming: 2 };
 const settle = (rows: DeckItem[], nowMs: number): DeckItem[] => {
   const startMs = (r: DeckItem) => new Date(r.startsAt).getTime();
+  const endMs = (r: DeckItem) => new Date(r.endsAt).getTime();
   const winner =
     rows
-      .filter((r) => startMs(r) <= nowMs && nowMs < new Date(r.endsAt).getTime())
+      .filter((r) => startMs(r) <= nowMs && nowMs < endMs(r))
       .sort((a, b) => startMs(b) - startMs(a) || (a.host ? 0 : 1) - (b.host ? 0 : 1))[0] ?? null;
   return rows
-    .map((r) => ({ ...r, live: winner !== null && r.key === winner.key }))
-    .sort((a, b) => (a.live ? 0 : 1) - (b.live ? 0 : 1) || a.startsAt.localeCompare(b.startsAt));
+    .map((r): DeckItem => {
+      const live = winner !== null && r.key === winner.key;
+      const state: DeckState = live ? "live" : endMs(r) <= nowMs ? "done" : "upcoming";
+      return { ...r, live, state };
+    })
+    .sort((a, b) => STATE_ORDER[a.state] - STATE_ORDER[b.state] || a.startsAt.localeCompare(b.startsAt));
 };
 
 /** One person's day: what they train in, assist on and teach today. Drafts are

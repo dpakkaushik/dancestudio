@@ -15,8 +15,7 @@ import { CityPicker } from "@/features/geo/components/CityPicker";
 import { LocationPicker } from "@/features/geo/components/LocationPicker";
 import { createBusinessAction, type BusinessActionState } from "@/features/businesses/server-actions/businesses";
 import { centreOf } from "@/repositories/cities";
-import { DosStylePicker } from "@/components/ui/DosStyleKit";
-import { dosStyleColor } from "@/lib/constants/styles";
+import { DosStyleMultiPicker } from "@/components/ui/DosStyleKit";
 import { DOS_DISPLAY, DOS_UI, INK, LILAC, MUTED, SUB } from "@/lib/design/tokens";
 
 import { useCloseOnBack } from "@/lib/hooks/useCloseOnBack";
@@ -204,6 +203,9 @@ export function BusinessHub({
         setArea("");
         setCity("");
         setRooms(seedRooms());
+        /* the styles too (2 Oct 2026) — the next studio opened from this sheet
+           used to start with the last one's styles already picked */
+        setStyles([]);
         setPicked(null);
         setPhone("");
         setEmail("");
@@ -239,7 +241,10 @@ export function BusinessHub({
          *  LEAVES for the thing it made, while here the hub is where you came
          *  from and where the new studio is now listed, so back should be it. */
         if (result.businessId) {
-          const to = `/business/${result.businessId}/subscription`;
+          /* `?welcome=studio` (2 Oct 2026, the user: "on creation similar welcome
+             message for studio and crew profiles as we get on sign up") — the
+             Subscription screen draws the bow over itself and Continue drops it */
+          const to = `/business/${result.businessId}/subscription?welcome=studio`;
           setTimeout(() => router.push(to), 700);
         }
       }
@@ -272,6 +277,25 @@ export function BusinessHub({
   const phoneOk = /^\+?[0-9][0-9 ]{7,17}$/.test(phone.trim());
   const emailOk = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim());
   const ok = name.trim().length > 0 && phoneOk && emailOk && (!isStudio || (area.trim().length > 0 && city.length > 0 && roomsOk && styles.length > 0));
+  /* THE BUTTON NAMES THE MISSING ANSWER (2 Oct 2026), the crew and class forms'
+     own rule (prototype 15573-15578): a greyed "Create studio" said nothing about
+     which of nine fields it was waiting on — the styles least of all, since they
+     sit below the fold. The first unanswered field, in the order the sheet asks. */
+  const missing = !name.trim()
+    ? "Name the studio first"
+    : isStudio && !area.trim()
+      ? "Add the studio's area"
+      : isStudio && !city
+        ? "Pick a city"
+        : !phoneOk
+          ? "Add the studio's mobile number"
+          : !emailOk
+            ? "Add the studio's email"
+            : isStudio && styles.length === 0
+              ? "Pick at least one dance style"
+              : isStudio && !roomsOk
+                ? "Name every room and its capacity"
+                : null;
   /* R14: the sheet opens only when the gate is open. A button that would be
      refused is not offered; the reason is printed in its place. */
   const gateShut = whyNoStudio;
@@ -764,18 +788,14 @@ export function BusinessHub({
                 <>
                   <input type="hidden" name="styles" value={JSON.stringify(styles)} />
                   <div style={{ fontSize: 12, color: SUB, margin: "14px 0 6px" }}>Dance styles — at least one</div>
-                  <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 8 }}>
-                    {styles.map((s) => (
-                      <span key={s} style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "6px 8px 6px 11px", borderRadius: 999, background: CARD, border: `1.5px solid ${EL}` }}>
-                        <span aria-hidden="true" style={{ width: 9, height: 9, borderRadius: 5, background: dosStyleColor(s) }} />
-                        <span style={{ fontSize: 12, fontWeight: 800 }}>{s}</span>
-                        <span role="button" tabIndex={0} onKeyDown={dosKey} aria-label={`Remove ${s}`} onClick={() => setStyles((x) => x.filter((y) => y !== s))} style={{ fontSize: 13, color: "#F87171", cursor: "pointer" }}>
-                          ✕
-                        </span>
-                      </span>
-                    ))}
-                    {styles.length === 0 ? <span style={{ fontSize: 12, color: SUB }}>Pick what this studio teaches.</span> : null}
-                  </div>
+                  {/* ⚠ ONE MULTI PICKER (2 Oct 2026, the user: "dance style filter
+                      while creating studio and crew should be multi filter and
+                      better way to handle in the form"). This was a row of chips
+                      hand-made here over a SINGLE picker re-opened once per style;
+                      it is `DosStyleMultiPicker` now — the chips, the ×, the first
+                      as the main style and the cap all in the one control — and
+                      the whole list still rides the hidden `styles` input above.
+                      ⚠ The earlier note, kept: */}
                   {/* ⚠⚠ THE APP'S ONE STYLE PICKER, NOT A SECOND LIST OF STYLES
                       (27 Sep 2026, the user: "fix all list drop downs should be
                       within the app only not open a seprate screen").
@@ -787,16 +807,7 @@ export function BusinessHub({
                       studio picked its styles one way at birth and another way
                       from its own band (`StylesRowEditor`, which opens this same
                       picker). It searches, which is what 66 rows need. */}
-                  {styles.length < 12 ? (
-                    <DosStylePicker
-                      value=""
-                      ariaLabel="Add a dance style"
-                      placeholder="＋ Add a dance style…"
-                      onChange={(s) => {
-                        if (s) setStyles((x) => (x.includes(s) ? x : [...x, s]));
-                      }}
-                    />
-                  ) : null}
+                  <DosStyleMultiPicker value={styles} onChange={setStyles} max={8} />
                 </>
               )}
 
@@ -878,7 +889,7 @@ export function BusinessHub({
                   cursor: ok ? "pointer" : "default",
                 }}
               >
-                {isPending ? "Creating…" : "Create studio"}
+                {isPending ? "Creating…" : (missing ?? "Create studio")}
               </button>
             </form>
           </div>

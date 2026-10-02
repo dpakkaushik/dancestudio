@@ -241,7 +241,9 @@ test.describe.serial("the admin panel: businesses and reports", () => {
     /* creating lands on the new studio's own Subscription screen (27 Sep 2026,
        "pay at creation, verify after") — this spec is about moderation, so it
        comes straight back to the hub */
-    await owner.waitForURL(/\/business\/[0-9a-f-]{36}\/subscription$/, { timeout: 30_000 });
+    /* ⚠ under the welcome bow since 2 Oct 2026 (`?welcome=studio`) — the goto
+       below leaves it behind */
+    await owner.waitForURL(/\/business\/[0-9a-f-]{36}\/subscription(\?welcome=studio)?$/, { timeout: 30_000 });
     await owner.goto("/business");
     await expect(owner.getByText(studioName, { exact: true })).toBeVisible();
     // under the row: the STUDIO's own review (11 Sep 2026) — a public link,

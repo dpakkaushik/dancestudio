@@ -11,6 +11,7 @@ import {
   giveSpot,
   removeFromWaitlist,
   removeWalkIn,
+  setDoorPaid,
   undoCheckIn,
 } from "@/repositories/attendance";
 
@@ -166,6 +167,26 @@ export async function addWalkInAction(input: {
 
   revalidateRegisterSurfaces();
   return { error: null };
+}
+
+/** PAID AT THE DOOR (2 Oct 2026, the user: "option to complete due in attendance
+ *  sheet for walk in students with button next to check in called paid. for
+ *  booked students it cant change") — the RPC decides whose seat it may be. */
+const paidSchema = z.object({ classBookingId: z.string().uuid(), paid: z.boolean() });
+
+export async function setDoorPaidAction(input: { classBookingId: string; paid: boolean }): Promise<RegisterActionResult> {
+  const parsed = paidSchema.safeParse(input);
+  if (!parsed.success) {
+    return { error: "Invalid booking" };
+  }
+  const supabase = await requireUser();
+  try {
+    await setDoorPaid(supabase, parsed.data.classBookingId, parsed.data.paid);
+    revalidateRegisterSurfaces();
+    return { error: null };
+  } catch (error: unknown) {
+    return { error: error instanceof Error ? error.message : "Could not mark the seat" };
+  }
 }
 
 export async function removeWalkInAction(input: {

@@ -73,8 +73,9 @@ const toCrew = (r: CrewRow): Crew => ({
   /* the crew's own number, beside its type (20 Sep 2026) */
   memberNo: r.member_no == null ? null : Number(r.member_no),
 });
-const toMember = (r: MemberRow): CrewMember => ({
+const toMember = (r: MemberRow & { deleted_at?: string | null }): CrewMember => ({
   id: r.id,
+  withdrawn: Boolean(r.deleted_at) && r.status === "asked",
   crewId: r.crew_id,
   userId: r.user_id,
   role: r.role,
@@ -219,23 +220,26 @@ export async function findCrewMembers(supabase: SupabaseClient, crewId: string):
 }
 
 /** The asks waiting for the signed-in person — says `user_id = me` out loud. */
-export async function findMyPendingCrewAsks(supabase: SupabaseClient, statuses: Array<"asked" | "confirmed" | "rejected"> = ["asked"]): Promise<MyCrewAsk[]> {
+export async function findMyPendingCrewAsks(supabase: SupabaseClient, statuses: Array<"asked" | "confirmed" | "rejected"> = ["asked"], opts: { withdrawn?: boolean } = {}): Promise<MyCrewAsk[]> {
   const me = await currentUserId(supabase);
   if (!me) return [];
-  const { data, error } = await supabase
+  const base = supabase
     .from("crew_members")
-    .select(`${MEMBER_COLUMNS}, crews (name, city, leader_id, deleted_at, profiles!crews_leader_id_fkey (full_name))`)
+    .select(`${MEMBER_COLUMNS}, deleted_at, crews (name, city, leader_id, deleted_at, profiles!crews_leader_id_fkey (full_name))`)
     .eq("user_id", me)
     /* answered asks too, when the Inbox wants them (19 Sep 2026) */
-    .in("status", statuses)
-    .is("deleted_at", null)
+    .in("status", statuses);
+  /* ⚠ and WITHDRAWN ones (2 Oct 2026): `withdraw_crew_ask` soft-deletes an
+     unanswered ask, and the Inbox keeps it under Completed rather than lose it */
+  const { data, error } = await (opts.withdrawn ? base.or("deleted_at.is.null,status.eq.asked") : base.is("deleted_at", null))
     .order("created_at", { ascending: false })
     .limit(50);
   if (error) {
     throw new Error(`crews.findMyAsks failed: ${error.message}`);
   }
+  /* ⚠ never a crew you LEAD — your seat there was never asked of you */
   return ((data ?? []) as unknown as MyAskRow[])
-    .filter((r) => r.crews && !r.crews.deleted_at)
+    .filter((r) => r.crews && !r.crews.deleted_at && r.crews.leader_id !== me)
     .map((r) => ({
       ...toMember(r),
       crewName: r.crews!.name,
@@ -245,22 +249,25 @@ export async function findMyPendingCrewAsks(supabase: SupabaseClient, statuses: 
 }
 
 /** The asks the crews you lead are still waiting on (the desk's SENT side). */
-export async function findAskedForMyCrews(supabase: SupabaseClient, statuses: Array<"asked" | "confirmed" | "rejected"> = ["asked"]): Promise<Array<CrewMember & { crewName: string }>> {
+export async function findAskedForMyCrews(supabase: SupabaseClient, statuses: Array<"asked" | "confirmed" | "rejected"> = ["asked"], opts: { withdrawn?: boolean } = {}): Promise<Array<CrewMember & { crewName: string }>> {
   const me = await currentUserId(supabase);
   if (!me) return [];
-  const { data, error } = await supabase
+  const base = supabase
     .from("crew_members")
-    .select(`${MEMBER_COLUMNS}, crews!inner (name, leader_id, deleted_at)`)
+    .select(`${MEMBER_COLUMNS}, deleted_at, crews!inner (name, leader_id, deleted_at)`)
     .eq("crews.leader_id", me)
-    .in("status", statuses)
-    .is("deleted_at", null)
+    .in("status", statuses);
+  const { data, error } = await (opts.withdrawn ? base.or("deleted_at.is.null,status.eq.asked") : base.is("deleted_at", null))
     .order("created_at", { ascending: false })
     .limit(100);
   if (error) {
     throw new Error(`crews.findAskedForMine failed: ${error.message}`);
   }
+  /* ⚠ NEVER THE LEADER'S OWN SEAT (2 Oct 2026, found by the inbox probe). It is a
+     confirmed row on the crew they lead, so once the read took every status the
+     leader's Completed showed "Joined by" THEMSELVES — nobody asked them. */
   return ((data ?? []) as unknown as Array<MemberRow & { crews: { name: string; deleted_at: string | null } | null }>)
-    .filter((r) => r.crews && !r.crews.deleted_at)
+    .filter((r) => r.crews && !r.crews.deleted_at && r.user_id !== me)
     .map((r) => ({ ...toMember(r), crewName: r.crews!.name }));
 }
 

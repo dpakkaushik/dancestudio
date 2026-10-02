@@ -83,7 +83,9 @@ export interface RequestItem {
   /** THE ASK'S OWN STATE (19 Sep 2026, the user: "enquiries and requests don't
    *  get removed after accepting"): an answered ask stays on the desk with its
    *  answer on it; only an `asked` row carries the buttons. Absent = asked. */
-  status?: "asked" | "confirmed" | "rejected";
+  /** ⚠ `withdrawn` (2 Oct 2026): an ask taken back before it was answered, or
+   *  an invite the studio revoked — over, so it is under Completed, never gone */
+  status?: "asked" | "confirmed" | "rejected" | "withdrawn";
   /** ⚠ THE THING ITSELF, SO THE DESK CAN DRAW ITS OWN CARD (27 Sep 2026, the
    *  user: *"event and class request cards should also look like class and
    *  event cards on discover with accept and reject buttons"*). A class ask and
@@ -157,6 +159,7 @@ const pillBtn = (on: boolean): React.CSSProperties => ({
   transition: "background .16s",
 });
 
+type Side3 = "in" | "out" | "done";
 const emptyBox: React.CSSProperties = { background: "var(--card)", border: "1.5px dashed var(--el)", borderRadius: 16, padding: "22px 16px", textAlign: "center" };
 
 export function InboxScreen({
@@ -206,10 +209,14 @@ export function InboxScreen({
   artists?: Record<string, ClassArtist>;
 }) {
   const router = useRouter();
-  const [sect, setSect] = useState<"req" | "join" | "enq" | "done">(initialSection ?? "req");
-  const [rqSide, setRqSide] = useState<"in" | "out">("in");
-  const [enqSide, setEnqSide] = useState<"in" | "out">("in");
-  const [doneSide, setDoneSide] = useState<"in" | "out">("in");
+  /* ⚠⚠ THREE COLUMNS, ENQUIRIES FIRST, AND COMPLETED INSIDE EACH (2 Oct 2026,
+     the user: "completed not in line with enquiries invites and request but
+     with received and sent in their respective section. enquiry should be
+     first. all requests, invites and enquiries should be 3 columns"). An old
+     `?show=done` link opens the first column on its Completed side. */
+  const [sect, setSect] = useState<"enq" | "req" | "join">(initialSection === "req" || initialSection === "join" ? initialSection : "enq");
+  const [rqSide, setRqSide] = useState<Side3>(initialSection === "done" ? "done" : "in");
+  const [enqSide, setEnqSide] = useState<Side3>(initialSection === "done" ? "done" : "in");
   const [enqType, setEnqType] = useState<"all" | EnquiryTypeKey>("all");
   const [enqSt, setEnqSt] = useState<"all" | EnquiryStatus>("all");
   const [brkOpen, setBrkOpen] = useState(false);
@@ -290,28 +297,27 @@ export function InboxScreen({
      them there; the Inbox's Done held no enquiry at all. Deduped by id, because
      an enquiry you sent to your own artist page is on both sides. */
   const closedEnq = (e: Enquiry) => ["won", "lost"].includes(enquiryStage(e));
-  /* ⚠⚠ COMPLETED IS SPLIT BY WHO ASKED, NOT BY KIND (2 Oct 2026, the user:
-     "done should be called completed and should be section with received and
-     sent not with request invites and enquiries"). Received is what was put to
-     you — asks, invitations and enquiries — and Sent is what you put to others,
-     each newest first with the three kinds mixed, because the card already says
-     which kind it is. A self-ask (R47) is on both sides; the received side
-     keeps it, the rule `doneReq` already applies. */
-  const doneEnqIn = enquiriesIn.filter(closedEnq);
-  const inIds = new Set(doneEnqIn.map((e) => e.id));
-  const doneEnqOut = enquiriesOut.filter(closedEnq).filter((e) => !inIds.has(e.id));
-  type DoneRow = { at: string; req?: RequestItem; enq?: Enquiry };
-  const byNewest = (a: DoneRow, b: DoneRow) => b.at.localeCompare(a.at);
-  const doneIn: DoneRow[] = [...doneReq.filter((r) => r.dir === "in").map((r) => ({ at: r.at, req: r })), ...doneEnqIn.map((e) => ({ at: e.createdAt, enq: e }))].sort(byNewest);
-  const doneOut: DoneRow[] = [...doneReq.filter((r) => r.dir === "out").map((r) => ({ at: r.at, req: r })), ...doneEnqOut.map((e) => ({ at: e.createdAt, enq: e }))].sort(byNewest);
-  const doneN = doneIn.length + doneOut.length;
-  const SECT: Array<["req" | "join" | "enq" | "done", string, number, string]> = [
+  /* ⚠⚠ COMPLETED LIVES INSIDE EACH COLUMN (2 Oct 2026, the user's second word on
+     it: "completed not in line with enquiries invites and request but with
+     received and sent in their respective section"). Each column is Received ·
+     Sent · Completed, and its Completed holds THAT kind's closed rows, both
+     directions — the card already says which way it went. A self-ask (R47) and
+     an enquiry sent to your own page are on both sides; `doneReq` and the id
+     set below keep each once. */
+  const doneAsks = doneReq.filter((r) => !isJoin(r));
+  const doneJoins = doneReq.filter((r) => isJoin(r));
+  const doneEnq = (() => {
+    const seen = new Set<string>();
+    return [...enquiriesIn, ...enquiriesOut].filter(closedEnq).filter((e) => {
+      if (seen.has(e.id)) return false;
+      seen.add(e.id);
+      return true;
+    }).sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+  })();
+  const SECT: Array<["enq" | "req" | "join", string, number, string]> = [
+    ["enq", "Enquiries", newIn.length, "#EC4899"],
     ["req", "Requests", askIn.filter((r) => r.dir === "in").length, "#DC2626"],
     ["join", "Invites", joinIn.filter((r) => r.dir === "in").length, JOIN_TINT.invite ?? SKY],
-    ["enq", "Enquiries", newIn.length, "#EC4899"],
-    /* ⚠ its badge counts what is IN it, not what waits on you — nothing here
-       waits on anybody, and a red 0 beside "Done" would say the opposite */
-    ["done", "Completed", doneN, "#22C55E"],
   ];
   /* ⚠ WHAT WAITS ON YOU (2 Oct 2026, found re-reading): this was
      `requestsIn.length`, which since 19 Sep includes every ANSWERED ask too — so
@@ -344,6 +350,33 @@ export function InboxScreen({
   /** THE TWO ANSWERS, AS AN ACTION ROW UNDER A CARD (27 Sep 2026) — the same
    *  buttons the row card carries, lifted out so the class card and the event
    *  card can wear them without a third copy. */
+  /** THE ANSWER STAMP, written once for the three cards (2 Oct 2026) — and it
+   *  learned a third answer: WITHDRAWN, in grey, because taking an ask back is
+   *  neither a yes nor a no and painting it red would claim somebody refused. */
+  const answerStamp = (r: RequestItem, join: boolean) => {
+    const st = r.status;
+    const yes = st === "confirmed";
+    const back = st === "withdrawn";
+    const [bg, fg, bd] = yes ? ["rgba(34,197,94,.15)", "#22C55E", "rgba(34,197,94,.4)"] : back ? ["var(--el)", "var(--sub)", "var(--el)"] : ["rgba(248,113,113,.14)", "#F87171", "rgba(248,113,113,.36)"];
+    const words = back
+      ? r.dir === "in"
+        ? `Withdrawn by ${r.who}`
+        : "You withdrew it"
+      : yes
+        ? join
+          ? r.dir === "in" ? "Joined — you said yes" : `Joined by ${r.who}`
+          : r.dir === "in" ? "Accepted — you said yes" : `Accepted by ${r.who}`
+        : join
+          ? r.dir === "in" ? "Declined — you said no" : `Declined by ${r.who}`
+          : r.dir === "in" ? "Rejected — you said no" : `Rejected by ${r.who}`;
+    return (
+      <span data-testid="answer-stamp" data-status={st} style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "6px 12px", borderRadius: 999, fontSize: 10.5, fontWeight: 900, letterSpacing: 0.2, background: bg, color: fg, border: `1.5px solid ${bd}` }}>
+        <span aria-hidden="true">{yes ? "✓" : back ? "↩" : "✕"}</span>
+        {words}
+      </span>
+    );
+  };
+
   const askActions = (r: RequestItem) => {
     if (r.status && r.status !== "asked") {
       /** ⚠⚠ A STAMP, NOT A SENTENCE WHERE THE BUTTONS WERE (27 Sep 2026, the
@@ -355,29 +388,7 @@ export function InboxScreen({
        *  ⚠ The WORDS are unchanged, because they carry who answered — "you said
        *  yes" and "Accepted by {who}" are two different facts and the desk shows
        *  both directions in one list. */
-      const yes = r.status === "confirmed";
-      return (
-        <div style={{ flex: 1, display: "flex", padding: "2px 0" }}>
-          <span
-            style={{
-              display: "inline-flex",
-              alignItems: "center",
-              gap: 6,
-              padding: "6px 12px",
-              borderRadius: 999,
-              fontSize: 10.5,
-              fontWeight: 900,
-              letterSpacing: 0.2,
-              background: yes ? "rgba(34,197,94,.15)" : "rgba(248,113,113,.14)",
-              color: yes ? "#22C55E" : "#F87171",
-              border: `1.5px solid ${yes ? "rgba(34,197,94,.4)" : "rgba(248,113,113,.36)"}`,
-            }}
-          >
-            <span aria-hidden="true">{yes ? "✓" : "✕"}</span>
-            {yes ? (r.dir === "in" ? "Accepted — you said yes" : `Accepted by ${r.who}`) : r.dir === "in" ? "Rejected — you said no" : `Rejected by ${r.who}`}
-          </span>
-        </div>
-      );
+      return <div style={{ flex: 1, display: "flex", padding: "2px 0" }}>{answerStamp(r, false)}</div>;
     }
     if (r.dir === "in") {
       return (
@@ -508,9 +519,7 @@ export function InboxScreen({
 
         {/* AN ANSWERED ASK STAYS (19 Sep 2026): its answer on it, no buttons */}
         {r.status && r.status !== "asked" ? (
-          <div style={{ marginTop: 10, fontSize: 11, fontWeight: 900, color: r.status === "confirmed" ? "#22C55E" : "#F87171" }}>
-            {r.status === "confirmed" ? (r.dir === "in" ? "✅ Confirmed — you said yes" : `✅ Confirmed by ${r.who}`) : r.dir === "in" ? "✕ Declined — you said no" : `✕ Declined by ${r.who}`}
-          </div>
+          <div style={{ marginTop: 10, display: "flex" }}>{answerStamp(r, false)}</div>
         ) : r.dir === "in" ? (
           <div style={{ display: "flex", gap: 8, marginTop: 10 }}>
             <button
@@ -639,26 +648,7 @@ export function InboxScreen({
              the way accepted looks like on cards for ALL THESE") — a filled pill
              in the answer's own colour, not a line of green text where the
              buttons used to be. `askActions` carries the whole reason. */
-          <div style={{ marginTop: 11, display: "flex" }}>
-            <span
-              style={{
-                display: "inline-flex",
-                alignItems: "center",
-                gap: 6,
-                padding: "6px 12px",
-                borderRadius: 999,
-                fontSize: 10.5,
-                fontWeight: 900,
-                letterSpacing: 0.2,
-                background: r.status === "confirmed" ? "rgba(34,197,94,.15)" : "rgba(248,113,113,.14)",
-                color: r.status === "confirmed" ? "#22C55E" : "#F87171",
-                border: `1.5px solid ${r.status === "confirmed" ? "rgba(34,197,94,.4)" : "rgba(248,113,113,.36)"}`,
-              }}
-            >
-              <span aria-hidden="true">{r.status === "confirmed" ? "✓" : "✕"}</span>
-              {r.status === "confirmed" ? (r.dir === "in" ? "Joined — you said yes" : `Joined by ${r.who}`) : r.dir === "in" ? "Declined — you said no" : `Declined by ${r.who}`}
-            </span>
-          </div>
+          <div style={{ marginTop: 11, display: "flex" }}>{answerStamp(r, true)}</div>
         ) : r.dir === "in" ? (
           <div style={{ display: "flex", gap: 8, marginTop: 12 }}>
             <button
@@ -705,14 +695,18 @@ export function InboxScreen({
    *  ⚠ `rqSide` is deliberately SHARED between Requests and Invites: they are
    *  the same question about two kinds of thing, and a person reading their
    *  sent asks who switches to Invites means the sent ones there too. */
-  const sideSwitch = (cur: "in" | "out", set: (s: "in" | "out") => void, nIn: number, nOut: number, noun: string, tint: string) => (
+  /* ⚠ Completed's count is what is IN it (not what waits on you — nothing there
+     waits on anybody), painted green so it never reads as owed. And a studio's
+     or a crew's Enquiries desk has no Sent side: an enquiry is sent by a person. */
+  const sideSwitch = (cur: Side3, set: (s: Side3) => void, nIn: number, nOut: number | null, nDone: number, noun: string, tint: string) => (
     <div style={{ display: "flex", gap: 6, marginBottom: 10 }}>
       {(
         [
-          ["in", "Received", nIn],
-          ["out", "Sent", nOut],
-        ] as Array<["in" | "out", string, number]>
-      ).map(([k, l, n]) => (
+          ["in", "Received", nIn, tint],
+          ...(nOut === null ? [] : [["out", "Sent", nOut, tint]]),
+          ["done", "Completed", nDone, "#22C55E"],
+        ] as Array<[Side3, string, number, string]>
+      ).map(([k, l, n, tint]) => (
         <div key={k} role="button" tabIndex={0} aria-pressed={cur === k} aria-label={`${l} ${noun}`} onKeyDown={pressKey(() => set(k))} onClick={() => set(k)} style={{ flex: 1, textAlign: "center", padding: "9px 6px", borderRadius: 12, cursor: "pointer", fontSize: 11.5, fontWeight: 800, background: cur === k ? "var(--text)" : "var(--card)", color: cur === k ? "var(--solid)" : "var(--sub)", border: "1.5px solid var(--el)" }}>
           {l}
           {n > 0 ? <span style={{ marginLeft: 5, fontSize: 8.5, fontWeight: 900, padding: "1px 6px", borderRadius: 999, fontFamily: DOS_MONO, background: cur === k ? "var(--solid)" : tint, color: cur === k ? "var(--text)" : "#fff" }}>{n}</span> : null}
@@ -820,28 +814,32 @@ export function InboxScreen({
 
         {sect === "req" ? (
           <>
-            {sideSwitch(rqSide, setRqSide, askIn.length, askOut.length, "requests", REQ_TINT)}
-            {(rqSide === "in" ? askIn : askOut).length === 0 ? (
+            {sideSwitch(rqSide, setRqSide, askIn.length, askOut.length, doneAsks.length, "requests", REQ_TINT)}
+            {(rqSide === "in" ? askIn : rqSide === "out" ? askOut : doneAsks).length === 0 ? (
               <div style={emptyBox}>
-                <div style={{ fontSize: 12.5, fontWeight: 800 }}>Nothing here</div>
-                <div style={{ fontSize: 10.5, color: "var(--sub)", marginTop: 3 }}>{rqSide === "in" ? "Nobody has asked you onto a class, a room or a duet." : "You have not asked anybody onto a class, a room or a duet."}</div>
+                <div style={{ fontSize: 12.5, fontWeight: 800 }}>{rqSide === "done" ? "Nothing completed yet" : "Nothing here"}</div>
+                <div style={{ fontSize: 10.5, color: "var(--sub)", marginTop: 3 }}>
+                  {rqSide === "in" ? "Nobody has asked you onto a class, a room or a practice." : rqSide === "out" ? "You have not asked anybody onto a class or a room." : "Requests land here once they are accepted, rejected or withdrawn."}
+                </div>
               </div>
             ) : (
-              (rqSide === "in" ? askIn : askOut).map(askCard)
+              (rqSide === "in" ? askIn : rqSide === "out" ? askOut : doneAsks).map(askCard)
             )}
           </>
         ) : null}
 
         {sect === "join" ? (
           <>
-            {sideSwitch(rqSide, setRqSide, joinIn.length, joinOut.length, "invitations", JOIN_TINT.invite ?? REQ_TINT)}
-            {(rqSide === "in" ? joinIn : joinOut).length === 0 ? (
+            {sideSwitch(rqSide, setRqSide, joinIn.length, joinOut.length, doneJoins.length, "invitations", JOIN_TINT.invite ?? REQ_TINT)}
+            {(rqSide === "in" ? joinIn : rqSide === "out" ? joinOut : doneJoins).length === 0 ? (
               <div style={emptyBox}>
-                <div style={{ fontSize: 12.5, fontWeight: 800 }}>Nothing here</div>
-                <div style={{ fontSize: 10.5, color: "var(--sub)", marginTop: 3 }}>{rqSide === "in" ? "Nobody has invited you onto a team, a crew or an organization." : "You have not invited anybody onto a team, a crew or an organization."}</div>
+                <div style={{ fontSize: 12.5, fontWeight: 800 }}>{rqSide === "done" ? "Nothing completed yet" : "Nothing here"}</div>
+                <div style={{ fontSize: 10.5, color: "var(--sub)", marginTop: 3 }}>
+                  {rqSide === "in" ? "Nobody has invited you onto a team or a crew." : rqSide === "out" ? "You have not invited anybody onto a team or a crew." : "Invitations land here once they are joined, declined or withdrawn."}
+                </div>
               </div>
             ) : (
-              (rqSide === "in" ? joinIn : joinOut).map(joinCard)
+              (rqSide === "in" ? joinIn : rqSide === "out" ? joinOut : doneJoins).map(joinCard)
             )}
           </>
         ) : null}
@@ -858,22 +856,17 @@ export function InboxScreen({
             {/* ⚠ NO SENT SIDE ON A STUDIO'S OR A CREW'S DESK (2 Oct 2026) — an
                 enquiry is sent by a person, so the toggle there could only ever
                 offer an empty half */}
-            {receivedOnly ? null : (
-            <div style={{ display: "flex", gap: 2, background: "var(--el)", borderRadius: 12, padding: 3, marginBottom: 9 }}>
-              {(
-                [
-                  ["in", "Received", liveIn],
-                  ["out", "Sent", liveOut],
-                ] as Array<["in" | "out", string, number]>
-              ).map(([k, l, n]) => (
-                <div key={k} role="button" tabIndex={0} aria-pressed={enqSide === k} aria-label={`${l} enquiries`} onKeyDown={pressKey(() => setEnqSide(k))} onClick={() => setEnqSide(k)} style={{ flex: 1, textAlign: "center", padding: "8px 2px", borderRadius: 9, cursor: "pointer", fontSize: 11.5, fontWeight: 800, background: enqSide === k ? "var(--solid)" : "transparent", color: enqSide === k ? "var(--text)" : "var(--sub)", boxShadow: enqSide === k ? "0 1px 4px rgba(0,0,0,.3)" : "none" }}>
-                  {l}
-                  {n > 0 ? <span style={{ marginLeft: 5, fontSize: 9, fontWeight: 900, fontFamily: DOS_MONO, color: "var(--muted)" }}>{n}</span> : null}
+            {sideSwitch(enqSide, setEnqSide, liveIn, receivedOnly ? null : liveOut, doneEnq.length, "enquiries", "#EC4899")}
+            {enqSide === "done" ? (
+              doneEnq.length === 0 ? (
+                <div style={emptyBox}>
+                  <div style={{ fontSize: 12.5, fontWeight: 800 }}>Nothing completed yet</div>
+                  <div style={{ fontSize: 10.5, color: "var(--sub)", marginTop: 3 }}>Enquiries land here once they are won or lost.</div>
                 </div>
-              ))}
-            </div>
-            )}
-            {side.length === 0 ? (
+              ) : (
+                doneEnq.map(enquiryCard)
+              )
+            ) : side.length === 0 ? (
               <div style={emptyBox}>
                 <div style={{ fontSize: 12.5, fontWeight: 800 }}>Nothing here</div>
                 <div style={{ fontSize: 10.5, color: "var(--sub)", marginTop: 3 }}>{enqSide === "out" ? "You have not sent any enquiries yet — send one from any profile." : "No enquiries have come in yet."}</div>
@@ -932,13 +925,13 @@ export function InboxScreen({
                 ) : null}
               </>
             )}
-            {side.length > 0 && liveSide.length === 0 ? (
+            {enqSide !== "done" && side.length > 0 && liveSide.length === 0 ? (
               <div style={emptyBox}>
                 <div style={{ fontSize: 12.5, fontWeight: 800 }}>Nothing open</div>
                 <div style={{ fontSize: 10.5, color: "var(--sub)", marginTop: 3 }}>Won and lost enquiries are under Completed.</div>
               </div>
             ) : null}
-            {liveSide.length > 0 ? (
+            {enqSide !== "done" && liveSide.length > 0 ? (
               <>
                 <div style={{ display: "flex", gap: 5, marginBottom: 7, overflowX: "auto", scrollbarWidth: "none" }}>
                   {([["all", "All", null] as const, ...ENQ_TYPES.map((t) => [t.k, t.label, t.k] as const)]).map(([k, l, ic]) => {
@@ -975,28 +968,6 @@ export function InboxScreen({
           </>
         ) : null}
 
-        {/* ── DONE — what is over, in one place (27 Sep 2026) ────────────────
-            Every answered ask and every closed enquiry, both directions, newest
-            first. ⚠ It draws the SAME three cards the live desks draw — a class
-            ask is still a class card, an invitation still the join card, an
-            enquiry still its own — because a decision you made should look like
-            the thing you decided about, not like a log line. What differs is
-            only that the action row is the stamp. ── */}
-        {sect === "done" ? (
-          <>
-            {sideSwitch(doneSide, setDoneSide, doneIn.length, doneOut.length, "completed", "#22C55E")}
-            {(doneSide === "in" ? doneIn : doneOut).length === 0 ? (
-              <div style={emptyBox}>
-                <div style={{ fontSize: 12.5, fontWeight: 800 }}>Nothing completed yet</div>
-                <div style={{ fontSize: 10.5, color: "var(--sub)", marginTop: 3 }}>
-                  {doneSide === "in" ? "Requests, invitations and enquiries put to you land here once answered, won or lost." : "What you asked of others lands here once it is answered, won or lost."}
-                </div>
-              </div>
-            ) : (
-              (doneSide === "in" ? doneIn : doneOut).map((d) => (d.enq ? enquiryCard(d.enq) : d.req ? (isJoin(d.req) ? joinCard(d.req) : askCard(d.req)) : null))
-            )}
-          </>
-        ) : null}
       </div>
 
       {toast ? (
