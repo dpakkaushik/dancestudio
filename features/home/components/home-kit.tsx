@@ -103,11 +103,9 @@ export const tilesFor = (kind: HomeKind, pageId: string | null): Tile[] => {
     { name: DOS_TOOLS.practice.name, href: "/practice", k: "practice", c: DOS_TOOLS.practice.c },
     { name: DOS_TOOLS.studios.name, href: "/business", k: "studios", c: DOS_TOOLS.studios.c },
     /* ⚠ ROUTINES IS A USER'S TILE TOO (20 Sep 2026, the user: "routines you
-       learned … should be visible to user profiles as well in tools"). It was an
-       artist's, because MAKING one is an artist's tool — but the desk has two
-       sides now and a plain user opens it for the other one: what was taught in
-       a class they turned up to. The making side says whose tool it is rather
-       than offering a form the database would refuse. */
+       learned … should be visible to user profiles as well in tools"), and since
+       3 Oct 2026 ("users can also create routines") a user MAKES them too — the
+       plan gate was the app's alone; `save_routine` never read the plan. */
     { name: DOS_TOOLS.routines.name, href: "/routines", k: "routines", c: DOS_TOOLS.routines.c },
     /* ⚠ NO ENQUIRIES TILE (2 Oct 2026, the user: "shift back enquiries to inbox
        from home tools for all profiles"). It was a tool from 27 Sep (C70); it is

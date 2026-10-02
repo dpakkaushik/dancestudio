@@ -1,6 +1,59 @@
 # CLAUDE.md — DanceOS
 
-## LAST SESSION (2 Oct 2026) — replaced on every push (Rule 13)
+## LAST SESSION (3 Oct 2026) — replaced on every push (Rule 13)
+
+> ### SHARE ON A CLASS, ROUTINES FOR EVERYBODY, PROPER ROUTINE CARDS, LOG OUT ASKS, A 5-HOUR CAP, AND A NEW FIRST PAGE (3 Oct 2026, latest) — no migration
+> Seven asks from the user in one run:
+> * **Share on the class page** (*"share button in class detail with copy link.
+>   smaller qr code"*): `ClassShare` is a row now — the QR beside the address,
+>   **Copy link** and **Share** (the phone's own sheet, falling back to copy)
+>   stacked next to it. ⚠ The QR is drawn at the SMALLEST SIZE THAT STILL SCANS,
+>   computed from the link (`(modules + 8) × 3px`, ~123px for a live `/c/{slug}`,
+>   was a fixed 148) — any smaller and `QRBlock` marks itself "small".
+> * **Users create routines** (*"users can also create routines"*). ⚠ The Artist
+>   plan gate was the APP's alone: the live `save_routine` never read the plan,
+>   and storage's `routines/{uid}/` folder has no plan test either. `/routines`
+>   and `/routines/new` dropped the gate, the desk lost `canMake`. **No
+>   migration.** Putting a routine on a class is still `can_set_class_routines`.
+> * ⚠⚠ **And a pre-existing bug the plain user found: every routine row was a
+>   `<Link>` holding the song and video `<a>`s** — invalid HTML, so React threw
+>   hydration error #418 and rebuilt the desk on the client, for every artist
+>   with a routine since 19 Sep. Reproduced on a dev server, which printed the
+>   nesting. The card is a container with ONE stretched link under content whose
+>   pointer events are off except the media buttons (the studio card's pattern).
+> * **Proper routine cards** (*"proper routine cards"*): one `RoutineCard` for
+>   Yours and Learned — a band in the style's colour (style, level, LIVE /
+>   DRAFT / LAST {date}), the name at 16.5px with its figure, and Song and Video
+>   as real pill buttons. ⚠ The e2e finds a row by `routine-row` filtered on its
+>   link's name, since the row is no longer the link.
+> * **Log out asks first** (*"should not log out without confirmation"*):
+>   `LogOutConfirm` — a centred alertdialog, Cancel focused first, back / scrim /
+>   Escape close it — in front of the switcher's Log out and an admin's Sign out.
+> * **The class form** (*"should not be able to create class for time which has
+>   already passed. not more than 5 hrs of session"*). The past-start rule
+>   already refused at the button, the action and the database (`20260930130000`);
+>   what was wrong is that **today's Starts list still OFFERED past times**. It
+>   offers only what is ahead now, and picking today moves a gone start to the
+>   next slot. **`MAX_SESSION_MINUTES = 300`** (`types/class.ts`): the Ends list
+>   stops at five hours after the start and the action refuses longer on create
+>   AND update. ⚠ The database does not cap the length — a trigger is a
+>   migration, not proposed yet.
+> * **The first page** (*"dance os logo … in the centre. Dance First, Think
+>   Later! … above start dancing and login … 5678 bigger"*): the mark is centred
+>   at 84px with a glow, the wordmark under it, the count-in at display size,
+>   the headline centred, and "Dance First, Think Later!" over the buttons.
+>   `DosMark` moved to `components/ui/DosMark.tsx` so the bar and the welcome
+>   screen draw one logo. Sizes scale with `clamp()`, so 360×740 fits.
+> * **Verified:** typecheck 0 · lint 0 · build green · a probe **13/13** as a plain
+>   user (a routine saved and in the database, `/routines/new` open, Log out
+>   asking, Cancel keeping the session, confirming signing out, today's starts
+>   ahead only, a 10:00 start ending no later than 15:00, no page error) · the
+>   share probe **25/25** (both themes, 430 and 360, the QR 123px and
+>   scannable, the buttons beside it, no sideways scroll) · the welcome screen
+>   screenshotted at 430×932 and 360×740, no overflow · **the whole e2e suite
+>   56/56 in ONE run, 21.0 min on one worker** — ⚠ after an earlier happy-path
+>   run's one red, the substring trap: "SHARE" (the heading) and the new
+>   "Share" button both matched, now `exact`.
 
 > ### THE FOLLOWER COUNT IS A PILL ON THE PICTURE (2 Oct 2026, latest) — no migration, ✅ PUSHED AND LIVE (`c0a9026`: Vercel READY, alias confirmed on the sha, the pill probe 26/26 ON THE LIVE SITE)
 > The user: *"on discover cards for studio, crew, artist make follower a pill on
@@ -17366,6 +17419,9 @@ Home. **Do not "restore parity" on these.**
 | C96 | C94 (that same day): Completed is a fourth pill, split Received · Sent, the kinds mixed | **THREE COLUMNS — Enquiries · Requests · Invites — and Completed is a SIDE of each**: Received · Sent · Completed, each Completed holding that kind's closed rows both ways. The Inbox opens on Enquiries. A studio's and a crew's Enquiries is Received · Completed. ⚠ **Withdrawn is a third answer**, stamped grey — an ask taken back, or an invite revoked, is neither a yes nor a no | 2 Oct 2026, the user: *"completed not in line with enquiries invites and request but with received and sent in their respective section. enquiry should be first. all requests, invites and enquiries should be 3 columns"* — superseding C94 at the same person's word |
 | C97 | Home's deck opens on the live card and paints only it (a green frame, C-series 2 Oct) | **THE DAY READS LEFT TO RIGHT**: what has ended first, framed red with COMPLETED; the live one green; what is still to come amber with UPCOMING — and the rail scrolls itself to the first card not yet over | 2 Oct 2026, the user: *"once class completed for today it should move on the left … completed status same as live with red border on cards, upcoming classes yellow border"* |
 | C98 | Onboarding's "Take a bow" (3926) is the only welcome | **A BOW ON CREATING A STUDIO, A CREW, AND ON BECOMING AN ARTIST** (`WelcomeBow`, `?welcome=studio\|crew\|artist`, cleared by a replace so back never re-opens it). ⚠ An artist mandate returning by full-page redirect (phones) is not confirmed on that screen, so it shows no bow | 2 Oct 2026, the user: *"on creation similar welcome message for studio and crew profiles as we get on sign up for users and same should be once converted and subscribed for being an artist"* |
+| C101 | The welcome screen: the wordmark top-left at 17px, a caption-sized 5·6·7·8, a left-aligned headline (3700-3724) | **THE MARK IN THE CENTRE** at 84px with the wordmark under it, the count-in at display size, the headline centred, and "Dance First, Think Later!" above the two buttons | 3 Oct 2026, the user: *"dance os logo on start screen page in the centre. Dance First, Think Later! also there above start dancing and login revamp the first page above the buttons"*, then *"5678 bigger"* |
+| C102 | Routines are an artist's tool (S_choreos 17115) and the row is a list line | **ANYBODY MAKES ROUTINES, AND EACH IS A CARD** — a style-coloured band, the name, the usage figure, Song and Video as buttons | 3 Oct 2026, the user: *"users can also create routines"*, *"proper routine cards"* |
+| C103 | Log out ends the session on one press (11416) | **IT ASKS FIRST** — `LogOutConfirm`, Cancel the default | 3 Oct 2026, the user: *"should not log out without confirmation"* |
 | C100 | The follower count sits at the card's foot with its two-heads mark (DosFollowers 4277) | **A SOLID PILL TOP-RIGHT ON THE PICTURE** — studio, artist and crew cards — in `--text` on `--solid`, so it is black or white by the card's own (inverted) theme | 2 Oct 2026, the user: *"on discover cards for studio, crew, artist make follower a pill on top right with black and white background acorrding to theme"* |
 | C99 | A studio and a crew pick their style one at a time (the single `DosStylePicker`, re-opened per style) | **ONE MULTI-PICKER** (`DosStyleMultiPicker`, the prototype's own `multi` mode, 3554): chips with ×, the first marked MAIN with ★ to promote, a searchable list that ticks, eight at most at creation | 2 Oct 2026, the user: *"dance style filter while creating studio and crew should be multi filter and better way to handle in the form"* |
 

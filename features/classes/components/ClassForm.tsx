@@ -30,7 +30,7 @@ import {
 import { DOS_LEVELS, DOS_LEVEL_LABEL, dosClassLabel, dosStyleColor } from "@/lib/constants/styles";
 import { INK, LILAC, SUB } from "@/lib/design/tokens";
 import type { ClassPerson } from "@/types/classPerson";
-import type { ClassLevel, DanceClass, PosterChoice } from "@/types/class";
+import { MAX_SESSION_MINUTES, type ClassLevel, type DanceClass, type PosterChoice } from "@/types/class";
 import type { Room } from "@/types/room";
 import type { BusinessType } from "@/types/business";
 
@@ -73,6 +73,17 @@ const istToday = () => istDatePart(new Date(Date.now()).toISOString(), { year: "
  *  server's own rule carries, so the form and the action cannot disagree by a
  *  second and leave somebody with a button that does nothing. */
 const startHasGone = (date: string, time: string) => new Date(`${date}T${time}:00+05:30`).getTime() <= Date.now() - 60_000;
+/** the time now in IST as "HH:MM" — what today's Starts list is cut at
+ *  (3 Oct 2026, the user: "should not be able to create class for time which has
+ *  already passed"): the rule refused a past start at the button, but the list
+ *  still OFFERED 08:00 at six in the evening, so the refusal was the first thing
+ *  somebody learned. Module-level for the same purity reason as the two above. */
+const istNowHm = () => istDatePart(new Date(Date.now()).toISOString(), { hour: "2-digit", minute: "2-digit", hour12: false }).replace(/^24/, "00");
+const minutesOf = (t: string) => Number(t.slice(0, 2)) * 60 + Number(t.slice(3, 5));
+/** an end the Ends list may offer: after the start, and NOT MORE THAN FIVE HOURS
+ *  later (3 Oct 2026, the user: "not more than 5 hrs of session") — the server
+ *  refuses the same number */
+const endFits = (start: string, end: string) => end > start && minutesOf(end) - minutesOf(start) <= MAX_SESSION_MINUTES;
 
 const POSTER_DESIGNS: Array<[PosterChoice, string]> = [
   ["bold", "Bold"],
@@ -369,6 +380,33 @@ export function ClassForm({
     existing?.session && date === toDateInput(existing.session.startsAt) && startTime === toTimeInput(existing.session.startsAt)
   );
   const startsInThePast = Boolean(date) && !keptItsOwnStart && startHasGone(date, startTime);
+  /* the Starts list for the date picked: TODAY offers only what is still ahead,
+     and a class being edited keeps its own start in the list whatever it is */
+  const isToday = date !== "" && date === istToday();
+  const nowHm = isToday ? istNowHm() : "";
+  const startRows = TIMES.slice(0, -1).filter((t) => !isToday || t > nowHm || (keptItsOwnStart && t === startTime));
+  /* an end after the start and within five hours (the old one kept if editing) */
+  const endRows = TIMES.filter((t) => endFits(startTime, t) || (existing?.session && t === endTime && t > startTime));
+  const tooLong = endTime > startTime && !endFits(startTime, endTime);
+  /** picking a start moves the end with it when the end no longer fits —
+   *  after the start and within five hours — to the next half hour */
+  const pickStart = (v: string) => {
+    setStartTime(v);
+    if (!endFits(v, endTime)) {
+      const next = TIMES.find((t) => t > v);
+      if (next) setEndTime(next);
+    }
+  };
+  /** picking TODAY with a start already gone moves the start to the next open
+   *  slot, so the form never sits on a time the list no longer offers */
+  const pickDate = (d: string) => {
+    setDate(d);
+    if (d === istToday() && startTime <= istNowHm()) {
+      const now = istNowHm();
+      const next = TIMES.slice(0, -1).find((t) => t > now);
+      if (next) pickStart(next);
+    }
+  };
 
   /** ⚠ DOES THIS SAVE ASK ANYBODY? (28 Sep 2026) — an artist wanting a studio's
    *  room, or a studio naming somebody other than itself as the teacher. Both are
@@ -386,6 +424,8 @@ export function ClassForm({
           ? "That start has already gone — pick a time ahead"
           : endTime <= startTime
             ? "End after the start"
+          : tooLong
+            ? "A session can be at most 5 hours"
           : !isArtist && rooms.length > 0 && !roomId
             ? "Pick a room"
             : atStudio && !venue
@@ -469,7 +509,7 @@ export function ClassForm({
                 the rule, because a date alone cannot tell you that 19:00 today
                 has already gone. An EXISTING class keeps whatever date it has;
                 the floor only limits what can be picked next. */}
-            <input type="date" min={istToday()} value={date} onChange={(e) => setDate(e.target.value)} aria-label="Class date" style={{ ...inputStyle, colorScheme: "dark" }} />
+            <input type="date" min={istToday()} value={date} onChange={(e) => pickDate(e.target.value)} aria-label="Class date" style={{ ...inputStyle, colorScheme: "dark" }} />
             <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div style={{ fontSize: 12, color: SUB, marginBottom: 4 }}>Starts</div>
@@ -481,14 +521,8 @@ export function ClassForm({
                     rule and both accessible names are untouched. */}
                 <Pick
                   value={startTime}
-                  rows={TIMES.slice(0, -1).map((t) => ({ value: t, label: t }))}
-                  onPick={(v) => {
-                    setStartTime(v);
-                    if (endTime <= v) {
-                      const next = TIMES.find((t) => t > v);
-                      if (next) setEndTime(next);
-                    }
-                  }}
+                  rows={startRows.map((t) => ({ value: t, label: t }))}
+                  onPick={pickStart}
                   ariaLabel="Starts"
                   style={{ ...inputStyle, cursor: "pointer" }}
                   searchPlaceholder="Search times…"
@@ -498,7 +532,7 @@ export function ClassForm({
                 <div style={{ fontSize: 12, color: SUB, marginBottom: 4 }}>Ends</div>
                 <Pick
                   value={endTime}
-                  rows={TIMES.filter((t) => t > startTime).map((t) => ({ value: t, label: t }))}
+                  rows={endRows.map((t) => ({ value: t, label: t }))}
                   onPick={setEndTime}
                   ariaLabel="Ends"
                   style={{ ...inputStyle, cursor: "pointer" }}

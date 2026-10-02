@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { DosMark } from "@/components/ui/DosMark";
 import { AuthShell } from "@/features/auth/components/AuthShell";
 import { BTN_STYLE, DOS_DISPLAY, GOLD, INK, LINE, SKY, SUB } from "@/lib/design/tokens";
 
@@ -28,56 +29,77 @@ import { BTN_STYLE, DOS_DISPLAY, GOLD, INK, LINE, SKY, SUB } from "@/lib/design/
 export default function LoginWelcomePage() {
   return (
     <AuthShell>
-      <div style={{ fontSize: 17, fontWeight: 800, animation: "dosRise .5s ease both" }}>
-        Dance<span style={{ color: SKY }}>OS</span>
-      </div>
-      {/* The slack is SPLIT rather than all dumped below the hero: roughly a
-          third above, two thirds below. All of it in one place left the headline
-          jammed under the logo with a crater beneath it — which is the same
-          "unfinished screen" read as having no spacer at all, just relocated. */}
-      <div style={{ flex: 0.5, minHeight: 18 }} />
+      {/* ⚠ THE FIRST PAGE, REVAMPED ABOVE THE BUTTONS (3 Oct 2026, the user:
+          "dance os logo on start screen page in the centre. Dance First, Think
+          Later! also there above start dancing and login revamp the first page
+          above the buttons", then "5678 bigger"). The wordmark used to sit in
+          the top-left corner at 17px over a left-aligned headline; now the MARK
+          is the centre of the screen with the wordmark under it, the count-in is
+          a display figure rather than a caption, and the headline and its line
+          are centred beneath. The slack splits around the block so it sits at
+          the optical middle on a tall phone and closes up on a short one. */}
+      <div style={{ flex: 1, minHeight: 14 }} />
 
-      <div style={{ display: "flex", gap: 14, marginTop: 34, fontSize: 15, fontWeight: 800, letterSpacing: 1 }}>
-        {["5", "6", "7", "8"].map((n, i) => (
-          <span key={n} style={{ animation: `dosBeat 2.4s ease ${i * 0.3}s infinite` }}>
-            {n}
-            {i < 3 && <span style={{ color: LINE, marginLeft: 14 }}>·</span>}
+      <div style={{ display: "flex", flexDirection: "column", alignItems: "center", textAlign: "center" }}>
+        <div style={{ position: "relative", animation: "dosRise .5s ease both" }}>
+          {/* a soft glow behind the mark, in its own three colours */}
+          <span aria-hidden="true" style={{ position: "absolute", inset: -28, borderRadius: "50%", background: "radial-gradient(circle, rgba(168,85,247,.32), rgba(236,72,153,.14) 45%, transparent 70%)", filter: "blur(6px)" }} />
+          <span style={{ position: "relative", display: "inline-flex" }}>
+            <DosMark size={84} />
           </span>
-        ))}
-      </div>
-      {/* the screen's own `<h1>` (28 Sep 2026) — the welcome screen wears no
-          chrome at all, so this display line is the only thing naming it */}
-      <h1
-        style={{
-          fontSize: 46,
-          fontWeight: 800,
-          lineHeight: 1.06,
-          letterSpacing: -1.2,
-          margin: "12px 0 16px",
-          fontFamily: DOS_DISPLAY,
-          animation: "dosRise .6s .1s ease both",
-        }}
-      >
-        The stage
-        <br />
-        is yours.
-      </h1>
-      <div
-        style={{
-          fontSize: 16.5,
-          color: SUB,
-          lineHeight: 1.5,
-          fontWeight: 600,
-          animation: "dosRise .6s .2s ease both",
-        }}
-      >
-        Find classes. Build your crew.
-        <br />
-        Get paid to dance.
+        </div>
+        <div style={{ marginTop: 14, fontSize: 28, fontWeight: 900, letterSpacing: -0.6, fontFamily: DOS_DISPLAY, animation: "dosRise .5s .05s ease both" }}>
+          Dance<span style={{ color: SKY }}>OS</span>
+        </div>
+
+        {/* the count-in, BIG (3 Oct 2026, "5678 bigger") — every class starts
+            on it, so it is the screen's beat rather than a caption */}
+        <div aria-hidden="true" style={{ display: "flex", alignItems: "center", gap: 14, marginTop: 16, fontSize: "clamp(28px, 8.4vw, 36px)", fontWeight: 900, letterSpacing: 0.5, fontFamily: DOS_DISPLAY, fontVariantNumeric: "tabular-nums" }}>
+          {["5", "6", "7", "8"].map((n, i) => (
+            <span key={n} style={{ display: "inline-flex", alignItems: "center", gap: 14, animation: `dosBeat 2.4s ease ${i * 0.3}s infinite` }}>
+              {n}
+              {i < 3 && <span style={{ color: LINE, fontSize: 26 }}>·</span>}
+            </span>
+          ))}
+        </div>
+
+        {/* the screen's own `<h1>` (28 Sep 2026) — the welcome screen wears no
+            chrome at all, so this display line is the only thing naming it */}
+        <h1
+          style={{
+            fontSize: "clamp(30px, 9.2vw, 40px)",
+            fontWeight: 800,
+            lineHeight: 1.06,
+            letterSpacing: -1.1,
+            margin: "14px 0 10px",
+            fontFamily: DOS_DISPLAY,
+            animation: "dosRise .6s .1s ease both",
+          }}
+        >
+          The stage is yours.
+        </h1>
+        <div
+          style={{
+            fontSize: "clamp(13.5px, 3.8vw, 15.5px)",
+            color: SUB,
+            lineHeight: 1.5,
+            fontWeight: 600,
+            animation: "dosRise .6s .2s ease both",
+          }}
+        >
+          Find classes. Build your crew. Get paid to dance.
+        </div>
       </div>
 
       {/* absorbs the slack on a tall screen instead of leaving a void above the band */}
-      <div style={{ flex: 1, minHeight: 28 }} />
+      <div style={{ flex: 1.2, minHeight: 24 }} />
+
+      {/* THE LINE OVER THE BUTTONS (3 Oct 2026, the user: "Dance First, Think
+          Later! also there above start dancing and login") — the same words
+          Discover opens with, so the first page and the first tab speak alike */}
+      <div style={{ textAlign: "center", fontSize: 20, fontWeight: 900, letterSpacing: -0.3, fontFamily: DOS_DISPLAY, marginBottom: 14, animation: "dosRise .6s .25s ease both" }}>
+        Dance First, <span style={{ color: SKY }}>Think Later!</span>
+      </div>
 
       <div style={{ display: "flex", flexDirection: "column", gap: 10, animation: "dosRise .6s .3s ease both" }}>
         <Link

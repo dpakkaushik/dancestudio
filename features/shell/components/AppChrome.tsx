@@ -3,9 +3,10 @@
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { useEffect, useId, useRef, useState, useSyncExternalStore, type ReactNode, type PointerEvent as PointerEvent_, type MouseEvent as MouseEvent_ } from "react";
+import { useCallback, useEffect, useRef, useState, useSyncExternalStore, type ReactNode, type PointerEvent as PointerEvent_, type MouseEvent as MouseEvent_ } from "react";
 import { Portal } from "@/components/ui/Portal";
-import { signOutAction } from "@/features/auth/server-actions/auth";
+import { DosMark } from "@/components/ui/DosMark";
+import { LogOutConfirm } from "@/features/auth/components/LogOutConfirm";
 import { SettingsSheet, type SettingsProfile } from "@/features/settings/components/SettingsSheet";
 import { DOS_UI, INK, RED } from "@/lib/design/tokens";
 import type { ArtistPlan } from "@/repositories/plans";
@@ -68,41 +69,7 @@ function wasSwipe(e: MouseEvent_): boolean {
  *  Inbox, and the top-left is the mark with the switcher rather than a back
  *  chip, because you are somewhere, not inside something. */
 
-/* ── the DanceOS mark — lifted from prototype DosMark (DanceOSApp.jsx:1614-1628) ── */
-function DosMark({ size = 28 }: { size?: number }) {
-  const gid = `dm${useId()}`;
-  const s = size;
-  return (
-    <span
-      style={{
-        display: "inline-flex",
-        flexShrink: 0,
-        lineHeight: 0,
-        width: s,
-        height: s,
-        borderRadius: s * 0.3,
-        alignItems: "center",
-        justifyContent: "center",
-        background: "linear-gradient(145deg,#1B1030,#0C0714)",
-        boxShadow: "0 0 0 1px rgba(236,72,153,.28), 0 4px 14px rgba(124,58,237,.30)",
-      }}
-    >
-      <svg width={s * 0.72} height={s * 0.72} viewBox="0 0 32 32" fill="none" aria-hidden="true">
-        <defs>
-          <linearGradient id={gid} x1="2" y1="2" x2="30" y2="30" gradientUnits="userSpaceOnUse">
-            <stop stopColor="#EC4899" />
-            <stop offset=".55" stopColor="#A855F7" />
-            <stop offset="1" stopColor="#5AC8FA" />
-          </linearGradient>
-        </defs>
-        <path d="M24.8 7.2A12.4 12.4 0 1 0 27.5 20" stroke={`url(#${gid})`} strokeWidth="3.6" strokeLinecap="round" />
-        <path d="M9.6 22.6a8 8 0 1 1 11.2-1.4" stroke={`url(#${gid})`} strokeWidth="3.2" strokeLinecap="round" opacity=".62" />
-        <circle cx="26.4" cy="6.2" r="3.5" fill="#EC4899" />
-      </svg>
-    </span>
-  );
-}
-
+/* the DanceOS mark lives in components/ui/DosMark (3 Oct 2026) */
 /* ── tab set — labels, tints and icons lifted from the shell (19313-19396).
    Calendar left the bar in the prototype's final design; the five that remain
    each carry their section's own accent. ── */
@@ -341,6 +308,11 @@ export function AppChrome({
      state (this repo's setState-in-effect rule) */
   const [openFor, setOpenFor] = useState<string | null>(null);
   const menuOpen = openFor === pathname;
+  /* LOG OUT ASKS FIRST (3 Oct 2026, the user: "should not log out without
+     confirmation") — both the menu's Log out and an admin's Sign out open this
+     rather than submitting */
+  const [confirmOut, setConfirmOut] = useState(false);
+  const closeOut = useCallback(() => setConfirmOut(false), []);
   /* a crew's home is /crews/{id}/manage, its inbox /crews/{id}/inbox — both are
      "here" for that crew, so the match is on the crew's root */
   const isHere = (item: SwitcherItem) => {
@@ -696,11 +668,9 @@ export function AppChrome({
           {/* the gear opens Settings for THE PROFILE YOU ARE IN (21 Sep 2026);
               an admin-only account has no profile at all, so its one control is the way out */}
           {adminOnly ? (
-            <form action={signOutAction} style={{ display: "contents" }}>
-              <button type="submit" aria-label="Sign out" style={{ ...chipStyle, width: "auto", padding: "0 13px", fontSize: 12, fontWeight: 800, cursor: "pointer", fontFamily: "inherit", color: INK, border: "none" }}>
-                Sign out
-              </button>
-            </form>
+            <button type="button" aria-label="Sign out" aria-haspopup="dialog" onClick={() => setConfirmOut(true)} style={{ ...chipStyle, width: "auto", padding: "0 13px", fontSize: 12, fontWeight: 800, cursor: "pointer", fontFamily: "inherit", color: INK, border: "none" }}>
+              Sign out
+            </button>
           ) : (
           /* ⚠ A BUTTON, NOT A LINK TO `/profile?settings=1` (21 Sep 2026). The
              gear used to navigate to ONE page and let that page open the sheet,
@@ -806,10 +776,21 @@ export function AppChrome({
                   profile, and why the chip is drawn on every screen — the way
                   out must not be reachable only from the Profile tab. */}
               <div style={{ height: 1, background: "var(--el)", margin: "6px 10px" }} />
-              <form action={signOutAction} style={{ display: "block" }}>
+              {/* ⚠ IT ASKS FIRST (3 Oct 2026, the user: "should not log out
+                  without confirmation") — this row opens `LogOutConfirm`, and
+                  only the confirm's own button submits `signOutAction`. The menu
+                  closes as the confirm opens, so the two never stack. */}
+              <div style={{ display: "block" }}>
                 <button
-                  type="submit"
+                  type="button"
                   role="menuitem"
+                  aria-haspopup="dialog"
+                  {...tapHandlers}
+                  onClick={(e) => {
+                    if (wasSwipe(e)) return;
+                    setOpenFor(null);
+                    setConfirmOut(true);
+                  }}
                   style={{ display: "flex", alignItems: "center", gap: 10, padding: "9px 10px", borderRadius: 13, width: "100%", background: "transparent", border: "none", cursor: "pointer", fontFamily: "inherit", color: RED, textAlign: "left" }}
                 >
                   <span aria-hidden="true" style={{ width: 34, height: 34, borderRadius: 10, flexShrink: 0, display: "inline-flex", alignItems: "center", justifyContent: "center", background: `${RED}1f` }}>
@@ -819,11 +800,12 @@ export function AppChrome({
                   </span>
                   <span style={{ fontSize: 13, fontWeight: 900 }}>Log out</span>
                 </button>
-              </form>
+              </div>
             </div>
           </div>
         </Portal>
       ) : null}
+      {confirmOut ? <LogOutConfirm onClose={closeOut} word={adminOnly ? "Sign out" : "Log out"} /> : null}
 
       {/* everything else flows below the bar; tabs also leave room for the pill bar */}
       <div

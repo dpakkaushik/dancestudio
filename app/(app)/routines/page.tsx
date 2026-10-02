@@ -2,7 +2,6 @@ import { redirect } from "next/navigation";
 import { RoutineForm } from "@/features/routines/components/RoutineForm";
 import { RoutinesDesk } from "@/features/routines/components/RoutinesDesk";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
-import { findMyArtistPlan } from "@/repositories/plans";
 import { findMyRoutines, findRoutinesLearned } from "@/repositories/routines";
 
 /** /routines — the Routines tile on an artist's Home (18 Sep 2026), built
@@ -25,24 +24,20 @@ export default async function RoutinesPage({ searchParams }: { searchParams: Pro
      and LEARNED, the ones that were taught in a class you actually turned up to.
      A plain user makes none and learns plenty, which is why the tile is on their
      grid now; the making side simply has nothing in it for them, and says so. */
-  const [routines, learned, plan] = await Promise.all([
+  const [routines, learned] = await Promise.all([
     findMyRoutines(supabase).catch(() => []),
     findRoutinesLearned(supabase, user.id).catch(() => []),
-    findMyArtistPlan(supabase).catch(() => null),
   ]);
-  const canMake = Boolean(plan?.active);
   /* ⚠ THE FORM OPENS OVER THE DESK (22 Sep 2026), and `?new=1` is what says so —
-     the same shape as the gear's `?settings=1`. Two properties follow from
-     putting it in the URL rather than in the desk's own state: the phone's back
-     gesture closes it, and the desk pays for nothing until it is asked for.
-     ⚠ AND THE GATE IS RE-CHECKED HERE, not just on the button: `?new=1` is a
-     thing anybody can type, and `/routines/new` has guarded itself since the day
-     it was built for exactly that reason. `canMake` is already read for the
-     desk, so this costs no round trip. */
+     the same shape as the gear's `?settings=1`: the phone's back gesture closes
+     it, and the desk pays for nothing until it is asked for.
+     ⚠ NO PLAN GATE (3 Oct 2026, the user: "users can also create routines"). It
+     was the app's alone — `save_routine` never read the Artist plan — so every
+     signed-in person makes routines, and the form is offered to all of them. */
   return (
     <>
-      <RoutinesDesk routines={routines} learned={learned} canMake={canMake} />
-      {opening && canMake ? <RoutineForm userId={user.id} sheet /> : null}
+      <RoutinesDesk routines={routines} learned={learned} />
+      {opening ? <RoutineForm userId={user.id} sheet /> : null}
     </>
   );
 }

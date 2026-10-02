@@ -1068,13 +1068,19 @@ test.describe.serial("DanceOS, end to end", () => {
        `/c/{slug}` link is a version-3 or -4 code, so under ~125px `QRBlock`
        marks itself "small" and the one thing this block exists for is somebody
        holding a camera up to it. */
-    await expect(owner.getByText("SHARE")).toBeVisible();
+    /* ⚠ `exact` (3 Oct 2026): the block's own Share button reads "Share", and a
+       bare string is a case-insensitive SUBSTRING match — the heading and the
+       button both matched */
+    await expect(owner.getByText("SHARE", { exact: true })).toBeVisible();
     const shareQr = owner.getByRole("img", { name: `Booking link for ${classTitle}` });
     await expect(shareQr).toBeVisible();
     await expect(shareQr).toHaveAttribute("data-qr-scannable", "yes");
     await expect(owner.getByText(new RegExp(`/c/${shareSlug}$`))).toBeVisible();
     await owner.getByRole("button", { name: "Copy the booking link" }).click();
     await expect(owner.getByText("Copied ✓")).toBeVisible();
+    /* and SHARE beside it (3 Oct 2026) — the phone's own sheet; not pressed here,
+       because a headless browser either has no sheet or opens one nobody closes */
+    await expect(owner.getByRole("button", { name: "Share the booking link" })).toBeVisible();
 
     // ---- learner: signup → onboard → open the shared link → book ----------
     learnerId = await signUp(learner, `e2e-learner-${stamp}@example.com`);
@@ -3249,7 +3255,10 @@ test.describe.serial("DanceOS, end to end", () => {
     await trainer.getByRole("button", { name: "Save routine" }).click();
     await trainer.getByRole("dialog", { name: "Save this routine?" }).getByRole("button", { name: "Save routine" }).click();
     await trainer.waitForURL(/\/routines$/, { timeout: 20_000 });
-    const row = trainer.getByRole("link", { name: `Open ${routineName}` });
+    /* ⚠ THE ROW IS A CONTAINER, NOT A LINK (3 Oct 2026): a link holding the song
+       and video links was invalid HTML and failed hydration, so the row is a
+       `routine-row` with one link stretched over it — found by the link's name */
+    const row = trainer.getByTestId("routine-row").filter({ has: trainer.getByRole("link", { name: `Open ${routineName}`, exact: true }) });
     await expect(row).toBeVisible({ timeout: 15_000 });
     // it is on no class yet, and both media are real links on the row
     await expect(row.getByTestId("routine-classes")).toHaveText("0");

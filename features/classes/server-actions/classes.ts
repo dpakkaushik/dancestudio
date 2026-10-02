@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 import { DOS_STYLE_NAMES } from "@/lib/constants/styles";
+import { MAX_SESSION_MINUTES } from "@/types/class";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import {
   createClassWithSession,
@@ -71,6 +72,18 @@ const endsAfterStart = {
   message: "The class has to end after it starts",
 };
 
+/** NOT MORE THAN FIVE HOURS (3 Oct 2026, the user: "not more than 5 hrs of
+ *  session"). Both ends are HH:MM on the one date, so the length is a subtraction.
+ *  On CREATE and UPDATE alike — unlike the backdate rule, a five-hour cap has no
+ *  old class it would trap. The number lives in `types/class.ts` so the form's
+ *  picker and this refusal read one constant (a "use server" file may export
+ *  only async functions). */
+const minutesOf = (t: string) => Number(t.slice(0, 2)) * 60 + Number(t.slice(3, 5));
+const atMostFiveHours = {
+  check: (d: { startTime: string; endTime: string }) => minutesOf(d.endTime) - minutesOf(d.startTime) <= MAX_SESSION_MINUTES,
+  message: "A session can be at most 5 hours long",
+};
+
 /** India-only for now — a picked date + time means IST. */
 const toIst = (date: string, time: string): string => `${date}T${time}:00+05:30`;
 
@@ -105,6 +118,7 @@ const createClassSchema = classFields
     status: z.enum(["draft", "published"]),
   })
   .refine(endsAfterStart.check, { message: endsAfterStart.message })
+  .refine(atMostFiveHours.check, { message: atMostFiveHours.message })
   .refine(startsInFuture.check, { message: startsInFuture.message });
 
 const updateClassSchema = classFields
@@ -112,7 +126,8 @@ const updateClassSchema = classFields
     businessId: z.string().uuid(),
     classId: z.string().uuid(),
   })
-  .refine(endsAfterStart.check, { message: endsAfterStart.message });
+  .refine(endsAfterStart.check, { message: endsAfterStart.message })
+  .refine(atMostFiveHours.check, { message: atMostFiveHours.message });
 
 /** Who the form says is on this class. Parsed separately from the class fields
  *  because a bad people payload must never stop the class itself saving. */

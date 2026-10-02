@@ -88,6 +88,11 @@ export interface DanceClass {
  *  stamps it on the server and passes it down. */
 export type ClassPhase = "draft" | "upcoming" | "live" | "over";
 
+/** THE LONGEST A SESSION MAY RUN (3 Oct 2026, the user: "not more than 5 hrs of
+ *  session"). Read by the class form's Ends picker and by the server action's
+ *  refusal, so the two cannot disagree. */
+export const MAX_SESSION_MINUTES = 5 * 60;
+
 export const classPhaseAt = (
   c: Pick<DanceClass, "status" | "session">,
   nowMs: number
