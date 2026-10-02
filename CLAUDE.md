@@ -2,7 +2,7 @@
 
 ## LAST SESSION (2 Oct 2026) — replaced on every push (Rule 13)
 
-> ### ONE TOOL PALETTE, A REAL iPHONE SWIPE, CLEANER CARDS, AND A CREW'S FOLLOWING (2 Oct 2026, latest) — no migration, COMMITTED, NOT PUSHED
+> ### ONE TOOL PALETTE, A REAL iPHONE SWIPE, CLEANER CARDS, AND A CREW'S FOLLOWING (2 Oct 2026, latest) — no migration, ✅ PUSHED AND LIVE (`9831e04`: Vercel READY, alias confirmed on the sha through the API, the 13-check probe 13/13 and `stranger-smoke` 8/8 ON THE LIVE SITE)
 > The user, in three messages: a better colour scheme for every tool and the
 > heading inside its page, the same on every profile; Discover cards without
 > member counts or the word "followers"; the switcher swipe dead on iPhones;
