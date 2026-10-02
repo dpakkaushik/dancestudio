@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useState, type CSSProperties, type ReactNode } from "react";
 import { FigureHead } from "@/components/ui/FigureHead";
+import { DOS_TOOLS, DeskHero } from "@/features/businesses/components/biz-kit";
 import { EarningsChart } from "@/features/payouts/components/EarningsChart";
 import { money } from "@/features/payouts/components/earnings-kit";
 import { DOS_UI, INK, LILAC, SUB } from "@/lib/design/tokens";
@@ -172,8 +173,16 @@ export function EarningsScreen({
 
   return (
     <div style={{ background: LILAC, color: INK, maxWidth: 430, margin: "0 auto", fontFamily: DOS_UI, minHeight: "100vh", padding: "12px 16px 40px", boxSizing: "border-box" }}>
-      <h1 style={{ fontSize: 21, fontWeight: 900, letterSpacing: -0.4, margin: "0 0 2px" }}>{title}</h1>
-      {sub ? <div style={{ fontSize: 11.5, color: SUB, fontWeight: 800, marginBottom: 12 }}>{sub}</div> : <div style={{ marginBottom: 12 }} />}
+      {/* ⚠ THE TOOL'S OWN HERO (2 Oct 2026, the user: "better color scheme for
+          all tools and headings inside their pages"). This was the one tile page
+          headed by a bare 21px line while every other wears `DeskHero` in its
+          tile's colour — so Earnings looked like a different app from Classes. */}
+      {title === DOS_TOOLS.earn.name ? (
+        <DeskHero tool="earn" as="h1" margin={sub ? "0 0 6px" : "0 0 12px"} />
+      ) : (
+        <h1 style={{ fontSize: 21, fontWeight: 900, letterSpacing: -0.4, margin: "0 0 2px" }}>{title}</h1>
+      )}
+      {sub ? <div style={{ fontSize: 11.5, color: SUB, fontWeight: 800, marginBottom: 12 }}>{sub}</div> : null}
 
       {/* DAY · WEEK · MONTH · YEAR — the period is a LINK, so it is in the URL */}
       <div role="group" aria-label="Period" style={{ display: "flex", gap: 2, background: "var(--el)", borderRadius: 12, padding: 3, marginBottom: 12 }}>

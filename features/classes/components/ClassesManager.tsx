@@ -15,6 +15,7 @@ import {
 import { withdrawClassAskAction } from "@/features/classPeople/server-actions/classPeople";
 import { ClassTile } from "@/features/classes/components/ClassTile";
 import { DeskAddButton } from "@/features/settings/components/settings-kit";
+import { DOS_TOOLS, dosToolPaint } from "@/features/businesses/components/biz-kit";
 import { useCloseOnBack } from "@/lib/hooks/useCloseOnBack";
 import { DOS_DISPLAY, DOS_UI, INK, LILAC, SUB } from "@/lib/design/tokens";
 import type { ClassPublishState, VenueRequest } from "@/repositories/classes";
@@ -80,9 +81,11 @@ const TAB_WORD: Record<Tab, string> = {
 const initialState: ClassActionState = { error: null };
 
 /* the tile that opens this page is painted in the tool's own colour, and the
-   page wears the same paint (DOS_TOOLS 2935: Classes #0D9488; dosToolPaint 2944) */
-const TOOL_COLOUR = "#0D9488";
-const toolPaint = (c: string) => `linear-gradient(135deg,${c} 0%, ${c}cc 55%, ${c}80 100%)`;
+   page wears the same paint. ⚠ READ FROM `DOS_TOOLS`, never typed here (2 Oct
+   2026): this line said `#0D9488` while the tile had been `#0F766E` since 18 Sep,
+   so the register wore a different teal from the tile that opened it. */
+const TOOL_COLOUR = DOS_TOOLS.classes.c;
+const toolPaint = dosToolPaint;
 
 /* bizBtn (prototype 2920) — the one primary pill every desk uses */
 const bizBtn: React.CSSProperties = {

@@ -165,7 +165,7 @@ export function CrewHome({ crew, members, header = [], followers = 0, followingN
                     had been a door since that morning. The list is the LEADER's
                     own, which is whose count this is; `FollowingFigure` says
                     why it takes no argument. */}
-                <FollowingFigure n={followingN} testId="crew-following" />
+                <FollowingFigure n={followingN} always testId="crew-following" />
               </>
             }
             /* the chips at the row's right edge (20 Sep 2026). No Follow bell:

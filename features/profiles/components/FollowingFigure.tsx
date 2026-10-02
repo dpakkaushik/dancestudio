@@ -32,7 +32,13 @@ export function FollowingFigure({
   n,
   testId,
   userId = null,
+  always = false,
 }: {
+  /** ⚠ ALWAYS DRAWN (2 Oct 2026, the user: "following section for crew pages
+   *  under profile pic to be always visible"). A count that could not be read
+   *  prints "—", never a 0 nobody measured; the press still opens the sheet,
+   *  which says why it cannot read the list (a stranger is asked to sign in). */
+  always?: boolean;
   /** ⚠ WHOSE LIST (2 Oct 2026): null is the reader's own, as it always was; a
    *  person's id reads THEIR list through `profile_following`, which is what
    *  makes the figure a door on somebody else's profile too */
@@ -61,20 +67,21 @@ export function FollowingFigure({
     });
   };
 
-  if (count == null) return null;
+  if (count == null && !always) return null;
+  const shown = count == null ? "—" : count.toLocaleString("en-IN");
 
   return (
     <>
       <button
         type="button"
         onClick={press}
-        aria-label={`Following — ${count}`}
+        aria-label={`Following — ${count ?? "not available"}`}
         data-testid={testId}
         /* a bare button, so it sits in `FIGURE_ROW` exactly where the plain
            `Figure` div did — same two lines, same metrics, no chrome */
         style={{ background: "none", border: "none", padding: 0, cursor: "pointer", font: "inherit", color: "inherit", textAlign: "left" }}
       >
-        <span style={figureNum}>{count.toLocaleString("en-IN")}</span>
+        <span style={figureNum}>{shown}</span>
         <span style={figureLabel}>Following</span>
       </button>
 
@@ -90,7 +97,7 @@ export function FollowingFigure({
             <div style={{ width: 40, height: 4, borderRadius: 2, background: "var(--el)", margin: "0 auto 12px" }} />
             <div style={{ display: "flex", alignItems: "baseline", gap: 8, marginBottom: 10 }}>
               <b style={{ fontSize: 16, fontFamily: DOS_DISPLAY }}>Following</b>
-              <span style={{ marginLeft: "auto", fontSize: 11, fontWeight: 800, color: "var(--muted)" }}>{count}</span>
+              <span style={{ marginLeft: "auto", fontSize: 11, fontWeight: 800, color: "var(--muted)" }}>{count ?? ""}</span>
             </div>
 
             {busy ? <div style={{ fontSize: 12, color: "var(--sub)", padding: "18px 2px" }}>Reading the list…</div> : null}

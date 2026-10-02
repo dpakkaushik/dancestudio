@@ -44,7 +44,7 @@ export function DosWhere({ city, km, size = 11 }: { city: string; km?: string | 
  *  in the same slot — a crew has no followers to count. */
 export function DosFollowers({ n, size = 12, word }: { n: number; size?: number; word?: string }) {
   return (
-    <span style={{ display: "inline-flex", alignItems: "center", gap: 5, minWidth: 0 }}>
+    <span title={word ? undefined : `${fmtF(n)} followers`} style={{ display: "inline-flex", alignItems: "center", gap: 5, minWidth: 0 }}>
       <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="var(--muted)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
         <circle cx="9" cy="8.4" r="3.2" />
         <path d="M3 19.5c.7-3.2 3-4.9 6-4.9s5.3 1.7 6 4.9" />

@@ -382,11 +382,13 @@ const enterEdit = async (page) => {
        few hours this morning and is a TOOL TILE now, on this studio's own grid.
        The count alone would pass on the wrong three, so the absent one is named
        as well as the present ones. */
+    /* ⚠ AND TWO SINCE 2 Oct 2026 (the user: "discover should not be visible in
+       navbar when in crew or studio profile") — Discover is named as absent too */
     check(
-      (await studioBar.getByRole("link", { name: "Discover" }).count()) === 1 &&
+      (await studioBar.getByRole("link", { name: "Discover" }).count()) === 0 &&
         (await studioBar.getByRole("link", { name: "Enquiries" }).count()) === 0 &&
-        (await studioBar.getByRole("link").count()) === 3,
-      "studio bar: Home · Discover · Inbox — three, and Enquiries is NOT on it (27 Sep 2026)"
+        (await studioBar.getByRole("link").count()) === 2,
+      "studio bar: Inbox · Home — two; neither Discover nor Enquiries is on it (2 Oct 2026)"
     );
     await shot("studio-initials");
 

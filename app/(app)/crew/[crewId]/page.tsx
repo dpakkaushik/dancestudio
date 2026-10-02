@@ -6,6 +6,7 @@ import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { findCrewById, findCrewMembers } from "@/repositories/crews";
 import { findCrewFollowerCount, isFollowingCrew } from "@/repositories/follows";
 import { findCrewHeaderPhotos } from "@/repositories/headerPhotos";
+import { findPersonFollowerCounts } from "@/repositories/publicPerson";
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -43,13 +44,21 @@ export default async function CrewPage({ params }: { params: Promise<{ crewId: s
      follows since `20260920180000_an_organization_follows`. */
   /* ⚠ THE BATTLE RECORD WENT WITH EVENTS (29 Sep 2026): `findCrewEntries` read
      the events this crew had been entered into, and a crew enters nothing now. */
-  const [members, header, following, followers] = await Promise.all([
+  const [members, header, following, followers, leaderCounts] = await Promise.all([
     findCrewMembers(supabase, crewId),
     findCrewHeaderPhotos(supabase, crewId),
     user ? isFollowingCrew(supabase, crewId) : Promise.resolve(false),
     /* the count on the Follow button (19 Sep 2026, later) */
     findCrewFollowerCount(supabase, crewId),
+    /* ⚠ FOLLOWING ON A CREW'S PAGE (2 Oct 2026, the user: "following count not
+       visible on crew profile pages and should open list as well"). A crew
+       follows nothing of its own, so the figure is the LEADER's — exactly what
+       the crew's own home has printed since 27 Sep. Signed in, the count and the
+       list both answer (`profile_following` is authenticated-only); signed out
+       the count is null unless the leader is an artist, and null draws nothing. */
+    findPersonFollowerCounts(supabase, [crew.leaderId]).catch(() => new Map<string, { followers: number; following: number }>()),
   ]);
+  const followingN = leaderCounts.get(crew.leaderId)?.following ?? null;
   /* the public page prints the confirmed; the leader's own asked rows are the desk's business */
   const confirmed = members.filter((m) => m.status === "confirmed");
   const viewer = user ? (crew.leaderId === user.id ? "leader" : confirmed.some((m) => m.userId === user.id) ? "member" : "other") : "other";
@@ -61,6 +70,7 @@ export default async function CrewPage({ params }: { params: Promise<{ crewId: s
       viewer={viewer}
       following={following}
       followers={followers}
+      followingN={followingN}
       signedIn={Boolean(user)}
     />
   );

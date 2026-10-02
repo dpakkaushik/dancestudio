@@ -28,9 +28,29 @@ export const dosStyleInk = (hex: string, dark: boolean): string => {
   return "#" + c.map((v) => Math.max(0, Math.min(255, v)).toString(16).padStart(2, "0")).join("");
 };
 
-/** The tool paint a drawn square wears when there is no face to show
- *  (prototype dosToolPaint, 2944). */
-export const dosToolPaint = (c: string): string => `linear-gradient(135deg,${c} 0%, ${c}cc 55%, ${c}80 100%)`;
+/** `#RRGGBB` mixed toward black by `f` (0 = unchanged, 1 = black). Pure, so the
+ *  paint below can be computed anywhere — server or client — with no
+ *  `color-mix()`, which iOS before 16.2 does not have. */
+export const shadeHex = (hex: string, f: number): string => {
+  const s = String(hex || "").replace("#", "");
+  if (s.length < 6) return hex;
+  const c = [0, 2, 4].map((i) => parseInt(s.slice(i, i + 2), 16));
+  if (c.some(isNaN)) return hex;
+  return "#" + c.map((v) => Math.round(v * (1 - f)).toString(16).padStart(2, "0")).join("");
+};
+
+/** ⚠⚠ THE ONE TOOL PAINT (2 Oct 2026, the user: "better color scheme for all
+ *  tools and headings inside their pages on home … color should be standard in
+ *  different profiles as well"). Every tile and every page it opens wears this,
+ *  and nothing else declares its own copy any more — six files did, and one of
+ *  them (the Classes register) had drifted to a different teal from its own tile.
+ *
+ *  It was the prototype's `c → c·80%α → c·50%α`, which fades the far corner to
+ *  HALF TRANSPARENT: on the dark page that read as a muddy smear and on the light
+ *  page the white title sat on a washed-out pastel. It is solid now — the colour
+ *  deepening into a darker shade of itself — so the white type holds the same
+ *  contrast in both themes and every tool reads as one family. */
+export const dosToolPaint = (c: string): string => `linear-gradient(135deg,${c} 0%, ${shadeHex(c, 0.28)} 100%)`;
 
 /** A person's two-colour badge when they have no photo (prototype personGrad, 2947). */
 export const personGrad = (isTeam = false): [string, string] =>

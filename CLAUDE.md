@@ -2,6 +2,35 @@
 
 ## LAST SESSION (2 Oct 2026) — replaced on every push (Rule 13)
 
+> ### ONE TOOL PALETTE, A REAL iPHONE SWIPE, CLEANER CARDS, AND A CREW'S FOLLOWING (2 Oct 2026, latest) — no migration, COMMITTED, NOT PUSHED
+> The user, in three messages: a better colour scheme for every tool and the
+> heading inside its page, the same on every profile; Discover cards without
+> member counts or the word "followers"; the switcher swipe dead on iPhones;
+> Following on a crew's page, always visible and opening its list; and no
+> Discover on a crew's or a studio's bar, with Discover blue and Home green.
+> * **One palette, one paint.** `DOS_TOOLS` is one depth now (Tailwind 600,
+>   700 where white type needs it), spread round the wheel. `dosToolPaint` is
+>   defined ONCE in `lib/format/styleInk` and is solid (it faded to 50% alpha,
+>   which muddied both themes). ⚠ Six files kept their own copy, and **the
+>   Classes register had drifted to a different teal from its own tile**; the
+>   register, the Calendar and the Earnings hero read `DOS_TOOLS` now, and
+>   Earnings wears `DeskHero` instead of a bare 21px line.
+> * ⚠⚠ **The iPhone swipe**: iOS does not reliably honour `touch-action: none`
+>   inside a fixed bar, so Safari took the gesture, fired `pointercancel` and
+>   `pointerup` never came. The chip reads native touch listeners with a
+>   NON-PASSIVE `touchmove` that calls `preventDefault`; pointer events are kept
+>   for mouse and pen only. Driven with real CDP touch events: the swipe changes
+>   profile, a tap still opens the menu.
+> * **Discover cards**: a crew's foot is the follower icon and count only.
+> * **A crew's page prints Following** (the LEADER's, as the crew's home does),
+>   opening their list; `FollowingFigure always` shows "—" where the count
+>   cannot be read (a stranger, a non-artist leader) rather than vanishing.
+> * **The entity bar is Inbox · Home** (C21 reversed at the user's word);
+>   Discover tint blue, Home green.
+> * **Verified:** typecheck 0 · lint 0 · build green · a browser probe 13/13 ·
+>   `shoot-hero` 186/186 (its studio-bar check re-cut to two links) ·
+>   `shoot-tiles` 134/134 · both bars screenshotted.
+
 > ### A SWIPE SWITCHES PROFILE, A PAID PASS IS NOT SOLD TWICE, PAYMENT COMES BACK, AND YOU MAY FOLLOW YOUR OWN STUDIO (2 Oct 2026, latest) — ✅ `20261002120000` APPLIED (dry run 13/13 first)
 > Four of the user's messages in one push:
 > * **The profile chip takes a vertical swipe** (Google-style): up and down step to

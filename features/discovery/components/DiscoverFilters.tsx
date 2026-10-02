@@ -8,6 +8,7 @@ import { searchEverythingAction } from "@/features/discovery/server-actions/sear
 import { gradientOf } from "@/features/profiles/components/profile-kit";
 import { photoUrl } from "@/lib/media/photo";
 import { dosStyleColor } from "@/lib/constants/styles";
+import { dosToolPaint } from "@/lib/format/styleInk";
 import { STYLE_FAMILIES, styleInfo, stylesOfFamilies } from "@/lib/constants/styleInfo";
 import { DOS_DISPLAY } from "@/lib/design/tokens";
 import { useCloseOnBack } from "@/lib/hooks/useCloseOnBack";
@@ -30,7 +31,8 @@ import { filtersOnCount, filtersToParams, type DiscoverFilters, type Dist, type 
 
 const micro: React.CSSProperties = { fontSize: 9.5, fontWeight: 800, letterSpacing: 0.7, textTransform: "uppercase" };
 const shelf: React.CSSProperties = { fontSize: 17, fontWeight: 900, letterSpacing: -0.5, lineHeight: 1.2, fontFamily: DOS_DISPLAY };
-const toolPaint = (c: string) => `linear-gradient(135deg,${c} 0%, ${c}cc 55%, ${c}80 100%)`;
+/* the one tool paint (2 Oct 2026) — never a local copy */
+const toolPaint = dosToolPaint;
 const pressKey = (fn: () => void) => (e: React.KeyboardEvent) => {
   if (e.key === "Enter" || e.key === " ") {
     e.preventDefault();

@@ -3,7 +3,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { useId, useState, useSyncExternalStore, type ReactNode, type PointerEvent as PointerEvent_, type MouseEvent as MouseEvent_ } from "react";
+import { useEffect, useId, useRef, useState, useSyncExternalStore, type ReactNode, type PointerEvent as PointerEvent_, type MouseEvent as MouseEvent_ } from "react";
 import { Portal } from "@/components/ui/Portal";
 import { signOutAction } from "@/features/auth/server-actions/auth";
 import { SettingsSheet, type SettingsProfile } from "@/features/settings/components/SettingsSheet";
@@ -20,7 +20,9 @@ import type { Business } from "@/types/business";
    the gesture over (`pointercancel`). One gesture at a time, so one record is enough;
    a keyboard press has no pointer and is never mistaken for a swipe. */
 const SWIPE_SLOP = 8;
-const tap = { x: 0, y: 0, moved: false };
+/** how far a vertical drag on the switcher must travel to change profile */
+const SWIPE_SWITCH = 28;
+const tap ={ x: 0, y: 0, moved: false };
 const tapHandlers = {
   onPointerDown: (e: PointerEvent_) => { tap.x = e.clientX; tap.y = e.clientY; tap.moved = false; },
   onPointerMove: (e: PointerEvent_) => { if (Math.hypot(e.clientX - tap.x, e.clientY - tap.y) > SWIPE_SLOP) tap.moved = true; },
@@ -141,9 +143,11 @@ const TAB_ICONS = {
      the type that lists the keys. */
 } satisfies Record<string, (c: string) => ReactNode>;
 
+/* ⚠ DISCOVER IS BLUE AND HOME IS GREEN (2 Oct 2026, the user's own words) —
+   the two had them the other way round */
 const TAB_TINT = {
-  Home: "#5AC8FA",
-  Discover: "#22C55E",
+  Home: "#22C55E",
+  Discover: "#3B82F6",
   Inbox: "#8B5CF6",
 } satisfies Record<string, string>;
 
@@ -315,9 +319,14 @@ export function AppChrome({
      switched into, and `/discover` belongs to none by itself. ⚠ It is a
      REQUEST, not an authority: the page looks it up among the businesses this
      account is on the team of and the crews it leads before believing it. ── */
+  /* ⚠⚠ AND DISCOVER LEFT THE ENTITY BAR AGAIN (2 Oct 2026, the user: "discover
+     should not be visible in navbar when in crew or studio profile"). C21 put it
+     there on 19 Sep; the user has now reversed that. A studio's and a crew's own
+     pages are Inbox · Home, and Discover is one press away through the profile
+     switcher (your own profile's bar carries it). `entity.as` is still built by
+     the layout and simply unused here. */
   const bar: Array<{ label: TabLabel; href: string }> = entity
     ? [
-        { label: "Discover", href: `/discover?as=${encodeURIComponent(entity.as)}` },
         { label: "Inbox", href: entity.inbox },
         { label: "Home", href: entity.home },
         /* ⚠ ENQUIRIES LEFT THIS BAR THE SAME DAY IT JOINED IT (27 Sep 2026, the
@@ -352,7 +361,6 @@ export function AppChrome({
      one (down), wrapping at either end; a tap is untouched. It is only a swipe
      once it is clearly vertical and long enough — a sideways drag or a wobble
      does nothing at all, which is the 2 Oct "a swipe is not a tap" fix kept. */
-  const SWIPE_SWITCH = 28;
   const swipeSwitch = (dy: number) => {
     if (switcher.length < 2 || !hereItem) return;
     const at = Math.max(0, switcher.findIndex((s) => s.key === hereItem.key));
@@ -360,6 +368,72 @@ export function AppChrome({
     setOpenFor(null);
     router.push(next.href);
   };
+
+  /* ⚠⚠ THE SWIPE ON AN iPHONE IS NATIVE TOUCH, NOT POINTER EVENTS (2 Oct 2026,
+     the user: "swipe from last chat not working on iphones for the profile
+     switcher"). iOS Safari does not reliably honour `touch-action: none` on a
+     control inside a fixed bar: it starts its own gesture (a page scroll, the
+     pull-to-refresh, the edge back swipe), fires `pointercancel`, and the
+     `pointerup` the swipe was read from never arrives — so on an iPhone nothing
+     happened. The one thing iOS always obeys is `preventDefault()` on a
+     NON-PASSIVE `touchmove`, and React registers touch listeners passive, so
+     these are added by hand. The pointer path below is kept for a mouse and a
+     pen, and told to stand aside for a touch so a swipe never switches twice. */
+  const switcherRef = useRef<HTMLButtonElement>(null);
+  const swipeRef = useRef(swipeSwitch);
+  useEffect(() => {
+    swipeRef.current = swipeSwitch;
+  });
+  useEffect(() => {
+    const el = switcherRef.current;
+    if (!el) return;
+    let sx = 0;
+    let sy = 0;
+    let live = false;
+    const start = (e: TouchEvent) => {
+      const t = e.touches[0];
+      if (!t || e.touches.length > 1) return;
+      sx = t.clientX;
+      sy = t.clientY;
+      live = true;
+      tap.x = sx;
+      tap.y = sy;
+      tap.moved = false;
+    };
+    const move = (e: TouchEvent) => {
+      if (!live) return;
+      /* keep the page, the refresh and the back gesture off this finger */
+      if (e.cancelable) e.preventDefault();
+      const t = e.touches[0];
+      if (t && Math.hypot(t.clientX - sx, t.clientY - sy) > SWIPE_SLOP) tap.moved = true;
+    };
+    const end = (e: TouchEvent) => {
+      if (!live) return;
+      live = false;
+      const t = e.changedTouches[0];
+      if (!t) return;
+      const dx = t.clientX - sx;
+      const dy = t.clientY - sy;
+      if (Math.abs(dy) >= SWIPE_SWITCH && Math.abs(dy) > Math.abs(dx) * 1.5) {
+        tap.moved = true; // the click iOS may still send is not a tap
+        if (e.cancelable) e.preventDefault();
+        swipeRef.current(dy);
+      }
+    };
+    const cancel = () => {
+      live = false;
+    };
+    el.addEventListener("touchstart", start, { passive: true });
+    el.addEventListener("touchmove", move, { passive: false });
+    el.addEventListener("touchend", end, { passive: false });
+    el.addEventListener("touchcancel", cancel);
+    return () => {
+      el.removeEventListener("touchstart", start);
+      el.removeEventListener("touchmove", move);
+      el.removeEventListener("touchend", end);
+      el.removeEventListener("touchcancel", cancel);
+    };
+  }, [adminOnly]);
 
   /* ══ SETTINGS, FOR THE PROFILE YOU ARE IN (21 Sep 2026, the user: "settings
      are seprate for each profile type according to which profile you are in").
@@ -650,21 +724,25 @@ export function AppChrome({
               aria-label={hereItem ? `Switch profile — you are in ${hereItem.label}` : "Switch profile"}
               aria-haspopup="menu"
               aria-expanded={menuOpen}
-              {...tapHandlers}
-              /* the finger is captured so a swipe that leaves the 44px chip still
-                 ends here, and `touchAction: none` keeps the browser from taking a
-                 vertical swipe for a page scroll (which would cancel it) */
-              onPointerDown={(e) => { tapHandlers.onPointerDown(e); e.currentTarget.setPointerCapture?.(e.pointerId); }}
+              ref={switcherRef}
+              /* a TOUCH is read by the native listeners above (the iPhone fix);
+                 these are the mouse's and the pen's, and the finger is captured
+                 so a drag that leaves the 44px chip still ends here */
+              onPointerDown={(e) => { if (e.pointerType === "touch") return; tapHandlers.onPointerDown(e); e.currentTarget.setPointerCapture?.(e.pointerId); }}
+              onPointerMove={(e) => { if (e.pointerType !== "touch") tapHandlers.onPointerMove(e); }}
+              onPointerCancel={(e) => { if (e.pointerType !== "touch") tapHandlers.onPointerCancel(); }}
               onPointerUp={(e) => {
+                if (e.pointerType === "touch") return;
                 const dx = e.clientX - tap.x;
                 const dy = e.clientY - tap.y;
                 if (Math.abs(dy) >= SWIPE_SWITCH && Math.abs(dy) > Math.abs(dx) * 1.5) swipeSwitch(dy);
               }}
+              onContextMenu={(e) => e.preventDefault()}
               onClick={(e) => { if (wasSwipe(e)) return; setOpenFor(menuOpen ? null : pathname); }}
-              style={{ ...chipStyle, padding: 0, overflow: "hidden", fontFamily: "inherit", touchAction: "none", border: `2px solid ${hereItem ? SWITCH_TINT[hereItem.kind] : "var(--chip-line)"}`, background: hereItem ? `linear-gradient(135deg,${SWITCH_TINT[hereItem.kind]},${SWITCH_TINT[hereItem.kind]}88)` : "var(--chip-bg)" }}
+              style={{ ...chipStyle, padding: 0, overflow: "hidden", fontFamily: "inherit", touchAction: "none", WebkitTouchCallout: "none", WebkitUserSelect: "none", userSelect: "none", border: `2px solid ${hereItem ? SWITCH_TINT[hereItem.kind] : "var(--chip-line)"}`, background: hereItem ? `linear-gradient(135deg,${SWITCH_TINT[hereItem.kind]},${SWITCH_TINT[hereItem.kind]}88)` : "var(--chip-bg)" }}
             >
               {hereItem?.photo ? (
-                <Image src={hereItem.photo} alt="" width={44} height={44} style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
+                <Image src={hereItem.photo} alt="" width={44} height={44} draggable={false} style={{ width: "100%", height: "100%", objectFit: "cover", display: "block", pointerEvents: "none" }} />
               ) : (
                 <span aria-hidden="true" style={{ color: "#fff", fontSize: 12.5, fontWeight: 900 }}>{hereItem ? initialsOf(hereItem.label) : "?"}</span>
               )}

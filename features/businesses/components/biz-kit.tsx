@@ -1,5 +1,6 @@
 import type { CSSProperties, ReactNode } from "react";
 import { DOS_DISPLAY } from "@/lib/design/tokens";
+import { dosToolPaint } from "@/lib/format/styleInk";
 
 /** The business desks' shared chrome, lifted from the prototype's BizShell and
  *  its neighbours (DanceOSApp.jsx:2916-2984).
@@ -24,48 +25,63 @@ import { DOS_DISPLAY } from "@/lib/design/tokens";
  *  tiles is the most unmistakable thing on the grid — which is the whole point.
  *  Checked against every kind's actual list: a user's six, an artist's thirteen,
  *  an organization's five, a studio's ten. Deviation row R20 — four of these are
- *  the prototype's own paints, and the user overruled them. */
+ *  the prototype's own paints, and the user overruled them.
+ *
+ *  ⚠⚠ RE-CUT AS ONE FAMILY (2 Oct 2026, the user: "better color scheme for all
+ *  tools and headings inside their pages on home … standard in different
+ *  profiles as well"). The set had drifted into mismatched depths — a neon lime
+ *  beside a near-brown rust beside a pale cyan — so it read as thirteen unrelated
+ *  colours rather than one scheme. Every tool now sits at ONE depth (the
+ *  Tailwind 600 band, 700 where a light hue would not hold white type), spread
+ *  round the wheel: red Crews, orange Team, bronze Memberships, olive Students,
+ *  green Earnings, teal Classes, cyan Calendar, blue Studios, indigo Rooms /
+ *  Practice, violet Enquiries, fuchsia Subscription, pink Routines, slate Assets.
+ *  Rooms and Practice share indigo deliberately: Rooms is on a studio's grid only
+ *  and Practice never is. And "standard across profiles" is made true by
+ *  construction — every tile, every page hero and every page that used to type
+ *  its own hex (the Classes register, the Calendar, the Earnings hero) reads THIS
+ *  table, with `dosToolPaint` defined once in `lib/format/styleInk`. */
 export const DOS_TOOLS = {
-  studios: { name: "Studios", c: "#3B82F6" },
+  studios: { name: "Studios", c: "#2563EB" },
   /* deepened from #0D9488 so Calendar's cyan beside it reads as another tile
      and not another shade — the two sit together on three of the four grids */
-  classes: { name: "Classes", c: "#0F766E" },
+  classes: { name: "Classes", c: "#0D9488" },
   /* ⚠ `events` (bright amber #F59E0B) went with events on 29 Sep 2026 — with it
      the warm band lost the tool that Team and Memberships were pulled apart FROM
      by depth, so those two are darker than they now need to be. Left as they
      are: R20's test is that no two tiles on ONE grid read alike, and darker
      still passes it. */
-  earn: { name: "Earnings", c: "#22C55E" },
+  earn: { name: "Earnings", c: "#16A34A" },
   /* was #8B5CF6 — a second violet beside Stats, and they sit together on both a
      studio's grid and an artist's */
-  students: { name: "Students", c: "#84CC16" },
+  students: { name: "Students", c: "#4D7C0F" },
   /* was #F97316, thirteen degrees off Events' amber and the same lightness —
      the warm band holds five tools, so this one separates by depth */
-  team: { name: "Team", c: "#9A3412" },
+  team: { name: "Team", c: "#EA580C" },
   /* was #3498DB — a blue eight degrees off Studios' */
-  rooms: { name: "Rooms", c: "#6366F1" },
+  rooms: { name: "Rooms", c: "#4F46E5" },
   /* MEDIA (15 Sep 2026): a studio's two pictures — the disc and the header —
      as a desk of their own; a fuchsia nobody else on the grid wears */
-  media: { name: "Media", c: "#D946EF" },
+  media: { name: "Media", c: "#C026D3" },
   /* STATS (15 Sep 2026, the user: "remove stats from the navigation menu, keep
      it as a tab on the home page along with calendar, classes") — the violet
      the Charts hero opens on, and now the ONLY violet. ⚠ Not a tile since 18 Sep
      2026 ("remove stats from tools and place like a button similar to the qr
      code"): it is the `StatsChip` beside the QR in every hero; the entry stays
      because the word and the colour are still the tool's */
-  stats: { name: "Stats", c: "#A855F7" },
+  stats: { name: "Stats", c: "#9333EA" },
   /* THE HOME GRID FOR ALL FOUR KINDS (18 Sep 2026, the user's list): three
      tools the prototype has a screen for and this app does not yet —
      S_choreos 17115, S_memberships 16846, S_assets 16791 */
-  routines: { name: "Routines", c: "#EC4899" },
+  routines: { name: "Routines", c: "#DB2777" },
   /* was #0EA5E9 — a third blue. Bronze reads as a card or a tier, and its
      darkness is what separates it from Events' amber */
   memberships: { name: "Memberships", c: "#A16207" },
   /* was #7C3AED — a third violet. The one neutral on the grid, on purpose */
-  assets: { name: "Assets", c: "#64748B" },
+  assets: { name: "Assets", c: "#475569" },
   /* deepened from #5AC8FA, which was a pale fourth blue; CalendarScreen's own
      paint follows it */
-  calendar: { name: "Calendar", c: "#06B6D4" },
+  calendar: { name: "Calendar", c: "#0891B2" },
   crews: { name: "Crews", c: "#DC2626" },
   /* ⚠ `organizations` (the deep plum #701A75, 26 Sep 2026) went with
      organizations on 29 Sep */
@@ -73,7 +89,7 @@ export const DOS_TOOLS = {
      also become an option on home tab for all profiles and is removed from
      settings for all") — a deep blue, 15° off Studios' and a full step darker,
      since the two sit on the same grid */
-  subscription: { name: "Subscription", c: "#0369A1" },
+  subscription: { name: "Subscription", c: "#C026D3" },
   /* ENQUIRIES IS A TOOL, NOT A TAB (27 Sep 2026, the user: "enquiries should not
      be on navbar a tab in tools for all"). It wore #EC4899 for the few hours it
      was on the bar and CANNOT keep it: Routines is that exact pink and the two
@@ -85,7 +101,7 @@ export const DOS_TOOLS = {
      ⚠ It shares a hue family with Stats' violet, and that is not a clash: Stats
      has not been a tile on any grid since 18 Sep — it is the chip beside the QR
      — so the two are never side by side. */
-  enquiries: { name: "Enquiries", c: "#7E22CE" },
+  enquiries: { name: "Enquiries", c: "#7C3AED" },
   /* PRACTICE (27 Sep 2026, the user: "crew should also get an option on home tab
      called Practice") — ⚠⚠ REPAINTED 29 Sep 2026, and the repaint is what makes
      the user's own next ask legal: *"practice should be seprate tab in home tab
@@ -107,15 +123,16 @@ export const DOS_TOOLS = {
      ⚠ Rooms #6366F1 (239°) is six degrees away and is a STUDIO-only tile, so the
      two are never on one grid — the same per-grid reading that licensed the old
      green, recorded here so the next reader does not have to re-derive it. */
-  practice: { name: "Practice", c: "#4338CA" },
+  practice: { name: "Practice", c: "#4F46E5" },
   /* `managed` ("Manage", violet) left this list on 19 Sep 2026 — the user: "just
      need to remove manage as the tile in tools, nothing else changes". The
      /managed page stays; nothing paints a tile for it any more */
 } as const;
 export type DosToolKey = keyof typeof DOS_TOOLS;
 
-/** the tile's fill and the page's header are the same paint, mixed the same way (2944) */
-export const dosToolPaint = (c: string) => `linear-gradient(135deg,${c} 0%, ${c}cc 55%, ${c}80 100%)`;
+/** the tile's fill and the page's header are the same paint — ONE definition,
+ *  in `lib/format/styleInk` (2 Oct 2026), re-exported so no caller moves */
+export { dosToolPaint };
 
 /** bizCard / bizBtn (2918-2920) — the desk's card and its one primary pill */
 export const bizCard: CSSProperties = {

@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { ClassTile } from "@/features/classes/components/ClassTile";
+import { DOS_TOOLS, dosToolPaint } from "@/features/businesses/components/biz-kit";
 import { dosStyleColor } from "@/lib/constants/styles";
 import { CARD, DOS_DISPLAY, DOS_UI, INK, LILAC, LINE, MUTED, SKY, SUB } from "@/lib/design/tokens";
 import {
@@ -42,9 +43,10 @@ import { PRACTICE_TINT, PRACTICE_WORD, practiceWhen } from "@/types/crewPractice
 
 /* the tile that opens this page is painted in the calendar's own colour, and
    the page wears the same paint (DOS_TOOLS 2932). Deepened from #5AC8FA with
-   the palette on 18 Sep 2026 — it must stay equal to DOS_TOOLS.calendar.c */
-const TOOL_COLOUR = "#06B6D4";
-const toolPaint = (c: string) => `linear-gradient(135deg,${c} 0%, ${c}cc 55%, ${c}80 100%)`;
+   the palette on 18 Sep 2026. ⚠ READ from `DOS_TOOLS` since 2 Oct 2026 rather
+   than typed beside a comment promising to stay equal to it */
+const TOOL_COLOUR = DOS_TOOLS.calendar.c;
+const toolPaint = dosToolPaint;
 
 /* TRAIN · TEACH · ASSIST — what the person is doing on the floor (DOS_SIDES 6666) */
 const SIDES: Record<CalendarSide, { name: string; tint: string }> = {

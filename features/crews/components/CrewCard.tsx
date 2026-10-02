@@ -27,16 +27,12 @@ export function CrewCard({ crew, followers = null }: { crew: CrewSummary; follow
       photo={photoUrl(crew.photo)}
       grad={gradientOf(crew.name)}
       city={crew.city}
-      foot={
-        followers === null ? (
-          <DosFollowers n={crew.members} size={11} word={crew.members === 1 ? "member" : "members"} />
-        ) : (
-          <span style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-            <DosFollowers n={followers} size={11} word={followers === 1 ? "follower" : "followers"} />
-            <DosFollowers n={crew.members} size={11} word={crew.members === 1 ? "member" : "members"} />
-          </span>
-        )
-      }
+      /* ⚠ THE MARK AND THE COUNT, NOTHING ELSE (2 Oct 2026, the user: "should not
+         show members lists, only follower icon with counts on cards not full
+         follower written"). The roster size left the card — it is on the crew's
+         own page — and the word went, so a crew's foot reads exactly like a
+         studio's and an artist's. */
+      foot={<DosFollowers n={followers ?? 0} size={11} />}
     />
   );
 }

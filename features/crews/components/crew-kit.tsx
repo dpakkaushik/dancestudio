@@ -12,7 +12,8 @@ export const CrewI = ({ size = 18, color = "currentColor" }: { size?: number; co
   </svg>
 );
 
-export const dosToolPaint = (c: string) => `linear-gradient(135deg,${c} 0%, ${c}cc 55%, ${c}80 100%)`;
+/* the one tool paint (2 Oct 2026) — never a second copy */
+export { dosToolPaint } from "@/lib/format/styleInk";
 
 export const initialsOf = (name: string) => name.split(" ").filter(Boolean).map((w) => w[0]).slice(0, 2).join("").toUpperCase() || "C";
 

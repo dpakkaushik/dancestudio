@@ -1,5 +1,6 @@
 import type { CSSProperties, ReactNode } from "react";
 import { CARD, DOS_DISPLAY, DOS_UI, GOLD, GREEN, INK, LINE, MUTED, RED, SUB } from "@/lib/design/tokens";
+import { DOS_TOOLS, dosToolPaint } from "@/features/businesses/components/biz-kit";
 
 /** The earnings screen's atoms, lifted from the prototype's S_earn
  *  (DanceOSApp.jsx:17877-18205): the green hero, the money card with its stacked
@@ -10,8 +11,10 @@ import { CARD, DOS_DISPLAY, DOS_UI, GOLD, GREEN, INK, LINE, MUTED, RED, SUB } fr
 
 export const DOS_MONO = 'ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace';
 
-/** prototype dosToolPaint (BusinessHub already lifted this) */
-const toolPaint = (c: string) => `linear-gradient(135deg,${c} 0%, ${c}cc 55%, ${c}80 100%)`;
+/** the one tool paint, and the Earnings tool's own colour (2 Oct 2026) — the
+ *  hero wore the generic GREEN token, which only matched the tile by luck */
+const toolPaint = dosToolPaint;
+const EARN_C = DOS_TOOLS.earn.c;
 
 export const money = (n: number) => `₹${Math.round(n).toLocaleString("en-IN")}`;
 
@@ -41,7 +44,7 @@ export function EarnHero({ title, sub }: { title: string; sub?: string }) {
         margin: "0 0 12px",
         borderRadius: 22,
         padding: "15px 17px 14px",
-        background: toolPaint(GREEN),
+        background: toolPaint(EARN_C),
         color: "#fff",
         position: "relative",
         overflow: "hidden",

@@ -3,6 +3,7 @@ import { EnquiryButton } from "@/features/enquiries/components/EnquirySheet";
 import { ActionRow, CallButton, MailButton, MessageButton, whatsappHrefOf } from "@/features/profiles/components/ContactButtons";
 import { EntityBand } from "@/features/profiles/components/profile-band";
 import { FollowerFigure } from "@/features/profiles/components/FollowerFigure";
+import { FollowingFigure } from "@/features/profiles/components/FollowingFigure";
 import { FollowToggle } from "@/features/profiles/components/FollowToggle";
 import type { HeroShot } from "@/features/profiles/components/HeroRail";
 import { ProfileLink, ProfileShare } from "@/features/profiles/components/ProfileShare";
@@ -64,8 +65,11 @@ export function CrewPublicPage({
   viewer,
   following = false,
   followers = null,
+  followingN = null,
   signedIn,
 }: {
+  /** what the crew's LEADER follows — a crew follows nothing of its own */
+  followingN?: number | null;
   crew: Crew;
   members: CrewMember[];
   /** THE HEADER PICTURES (19 Sep 2026): up to five, the leader's to add */
@@ -123,7 +127,14 @@ export function CrewPublicPage({
               followers alone; `crews` has no `socials` column, so no links row —
               an empty rail is not a row. ── */}
           <EntityBand
-            figures={<FollowerFigure n={followers} kind="crew" id={crew.id} name={crew.name} />}
+            figures={
+              <>
+                <FollowerFigure n={followers} kind="crew" id={crew.id} name={crew.name} testId="crew-public-followers" />
+                {/* the LEADER's following, opening their list (2 Oct 2026) — the
+                    crew's own home has printed the same figure since 27 Sep */}
+                <FollowingFigure n={followingN} userId={crew.leaderId} always testId="crew-public-following" />
+              </>
+            }
             /* the three chips at the row's right edge (20 Sep 2026) — the QR, the
                crew board this crew is ranked on, and the Follow bell, drawn for
                every viewer and saying why when a press would be refused */
