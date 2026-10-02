@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useId, useState, useSyncExternalStore, type ReactNode } from "react";
@@ -136,10 +137,13 @@ const TAB_TINT = {
  *  With `satisfies` on the maps and this label typed off them, that tab fails
  *  to compile instead. */
 type TabLabel = keyof typeof TAB_ICONS & keyof typeof TAB_TINT;
+/* ⚠ DISCOVER FIRST, HOME THIRD (2 Oct 2026, the user: "discover should always be
+   the first tab and home the 3rd in navbar") — on the main bar and on a studio's
+   or a crew's own bar alike, so the order never changes under the thumb */
 const TAB_SET: Array<{ label: TabLabel; href: string }> = [
-  { label: "Home", href: "/" },
   { label: "Discover", href: "/discover" },
   { label: "Inbox", href: "/inbox" },
+  { label: "Home", href: "/" },
 ];
 
 /** ONE ROW OF THE PROFILE SWITCHER — a home this account can go to. Built by the
@@ -152,6 +156,8 @@ export interface SwitcherItem {
   sub: string;
   /* ⚠ `org` (26 Sep 2026) went with organizations on 29 Sep */
   kind: "me" | "studio" | "crew";
+  /** its picture, or null for initials (2 Oct 2026) */
+  photo?: string | null;
 }
 
 const SWITCH_TINT: Record<SwitcherItem["kind"], string> = { me: "#5AC8FA", studio: "#3B82F6", crew: "#DC2626" };
@@ -287,9 +293,9 @@ export function AppChrome({
      account is on the team of and the crews it leads before believing it. ── */
   const bar: Array<{ label: TabLabel; href: string }> = entity
     ? [
-        { label: "Home", href: entity.home },
         { label: "Discover", href: `/discover?as=${encodeURIComponent(entity.as)}` },
         { label: "Inbox", href: entity.inbox },
+        { label: "Home", href: entity.home },
         /* ⚠ ENQUIRIES LEFT THIS BAR THE SAME DAY IT JOINED IT (27 Sep 2026, the
            user: "enquiries should not be on navbar a tab in tools for all"). It
            is a TILE on this entity's own tool grid now, carrying `?as=` so the
@@ -499,36 +505,15 @@ export function AppChrome({
               ⚠ It wears a DOT in the active profile's own colour, because that
               is the one thing the chip did that a brand mark cannot: answer
               "which profile am I?" without being opened. */}
-          {adminOnly ? (
+          {/* ⚠⚠ SUPERSEDED 2 Oct 2026 (the user: "profile switcher on right side
+              with profile photo at extreme right besides settings. logo and title
+              remains at same spot"): the mark is the LOGO again, in the same
+              place, and the switcher is the photo chip at the far right of the
+              bar. What the 21 Sep note above got right and this keeps is that the
+              switcher is CONSTANT — the chip is on every screen. */}
+          <span style={{ flexShrink: 0, display: "inline-flex", marginLeft: -2, lineHeight: 0 }}>
             <DosMark size={30} />
-          ) : (
-            <button
-              type="button"
-              aria-label={hereItem ? `Switch profile — you are in ${hereItem.label}` : "Switch profile"}
-              aria-haspopup="menu"
-              aria-expanded={menuOpen}
-              onClick={() => setOpenFor(menuOpen ? null : pathname)}
-              style={{ position: "relative", flexShrink: 0, display: "inline-flex", alignItems: "center", justifyContent: "center", background: "none", border: "none", padding: 0, marginLeft: -2, cursor: "pointer", fontFamily: "inherit", lineHeight: 0 }}
-            >
-              <DosMark size={30} />
-              {hereItem ? (
-                <span
-                  aria-hidden="true"
-                  style={{
-                    position: "absolute",
-                    right: -1,
-                    bottom: -1,
-                    width: 11,
-                    height: 11,
-                    borderRadius: 6,
-                    background: SWITCH_TINT[hereItem.kind],
-                    border: "2px solid var(--hdr-bg)",
-                    boxSizing: "border-box",
-                  }}
-                />
-              ) : null}
-            </button>
-          )}
+          </span>
           {/* THE WORDMARK, ON EVERY SCREEN — no longer swapped for the page's
               name. It ellipsises rather than wrapping, so the two chips on the
               right keep their room on a 360px phone. */}
@@ -613,6 +598,26 @@ export function AppChrome({
             </svg>
           </button>
           )}
+          {/* THE PROFILE SWITCHER — the picture of the profile you are in, at the
+              extreme right beside Settings (2 Oct 2026). Its ring is that kind's
+              colour, so it still answers "which profile am I?" without opening. */}
+          {adminOnly ? null : (
+            <button
+              type="button"
+              data-testid="profile-switcher"
+              aria-label={hereItem ? `Switch profile — you are in ${hereItem.label}` : "Switch profile"}
+              aria-haspopup="menu"
+              aria-expanded={menuOpen}
+              onClick={() => setOpenFor(menuOpen ? null : pathname)}
+              style={{ ...chipStyle, padding: 0, overflow: "hidden", fontFamily: "inherit", border: `2px solid ${hereItem ? SWITCH_TINT[hereItem.kind] : "var(--chip-line)"}`, background: hereItem ? `linear-gradient(135deg,${SWITCH_TINT[hereItem.kind]},${SWITCH_TINT[hereItem.kind]}88)` : "var(--chip-bg)" }}
+            >
+              {hereItem?.photo ? (
+                <Image src={hereItem.photo} alt="" width={40} height={40} style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
+              ) : (
+                <span aria-hidden="true" style={{ color: "#fff", fontSize: 12.5, fontWeight: 900 }}>{hereItem ? initialsOf(hereItem.label) : "?"}</span>
+              )}
+            </button>
+          )}
         </span>
       </div>
 
@@ -632,8 +637,9 @@ export function AppChrome({
           <div
             role="menu"
             aria-label="Your profiles"
-            style={{ position: "fixed", top: "calc(var(--dos-top) + 6px)", left: "50%", transform: "translateX(-50%)", width: "100%", maxWidth: 430, boxSizing: "border-box", padding: "0 12px", zIndex: 710, pointerEvents: "none", fontFamily: DOS_UI }}
+            style={{ position: "fixed", top: "calc(var(--dos-top) + 6px)", left: "50%", transform: "translateX(-50%)", width: "100%", maxWidth: 430, boxSizing: "border-box", padding: "0 12px", zIndex: 710, pointerEvents: "none", fontFamily: DOS_UI, display: "flex", justifyContent: "flex-end" }}
           >
+            {/* anchored under the chip that opened it, at the right (2 Oct 2026) */}
             <div style={{ pointerEvents: "auto", width: 300, maxWidth: "100%", background: "var(--solid)", color: "var(--text)", border: "1.5px solid var(--el)", borderRadius: 18, boxShadow: "0 18px 48px rgba(0,0,0,.45)", padding: 6, animation: "dosSheetUp .18s ease" }}>
               <div style={{ fontSize: 9.5, fontWeight: 900, letterSpacing: 1.2, color: "var(--muted)", padding: "8px 10px 6px" }}>SWITCH PROFILE</div>
               {switcher.map((item) => {
@@ -649,8 +655,8 @@ export function AppChrome({
                     onClick={() => setOpenFor(null)}
                     style={{ display: "flex", alignItems: "center", gap: 10, padding: "9px 10px", borderRadius: 13, textDecoration: "none", color: "var(--text)", background: here ? "var(--el)" : "transparent" }}
                   >
-                    <span aria-hidden="true" style={{ width: 34, height: 34, borderRadius: 10, flexShrink: 0, display: "inline-flex", alignItems: "center", justifyContent: "center", background: `linear-gradient(135deg,${tint},${tint}88)`, color: "#fff", fontSize: 12, fontWeight: 900 }}>
-                      {initialsOf(item.label)}
+                    <span aria-hidden="true" style={{ width: 34, height: 34, borderRadius: 10, flexShrink: 0, overflow: "hidden", display: "inline-flex", alignItems: "center", justifyContent: "center", background: `linear-gradient(135deg,${tint},${tint}88)`, color: "#fff", fontSize: 12, fontWeight: 900 }}>
+                      {item.photo ? <Image src={item.photo} alt="" width={34} height={34} style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} /> : initialsOf(item.label)}
                     </span>
                     <span style={{ flex: 1, minWidth: 0 }}>
                       <span style={{ display: "block", fontSize: 13, fontWeight: 900, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{item.label}</span>

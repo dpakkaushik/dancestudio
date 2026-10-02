@@ -2,7 +2,42 @@
 
 ## LAST SESSION (2 Oct 2026) — replaced on every push (Rule 13)
 
-> ### STYLES AND FAMILIES LIVE IN THE FILTER SHEET, AND THE STYLES TAB HAS FILTERS (2 Oct 2026, latest) — no migration, ✅ PUSHED AND LIVE (`0fc33f4`: Vercel READY, alias confirmed through the API, the 29-check filter probe 29/29 and `stranger-smoke` 8/8 ON THE LIVE SITE)
+> ### THE SWITCHER IS A FACE ON THE RIGHT, EACH PROFILE'S HOME IS ITS OWN, QR AND SCAN SIT IN THE MIDDLE, AND DISCOVER LEADS THE BAR (2 Oct 2026, latest) — no migration, ✅ PUSHED (re-verified on a fresh bundle first: typecheck 0 · lint 0 · build green · `stranger-smoke` 8/8 · `shoot-hero` 186/186 · `shoot-tiles` 134/134). ⚠ The previous session's note said "committed locally" — it was NOT; the tree was uncommitted until this push
+> The user: *"1. profile switcher on right side with profile photo at extreme
+> right besides settings. logo and title remains at same spot. 2. all items on
+> home tab should be for that specific profile right now i can see earnings,
+> enquiries, assets being overlapping same data for a studio or artist / user
+> profile. 3. qr code and scan should always come on centre of the screen …
+> discover should always be the first tab and home the 3rd in navbar."*
+> * **The switcher left the logo** (C53 reversed at the user's word): the mark
+>   is a plain mark again, and the switcher is a round chip AFTER the gear, the
+>   right-most control, wearing the photo of the profile you are in (initials
+>   when there is none) with a ring in that kind's tint; `aria-label` unchanged
+>   ("Switch profile — you are in X") so every locator still finds it, plus
+>   `data-testid="profile-switcher"`. The menu opens anchored right and every
+>   row carries its photo (the layout passes `photo` on each `SwitcherItem`).
+> * **The bar is Discover · Inbox · Home**, on the person's bar and on a
+>   studio's / crew's entity bar alike.
+> * ⚠⚠ **Enquiries overlapped because the unscoped desk was "everything you are
+>   entitled to"**, so a person's own Enquiries tile drew their studio's
+>   enquiries too. Unscoped now means YOUR PROFILE: Received is your artist
+>   page's alone, Sent is yours; `?as={studio|crew}` is that subject's Received
+>   only (a business sends none). ⚠ **Personal Earnings listed money from
+>   businesses you OWN** — `findMyEarnings` and `findPersonEarnings` take the
+>   owned ids to leave out, because those are on that business's own desk.
+>   ⚠ Earnings and Assets were already per business; they LOOKED identical
+>   because both were empty, so the business desk's sub-line now names the
+>   kind ("… · Studio" / "… · Artist").
+> * **QR and Scan open in the middle** — `components/ui/centerModal.ts`
+>   (`CENTER_SCRIM`, `CENTER_CARD`, `dosPopIn`) is shared by the profile QR, the
+>   scan sheet and the students-invite QR, so they cannot drift.
+> * **Verified:** typecheck 0 · lint 0 · build green · a browser check as Deepak
+>   on production data **22/22** at 430 and 360 (the switcher right-most with
+>   its photo, the wordmark whole, the menu anchored right, the QR centred, both
+>   bars' order, the enquiries split, personal earnings without his own studio
+>   or page) — one red was the CHECK: a zero count is not drawn on a pill.
+
+> ### STYLES AND FAMILIES LIVE IN THE FILTER SHEET, AND THE STYLES TAB HAS FILTERS (2 Oct 2026, earlier) — no migration, ✅ PUSHED AND LIVE (`0fc33f4`: Vercel READY, alias confirmed through the API, the 29-check filter probe 29/29 and `stranger-smoke` 8/8 ON THE LIVE SITE)
 > The user: *"dance styles inside filter on discover for studios, artist crews,
 > classes and styles. family for dance style in filters as well. also add
 > filters on style section on discover."*

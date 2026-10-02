@@ -71,7 +71,9 @@ export default async function BusinessEarningsPage({
     <EarningsScreen
       report={report}
       title="Earnings"
-      sub={business.name}
+      /* which profile's money this is, in words (2 Oct 2026): an artist's page
+         and their studio drew two screens that read alike */
+      sub={`${business.name} · ${business.type === "artist_page" ? "Artist" : "Studio"}`}
       basePath={`/business/${businessId}/earnings`}
     >
       <EarningsDesk

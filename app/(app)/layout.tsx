@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 import { AppChrome, type ChromeSettings, type SwitcherItem } from "@/features/shell/components/AppChrome";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { photoUrl } from "@/lib/media/photo";
 import { amIPlatformAdmin } from "@/repositories/admin";
 import { findMyLedCrews } from "@/repositories/crews";
 import { findMyUnreadCount } from "@/repositories/notifications";
@@ -76,15 +77,18 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
 
   const switcher: SwitcherItem[] = [];
   if (profile) {
-    switcher.push({ key: "me", href: "/", label: profile.fullName, sub: plan?.active ? "Artist" : "User", kind: "me" });
+    /* each row carries its PICTURE (2 Oct 2026, the user: "profile switcher on
+       right side with profile photo at extreme right") — the chip wears the one
+       you are in, and initials stand in where there is none */
+    switcher.push({ key: "me", href: "/", label: profile.fullName, sub: plan?.active ? "Artist" : "User", kind: "me", photo: photoUrl(profile.avatarPath ?? undefined) });
     for (const m of runsA) {
       /* ⚠ the organization arm went with organizations (29 Sep 2026) */
       if (m.business.type === "studio") {
-        switcher.push({ key: m.business.id, href: `/business/${m.business.id}`, label: m.business.name, sub: "Studio", kind: "studio" });
+        switcher.push({ key: m.business.id, href: `/business/${m.business.id}`, label: m.business.name, sub: "Studio", kind: "studio", photo: photoUrl(m.business.photoPath ?? undefined) });
       }
     }
     for (const c of ledCrews) {
-      switcher.push({ key: c.id, href: `/crews/${c.id}/manage`, label: c.name, sub: "Crew", kind: "crew" });
+      switcher.push({ key: c.id, href: `/crews/${c.id}/manage`, label: c.name, sub: "Crew", kind: "crew", photo: photoUrl(c.photo ?? undefined) });
     }
   }
 

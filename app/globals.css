@@ -305,6 +305,18 @@ a:focus-visible:not([data-slot]) {
 }
 
 /* a sheet rising from the bottom edge — the prototype declares it per module; the app once */
+/* a CENTRED card — the QR and the scanner (2 Oct 2026, the user: "qr code and
+   scan should always come on centre of the screen right now coming from bottom") */
+@keyframes dosPopIn {
+  from {
+    transform: scale(0.92);
+    opacity: 0;
+  }
+  to {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
 @keyframes dosSheetUp {
   from {
     transform: translateY(100%);

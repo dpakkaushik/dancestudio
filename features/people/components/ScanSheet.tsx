@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import { Portal } from "@/components/ui/Portal";
+import { CENTER_CARD, CENTER_SCRIM } from "@/components/ui/centerModal";
 import { lookupPersonAction } from "@/features/people/server-actions/people";
 import { DOS_UI } from "@/lib/design/tokens";
 import { useCloseOnBack } from "@/lib/hooks/useCloseOnBack";
@@ -249,9 +250,9 @@ export function ScanSheet({
 
   return (
     <Portal>
-      <div onClick={onClose} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,.66)", display: "flex", alignItems: "flex-end", justifyContent: "center", zIndex: 950, fontFamily: DOS_UI }}>
-        <div role="dialog" aria-modal="true" aria-label="Scan a profile" onClick={(e) => e.stopPropagation()} style={{ background: "var(--solid)", color: "var(--text)", borderRadius: "24px 24px 0 0", padding: "16px 16px 26px", width: "100%", maxWidth: 430, boxSizing: "border-box", animation: "dosSheetUp .28s cubic-bezier(.22,.9,.34,1)" }}>
-          <div style={{ width: 40, height: 4, borderRadius: 2, background: "var(--el)", margin: "0 auto 12px" }} />
+      {/* centred, like every QR (2 Oct 2026): a viewfinder belongs in the middle */}
+      <div onClick={onClose} style={{ ...CENTER_SCRIM, fontFamily: DOS_UI }}>
+        <div role="dialog" aria-modal="true" aria-label="Scan a profile" onClick={(e) => e.stopPropagation()} style={CENTER_CARD}>
           <div style={{ fontSize: 10.5, fontWeight: 900, letterSpacing: 1.2, color: "var(--muted)" }}>SCAN A PROFILE</div>
           <div style={{ fontSize: 17, fontWeight: 900, marginBottom: 10 }}>{found ? "Is this them?" : (heading ?? "Their DanceOS code")}</div>
 

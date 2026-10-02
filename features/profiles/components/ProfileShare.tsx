@@ -2,6 +2,7 @@
 
 import { useState, useSyncExternalStore } from "react";
 import { QRBlock } from "@/components/ui/QRBlock";
+import { CENTER_CARD, CENTER_SCRIM } from "@/components/ui/centerModal";
 import { DOS_DISPLAY, DOS_UI } from "@/lib/design/tokens";
 import { useCloseOnBack } from "@/lib/hooks/useCloseOnBack";
 import { PROFILE_CHIP } from "./profile-band";
@@ -51,36 +52,14 @@ export function ProfileShare({ path, name }: { path: string; name: string }) {
         </svg>
       </button>
       {open ? (
-        <div
-          onClick={() => setOpen(false)}
-          style={{
-            position: "fixed",
-            inset: 0,
-            background: "rgba(0,0,0,.66)",
-            display: "flex",
-            alignItems: "flex-end",
-            justifyContent: "center",
-            zIndex: 950,
-          }}
-        >
+        <div onClick={() => setOpen(false)} style={CENTER_SCRIM}>
           <div
             role="dialog"
             aria-modal="true"
             aria-label={`Share ${name}`}
             onClick={(e) => e.stopPropagation()}
-            style={{
-              background: "var(--solid)",
-              color: "var(--text)",
-              borderRadius: "24px 24px 0 0",
-              padding: "16px 16px 28px",
-              width: "100%",
-              maxWidth: 430,
-              boxSizing: "border-box",
-              fontFamily: DOS_UI,
-              textAlign: "center",
-            }}
+            style={{ ...CENTER_CARD, fontFamily: DOS_UI, textAlign: "center" }}
           >
-            <div style={{ width: 40, height: 4, borderRadius: 2, background: "var(--el)", margin: "0 auto 14px" }} />
             <b style={{ fontSize: 17, fontFamily: DOS_DISPLAY }}>{name}</b>
             <div style={{ fontSize: 12, color: "var(--sub)", margin: "4px 0 16px" }}>
               Point a camera at this to open the profile.

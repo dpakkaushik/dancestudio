@@ -353,7 +353,11 @@ interface MyPayoutRow extends PayoutRow {
 export async function findMyEarnings(
   supabase: SupabaseClient,
   userId: string,
-  nowIso: string
+  nowIso: string,
+  /** ⚠ the businesses this person OWNS (2 Oct 2026): their own studio or artist
+   *  page "paying" them is that business's own money, which its own Earnings
+   *  desk shows — on the person's screen it was the same data twice */
+  excludeBusinessIds: readonly string[] = []
 ): Promise<MyEarnings> {
   const [classPeopleRes, payoutsRes, linesRes] = await Promise.all([
     supabase
@@ -388,8 +392,9 @@ export async function findMyEarnings(
     }
   }
 
-  const classPeople = (classPeopleRes.data ?? []) as unknown as MyClassPersonRow[];
-  const payoutRows = (payoutsRes.data ?? []) as unknown as MyPayoutRow[];
+  const skip = new Set(excludeBusinessIds);
+  const classPeople = ((classPeopleRes.data ?? []) as unknown as MyClassPersonRow[]).filter((c) => !skip.has(c.business_id));
+  const payoutRows = ((payoutsRes.data ?? []) as unknown as MyPayoutRow[]).filter((p) => !skip.has(p.business_id));
   const lines = (linesRes.data ?? []) as unknown as LineRow[];
 
   const classIds = [...new Set(classPeople.map((c) => c.class_id))];

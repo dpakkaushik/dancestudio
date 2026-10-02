@@ -363,13 +363,17 @@ export async function findPersonEarnings(
   supabase: SupabaseClient,
   userId: string,
   period: Period,
-  nowIso: string
+  nowIso: string,
+  /** the businesses this person OWNS — see `findMyEarnings` (2 Oct 2026) */
+  excludeBusinessIds: readonly string[] = []
 ): Promise<EarningsReport> {
   const { from, keys } = windowFor(nowIso, period);
-  const { data, error } = await supabase
+  let q = supabase
     .from("payouts")
     .select("amount_inr, paid_on, businesses (name)")
-    .eq("user_id", userId)
+    .eq("user_id", userId);
+  if (excludeBusinessIds.length) q = q.not("business_id", "in", `(${excludeBusinessIds.join(",")})`);
+  const { data, error } = await q
     .in("status", ["done", "in_transit"])
     .is("deleted_at", null)
     .gte("paid_on", from.slice(0, 10))

@@ -60,21 +60,34 @@ export default async function EnquiriesPage({ searchParams }: { searchParams: Pr
     resolveActingAs(supabase, as),
   ]);
 
-  /* WHICH SUBJECTS THIS VISIT IS ABOUT. Unscoped, it is every business you are
-     on the team of and every crew you lead — the account's whole desk, which is
-     what a person's own tile opens. Scoped, it is the one the tile named. */
+  /* ⚠⚠ ONE PROFILE PER DESK, ALWAYS (2 Oct 2026, the user: "all items on home
+     tab should be for that specific profile right now i can see earnings,
+     enquiries, assets being overlapping same data for a studio or artist / user
+     profile"). Measured on their own account first: the person's desk and their
+     studio's desk drew the SAME list — the studio's enquiry under Received on
+     both, and the person's own under Sent on both.
+     · UNSCOPED is the PERSON's own tile, and a person is asked through the
+       artist page behind them (`artist_page_of`, 18 Sep) — so Received is that
+       page's alone, never a studio's or a crew's (they have tiles of their own).
+     · SCOPED is that studio's or that crew's, and has NO Sent side: an enquiry
+       is sent BY A PERSON (`guard_person_only`), so what you sent belongs on
+       your own desk and nowhere else.
+     ⚠ This supersedes 27 Sep's "the unscoped list is still everything you are
+     entitled to" — that was the overlap. */
   const scopedBusiness = actingAs && actingAs.kind !== "crew" ? actingAs.id : null;
   const scopedCrew = actingAs && actingAs.kind === "crew" ? actingAs.id : null;
-  const businessIds = scopedCrew ? [] : memberships.map((m) => m.business.id).filter((id) => !scopedBusiness || id === scopedBusiness);
-  const crewIds = scopedBusiness ? [] : ledCrews.map((c) => c.id).filter((id) => !scopedCrew || id === scopedCrew);
+  const scoped = Boolean(actingAs);
+  const businessIds = scopedCrew
+    ? []
+    : scopedBusiness
+      ? memberships.map((m) => m.business.id).filter((id) => id === scopedBusiness)
+      : memberships.filter((m) => m.memberRole === "owner" && m.business.type === "artist_page").map((m) => m.business.id);
+  const crewIds = scopedCrew ? ledCrews.map((c) => c.id).filter((id) => id === scopedCrew) : [];
 
   const [enquiriesToBusinesses, enquiriesToCrews, enquiriesOut] = await Promise.all([
     businessIds.length ? findReceivedEnquiries(supabase, businessIds) : Promise.resolve([]),
     crewIds.length ? findReceivedEnquiriesForCrews(supabase, crewIds) : Promise.resolve([]),
-    /* ⚠ THE SENT SIDE IS ALWAYS YOURS, scoped or not: an enquiry is sent BY A
-       PERSON (`guard_person_only` keeps a business out of that seat), so there
-       is no such thing as "the studio's sent enquiries" to narrow to. */
-    findSentEnquiries(supabase, user.id),
+    scoped ? Promise.resolve([]) : findSentEnquiries(supabase, user.id),
   ]);
 
   /* one desk: what your businesses were asked, and what your crews were asked, newest first */
@@ -98,11 +111,8 @@ export default async function EnquiriesPage({ searchParams }: { searchParams: Pr
      they owned — so somebody who had opened two studios and an organization
      pressed their own Enquiries tile and was handed four settings blocks, three
      of them about businesses with tiles and desks of their own.
-     ⚠ The narrowing is the SETTINGS' alone, deliberately: the unscoped LIST is
-     still everything you are entitled to (that is what a person's own tile
-     opens, and the comment above says so), so you still read a studio's
-     enquiries here — you just set that studio's kinds on that studio's desk,
-     where `?as=` names it. One subject per settings block, always. */
+     ⚠ Since 2 Oct 2026 the LIST is narrowed the same way (above), so the desk
+     and its settings are always about one subject. */
   const settingsFor = memberships
     .filter((m) => m.memberRole === "owner")
     .filter((m) => (scopedBusiness ? m.business.id === scopedBusiness : m.business.type === "artist_page"))
@@ -118,7 +128,7 @@ export default async function EnquiriesPage({ searchParams }: { searchParams: Pr
       enquiriesIn={enquiriesIn}
       enquiriesOut={enquiriesOut}
       nowIso={stampNowIso()}
-      deskSub={actingAs ? actingAs.name : null}
+      deskSub={actingAs ? actingAs.name : "Your profile"}
       settings={<EnquirySettings businesses={settingsFor} />}
     />
   );

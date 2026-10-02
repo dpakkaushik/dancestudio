@@ -6,6 +6,7 @@ import { KIND_WORD, kindOf } from "@/types/profile";
 import { useState, useSyncExternalStore } from "react";
 import { FigureHead } from "@/components/ui/FigureHead";
 import { QRBlock } from "@/components/ui/QRBlock";
+import { CENTER_CARD, CENTER_SCRIM } from "@/components/ui/centerModal";
 import { dosKey } from "@/features/classes/components/ShareSheet";
 import { Toast, bizCard } from "@/features/crews/components/crew-kit";
 import { PeoplePicker } from "@/features/people/components/PeoplePicker";
@@ -723,15 +724,15 @@ export function StaffDesk({
 
       {/* ── the QR the prototype promised: hold it up, or send the link ── */}
       {shareInvite && (
-        <div onClick={() => setShareInvite(null)} style={sheetWrap}>
+        /* centred, like every QR (2 Oct 2026) */
+        <div onClick={() => setShareInvite(null)} style={CENTER_SCRIM}>
           <div
             role="dialog"
             aria-modal="true"
             aria-label={`Invite for ${shareInvite.name}`}
             onClick={(e) => e.stopPropagation()}
-            style={sheet}
+            style={{ ...CENTER_CARD, textAlign: "center" }}
           >
-            <SheetHandle />
             <b style={{ fontSize: 17, fontFamily: DOS_DISPLAY }}>{shareInvite.name}</b>
             <div style={{ fontSize: 11.5, color: SUB, margin: "3px 0 14px" }}>
               Invited as {MEMBER_ROLE_WORD[shareInvite.memberRole].toLowerCase()} · {shareInvite.email}

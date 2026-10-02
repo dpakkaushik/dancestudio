@@ -5,6 +5,7 @@ import { asPeriod } from "@/lib/format/period";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { findPersonEarnings } from "@/repositories/earnings";
 import { findMyEarnings } from "@/repositories/payouts";
+import { findMyMemberships } from "@/repositories/businesses";
 
 /* the clock is read OUTSIDE the component — `react-hooks/purity` refuses an
    impure call during render, even in a server component */
@@ -33,9 +34,17 @@ export default async function MyEarningsPage({ searchParams }: { searchParams: P
   }
 
   const now = stampNowIso();
+  /* ⚠ YOUR OWN BUSINESSES ARE NOT "STUDIOS THAT PAID YOU" (2 Oct 2026, the user:
+     "all items on home tab should be for that specific profile"). Measured on
+     their account: this screen listed their own studio and their own artist page
+     under WHERE IT CAME FROM — the same money those two businesses' Earnings
+     desks already show. A person's screen is what OTHER businesses paid them. */
+  const owned = (await findMyMemberships(supabase).catch(() => []))
+    .filter((m) => m.memberRole === "owner")
+    .map((m) => m.business.id);
   const [report, data] = await Promise.all([
-    findPersonEarnings(supabase, user.id, period, now),
-    findMyEarnings(supabase, user.id, now),
+    findPersonEarnings(supabase, user.id, period, now, owned),
+    findMyEarnings(supabase, user.id, now, owned),
   ]);
 
   return (
