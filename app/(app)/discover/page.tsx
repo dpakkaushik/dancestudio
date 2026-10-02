@@ -13,7 +13,7 @@ import { FollowedShelf, type FollowedTile } from "@/features/discovery/component
 import { PlaceChip } from "@/features/discovery/components/PlaceChip";
 import { StudioCard } from "@/features/discovery/components/StudioCard";
 import { ArtistI, ClassI, DosFollowers, StudioI } from "@/features/discovery/components/discover-kit";
-import { anyStyleOk, filterClasses, filterCrews, filterBusinesses, filterStyleShelf, filtersToParams, parseFilters, radiusOf } from "@/features/discovery/filters";
+import { anyStyleOk, filterClasses, filterCrews, filterBusinesses, filterStyleShelf, filtersToParams, parseFilters, radiusOf, ALL_CITIES } from "@/features/discovery/filters";
 import { gradientOf } from "@/features/profiles/components/profile-kit";
 import { DOS_STYLE_NAMES } from "@/lib/constants/styles";
 import { INDIA_CENTRE, centreOf, findDiscoverCities } from "@/repositories/cities";
@@ -139,6 +139,13 @@ export default async function DiscoverPage({
   const noClass = actingAs && !canBookClass(actingAs) ? noBookingWords(actingAs) : null;
   /* asked for, else where this person says they are, else wherever is busiest */
   const city: string = asCity(params.city) ?? asCity(profile?.city) ?? cities[0]?.city ?? "";
+  /* ⚠ ALL CITIES (2 Oct 2026, the user: "location drop down on discover should
+     also have option to view for all cities together called all"). `city` stays
+     "all" so every link off this page keeps it; the READS get no city at all,
+     and the sentences say "all cities". */
+  const allCities = city === ALL_CITIES;
+  const cityQ: string | null = allCities ? null : city || null;
+  const placeWord = allCities ? "all cities" : city;
   const tab = TABS.some(([k]) => k === params.tab) ? (params.tab as string) : "studios";
   /* WHERE "NEAR" IS MEASURED FROM (11 Sep 2026). The city's centre, unless the
      person has pressed Near me and their own point is in the address — in which
@@ -148,7 +155,10 @@ export default async function DiscoverPage({
   const near = parseNear(params.near);
   /* the city's own centre from the registry; a city nobody has been to yet has
      none, and then the country is the honest place to measure from */
-  const centre = near ?? centreOf(cities, city) ?? INDIA_CENTRE;
+  const centre = near ?? (allCities ? null : centreOf(cities, city)) ?? INDIA_CENTRE;
+  /* nationwide, the studios shelf is a radius search wide enough to hold India —
+     unless Near me is on, which measures from the person */
+  const nationwide = allCities && !near;
   const filters = parseFilters(params, DOS_STYLE_NAMES);
   const page = parsePage(params.page);
   const offset = (page - 1) * PAGE_SIZE;
@@ -170,7 +180,7 @@ export default async function DiscoverPage({
     /* narrowed to the city IN THE QUERY (11 Sep 2026): asking for the newest 200
        nationally and filtering here made a city's classes disappear once the
        platform passed 200 published classes — see repositories/classes.ts */
-    findPublishedClasses(supabase, 200, city).catch((e: unknown) => {
+    findPublishedClasses(supabase, 200, cityQ).catch((e: unknown) => {
       /* ⚠ ON EVERY OTHER TAB THIS READ IS DECORATION (11 Sep 2026, found by the
          e2e suite): it orders the style rail and adds styles to business cards.
          Supabase's gateway answered it with a Cloudflare 502 once in a thousand
@@ -187,7 +197,7 @@ export default async function DiscoverPage({
     wantsBusinesses
       ? findNearbyBusinesses(supabase, {
           ...centre,
-          radiusKm: radiusOf(filters),
+          radiusKm: nationwide ? 3000 : radiusOf(filters),
           type: "studio",
           /* `p_limit`/`p_offset` are sent only for a page past the first, so the
              first page never depends on the paged signature (Rule 4's overload lesson) */
@@ -196,7 +206,7 @@ export default async function DiscoverPage({
       : Promise.resolve([]),
     user && tab === "classes" ? findMyEnrolledSessionIds(supabase) : Promise.resolve(new Map<string, { id: string; status: ClassBookingStatus }>()),
     wantsFollows && wantsBusinesses ? findMyFollowing(supabase) : Promise.resolve([]),
-    wantsArtists ? findDiscoverArtists(supabase, { city: city || null, limit: PAGE_SIZE, offset }) : Promise.resolve([] as DiscoverArtist[]),
+    wantsArtists ? findDiscoverArtists(supabase, { city: cityQ, limit: PAGE_SIZE, offset }) : Promise.resolve([] as DiscoverArtist[]),
     wantsFollows && wantsArtists ? findMyFollowedPeople(supabase) : Promise.resolve([]),
   ]);
 
@@ -229,7 +239,7 @@ export default async function DiscoverPage({
      · every business card ends with its styles — the styles of its published
        classes — and a style filter narrows through the same map. */
   const [crewsRaw, taught, stylesByBusiness, followedCrews] = await Promise.all([
-    tab === "crews" ? findCrewsByCity(supabase, city) : Promise.resolve([]),
+    tab === "crews" ? findCrewsByCity(supabase, cityQ) : Promise.resolve([]),
     tab === "classes" ? findClassesWithArtist(supabase, inCity.map((c) => c.id)) : Promise.resolve(new Set<string>()),
     wantsBusinesses ? findPublishedStylesByBusiness(supabase, nearby.map((t) => t.id)) : Promise.resolve(new Map<string, string[]>()),
     wantsFollows && wantsCrews ? findMyFollowedCrews(supabase) : Promise.resolve([] as FollowedCrew[]),
@@ -274,6 +284,8 @@ export default async function DiscoverPage({
   /* the face and the tick reach the cards together — one read, two facts (D7).
      The pin used to ride along for the map view; the map went on 18 Sep 2026. */
   businesses.forEach((t) => {
+    /* a distance from the middle of India is not a distance anybody can use */
+    if (nationwide) t.located = false;
     t.photoPath = facts.get(t.id)?.photoPath ?? null;
     t.verifiedAt = facts.get(t.id)?.verifiedAt ?? null;
   });
@@ -303,7 +315,7 @@ export default async function DiscoverPage({
       recordImpression({
         viewerId: user?.id ?? null,
         surface: "discover",
-        city: city || null,
+        city: cityQ,
         subjectKind: shownKind,
         subjectIds: shownIds,
       })
@@ -446,7 +458,7 @@ export default async function DiscoverPage({
           <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", padding: "0 0 10px" }}>
             <div style={{ fontSize: 15, fontWeight: 800, fontFamily: DOS_DISPLAY, letterSpacing: -0.3 }}>{shelfHead}</div>
             <div style={{ fontSize: 11, fontWeight: 800, color: SUB }} data-testid="shelf-count">
-              {tab === "styles" ? `${shelfCount} styles` : `${shelfCount} in ${city}`}
+              {tab === "styles" ? `${shelfCount} styles` : `${shelfCount} in ${placeWord}`}
             </div>
           </div>
         }
@@ -574,21 +586,21 @@ export default async function DiscoverPage({
           {narrowed ? (
             <>
               <div style={{ fontSize: 26 }}>🕺</div>
-              <div style={{ fontWeight: 700, color: INK, marginTop: 6 }}>Nothing in {city} matches that</div>
+              <div style={{ fontWeight: 700, color: INK, marginTop: 6 }}>Nothing in {placeWord} matches that</div>
               <Link href={withAs(`/discover?city=${encodeURIComponent(city)}&tab=${tab}`, asRaw)} style={{ display: "inline-block", marginTop: 7, fontSize: 11.5, fontWeight: 800, color: SUB, textDecoration: "none" }}>
                 Clear filters
               </Link>
             </>
           ) : tab === "classes" ? (
-            `No upcoming classes in ${city} — try another city.`
+            `No upcoming classes in ${placeWord}${allCities ? "" : " — try another city"}.`
           ) : tab === "crews" ? (
-            `No crews in ${city} yet — lead one from Crews on Home.`
+            `No crews in ${placeWord} yet — lead one from Crews on Home.`
           ) : tab === "artists" ? (
-            hasPrev ? "No more artists here." : `No artists in ${city} yet.`
+            hasPrev ? "No more artists here." : `No artists in ${placeWord} yet.`
           ) : hasPrev ? (
             "No more studios here."
           ) : (
-            `Nothing within ${radiusOf(filters)} km of ${city} yet.`
+            nationwide ? "No studios on DanceOS yet." : `Nothing within ${radiusOf(filters)} km of ${city} yet.`
           )}
         </div>
       )}

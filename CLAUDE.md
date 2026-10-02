@@ -2,7 +2,58 @@
 
 ## LAST SESSION (2 Oct 2026) — replaced on every push (Rule 13)
 
-> ### EACH PROFILE'S OWN ENQUIRIES, A CREW'S EARNINGS, A QUIETER DECK, AN APPROVED QR, AND THE CLASS AN ARTIST HOLDS IN A STUDIO (2 Oct 2026, latest) — ⚠ ONE MIGRATION WRITTEN, DRY-RUN 10/10 AND **HELD**; app COMMITTED, NOT PUSHED
+> ### ENQUIRIES ARE BACK IN EVERY INBOX, DONE IS "COMPLETED" BY RECEIVED · SENT, AND DISCOVER LOOKS IN ALL CITIES (2 Oct 2026, latest) — no migration
+> The user, in a run of messages: *"shift back enquiries to in box from home
+> tools for all profiles"*, *"lost enquiries also in done section"*, *"done
+> should be called completed and should be section with received and sent not
+> with request invites and enquiries"*, *"should remove your own photo from the
+> enquiry cards. inside page remains the same"*, *"better cards for invites as
+> well"*, *"location drop down on discover should also have option to view for
+> all cities together called all"*, and *"check for bugs once"*.
+> * **Enquiries are the Inbox's third desk again** (C93, reversing C70): Requests
+>   · Invites · Enquiries · Completed on the person's `/inbox`, a studio's
+>   `/business/{id}/inbox` and a crew's `/crews/{id}/inbox`. The Enquiries tile is
+>   off every grid. `features/enquiries/server/loadEnquiries.ts` is the one reader,
+>   with EnquiriesDesk's own scoping, so the reads do not overlap. The person gets
+>   their artist page's Received and their own Sent. A studio gets its own, with
+>   its Enquiry settings. A crew gets its own. ⚠ The old addresses redirect to
+>   `?show=enquiries` (Rule 14). An artist page's `/business/{id}/inbox` lands on
+>   the person's Inbox. `EnquiriesDesk.tsx` is deleted.
+> * **Completed replaces Done, split Received · Sent** (C94), with the kinds
+>   mixed and newest first. ⚠ It holds closed enquiries now, **lost included**:
+>   the Inbox's Done held none, which is what the user saw.
+> * **An enquiry card shows only the other end's face**; the detail page keeps
+>   both. **The invite card is re-cut** on the enquiry card's anatomy, with the
+>   seat as a chip in its label colour.
+> * **Discover has All cities** (C95): `?city=all`, the place list's own "none"
+>   row. Classes, artists and crews are read with no city, and studios are a 3000 km
+>   search from the middle of India with no distance printed. Near me still
+>   measures from the person. The words read "in all cities".
+> * **Bugs found and fixed while checking:**
+>   * ⚠ The Inbox's "N waiting on you" counted every ANSWERED ask since 19 Sep. It
+>     counts the unanswered asks and invitations put to you, and new enquiries.
+>   * ⚠ An outgoing invite printed `null · as trainer` (an invite can name a person
+>     with no email since R33).
+>   * An incoming one printed the raw `trainer`.
+> * **Verified:**
+>   * typecheck 0 · lint 0 · `audit:reads` 0 · build green
+>   * a new **`shoot-inbox` 29/29**: both ends, the LOST enquiry under Completed on
+>     both sides, the faces, the invite seat, no overlap onto the owner's own
+>     Inbox, no tile, and All cities signed out
+>   * `shoot-tiles` 134/134 · `shoot-hero` 187/187 · `shoot-discover` 45/45
+>   * **the e2e suite: 40 passed in the whole-suite run**, and the one red was MY
+>     wording. The re-cut invite card said "led by {leader}"; the test asks for
+>     "invited by", which is the truer word, so it was restored. Then **the happy
+>     path alone 19/19 in 13.6 min** on the rebuilt bundle, and `shoot-inbox` 29/29
+>     again on it.
+>   * ⚠ A first `shoot-discover` run lost its dark-theme head to a one-off
+>     **React #441** while the e2e suite was starting beside it. It did NOT
+>     reproduce (45/45 the next run) and is recorded as unexplained, not fixed.
+> * ⚠ The first probe's three reds were the PROBE: its studio was unlisted, and a
+>   real enquiry can only reach a listed one. "Within 5 km" also matched a
+>   distance regex.
+
+> ### EACH PROFILE'S OWN ENQUIRIES, A CREW'S EARNINGS, A QUIETER DECK, AN APPROVED QR, AND THE CLASS AN ARTIST HOLDS IN A STUDIO (2 Oct 2026, earlier) — ✅ `20261002130000` APPLIED (dry run 10/10 re-run first, read back live 5/5, proofs `attendance` + `notifications` 2/2); ✅ PUSHED (`5b5195a`)
 > The user's five-part list, plus two reports while it was being built.
 > * **Enquiries per profile**: a studio's tile opens `/business/{id}/enquiries`
 >   and a crew's opens `/crews/{id}/manage/enquiries`. Each is
@@ -17233,6 +17284,9 @@ Home. **Do not "restore parity" on these.**
 | C90 | The Crews hub stacks CREWS YOU LEAD over CREWS YOU ARE IN with Practices as a third segment (28 Sep); the Studios hub stacks YOUR STUDIOS, TAUGHT AT and LEARNT AT | **TWO COLUMNS EACH, AND PRACTICE IS ITS OWN HOME TILE.** Crews: **Yours** · **You are in**. Studios: **Yours** · **Where you learned**. Practice leaves the Crews hub for `/practice`, a tile on a person's and an artist's grid. ⚠⚠ **That move needed a REPAINT first, and `MyPractices`' own note is why**: it argued a Practice tile "would fail R20's colour test", and it was right — `#15803D` is hue 142° and Earnings `#22C55E` is hue 142°, which is the one pair R20 exists to refuse. Deep indigo `#4338CA` now, **measured across every grid rather than asserted: 102° from Earnings, ≥28° from everything else**. ⚠ Taught-at rides in the studios' SECOND column under its own head rather than becoming a third — both are "a studio that is not yours", and dropping it would lose an artist's teaching history (R22). ⚠ The crew's OWN Practice tile stays on a crew's grid: that is the leader's register for THAT crew | 30 Sep 2026, the user: *"practice should be seprate tab in home tab not in crew. crew tab should have 2 colums for where you have created the crew and where you are a part of in the other column"*, then *"same should be for studios with 2 colums your own studios and t second column with where your learned."* ⚠ A segment pill's accessible name is its `aria` plus its count, never its visible label (`SegmentedNav:78`) — which cost one e2e red |
 | C91 | The Team desk's member sheet opens only for a NON-owner (`manageable = isOwner && m.role !== "owner"`) | **AN OWNER'S ROW OPENS TOO, AND EACH CONTROL INSIDE DECIDES FOR ITSELF.** Pay and History are drawn (the user's ask), the two power switches are still not (an owner holds both by their seat — a switch that cannot be turned off is not a switch), and Remove is still not, because the database refuses it. ⚠⚠ **The DATABASE never refused the PAYMENT**: `record_team_payment` asks only that they "are, or have been, on this team", so this was an **app-side gate over a rule that does not exist** — and because it closed the whole sheet, a studio could not record what it had paid the person who runs it | 30 Sep 2026, the user: *"owners can also be paid from the studio."* No migration |
 | C92 | The public profile carries ONE white Schedule bar and nothing under it (S_profiletab `publicEntity`, 10919 — "the one white bar the page is for"); what is behind it is a separate screen | **NEXT SESSIONS — three class cards under that bar**, on a studio's public page, on a person's, and on your own tab (`NextSessions`, drawn only when there ARE any). ⚠ **NO door of its own**: the bar directly above goes exactly there, and a second door to one subject is the shape C31 and C51 each cost a push to undo. ⚠ **The card is the app's one `ClassTile`** off `tileClassOf`, the SAME conversion the schedule page uses — moved into `types/calendar.ts` the day this became its second caller, so a class cannot look like a different class on the page it is linked from. ⚠ **The same window as that page** (`publicScheduleToIso`), so the summary cannot name a class the page behind it does not list. ⚠ **Nothing is drawn when there is nothing**: an empty shelf under a heading reads as a measured zero ("this studio teaches nothing") where the truth is "nothing is published for the next three months" | 30 Sep 2026 — backlog #0aj, resolved as option (b). ⚠⚠ **It is the SMALL half of a question that had been asked the wrong way.** The row proposed folding the WHOLE public schedule in, and its cost was put to the user as *a query*; reading `CalendarScreen` corrected that — it is **1,085 lines with a `position: sticky` controls block the scroll helper MEASURES and a `position: fixed` scrim**, so folding it in nests a second screen inside a page section, which is the stacking-context family this repo has paid for four times. **A page-count target is not worth a worse page**, so what landed is the part that is only an improvement, and the page count is unchanged |
+| C93 | C70 (27 Sep 2026): Enquiries is a TOOL tile on every grid, its desk at `/enquiries`, `/business/{id}/enquiries` and `/crews/{id}/manage/enquiries` | **ENQUIRIES ARE THE INBOX'S THIRD DESK AGAIN, ON EVERY PROFILE'S INBOX**: Requests · Invites · Enquiries · Completed, read through one loader (`loadEnquiries`) that keeps the old desk's scoping, so a person's, a studio's and a crew's enquiries never overlap. The tile is gone from every grid; the three old addresses redirect to `?show=enquiries` (Rule 14). The settings moved with the desk | 2 Oct 2026, the user: *"i think we should shift back enquiries to in box from home tools for all profiles will simply managing it"* — it reverses C70 and C68 at the same person's word |
+| C94 | C68 (27 Sep 2026): a fourth section, **Done**, each desk's own kind | **COMPLETED, SPLIT RECEIVED · SENT, THE KINDS MIXED** — what was put to you and what you put to others, newest first, the card saying which kind it is. It holds closed enquiries too, won and lost | 2 Oct 2026, the user: *"done should be called completed and should be section with received and sent not with request invites and enquiries"*, and *"lost enquiries also in done section"* |
+| C95 | Discover's place chip offers Near me and the cities (C45) | **AND ALL CITIES** — `?city=all`, the list's own "none" row: every read given no city, studios a nationwide radius with no distance printed, the sentences "in all cities" | 2 Oct 2026, the user: *"location drop down on discover should also have option to view for all cities together called all"* |
 
 ### UI parity backlog — gaps vs the prototype, tracked so none is forgotten
 

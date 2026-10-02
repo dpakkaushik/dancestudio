@@ -342,7 +342,7 @@ export async function findBusinessEarnings(
          presses a revenue row's link, and a link that opens the wrong screen
          fails nothing. ⚠ It carries `?as=` when the ledger is one business's, so
          the desk it opens is scoped the way the tile's is. */
-      { key: "enquiries", label: "Enquiries", by: enquiries, items: enquiriesI, href: one ? `/business/${one}/enquiries` : "/enquiries" },
+      { key: "enquiries", label: "Enquiries", by: enquiries, items: enquiriesI, href: one ? `/business/${one}/inbox?show=enquiries` : "/inbox?show=enquiries" },
     ],
     [
       { key: "pay", label: "What you paid your people", by: pay, items: payI, href: one ? `/business/${one}/earnings` : undefined },
@@ -444,7 +444,7 @@ export async function findCrewEarnings(supabase: SupabaseClient, crewId: string,
   return assemble(
     period,
     keys,
-    [{ key: "enquiries", label: "Enquiries", by: enquiries, items: enquiriesI, href: `/crews/${crewId}/manage/enquiries` }],
+    [{ key: "enquiries", label: "Enquiries", by: enquiries, items: enquiriesI, href: `/crews/${crewId}/inbox?show=enquiries` }],
     [],
     (data?.length ?? 0) < MAX_ROWS
   );

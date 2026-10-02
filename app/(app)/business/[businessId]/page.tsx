@@ -130,16 +130,9 @@ export default async function StudioHomePage({ params, searchParams }: { params:
         ] as Tile[])
       : []),
     { name: DOS_TOOLS.rooms.name, href: desk("rooms"), k: "rooms", c: DOS_TOOLS.rooms.c },
-    /* ⚠ ENQUIRIES IS THIS STUDIO'S (27 Sep 2026, the user: "enquiries should not
-       be on navbar a tab in tools for all"). ⚠ `?as=` is what makes the tile say
-       WHICH studio — the desk is one screen for the whole account, so without it
-       an owner of two studios would press two tiles onto one undivided list. It
-       is the same pointer the Discover gate uses and is re-resolved on the page
-       against the businesses this account is on the team of (a pointer is never
-       an authority). EVERY member gets the tile, not just the owner: staff
-       answer the phone, which is Step 12's rule and is why `is_enquiry_member`
-       admits the whole team. */
-    { name: DOS_TOOLS.enquiries.name, href: desk("enquiries"), k: "enquiries", c: DOS_TOOLS.enquiries.c },
+    /* ⚠ NO ENQUIRIES TILE (2 Oct 2026): a studio's enquiries are its INBOX tab's
+       third desk again — the user: "shift back enquiries to inbox from home tools
+       for all profiles" */
     /* THE STUDIO'S OWN MANDATE IS A TILE ON ITS HOME (26 Sep 2026, the user:
        "studio and organization subscription managed separately from their
        subscription options … subscriptions also become an option on home tab

@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { CitySelect } from "@/features/geo/components/CitySelect";
 import { INK } from "@/lib/design/tokens";
+import { ALL_CITIES } from "@/features/discovery/filters";
 
 /** WHERE TO LOOK, ONCE (21 Sep 2026, the user: "merge near me and city filter
  *  on discover").
@@ -85,9 +86,15 @@ export function PlaceChip({
     <>
       <CitySelect
         variant="chip"
-        value={city || null}
+        /* ⚠ ALL CITIES (2 Oct 2026, the user: "location drop down on discover
+           should also have option to view for all cities together called all") —
+           the select's "none" row IS that option, and `city=all` in the address
+           is its value, so it is a link like every other place */
+        value={city && city !== ALL_CITIES ? city : null}
         cities={cities}
-        placeholder="Anywhere"
+        placeholder="All cities"
+        allowNone
+        noneLabel="All cities"
         ariaLabel="Where to look"
         disabled={busy}
         /* ⚠ picking REPLACES the address below, so the sheet must not spend its
@@ -99,15 +106,13 @@ export function PlaceChip({
             ? {
                 value: "__near__",
                 option: "◎ Near me",
-                label: busy ? "Finding you…" : city ? `Near me · ${city}` : "Near me",
+                label: busy ? "Finding you…" : city && city !== ALL_CITIES ? `Near me · ${city}` : "Near me",
                 active: near,
                 onPick: askWhereIAm,
               }
             : null
         }
-        onChange={(next) => {
-          if (next) go(next, null);
-        }}
+        onChange={(next) => go(next ?? ALL_CITIES, null)}
       />
       {err ? (
         <span role="status" style={{ fontSize: 10, color: INK, opacity: 0.75, marginLeft: 6 }}>

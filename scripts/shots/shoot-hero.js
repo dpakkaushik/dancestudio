@@ -848,8 +848,11 @@ const enterEdit = async (page) => {
     /* …and the other end: the Enquiries DESK, opened the way its tile opens it —
        `?as={studio}`, because one screen serves the whole account and the settings
        would otherwise have no subject at all. */
+    /* ⚠ RE-CUT 2 Oct 2026: enquiries are the studio INBOX's third desk again, and
+       the old address is a redirect onto it (Rule 14) */
     await owner.goto(`${BASE}/enquiries?as=${studioId}`, { waitUntil: "networkidle" });
-    check(await owner.getByRole("heading", { name: "Enquiries", exact: true }).isVisible().catch(() => false), "enquiries desk: it is a DRILL page with its own title, not a tab under the wordmark (27 Sep 2026)");
+    check(new RegExp(`/business/${studioId}/inbox\\?show=enquiries$`).test(owner.url()), `enquiries: the old ?as= address lands on the studio's own Inbox (${owner.url()})`);
+    check((await owner.getByRole("button", { name: /^Enquiries — / }).getAttribute("aria-pressed").catch(() => null)) === "true", "studio inbox: it opens on the Enquiries desk");
     const enqTypes = owner.getByRole("button", { name: /^Enquiry settings/ }).first();
     check((await enqTypes.count()) === 1, "enquiries desk: the studio's own What-you-take disclosure is here — the settings moved with the tool");
     await enqTypes.click();

@@ -49,15 +49,9 @@ export function CrewHome({ crew, members, header = [], followers = 0, order = nu
     { name: DOS_TOOLS.team.name, href: `/crews/${crew.id}/manage/team`, k: "team", c: DOS_TOOLS.team.c },
     /* ⚠ THE EVENTS TILE WENT WITH EVENTS (29 Sep 2026) — it opened the battle
        record, the second half of the prototype's S_crewmanage switch */
-    /* ⚠ A CREW TAKES ENQUIRIES (18 Sep 2026, `20260918160000`) and this is its
-       first tile for them (27 Sep 2026, the user: "enquiries should not be on
-       navbar a tab in tools for all"). `as=crew-{id}` is the crew half of the
-       same pointer the Discover gate uses; this home is the LEADER's already
-       (`requireLedCrew`), and the leader is exactly who `is_enquiry_member`
-       admits for a crew. ⚠ A crew keeps no enquiry-type preferences — its three
-       kinds are fixed in `send_enquiry` — so the desk shows it no settings, and
-       says so rather than drawing an empty block. */
-    { name: DOS_TOOLS.enquiries.name, href: `/crews/${crew.id}/manage/enquiries`, k: "enquiries", c: DOS_TOOLS.enquiries.c },
+    /* ⚠ NO ENQUIRIES TILE (2 Oct 2026): a crew's enquiries are its INBOX tab's
+       third desk again (the user: "shift back enquiries to inbox from home tools
+       for all profiles") */
     /* ⚠ PRACTICE AND CALENDAR (27 Sep 2026, the user: "crew should also get an
        option on home tab called Practice … practice also get added to calendar.
        crews should also have a calendar tab"). Both are the LEADER's desks —

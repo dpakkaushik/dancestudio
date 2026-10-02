@@ -1,4 +1,6 @@
 import { redirect } from "next/navigation";
+import { EnquirySettings } from "@/features/enquiries/components/EnquirySettings";
+import { loadEnquiries } from "@/features/enquiries/server/loadEnquiries";
 import { InboxScreen } from "@/features/inbox/components/InboxScreen";
 import { buildRequests } from "@/features/inbox/requestItems";
 import { gradientOf } from "@/features/profiles/components/profile-kit";
@@ -18,7 +20,7 @@ const stampNowIso = (): string => new Date().toISOString();
  *  for, the teachers it has asked and the invites it has sent. Every member of
  *  the team reads it — the desk is the studio's CRM and staff answer the phone
  *  (Step 12's rule), and RLS already admits them to each of these rows. */
-export default async function StudioInboxPage({ params }: { params: Promise<{ businessId: string }> }) {
+export default async function StudioInboxPage({ params, searchParams }: { params: Promise<{ businessId: string }>; searchParams: Promise<{ show?: string }> }) {
   const { businessId } = await params;
   const supabase = await createSupabaseServerClient();
   const {
@@ -39,28 +41,44 @@ export default async function StudioInboxPage({ params }: { params: Promise<{ bu
   /* ⚠ AN ORGANIZATION'S HOME WORE THIS BAR TOO from 26 Sep 2026, so its Inbox
      tab landed here — its team asks, for its owner. Both went with
      organizations on 29 Sep. An artist page's inbox is the person's own. */
+  /* ⚠ an artist page's enquiries are the PERSON's Inbox (2 Oct 2026), so a link
+     to "this page's enquiries" lands there rather than on the page's home */
+  if (business.type === "artist_page") {
+    const { show } = await searchParams;
+    redirect(show ? `/inbox?show=${encodeURIComponent(show)}` : "/inbox");
+  }
   if (business.type !== "studio") {
     redirect(`/business/${businessId}`);
   }
 
-  /* ⚠⚠ THIS DESK STOPPED READING ENQUIRIES (27 Sep 2026). They left the Inbox
-     that morning for a desk of their own, and `InboxScreen desk="inbox"` draws
-     neither an Enquiries section nor an enquiry in its Done — so the read was
-     still being made on every visit by every member of the team and its result
-     was drawn NOWHERE. That is this repo's own recurring shape (a field that
-     exists and a screen that never reads it) met from the other side, and the
-     kind of thing nothing fails on: the page was correct, just paying for a
-     query it threw away. A studio's enquiries are the Enquiries TOOL on its own
-     home, scoped to it by `?as=`. */
-  const [venueIn, classPeopleOut, invitesOut] = await Promise.all([
+  /* ⚠ AND IT READS THEM AGAIN (2 Oct 2026, the user: "shift back enquiries to
+     inbox from home tools for all profiles") — the studio's enquiries are this
+     Inbox's third desk, read through the loader the person's Inbox shares */
+  const [venueIn, classPeopleOut, invitesOut, enq, { show }] = await Promise.all([
     findVenueRequestsForBusinesses(supabase, [businessId]).catch(() => []),
     findAskedClassPeopleForBusinesses(supabase, [businessId]),
     findPendingInvites(supabase, businessId).then((rows) => rows.map((i) => ({ ...i, businessName: business.name }))),
+    loadEnquiries(supabase, { kind: "business", id: businessId, memberships }),
+    searchParams,
   ]);
   const { requestsIn, requestsOut } = buildRequests({ venueIn, classPeopleOut, invitesOut });
   /* the teacher each class card wears — one read for the whole desk (1 Oct 2026) */
   const classIds = [...new Set([...requestsIn, ...requestsOut].map((r) => r.danceClass?.id).filter((x): x is string => Boolean(x)))];
   const artists = Object.fromEntries(await findClassArtists(supabase, classIds).catch(() => new Map()));
 
-  return <InboxScreen accent={gradientOf(business.name)[1]} requestsIn={requestsIn} requestsOut={requestsOut} artists={artists} enquiriesIn={[]} enquiriesOut={[]} nowIso={stampNowIso()} />;
+  return (
+    <InboxScreen
+      accent={gradientOf(business.name)[1]}
+      requestsIn={requestsIn}
+      requestsOut={requestsOut}
+      artists={artists}
+      enquiriesIn={enq.enquiriesIn}
+      enquiriesOut={[]}
+      receivedOnly
+      deskSub={business.name}
+      settings={<EnquirySettings businesses={enq.settingsFor} />}
+      initialSection={show === "enquiries" ? "enq" : show === "done" ? "done" : undefined}
+      nowIso={stampNowIso()}
+    />
+  );
 }

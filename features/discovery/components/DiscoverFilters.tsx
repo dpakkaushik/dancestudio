@@ -13,7 +13,7 @@ import { STYLE_FAMILIES, styleInfo, stylesOfFamilies } from "@/lib/constants/sty
 import { DOS_DISPLAY } from "@/lib/design/tokens";
 import { useCloseOnBack } from "@/lib/hooks/useCloseOnBack";
 import type { SearchHit, SearchKind } from "@/repositories/search";
-import { filtersOnCount, filtersToParams, type DiscoverFilters, type Dist, type Dur, type PriceBand, type SortBy, type When } from "../filters";
+import { ALL_CITIES, filtersOnCount, filtersToParams, type DiscoverFilters, type Dist, type Dur, type PriceBand, type SortBy, type When } from "../filters";
 
 /** Step 23's controls, lifted from prototype S_discover: the one search box
  *  ("Search" — "the placeholder listed the same five things a third time",
@@ -111,7 +111,8 @@ export function DiscoverFilters({ tab, city, filters, styleOrder, tabs, as = nul
     const t = setTimeout(async () => {
       /* `search_events.city` is what makes a zero-result row answerable
          ("nobody in Pune can find salsa") rather than merely sad */
-      const out = await searchEverythingAction({ term, city: cityRef.current });
+      /* ⚠ "all" (Discover's All cities) is not a city, so the log is told none */
+      const out = await searchEverythingAction({ term, city: cityRef.current === ALL_CITIES ? "" : cityRef.current });
       if (live) setAnswer({ term, hits: out.hits });
     }, 220);
     return () => {
@@ -167,7 +168,7 @@ export function DiscoverFilters({ tab, city, filters, styleOrder, tabs, as = nul
   const flipSort = (s: SortBy) => go({ ...filters, sort: filters.sort === s ? "near" : s });
   const quick: Array<[string, string, boolean, () => void]> = isStyles
     ? [
-        ["has", `Classes in ${city}`, filters.has, () => go({ ...filters, has: !filters.has })],
+        ["has", city === ALL_CITIES ? "With classes" : `Classes in ${city}`, filters.has, () => go({ ...filters, has: !filters.has })],
         ["popular", "Most classes", filters.sort === "popular", () => flipSort("popular")],
         ["az", "A–Z", filters.sort === "az", () => flipSort("az")],
       ]
@@ -366,7 +367,7 @@ export function DiscoverFilters({ tab, city, filters, styleOrder, tabs, as = nul
             </Row>
             {isStyles ? (
               <>
-                <Row label="SHOW">{pick<"all" | "has">([["all", "Every style"], ["has", `With classes in ${city}`]], filters.has ? "has" : "all", (v) => go({ ...filters, has: v === "has" }))}</Row>
+                <Row label="SHOW">{pick<"all" | "has">([["all", "Every style"], ["has", city === ALL_CITIES ? "With classes" : `With classes in ${city}`]], filters.has ? "has" : "all", (v) => go({ ...filters, has: v === "has" }))}</Row>
                 <Row label="SORT BY">{pick<SortBy>([["near", "Classical first"], ["popular", "Most classes"], ["az", "A–Z"]], filters.sort, (v) => go({ ...filters, sort: v }))}</Row>
               </>
             ) : (

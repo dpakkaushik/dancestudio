@@ -156,4 +156,9 @@ export function filterCrews(list: CrewSummary[], f: DiscoverFilters): CrewSummar
    the Events tab's own search box. */
 
 /** the radius the businesses query asks for — the sheet's distance, or the default 25 km */
-export const radiusOf = (f: DiscoverFilters): number => (f.dist === "any" ? 25 : Number(f.dist));
+/** `?city=all` — every city at once (2 Oct 2026, the user: "option to view for
+ *  all cities together called all"). A value, never a city: the registry has no
+ *  city called "all", and the reads are given no city at all. */
+export const ALL_CITIES = "all";
+
+export const radiusOf =(f: DiscoverFilters): number => (f.dist === "any" ? 25 : Number(f.dist));

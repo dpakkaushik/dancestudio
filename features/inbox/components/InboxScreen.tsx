@@ -9,7 +9,6 @@ import { respondToCrewAskAction, withdrawCrewAskAction } from "@/features/crews/
 import { respondToPracticeAction } from "@/features/crews/server-actions/practices";
 import { acceptInviteAction, declineInviteAction, revokeInviteAction } from "@/features/staff/server-actions/staff";
 import { ClassTile } from "@/features/classes/components/ClassTile";
-import { DeskHero } from "@/features/businesses/components/biz-kit";
 import { DOS_DISPLAY, DOS_UI, LILAC, SKY, TAB_SUB, TAB_TITLE } from "@/lib/design/tokens";
 import type { DanceClass } from "@/types/class";
 import type { ClassArtist } from "@/types/classPerson";
@@ -94,6 +93,9 @@ export interface RequestItem {
    *  be read, and then the card falls back to the plain row.
    *  ⚠ `event` was its twin, for a duet ask, and went on 29 Sep 2026. */
   danceClass?: DanceClass | null;
+  /** the SEAT an invitation offers, in the app's word and its label colour
+   *  (2 Oct 2026, "better cards for invites") — absent for a crew ask */
+  role?: { word: string; colour: string };
 }
 
 /* ⚠ A `Record` KEYED ON THE UNION, which is the point: adding `practice` to
@@ -164,7 +166,7 @@ export function InboxScreen({
   enquiriesIn,
   enquiriesOut,
   nowIso,
-  desk = "inbox",
+  initialSection,
   deskSub = null,
   receivedOnly = false,
   settings = null,
@@ -179,16 +181,12 @@ export function InboxScreen({
   enquiriesIn: Enquiry[];
   enquiriesOut: Enquiry[];
   nowIso: string;
-  /** ⚠⚠ WHICH DESK THIS IS (27 Sep 2026, the user: *"only enquiry becomes a new
-   *  option in tab and is removed from inbox"*).
-   *
-   *  Enquiries were the Inbox's third section. They are a TAB of their own now,
-   *  and the Inbox keeps what somebody has asked OF you. The two screens share
-   *  this component rather than forking it — the cards, the sides, the Done
-   *  treatment and the answer paths are identical, and a second copy is the bill
-   *  this repo has paid three times (`linkChip` twice, the figure row three
-   *  times, three identity bands). What differs is which pills are drawn. */
-  desk?: "inbox" | "enquiries";
+  /** ⚠⚠ ENQUIRIES ARE THIS SCREEN'S THIRD DESK AGAIN (2 Oct 2026, the user:
+   *  *"shift back enquiries to inbox from home tools for all profiles"*). They
+   *  left for a tab on 27 Sep, then a tool tile; both are gone, and the `desk`
+   *  switch that let one component draw two screens went with them. The section
+   *  a link opens on is `?show=enquiries` / `?show=done`, read by the page. */
+  initialSection?: "req" | "join" | "enq" | "done";
   /** ⚠ WHOSE DESK THIS IS, when a tool tile named one (27 Sep 2026). The
    *  Enquiries tile on a studio's, an organization's or a crew's grid carries
    *  `?as=`, and the heading has to say which — a list narrowed to one subject
@@ -208,9 +206,10 @@ export function InboxScreen({
   artists?: Record<string, ClassArtist>;
 }) {
   const router = useRouter();
-  const [sect, setSect] = useState<"req" | "join" | "enq" | "done">(desk === "enquiries" ? "enq" : "req");
+  const [sect, setSect] = useState<"req" | "join" | "enq" | "done">(initialSection ?? "req");
   const [rqSide, setRqSide] = useState<"in" | "out">("in");
   const [enqSide, setEnqSide] = useState<"in" | "out">("in");
+  const [doneSide, setDoneSide] = useState<"in" | "out">("in");
   const [enqType, setEnqType] = useState<"all" | EnquiryTypeKey>("all");
   const [enqSt, setEnqSt] = useState<"all" | EnquiryStatus>("all");
   const [brkOpen, setBrkOpen] = useState(false);
@@ -269,7 +268,6 @@ export function InboxScreen({
   /* ⚠ each desk's Done holds its OWN kind. An answered class ask is not a
      closed enquiry, and one "Done" list spanning two tabs would be a third
      place to look for either. */
-  const onEnq = desk === "enquiries";
   /* ⚠⚠ ONE ROW PER ASK, NOT ONE PER SIDE (1 Oct 2026, the user: *"when checking
      done section in inbox a lot of blank class cards"*). Somebody who owns a
      studio and names THEMSELVES on its class (R47 — born confirmed, kept as a
@@ -278,32 +276,48 @@ export function InboxScreen({
      warning is that duplicate keys get children "duplicated and/or omitted",
      which is the blank card. The received side wins: it is the one that says
      what you agreed to. */
-  const doneReq = onEnq
-    ? []
-    : (() => {
-        const seen = new Set<string>();
-        return [...requestsIn, ...requestsOut].filter(isDone).filter((r) => {
-          const k = `${r.kind}-${r.id}`;
-          if (seen.has(k)) return false;
-          seen.add(k);
-          return true;
-        });
-      })();
-  const doneEnq = onEnq ? [...enquiriesIn, ...enquiriesOut].filter((e) => ["won", "lost"].includes(enquiryStage(e))) : [];
-  const doneN = doneReq.length + doneEnq.length;
-  const SECT: Array<["req" | "join" | "enq" | "done", string, number, string]> = onEnq
-    ? [
-        ["enq", "Enquiries", newIn.length, "#EC4899"],
-        ["done", "Done", doneN, "#22C55E"],
-      ]
-    : [
-        ["req", "Requests", askIn.length, "#DC2626"],
-        ["join", "Invites", joinIn.length, JOIN_TINT.invite ?? SKY],
-        /* ⚠ its badge counts what is IN it, not what waits on you — nothing here
-           waits on anybody, and a red 0 beside "Done" would say the opposite */
-        ["done", "Done", doneN, "#22C55E"],
-      ];
-  const owed = onEnq ? newIn.length : requestsIn.length;
+  const doneReq = (() => {
+    const seen = new Set<string>();
+    return [...requestsIn, ...requestsOut].filter(isDone).filter((r) => {
+      const k = `${r.kind}-${r.id}`;
+      if (seen.has(k)) return false;
+      seen.add(k);
+      return true;
+    });
+  })();
+  /* ⚠ A CLOSED ENQUIRY — WON OR LOST — IS IN DONE (2 Oct 2026, the user: "lost
+     enquiries also in done section"). Only the Enquiries TOOL's desk ever drew
+     them there; the Inbox's Done held no enquiry at all. Deduped by id, because
+     an enquiry you sent to your own artist page is on both sides. */
+  const closedEnq = (e: Enquiry) => ["won", "lost"].includes(enquiryStage(e));
+  /* ⚠⚠ COMPLETED IS SPLIT BY WHO ASKED, NOT BY KIND (2 Oct 2026, the user:
+     "done should be called completed and should be section with received and
+     sent not with request invites and enquiries"). Received is what was put to
+     you — asks, invitations and enquiries — and Sent is what you put to others,
+     each newest first with the three kinds mixed, because the card already says
+     which kind it is. A self-ask (R47) is on both sides; the received side
+     keeps it, the rule `doneReq` already applies. */
+  const doneEnqIn = enquiriesIn.filter(closedEnq);
+  const inIds = new Set(doneEnqIn.map((e) => e.id));
+  const doneEnqOut = enquiriesOut.filter(closedEnq).filter((e) => !inIds.has(e.id));
+  type DoneRow = { at: string; req?: RequestItem; enq?: Enquiry };
+  const byNewest = (a: DoneRow, b: DoneRow) => b.at.localeCompare(a.at);
+  const doneIn: DoneRow[] = [...doneReq.filter((r) => r.dir === "in").map((r) => ({ at: r.at, req: r })), ...doneEnqIn.map((e) => ({ at: e.createdAt, enq: e }))].sort(byNewest);
+  const doneOut: DoneRow[] = [...doneReq.filter((r) => r.dir === "out").map((r) => ({ at: r.at, req: r })), ...doneEnqOut.map((e) => ({ at: e.createdAt, enq: e }))].sort(byNewest);
+  const doneN = doneIn.length + doneOut.length;
+  const SECT: Array<["req" | "join" | "enq" | "done", string, number, string]> = [
+    ["req", "Requests", askIn.filter((r) => r.dir === "in").length, "#DC2626"],
+    ["join", "Invites", joinIn.filter((r) => r.dir === "in").length, JOIN_TINT.invite ?? SKY],
+    ["enq", "Enquiries", newIn.length, "#EC4899"],
+    /* ⚠ its badge counts what is IN it, not what waits on you — nothing here
+       waits on anybody, and a red 0 beside "Done" would say the opposite */
+    ["done", "Completed", doneN, "#22C55E"],
+  ];
+  /* ⚠ WHAT WAITS ON YOU (2 Oct 2026, found re-reading): this was
+     `requestsIn.length`, which since 19 Sep includes every ANSWERED ask too — so
+     somebody who had answered everything read "4 waiting on you". It is the
+     unanswered asks and invitations put to you, and the enquiries still new. */
+  const owed = askIn.length + joinIn.length + newIn.length;
 
   /* one answer per kind — the RPC behind each decides who may give it */
   const answer = (r: RequestItem, accept: boolean) =>
@@ -566,45 +580,59 @@ export function InboxScreen({
     const c = JOIN_TINT[r.kind] ?? REQ_TINT;
     const answered = r.status && r.status !== "asked";
     return (
+      /* ⚠⚠ THE INVITATION CARD, RE-CUT (2 Oct 2026, the user: "better cards for
+         invites as well") on the enquiry card's own anatomy — a tinted band that
+         says what this is, then the thing you would join with its monogram, and
+         the SEAT as a chip in its label's colour ("Faculty", never the column's
+         "trainer", which the old note printed). The answer row is unchanged. */
       <div
         key={`${r.kind}-${r.dir}-${r.id}`}
         data-testid="request-row"
-        style={{ background: "var(--card)", border: `1.5px solid ${c}55`, borderRadius: 18, padding: "13px 14px", marginBottom: 10, boxShadow: `0 2px 10px ${c}14` }}
+        style={{ background: "var(--card)", border: "1.5px solid var(--el)", borderRadius: 18, marginBottom: 10, overflow: "hidden" }}
       >
-        <div style={{ display: "flex", alignItems: "center", gap: 9, marginBottom: 9 }}>
-          <span style={{ width: 30, height: 30, borderRadius: 10, flexShrink: 0, background: `${c}1f`, border: `1.5px solid ${c}66`, color: c, display: "inline-flex", alignItems: "center", justifyContent: "center", fontSize: 13, fontWeight: 900 }}>+</span>
-          <span style={{ fontSize: 9, fontWeight: 900, letterSpacing: 0.9, color: c, textTransform: "uppercase" }}>Invitation · {r.subjectKind}</span>
+        <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "9px 13px", background: `${c}14`, borderBottom: `1.5px solid ${c}33` }}>
+          <span aria-hidden="true" style={{ fontSize: 12, fontWeight: 900, color: c }}>＋</span>
+          <span style={{ fontSize: 9.5, fontWeight: 900, letterSpacing: 0.9, color: c, textTransform: "uppercase" }}>
+            {r.dir === "in" ? "Invitation" : "Invitation sent"} · {r.subjectKind === "CREW" ? "Crew" : "Team"}
+          </span>
           <span style={{ marginLeft: "auto", fontSize: 9.5, color: "var(--muted)" }}>{agoWords(r.at, nowIso)}</span>
         </div>
-
-        {/* WHAT YOU WOULD BE JOINING, first and biggest */}
-        <div style={{ fontSize: 17, fontWeight: 900, letterSpacing: -0.5, lineHeight: 1.15, fontFamily: DOS_DISPLAY, overflowWrap: "anywhere" }}>{r.subjectTitle}</div>
-        {/* ⚠ THE ROLE IS A CHIP, NOT A CLAUSE. `RequestItem.what` is the app's
-            one vocabulary for these labels and two of its five values are not
-            grammatical inside a sentence ("on the team", "its event team") —
-            writing "join as its event team" to make the others read well would
-            be the kind of near-English this file has had to undo before. A chip
-            is a label, so every value fits without rewording the source. */}
-        <div style={{ display: "flex", alignItems: "center", gap: 7, flexWrap: "wrap", marginTop: 5 }}>
-          <span style={{ fontSize: 9.5, fontWeight: 900, letterSpacing: 0.4, padding: "3px 9px", borderRadius: 999, background: `${c}1e`, border: `1.5px solid ${c}55`, color: c, textTransform: "uppercase" }}>{r.what}</span>
-          <span style={{ fontSize: 11.5, color: "var(--sub)" }}>
-            {r.dir === "in" ? (
-              <>
-                invited by <b style={{ color: "var(--text)" }}>{r.who}</b>
-              </>
-            ) : (
-              <>
-                you invited <b style={{ color: "var(--text)" }}>{r.who}</b>
-              </>
-            )}
-          </span>
-        </div>
-        {r.note ? <div style={{ fontSize: 10.5, color: "var(--muted)", marginTop: 6, lineHeight: 1.45 }}>{r.note}</div> : null}
-        {r.href ? (
-          <Link href={r.href} aria-label={`View ${r.subjectTitle}`} style={{ display: "inline-block", marginTop: 7, fontSize: 10.5, fontWeight: 800, color: c, textDecoration: "none" }}>
-            Have a look first ›
-          </Link>
-        ) : null}
+        <div style={{ padding: "12px 13px 13px" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 11 }}>
+            <span aria-hidden="true" style={{ width: 44, height: 44, borderRadius: 13, flexShrink: 0, background: `linear-gradient(135deg, ${c}, ${c}88)`, color: "#fff", display: "inline-flex", alignItems: "center", justifyContent: "center", fontSize: 15, fontWeight: 900 }}>
+              {initialsOf(r.subjectTitle)}
+            </span>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              {/* WHAT YOU WOULD BE JOINING, first and biggest */}
+              <div style={{ fontSize: 17, fontWeight: 900, letterSpacing: -0.5, lineHeight: 1.15, fontFamily: DOS_DISPLAY, overflowWrap: "anywhere" }}>{r.subjectTitle}</div>
+              <div style={{ fontSize: 11.5, color: "var(--sub)", marginTop: 3, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                {r.dir === "in" ? (
+                  r.subjectKind === "CREW" ? (
+                    <>
+                      invited by <b style={{ color: "var(--text)" }}>{r.who}</b>
+                    </>
+                  ) : (
+                    "wants you on its team"
+                  )
+                ) : (
+                  <>
+                    you invited <b style={{ color: "var(--text)" }}>{r.who}</b>
+                  </>
+                )}
+              </div>
+            </div>
+            {/* ⚠ THE SEAT IS A CHIP, NOT A CLAUSE — a label fits every value
+                without rewording the vocabulary into near-English */}
+            <span style={{ flexShrink: 0, fontSize: 9.5, fontWeight: 900, letterSpacing: 0.4, padding: "4px 10px", borderRadius: 999, background: `${r.role?.colour ?? c}1e`, border: `1.5px solid ${r.role?.colour ?? c}66`, color: r.role?.colour ?? c, textTransform: "uppercase" }}>
+              {r.role?.word ?? (r.subjectKind === "CREW" ? "Member" : r.what)}
+            </span>
+          </div>
+          {r.note ? <div style={{ fontSize: 10.5, color: "var(--muted)", marginTop: 8, lineHeight: 1.45 }}>{r.note}</div> : null}
+          {r.href ? (
+            <Link href={r.href} aria-label={`View ${r.subjectTitle}`} style={{ display: "inline-block", marginTop: 8, fontSize: 10.5, fontWeight: 800, color: c, textDecoration: "none" }}>
+              Have a look first ›
+            </Link>
+          ) : null}
 
         {answered ? (
           /* ⚠ THE SAME STAMP THE ASK CARD WEARS (27 Sep 2026, the user: "change
@@ -668,6 +696,7 @@ export function InboxScreen({
             </div>
           </>
         )}
+        </div>
       </div>
     );
   };
@@ -748,21 +777,9 @@ export function InboxScreen({
 
   return (
     <div style={{ position: "relative", background: LILAC, color: "var(--text)", maxWidth: 430, margin: "0 auto", fontFamily: DOS_UI, minHeight: "100vh", paddingBottom: 40 }}>
-      {/* ⚠ NO WASH ON THE ENQUIRIES DESK (29 Sep 2026, the user: *"enquiries page
-          should not have the pink background on top, should be like other pages
-          in home tab"*).
-          Enquiries stopped being a tab and became a TOOL on all four grids on
-          27 Sep (C70), and every other tool's page — Classes, Events, Rooms,
-          Team, Students, Earnings — opens on the page's own ground under its
-          `DeskHero`. This screen kept the profile-tinted wash it wore as a tab,
-          so the one tool page that had been a tab was the one that did not look
-          like a tool page; on an artist's account that tint is `#EC4899`, which
-          is the pink.
-          ⚠ THE INBOX KEEPS ITS OWN, and that is the same rule rather than an
-          exception: `/inbox` IS a tab, the chrome draws the wordmark over it, and
-          the wash is what a tab opens on (5681). This is the C83 cut — "the hero's
-          ground is the page's own" — applied where the screen changed category. */}
-      {!onEnq ? <div aria-hidden="true" style={{ position: "absolute", top: 0, left: 0, right: 0, height: 230, pointerEvents: "none", background: `linear-gradient(180deg, ${accent}5c 0%, ${accent}20 44%, transparent 100%)` }} /> : null}
+      {/* the profile-tinted wash a TAB opens on (5681) — `/inbox` is a tab; the
+          Enquiries tool page that wore none is gone (2 Oct 2026) */}
+      <div aria-hidden="true" style={{ position: "absolute", top: 0, left: 0, right: 0, height: 230, pointerEvents: "none", background: `linear-gradient(180deg, ${accent}5c 0%, ${accent}20 44%, transparent 100%)` }} />
       {/* ⚠⚠ THE HEADING WAS MISSING (27 Sep 2026, the user: "inbox heading is
           missing"). The three-desk re-cut earlier the same day took the title
           out with the paragraph beside it, and `/inbox` is a TAB — so the chrome
@@ -772,22 +789,10 @@ export function InboxScreen({
           21 Sep, `EventForm` and `/rooms` 22 Sep), and the one thing a screen
           reader has to move by. Discover's own head is the model: a display
           heading with the count as its sub-line. */}
-      {/* ⚠ AND ENQUIRIES IS A TOOL, SO IT IS HEADED LIKE ONE (28 Sep 2026, the
-          user: "all tools heading should be done in the same way like classes
-          and events, not happening for subscriptions, enquiries"). Enquiries
-          stopped being a tab and became a tile on all four grids on 27 Sep
-          (C70), and a tile's page wears `DeskHero` — the same object Classes and
-          Events wear — so the tile and the screen it opens agree. ⚠ THE INBOX
-          KEEPS ITS OWN `<h1>`: it is a TAB, the chrome draws the wordmark over
-          it, and a tool hero there would name a tool that is on no grid. */}
       <div style={{ padding: "12px 16px 0", position: "relative" }}>
-        {onEnq ? (
-          <DeskHero tool="enquiries" as="h1" margin="0 0 2px" />
-        ) : (
-          /* ⚠ `TAB_TITLE` / `TAB_SUB` (2 Oct 2026): the same heading and the same
-             line under it as Discover's, read from one token pair. */
-          <h1 data-testid="inbox-title" style={TAB_TITLE}>Inbox</h1>
-        )}
+        {/* ⚠ `TAB_TITLE` / `TAB_SUB` (2 Oct 2026): the same heading and the same
+            line under it as Discover's, read from one token pair. */}
+        <h1 data-testid="inbox-title" style={TAB_TITLE}>Inbox</h1>
         {/* ⚠ WHOSE DESK, when a tool tile named one (27 Sep 2026). A list
             narrowed to one studio with nothing on screen saying so reads as a
             list that has lost rows — the same reason every tool hero names the
@@ -930,7 +935,7 @@ export function InboxScreen({
             {side.length > 0 && liveSide.length === 0 ? (
               <div style={emptyBox}>
                 <div style={{ fontSize: 12.5, fontWeight: 800 }}>Nothing open</div>
-                <div style={{ fontSize: 10.5, color: "var(--sub)", marginTop: 3 }}>Won and lost enquiries are under Done.</div>
+                <div style={{ fontSize: 10.5, color: "var(--sub)", marginTop: 3 }}>Won and lost enquiries are under Completed.</div>
               </div>
             ) : null}
             {liveSide.length > 0 ? (
@@ -978,18 +983,19 @@ export function InboxScreen({
             the thing you decided about, not like a log line. What differs is
             only that the action row is the stamp. ── */}
         {sect === "done" ? (
-          doneN === 0 ? (
-            <div style={emptyBox}>
-              <div style={{ fontSize: 12.5, fontWeight: 800 }}>Nothing finished yet</div>
-              <div style={{ fontSize: 10.5, color: "var(--sub)", marginTop: 3 }}>Answered requests and invitations, and enquiries that are won or lost, stay here.</div>
-            </div>
-          ) : (
-            <>
-              {doneReq.filter((r) => !isJoin(r)).map(askCard)}
-              {doneReq.filter(isJoin).map(joinCard)}
-              {doneEnq.map(enquiryCard)}
-            </>
-          )
+          <>
+            {sideSwitch(doneSide, setDoneSide, doneIn.length, doneOut.length, "completed", "#22C55E")}
+            {(doneSide === "in" ? doneIn : doneOut).length === 0 ? (
+              <div style={emptyBox}>
+                <div style={{ fontSize: 12.5, fontWeight: 800 }}>Nothing completed yet</div>
+                <div style={{ fontSize: 10.5, color: "var(--sub)", marginTop: 3 }}>
+                  {doneSide === "in" ? "Requests, invitations and enquiries put to you land here once answered, won or lost." : "What you asked of others lands here once it is answered, won or lost."}
+                </div>
+              </div>
+            ) : (
+              (doneSide === "in" ? doneIn : doneOut).map((d) => (d.enq ? enquiryCard(d.enq) : d.req ? (isJoin(d.req) ? joinCard(d.req) : askCard(d.req)) : null))
+            )}
+          </>
         ) : null}
       </div>
 

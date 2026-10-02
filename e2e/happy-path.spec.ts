@@ -1221,12 +1221,18 @@ test.describe.serial("DanceOS, end to end", () => {
        specific profile"): unscoped, the desk is YOUR PROFILE's, so an enquiry to
        the STUDIO is on the studio's own desk — `?as={studio}`, the address its
        tile opens — and NOT on the owner's personal one. Both ends asserted. */
+    /* ⚠⚠ RE-CUT AGAIN 2 Oct 2026 (the user: "shift back enquiries to inbox from
+       home tools for all profiles"): the desk is each profile's INBOX, and the old
+       addresses redirect onto it — the person's own `/inbox`, the studio's
+       `/business/{id}/inbox`, both opened on the Enquiries section. */
     await owner.goto("/enquiries");
-    await expect(owner.getByRole("heading", { level: 1, name: "Enquiries" })).toBeVisible();
+    await owner.waitForURL(/\/inbox\?show=enquiries$/);
+    await expect(owner.getByRole("heading", { level: 1, name: "Inbox" })).toBeVisible();
     await expect(owner.getByRole("link", { name: `Private Sessions enquiry from ${learnerName}` })).toHaveCount(0);
     await owner.goto(`/enquiries?as=${businessId}`);
-    await expect(owner.getByText("1 waiting on you")).toBeVisible({ timeout: 15_000 });
-    await owner.goto("/enquiries");
+    await owner.waitForURL(new RegExp(`/business/${businessId}/inbox\\?show=enquiries$`));
+    await expect(owner.getByRole("link", { name: `Private Sessions enquiry from ${learnerName}` })).toBeVisible({ timeout: 15_000 });
+    await owner.goto("/inbox?show=enquiries");
     /* ⚠⚠ AND THE SETTINGS ARE ON IT (the user: "with its setting as well manged
        from there") — the kinds left the contact ⊕ for the desk the same evening.
        Closed, the disclosure states the standing without opening anything; the
@@ -1245,8 +1251,8 @@ test.describe.serial("DanceOS, end to end", () => {
        cannot tell you the old one was cleared: gone from the unscoped desk, and
        present on the studio's own — which is the address its tile opens. */
     await expect(owner.getByRole("button", { name: /^Enquiry settings/ })).toHaveCount(0);
-    await owner.goto(`/enquiries?as=${businessId}`);
-    await expect(owner.getByRole("heading", { level: 1, name: "Enquiries" })).toBeVisible();
+    await owner.goto(`/business/${businessId}/inbox?show=enquiries`);
+    await expect(owner.getByRole("heading", { level: 1, name: "Inbox" })).toBeVisible();
     /* ⚠ the count is the TYPE's, not a constant: a studio is offered four kinds
        (judging is a person's job), an artist page five, an organization three —
        so the assertion is that a real count is stated rather than which one. */
@@ -1413,7 +1419,8 @@ test.describe.serial("DanceOS, end to end", () => {
        because a check that only looks at the new place cannot tell you the old
        one was cleared. */
     await expect(trainer.getByRole("button", { name: `Join ${crewName}` })).toHaveCount(0, { timeout: 15_000 });
-    await pressPill(trainer, /^Done/);
+    /* ⚠ "Completed" since 2 Oct 2026 — and Received is the side it opens on */
+    await pressPill(trainer, /^Completed/);
     const crewAsk = trainer.getByTestId("request-row").filter({ hasText: crewName }).filter({ hasText: `invited by ${learnerName}` });
     await expect(crewAsk.getByText("Joined — you said yes")).toBeVisible({ timeout: 15_000 });
     await expect(crewAsk.getByRole("button", { name: `Join ${crewName}` })).toHaveCount(0);

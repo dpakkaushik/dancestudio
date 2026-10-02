@@ -5,6 +5,8 @@ import type { findMyPendingInvites, findPendingInvites } from "@/repositories/in
 import { askToTileClass, type MyClassPersonAsk } from "@/types/classPerson";
 import type { CrewMember, MyCrewAsk } from "@/types/crew";
 import { practiceWhen, type CrewPractice } from "@/types/crewPractice";
+import type { MemberRole } from "@/repositories/businesses";
+import { MEMBER_LABEL, MEMBER_ROLE_WORD } from "@/types/staff";
 
 /** THE REQUESTS DESK'S ROWS, BUILT ONCE (18 Sep 2026). The person's Inbox has
  *  turned the asks that already exist — class asks, team invites, crew asks,
@@ -29,6 +31,11 @@ export const TEAM_WORDS = { what: "on the team", verb: "add you to the team at" 
 /* Step 22: the crew ask (DOS_LINK_WHAT.member). ⚠ `PARTNER_WORDS` — the duet
    partner, DOS_LINK_WHAT.partner — went with events on 29 Sep 2026. */
 export const CREW_WORDS = { what: "a crew member", verb: "add you to" } as const;
+/* the seat an invite offers, in the app's own word ("Faculty", never "trainer") */
+const roleWord = (r: string): { word: string; colour: string } => {
+  const k = r as MemberRole;
+  return MEMBER_ROLE_WORD[k] ? { word: MEMBER_ROLE_WORD[k], colour: MEMBER_LABEL[k].colour } : { word: r, colour: "#64748B" };
+};
 /* 18 Sep 2026: an artist asks a studio for one of its rooms — the class waits for the answer */
 export const VENUE_WORDS = { what: "the room for a class", verb: "hold a class in" } as const;
 /* 27 Sep 2026: a crew arranges a practice and asks everybody confirmed on it.
@@ -123,7 +130,8 @@ export function buildRequests(s: RequestSources): { requestsIn: RequestItem[]; r
       when: null,
       href: `/join/${i.code}`,
       at: i.createdAt,
-      note: `As ${i.memberRole}`,
+      note: null,
+      role: roleWord(i.memberRole),
       inviteCode: i.code,
     })),
     /* a crew roster is a public page, so being on one is a classPerson about you (16428) */
@@ -214,7 +222,11 @@ export function buildRequests(s: RequestSources): { requestsIn: RequestItem[]; r
       when: null,
       href: null,
       at: i.createdAt,
-      note: `${i.email} · as ${i.memberRole}`,
+      /* ⚠ an invite can name a PERSON with no address (R33, 19 Sep 2026), so
+         the email is printed only when there is one — it read "null · as
+         trainer" — and the seat is the app's word, never the column's */
+      note: i.email ?? null,
+      role: roleWord(i.memberRole),
       inviteId: i.id,
       businessId: i.businessId,
     })),

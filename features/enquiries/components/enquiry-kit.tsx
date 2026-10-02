@@ -140,7 +140,10 @@ export function EnquiryCard({ e, out, nowIso }: { e: Enquiry; out: boolean; nowI
       </div>
       <div style={{ padding: "11px 13px 12px" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-          <EnqPair e={e} size={36} />
+          {/* ⚠ ONLY THE OTHER END'S FACE (2 Oct 2026, the user: "should remove
+              your own photo from the enquiry cards. inside page remains the
+              same") — the card says who it is WITH; the detail page keeps both */}
+          {out ? <EnqFace path={e.toPhotoPath} name={e.businessName} size={40} tint="#64748B" /> : <EnqFace path={e.fromPhotoPath} name={e.fromName} size={40} tint={tc} />}
           <div style={{ flex: 1, minWidth: 0 }}>
             <div style={{ fontSize: 16, fontWeight: 900, letterSpacing: -0.4, lineHeight: 1.15, fontFamily: DOS_DISPLAY, overflowWrap: "anywhere" }}>{headline}</div>
             <div style={{ fontSize: 11.5, color: "var(--sub)", marginTop: 3, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>

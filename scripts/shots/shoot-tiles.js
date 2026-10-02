@@ -308,7 +308,8 @@ async function personOpensAStudio(page, who, acc, stamp) {
      rule and the whole point of this check; it has simply moved off the live
      desk so Requests holds only what still needs somebody. */
   await page.goto(`${BASE}/inbox`, { waitUntil: "networkidle" });
-  await page.getByRole("button", { name: /^Done/ }).click().catch(() => {});
+  /* "Completed" since 2 Oct 2026, opening on its Received side */
+  await page.getByRole("button", { name: /^Completed/ }).click().catch(() => {});
   const inbox = await page.locator("body").innerText().catch(() => "");
   /* ⚠ "Accepted", not "Confirmed" (27 Sep 2026): a class ask is drawn as the
      app's own class card with Accept / Reject under it, so the answer it wears

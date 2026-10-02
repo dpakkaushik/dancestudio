@@ -1,4 +1,6 @@
 import { redirect } from "next/navigation";
+import { EnquirySettings } from "@/features/enquiries/components/EnquirySettings";
+import { loadEnquiries } from "@/features/enquiries/server/loadEnquiries";
 import { InboxScreen } from "@/features/inbox/components/InboxScreen";
 import { buildRequests } from "@/features/inbox/requestItems";
 import { DOS_TINT } from "@/lib/design/tokens";
@@ -20,7 +22,7 @@ const stampNowIso = (): string => new Date().toISOString();
  *  your businesses have asked of others. The mapping into rows lives in
  *  `features/inbox/requestItems.ts` since 18 Sep 2026, because a studio's inbox
  *  and a crew's inbox draw the same rows scoped to one entity. */
-export default async function InboxPage() {
+export default async function InboxPage({ searchParams }: { searchParams: Promise<{ show?: string }> }) {
   const supabase = await createSupabaseServerClient();
   const {
     data: { user },
@@ -37,6 +39,8 @@ export default async function InboxPage() {
      one thing, the accent `kindOf` paints this desk with, and the KIND is the
      plan's answer alone now. One round trip fewer. */
   const [memberships, plan] = await Promise.all([findMyMemberships(supabase), findMyArtistPlan(supabase)]);
+  /* ⚠ ENQUIRIES ARE BACK ON THIS DESK (2 Oct 2026, the user: "shift back enquiries to inbox from home tools for all profiles") — the reads `/enquiries` made, through one loader shared with a studio's and a crew's Inbox */
+  const [{ show }, enq] = await Promise.all([searchParams, loadEnquiries(supabase, { kind: "person", userId: user.id, memberships })]);
   const businesses = memberships.map((m) => m.business);
   const businessIds = businesses.map((t) => t.id);
   /* the rooms asked of the STUDIOS you own, and the rooms your own PAGE has asked for */
@@ -97,8 +101,10 @@ export default async function InboxPage() {
       requestsIn={requestsIn}
       requestsOut={requestsOut}
       artists={artists}
-      enquiriesIn={[]}
-      enquiriesOut={[]}
+      enquiriesIn={enq.enquiriesIn}
+      enquiriesOut={enq.enquiriesOut}
+      settings={<EnquirySettings businesses={enq.settingsFor} />}
+      initialSection={show === "enquiries" ? "enq" : show === "done" ? "done" : undefined}
       nowIso={stampNowIso()}
     />
   );

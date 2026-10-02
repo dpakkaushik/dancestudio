@@ -186,11 +186,11 @@ export async function reclaimCrew(supabase: SupabaseClient, crewId: string): Pro
 }
 
 /** Discover's Crews tab: live crews in a city, newest first. */
-export async function findCrewsByCity(supabase: SupabaseClient, city: string): Promise<CrewSummary[]> {
-  const { data, error } = await supabase
-    .from("crews")
-    .select(CREW_COLUMNS)
-    .eq("city", city)
+/** a city's crews — or, given no city (Discover's All cities, 2 Oct 2026), every crew */
+export async function findCrewsByCity(supabase: SupabaseClient, city: string | null): Promise<CrewSummary[]> {
+  let q = supabase.from("crews").select(CREW_COLUMNS);
+  if (city) q = q.eq("city", city);
+  const { data, error } = await q
     .is("deleted_at", null)
     .order("created_at", { ascending: false })
     .limit(MAX_LIST);

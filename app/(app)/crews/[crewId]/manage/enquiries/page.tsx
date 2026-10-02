@@ -1,8 +1,9 @@
-import { EnquiriesDesk } from "@/features/enquiries/components/EnquiriesDesk";
+import { redirect } from "next/navigation";
 
-/** A CREW'S OWN ENQUIRIES DESK (2 Oct 2026) — under the crew's home, so the
- *  chrome stays the crew's. `EnquiriesDesk` re-checks that this account leads it. */
+/** ⚠ AN ADDRESS, NOT A PAGE (2 Oct 2026): a crew's enquiries are its Inbox's
+ *  third desk again (the user: "shift back enquiries to inbox from home tools
+ *  for all profiles"). The Inbox re-checks the leader (Rule 14 keeps this alive). */
 export default async function CrewEnquiriesPage({ params }: { params: Promise<{ crewId: string }> }) {
   const { crewId } = await params;
-  return <EnquiriesDesk as={`crew-${crewId}`} />;
+  redirect(`/crews/${crewId}/inbox?show=enquiries`);
 }
