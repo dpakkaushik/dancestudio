@@ -2,6 +2,17 @@
 
 ## LAST SESSION (2 Oct 2026) — replaced on every push (Rule 13)
 
+> ### A SWIPE ON THE SWITCHER IS NOT A TAP (2 Oct 2026, latest) — no migration, PUSHED
+> The user: *"swiping on top right profile switches also switches profile."* The
+> chip sits at the screen's right edge, where a scroll or the phone's back gesture
+> starts, and a short drag still ends in a `click`. The chip and every menu row now
+> record where the finger went down and ignore the press if it moved more than 8px
+> or the browser took the gesture (`pointercancel`) — `tapHandlers` / `wasSwipe` in
+> `AppChrome.tsx`. A keyboard press has no pointer and is unaffected.
+> **Verified:** typecheck 0 · lint 0 · build green · a browser check 4/4 as
+> `demo.eee` (a drag on the chip opens nothing, a tap opens the menu, a swipe across
+> another profile's row does not switch, a tap on it does).
+
 > ### THE SWITCHER IS A FACE ON THE RIGHT, EACH PROFILE'S HOME IS ITS OWN, QR AND SCAN SIT IN THE MIDDLE, AND DISCOVER LEADS THE BAR (2 Oct 2026, latest) — no migration, ✅ PUSHED (re-verified on a fresh bundle first: typecheck 0 · lint 0 · build green · `stranger-smoke` 8/8 · `shoot-hero` 186/186 · `shoot-tiles` 134/134). ⚠ The previous session's note said "committed locally" — it was NOT; the tree was uncommitted until this push
 > The user: *"1. profile switcher on right side with profile photo at extreme
 > right besides settings. logo and title remains at same spot. 2. all items on

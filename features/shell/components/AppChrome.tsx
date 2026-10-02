@@ -3,7 +3,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { useId, useState, useSyncExternalStore, type ReactNode } from "react";
+import { useId, useState, useSyncExternalStore, type ReactNode, type PointerEvent as PointerEvent_, type MouseEvent as MouseEvent_ } from "react";
 import { Portal } from "@/components/ui/Portal";
 import { signOutAction } from "@/features/auth/server-actions/auth";
 import { SettingsSheet, type SettingsProfile } from "@/features/settings/components/SettingsSheet";
@@ -11,6 +11,28 @@ import { DOS_UI, INK, RED } from "@/lib/design/tokens";
 import type { ArtistPlan } from "@/repositories/plans";
 import type { Profile, ProfileRole } from "@/types/profile";
 import type { Business } from "@/types/business";
+
+/* ⚠ A SWIPE IS NOT A TAP (2 Oct 2026, the user: "swiping on top right profile
+   switches also switches profile"). The switcher sits at the screen's right edge,
+   where a swipe — a scroll, or the phone's own back gesture — often starts, and a
+   short drag still ends in a `click`. So the chip and every menu row remember where
+   the finger went down and ignore the press if it travelled, or if the browser took
+   the gesture over (`pointercancel`). One gesture at a time, so one record is enough;
+   a keyboard press has no pointer and is never mistaken for a swipe. */
+const SWIPE_SLOP = 8;
+const tap = { x: 0, y: 0, moved: false };
+const tapHandlers = {
+  onPointerDown: (e: PointerEvent_) => { tap.x = e.clientX; tap.y = e.clientY; tap.moved = false; },
+  onPointerMove: (e: PointerEvent_) => { if (Math.hypot(e.clientX - tap.x, e.clientY - tap.y) > SWIPE_SLOP) tap.moved = true; },
+  onPointerCancel: () => { tap.moved = true; },
+};
+/** True — and the press cancelled — when the press was really a swipe. */
+function wasSwipe(e: MouseEvent_): boolean {
+  if (!tap.moved) return false;
+  tap.moved = false;
+  e.preventDefault();
+  return true;
+}
 
 /** App shell lifted from the prototype's root (DanceOSApp.jsx:19171-19397): the
  *  fixed top bar (wordmark on a tab, back chip + title on a drill page, round
@@ -608,7 +630,8 @@ export function AppChrome({
               aria-label={hereItem ? `Switch profile — you are in ${hereItem.label}` : "Switch profile"}
               aria-haspopup="menu"
               aria-expanded={menuOpen}
-              onClick={() => setOpenFor(menuOpen ? null : pathname)}
+              {...tapHandlers}
+              onClick={(e) => { if (wasSwipe(e)) return; setOpenFor(menuOpen ? null : pathname); }}
               style={{ ...chipStyle, padding: 0, overflow: "hidden", fontFamily: "inherit", border: `2px solid ${hereItem ? SWITCH_TINT[hereItem.kind] : "var(--chip-line)"}`, background: hereItem ? `linear-gradient(135deg,${SWITCH_TINT[hereItem.kind]},${SWITCH_TINT[hereItem.kind]}88)` : "var(--chip-bg)" }}
             >
               {hereItem?.photo ? (
@@ -652,7 +675,8 @@ export function AppChrome({
                     href={item.href}
                     aria-current={here ? "page" : undefined}
                     aria-label={`${item.label} — ${item.sub}${here ? " — you are here" : ""}`}
-                    onClick={() => setOpenFor(null)}
+                    {...tapHandlers}
+                    onClick={(e) => { if (wasSwipe(e)) return; setOpenFor(null); }}
                     style={{ display: "flex", alignItems: "center", gap: 10, padding: "9px 10px", borderRadius: 13, textDecoration: "none", color: "var(--text)", background: here ? "var(--el)" : "transparent" }}
                   >
                     <span aria-hidden="true" style={{ width: 34, height: 34, borderRadius: 10, flexShrink: 0, overflow: "hidden", display: "inline-flex", alignItems: "center", justifyContent: "center", background: `linear-gradient(135deg,${tint},${tint}88)`, color: "#fff", fontSize: 12, fontWeight: 900 }}>
