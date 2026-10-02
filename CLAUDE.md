@@ -2,7 +2,7 @@
 
 ## LAST SESSION (3 Oct 2026) — replaced on every push (Rule 13)
 
-> ### SHARE ON A CLASS, ROUTINES FOR EVERYBODY, PROPER ROUTINE CARDS, LOG OUT ASKS, A 5-HOUR CAP, AND A NEW FIRST PAGE (3 Oct 2026, latest) — no migration
+> ### SHARE ON A CLASS, ROUTINES FOR EVERYBODY, PROPER ROUTINE CARDS, LOG OUT ASKS, A 5-HOUR CAP, AND A NEW FIRST PAGE (3 Oct 2026, latest) — no migration, ✅ PUSHED AND LIVE (`40014a7`: Vercel READY, alias confirmed on the sha, `stranger-smoke` 8/8, the plain-user probe 13/13 and the share probe 25/25 ON THE LIVE SITE)
 > Seven asks from the user in one run:
 > * **Share on the class page** (*"share button in class detail with copy link.
 >   smaller qr code"*): `ClassShare` is a row now — the QR beside the address,
