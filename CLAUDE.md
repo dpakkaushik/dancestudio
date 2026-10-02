@@ -2,7 +2,7 @@
 
 ## LAST SESSION (2 Oct 2026) — replaced on every push (Rule 13)
 
-> ### ENQUIRIES ARE BACK IN EVERY INBOX, DONE IS "COMPLETED" BY RECEIVED · SENT, AND DISCOVER LOOKS IN ALL CITIES (2 Oct 2026, latest) — no migration
+> ### ENQUIRIES ARE BACK IN EVERY INBOX, DONE IS "COMPLETED" BY RECEIVED · SENT, AND DISCOVER LOOKS IN ALL CITIES (2 Oct 2026, latest) — no migration, ✅ PUSHED AND LIVE (`66ecd32`: Vercel READY, alias confirmed on the sha through the API, `stranger-smoke` 8/8 and `shoot-inbox` 29/29 ON THE LIVE SITE)
 > The user, in a run of messages: *"shift back enquiries to in box from home
 > tools for all profiles"*, *"lost enquiries also in done section"*, *"done
 > should be called completed and should be section with received and sent not
