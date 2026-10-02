@@ -2,7 +2,17 @@
 
 ## LAST SESSION (2 Oct 2026) — replaced on every push (Rule 13)
 
-> ### A SWIPE ON THE SWITCHER IS NOT A TAP (2 Oct 2026, latest) — no migration, PUSHED
+> ### A BIGGER TOP BAR, AND NO CONTROL ON IT TAKES A SWIPE (2 Oct 2026, latest) — no migration, PUSHED
+> The user: *"make the top bar a bit bigger and apply the swipe function."* The bar
+> is **70px** (was 62; `--dos-top`, so every screen's padding moved with it), the
+> chips **44px** (was 40), the back chip 42, the mark 33, the wordmark 23. The swipe
+> guard below now sits on **every** control in the bar — back, the bell, theme,
+> settings and the switcher. **Verified:** typecheck 0 · lint 0 · build green · a
+> browser check 12/12 at 430 and 360 (bar 70, chips 44, nothing off-screen, a drag
+> on the theme chip or the gear does nothing, a tap on the gear opens Settings) ·
+> the switcher check 4/4 · `shoot-hero` 186/186.
+
+> ### A SWIPE ON THE SWITCHER IS NOT A TAP (2 Oct 2026, earlier) — no migration, PUSHED
 > The user: *"swiping on top right profile switches also switches profile."* The
 > chip sits at the screen's right edge, where a scroll or the phone's back gesture
 > starts, and a short drag still ends in a `click`. The chip and every menu row now

@@ -238,10 +238,12 @@ const readServerTheme = (): "dark" | "light" => "dark";
  *  bell and the gear — the two controls on every screen in the app — and 34 was
  *  under the 44px a finger is usually given. 40 with the bar at 62 keeps 11px of
  *  air above and below, so they are bigger without the bar feeling packed. */
+/* ⚠ 44px since 2 Oct 2026 ("make the top bar a bit bigger") — the full 44 a finger
+   is given, in a 70px bar, so the 13px of air above and below is unchanged. */
 const chipStyle: React.CSSProperties = {
-  width: 40,
-  height: 40,
-  borderRadius: 20,
+  width: 44,
+  height: 44,
+  borderRadius: 22,
   flexShrink: 0,
   cursor: "pointer",
   display: "flex",
@@ -483,7 +485,8 @@ export function AppChrome({
               role="button"
               tabIndex={0}
               aria-label="Go back"
-              onClick={goBack}
+              {...tapHandlers}
+              onClick={(e) => { if (wasSwipe(e)) return; goBack(); }}
               onKeyDown={(e) => {
                 if (e.key === "Enter" || e.key === " ") {
                   e.preventDefault();
@@ -491,14 +494,14 @@ export function AppChrome({
                 }
               }}
               style={{
-                width: 38,
-                height: 38,
+                width: 42,
+                height: 42,
                 flexShrink: 0,
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
                 cursor: "pointer",
-                borderRadius: 19,
+                borderRadius: 21,
                 marginLeft: -4,
                 background: "var(--card)",
               }}
@@ -534,12 +537,12 @@ export function AppChrome({
               bar. What the 21 Sep note above got right and this keeps is that the
               switcher is CONSTANT — the chip is on every screen. */}
           <span style={{ flexShrink: 0, display: "inline-flex", marginLeft: -2, lineHeight: 0 }}>
-            <DosMark size={30} />
+            <DosMark size={33} />
           </span>
           {/* THE WORDMARK, ON EVERY SCREEN — no longer swapped for the page's
               name. It ellipsises rather than wrapping, so the two chips on the
               right keep their room on a 360px phone. */}
-          <span style={{ fontSize: 21, fontWeight: 900, letterSpacing: -0.3, color: INK, fontFamily: DOS_UI, minWidth: 0, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+          <span style={{ fontSize: 23, fontWeight: 900, letterSpacing: -0.3, color: INK, fontFamily: DOS_UI, minWidth: 0, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
             Dance<span style={{ color: "#EC4899" }}>OS</span>
           </span>
         </span>
@@ -548,7 +551,7 @@ export function AppChrome({
               route, so the badge is whatever the server counted for this render.
               Not for an admin-only account: notifications belong to profiles. */}
           {adminOnly ? null : (
-          <Link href="/notifications" aria-label={unread > 0 ? `Notifications — ${unread} unread` : "Notifications"} style={{ ...chipStyle, textDecoration: "none" }}>
+          <Link href="/notifications" {...tapHandlers} onClick={(e) => { wasSwipe(e); }} aria-label={unread > 0 ? `Notifications — ${unread} unread` : "Notifications"} style={{ ...chipStyle, textDecoration: "none" }}>
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={INK} strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round">
               <path d="M18 8.5a6 6 0 1 0-12 0c0 5-2 6.5-2 6.5h16s-2-1.5-2-6.5" />
               <path d="M10.5 19a2 2 0 0 0 3 0" />
@@ -564,7 +567,8 @@ export function AppChrome({
             role="button"
             tabIndex={0}
             aria-label={theme === "dark" ? "Switch to light theme" : "Switch to dark theme"}
-            onClick={toggleTheme}
+            {...tapHandlers}
+            onClick={(e) => { if (wasSwipe(e)) return; toggleTheme(); }}
             onKeyDown={(e) => {
               if (e.key === "Enter" || e.key === " ") {
                 e.preventDefault();
@@ -613,7 +617,7 @@ export function AppChrome({
              which is why Settings could only ever be that page's subject. It
              opens the sheet over whatever you are looking at now, so the sheet
              is the studio's while you are in a studio. */
-          <button type="button" onClick={openSettings} aria-label="Settings" aria-expanded={settingsOpen} style={{ ...chipStyle, border: "none", cursor: "pointer", padding: 0, fontFamily: "inherit" }}>
+          <button type="button" {...tapHandlers} onClick={(e) => { if (wasSwipe(e)) return; openSettings(); }} aria-label="Settings" aria-expanded={settingsOpen} style={{ ...chipStyle, border: "none", cursor: "pointer", padding: 0, fontFamily: "inherit" }}>
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={INK} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
               <circle cx="12" cy="12" r="3.2" />
               <path d="M19 12a7 7 0 0 0-.1-1.2l2-1.5-2-3.4-2.3 1a7 7 0 0 0-2-1.2L14.2 3h-4l-.4 2.7a7 7 0 0 0-2 1.2l-2.3-1-2 3.4 2 1.5A7 7 0 0 0 5 12c0 .4 0 .8.1 1.2l-2 1.5 2 3.4 2.3-1a7 7 0 0 0 2 1.2l.4 2.7h4l.4-2.7a7 7 0 0 0 2-1.2l2.3 1 2-3.4-2-1.5c.1-.4.1-.8.1-1.2z" />
@@ -635,7 +639,7 @@ export function AppChrome({
               style={{ ...chipStyle, padding: 0, overflow: "hidden", fontFamily: "inherit", border: `2px solid ${hereItem ? SWITCH_TINT[hereItem.kind] : "var(--chip-line)"}`, background: hereItem ? `linear-gradient(135deg,${SWITCH_TINT[hereItem.kind]},${SWITCH_TINT[hereItem.kind]}88)` : "var(--chip-bg)" }}
             >
               {hereItem?.photo ? (
-                <Image src={hereItem.photo} alt="" width={40} height={40} style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
+                <Image src={hereItem.photo} alt="" width={44} height={44} style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
               ) : (
                 <span aria-hidden="true" style={{ color: "#fff", fontSize: 12.5, fontWeight: 900 }}>{hereItem ? initialsOf(hereItem.label) : "?"}</span>
               )}
