@@ -40,7 +40,9 @@
 >   * ⚠ The one red was a TEST: `goto("/profile")` redirects to `/person/{id}`,
 >     and the gear was pressed before React had claimed it (the snapshot showed
 >     the page fully drawn). It waits for the address and retries the press now.
-> * **AND THE TWO FOLLOW-UPS, on the user's *"fix first 2 from suggestions"*:**
+> * **AND THE TWO FOLLOW-UPS, on the user's *"fix first 2 from suggestions"*** —
+>   ✅ PUSHED AND LIVE (`8a29ca8`: Vercel READY, alias confirmed on the sha,
+>   `stranger-smoke` 8/8 and `shoot-register` 65/65 ON THE LIVE SITE):
 >   * **The Paid button is driven in a browser** — `shoot-register` gained a
 >     priced class: a walk-in shows "₹300 due at the door", Paid writes
 >     `door_paid_at` + `door_paid_by` (read back from the database), the row
