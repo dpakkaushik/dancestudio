@@ -15,6 +15,8 @@ import { NextSessions } from "./NextSessions";
 import type { CalendarEntry } from "@/types/calendar";
 import { EntityBand, Figure } from "./profile-band";
 import { FollowerFigure } from "./FollowerFigure";
+import { FollowingFigure } from "./FollowingFigure";
+import { studioTeamRows } from "@/features/profiles/teamFollowing";
 import type { HeroShot } from "./HeroRail";
 import { ProfileLink, ProfileShare } from "./ProfileShare";
 import { StatsChip } from "./StatsChip";
@@ -211,7 +213,14 @@ export function PublicProfile({
                     own note — so what is counted here is what the account that
                     RUNS it follows, and the Owner group further down the page is
                     who that is. Null reads as no figure, never as 0. */}
-                <Figure n={followingN} label="Following" testId="business-following" />
+{/* ⚠⚠ A STUDIO'S FOLLOWING IS ITS TEAM since 2 Oct 2026 (the user)
+                    — the people the page already prints, now a door that opens
+                    them as a list. An artist page keeps the old count. */}
+                {business.type === "studio" ? (
+                  <FollowingFigure n={null} rows={studioTeamRows(profile.team)} always testId="business-following" />
+                ) : (
+                  <Figure n={followingN} label="Following" testId="business-following" />
+                )}
               </>
             }
             /* ⚠ THE THREE CHIPS (20 Sep 2026, the user: "Follow button to be a

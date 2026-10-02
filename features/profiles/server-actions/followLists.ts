@@ -2,7 +2,15 @@
 
 import { z } from "zod";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
-import { findCrewFollowers, findMyFollowedCrews, findMyFollowedPeople, findMyFollowing, findBusinessFollowers } from "@/repositories/follows";
+import { findCrewFollowers, findMyFollowedCrews, findMyFollowedPeople, findMyFollowing, findBusinessFollowers, findTeamFollows, withTeamFollows } from "@/repositories/follows";
+
+/** a person's teams as Following rows — studios, then crews */
+function teamRows(teams: Awaited<ReturnType<typeof findTeamFollows>>): FollowListResult["rows"] {
+  return [
+    ...teams.businesses.map((t) => ({ id: t.followId, name: t.businessName, sub: t.businessCity ? `Studio · ${t.businessCity}` : "Studio", href: `/studio/${t.businessId}`, photoPath: t.businessPhotoPath })),
+    ...teams.crews.map((c) => ({ id: c.followId, name: c.name, sub: c.city ? `Crew · ${c.city}` : "Crew", href: `/crew/${c.crewId}`, photoPath: c.photo })),
+  ];
+}
 
 /** ⚠⚠ THE FOLLOWER LIST, READ WHEN IT IS ASKED FOR (27 Sep 2026, the user:
  *  *"fix follow following for all profiles. list should open when clicked from
@@ -129,11 +137,12 @@ export async function loadFollowingAction(raw?: unknown): Promise<FollowListResu
      `person_follower_counts` counts as following */
   const who = z.object({ userId: z.string().uuid() }).safeParse(raw);
   if (who.success && who.data.userId !== user.id) {
-    const { data, error } = await supabase.rpc("profile_following", { p_user_id: who.data.userId });
+    const [{ data, error }, teams] = await Promise.all([
+      supabase.rpc("profile_following", { p_user_id: who.data.userId }),
+      findTeamFollows(supabase, who.data.userId).catch(() => ({ businesses: [], crews: [] })),
+    ]);
     if (error) return { error: "That list could not be read just now.", rows: [] };
-    return {
-      error: null,
-      rows: ((data ?? []) as ProfileFollowingRow[]).map((r) => {
+    const followed: FollowListResult["rows"] = ((data ?? []) as ProfileFollowingRow[]).map((r) => {
         if (r.kind === "person") return { id: `p-${r.id}`, name: r.name ?? "Someone", sub: r.city, href: `/person/${r.id}`, photoPath: r.photo_path };
         if (r.kind === "crew") return { id: `c-${r.id}`, name: r.name ?? "A crew", sub: r.city ? `Crew · ${r.city}` : "Crew", href: `/crew/${r.id}`, photoPath: r.photo_path };
         const kind = r.business_type === "studio" ? "Studio" : "Artist";
@@ -144,15 +153,21 @@ export async function loadFollowingAction(raw?: unknown): Promise<FollowListResu
           href: `/${r.business_type === "studio" ? "studio" : "artist"}/${r.id}`,
           photoPath: r.photo_path,
         };
-      }),
-    };
+      });
+    /* ⚠ AND THEIR TEAMS (2 Oct 2026) — the crews and studios they are on, unless
+       they already follow them; `teamRows` is the same shape the own branch uses */
+    const hrefs = new Set(followed.map((r) => r.href));
+    return { error: null, rows: [...followed, ...teamRows(teams).filter((r) => !hrefs.has(r.href))] };
   }
   try {
-    const [people, businesses, crews] = await Promise.all([
+    const [people, followedBusinesses, followedCrews, teams] = await Promise.all([
       findMyFollowedPeople(supabase),
       findMyFollowing(supabase),
       findMyFollowedCrews(supabase).catch(() => []),
+      findTeamFollows(supabase, user.id).catch(() => ({ businesses: [], crews: [] })),
     ]);
+    /* your own teams are in your Following (2 Oct 2026) — added where not already followed */
+    const { businesses, crews } = withTeamFollows({ businesses: followedBusinesses, crews: followedCrews }, teams);
     /* the same three kinds the person's own sheet lists, in the same order, so
        the two sheets cannot come to disagree about what "following" means.
        ⚠ The organizations segment was the fourth and went on 29 Sep 2026; the

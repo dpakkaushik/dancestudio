@@ -5,7 +5,6 @@ import { findMyToolOrder } from "@/repositories/layout";
 import { findCrewMembers } from "@/repositories/crews";
 import { findCrewFollowerCount } from "@/repositories/follows";
 import { findCrewHeaderPhotos } from "@/repositories/headerPhotos";
-import { findPersonFollowerCounts } from "@/repositories/publicPerson";
 
 /** THE CREW'S HOME (18 Sep 2026) — what a crew you lead opens. It was the
  *  members desk itself (S_crewmanage) until the user asked for a home with
@@ -25,7 +24,7 @@ export default async function CrewManagePage({ params, searchParams }: { params:
   const {
     data: { user },
   } = await supabase.auth.getUser();
-  const [members, header, followers, order, myCounts] = await Promise.all([
+  const [members, header, followers, order] = await Promise.all([
     findCrewMembers(supabase, crewId),
     findCrewHeaderPhotos(supabase, crewId),
     findCrewFollowerCount(supabase, crewId).catch(() => 0),
@@ -33,11 +32,8 @@ export default async function CrewManagePage({ params, searchParams }: { params:
        rides the batch, and `getUser` above is free: the server client memoises
        it per request (19 Sep 2026), so `requireLedCrew` has already paid for it */
     user ? findMyToolOrder(supabase, user.id, toolsLayoutKey("crew", crewId)) : Promise.resolve(null),
-    /* ⚠ WHAT THE LEADER FOLLOWS (27 Sep 2026, the user: "following section for
-       organization and crews is missing on home") — a crew follows nothing of
-       its own, so the figure is the account's that leads it, exactly as a
-       studio's home has drawn its owner's since 20 Sep. It rides the batch. */
-    user ? findPersonFollowerCounts(supabase, [user.id]).catch(() => new Map()) : Promise.resolve(new Map()),
+    /* ⚠ the LEADER's following count left this batch on 2 Oct 2026 — a crew's
+       Following is its team now (the user), drawn off `members` above */
   ]);
   return (
     <CrewHome
@@ -45,7 +41,6 @@ export default async function CrewManagePage({ params, searchParams }: { params:
       members={members}
       header={header}
       followers={followers ?? 0}
-      followingN={user ? (myCounts.get(user.id)?.following ?? null) : null}
       order={order}
       editOpen={editOpen}
     />

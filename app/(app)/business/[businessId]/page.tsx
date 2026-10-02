@@ -10,7 +10,7 @@ import { findFollowerCounts } from "@/repositories/follows";
 import { findMyToolOrder } from "@/repositories/layout";
 import { findStudioDeck } from "@/repositories/home";
 import { findPublicStudioTeam, findPublicBusiness } from "@/repositories/publicProfile";
-import { findPersonFollowerCounts } from "@/repositories/publicPerson";
+import { studioTeamRows } from "@/features/profiles/teamFollowing";
 import { countRoomsByBusinesses } from "@/repositories/rooms";
 import { findStudioProofPhotos } from "@/repositories/studioVerification";
 import { findMyMemberships, runsTheBusiness } from "@/repositories/businesses";
@@ -100,8 +100,10 @@ export default async function StudioHomePage({ params, searchParams }: { params:
        the STUDIO so two people on one team each get their own */
     findMyToolOrder(supabase, user.id, toolsLayoutKey("studio", businessId)),
   ]);
-  const ownerUserId = team.find((m) => m.role === "owner")?.userId ?? null;
-  const ownerCounts = ownerUserId ? await findPersonFollowerCounts(supabase, [ownerUserId]).catch(() => new Map()) : new Map();
+  /* ⚠ A STUDIO'S FOLLOWING IS ITS TEAM (2 Oct 2026, the user: "following for
+     crew and studio should by default show list of team members") — the team
+     read above is the whole of it, so the owner's follow count and its extra
+     round trip are gone */
 
   /* ⚠⚠ THE THREE STANDING READS ARE GONE FROM THIS ROUTE (21 Sep 2026): the
      verification, the subscription and the price list are read by the pages
@@ -161,7 +163,7 @@ export default async function StudioHomePage({ params, searchParams }: { params:
          first, the derived list only for a row that predates it */
       styles={business.styles.length ? business.styles : (stylesByBusiness.get(businessId) ?? [])}
       followers={followerCounts.get(businessId) ?? 0}
-      followingN={ownerUserId ? (ownerCounts.get(ownerUserId)?.following ?? null) : null}
+      followingRows={studioTeamRows(team)}
       tiles={tiles}
       order={toolOrder}
     />

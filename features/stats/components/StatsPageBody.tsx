@@ -2,13 +2,13 @@ import { StatsScreen } from "@/features/stats/components/StatsScreen";
 import { findDiscoverCities } from "@/repositories/cities";
 import { DOS_STYLE_NAMES } from "@/lib/constants/styles";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
-import { findMyCalendar } from "@/repositories/calendar";
 import { findChart, findEntityChartRow, findMyHistory, findMyPlace, findMyStats } from "@/repositories/stats";
 import { EMPTY_STATS, parseChartMetric, type ChartSegment, type DanceStats, type Standing } from "@/types/stats";
 
-const TABS = ["record", "history", "charts"] as const;
+/* ⚠ "history" went on 2 Oct 2026 (the user: "remove history from stats for all
+   profiles") — an old `?tab=history` link falls through to Record */
+const TABS = ["record", "charts"] as const;
 const SEGMENTS: ChartSegment[] = ["dancer", "artist", "studio", "crew"];
-const DAY_MS = 86_400_000;
 
 export type StatsQuery = { tab?: string; seg?: string; city?: string; metric?: string; style?: string };
 
@@ -79,15 +79,15 @@ export async function StatsPageBody({ subject, query, basePath }: { subject: Sta
   const metric = parseChartMetric(query.metric);
   const styleFilter = (DOS_STYLE_NAMES as readonly string[]).includes(query.style ?? "") ? (query.style as string) : null;
 
-  /* the server's clock, once: the record's buckets and the History's UPCOMING
-     group are both cut against it */
+  /* the server's clock, once: the record's buckets are cut against it */
   const nowIso = new Date().toISOString();
-  const aheadIso = new Date(new Date(nowIso).getTime() + 120 * DAY_MS).toISOString();
 
-  const [ownStats, history, upcoming, chart, myPlace, boardPlace, everywhere, inCity] = await Promise.all([
+  /* ⚠ the History column's UPCOMING read (`findMyCalendar`) went with it (2 Oct
+     2026). The past sessions (`findMyHistory`) stay: Record's graphs and number
+     grid are counted off them */
+  const [ownStats, history, chart, myPlace, boardPlace, everywhere, inCity] = await Promise.all([
     isMe ? findMyStats(supabase) : Promise.resolve(null),
     isMe ? findMyHistory(supabase) : Promise.resolve([]),
-    isMe && tab === "history" ? findMyCalendar(supabase, subject.id, nowIso, aheadIso) : Promise.resolve([]),
     tab === "charts" && canBrowseBoards ? findChart(supabase, { segment, city, style: styleFilter }) : Promise.resolve([]),
     isMe ? findMyPlace(supabase, "dancer", null) : Promise.resolve(null),
     /* where YOU stand on THIS board — a people board only, and only when it is
@@ -117,7 +117,6 @@ export async function StatsPageBody({ subject, query, basePath }: { subject: Sta
       isArtist={subject.isArtist}
       stats={ownStats ?? subject.stats ?? EMPTY_STATS}
       history={history}
-      upcoming={upcoming.filter((e) => new Date(e.startsAt).getTime() >= new Date(nowIso).getTime())}
       chart={chart}
       segment={segment}
       metric={metric}

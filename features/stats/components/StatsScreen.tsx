@@ -8,8 +8,7 @@ import { DosStyleTile } from "@/features/discovery/components/DiscoverFilters";
 import { dosStyleColor } from "@/lib/constants/styles";
 import { Sheet } from "@/features/profiles/components/profile-kit";
 import { CARD, DOS_DISPLAY, DOS_UI, INK, LILAC, LINE, MUTED, SUB } from "@/lib/design/tokens";
-import type { CalendarEntry } from "@/types/calendar";
-import { CHART_METRICS, CHART_SEGMENTS, CREW_POINT_RULES, POINT_RULES, SEG_WORD, SIDE_TINT, SIDE_VERB, chartRowWords, hoursWords, type ChartMetric, type ChartRow, type ChartSegment, type DanceStats, type HistoryRow, type Side, type Standing } from "@/types/stats";
+import { CHART_METRICS, CHART_SEGMENTS, CREW_POINT_RULES, POINT_RULES, SEG_WORD, SIDE_TINT, chartRowWords, hoursWords, type ChartMetric, type ChartRow, type ChartSegment, type DanceStats, type HistoryRow, type Side, type Standing } from "@/types/stats";
 
 /** Stats — the prototype's Stats is one screen in three dresses, all of
  *  S_profiletab: YOUR RECORD (historyOnly 9862 — "A LIBRARY, NOT A DASHBOARD"),
@@ -34,7 +33,8 @@ import { CHART_METRICS, CHART_SEGMENTS, CREW_POINT_RULES, POINT_RULES, SEG_WORD,
  *  ▲/▼ movement (no rank history), the filters drawer's provider / assistant /
  *  room rows, drafts on a person's History (a person has none). */
 
-type Tab = "record" | "history" | "charts";
+/* ⚠ "history" left this list on 2 Oct 2026 (the user) — two columns now */
+type Tab = "record" | "charts";
 
 const DOS_MONO = 'ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace';
 const micro: React.CSSProperties = { fontSize: 9.5, fontWeight: 900, letterSpacing: 1.2, textTransform: "uppercase" };
@@ -48,12 +48,7 @@ const pressKey = (fn: () => void) => (e: React.KeyboardEvent) => {
 };
 const dayWords = (iso: string) =>
   new Intl.DateTimeFormat("en-IN", { timeZone: "Asia/Kolkata", day: "numeric", month: "short" }).format(new Date(iso));
-const timeWords = (iso: string) =>
-  new Intl.DateTimeFormat("en-IN", { timeZone: "Asia/Kolkata", hour: "numeric", minute: "2-digit", hour12: true }).format(new Date(iso)).toLowerCase();
 const monthWords = (d: string | null) => (d ? new Intl.DateTimeFormat("en-IN", { timeZone: "UTC", month: "short", year: "numeric" }).format(new Date(`${d}T00:00:00Z`)) : "—");
-/** "WED 12 AUG" — the day heading over a group of sessions (9843) */
-const dayHeading = (iso: string) =>
-  new Intl.DateTimeFormat("en-IN", { timeZone: "Asia/Kolkata", weekday: "short", day: "numeric", month: "short" }).format(new Date(iso)).replace(",", "").toUpperCase();
 const initialsOf = (name: string) => name.split(" ").filter(Boolean).map((w) => w[0]).slice(0, 2).join("").toUpperCase() || "D";
 
 /* the side's own words on the record page (9998-10000): what the figure MEANS */
@@ -117,7 +112,6 @@ export function StatsScreen({
   isArtist,
   stats,
   history,
-  upcoming,
   chart,
   segment,
   metric,
@@ -161,8 +155,6 @@ export function StatsScreen({
   isArtist: boolean;
   stats: DanceStats;
   history: HistoryRow[];
-  /** what is still to come — bookings and confirmed claims (the calendar's rows) */
-  upcoming: CalendarEntry[];
   chart: ChartRow[];
   segment: ChartSegment;
   metric: ChartMetric;
@@ -191,8 +183,6 @@ export function StatsScreen({
   /** the points rules on the Charts board — a disclosure since 27 Sep, where a
    *  permanent full-width card stood between the controls and the board */
   const [rulesOpen, setRulesOpen] = useState(false);
-  const [side, setSide] = useState<Side | "all">("all");
-  const [styleSel, setStyleSel] = useState<string | null>(null);
   const [cvSide, setCvSide] = useState<Side>("attended");
   const [grain, setGrain] = useState<Grain>("week");
   const [dim, setDim] = useState<Dim>("style");
@@ -218,8 +208,6 @@ export function StatsScreen({
   const assistedFor = tally(bySide("assisted"), (r) => r.artistName);
   const trainedUnder = tally(bySide("attended"), (r) => r.artistName);
 
-  const shown = history.filter((r) => (side === "all" || r.side === side) && (!styleSel || r.style === styleSel));
-  const historyStyles = [...new Set(history.map((r) => r.style))];
   const isCrew = segment === "crew";
   const isStudio = segment === "studio";
   const peopleBoard = segment === "dancer" || segment === "artist";
@@ -302,18 +290,6 @@ export function StatsScreen({
     ["studio", "Studio"],
   ];
 
-  /* the History groups (9840-9857): what is still to come, and what is over, each under its day */
-  const withDays = <T,>(rows: T[], at: (r: T) => string) => {
-    const out: Array<{ day: string; rows: T[] }> = [];
-    rows.forEach((r) => {
-      const d = dayHeading(at(r));
-      const last = out[out.length - 1];
-      if (last && last.day === d) last.rows.push(r);
-      else out.push({ day: d, rows: [r] });
-    });
-    return out;
-  };
-  const upcomingShown = upcoming.filter((e) => (!styleSel || e.style === styleSel) && (side === "all" || (side === "conducted" ? e.side === "hosting" : side === "assisted" ? e.side === "assisting" : e.side === "attending")));
 
   /* the board, in the order the metric asks for (9612, 9699-9703) */
   const valueOf = (r: ChartRow) => (metric === "overall" ? r.points : metric === "conducted" ? r.conducted : metric === "assisted" ? r.assisted : metric === "attended" ? r.attended : Math.round(r.hours * 10) / 10);
@@ -413,8 +389,8 @@ export function StatsScreen({
           place on THIS board on Charts — one line, three readings, so the same
           pixels never mean two things. */}
       <div style={{ margin: "0 0 4px", padding: "22px 16px 18px", background: `linear-gradient(180deg, ${accent}b0 0%, ${accent}55 45%, ${accent}18 74%, ${LILAC} 100%)` }}>
-        <div style={{ ...micro, letterSpacing: 2.2, color: "rgba(255,255,255,.9)" }}>{tab === "history" ? "Sessions" : tab === "charts" ? "DanceOS · India" : `${eyebrow} · Record`}</div>
-        <div style={{ fontSize: 30, fontWeight: 900, fontFamily: DOS_DISPLAY, letterSpacing: -1.2, lineHeight: 1.05, marginTop: 4 }}>{tab === "history" ? "History" : tab === "charts" ? "Rankings" : "Stats"}</div>
+        <div style={{ ...micro, letterSpacing: 2.2, color: "rgba(255,255,255,.9)" }}>{tab === "charts" ? "DanceOS · India" : `${eyebrow} · Record`}</div>
+        <div style={{ fontSize: 30, fontWeight: 900, fontFamily: DOS_DISPLAY, letterSpacing: -1.2, lineHeight: 1.05, marginTop: 4 }}>{tab === "charts" ? "Rankings" : "Stats"}</div>
         <div style={{ display: "flex", alignItems: "center", gap: 13, marginTop: 14 }}>
           <span style={{ width: 64, height: 64, borderRadius: 16, flexShrink: 0, display: "inline-flex", alignItems: "center", justifyContent: "center", boxSizing: "border-box", border: "2.5px solid rgba(255,255,255,.9)", boxShadow: "0 6px 18px rgba(0,0,0,.45)", background: `linear-gradient(135deg,${accent},#7C3AED)`, color: "#fff", fontSize: 24, fontWeight: 900, letterSpacing: 0.5, fontFamily: DOS_DISPLAY }}>
             {initialsOf(name)}
@@ -487,7 +463,6 @@ export function StatsScreen({
                  you browsed; it is anybody's now, and the third column is what
                  the hero has always called it. */
               ["record", "Record"],
-              ["history", "History"],
               ["charts", "Rankings"],
             ] as Array<[Tab, string]>
           ).map(([k, l]) => (
@@ -775,128 +750,11 @@ export function StatsScreen({
           </>
         ) : null}
 
-        {/* ⚠ THE COLUMN IS ALWAYS THERE AND SAYS WHY IT IS EMPTY (29 Sep 2026).
-            `my_session_history` is scoped to `auth.uid()` inside the database,
-            so a library of somebody else's sessions is a READ THAT DOES NOT
-            EXIST — not a permission this screen is withholding. Drawing the
-            tab and then drawing nothing would read as "they have danced
-            nothing", which is the opposite of true. */}
-        {tab === "history" && !isMe ? (
-          <div style={{ background: CARD, border: `1.5px dashed ${LINE}`, borderRadius: 18, padding: "32px 20px", textAlign: "center" }}>
-            <div style={{ fontSize: 13.5, fontWeight: 800, fontFamily: DOS_DISPLAY }}>{isPerson ? "This library is theirs" : "This library is its own"}</div>
-            <div style={{ fontSize: 11.5, color: SUB, marginTop: 6, lineHeight: 1.5 }}>{sessionsNote} Record and Rankings are counted from the same sessions.</div>
-          </div>
-        ) : null}
-
-        {tab === "history" && isMe ? (
-          <>
-            <div style={{ display: "flex", gap: 6, marginBottom: 9, overflowX: "auto", scrollbarWidth: "none" }}>
-              {(
-                [
-                  ["all", "Everything"],
-                  ["conducted", "Taught"],
-                  ["assisted", "Assisted"],
-                  ["attended", "Danced"],
-                ] as Array<[Side | "all", string]>
-              ).map(([k, l]) => {
-                const on = side === k;
-                return (
-                  <span key={k} role="button" tabIndex={0} aria-pressed={on} aria-label={l} onKeyDown={pressKey(() => setSide(k))} onClick={() => setSide(k)} style={{ flexShrink: 0, padding: "7px 13px", borderRadius: 999, cursor: "pointer", fontSize: 11.5, fontWeight: 800, background: on ? INK : CARD, color: on ? LILAC : SUB, border: `1.5px solid ${on ? INK : LINE}` }}>
-                    {l}
-                  </span>
-                );
-              })}
-            </div>
-            {historyStyles.length > 1 ? (
-              <div style={{ display: "flex", gap: 6, marginBottom: 10, overflowX: "auto", scrollbarWidth: "none" }}>
-                {historyStyles.map((s) => {
-                  const on = styleSel === s;
-                  return (
-                    <span key={s} role="button" tabIndex={0} aria-pressed={on} aria-label={s} onKeyDown={pressKey(() => setStyleSel(on ? null : s))} onClick={() => setStyleSel(on ? null : s)} style={{ flexShrink: 0, display: "inline-flex", alignItems: "center", gap: 6, padding: "6px 12px", borderRadius: 999, cursor: "pointer", fontSize: 11, fontWeight: 800, background: on ? INK : LINE, color: on ? LILAC : SUB }}>
-                      <span style={{ width: 9, height: 9, borderRadius: 5, background: dosStyleColor(s) }} />
-                      {s}
-                    </span>
-                  );
-                })}
-              </div>
-            ) : null}
-
-            {/* UPCOMING (9848): what is still to come, under its day */}
-            <div style={{ fontSize: 10, fontWeight: 900, letterSpacing: 1, color: MUTED, margin: "6px 0 6px" }}>UPCOMING · {upcomingShown.length}</div>
-            {upcomingShown.length === 0 ? (
-              <div style={{ textAlign: "center", padding: "18px 12px", color: SUB, fontSize: 12, border: `1.5px dashed ${LINE}`, borderRadius: 14, marginBottom: 12 }}>Nothing upcoming.</div>
-            ) : (
-              withDays(upcomingShown, (e) => e.startsAt).map((g) => (
-                <div key={g.day}>
-                  <div style={{ fontSize: 10.5, fontWeight: 800, color: MUTED, margin: "8px 0 6px" }}>{g.day}</div>
-                  {g.rows.map((e) => {
-                    const c = dosStyleColor(e.style);
-                    const word = e.side === "hosting" ? "Teach" : e.side === "assisting" ? "Assist" : "Train";
-                    const tint = e.side === "hosting" ? SIDE_TINT.conducted : e.side === "assisting" ? SIDE_TINT.assisted : SIDE_TINT.attended;
-                    return (
-                      <Link key={`${e.sessionId}-${e.side}`} href={`/c/${e.shareSlug}`} aria-label={`Open ${e.title}`} style={{ display: "flex", alignItems: "center", gap: 10, background: CARD, border: `1.5px solid ${LINE}`, borderRadius: 14, padding: "10px 12px", marginBottom: 7, color: INK, textDecoration: "none" }}>
-                        <span style={{ width: 3, alignSelf: "stretch", borderRadius: 2, background: c, flexShrink: 0 }} />
-                        <span style={{ flex: 1, minWidth: 0 }}>
-                          <span style={{ display: "block", fontSize: 12.5, fontWeight: 800, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{e.title}</span>
-                          <span style={{ display: "block", fontSize: 10, color: SUB, marginTop: 2 }}>{[e.style, e.businessName, e.room, e.businessCity].filter(Boolean).join(" · ")}</span>
-                          <span style={{ display: "block", fontSize: 9.5, color: MUTED, marginTop: 2, fontFamily: DOS_MONO }}>{timeWords(e.startsAt)}</span>
-                        </span>
-                        <span style={{ ...micro, color: tint, flexShrink: 0 }}>{word}</span>
-                      </Link>
-                    );
-                  })}
-                </div>
-              ))
-            )}
-
-            {/* COMPLETED (9853): the record, under its days */}
-            <div style={{ display: "flex", alignItems: "baseline", gap: 8, margin: "14px 0 6px" }}>
-              <span style={{ fontSize: 10, fontWeight: 900, letterSpacing: 1, color: MUTED }}>COMPLETED · {shown.length}</span>
-              <span style={{ marginLeft: "auto", fontSize: 10.5, fontWeight: 800, color: MUTED }} data-testid="history-count">
-                {shown.length} of {history.length}
-              </span>
-            </div>
-            {shown.length === 0 ? (
-              <div style={{ background: CARD, border: `1.5px dashed ${LINE}`, borderRadius: 18, padding: "36px 20px", textAlign: "center" }}>
-                <div style={{ fontSize: 13.5, fontWeight: 800, fontFamily: DOS_DISPLAY }}>{history.length === 0 ? "Nothing on the record yet" : "Nothing matches that"}</div>
-                <div style={{ fontSize: 11.5, color: SUB, marginTop: 4 }}>{history.length === 0 ? "A session appears here once it has ended and you were on the floor for it." : "Try another side or style."}</div>
-              </div>
-            ) : (
-              withDays(shown, (r) => r.startsAt).map((g) => (
-                <div key={g.day}>
-                  <div style={{ fontSize: 10.5, fontWeight: 800, color: MUTED, margin: "8px 0 6px" }}>{g.day}</div>
-                  {g.rows.map((r) => {
-                    const c = dosStyleColor(r.style);
-                    const body = (
-                      <>
-                        <span style={{ width: 3, alignSelf: "stretch", borderRadius: 2, background: c, flexShrink: 0 }} />
-                        <span style={{ flex: 1, minWidth: 0 }}>
-                          <span style={{ display: "block", fontSize: 12.5, fontWeight: 800, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{r.title}</span>
-                          <span style={{ display: "block", fontSize: 10, color: SUB, marginTop: 2 }}>{[r.style, r.businessName, r.room, r.city].filter(Boolean).join(" · ")}</span>
-                          <span style={{ display: "block", fontSize: 9.5, color: MUTED, marginTop: 2, fontFamily: DOS_MONO }}>
-                            {timeWords(r.startsAt)} · {r.minutes} min
-                          </span>
-                        </span>
-                        <span style={{ ...micro, color: SIDE_TINT[r.side], flexShrink: 0 }}>{SIDE_VERB[r.side]}</span>
-                      </>
-                    );
-                    const style: React.CSSProperties = { display: "flex", alignItems: "center", gap: 10, background: CARD, border: `1.5px solid ${LINE}`, borderRadius: 14, padding: "10px 12px", marginBottom: 7, color: INK, textDecoration: "none" };
-                    return r.shareSlug ? (
-                      <Link key={`${r.sessionId}-${r.side}`} href={`/c/${r.shareSlug}`} aria-label={`Open ${r.title}`} style={style}>
-                        {body}
-                      </Link>
-                    ) : (
-                      <div key={`${r.sessionId}-${r.side}`} style={style}>
-                        {body}
-                      </div>
-                    );
-                  })}
-                </div>
-              ))
-            )}
-          </>
-        ) : null}
-
+        {/* ⚠ THE HISTORY COLUMN IS GONE (2 Oct 2026, the user: "remove history
+            from stats for all profiles . can completly remove this section").
+            The sessions it listed still feed the Record column's graphs and its
+            number grid, so the READ stays; only the third tab and its library
+            went. `?tab=history` in an old link lands on Record. */}
         {tab === "charts" ? (
           <>
             {/* ⚠ WHERE THIS PROFILE STANDS COMES FIRST, THEN THE BOARD IT STANDS

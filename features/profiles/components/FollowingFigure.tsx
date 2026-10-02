@@ -33,7 +33,14 @@ export function FollowingFigure({
   testId,
   userId = null,
   always = false,
+  rows = null,
 }: {
+  /** ⚠ A CREW'S AND A STUDIO'S FOLLOWING IS ITS TEAM (2 Oct 2026, the user:
+   *  "following for crew and studio should by default show list of team
+   *  members"). The page already holds the team, so it hands the rows in and
+   *  the sheet reads nothing; the count is the list's own length, so the two
+   *  cannot disagree. */
+  rows?: FollowListResult["rows"] | null;
   /** ⚠ ALWAYS DRAWN (2 Oct 2026, the user: "following section for crew pages
    *  under profile pic to be always visible"). A count that could not be read
    *  prints "—", never a 0 nobody measured; the press still opens the sheet,
@@ -55,10 +62,14 @@ export function FollowingFigure({
   const [busy, setBusy] = useState(false);
   useCloseOnBack(() => setOpen(false), open);
   /* the hooks run first, unconditionally — this repo's lint, and React's rule */
-  const count = n;
+  const count = rows ? rows.length : n;
 
   const press = () => {
     setOpen(true);
+    if (rows) {
+      if (!state) setState({ error: null, rows });
+      return;
+    }
     if (state || busy) return;
     setBusy(true);
     void loadFollowingAction(userId ? { userId } : undefined).then((r) => {
@@ -103,7 +114,7 @@ export function FollowingFigure({
             {busy ? <div style={{ fontSize: 12, color: "var(--sub)", padding: "18px 2px" }}>Reading the list…</div> : null}
             {!busy && state?.error ? <div style={{ fontSize: 12, color: "#F87171", padding: "12px 2px" }}>{state.error}</div> : null}
             {!busy && state && !state.error && state.rows.length === 0 ? (
-              <div style={{ fontSize: 12, color: "var(--sub)", padding: "18px 2px", lineHeight: 1.5 }}>Not following anybody yet.</div>
+              <div style={{ fontSize: 12, color: "var(--sub)", padding: "18px 2px", lineHeight: 1.5 }}>{rows ? "Nobody on the team yet." : "Not following anybody yet."}</div>
             ) : null}
             {!busy && state?.rows.map((r) => <Row key={r.id} href={r.href} markName={r.name} photo={photoUrl(r.photoPath)} title={r.name} sub={r.sub ?? ""} />)}
 

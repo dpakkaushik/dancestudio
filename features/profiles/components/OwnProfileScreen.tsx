@@ -3,7 +3,7 @@ import { MyProfilePage } from "@/features/profiles/components/MyProfilePage";
 import { headerMaxFor } from "@/lib/media/photo";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { findNextPublicSessions } from "@/repositories/calendar";
-import { findMyFollowedCrews, findMyFollowedPeople, findMyFollowing, findMyPersonFollowers } from "@/repositories/follows";
+import { findMyFollowedCrews, findMyFollowedPeople, findMyFollowing, findMyPersonFollowers, findTeamFollows, withTeamFollows } from "@/repositories/follows";
 import { findPersonHeaderPhotos } from "@/repositories/headerPhotos";
 import { findMembershipsOnSale } from "@/repositories/memberships";
 import { findPublicStudioTeam } from "@/repositories/publicProfile";
@@ -51,7 +51,7 @@ export async function OwnProfileScreen({ userId, loaded }: { userId: string; loa
      is the chrome's now — so the layout reads them once for every page instead
      of this page reading them for one. Two fewer reads here, and the two they
      replaced in the layout ride a batch that was already being awaited. */
-  const [followers, followingPeople, followingBusinesses, followingCrews, seats, plan, memberships, artistTeam] = await Promise.all([
+  const [followers, followingPeople, followedBusinesses, followedCrews, seats, plan, memberships, artistTeam, teams] = await Promise.all([
     findMyPersonFollowers(supabase),
     findMyFollowedPeople(supabase),
     findMyFollowing(supabase),
@@ -82,7 +82,10 @@ export async function OwnProfileScreen({ userId, loaded }: { userId: string; loa
     person.artistPageId ? findPublicStudioTeam(supabase, person.artistPageId).catch(() => []) : Promise.resolve([]),
     /* ⚠ `findMyOrgBusinessId` LEFT THIS LIST (26 Sep 2026) with the organization
        login: `my_org_business()` is dropped, and every profile here is a person's */
+    /* ⚠ YOUR TEAMS ARE IN YOUR FOLLOWING (2 Oct 2026, the user) — derived */
+    findTeamFollows(supabase, userId).catch(() => ({ businesses: [], crews: [] })),
   ]);
+  const { businesses: followingBusinesses, crews: followingCrews } = withTeamFollows({ businesses: followedBusinesses, crews: followedCrews }, teams);
   /* THE HEADER (15 Sep 2026): the KIND decides how many — one for a user and
      five for an artist (19 Sep 2026) — the same rule the database keeps on the
      way in */

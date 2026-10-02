@@ -1605,10 +1605,13 @@ test.describe.serial("DanceOS, end to end", () => {
        proved as a redirect, not assumed. */
     await learner.waitForURL(new RegExp(`/person/${learnerId}/stats`));
     await expect(learner.getByRole("heading", { name: learnerName })).toBeVisible();
-    /* THE THREE COLUMNS, BY NAME */
-    for (const col of ["Record", "History", "Rankings"]) {
+    /* TWO COLUMNS SINCE 2 Oct 2026 (the user: "remove history from stats for
+       all profiles . can completly remove this section") — named, and the one
+       that went asserted ABSENT, so it cannot come back unnoticed */
+    for (const col of ["Record", "Rankings"]) {
       await expect(learner.getByRole("link", { name: col, exact: true })).toBeVisible();
     }
+    await expect(learner.getByRole("link", { name: "History", exact: true })).toHaveCount(0);
     /* the three sides, and A ZERO IS DRAWN (27 Sep 2026, the user: "show all
        metrics for that particular profile type even if its 0") */
     await expect(learner.getByLabel(/^Classes taken — 0 sessions/)).toBeVisible();
@@ -1616,11 +1619,6 @@ test.describe.serial("DanceOS, end to end", () => {
     /* ⚠ THE NUMBER GRID IS BACK — the four figures that open the list behind
        them, which went with `StatsScreen` and are the "number grid" of the ask */
     await expect(learner.getByRole("button", { name: /^Styles — 0, open the list$/ })).toBeVisible();
-
-    /* THE HISTORY COLUMN — your own library, empty but SAYING so */
-    await learner.getByRole("link", { name: "History", exact: true }).click();
-    await learner.waitForURL(/tab=history/);
-    await expect(learner.getByText("Nothing on the record yet")).toBeVisible();
 
     /* THE RANKINGS COLUMN — where you stand, then the board you stand on. A
        place is never printed without its denominator, and "#0" is refused in
@@ -1646,8 +1644,7 @@ test.describe.serial("DanceOS, end to end", () => {
     await learner.goto(`/person/${trainerId}/stats`);
     await expect(learner.getByRole("heading", { name: trainerName })).toBeVisible();
     await expect(learner.getByRole("link", { name: `Back to ${trainerName}` })).toBeVisible();
-    await learner.getByRole("link", { name: "History", exact: true }).click();
-    await expect(learner.getByText("This library is theirs")).toBeVisible();
+    await expect(learner.getByRole("link", { name: "History", exact: true })).toHaveCount(0);
     await learner.getByRole("link", { name: "Rankings", exact: true }).click();
     await expect(learner.getByTestId("standing-card").first()).toBeVisible();
 
@@ -2379,9 +2376,12 @@ test.describe.serial("DanceOS, end to end", () => {
        what that parameter was kept alive for. */
     await learner.goto("/calendar");
     await expect(learner.getByRole("link", { name: "History" })).toHaveCount(0);
+    /* ⚠ and since 2 Oct 2026 there is no library at all — an old
+       `?tab=history` link lands on the Record column rather than an error */
     await learner.goto("/stats?tab=history");
     await learner.waitForURL(new RegExp(`/person/${learnerId}/stats`));
-    await expect(learner.getByText("COMPLETED · 0")).toBeVisible();
+    await expect(learner.getByText("COMPLETED · 0")).toHaveCount(0);
+    await expect(learner.getByLabel(/^Classes taken — 0 sessions/)).toBeVisible();
 
     /* ⚠⚠ THE STATS CHIP ON A CREW'S OWN HOME OPENS THAT CREW'S OWN STATS
        (29 Sep 2026). It pointed at `/stats?tab=charts&seg=crew` — the crew

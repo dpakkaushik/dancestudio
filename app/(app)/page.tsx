@@ -6,7 +6,7 @@ import { findMyDeck } from "@/repositories/home";
 import { findMyPendingInvites } from "@/repositories/invites";
 import { ensureArtistPage, findMyMemberships } from "@/repositories/businesses";
 import { findMyArtistPlan } from "@/repositories/plans";
-import { findMyFollowedCrews, findMyFollowedPeople, findMyFollowing, findMyPersonFollowers } from "@/repositories/follows";
+import { findMyFollowedCrews, findMyFollowedPeople, findMyFollowing, findMyPersonFollowers, findTeamFollows, withTeamFollows } from "@/repositories/follows";
 import { findPersonHeaderPhotos } from "@/repositories/headerPhotos";
 import { ProfileLink, ProfileShare } from "@/features/profiles/components/ProfileShare";
 import { StatsChip } from "@/features/profiles/components/StatsChip";
@@ -124,7 +124,7 @@ export default async function HomePage() {
      ⚠ It is worked out HERE rather than beside the grid since 22 Sep 2026,
      because the batch below needs it: the arrangement is keyed by kind. */
   const homeKind = isArtist ? "artist" : "user";
-  const [header, deck, pageId, followers, followingPeople, followingBusinesses, followingCrews, toolOrder] = await Promise.all([
+  const [header, deck, pageId, followers, followingPeople, followedBusinesses, followedCrews, toolOrder, teams] = await Promise.all([
     findPersonHeaderPhotos(supabase, user.id, headerMax),
     findMyDeck(supabase, user.id, nowIso),
     !isArtist ? Promise.resolve(null) : ensureArtistPage(supabase, profile, memberships),
@@ -137,7 +137,11 @@ export default async function HomePage() {
        trip for it, and it answers null rather than throwing — a preference must
        never be the reason a Home does not render. */
     findMyToolOrder(supabase, user.id, toolsLayoutKey(homeKind)),
+    /* ⚠ THE CREWS AND STUDIOS THIS PERSON IS ON (2 Oct 2026, the user) — a member
+       follows their own teams, derived rather than stored */
+    findTeamFollows(supabase, user.id).catch(() => ({ businesses: [], crews: [] })),
   ]);
+  const { businesses: followingBusinesses, crews: followingCrews } = withTeamFollows({ businesses: followedBusinesses, crews: followedCrews }, teams);
 
   /* the metal the KIND wears (DOS_RINGS 1462): gold for an organization, silver
      for an artist, bronze for a user — the same pair the Profile tab paints with */

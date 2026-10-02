@@ -1123,8 +1123,10 @@ const enterEdit = async (page) => {
          column the query asked for, and the strip that makes it a column. */
       const standings = await me.getByTestId("standing-card").count().catch(() => 0);
       check(standings > 0, `/stats?tab=charts lands on the Rankings column — ${standings} standing card(s)`);
+      /* ⚠ TWO COLUMNS SINCE 2 Oct 2026 (the user: "remove history from stats") */
       const tabs = await me.getByRole("link", { name: "History", exact: true }).count().catch(() => 0);
-      check(tabs === 1, `and the three-column strip is back — one History column (read ${tabs})`);
+      const record = await me.getByRole("link", { name: "Record", exact: true }).count().catch(() => 0);
+      check(tabs === 0 && record === 1, `the strip is Record · Rankings — no History column (read History ${tabs}, Record ${record})`);
     } else {
       console.log("HEADER  the picture did not land in 25 s — is migration 20260915090000 on the database?");
       fail += 1;

@@ -386,3 +386,68 @@ export async function findMyFollowedCrews(supabase: SupabaseClient): Promise<Fol
     .filter((r) => r.crews && !r.crews.deleted_at)
     .map((r) => ({ followId: r.id, crewId: r.crew_id, name: r.crews!.name, city: r.crews!.city, style: r.crews!.style, photo: r.crews!.photo, followedAt: r.created_at }));
 }
+
+/** ⚠⚠ A MEMBER FOLLOWS THEIR OWN TEAMS (2 Oct 2026, the user: "following for
+ *  crew and studio should by default show list of team members. and reflect in
+ *  user/ artist profile when seeing following"; asked, they chose "member
+ *  follows their teams" and "derived from the team").
+ *
+ *  So nothing is written: the crews somebody is CONFIRMED on and the STUDIOS
+ *  they hold a live seat at are read off the rosters and handed back in the
+ *  shape the Following lists already draw, with a `team-` id so a caller can
+ *  tell them from a real follow. Joining or leaving moves them by itself, and
+ *  there is no follow row anybody could unfollow.
+ *
+ *  ⚠ Readable for anybody: a crew's confirmed roster is public (Step 22), and a
+ *  person's studio seats come through `person_associations`, the definer read
+ *  their profile page already makes — a listed studio's for everyone, plus the
+ *  viewer's own. An ended seat is history, not a team, and an artist page is
+ *  the person themselves, so both are left out. Every error is an empty list:
+ *  a Following figure must never be why a profile fails to render. */
+export async function findTeamFollows(supabase: SupabaseClient, userId: string): Promise<{ businesses: FollowedBusiness[]; crews: FollowedCrew[] }> {
+  const [crewRes, assocRes] = await Promise.all([
+    supabase
+      .from("crew_members")
+      .select("crew_id, created_at, crews (id, name, city, style, photo, deleted_at)")
+      .eq("user_id", userId)
+      .eq("status", "confirmed")
+      .is("deleted_at", null)
+      .limit(MAX_LIST),
+    supabase.rpc("person_associations", { p_user_id: userId }),
+  ]);
+  const crews: FollowedCrew[] = crewRes.error
+    ? []
+    : ((crewRes.data ?? []) as unknown as Array<{ crew_id: string; created_at: string; crews: { id: string; name: string; city: string; style: string; photo: string | null; deleted_at: string | null } | null }>)
+        .filter((r) => r.crews && !r.crews.deleted_at)
+        .map((r) => ({ followId: `team-c-${r.crew_id}`, crewId: r.crew_id, name: r.crews!.name, city: r.crews!.city, style: r.crews!.style, photo: r.crews!.photo, followedAt: r.created_at }));
+  const seen = new Set<string>();
+  const businesses: FollowedBusiness[] = assocRes.error
+    ? []
+    : ((assocRes.data ?? []) as Array<{ business_id: string; business_type: string; business_name: string; city: string | null; photo_path: string | null; ended: boolean }>)
+        .filter((r) => r.business_type === "studio" && !r.ended && (seen.has(r.business_id) ? false : (seen.add(r.business_id), true)))
+        .map((r) => ({
+          followId: `team-b-${r.business_id}`,
+          businessId: r.business_id,
+          businessType: "studio" as BusinessType,
+          businessName: r.business_name,
+          businessArea: null,
+          businessCity: r.city,
+          businessPhotoPath: r.photo_path ?? null,
+          followedAt: "",
+        }));
+  return { businesses, crews };
+}
+
+/** The follows a person really made, with their teams added where they do not
+ *  already follow them — one row per crew or studio, never two. */
+export function withTeamFollows(
+  follows: { businesses: FollowedBusiness[]; crews: FollowedCrew[] },
+  teams: { businesses: FollowedBusiness[]; crews: FollowedCrew[] }
+): { businesses: FollowedBusiness[]; crews: FollowedCrew[] } {
+  const b = new Set(follows.businesses.map((x) => x.businessId));
+  const c = new Set(follows.crews.map((x) => x.crewId));
+  return {
+    businesses: [...follows.businesses, ...teams.businesses.filter((x) => !b.has(x.businessId))],
+    crews: [...follows.crews, ...teams.crews.filter((x) => !c.has(x.crewId))],
+  };
+}

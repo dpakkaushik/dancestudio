@@ -2,6 +2,33 @@
 
 ## LAST SESSION (2 Oct 2026) — replaced on every push (Rule 13)
 
+> ### A CREW'S AND A STUDIO'S FOLLOWING IS ITS TEAM, A MEMBER FOLLOWS THEIR TEAMS, AND STATS LOSES HISTORY (2 Oct 2026, latest) — no migration, COMMITTED, NOT PUSHED
+> The user: *"following for crew and studio should by default show list of team
+> members. and reflect in user/ artist profile when seeing following"*, then
+> *"remove history from stats for all profiles"*. Asked, they chose **member
+> follows their teams** and **derived from the team** (no rows written).
+> * **A crew's and a studio's Following lists its team**: on the crew's page
+>   and home, the studio's home, and its public page. The count is the list's
+>   own length (`FollowingFigure rows=`, `features/profiles/teamFollowing.ts`).
+>   The owner's and leader's follow-count reads are gone, so two round trips
+>   fewer. ⚠ A studio's team is `public_studio_team`, so "Other team member"
+>   (staff) is not in it, the same rule its public page already keeps.
+> * **A member's Following includes the crews they are confirmed on and the
+>   studios they hold a live seat at** (`findTeamFollows` / `withTeamFollows`),
+>   deduped against real follows. Home, the Profile tab, somebody else's profile
+>   page and the sheet behind it all merge the same way, so each count equals
+>   its list. ⚠ Signed out, the overlap cannot be read (`profile_following` is
+>   authenticated-only), so a team that is also a real follow could count twice
+>   for a stranger. ⚠ Discover's "Followed by you" shelf is unchanged: real
+>   follows only.
+> * **Stats is Record · Rankings.** The History column and its upcoming read
+>   are gone; the past sessions still feed Record's graphs, and an old
+>   `?tab=history` link lands on Record.
+> * **Verified:** typecheck 0 · lint 0 · build green · a browser probe 13/13
+>   (one red was the probe's own em dash, mangled by a PowerShell round trip:
+>   Rule 17 again) · `shoot-hero` 186/186 (its History check re-cut) ·
+>   `shoot-tiles` 134/134 · the happy path's stats assertions re-cut, not re-run.
+
 > ### ONE TOOL PALETTE, A REAL iPHONE SWIPE, CLEANER CARDS, AND A CREW'S FOLLOWING (2 Oct 2026, latest) — no migration, ✅ PUSHED AND LIVE (`9831e04`: Vercel READY, alias confirmed on the sha through the API, the 13-check probe 13/13 and `stranger-smoke` 8/8 ON THE LIVE SITE)
 > The user, in three messages: a better colour scheme for every tool and the
 > heading inside its page, the same on every profile; Discover cards without

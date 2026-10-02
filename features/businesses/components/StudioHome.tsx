@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { ArrangeTools } from "@/features/home/components/ArrangeTools";
 import type { Tile } from "@/features/home/components/home-kit";
+import type { FollowListResult } from "@/features/profiles/server-actions/followLists";
 import { arrangeTiles, orderOf, toolsLayoutKey } from "@/features/home/toolOrder";
 import { TodayShelf } from "@/features/home/components/TodayShelf";
 import { BusinessEditFromUrl } from "@/features/profiles/components/BusinessEditSheet";
@@ -75,7 +76,7 @@ export function StudioHome({
    *  (20 Sep 2026). `follower_counts` is aggregate-only and anon-readable, so
    *  it costs one row and names nobody. */
   followers = 0,
-  followingN = null,
+  followingRows = [],
   tiles,
   /** this member's own arrangement of THIS studio's tools (22 Sep 2026) — keyed
    *  by the studio, so two people on one team each arrange it for themselves */
@@ -97,9 +98,8 @@ export function StudioHome({
   roomCount: number;
   styles: string[];
   followers?: number;
-  /** what the ACCOUNT THAT OWNS this studio follows (20 Sep 2026) — a studio
-   *  has nothing to follow with of its own; null draws no figure */
-  followingN?: number | null;
+  /** ⚠ the studio's TEAM, which is what its Following lists (2 Oct 2026) */
+  followingRows?: FollowListResult["rows"];
   tiles: Tile[];
   order?: string[] | null;
   editOpen?: boolean;
@@ -263,7 +263,10 @@ export function StudioHome({
                     the user pressed on a crew's and an organization's home, and
                     it is fixed on all three rather than on the two complained
                     about (C36's lesson). The list is the OWNER's own. */}
-                <FollowingFigure n={followingN} testId="studio-following" />
+{/* ⚠⚠ AND SINCE 2 Oct 2026 IT IS THE STUDIO'S TEAM (the user:
+                    "following for crew and studio should by default show list of
+                    team members") — derived from the seats, not stored */}
+                <FollowingFigure n={null} rows={followingRows} always testId="studio-following" />
               </>
             }
             /* the chips at the row's right edge (20 Sep 2026) — the studio's own

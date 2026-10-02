@@ -7,6 +7,7 @@ import { headerMaxFor } from "@/lib/media/photo";
 import { kindOf } from "@/types/profile";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { findPersonHeaderPhotos } from "@/repositories/headerPhotos";
+import { findTeamFollows } from "@/repositories/follows";
 import { findMembershipsOnSale } from "@/repositories/memberships";
 import { findNextPublicSessions } from "@/repositories/calendar";
 import { findPublicPerson, isFollowingPerson, personScheduleBusiness } from "@/repositories/publicPerson";
@@ -112,7 +113,7 @@ export default async function PersonPage({ params }: { params: Promise<{ userId:
      one business. A preview of somebody else's schedule under a bar that opens
      this one's would be a lie nothing on the page could correct. */
   const schedule = personScheduleBusiness(person);
-  const [following, header, memberships, artistTeam, nextSessions] = await Promise.all([
+  const [following, header, memberships, artistTeam, nextSessions, followingN] = await Promise.all([
     !isMe && user ? isFollowingPerson(supabase, userId) : Promise.resolve(false),
     /* THE HEADER (15 Sep 2026): their own pictures, as many as their KIND shows —
        one for a user, five for an artist (19 Sep 2026) */
@@ -133,7 +134,27 @@ export default async function PersonPage({ params }: { params: Promise<{ userId:
     schedule
       ? findNextPublicSessions(supabase, schedule.id, { name: schedule.name, city: schedule.city })
       : Promise.resolve([]),
+    /* ⚠⚠ THEIR FOLLOWING COUNTS THEIR TEAMS (2 Oct 2026, the user: "reflect in
+       user/ artist profile when seeing following"). A member follows the crews
+       and studios they are on — derived, so the figure is what they really
+       follow plus each team they do not already follow, which is exactly the
+       list the sheet opens onto (`loadFollowingAction` merges the same two). The
+       overlap is read only when there is a team and a signed-in reader, because
+       `profile_following` is authenticated-only; signed out it cannot be read,
+       and a team is rarely also a follow. */
+    (async () => {
+      const teams = await findTeamFollows(supabase, userId).catch(() => ({ businesses: [], crews: [] }));
+      const n = teams.businesses.length + teams.crews.length;
+      if (!n) return person.following;
+      let overlap = 0;
+      if (user) {
+        const { data } = await supabase.rpc("profile_following", { p_user_id: userId });
+        const ids = new Set(((data ?? []) as Array<{ id: string }>).map((r) => r.id));
+        overlap = teams.businesses.filter((b) => ids.has(b.businessId)).length + teams.crews.filter((c) => ids.has(c.crewId)).length;
+      }
+      return person.following + n - overlap;
+    })(),
   ]);
 
-  return <PublicPersonPage person={person} header={header} isMe={isMe} following={following} signedIn={Boolean(user)} memberships={memberships} artistTeam={artistTeam} nextSessions={nextSessions} />;
+  return <PublicPersonPage person={{ ...person, following: followingN }} header={header} isMe={isMe} following={following} signedIn={Boolean(user)} memberships={memberships} artistTeam={artistTeam} nextSessions={nextSessions} />;
 }

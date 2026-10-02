@@ -8,6 +8,7 @@ import { memberNoWords } from "@/types/profile";
 import { EntityBand } from "@/features/profiles/components/profile-band";
 import { FollowerFigure } from "@/features/profiles/components/FollowerFigure";
 import { FollowingFigure } from "@/features/profiles/components/FollowingFigure";
+import { crewTeamRows } from "@/features/profiles/teamFollowing";
 import { ProfileLink, ProfileShare } from "@/features/profiles/components/ProfileShare";
 import { StatsChip } from "@/features/profiles/components/StatsChip";
 import { EyeIcon, cornerChip } from "@/features/profiles/components/profile-kit";
@@ -41,7 +42,7 @@ import { CrewPicturesButton, CrewPostersButton } from "./CrewPictures";
  *  five, new today), the city, the style, the email — and the eye opens the
  *  crew's page as a stranger sees it. The picker that sat under the hero moved
  *  into the sheet, where every other picture in the app is changed. */
-export function CrewHome({ crew, members, header = [], followers = 0, followingN = null, order = null, editOpen = false }: { crew: Crew; members: CrewMember[]; header?: HeaderPhoto[]; /** how many follow this crew — `crew_follower_counts`, aggregate-only (20 Sep 2026) */ followers?: number; /** what the ACCOUNT THAT LEADS it follows (27 Sep 2026) — a crew has nothing to follow with; null draws no figure */ followingN?: number | null; /** this leader's own arrangement of THIS crew's tools (22 Sep 2026) */ order?: string[] | null; /** `?edit=1`, which Settings' "Edit crew" navigates here with (22 Sep 2026) — the leader's alone, and `requireLedCrew` is what has already said so */ editOpen?: boolean }) {
+export function CrewHome({ crew, members, header = [], followers = 0, order = null, editOpen = false }: { crew: Crew; members: CrewMember[]; header?: HeaderPhoto[]; /** how many follow this crew — `crew_follower_counts`, aggregate-only (20 Sep 2026) */ followers?: number; /** this leader's own arrangement of THIS crew's tools (22 Sep 2026) */ order?: string[] | null; /** `?edit=1`, which Settings' "Edit crew" navigates here with (22 Sep 2026) — the leader's alone, and `requireLedCrew` is what has already said so */ editOpen?: boolean }) {
   const confirmed = members.filter((m) => m.status === "confirmed").length;
   const asked = members.filter((m) => m.status === "asked").length;
   const tiles: Tile[] = [
@@ -165,7 +166,10 @@ export function CrewHome({ crew, members, header = [], followers = 0, followingN
                     had been a door since that morning. The list is the LEADER's
                     own, which is whose count this is; `FollowingFigure` says
                     why it takes no argument. */}
-                <FollowingFigure n={followingN} always testId="crew-following" />
+                {/* ⚠⚠ AND SINCE 2 Oct 2026 IT IS THE CREW'S TEAM (the user: "following
+                    for crew and studio should by default show list of team
+                    members") — not the leader's follows any more */}
+                <FollowingFigure n={null} rows={crewTeamRows(members)} always testId="crew-following" />
               </>
             }
             /* the chips at the row's right edge (20 Sep 2026). No Follow bell:

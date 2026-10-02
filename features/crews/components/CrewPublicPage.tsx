@@ -4,6 +4,7 @@ import { ActionRow, CallButton, MailButton, MessageButton, whatsappHrefOf } from
 import { EntityBand } from "@/features/profiles/components/profile-band";
 import { FollowerFigure } from "@/features/profiles/components/FollowerFigure";
 import { FollowingFigure } from "@/features/profiles/components/FollowingFigure";
+import { crewTeamRows } from "@/features/profiles/teamFollowing";
 import { FollowToggle } from "@/features/profiles/components/FollowToggle";
 import type { HeroShot } from "@/features/profiles/components/HeroRail";
 import { ProfileLink, ProfileShare } from "@/features/profiles/components/ProfileShare";
@@ -65,11 +66,8 @@ export function CrewPublicPage({
   viewer,
   following = false,
   followers = null,
-  followingN = null,
   signedIn,
 }: {
-  /** what the crew's LEADER follows — a crew follows nothing of its own */
-  followingN?: number | null;
   crew: Crew;
   members: CrewMember[];
   /** THE HEADER PICTURES (19 Sep 2026): up to five, the leader's to add */
@@ -130,9 +128,9 @@ export function CrewPublicPage({
             figures={
               <>
                 <FollowerFigure n={followers} kind="crew" id={crew.id} name={crew.name} testId="crew-public-followers" />
-                {/* the LEADER's following, opening their list (2 Oct 2026) — the
-                    crew's own home has printed the same figure since 27 Sep */}
-                <FollowingFigure n={followingN} userId={crew.leaderId} always testId="crew-public-following" />
+                {/* ⚠ A CREW'S FOLLOWING IS ITS TEAM (2 Oct 2026, the user's
+                    later word) — the confirmed roster, opening as a list */}
+                <FollowingFigure n={null} rows={crewTeamRows(members)} always testId="crew-public-following" />
               </>
             }
             /* the three chips at the row's right edge (20 Sep 2026) — the QR, the
