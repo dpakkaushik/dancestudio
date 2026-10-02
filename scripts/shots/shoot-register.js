@@ -322,6 +322,101 @@ const valueOf = (page, label) => page.getByLabel(label).inputValue();
     const wAttGone = await rows(owner.h, `attendance?class_booking_id=eq.${wRow[0].id}&deleted_at=is.null&select=id`);
     check(wAttGone.length === 0, "⚠ and the attendance row goes with it — the register stops counting somebody who was never here");
 
+    /* ── 3c. PAID AT THE DOOR (2 Oct 2026, `set_door_paid`, 20261002140000) ──
+       The user: "option to complete due in attendance sheet for walk in students
+       with button next to check in called paid. for booked students it cant
+       change." The class above is FREE, so nothing is due there; this one costs
+       ₹300. A walk-in is marked paid and unmarked through the real button, read
+       back out of the database each time; and a seat the learner booked
+       THEMSELVES gets no button, and the database refuses it too. */
+    const paidCls = await rpc(owner.h, "create_class_with_session", {
+      p_business_id: studio.id,
+      p_title: "Hip-Hop · All levels",
+      p_venue_business_id: null,
+      p_room_id: null,
+      p_lat: null,
+      p_lng: null,
+      p_maps_url: null,
+      p_style: "Hip-Hop",
+      p_level: "all",
+      p_room: "Studio B",
+      p_price_inr: 300,
+      p_capacity: 12,
+      p_status: "draft",
+      p_starts_at: at(60 * 24 * 31),
+      p_ends_at: at(60 * 24 * 31 + 60),
+    });
+    await rpc(owner.h, "ask_class_person", { p_class_id: paidCls.id, p_user_id: owner.id, p_kind: "artist", p_pay_per_session_inr: 0 });
+    await patch(owner.h, `classes?id=eq.${paidCls.id}`, { status: "published" });
+    const paidSession = (await rows(owner.h, `class_sessions?class_id=eq.${paidCls.id}&select=id&deleted_at=is.null`))[0];
+    await patch(H_SERVICE, `class_sessions?id=eq.${paidSession.id}`, { starts_at: at(-10), ends_at: at(50) });
+    /* a seat the learner booked THEMSELVES — planted the way the payment rail
+       leaves one (a priced class is booked through Cashfree, which a script
+       cannot drive), so `created_by` is the learner */
+    await call("POST", "/rest/v1/class_bookings", H_SERVICE, {
+      session_id: paidSession.id,
+      class_id: paidCls.id,
+      business_id: studio.id,
+      user_id: learner.id,
+      status: "enrolled",
+      created_by: learner.id,
+      updated_by: learner.id,
+    }, "plant a self-booked seat");
+    const paidSlug = (await rows(owner.h, `classes?id=eq.${paidCls.id}&select=share_slug`))[0].share_slug;
+
+    await page.goto(`${BASE}/c/${paidSlug}`, { waitUntil: "networkidle" });
+    await page.getByRole("button", { name: "Attendance", exact: true }).click();
+    const payName = `Cash Walk ${stamp}`;
+    await page.getByTestId("walk-in-name").waitFor({ timeout: 20000 });
+    await page.getByTestId("walk-in-name").fill(payName);
+    await page.getByTestId("walk-in-add").click();
+    await page.getByText(`${payName} is in`, { exact: false }).waitFor({ timeout: 20000 });
+
+    const markPaid = page.getByRole("button", { name: `Mark ${payName} paid`, exact: true });
+    await markPaid.waitFor({ timeout: 20000 });
+    check(true, "⚠ a walk-in on a priced class has a Paid button beside its row");
+    check(
+      (await page.getByText("₹300 due at the door", { exact: false }).count()) >= 1,
+      "and the row says what is owed at the door before it is pressed"
+    );
+    check(
+      (await page.getByRole("button", { name: `Mark ${learner.name} paid`, exact: true }).count()) === 0,
+      "⚠ a seat the learner booked THEMSELVES has no Paid button — that money is the rail's, not the door's"
+    );
+
+    await markPaid.click();
+    await page.getByRole("button", { name: `Mark ${payName} not paid`, exact: true }).waitFor({ timeout: 20000 });
+    const payRow = await rows(
+      owner.h,
+      `class_bookings?class_id=eq.${paidCls.id}&attendee_name=eq.${encodeURIComponent(payName)}&deleted_at=is.null&select=id,door_paid_at,door_paid_by`
+    );
+    check(payRow.length === 1 && payRow[0].door_paid_at !== null, "⚠⚠ pressing Paid records it in the database — door_paid_at is set");
+    check(payRow[0] && payRow[0].door_paid_by === owner.id, "and it records WHO marked it paid");
+    await page.reload({ waitUntil: "networkidle" });
+    await page.getByRole("button", { name: "Attendance", exact: true }).click();
+    await page.getByRole("button", { name: `Mark ${payName} not paid`, exact: true }).waitFor({ timeout: 20000 });
+    check(
+      (await page.getByText("paid at the door · ₹300", { exact: false }).count()) >= 1,
+      "and after a reload the row reads \"paid at the door · ₹300\" — it was saved, not just drawn"
+    );
+
+    /* a mis-press can be taken back */
+    await page.getByRole("button", { name: `Mark ${payName} not paid`, exact: true }).click();
+    await page.getByRole("button", { name: `Mark ${payName} paid`, exact: true }).waitFor({ timeout: 20000 });
+    const unpaid = await rows(owner.h, `class_bookings?id=eq.${payRow[0].id}&select=door_paid_at,door_paid_by`);
+    check(unpaid[0] && unpaid[0].door_paid_at === null && unpaid[0].door_paid_by === null, "⚠ and pressing it again takes it back, in the database too");
+
+    /* the database's own refusal for the self-booked seat — the screen not
+       drawing a button is presentation; this is the rule */
+    const selfSeat = (await rows(owner.h, `class_bookings?class_id=eq.${paidCls.id}&user_id=eq.${learner.id}&deleted_at=is.null&select=id`))[0];
+    let refusal = "ACCEPTED";
+    try {
+      await rpc(owner.h, "set_door_paid", { p_class_booking_id: selfSeat.id, p_paid: true });
+    } catch (e) {
+      refusal = e.message;
+    }
+    check(/booked this seat themselves/.test(refusal), `⚠ and the database refuses the self-booked seat in words (${refusal.slice(0, 90)})`);
+
     /* ── 4. THE NAME EVERY DRILL PAGE LOST ──────────────────────────────────── */
     const NAMED = [
       ["/notifications", "notifications"],

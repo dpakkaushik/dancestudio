@@ -151,7 +151,11 @@ export async function startSubscriptionAction(input: unknown): Promise<StartSubs
        is a row nothing can start now, and its six live rows on production are
        the sweep's; a stray one reaching here lands on the account's own plan,
        which is a true screen rather than a dead address. */
-    const returnUrl = `${await siteOrigin()}${row.kind === "studio" ? "/business" : "/subscription"}`;
+    /* ⚠ Since 2 Oct 2026 it returns through `/pay/subscription`, which CONFIRMS
+       the mandate with Cashfree before landing — a phone coming back by
+       full-page redirect never runs SubscribeButton's own confirm, so an artist
+       who had just paid saw no welcome bow and the plan waited for the webhook. */
+    const returnUrl = `${await siteOrigin()}/pay/subscription?sub=${row.id}`;
     const cfSub = await createCashfreeSubscription({
       providerSubscriptionId,
       providerPlanId,

@@ -40,8 +40,22 @@
 >   * ⚠ The one red was a TEST: `goto("/profile")` redirects to `/person/{id}`,
 >     and the gear was pressed before React had claimed it (the snapshot showed
 >     the page fully drawn). It waits for the address and retries the press now.
-> * ⚠ **The Paid button has no browser check** — only the dry run covers its
->   rules. `shoot-register` is where it belongs next time it is opened.
+> * **AND THE TWO FOLLOW-UPS, on the user's *"fix first 2 from suggestions"*:**
+>   * **The Paid button is driven in a browser** — `shoot-register` gained a
+>     priced class: a walk-in shows "₹300 due at the door", Paid writes
+>     `door_paid_at` + `door_paid_by` (read back from the database), the row
+>     survives a reload as "paid at the door · ₹300", a second press takes it
+>     back, a self-booked seat draws no button and the RPC refuses it in words.
+>     **65/65** (57 before).
+>   * **An artist paying on a phone gets the bow.** The mandate's `return_url`
+>     was plain `/subscription`, so a full-page redirect back never ran
+>     `SubscribeButton`'s confirm. It is `/pay/subscription?sub={id}` now —
+>     `/pay/return`'s twin: it looks the id up among the caller's OWN
+>     subscriptions, confirms with Cashfree through `confirmSubscriptionAction`,
+>     and lands on `/subscription?welcome=artist` only when the plan is ACTIVE
+>     (a studio's on its own Subscription screen). ⚠ **Not driven end to end** —
+>     a real mandate cannot be authorised from a script; only the signed-out
+>     307 and the bad-id 307 were probed.
 
 > ### ENQUIRIES ARE BACK IN EVERY INBOX, DONE IS "COMPLETED" BY RECEIVED · SENT, AND DISCOVER LOOKS IN ALL CITIES (2 Oct 2026, latest) — no migration, ✅ PUSHED AND LIVE (`66ecd32`: Vercel READY, alias confirmed on the sha through the API, `stranger-smoke` 8/8 and `shoot-inbox` 29/29 ON THE LIVE SITE)
 > The user, in a run of messages: *"shift back enquiries to in box from home
