@@ -1491,10 +1491,26 @@ test.describe.serial("DanceOS, end to end", () => {
        derived name, so the tile is pinned to this run's class by its share slug */
     const ourTile = learner.locator(`a[href="/c/${shareSlug}"][aria-label="Open ${classTitle}"]`);
     await expect(ourTile).toBeVisible();
-    await learner.getByRole("button", { name: "Bollywood", exact: true }).click();
+    /* ⚠ THE STYLE RAIL IS INSIDE THE FILTER SHEET since 2 Oct 2026 (the user:
+       "dance styles inside filter on discover"), under FAMILY — and what is
+       picked rides the row under the tabs as a pill that takes it off */
+    await learner.getByRole("button", { name: "All filters" }).click();
+    const styleSheet = learner.getByRole("dialog", { name: "Filters" });
+    await styleSheet.getByRole("button", { name: "Bollywood", exact: true }).click();
     await learner.waitForURL(/styles=Bollywood/);
-    await expect(learner.getByRole("button", { name: "Bollywood", exact: true })).toHaveAttribute("aria-pressed", "true");
+    await expect(styleSheet.getByRole("button", { name: "Bollywood", exact: true })).toHaveAttribute("aria-pressed", "true");
+    await styleSheet.getByRole("button", { name: "Show results" }).click();
+    await expect(learner.getByRole("button", { name: "Remove Bollywood", exact: true })).toBeVisible();
     await expect(ourTile).toBeVisible();
+    // a FAMILY narrows the same way: Bollywood's own keeps the class, Latin drops it
+    await learner.goto("/discover?city=Pune&tab=classes&fam=Bollywood");
+    await expect(ourTile).toBeVisible();
+    await learner.goto("/discover?city=Pune&tab=classes&fam=Latin");
+    await expect(learner.getByText("Nothing in Pune matches that")).toBeVisible();
+    // and the Styles section has filters of its own: Latin is its three styles
+    await learner.goto("/discover?city=Pune&tab=styles&fam=Latin");
+    await expect(learner.getByTestId("style-card")).toHaveCount(3);
+    await expect(learner.getByRole("button", { name: "Remove Latin family", exact: true })).toBeVisible();
     // a style the studio does not teach empties the shelf, with a door back
     await learner.goto("/discover?city=Pune&tab=classes&styles=Kalbelia");
     await expect(learner.getByText("Nothing in Pune matches that")).toBeVisible();

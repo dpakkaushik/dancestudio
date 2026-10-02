@@ -511,3 +511,8 @@ export function stylesShelfOrder(): string[] {
 /** a style's record, or a plain one for anything the map has not been told about */
 export const styleInfo = (style: string): StyleInfo =>
   STYLE_INFO[style] ?? { family: "Dance", origin: "Passed between communities", country: "Global", era: "Traditional", history: ["A living tradition carried by teachers, crews and competitions."], notable: [] };
+
+/** the families, in registry order — Discover's FAMILY filter (2 Oct 2026) */
+export const STYLE_FAMILIES: readonly string[] = [...new Set(DOS_STYLE_NAMES.map((s) => styleInfo(s).family))];
+/** the styles of these families, in registry order */
+export const stylesOfFamilies = (fams: readonly string[]): string[] => DOS_STYLE_NAMES.filter((s) => fams.includes(styleInfo(s).family));

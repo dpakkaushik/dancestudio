@@ -8,6 +8,7 @@ import { searchEverythingAction } from "@/features/discovery/server-actions/sear
 import { gradientOf } from "@/features/profiles/components/profile-kit";
 import { photoUrl } from "@/lib/media/photo";
 import { dosStyleColor } from "@/lib/constants/styles";
+import { STYLE_FAMILIES, styleInfo, stylesOfFamilies } from "@/lib/constants/styleInfo";
 import { DOS_DISPLAY } from "@/lib/design/tokens";
 import { useCloseOnBack } from "@/lib/hooks/useCloseOnBack";
 import type { SearchHit, SearchKind } from "@/repositories/search";
@@ -128,15 +129,27 @@ export function DiscoverFilters({ tab, city, filters, styleOrder, tabs, as = nul
     setTimeout(() => setTapped(null), 450);
     go({ ...filters, styles: s === "All" ? [] : filters.styles.includes(s) ? filters.styles.filter((x) => x !== s) : [...filters.styles, s] });
   };
-  const reset = () => go({ ...filters, sort: "near", dist: "any", when: "any", dur: "any", prices: [] });
+  /* ⚠ PICKING A FAMILY DROPS ANY PICKED STYLE OUTSIDE IT (2 Oct 2026), so the
+     sheet can never hold "Latin" and "Kathak" at once — the style list below
+     only offers the family's own styles, and the two agree by construction */
+  const toggleFam = (fam: string) => {
+    const fams = filters.fams.includes(fam) ? filters.fams.filter((x) => x !== fam) : [...filters.fams, fam];
+    const inFams = new Set(stylesOfFamilies(fams));
+    go({ ...filters, fams, styles: fams.length ? filters.styles.filter((s) => inFams.has(s)) : filters.styles });
+  };
+  const reset = () => go({ ...filters, styles: [], fams: [], has: false, sort: "near", dist: "any", when: "any", dur: "any", prices: [] });
 
   const isBiz = tab === "studios" || tab === "artists";
+  const isStyles = tab === "styles";
   const onN = filtersOnCount(filters, tab);
   const freeOn = filters.prices.length === 1 && filters.prices[0] === "free";
+  /* the styles the sheet offers: the picked families' own, or all of them */
+  const offered = filters.fams.length ? styleOrder.filter((s) => filters.fams.includes(styleInfo(s).family)) : styleOrder;
   /* ⚠ THE THIRD CHIP WAS "BATTLES" ON THE EVENTS TAB (29 Sep 2026) — the one
      quick filter that was not shared, and the only place `tab` decided which
-     chips these were. With events gone every tab gets the same three. */
-  const quick: Array<[string, string, boolean, () => void]> = [
+     chips these were. With events gone every tab gets the same three. ⚠ The
+     Styles tab has its own one (2 Oct 2026): just the styles taught here. */
+  const quick: Array<[string, string, boolean, () => void]> = isStyles ? [["has", `Classes in ${city}`, filters.has, () => go({ ...filters, has: !filters.has })]] : [
     ["free", "Free", freeOn, () => go({ ...filters, prices: freeOn ? [] : ["free"] })],
     ["eve", "Evening", filters.when === "evening", () => go({ ...filters, when: filters.when === "evening" ? "any" : "evening" })],
     /* ⚠ "WITHIN 5 KM", NOT "NEAR ME" (21 Sep 2026). This chip is a RADIUS —
@@ -156,12 +169,15 @@ export function DiscoverFilters({ tab, city, filters, styleOrder, tabs, as = nul
         {l}
       </div>
     ));
-  const multi = <T extends string>(opts: Array<[T, string]>, val: T[], set: (v: T[]) => void) =>
+  /* `aria` names a chip apart from a same-worded one elsewhere in the sheet —
+     "Bollywood" is a FAMILY and a STYLE, and two controls may not answer to one
+     name (2 Oct 2026, found by the e2e's strict locator) */
+  const multi = <T extends string>(opts: Array<[T, string]>, val: T[], set: (v: T[]) => void, aria?: (l: string) => string) =>
     opts.map(([v, l]) => {
       const on = val.includes(v);
       const flip = () => set(on ? val.filter((x) => x !== v) : [...val, v]);
       return (
-        <div role="button" tabIndex={0} onKeyDown={pressKey(flip)} key={v} aria-pressed={on} aria-label={l} onClick={flip} style={chip(on)}>
+        <div role="button" tabIndex={0} onKeyDown={pressKey(flip)} key={v} aria-pressed={on} aria-label={aria ? aria(l) : l} onClick={flip} style={chip(on)}>
           {l}
         </div>
       );
@@ -229,31 +245,18 @@ export function DiscoverFilters({ tab, city, filters, styleOrder, tabs, as = nul
       {/* the five section tabs — the page hands them in, so they sit under the search box as they do in the prototype (4571) */}
       {tabs}
 
-      {/* ⚠ THE STYLES TAB (2 Oct 2026) HAS NO STYLE RAIL AND NO FILTERS: its
-          shelf IS every style, so narrowing it by style or by price would be a
-          control that filters nothing. */}
-      {tab !== "styles" ? (
-      <>
-      {/* THE STYLE RAIL — the app's one style tile, in three rows (4596) */}
-      <div style={{ overflowX: "auto", scrollbarWidth: "none", padding: "9px 7px 8px", margin: "0 -7px" }}>
-        {[0, 1, 2].map((rw) => (
-          <div key={rw} style={{ display: "flex", gap: 7, width: "max-content", marginTop: rw ? 7 : 0 }}>
-            {["All", ...styleOrder]
-              .filter((_, ri) => ri % 3 === rw)
-              .map((s) => {
-                const active = s === "All" ? filters.styles.length === 0 : filters.styles.includes(s);
-                return (
-                  <span key={s} style={{ display: "inline-flex", flexShrink: 0, animation: tapped === s ? "dosPop .45s ease" : "none" }}>
-                    <DosStyleTile label={s} color={s === "All" ? "#5AC8FA" : dosStyleColor(s)} on={active} tap={() => toggleStyle(s)} aria={s === "All" ? "All styles" : s} />
-                  </span>
-                );
-              })}
-          </div>
-        ))}
-      </div>
+      {/* ⚠⚠ THE STYLE RAIL MOVED INTO THE SHEET (2 Oct 2026, the user: "dance
+          styles inside filter on discover for studios, artist crews, classes and
+          styles. family for dance style in filters as well. also add filters on
+          style section on discover"). Three rows of 49 tiles stood between the
+          tabs and the shelf on every tab; they are the sheet's DANCE STYLES row
+          now, under FAMILY, and what is picked rides the row below as a pill
+          you can take off — a filter you cannot see is a list that looks broken.
+          ⚠ The Styles tab has filters at last: its shelf can be narrowed by
+          family, by style and to the styles taught in this city, and ordered. */}
 
-      {/* Filters · N, then the two or three quick chips (4655-4696) */}
-      <div style={{ display: "flex", gap: 7, alignItems: "center", padding: "2px 0 10px", overflowX: "auto", scrollbarWidth: "none" }}>
+      {/* Filters · N, the quick chips (4655-4696), then whatever is picked */}
+      <div style={{ display: "flex", gap: 7, alignItems: "center", padding: "10px 0 10px", overflowX: "auto", scrollbarWidth: "none" }}>
         <div
           role="button"
           tabIndex={0}
@@ -272,14 +275,22 @@ export function DiscoverFilters({ tab, city, filters, styleOrder, tabs, as = nul
             {label}
           </div>
         ))}
+        {filters.fams.map((f) => (
+          <div role="button" tabIndex={0} key={`fam-${f}`} onKeyDown={pressKey(() => toggleFam(f))} aria-label={`Remove ${f} family`} onClick={() => toggleFam(f)} data-testid="picked-family" style={{ flexShrink: 0, display: "inline-flex", alignItems: "center", gap: 5, height: 32, padding: "0 11px", borderRadius: 16, cursor: "pointer", fontWeight: 800, fontSize: 11.5, boxSizing: "border-box", background: "var(--text)", color: "var(--solid)", border: "1.5px solid var(--text)", whiteSpace: "nowrap" }}>
+            {f} <span aria-hidden="true">✕</span>
+          </div>
+        ))}
+        {filters.styles.map((s) => (
+          <div role="button" tabIndex={0} key={`st-${s}`} onKeyDown={pressKey(() => toggleStyle(s))} aria-label={`Remove ${s}`} onClick={() => toggleStyle(s)} data-testid="picked-style" style={{ flexShrink: 0, display: "inline-flex", alignItems: "center", gap: 5, height: 32, padding: "0 11px", borderRadius: 16, cursor: "pointer", fontWeight: 800, fontSize: 11.5, boxSizing: "border-box", background: dosStyleColor(s), color: "#fff", border: `1.5px solid ${dosStyleColor(s)}`, whiteSpace: "nowrap" }}>
+            {s} <span aria-hidden="true">✕</span>
+          </div>
+        ))}
         {onN ? (
           <div role="button" tabIndex={0} onKeyDown={pressKey(reset)} aria-label="Clear filters" onClick={reset} style={{ flexShrink: 0, display: "inline-flex", alignItems: "center", height: 32, padding: "0 12px", borderRadius: 16, cursor: "pointer", fontWeight: 800, fontSize: 11.5, background: "transparent", border: "1px dashed var(--el)", color: "var(--muted)" }}>
             Clear
           </div>
         ) : null}
       </div>
-      </>
-      ) : null}
 
       {/* ⚠ THE EVENTS TAB'S OWN SEARCH BOX (S_eventslist 13551) WENT WITH EVENTS
           (29 Sep 2026) — title, style or organiser, debounced into `?q=`. It was
@@ -297,11 +308,34 @@ export function DiscoverFilters({ tab, city, filters, styleOrder, tabs, as = nul
                 Reset all
               </span>
             </div>
-            <Row label="SORT BY">{pick<SortBy>([["near", "Nearest"], ["soon", "Earliest"], ["price", "Cheapest"]], filters.sort, (v) => go({ ...filters, sort: v }))}</Row>
+            <Row label="FAMILY">
+              {multi<string>(STYLE_FAMILIES.map((f) => [f, f]), filters.fams, (v) => {
+                const inFams = new Set(stylesOfFamilies(v));
+                go({ ...filters, fams: v, styles: v.length ? filters.styles.filter((s) => inFams.has(s)) : filters.styles });
+              }, (l) => `${l} family`)}
+            </Row>
+            <Row label={filters.fams.length ? `DANCE STYLES · ${filters.fams.join(" · ").toUpperCase()}` : "DANCE STYLES"}>
+              {["All", ...offered].map((s) => {
+                const active = s === "All" ? filters.styles.length === 0 : filters.styles.includes(s);
+                return (
+                  <span key={s} style={{ display: "inline-flex", flexShrink: 0, animation: tapped === s ? "dosPop .45s ease" : "none" }}>
+                    <DosStyleTile small label={s} color={s === "All" ? "#5AC8FA" : dosStyleColor(s)} on={active} tap={() => toggleStyle(s)} aria={s === "All" ? "All styles" : s} />
+                  </span>
+                );
+              })}
+            </Row>
+            {isStyles ? (
+              <>
+                <Row label="SHOW">{pick<"all" | "has">([["all", "Every style"], ["has", `With classes in ${city}`]], filters.has ? "has" : "all", (v) => go({ ...filters, has: v === "has" }))}</Row>
+                <Row label="SORT BY">{pick<SortBy>([["near", "Classical first"], ["popular", "Most classes"], ["az", "A–Z"]], filters.sort, (v) => go({ ...filters, sort: v }))}</Row>
+              </>
+            ) : (
+              <Row label="SORT BY">{pick<SortBy>([["near", "Nearest"], ["soon", "Earliest"], ["price", "Cheapest"]], filters.sort, (v) => go({ ...filters, sort: v }))}</Row>
+            )}
             {isBiz ? <Row label="DISTANCE">{pick<Dist>([["any", "Any"], ["2", "Within 2 km"], ["5", "Within 5 km"], ["10", "Within 10 km"]], filters.dist, (v) => go({ ...filters, dist: v }))}</Row> : null}
-            {!isBiz && tab !== "crews" ? <Row label="TIME OF DAY">{pick<When>([["any", "Any"], ["morning", "Morning"], ["afternoon", "Afternoon"], ["evening", "Evening"]], filters.when, (v) => go({ ...filters, when: v }))}</Row> : null}
+            {!isBiz && !isStyles && tab !== "crews" ? <Row label="TIME OF DAY">{pick<When>([["any", "Any"], ["morning", "Morning"], ["afternoon", "Afternoon"], ["evening", "Evening"]], filters.when, (v) => go({ ...filters, when: v }))}</Row> : null}
             {tab === "classes" ? <Row label="DURATION">{pick<Dur>([["any", "Any"], ["60", "Up to 1 h"], ["90", "Up to 1½ h"], ["120", "Up to 2 h"]], filters.dur, (v) => go({ ...filters, dur: v }))}</Row> : null}
-            {!isBiz && tab !== "crews" ? <Row label="PRICE">{multi<PriceBand>([["free", "Free"], ["paid", "Paid"]], filters.prices, (v) => go({ ...filters, prices: v }))}</Row> : null}
+            {!isBiz && !isStyles && tab !== "crews" ? <Row label="PRICE">{multi<PriceBand>([["free", "Free"], ["paid", "Paid"]], filters.prices, (v) => go({ ...filters, prices: v }))}</Row> : null}
             {/* ⚠ TYPE OF EVENT and COMPETING AS were the sheet's last two rows
                 and went with events (29 Sep 2026). The prototype's own rule
                 still holds for the four that are left: a row is offered only

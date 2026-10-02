@@ -2,6 +2,28 @@
 
 ## LAST SESSION (2 Oct 2026) — replaced on every push (Rule 13)
 
+> ### STYLES AND FAMILIES LIVE IN THE FILTER SHEET, AND THE STYLES TAB HAS FILTERS (2 Oct 2026, latest) — no migration, ⚠ COMMITTED LOCALLY, NOT PUSHED
+> The user: *"dance styles inside filter on discover for studios, artist crews,
+> classes and styles. family for dance style in filters as well. also add
+> filters on style section on discover."*
+> * **The three-row style rail is gone from the page** and is the sheet's
+>   **DANCE STYLES** row, under a new **FAMILY** row, on all five tabs. Whatever
+>   is picked rides the row under the tabs as a removable pill (`Remove Kathak`,
+>   `Remove Latin family`) and counts on the Filters button.
+> * **One rule joins the two** (`effectiveStyles` in `features/discovery/filters.ts`):
+>   picked styles win, otherwise the picked families' styles. Picking a family
+>   drops any picked style outside it and the sheet offers only that family's
+>   styles, so they cannot contradict. URL: `fam=`, alongside `styles=`.
+> * **The Styles tab's own filters**: family, style, SHOW (every style / with
+>   classes in the city, also a quick chip `?has=1`), SORT (Classical first /
+>   Most classes / A–Z, `sort=popular|az`). Price and time are not offered there.
+> * ⚠ A family chip's accessible name is **"{family} family"** — "Bollywood" is
+>   both a family and a style, and the e2e's strict locator found the two buttons.
+> * **Verified:** typecheck 0 · lint 0 · build green · a browser check 29/29 ·
+>   `shoot-discover` 45/45 (its "the word is still elsewhere" check now opens the
+>   sheet) · the happy path + back navigation **23/23** (the Discover segment
+>   re-cut to pick from the sheet, plus family and Styles-tab checks).
+
 > ### THE STYLES ARE DRAWN DANCERS NOW, NOT PHOTOS (2 Oct 2026, latest) — no migration, ✅ PUSHED AND LIVE (`d72c94b`, with `e355a8a` before it)
 > ✅ Read back off the deployment: Vercel's list for this sha BUILDING → READY,
 > the alias confirmed on it through the API, and ON THE LIVE SITE in both

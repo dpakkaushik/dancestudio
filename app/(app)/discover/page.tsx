@@ -13,7 +13,7 @@ import { FollowedShelf, type FollowedTile } from "@/features/discovery/component
 import { PlaceChip } from "@/features/discovery/components/PlaceChip";
 import { StudioCard } from "@/features/discovery/components/StudioCard";
 import { ArtistI, ClassI, DosFollowers, StudioI } from "@/features/discovery/components/discover-kit";
-import { filterClasses, filterCrews, filterBusinesses, filtersToParams, parseFilters, radiusOf } from "@/features/discovery/filters";
+import { anyStyleOk, filterClasses, filterCrews, filterBusinesses, filterStyleShelf, filtersToParams, parseFilters, radiusOf } from "@/features/discovery/filters";
 import { gradientOf } from "@/features/profiles/components/profile-kit";
 import { DOS_STYLE_NAMES } from "@/lib/constants/styles";
 import { INDIA_CENTRE, centreOf, findDiscoverCities } from "@/repositories/cities";
@@ -247,7 +247,9 @@ export default async function DiscoverPage({
   const businesses = wantsBusinesses ? filterBusinesses(nearby, filters, stylesByBusiness) : [];
   const followed = following.filter((f) => f.businessType === "studio");
   /* an artist narrows by style through THEIR OWN styles — the ones on their profile */
-  const artists = wantsArtists ? artistsRaw.filter((a) => filters.styles.length === 0 || a.styles.some((s) => filters.styles.includes(s))) : [];
+  const artists = wantsArtists ? artistsRaw.filter((a) => anyStyleOk(filters, a.styles)) : [];
+  /* the Styles tab's own shelf, narrowed by its own filters (2 Oct 2026) */
+  const styleShelf = tab === "styles" ? filterStyleShelf(stylesShelfOrder(), filters, styleCount) : [];
   /* the follower count sits at the foot of every card — a number, never a name (Step 15);
      the faces come from the businesses themselves (the nearby RPC carries none) */
   /* ⚠⚠ AND THE POSTERS THE CARD SWIPES THROUGH (27 Sep 2026, the user: "Studio
@@ -322,8 +324,8 @@ export default async function DiscoverPage({
       }));
 
   const shelfHead = tab === "styles" ? "Dance styles" : tab === "classes" ? "Upcoming classes" : tab === "artists" ? "Artists" : tab === "crews" ? "Crews" : "Studios near you";
-  const shelfCount = tab === "styles" ? styleOrder.length : tab === "classes" ? classes.length : tab === "crews" ? crews.length : tab === "artists" ? artists.length : businesses.length;
-  const narrowed = filters.styles.length > 0 || Object.keys(params).some((k) => ["sort", "dist", "when", "dur", "price", "cat", "fmt", "q"].includes(k));
+  const shelfCount = tab === "styles" ? styleShelf.length : tab === "classes" ? classes.length : tab === "crews" ? crews.length : tab === "artists" ? artists.length : businesses.length;
+  const narrowed = filters.styles.length > 0 || filters.fams.length > 0 || Object.keys(params).some((k) => ["sort", "dist", "when", "dur", "price", "has", "cat", "fmt", "q"].includes(k));
   /* the shelf's foot (18 Sep 2026): the Studios and Artists shelves are paged —
      "Next page" while a FULL page came back (a shorter one is the end), "Previous"
      past the first; every other filter rides along in the address */
@@ -511,7 +513,7 @@ export default async function DiscoverPage({
           classical infront") */}
       {tab === "styles" && (
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
-          {stylesShelfOrder().map((s) => (
+          {styleShelf.map((s) => (
             <StyleCard key={s} style={s} classes={styleCount.get(s) ?? 0} city={city} />
           ))}
         </div>

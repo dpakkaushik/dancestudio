@@ -1,4 +1,5 @@
 import { hourOf } from "@/lib/format/month";
+import { STYLE_FAMILIES, stylesOfFamilies } from "@/lib/constants/styleInfo";
 import type { PublicClassListing } from "@/types/class";
 import type { CrewSummary } from "@/types/crew";
 import type { NearbyBusiness } from "@/repositories/discovery";
@@ -10,7 +11,10 @@ import type { NearbyBusiness } from "@/repositories/discovery";
  *  not silently empty the list — it stands aside." Pure: the page and the
  *  client sheet both read this, and nothing here touches a clock or the DOM. */
 
-export type SortBy = "near" | "soon" | "price";
+/** ⚠ "popular" and "az" are the STYLES tab's two orders (2 Oct 2026); "near"
+ *  is every tab's default, and on Styles it means the shelf's own order —
+ *  classical first, then the families mixed */
+export type SortBy = "near" | "soon" | "price" | "popular" | "az";
 export type Dist = "any" | "2" | "5" | "10";
 export type When = "any" | "morning" | "afternoon" | "evening";
 export type Dur = "any" | "60" | "90" | "120";
@@ -23,6 +27,11 @@ export type PriceBand = "free" | "paid";
  *  narrows nothing now. */
 export interface DiscoverFilters {
   styles: string[];
+  /** dance-style FAMILIES (2 Oct 2026, the user: "family for dance style in
+   *  filters as well") — see `effectiveStyles` for how the two combine */
+  fams: string[];
+  /** Styles tab only: just the styles with a class in this city */
+  has: boolean;
   sort: SortBy;
   dist: Dist;
   when: When;
@@ -39,7 +48,9 @@ const listOf = <T extends string>(v: string | undefined, allowed: readonly T[]):
 export function parseFilters(params: Record<string, string | undefined>, styleNames: readonly string[]): DiscoverFilters {
   return {
     styles: listOf(params.styles, styleNames),
-    sort: oneOf(params.sort, ["near", "soon", "price"] as const, "near"),
+    fams: listOf(params.fam, STYLE_FAMILIES),
+    has: params.has === "1",
+    sort: oneOf(params.sort, ["near", "soon", "price", "popular", "az"] as const, "near"),
     dist: oneOf(params.dist, ["any", "2", "5", "10"] as const, "any"),
     when: oneOf(params.when, ["any", "morning", "afternoon", "evening"] as const, "any"),
     dur: oneOf(params.dur, ["any", "60", "90", "120"] as const, "any"),
@@ -52,6 +63,8 @@ export function parseFilters(params: Record<string, string | undefined>, styleNa
 export function filtersToParams(f: DiscoverFilters): Record<string, string> {
   const out: Record<string, string> = {};
   if (f.styles.length) out.styles = f.styles.join(",");
+  if (f.fams.length) out.fam = f.fams.join(",");
+  if (f.has) out.has = "1";
   if (f.sort !== "near") out.sort = f.sort;
   if (f.dist !== "any") out.dist = f.dist;
   if (f.when !== "any") out.when = f.when;
@@ -61,24 +74,58 @@ export function filtersToParams(f: DiscoverFilters): Record<string, string> {
   return out;
 }
 
-/** how many the Filters button says are on (4664) — the style rail is its own control */
+/** how many the Filters button says are on (4664). ⚠ The styles and families
+ *  count now (2 Oct 2026): they moved INTO the sheet, so a style picked there
+ *  must show on the button or the list looks narrowed for no visible reason. */
 export const filtersOnCount = (f: DiscoverFilters, tab: string): number =>
-  (f.prices.length ? 1 : 0) +
-  (f.dist !== "any" ? 1 : 0) +
-  (f.when !== "any" ? 1 : 0) +
+  (f.styles.length ? 1 : 0) +
+  (f.fams.length ? 1 : 0) +
+  (tab === "styles" && f.has ? 1 : 0) +
+  (tab !== "styles" && f.prices.length ? 1 : 0) +
+  (tab !== "styles" && f.dist !== "any" ? 1 : 0) +
+  (tab !== "styles" && f.when !== "any" ? 1 : 0) +
   (tab === "classes" && f.dur !== "any" ? 1 : 0) +
   (f.sort !== "near" ? 1 : 0);
+
+/** THE STYLES A LIST IS NARROWED TO, or null for "any" (2 Oct 2026). Picked
+ *  styles win; failing that, the styles of the picked families. ⚠ The sheet
+ *  only OFFERS styles inside the picked families and drops any outside one when
+ *  a family is picked, so the two can never ask for something contradictory —
+ *  this rule is the answer even for a hand-written URL that does. */
+export function effectiveStyles(f: DiscoverFilters): string[] | null {
+  if (f.styles.length) return f.styles;
+  if (f.fams.length) return stylesOfFamilies(f.fams);
+  return null;
+}
 
 /* ── the predicates ── */
 
 const whenOfHour = (h: number): Exclude<When, "any"> => (h < 12 ? "morning" : h < 17 ? "afternoon" : "evening");
 const priceBandOk = (prices: PriceBand[], amount: number): boolean => prices.length === 0 || prices.length === 2 || (prices[0] === "free" ? amount === 0 : amount > 0);
-const styleOk = (styles: string[], style: string): boolean => styles.length === 0 || style === "All styles" || styles.includes(style);
+const styleOk = (f: DiscoverFilters, style: string): boolean => {
+  const want = effectiveStyles(f);
+  return !want || style === "All styles" || want.includes(style);
+};
+/** a list of styles (an artist's, a business's) passes when any one is wanted */
+export const anyStyleOk = (f: DiscoverFilters, styles: readonly string[]): boolean => {
+  const want = effectiveStyles(f);
+  return !want || styles.some((s) => want.includes(s));
+};
+
+/** THE STYLES TAB'S OWN LIST (2 Oct 2026, the user: "also add filters on style
+ *  section on discover") — family, style, "has classes here", and its order */
+export function filterStyleShelf(shelfOrder: readonly string[], f: DiscoverFilters, classCount: Map<string, number>): string[] {
+  const want = effectiveStyles(f);
+  const out = shelfOrder.filter((s) => (!want || want.includes(s)) && (!f.has || (classCount.get(s) ?? 0) > 0));
+  if (f.sort === "az") return [...out].sort((a, b) => a.localeCompare(b));
+  if (f.sort === "popular") return [...out].sort((a, b) => (classCount.get(b) ?? 0) - (classCount.get(a) ?? 0));
+  return out;
+}
 const minutesOf = (startsAt: string, endsAt: string): number => Math.round((new Date(endsAt).getTime() - new Date(startsAt).getTime()) / 60000);
 
 export function filterClasses(list: PublicClassListing[], f: DiscoverFilters): PublicClassListing[] {
   const out = list.filter((c) => {
-    if (!styleOk(f.styles, c.style)) return false;
+    if (!styleOk(f, c.style)) return false;
     if (!priceBandOk(f.prices, c.priceInr)) return false;
     if (f.when !== "any" && c.session && whenOfHour(hourOf(c.session.startsAt)) !== f.when) return false;
     if (f.dur !== "any" && c.session && minutesOf(c.session.startsAt, c.session.endsAt) > Number(f.dur)) return false;
@@ -94,14 +141,14 @@ export function filterClasses(list: PublicClassListing[], f: DiscoverFilters): P
 export function filterBusinesses(list: NearbyBusiness[], f: DiscoverFilters, stylesByBusiness: Map<string, string[]>): NearbyBusiness[] {
   const out = list.filter((t) => {
     if (f.dist !== "any" && t.distanceKm > Number(f.dist)) return false;
-    if (f.styles.length && !(stylesByBusiness.get(t.id) ?? []).some((s) => f.styles.includes(s))) return false;
+    if (!anyStyleOk(f, stylesByBusiness.get(t.id) ?? [])) return false;
     return true;
   });
   return out.sort((a, b) => a.distanceKm - b.distanceKm); /* nearest first is the only order a business has */
 }
 
 export function filterCrews(list: CrewSummary[], f: DiscoverFilters): CrewSummary[] {
-  return list.filter((c) => styleOk(f.styles, c.style));
+  return list.filter((c) => styleOk(f, c.style));
 }
 
 /* ⚠ `filterEvents` and `eventMinPrice` went with events (29 Sep 2026) — the one

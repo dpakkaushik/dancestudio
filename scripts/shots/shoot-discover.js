@@ -298,9 +298,12 @@ const measureRail = (page, selector) =>
     check(faceImg >= 1, "the bottom line draws the studio's PROFILE PICTURE, not initials");
     const cardText = (await card.innerText()).replace(/\s+/g, " ");
     check(!cardText.includes(STYLE), `no dance style on the studio card — its text is "${cardText.slice(0, 70)}"`);
-    /* ⚠ BOTH ENDS: the style RAIL above the shelf still carries the word, so a
-       naive "the page does not say Kathak" would pass on the wrong element */
-    check((await page.getByRole("button", { name: STYLE, exact: true }).count()) >= 1, `…and the style rail above the shelf still offers ${STYLE}, so the check above is about the CARD`);
+    /* ⚠ BOTH ENDS: the filter sheet still carries the word (the style rail
+       moved INTO it on 2 Oct 2026), so a naive "the page does not say Kathak"
+       would pass on the wrong element */
+    await page.getByRole("button", { name: "All filters" }).click();
+    check((await page.getByRole("dialog", { name: "Filters" }).getByRole("button", { name: STYLE, exact: true }).count()) >= 1, `…and the filter sheet still offers ${STYLE}, so the check above is about the CARD`);
+    await page.keyboard.press("Escape").catch(() => {});
 
     /* 3. THE SAME PICTURES, THE SAME SHAPE, ON THE STUDIO'S OWN PAGE */
     await page.goto(`${BASE}/studio/${studio.id}`, { waitUntil: "networkidle" });
