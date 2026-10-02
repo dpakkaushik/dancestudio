@@ -2,7 +2,7 @@
 
 ## LAST SESSION (2 Oct 2026) — replaced on every push (Rule 13)
 
-> ### STYLES AND FAMILIES LIVE IN THE FILTER SHEET, AND THE STYLES TAB HAS FILTERS (2 Oct 2026, latest) — no migration, ⚠ COMMITTED LOCALLY, NOT PUSHED
+> ### STYLES AND FAMILIES LIVE IN THE FILTER SHEET, AND THE STYLES TAB HAS FILTERS (2 Oct 2026, latest) — no migration, ✅ PUSHED AND LIVE (`0fc33f4`: Vercel READY, alias confirmed through the API, the 29-check filter probe 29/29 and `stranger-smoke` 8/8 ON THE LIVE SITE)
 > The user: *"dance styles inside filter on discover for studios, artist crews,
 > classes and styles. family for dance style in filters as well. also add
 > filters on style section on discover."*
@@ -61,7 +61,7 @@
 >   box around its rotated box; its painted geometry measured point by point is
 >   inside · `shoot-discover` 45/45.
 
-> ### THE STYLE PHOTOS ARE DANCERS, THEY FIT, AND THE CLASSICAL FORMS LEAD (2 Oct 2026, latest) — no migration, ⚠ COMMITTED LOCALLY, NOT PUSHED
+> ### THE STYLE PHOTOS ARE DANCERS, THEY FIT, AND THE CLASSICAL FORMS LEAD (2 Oct 2026, latest) — no migration, ✅ PUSHED AND LIVE (`0fc33f4`: Vercel READY, alias confirmed through the API, the 29-check filter probe 29/29 and `stranger-smoke` 8/8 ON THE LIVE SITE)
 > The user: *"dance style photos should be of a dance pose from that syle and
 > should fit ptoperly in discover and detail pages. mix order of dance styles as
 > all classical infront . some photos missing."*
