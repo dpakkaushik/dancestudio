@@ -35,7 +35,9 @@
 >   * typecheck 0 · lint 0 · build green
 >   * proofs `follows` and `profile-pages` green on the applied schema
 >   * `shoot-hero` 186/186 (after the race fix)
->   * the happy path (tally in the commit that follows)
+>   * **the happy path 19/19 in 12.2 min** on the final bundle
+>   * ✅ **PUSHED AND LIVE (`f2d25ad`)**: Vercel READY, alias confirmed on the
+>     sha through the API, `stranger-smoke` 8/8 on the live site
 
 > ### A BIGGER TOP BAR, AND NO CONTROL ON IT TAKES A SWIPE (2 Oct 2026, latest) — no migration, PUSHED
 > The user: *"make the top bar a bit bigger and apply the swipe function."* The bar
