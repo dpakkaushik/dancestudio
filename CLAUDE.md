@@ -2,7 +2,7 @@
 
 ## LAST SESSION (3 Oct 2026) — replaced on every push (Rule 13)
 
-> ### AN ENQUIRY IS ANSWERED THREE WAYS, CLOSED FROM EITHER END, AND PAID THROUGH THE RAIL; THE INBOX TAKES ONLY WHAT YOU SWITCHED ON (3 Oct 2026, latest) — ⚠ Rule 9 (MONEY + who may ask whom) — ✅ `20261003090000` APPLIED (dry run 54/54 re-run first, read back live 14/14, PostgREST reloaded)
+> ### AN ENQUIRY IS ANSWERED THREE WAYS, CLOSED FROM EITHER END, AND PAID THROUGH THE RAIL; THE INBOX TAKES ONLY WHAT YOU SWITCHED ON (3 Oct 2026, latest) — ⚠ Rule 9 (MONEY + who may ask whom) — ✅ `20261003090000` APPLIED (dry run 54/54 re-run first, read back live 14/14, PostgREST reloaded) · ✅ PUSHED AND LIVE (`0bced15`: Vercel READY, alias confirmed on the sha through the API, `stranger-smoke` 8/8 and `shoot-inbox` 34/34 ON THE LIVE SITE). ⚠ For the ~40 minutes between the apply and the deploy, the live bundle's old Close as won / lost buttons were refused by the new `set_enquiry_status` — said to the user, who chose to wait for the suite
 > Built by the previous chat, which died on "Prompt is too long" straight after
 > the user's *"apply it"* — its list was read back out of its transcript, and this
 > session applied it on *"push to live and apply from last chat"*.
