@@ -12,7 +12,9 @@ import { ClassTile } from "@/features/classes/components/ClassTile";
 import { DOS_DISPLAY, DOS_UI, LILAC, SKY, TAB_SUB, TAB_TITLE } from "@/lib/design/tokens";
 import type { DanceClass } from "@/types/class";
 import type { ClassArtist } from "@/types/classPerson";
+import { InvertedPanel } from "@/components/ui/InvertedPanel";
 import {
+  ENQ_CLOSED,
   ENQ_STAGES,
   ENQ_STAGE_WORD,
   ENQ_TINT,
@@ -141,22 +143,30 @@ const Row = ({ children, c, testId }: { children: React.ReactNode; c: string; te
   <div data-testid={testId} style={{ background: "var(--card)", border: "1.5px solid var(--el)", borderLeft: `4px solid ${c}`, borderRadius: 16, padding: "12px 14px", marginBottom: 10 }}>{children}</div>
 );
 
-const pillBtn = (on: boolean): React.CSSProperties => ({
-  flexShrink: 0,
-  display: "inline-flex",
+/* ⚠ THREE BIGGER, SPACED COLUMNS (3 Oct 2026, the user: "spaced out and bigger
+   columns for enquiries requests and invites") — equal tiles across the row
+   rather than three pills hugging the left, each with its own colour edge */
+const colBtn = (on: boolean, tint: string): React.CSSProperties => ({
+  display: "flex",
+  flexDirection: "column",
   alignItems: "center",
-  gap: 6,
-  padding: "9px 15px",
-  borderRadius: 999,
+  justifyContent: "center",
+  gap: 7,
+  minHeight: 76,
+  padding: "13px 6px 12px",
+  borderRadius: 20,
   cursor: "pointer",
-  fontSize: 12.5,
-  fontWeight: 800,
-  letterSpacing: -0.2,
+  fontSize: 14,
+  fontWeight: 900,
+  letterSpacing: -0.3,
   whiteSpace: "nowrap",
+  fontFamily: DOS_DISPLAY,
   background: on ? "var(--text)" : "var(--card)",
-  color: on ? "var(--solid)" : "var(--sub)",
+  color: on ? "var(--solid)" : "var(--text)",
   border: `1.5px solid ${on ? "var(--text)" : "var(--el)"}`,
-  transition: "background .16s",
+  borderBottom: `3px solid ${tint}`,
+  boxShadow: on ? `0 8px 22px ${tint}40` : "none",
+  transition: "background .16s, box-shadow .16s",
 });
 
 type Side3 = "in" | "out" | "done";
@@ -173,8 +183,16 @@ export function InboxScreen({
   deskSub = null,
   receivedOnly = false,
   settings = null,
+  requestSettings = null,
+  inviteSettings = null,
   artists = {},
 }: {
+  /** ⚠ WHAT ASKS YOU TAKE (3 Oct 2026, the user: "request and invite settings
+   *  for inbox") — slots, like `settings`, because the switches belong to
+   *  whoever this desk is (a person's kinds, a studio's room requests) and this
+   *  file should not learn either column */
+  requestSettings?: ReactNode;
+  inviteSettings?: ReactNode;
   /** a studio's or a crew's desk — what it was asked, and no Sent side */
   receivedOnly?: boolean;
   /** the profile-tinted wash the rest of the app opens on (5681) */
@@ -296,7 +314,8 @@ export function InboxScreen({
      enquiries also in done section"). Only the Enquiries TOOL's desk ever drew
      them there; the Inbox's Done held no enquiry at all. Deduped by id, because
      an enquiry you sent to your own artist page is on both sides. */
-  const closedEnq = (e: Enquiry) => ["won", "lost"].includes(enquiryStage(e));
+  /* ⚠ completed, lost or cancelled since 3 Oct 2026 — Won is gone */
+  const closedEnq = (e: Enquiry) => ENQ_CLOSED.has(enquiryStage(e));
   /* ⚠⚠ COMPLETED LIVES INSIDE EACH COLUMN (2 Oct 2026, the user's second word on
      it: "completed not in line with enquiries invites and request but with
      received and sent in their respective section"). Each column is Received ·
@@ -742,8 +761,8 @@ export function InboxScreen({
   const side = enqSide === "out" ? enquiriesOut : enquiriesIn;
   const st = (e: Enquiry) => enquiryStage(e);
   const open2 = side.filter((e) => ["new", "in_talks", "quoted"].includes(st(e)));
-  const won = side.filter((e) => ["won", "confirmed", "advance_paid"].includes(st(e)));
-  const lost = side.filter((e) => st(e) === "lost");
+  const won = side.filter((e) => ["confirmed", "advance_paid", "paid", "completed"].includes(st(e)));
+  const lost = side.filter((e) => st(e) === "lost" || st(e) === "cancelled");
   const sum = (a: Enquiry[]) => a.reduce((x, e) => x + enquiryValueInr(e), 0);
   const byType = ENQ_TYPES.map((t) => ({ k: t.k, label: t.label, rows: side.filter((e) => e.typeKey === t.k) })).filter((x) => x.rows.length);
   const tiles: Array<[string, string, string, string]> =
@@ -763,14 +782,14 @@ export function InboxScreen({
      listed here AND under Done, so a finished job sat in the live desk for ever.
      The LIST is what is still open; the three tiles above still count the whole
      side, because a win rate is about every enquiry ever answered. */
-  const isClosed = (e: Enquiry) => ["won", "lost"].includes(st(e));
+  const isClosed = (e: Enquiry) => ENQ_CLOSED.has(st(e));
   const liveSide = side.filter((e) => !isClosed(e));
   const liveIn = enquiriesIn.filter((e) => !isClosed(e)).length;
   const liveOut = enquiriesOut.filter((e) => !isClosed(e)).length;
   const filtered = liveSide.filter((e) => enqType === "all" || e.typeKey === enqType).filter((e) => enqSt === "all" || st(e) === enqSt);
 
   return (
-    <div style={{ position: "relative", background: LILAC, color: "var(--text)", maxWidth: 430, margin: "0 auto", fontFamily: DOS_UI, minHeight: "100vh", paddingBottom: 40 }}>
+    <div style={{ position: "relative", background: LILAC, color: "var(--text)", maxWidth: 430, margin: "0 auto", fontFamily: DOS_UI, minHeight: "100vh", display: "flex", flexDirection: "column" }}>
       {/* the profile-tinted wash a TAB opens on (5681) — `/inbox` is a tab; the
           Enquiries tool page that wore none is gone (2 Oct 2026) */}
       <div aria-hidden="true" style={{ position: "absolute", top: 0, left: 0, right: 0, height: 230, pointerEvents: "none", background: `linear-gradient(180deg, ${accent}5c 0%, ${accent}20 44%, transparent 100%)` }} />
@@ -796,24 +815,46 @@ export function InboxScreen({
           {owed > 0 ? `${owed} waiting on you` : "Nothing waiting on you"}
         </div>
       </div>
-      <div style={{ display: "flex", gap: 7, overflowX: "auto", scrollbarWidth: "none", padding: "0 16px 12px", position: "relative" }}>
+      <div data-testid="inbox-columns" style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 10, padding: "0 16px 16px", position: "relative" }}>
         {SECT.map(([k, l, n, tint]) => {
           const on = sect === k;
           return (
-            <div key={k} role="button" tabIndex={0} aria-pressed={on} aria-label={`${l} — ${n} waiting`} onKeyDown={pressKey(() => setSect(k))} onClick={() => setSect(k)} style={pillBtn(on)}>
+            <div key={k} role="button" tabIndex={0} aria-pressed={on} aria-label={`${l} — ${n} waiting`} onKeyDown={pressKey(() => setSect(k))} onClick={() => setSect(k)} style={colBtn(on, tint)}>
               {l}
-              {n > 0 ? (
-                <span style={{ fontSize: 9.5, fontWeight: 900, fontFamily: DOS_MONO, padding: "1px 6px", borderRadius: 999, background: on ? "rgba(0,0,0,.16)" : tint, color: on ? "var(--solid)" : "#fff" }}>{n}</span>
-              ) : null}
+              <span
+                style={{
+                  fontSize: 10,
+                  fontWeight: 900,
+                  fontFamily: DOS_MONO,
+                  letterSpacing: 0,
+                  padding: "2px 8px",
+                  borderRadius: 999,
+                  background: n > 0 ? (on ? "var(--solid)" : tint) : "transparent",
+                  color: n > 0 ? (on ? "var(--text)" : "#fff") : on ? "var(--solid)" : "var(--muted)",
+                  opacity: n > 0 ? 1 : 0.8,
+                }}
+              >
+                {n > 0 ? `${n} new` : "all clear"}
+              </span>
             </div>
           );
         })}
       </div>
-      <div style={{ padding: "0 16px", position: "relative" }}>
+      {/* ⚠ THE DUAL TONE, RISING FROM THE BOTTOM (3 Oct 2026, the user: "inbox
+          dual tone theme from bottom like discover and home"). The heading and the
+          three columns stand on the page's ground; everything they choose between
+          stands on the OPPOSITE theme, in the same `InvertedPanel` Discover's shelf
+          and every home's tools wear — which swaps the palette, so the cards, the
+          class tiles and the empty boxes below need no change of their own. It
+          runs to the foot of the screen, so it reads as the lower half of the page
+          rather than one more card. */}
+      <InvertedPanel style={{ flex: 1, margin: 0, borderRadius: "28px 28px 0 0", padding: "18px 16px 120px" }}>
+      <div data-testid="inbox-panel" style={{ position: "relative" }}>
         {error ? <div style={{ fontSize: 11.5, color: "#F87171", marginBottom: 10 }}>{error}</div> : null}
 
         {sect === "req" ? (
           <>
+            {requestSettings}
             {sideSwitch(rqSide, setRqSide, askIn.length, askOut.length, doneAsks.length, "requests", REQ_TINT)}
             {(rqSide === "in" ? askIn : rqSide === "out" ? askOut : doneAsks).length === 0 ? (
               <div style={emptyBox}>
@@ -830,6 +871,7 @@ export function InboxScreen({
 
         {sect === "join" ? (
           <>
+            {inviteSettings}
             {sideSwitch(rqSide, setRqSide, joinIn.length, joinOut.length, doneJoins.length, "invitations", JOIN_TINT.invite ?? REQ_TINT)}
             {(rqSide === "in" ? joinIn : rqSide === "out" ? joinOut : doneJoins).length === 0 ? (
               <div style={emptyBox}>
@@ -861,7 +903,7 @@ export function InboxScreen({
               doneEnq.length === 0 ? (
                 <div style={emptyBox}>
                   <div style={{ fontSize: 12.5, fontWeight: 800 }}>Nothing completed yet</div>
-                  <div style={{ fontSize: 10.5, color: "var(--sub)", marginTop: 3 }}>Enquiries land here once they are won or lost.</div>
+                  <div style={{ fontSize: 10.5, color: "var(--sub)", marginTop: 3 }}>Enquiries land here once they are completed, lost or cancelled.</div>
                 </div>
               ) : (
                 doneEnq.map(enquiryCard)
@@ -928,7 +970,7 @@ export function InboxScreen({
             {enqSide !== "done" && side.length > 0 && liveSide.length === 0 ? (
               <div style={emptyBox}>
                 <div style={{ fontSize: 12.5, fontWeight: 800 }}>Nothing open</div>
-                <div style={{ fontSize: 10.5, color: "var(--sub)", marginTop: 3 }}>Won and lost enquiries are under Completed.</div>
+                <div style={{ fontSize: 10.5, color: "var(--sub)", marginTop: 3 }}>Completed, lost and cancelled enquiries are under Completed.</div>
               </div>
             ) : null}
             {enqSide !== "done" && liveSide.length > 0 ? (
@@ -950,7 +992,7 @@ export function InboxScreen({
                 </div>
                 <div style={{ display: "flex", gap: 5, marginBottom: 10, overflowX: "auto", scrollbarWidth: "none" }}>
                   {/* the closed stages are Done's, so they are not offered as a filter here */}
-                  {([["all", "Any stage"] as const, ...ENQ_STAGES.filter((s) => s !== "won" && s !== "lost").map((s) => [s, ENQ_STAGE_WORD[s]] as const)]).map(([k, l]) => (
+                  {([["all", "Any stage"] as const, ...ENQ_STAGES.filter((s) => !ENQ_CLOSED.has(s)).map((s) => [s, ENQ_STAGE_WORD[s]] as const)]).map(([k, l]) => (
                     <span key={k} role="button" tabIndex={0} aria-pressed={enqSt === k} onKeyDown={pressKey(() => setEnqSt(k as "all" | EnquiryStatus))} onClick={() => setEnqSt(k as "all" | EnquiryStatus)} style={{ flexShrink: 0, padding: "7px 12px", borderRadius: 999, cursor: "pointer", fontSize: 11, fontWeight: 800, background: enqSt === k ? "var(--text)" : "var(--card)", color: enqSt === k ? "var(--solid)" : "var(--sub)", border: `1.5px solid ${enqSt === k ? "var(--text)" : "var(--el)"}` }}>
                       {l}
                     </span>
@@ -969,6 +1011,7 @@ export function InboxScreen({
         ) : null}
 
       </div>
+      </InvertedPanel>
 
       {toast ? (
         <div role="status" aria-live="polite" style={{ position: "fixed", bottom: 96, left: "50%", transform: "translateX(-50%)", background: "var(--solid)", border: "1.5px solid #0EA5E9", boxShadow: "0 6px 24px rgba(0,0,0,.45)", color: "var(--text)", padding: "11px 18px", borderRadius: 999, fontSize: 13, fontWeight: 700, maxWidth: 360, textAlign: "center", zIndex: 650 }}>

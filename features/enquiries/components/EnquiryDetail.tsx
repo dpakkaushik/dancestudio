@@ -1,18 +1,32 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   answerQuoteAction,
+  closeEnquiryAction,
   recordEnquiryPaymentAction,
   sendQuoteAction,
   setEnquiryStatusAction,
 } from "@/features/enquiries/server-actions/enquiries";
+import { confirmCheckoutAction, startEnquiryCheckoutAction } from "@/features/payments/server-actions/payments";
 import { EnqFace, EnquiryRoad, stageTint } from "@/features/enquiries/components/enquiry-kit";
 import { DosHero, EnqIcon, Eyebrow, Surface, agoWords, dateWords, money, pressKey } from "@/features/inbox/components/inbox-kit";
 import { DOS_MONO } from "@/features/inbox/components/inbox-kit";
+import { openCashfreeCheckout, preloadCheckout } from "@/lib/cashfree/checkout-client";
 import { DOS_UI, LILAC } from "@/lib/design/tokens";
-import { ENQ_STAGE_WORD, ENQ_TINT, enquiryStage, enquiryTypeOf, liveQuoteOf, type Enquiry, type EnquiryQuote, type EnquiryStatus } from "@/types/enquiry";
+import {
+  ENQ_CLOSED,
+  ENQ_STAGE_WORD,
+  ENQ_TINT,
+  enquiryStage,
+  enquiryTypeOf,
+  liveQuoteOf,
+  revisionAsked,
+  type Enquiry,
+  type EnquiryQuote,
+  type EnquiryStatus,
+} from "@/types/enquiry";
 
 /** One enquiry, lifted from prototype S_enqdetail (5380-5616) and REDESIGNED on
  *  2 Oct 2026 (the user: "better status update, quote mechanism, quote history,
@@ -46,26 +60,67 @@ const bizBtn: React.CSSProperties = {
 };
 
 const quoteWord = (q: EnquiryQuote): string =>
-  q.fullPaidAt ? "Paid in full" : q.advancePaidAt ? "Advance paid" : q.status === "accepted" ? "Accepted" : q.status === "declined" ? "Declined" : q.status === "superseded" ? "Replaced" : "Waiting on an answer";
+  q.fullPaidAt
+    ? "Paid in full"
+    : q.advancePaidAt
+      ? "Advance paid"
+      : q.status === "accepted"
+        ? "Accepted"
+        : q.status === "declined"
+          ? q.revisionAskedAt
+            ? "Revision asked"
+            : "Declined"
+          : q.status === "superseded"
+            ? "Replaced"
+            : "Waiting on an answer";
 const quoteColour = (q: EnquiryQuote): string =>
   q.advancePaidAt || q.fullPaidAt || q.status === "accepted" ? "#22C55E" : q.status === "declined" ? "#F87171" : q.status === "superseded" ? "var(--muted)" : "#F59E0B";
 
-/** the stages the business may set by hand — the rest follow the quote */
+/** the stages the business may set by hand while it is open — the rest follow
+ *  the quote, and closing is its own row (3 Oct 2026) */
 const MANUAL: Array<{ s: EnquiryStatus; word: string }> = [
   { s: "new", word: "New" },
   { s: "in_talks", word: "In talks" },
-  { s: "won", word: "Close as won" },
-  { s: "lost", word: "Close as lost" },
 ];
 
-export function EnquiryDetail({ enquiry: e, mine, nowIso }: { enquiry: Enquiry; mine: boolean; nowIso: string }) {
+/** the three ways the business may END it (3 Oct 2026, the user: "same closing
+ *  enquiry option should be with the person receiving it as well with option to
+ *  do completed status") — Completed replaces Won */
+const CLOSES: Array<{ s: "completed" | "lost" | "cancelled"; word: string; colour: string; done: string }> = [
+  { s: "completed", word: "Mark completed", colour: "#22C55E", done: "Marked completed — they have been told" },
+  { s: "lost", word: "Close as lost", colour: "#F87171", done: "Closed as lost" },
+  { s: "cancelled", word: "Cancel enquiry", colour: "var(--sub)", done: "Cancelled — they have been told" },
+];
+
+export function EnquiryDetail({
+  enquiry: e,
+  mine,
+  nowIso,
+  meId,
+  payOnline = false,
+  paidBack = null,
+}: {
+  enquiry: Enquiry;
+  mine: boolean;
+  nowIso: string;
+  /** who is reading — to say which end closed it */
+  meId: string;
+  /** a business's enquiry on a configured rail — the sender pays here */
+  payOnline?: boolean;
+  /** the outcome a phone was brought back with from the payment (`/pay/return`) */
+  paidBack?: "paid" | "processing" | "refunded" | "failed" | null;
+}) {
   const router = useRouter();
   const type = enquiryTypeOf(e.typeKey);
   const tint = ENQ_TINT[e.typeKey] ?? "#8B5CF6";
   const stage = enquiryStage(e);
   const live = liveQuoteOf(e);
   const hist = e.quotes;
-  const closed = stage === "won" || stage === "lost";
+  const closed = ENQ_CLOSED.has(stage);
+  const askedRevision = revisionAsked(e);
+  /* money has moved on some quote — the sender may no longer cancel (the RPC's rule, said here first) */
+  const moneyMoved = hist.some((q) => q.advancePaidAt || q.fullPaidAt);
+  const cancelledByThem = e.status === "cancelled" && e.closedBy === e.fromUserId;
 
   const [qOpen, setQOpen] = useState(false);
   const [qCost, setQCost] = useState("");
@@ -73,6 +128,23 @@ export function EnquiryDetail({ enquiry: e, mine, nowIso }: { enquiry: Enquiry; 
   const [busy, setBusy] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  /* a close asks once more, in place — "cancel" is a word somebody presses by accident */
+  const [confirming, setConfirming] = useState<"completed" | "lost" | "cancelled" | null>(null);
+  const [openOrder, setOpenOrder] = useState<string | null>(null);
+
+  /* what is owed right now on an accepted quote, and which half it is */
+  const due =
+    live && live.status === "accepted" && !live.fullPaidAt
+      ? live.advanceInr > 0 && !live.advancePaidAt
+        ? { part: "advance" as const, amount: live.advanceInr, word: "the advance" }
+        : live.advancePaidAt
+          ? { part: "balance" as const, amount: live.costInr - live.advanceInr, word: "the balance" }
+          : { part: "full" as const, amount: live.costInr, word: "in full" }
+      : null;
+  const canPay = !mine && payOnline && Boolean(due && due.amount > 0) && !(stage === "lost" || stage === "cancelled");
+  useEffect(() => {
+    if (canPay) preloadCheckout();
+  }, [canPay]);
 
   const fire = (m: string) => {
     setToast(m);
@@ -91,6 +163,64 @@ export function EnquiryDetail({ enquiry: e, mine, nowIso }: { enquiry: Enquiry; 
     fire(doneMsg);
     router.refresh();
     return true;
+  };
+
+  /* ⚠ PAYING AN ENQUIRY (3 Oct 2026, the user: "payment for enquiry should
+     connect to payments and take back once payment is confirmed"). The class
+     page's own flow: our order and the Cashfree order, the window, then the
+     SERVER asks Cashfree what happened — the browser's word is never the answer.
+     A phone that leaves for a UPI app comes back through /pay/return, which
+     lands it here with `?paid=`. */
+  const confirmPay = async (orderId: string) => {
+    setBusy(true);
+    setError(null);
+    const out = await confirmCheckoutAction({ orderId });
+    setBusy(false);
+    setOpenOrder(null);
+    if (out.error || !out.outcome) {
+      setError(out.error ?? "Could not confirm the payment");
+      return;
+    }
+    fire(
+      out.outcome === "booked"
+        ? "Paid — they have been told"
+        : out.outcome === "processing"
+          ? "Payment received — confirming it now"
+          : "That payment could not be applied — it is on its way back"
+    );
+    router.refresh();
+  };
+  const pay = async () => {
+    if (!live || !due || busy) return;
+    setBusy(true);
+    setError(null);
+    const res = await startEnquiryCheckoutAction({
+      quoteId: live.id,
+      enquiryId: e.id,
+      businessName: e.businessName.slice(0, 80) || "DanceOS",
+      description: `${type?.label ?? "Enquiry"} · ${due.word}`,
+    });
+    if (!res.checkout) {
+      setBusy(false);
+      setError(res.error ?? "Could not start the payment");
+      return;
+    }
+    const checkout = res.checkout;
+    setOpenOrder(checkout.orderId);
+    try {
+      const result = await openCashfreeCheckout(checkout.paymentSessionId, checkout.mode);
+      if (result.redirect) return; // leaving for /pay/return, which confirms it and comes back here
+    } catch (openError: unknown) {
+      setBusy(false);
+      setOpenOrder(null);
+      setError(openError instanceof Error ? openError.message : "Could not open the payment window");
+      return;
+    }
+    void confirmPay(checkout.orderId);
+  };
+  const close = async (outcome: "completed" | "lost" | "cancelled", done: string) => {
+    const ok = await run(() => closeEnquiryAction({ enquiryId: e.id, outcome }), done);
+    if (ok) setConfirming(null);
   };
 
   const who = mine ? e.fromName : e.businessName;
@@ -168,7 +298,13 @@ export function EnquiryDetail({ enquiry: e, mine, nowIso }: { enquiry: Enquiry; 
             </span>
           </div>
           <EnquiryRoad stage={stage} />
-          {mine ? (
+          {closed ? (
+            <div data-testid="enquiry-closed-by" style={{ fontSize: 11, color: "var(--sub)", marginTop: 8 }}>
+              {ENQ_STAGE_WORD[stage]} {e.closedBy === meId ? "by you" : e.closedBy === e.fromUserId ? `by ${e.fromName}` : mine ? "by your side" : `by ${e.businessName}`}
+              {e.closedAt ? ` · ${agoWords(e.closedAt, nowIso)}` : ""}
+            </div>
+          ) : null}
+          {mine && !closed ? (
             <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginTop: 11 }}>
               {MANUAL.filter((m) => m.s !== stage).map((m) => (
                 <button
@@ -177,15 +313,63 @@ export function EnquiryDetail({ enquiry: e, mine, nowIso }: { enquiry: Enquiry; 
                   disabled={busy}
                   aria-label={`Move to ${ENQ_STAGE_WORD[m.s]}`}
                   onClick={() => void run(() => setEnquiryStatusAction({ enquiryId: e.id, status: m.s }), `Moved to ${ENQ_STAGE_WORD[m.s]}`)}
-                  style={{ padding: "7px 11px", borderRadius: 999, fontSize: 11, fontWeight: 800, cursor: "pointer", fontFamily: "inherit", background: "var(--solid)", color: m.s === "lost" ? "#F87171" : m.s === "won" ? "#22C55E" : "var(--sub)", border: "1.5px solid var(--el)" }}
+                  style={{ padding: "7px 11px", borderRadius: 999, fontSize: 11, fontWeight: 800, cursor: "pointer", fontFamily: "inherit", background: "var(--solid)", color: "var(--sub)", border: "1.5px solid var(--el)" }}
                 >
                   {m.word}
                 </button>
               ))}
             </div>
           ) : null}
-          {mine && live && !closed ? <div style={{ fontSize: 10, color: "var(--muted)", marginTop: 8, lineHeight: 1.45 }}>Quoted, Confirmed and Advance paid follow the quote on their own.</div> : null}
+          {mine && closed && !cancelledByThem ? (
+            <button
+              type="button"
+              disabled={busy}
+              aria-label="Reopen this enquiry"
+              onClick={() => void run(() => setEnquiryStatusAction({ enquiryId: e.id, status: "in_talks" }), "Reopened")}
+              style={{ marginTop: 10, padding: "7px 12px", borderRadius: 999, fontSize: 11, fontWeight: 800, cursor: "pointer", fontFamily: "inherit", background: "var(--solid)", color: "var(--sub)", border: "1.5px solid var(--el)" }}
+            >
+              Reopen
+            </button>
+          ) : null}
+          {mine && live && !closed ? <div style={{ fontSize: 10, color: "var(--muted)", marginTop: 8, lineHeight: 1.45 }}>Quoted, Confirmed, Advance paid and Paid follow the quote on their own.</div> : null}
         </Surface>
+
+        {paidBack ? (
+          <div
+            role="status"
+            data-testid="paid-back"
+            style={{
+              borderRadius: 14,
+              padding: "11px 13px",
+              marginBottom: 10,
+              fontSize: 12,
+              fontWeight: 800,
+              background: paidBack === "paid" ? "rgba(34,197,94,.14)" : "var(--card)",
+              border: `1.5px solid ${paidBack === "paid" ? "#22C55E" : "var(--el)"}`,
+              color: paidBack === "paid" ? "#22C55E" : "var(--sub)",
+            }}
+          >
+            {paidBack === "paid"
+              ? "✓ Payment confirmed"
+              : paidBack === "processing"
+                ? "Payment received — the bank is still confirming it"
+                : paidBack === "refunded"
+                  ? "That payment could not be applied — it is on its way back"
+                  : "The payment didn't go through — nothing was charged"}
+          </div>
+        ) : null}
+
+        {/* ⚠ A REVISION ASKED FOR (3 Oct 2026): the sender declined and asked for a
+            new price; the enquiry is still open, waiting on the business */}
+        {askedRevision ? (
+          <div
+            data-testid="revision-asked"
+            style={{ borderRadius: 14, padding: "11px 13px", marginBottom: 10, fontSize: 12, lineHeight: 1.45, background: "rgba(245,158,11,.12)", border: "1.5px solid #F59E0B", color: "var(--text)" }}
+          >
+            <b style={{ color: "#F59E0B" }}>{mine ? `${e.fromName} asked for a revised quote.` : "You asked for a revised quote."}</b>{" "}
+            {mine ? "Send a new price below." : `${e.businessName} has been told — the new quote will land here.`}
+          </div>
+        ) : null}
 
         {/* ── WHAT ── the fields this type collected, and the message, one card */}
         <Surface tint={tint}>
@@ -227,14 +411,17 @@ export function EnquiryDetail({ enquiry: e, mine, nowIso }: { enquiry: Enquiry; 
                 <div style={{ fontSize: 11, color: "var(--sub)", marginTop: 10, lineHeight: 1.5 }}>Sent to {e.fromName}. You will see it here the moment they answer.</div>
               ) : (
                 <div style={{ display: "flex", gap: 7, marginTop: 11 }}>
+                  {/* ⚠ declining IS asking for a revision (3 Oct 2026, the user: "should
+                      get option to resend again for the Revised Quote") — the enquiry
+                      stays open; ending it is Cancel enquiry, below */}
                   <button
                     type="button"
                     disabled={busy}
-                    aria-label="Decline this quote"
-                    onClick={() => void run(() => answerQuoteAction({ quoteId: live.id, accept: false, enquiryId: e.id }), "Declined — they have been told")}
-                    style={{ flex: 1, textAlign: "center", fontSize: 12, fontWeight: 800, padding: 12, borderRadius: 999, background: "var(--el)", color: "var(--sub)", cursor: "pointer", border: "none", fontFamily: "inherit" }}
+                    aria-label="Ask for a revised quote"
+                    onClick={() => void run(() => answerQuoteAction({ quoteId: live.id, accept: false, enquiryId: e.id }), "Asked for a revised quote — they have been told")}
+                    style={{ flex: 1, textAlign: "center", fontSize: 12, fontWeight: 800, padding: 12, borderRadius: 999, background: "var(--el)", color: "var(--text)", cursor: "pointer", border: "none", fontFamily: "inherit" }}
                   >
-                    Decline
+                    Ask to revise
                   </button>
                   <button
                     type="button"
@@ -249,29 +436,47 @@ export function EnquiryDetail({ enquiry: e, mine, nowIso }: { enquiry: Enquiry; 
               )
             ) : null}
 
-            {live.status === "accepted" && !live.fullPaidAt ? (
+            {live.status === "accepted" && !live.fullPaidAt && due && !(stage === "lost" || stage === "cancelled") ? (
               mine ? (
-                <button
-                  type="button"
-                  disabled={busy}
-                  onClick={() =>
-                    void run(
-                      () => recordEnquiryPaymentAction({ quoteId: live.id, part: live.advancePaidAt || live.advancePct === 0 ? "full" : "advance", enquiryId: e.id }),
-                      live.advancePaidAt || live.advancePct === 0 ? "Paid in full" : `Advance received · ${money(live.advanceInr)}`
-                    )
-                  }
-                  style={{ ...bizBtn, marginTop: 11, background: "#22C55E", color: "#07240F" }}
-                >
-                  {live.advancePaidAt ? "Mark balance received" : live.advancePct === 0 ? "Mark paid in full" : "Mark advance received"}
-                </button>
-              ) : (
+                <>
+                  {/* ⚠ money that arrived OUTSIDE DanceOS is still the business's to
+                      record (3 Oct 2026, the user's choice: "both") — paid online,
+                      it is marked by the capture and this button is not needed */}
+                  <button
+                    type="button"
+                    disabled={busy}
+                    onClick={() =>
+                      void run(
+                        () => recordEnquiryPaymentAction({ quoteId: live.id, part: due.part === "advance" ? "advance" : "full", enquiryId: e.id }),
+                        due.part === "advance" ? `Advance received · ${money(live.advanceInr)}` : "Paid in full"
+                      )
+                    }
+                    style={{ ...bizBtn, marginTop: 11, background: "#22C55E", color: "#07240F" }}
+                  >
+                    {due.part === "advance" ? "Record the advance received" : due.part === "balance" ? "Record the balance received" : "Record paid in full"}
+                  </button>
+                  <div style={{ fontSize: 10.5, color: "var(--sub)", marginTop: 6, textAlign: "center" }}>For cash or a bank transfer — {e.fromName} can also pay here online.</div>
+                </>
+              ) : canPay ? (
                 <div style={{ marginTop: 11 }}>
-                  <div style={{ ...bizBtn, background: "#22C55E", color: "#07240F", opacity: 0.55, cursor: "default" }} aria-disabled="true">
-                    {live.advancePaidAt ? `Pay the balance · ${money(live.costInr - live.advanceInr)}` : live.advanceInr > 0 ? `Pay the advance · ${money(live.advanceInr)}` : `Pay ${money(live.costInr)}`}
-                  </div>
-                  <div style={{ fontSize: 10.5, color: "var(--sub)", marginTop: 7, lineHeight: 1.5, textAlign: "center" }}>
-                    Payments aren&apos;t switched on yet — settle with {e.businessName} directly and they will record it here.
-                  </div>
+                  <button type="button" disabled={busy} data-testid="enquiry-pay" onClick={() => void pay()} style={{ ...bizBtn, background: "#22C55E", color: "#07240F", opacity: busy ? 0.6 : 1 }}>
+                    {busy ? "One moment…" : due.part === "advance" ? `Pay the advance · ${money(due.amount)}` : due.part === "balance" ? `Pay the balance · ${money(due.amount)}` : `Pay ${money(due.amount)}`}
+                  </button>
+                  <div style={{ fontSize: 10.5, color: "var(--sub)", marginTop: 7, lineHeight: 1.5, textAlign: "center" }}>UPI · cards · netbanking, through Cashfree. You come straight back here.</div>
+                  {busy && openOrder ? (
+                    <button
+                      type="button"
+                      onClick={() => void confirmPay(openOrder)}
+                      style={{ display: "block", margin: "8px auto 0", background: "none", border: "none", color: "var(--sub)", fontSize: 11.5, fontWeight: 800, textDecoration: "underline", cursor: "pointer", fontFamily: "inherit" }}
+                    >
+                      Paid already, or stuck? Check my payment
+                    </button>
+                  ) : null}
+                </div>
+              ) : (
+                <div style={{ fontSize: 10.5, color: "var(--sub)", marginTop: 9, lineHeight: 1.5, textAlign: "center" }}>
+                  {due.part === "advance" ? "The advance" : due.part === "balance" ? "The balance" : "The price"} · {money(due.amount)} — settle with {e.businessName} directly and
+                  they will record it here.
                 </div>
               )
             ) : null}
@@ -401,6 +606,61 @@ export function EnquiryDetail({ enquiry: e, mine, nowIso }: { enquiry: Enquiry; 
               {hist.length ? "Revise the quote" : "Send a quote"}
             </button>
           )
+        ) : null}
+
+        {/* ── CLOSE IT ── either end (3 Oct 2026). The business ends it three
+            ways; the sender may only cancel, and only before any money moved —
+            both are the RPC's rules, said here before the press */}
+        {!closed ? (
+          <Surface>
+            <Eyebrow>CLOSE THIS ENQUIRY</Eyebrow>
+            {confirming ? (
+              <div data-testid="close-confirm">
+                <div style={{ fontSize: 12.5, fontWeight: 800, marginBottom: 4 }}>
+                  {confirming === "completed" ? "Mark this enquiry completed?" : confirming === "lost" ? "Close this enquiry as lost?" : "Cancel this enquiry?"}
+                </div>
+                <div style={{ fontSize: 11, color: "var(--sub)", lineHeight: 1.45, marginBottom: 10 }}>
+                  {mine
+                    ? `${e.fromName} is told, and it moves to Completed in both Inboxes.${moneyMoved && confirming !== "completed" ? " Money already paid is not sent back automatically — settle it with them." : ""}`
+                    : `${e.businessName} is told. A cancelled enquiry cannot be reopened.`}
+                </div>
+                <div style={{ display: "flex", gap: 7 }}>
+                  <button type="button" onClick={() => setConfirming(null)} style={{ ...bizBtn, flex: 1, background: "var(--el)", color: "var(--sub)" }}>
+                    Keep it open
+                  </button>
+                  <button
+                    type="button"
+                    disabled={busy}
+                    aria-label={`Yes — ${confirming === "completed" ? "mark completed" : confirming === "lost" ? "close as lost" : "cancel the enquiry"}`}
+                    onClick={() => void close(confirming, CLOSES.find((x) => x.s === confirming)?.done ?? "Closed")}
+                    style={{ ...bizBtn, flex: 1.3, background: confirming === "completed" ? "#22C55E" : confirming === "lost" ? "#F87171" : "var(--text)", color: confirming === "cancelled" ? "var(--solid)" : "#08060C" }}
+                  >
+                    {confirming === "completed" ? "Mark completed" : confirming === "lost" ? "Close as lost" : "Cancel enquiry"}
+                  </button>
+                </div>
+              </div>
+            ) : mine ? (
+              <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+                {CLOSES.map((x) => (
+                  <button
+                    key={x.s}
+                    type="button"
+                    disabled={busy}
+                    onClick={() => setConfirming(x.s)}
+                    style={{ flex: 1, minWidth: 96, padding: "10px 8px", borderRadius: 999, fontSize: 11.5, fontWeight: 900, cursor: "pointer", fontFamily: "inherit", background: "var(--solid)", color: x.colour, border: "1.5px solid var(--el)" }}
+                  >
+                    {x.word}
+                  </button>
+                ))}
+              </div>
+            ) : moneyMoved ? (
+              <div style={{ fontSize: 11, color: "var(--sub)", lineHeight: 1.5 }}>A payment has been made on this enquiry — to call it off, ask {e.businessName} to close it.</div>
+            ) : (
+              <button type="button" disabled={busy} onClick={() => setConfirming("cancelled")} style={{ ...bizBtn, background: "var(--solid)", color: "#F87171", border: "1.5px solid var(--el)" }}>
+                Cancel enquiry
+              </button>
+            )}
+          </Surface>
         ) : null}
 
         {error && !qOpen ? <div style={{ fontSize: 11, color: "#F87171", marginTop: 8 }}>{error}</div> : null}

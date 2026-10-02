@@ -10,6 +10,8 @@ interface OrderRow {
   event_booking_id?: string | null;
   membership_id?: string | null;
   membership_pass_id?: string | null;
+  enquiry_quote_id?: string | null;
+  enquiry_part?: "advance" | "balance" | "full" | null;
   amount_inr: number;
   provider: PaymentProvider;
   provider_order_id: string | null;
@@ -26,6 +28,8 @@ const toOrder = (row: OrderRow): PaymentOrder => ({
      record — but nothing in the app reads or writes them now. */
   membershipId: row.membership_id ?? null,
   membershipPassId: row.membership_pass_id ?? null,
+  enquiryQuoteId: row.enquiry_quote_id ?? null,
+  enquiryPart: row.enquiry_part ?? null,
   amountInr: row.amount_inr,
   provider: row.provider,
   providerOrderId: row.provider_order_id,
@@ -68,6 +72,17 @@ export async function createMembershipPaymentOrder(
   return toOrder(data as OrderRow);
 }
 
+/** Start paying an accepted enquiry quote (3 Oct 2026) — the RPC decides which
+ *  half is owed (the advance, the balance, or the whole price when there is no
+ *  advance) and prices it from the quote, never from the client. */
+export async function createEnquiryPaymentOrder(supabase: SupabaseClient, quoteId: string): Promise<PaymentOrder> {
+  const { data, error } = await supabase.rpc("create_enquiry_payment_order", { p_quote_id: quoteId });
+  if (error) {
+    throw new Error(error.message);
+  }
+  return toOrder(data as OrderRow);
+}
+
 /** One of the payer's own orders, for the checkout confirmation — says
  *  `user_id = me` out loud (RLS is a ceiling, not a scope). */
 export async function findMyOrder(
@@ -96,12 +111,20 @@ export async function findMyOrder(
 export async function findMyOrderLanding(supabase: SupabaseClient, orderId: string, userId: string): Promise<string> {
   const { data } = await supabase
     .from("orders")
-    .select("class_id, membership_id")
+    .select("class_id, membership_id, enquiry_quotes (enquiry_id)")
     .eq("id", orderId)
     .eq("user_id", userId)
     .maybeSingle();
-  const row = data as { class_id: string | null; membership_id: string | null } | null;
+  const row = data as {
+    class_id: string | null;
+    membership_id: string | null;
+    enquiry_quotes: { enquiry_id: string } | Array<{ enquiry_id: string }> | null;
+  } | null;
   if (row?.membership_id) return "/memberships?show=booked";
+  /* an enquiry's payment lands back on the enquiry it paid (3 Oct 2026, the user:
+     "take back once payment is confirmed") */
+  const eq = Array.isArray(row?.enquiry_quotes) ? row?.enquiry_quotes[0] : row?.enquiry_quotes;
+  if (eq?.enquiry_id) return `/inbox/enquiries/${eq.enquiry_id}`;
   if (row?.class_id) {
     const { data: cls } = await supabase.from("classes").select("share_slug").eq("id", row.class_id).maybeSingle();
     const slug = (cls as { share_slug: string | null } | null)?.share_slug;
@@ -316,7 +339,9 @@ export async function findClassMoney(
 export interface CaptureOutcome {
   /** `enrolled` is "the seat is theirs" for a class AND for an event (the word
    *  predates events; `kind` says which) */
-  outcome: "enrolled" | "duplicate" | "refund_pending" | "ignored";
+  /** ⚠ a membership answers `granted` / `refunded` (19 Sep 2026) and an enquiry
+   *  `paid` (3 Oct 2026) — every subject's word for "it landed" is listed */
+  outcome: "enrolled" | "granted" | "paid" | "duplicate" | "refund_pending" | "refunded" | "ignored";
   kind?: "event";
   class_booking_id?: string;
   event_booking_id?: string;

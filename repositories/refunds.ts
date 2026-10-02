@@ -32,7 +32,7 @@ interface RefundRow {
    `pending` refund was ever SENT to Cashfree, or ask Cashfree what became of
    it, is a ledger that reads "processing" for ever (see services/refundRail.ts). */
 const REFUND_SELECT =
-  "id, user_id, amount_inr, reason, status, created_at, decided_at, decision_note, settled_offline, provider, provider_refund_id, profiles (full_name), payments (provider_payment_id), orders!inner (class_id, event_id, business_id, provider_order_id, classes (style, level, share_slug), events (title), businesses (name))";
+  "id, user_id, amount_inr, reason, status, created_at, decided_at, decision_note, settled_offline, provider, provider_refund_id, profiles (full_name), payments (provider_payment_id), orders!inner (class_id, event_id, business_id, provider_order_id, enquiry_quote_id, classes (style, level, share_slug), events (title), businesses (name))";
 
 /** a refund with the class — or, since 17 Sep 2026, the event — it is against;
  *  the ledger's row (16665-16680). The `class*` names are kept for the class
@@ -65,6 +65,7 @@ interface LedgerRow extends RefundRow {
     event_id: string | null;
     business_id: string;
     provider_order_id: string | null;
+    enquiry_quote_id?: string | null;
     classes: { style: string; level: string; share_slug: string } | null;
     events: { title: string } | null;
     businesses: { name: string } | null;
@@ -89,8 +90,12 @@ const toLedger = (r: LedgerRow): RefundLedgerRow => ({
   classId: r.orders?.class_id ?? "",
   businessId: r.orders?.business_id ?? "",
   /* a class is called "{style} · {level}", never a stored name (types/class.ts); an event keeps its title */
-  classTitle: r.orders?.classes ? dosClassLabel(r.orders.classes.style, r.orders.classes.level) : (r.orders?.events?.title ?? "Booking"),
-  classStyle: r.orders?.classes?.style ?? (r.orders?.events ? "Event ticket" : ""),
+  classTitle: r.orders?.classes
+    ? dosClassLabel(r.orders.classes.style, r.orders.classes.level)
+    : r.orders?.enquiry_quote_id
+      ? "Enquiry payment"
+      : (r.orders?.events?.title ?? "Booking"),
+  classStyle: r.orders?.classes?.style ?? (r.orders?.enquiry_quote_id ? "Enquiry" : r.orders?.events ? "Event ticket" : ""),
   classShareSlug: r.orders?.classes?.share_slug ?? null,
   businessName: r.orders?.businesses?.name ?? "",
 });

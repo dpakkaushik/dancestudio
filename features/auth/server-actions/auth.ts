@@ -1,7 +1,7 @@
 "use server";
 
 import { cookies, headers } from "next/headers";
-import { redirect } from "next/navigation";
+import { RedirectType, redirect } from "next/navigation";
 import { z } from "zod";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { ONBOARDING_COOKIE } from "@/lib/auth/onboarding";
@@ -125,7 +125,11 @@ export async function signInWithPasswordAction(
   /* The same fork /auth/confirm makes: an account whose onboarding never
      finished has no profiles row, and Home is not usable without one. */
   const profile = await findProfileById(supabase, data.user.id);
-  redirect(profile ? "/" : "/onboarding");
+  /* ⚠ REPLACE, NOT PUSH (3 Oct 2026, the user: "backswipe is logging out
+     sometimes"). A server action's redirect PUSHES by default, so the sign-in
+     form stayed one entry behind Home — and a back swipe landed on it, which
+     reads exactly like being logged out while the session was fine. */
+  redirect(profile ? "/" : "/onboarding", RedirectType.replace);
 }
 
 /** FORGOT PASSWORD — sends a recovery link, which lands on /login/reset.
@@ -199,7 +203,7 @@ export async function setNewPasswordAction(
   }
 
   const profile = await findProfileById(supabase, user.id);
-  redirect(profile ? "/" : "/onboarding");
+  redirect(profile ? "/" : "/onboarding", RedirectType.replace);
 }
 
 export async function completeProfileAction(
@@ -240,13 +244,13 @@ export async function completeProfileAction(
     }
   }
 
-  redirect("/");
+  redirect("/", RedirectType.replace);
 }
 
 export async function signOutAction(): Promise<void> {
   const supabase = await createSupabaseServerClient();
   await supabase.auth.signOut();
-  redirect("/login");
+  redirect("/login", RedirectType.replace);
 }
 
 /** ONBOARDING'S FIRST STEP, WITHOUT THE REDIRECT (parity audit U2). The
@@ -297,7 +301,7 @@ export async function saveProfileBasicsAction(input: unknown): Promise<{ error: 
 /** "Open DanceOS →" (3940): the flow is over, the cookie goes, Home is next. */
 export async function finishOnboardingAction(): Promise<void> {
   (await cookies()).delete(ONBOARDING_COOKIE);
-  redirect("/");
+  redirect("/", RedirectType.replace);
 }
 
 export interface ResendState extends AuthActionState {

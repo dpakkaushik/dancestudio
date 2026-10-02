@@ -13,6 +13,7 @@ import {
   enquiryTypeOf,
   enquiryValueInr,
   liveQuoteOf,
+  revisionAsked,
   roadStep,
   type Enquiry,
   type EnquiryStatus,
@@ -31,7 +32,15 @@ import {
 
 /** the colour a stage reads in — one map, so the card's chip and the road agree */
 export const stageTint = (s: EnquiryStatus): string =>
-  s === "won" || s === "confirmed" || s === "advance_paid" ? "#22C55E" : s === "lost" ? "#F87171" : s === "quoted" ? "#F59E0B" : "#3B82F6";
+  s === "completed" || s === "paid" || s === "confirmed" || s === "advance_paid"
+    ? "#22C55E"
+    : s === "lost"
+      ? "#F87171"
+      : s === "cancelled"
+        ? "#94A3B8"
+        : s === "quoted"
+          ? "#F59E0B"
+          : "#3B82F6";
 
 const initials = (name: string): string =>
   name
@@ -85,7 +94,8 @@ export function EnqPair({ e, size = 34 }: { e: Enquiry; size?: number }) {
  *  card's: segments and the current word. The full one names every step. */
 export function EnquiryRoad({ stage, compact = false }: { stage: EnquiryStatus; compact?: boolean }) {
   const at = roadStep(stage);
-  const lost = stage === "lost";
+  /* lost and cancelled are the road ENDING, not steps on it */
+  const lost = stage === "lost" || stage === "cancelled";
   const c = stageTint(stage);
   return (
     <div data-testid="enquiry-road" aria-label={`Stage: ${ENQ_STAGE_WORD[stage]}`}>
@@ -93,7 +103,7 @@ export function EnquiryRoad({ stage, compact = false }: { stage: EnquiryStatus; 
         {ENQ_ROAD.map((s, i) => (
           <span
             key={s}
-            style={{ flex: 1, height: compact ? 4 : 6, borderRadius: 999, background: lost ? (i === 0 ? "#F8717155" : "var(--el)") : i <= at ? c : "var(--el)" }}
+            style={{ flex: 1, height: compact ? 4 : 6, borderRadius: 999, background: lost ? (i === 0 ? `${c}55` : "var(--el)") : i <= at ? c : "var(--el)" }}
           />
         ))}
       </div>
@@ -106,7 +116,9 @@ export function EnquiryRoad({ stage, compact = false }: { stage: EnquiryStatus; 
           ))}
         </div>
       )}
-      {lost && !compact ? <div style={{ fontSize: 10.5, fontWeight: 800, color: "#F87171", marginTop: 6 }}>This enquiry is closed as lost.</div> : null}
+      {lost && !compact ? (
+        <div style={{ fontSize: 10.5, fontWeight: 800, color: c, marginTop: 6 }}>{stage === "cancelled" ? "This enquiry was cancelled." : "This enquiry is closed as lost."}</div>
+      ) : null}
     </div>
   );
 }
@@ -159,7 +171,9 @@ export function EnquiryCard({ e, out, nowIso }: { e: Enquiry; out: boolean; nowI
         <div style={{ marginTop: 10 }}>
           <EnquiryRoad stage={stage} compact />
           <div style={{ display: "flex", alignItems: "baseline", gap: 8, marginTop: 6 }}>
-            <span style={{ fontSize: 10.5, fontWeight: 900, color: c, textTransform: "uppercase", letterSpacing: 0.5 }}>{ENQ_STAGE_WORD[stage]}</span>
+            <span style={{ fontSize: 10.5, fontWeight: 900, color: c, textTransform: "uppercase", letterSpacing: 0.5 }}>
+              {revisionAsked(e) ? "Revised quote asked" : ENQ_STAGE_WORD[stage]}
+            </span>
             <span style={{ flex: 1, minWidth: 0, fontSize: 10.5, color: "var(--muted)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", textAlign: "right" }}>
               {[when, e.whereText].filter(Boolean).join(" · ")}
             </span>

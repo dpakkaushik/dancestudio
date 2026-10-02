@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { DosMark } from "@/components/ui/DosMark";
 import { AuthShell } from "@/features/auth/components/AuthShell";
+import { leaveIfSignedIn } from "@/lib/auth/leaveIfSignedIn";
 import { BTN_STYLE, DOS_DISPLAY, GOLD, INK, LINE, SKY, SUB } from "@/lib/design/tokens";
 
 /** Welcome screen, from the prototype (DanceOSApp.jsx:3700-3724) with three
@@ -26,7 +27,8 @@ import { BTN_STYLE, DOS_DISPLAY, GOLD, INK, LINE, SKY, SUB } from "@/lib/design/
  *
  *  The tagline is the user's, replacing the prototype's longer one.
  */
-export default function LoginWelcomePage() {
+export default async function LoginWelcomePage() {
+  await leaveIfSignedIn();
   return (
     <AuthShell>
       {/* ⚠ THE FIRST PAGE, REVAMPED ABOVE THE BUTTONS (3 Oct 2026, the user:

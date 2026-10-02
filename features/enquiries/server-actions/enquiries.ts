@@ -7,6 +7,7 @@ import { LIMITS, withinLimit } from "@/lib/rateLimit";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import {
   answerEnquiryQuote,
+  closeEnquiry,
   recordEnquiryPayment,
   sendEnquiry,
   sendEnquiryQuote,
@@ -23,7 +24,9 @@ export interface EnquiryActionResult {
 }
 
 const TYPE_KEYS = ["celebration", "corporate", "judge", "private", "collab"] as const;
-const STAGES = ["new", "in_talks", "quoted", "advance_paid", "confirmed", "won", "lost"] as const;
+/* the hand moves left to the business since 3 Oct 2026 — closing is its own door */
+const STAGES = ["new", "in_talks"] as const;
+const OUTCOMES = ["completed", "lost", "cancelled"] as const;
 
 /* an enquiry goes to a BUSINESS or to a CREW (18 Sep 2026) — exactly one, here
    as in the table's CHECK and the RPC */
@@ -99,6 +102,24 @@ export async function setEnquiryStatusAction(input: { enquiryId: string; status:
     return { error: null };
   } catch (error: unknown) {
     return { error: error instanceof Error ? error.message : "Could not move that enquiry" };
+  }
+}
+
+const closeSchema = z.object({ enquiryId: z.string().uuid(), outcome: z.enum(OUTCOMES) });
+
+/** Close an enquiry from either end (3 Oct 2026). */
+export async function closeEnquiryAction(input: { enquiryId: string; outcome: string }): Promise<EnquiryActionResult> {
+  const parsed = closeSchema.safeParse(input);
+  if (!parsed.success) {
+    return { error: "Invalid request" };
+  }
+  const supabase = await requireUser();
+  try {
+    await closeEnquiry(supabase, parsed.data.enquiryId, parsed.data.outcome);
+    revalidateInbox(parsed.data.enquiryId);
+    return { error: null };
+  } catch (error: unknown) {
+    return { error: error instanceof Error ? error.message : "Could not close that enquiry" };
   }
 }
 

@@ -1,7 +1,9 @@
 import { redirect } from "next/navigation";
 import { EnquirySettings } from "@/features/enquiries/components/EnquirySettings";
 import { loadEnquiries } from "@/features/enquiries/server/loadEnquiries";
+import { PersonAskSettings } from "@/features/inbox/components/AskSettings";
 import { InboxScreen } from "@/features/inbox/components/InboxScreen";
+import { findMyInboxOff } from "@/repositories/askSettings";
 import { buildRequests } from "@/features/inbox/requestItems";
 import { DOS_TINT } from "@/lib/design/tokens";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
@@ -38,7 +40,9 @@ export default async function InboxPage({ searchParams }: { searchParams: Promis
   /* ⚠ THE PROFILE READ WENT WITH ORGANIZATIONS (29 Sep 2026): it was asked for
      one thing, the accent `kindOf` paints this desk with, and the KIND is the
      plan's answer alone now. One round trip fewer. */
-  const [memberships, plan] = await Promise.all([findMyMemberships(supabase), findMyArtistPlan(supabase)]);
+  /* ⚠ and the kinds of ask this person has switched off (3 Oct 2026) — it rides
+     the batch that was already awaited, and answers [] rather than throwing */
+  const [memberships, plan, inboxOff] = await Promise.all([findMyMemberships(supabase), findMyArtistPlan(supabase), findMyInboxOff(supabase, user.id)]);
   /* ⚠ ENQUIRIES ARE BACK ON THIS DESK (2 Oct 2026, the user: "shift back enquiries to inbox from home tools for all profiles") — the reads `/enquiries` made, through one loader shared with a studio's and a crew's Inbox */
   const [{ show }, enq] = await Promise.all([searchParams, loadEnquiries(supabase, { kind: "person", userId: user.id, memberships })]);
   const businesses = memberships.map((m) => m.business);
@@ -124,6 +128,8 @@ export default async function InboxPage({ searchParams }: { searchParams: Promis
       enquiriesIn={enq.enquiriesIn}
       enquiriesOut={enq.enquiriesOut}
       settings={<EnquirySettings businesses={enq.settingsFor} />}
+      requestSettings={<PersonAskSettings section="requests" off={inboxOff} />}
+      inviteSettings={<PersonAskSettings section="invites" off={inboxOff} />}
       initialSection={show === "enquiries" ? "enq" : show === "done" ? "done" : undefined}
       nowIso={nowIso}
     />

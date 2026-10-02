@@ -177,6 +177,11 @@ type WhereKind = "studio" | "place";
  *     with their own capacity, which may publish straight from the form.
  *  The rule behind both is the database's (`classes_publish_needs_a_yes`), so
  *  this form cannot drift from it. */
+/** the chips a business with no styles of its own is offered — the commonest
+ *  across the cities DanceOS runs in; `DosStylePicker` drops any name the
+ *  registry does not hold, so a renamed style cannot draw a dead chip */
+const COMMON_STYLES = ["Bollywood", "Hip-Hop", "Contemporary", "Kathak", "Bharatanatyam", "Salsa"];
+
 export function ClassForm({
   businessId,
   businessType,
@@ -194,8 +199,13 @@ export function ClassForm({
   sheet = false,
   meId = null,
   ownedStudioIds = [],
+  suggestedStyles = [],
 }: {
   businessId: string;
+  /** the styles this business already teaches (`businesses.styles`), drawn as
+   *  one-tap chips over the style picker (3 Oct 2026). Empty → a short list of
+   *  the commonest styles, so the chips are never absent on a first class. */
+  suggestedStyles?: string[];
   /** THE OWNER THEMSELVES (26 Sep 2026): a studio's form offers "I take it
    *  myself" beside the people search, and the database seats that person
    *  CONFIRMED rather than asked — there is nobody to ask. Null on an artist's
@@ -542,8 +552,13 @@ export function ClassForm({
             </div>
 
             <div style={labelStyle}>2 · DANCE STYLE</div>
-            {/* the prototype's searchable picker (15336-15360) */}
-            <DosStylePicker value={style} onChange={setStyle} />
+            {/* the prototype's searchable picker (15336-15360), with the
+                business's own styles as one-tap chips over it (3 Oct 2026) */}
+            <DosStylePicker
+              value={style}
+              onChange={setStyle}
+              suggested={suggestedStyles.length ? suggestedStyles : COMMON_STYLES}
+            />
 
             <div style={labelStyle}>3 · LEVEL</div>
             <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>

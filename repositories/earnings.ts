@@ -129,7 +129,7 @@ export async function findBusinessEarnings(
       .from("payments")
       /* the names behind each payment (2 Oct 2026) — which class or membership,
          and who paid; every key here is a single unambiguous FK */
-      .select("amount_inr, created_at, orders (membership_id, event_id, classes (style, level), memberships (name), profiles (full_name))")
+      .select("amount_inr, created_at, orders (membership_id, event_id, enquiry_quote_id, classes (style, level), memberships (name), profiles (full_name))")
       .in("business_id", businessIds)
       .eq("kind", "order")
       .in("status", ["captured", "refunded"])
@@ -245,6 +245,7 @@ export async function findBusinessEarnings(
   type Subject = {
     membership_id: string | null;
     event_id: string | null;
+    enquiry_quote_id?: string | null;
     classes?: ClassBit | ClassBit[] | null;
     memberships?: { name: string } | Array<{ name: string }> | null;
     profiles?: Named | Named[] | null;
@@ -254,6 +255,10 @@ export async function findBusinessEarnings(
     const s = single(p.orders);
     const who = single(s?.profiles)?.full_name ?? null;
     const tail = who ? ` — ${who}` : "";
+    /* ⚠ AN ENQUIRY PAID ONLINE (3 Oct 2026) is counted ONCE, from its quote below
+       — the capture stamps the quote's paid-at — so its payments row is skipped
+       here, or the `else` would ALSO fold it into Classes */
+    if (s?.enquiry_quote_id) continue;
     if (s?.membership_id) take(memberships, membershipsI, p.created_at, p.amount_inr, `${single(s.memberships)?.name ?? "A membership"}${tail}`);
     else if (s?.event_id) take(events, eventsI, p.created_at, p.amount_inr, `A ticket or entry${tail}`);
     else take(classes, classesI, p.created_at, p.amount_inr, `${classWords(single(s?.classes)) ?? "A class"}${tail}`);

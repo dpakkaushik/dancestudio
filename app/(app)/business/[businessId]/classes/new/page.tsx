@@ -55,6 +55,7 @@ export default async function NewClassPage({
       meId={business.type === "studio" ? user.id : null}
       ownedStudioIds={memberships.filter((m) => m.memberRole === "owner" && m.business.type === "studio").map((m) => m.business.id)}
       studioPlace={[business.area, business.city].filter(Boolean).join(", ")}
+      suggestedStyles={business.styles}
     />
   );
 }

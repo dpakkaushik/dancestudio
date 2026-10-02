@@ -135,6 +135,7 @@ export default async function BusinessClassesPage({
           /* the owner may take their own class (26 Sep 2026) — this branch is owner-only */
           meId={user.id}
           studioPlace={[business.area, business.city].filter(Boolean).join(", ")}
+          suggestedStyles={business.styles}
           sheet
         />
       ) : null}

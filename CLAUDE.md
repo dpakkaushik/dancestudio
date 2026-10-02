@@ -2,6 +2,66 @@
 
 ## LAST SESSION (3 Oct 2026) — replaced on every push (Rule 13)
 
+> ### AN ENQUIRY IS ANSWERED THREE WAYS, CLOSED FROM EITHER END, AND PAID THROUGH THE RAIL; THE INBOX TAKES ONLY WHAT YOU SWITCHED ON (3 Oct 2026, latest) — ⚠ Rule 9 (MONEY + who may ask whom) — ✅ `20261003090000` APPLIED (dry run 54/54 re-run first, read back live 14/14, PostgREST reloaded)
+> Built by the previous chat, which died on "Prompt is too long" straight after
+> the user's *"apply it"* — its list was read back out of its transcript, and this
+> session applied it on *"push to live and apply from last chat"*.
+> * **The user's ask:** *"inbox dual tone theme from bottom like discover and home.
+>   request and invite settings for inbox.. spaced out and bigger columns … when
+>   accepting or rejecting quote for an enquiry should get option to resend again
+>   for the Revised Quote or Cancel Enquiry … same closing enquiry option should be
+>   with the person receiving it as well with option to do completed status.
+>   payment for enquiry should connect to payments"*, and their four answers:
+>   settings decide which kinds you ACCEPT (refused in the database); the sender
+>   may **Accept · Ask to revise · Cancel**; the business closes as **Completed ·
+>   Lost · Cancelled** (Completed replaces Won); payment is **both** — online
+>   through Cashfree, or recorded by hand as before.
+> * **Inbox settings** (`AskSettings`, `repositories/askSettings.ts`):
+>   `profiles.inbox_off` (teach · assist · team · crew — what is OFF is stored, so
+>   a new kind arrives until somebody turns it off) and
+>   `businesses.takes_room_requests`. ⚠ One trigger, `guard_ask_switched_on`, on
+>   the three tables an ask is a row on (`class_people`, `crew_members`,
+>   `business_invites`) — so every door meets the same refusal, in words that name
+>   the person; the service role and asking yourself are exempt; an invite typed
+>   as an ADDRESS never learns the name behind it. `guard_room_requests_open` on
+>   `classes`, ⚠ named to fire after `classes_venue_changes_before`.
+> * **Enquiries:** `close_enquiry` (either end; the sender may only CANCEL, and only
+>   before any money moved), `closed_at`/`closed_by`, the one live `won` row is now
+>   `completed`, `answer_enquiry_quote(false)` means *ask for a revision* (stays
+>   open as In talks, the business is told), `set_enquiry_status` only moves New ·
+>   In talks and refuses to reopen what the sender cancelled.
+> * ⚠⚠ **Online payment:** `orders.enquiry_quote_id` + `enquiry_part`, the subject
+>   CHECK widened to four subjects, `create_enquiry_payment_order` (the amount and
+>   the part are the QUOTE's, never the client's), `apply_enquiry_payment` under
+>   the quote's lock (a wrong amount, a closed enquiry or a part already paid is
+>   REFUNDED, never marked twice), and one branch more in the
+>   `apply_captured_payment` dispatcher. ⚠ A crew's enquiry stays "settle
+>   directly" — every order belongs to a business. ⚠ The Cashfree window itself
+>   cannot be driven by a script; the dry run covers capture, refund and replay.
+> * **Also in this push (no schema):** the scan sheet lost its paste field, its two
+>   doors are icon buttons, and a failed lookup turns the camera back on; the
+>   welcome and sign-in screens send a signed-in person Home
+>   (`lib/auth/leaveIfSignedIn.ts`) — which was the "back swipe logs me out"; the
+>   class form offers the business's own styles as one-tap chips.
+> * **Verified:** dry run **54/54** rolled back · `db-push -DryRun` exactly the one
+>   file · applied first try · live read-back **14/14** (anon 39, policies 103,
+>   the two payment helpers executable by no client role) · proofs
+>   `enquiries · payments · notifications · crews · staff · rooms-people` **6/6** ·
+>   typecheck 0 · lint 0 · `audit:reads` 0 · build green · `shoot-inbox` 34/34 ·
+>   `shoot-register` 65/65 · `shoot-hero` 187/187 · **the whole e2e suite 46
+>   passed / 1 failed / 9 not run**, then **the happy path alone 19/19 in 12.1 min**
+>   — all 56 green across the two runs on one bundle.
+>   * ⚠ The whole-suite red was the Settings sheet not answering a press on the
+>     Profile tab — green on the re-run with nothing changed (the 2 Oct hydration
+>     shape; the machine was carrying 17 Chrome processes).
+>   * ⚠⚠ **The first happy-path re-run found a REAL stale step, which the whole-suite
+>     run had hidden** (the serial story stopped before reaching it): the enquiry
+>     segment now ends with the business marking the enquiry **Completed**, and the
+>     later wiring slice still looked for it under **Sent** — on both ends. A
+>     closed enquiry lives under Completed (C96), so the TEST was wrong; both steps
+>     open "Completed enquiries" now. **When a segment changes an object's state,
+>     grep the later segments for that object.**
+
 > ### SHARE ON A CLASS, ROUTINES FOR EVERYBODY, PROPER ROUTINE CARDS, LOG OUT ASKS, A 5-HOUR CAP, AND A NEW FIRST PAGE (3 Oct 2026, latest) — no migration, ✅ PUSHED AND LIVE (`40014a7`: Vercel READY, alias confirmed on the sha, `stranger-smoke` 8/8, the plain-user probe 13/13 and the share probe 25/25 ON THE LIVE SITE)
 > Seven asks from the user in one run:
 > * **Share on the class page** (*"share button in class detail with copy link.
@@ -12254,6 +12314,12 @@ pan-India. The prototype's `__DOS*` localStorage shapes are the source material
 for the database schema. **The UI is not redesigned** — see Rule 2.
 
 ### Progress tracker — update after EVERY push (Rule 11)
+
+- **ENQUIRY FOLLOW-UPS, ONLINE ENQUIRY PAYMENT AND INBOX SETTINGS — 3 Oct 2026, no
+  step number ⚠ (Rule 9: money + who may ask whom) — `20261003090000` APPLIED.**
+  Accept · Ask to revise · Cancel for the sender, Completed · Lost · Cancelled for
+  the business, an enquiry paid through Cashfree or recorded by hand, and asks a
+  person has switched off refused in the database. Detail at the top.
 
 - **A SWIPE SWITCHES PROFILE, PAYMENT COMES BACK, AND YOU MAY FOLLOW YOUR OWN
   STUDIO — 2 Oct 2026, no step number ⚠ (Rule 9: money return path + a follow

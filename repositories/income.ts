@@ -31,7 +31,7 @@ interface PaymentRow {
    *  it does not. A subscription payment has no order at all (`order_id` is
    *  nullable since 10 Sep 2026), hence the null. */
   /* ⚠ `event_id` came off the embed on 29 Sep 2026 with the bucket it fed */
-  orders: { membership_id: string | null } | null;
+  orders: { membership_id: string | null; enquiry_quote_id?: string | null } | null;
 }
 
 interface ProcessedRefundRow {
@@ -99,7 +99,7 @@ export async function findBusinessIncome(
   const [paymentsRes, refundsRes, openRes] = await Promise.all([
     supabase
       .from("payments")
-      .select("amount_inr, status, method, created_at, orders (membership_id)")
+      .select("amount_inr, status, method, created_at, orders (membership_id, enquiry_quote_id)")
       .eq("business_id", businessId)
       /* ⚠ MONEY THIS BUSINESS TOOK, SAID OUT LOUD (20 Sep 2026). `payments.kind`
          is order | subscription_auth | subscription_charge, and the last two are
@@ -156,6 +156,11 @@ export async function findBusinessIncome(
   const buckets = new Map<string, Bucket>(keys.map((k) => [k, emptyBucket()]));
 
   for (const p of payments) {
+    /* ⚠ enquiry money paid online (3 Oct 2026) is NOT a class seat, and this
+       statement's residual reads as Classes — so it is left to the Earnings
+       screen, which has counted enquiry money from its quotes since 21 Sep, the
+       same way hand-recorded enquiry money was never in this sum either */
+    if (p.orders?.enquiry_quote_id) continue;
     const bucket = buckets.get(monthKeyOf(p.created_at));
     if (!bucket) continue;
     bucket.gross += p.amount_inr;

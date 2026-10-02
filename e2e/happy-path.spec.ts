@@ -1286,14 +1286,55 @@ test.describe.serial("DanceOS, end to end", () => {
     await learner.getByRole("link", { name: `Private Sessions enquiry to ${studioName}` }).click();
     await learner.waitForURL(/\/inbox\/enquiries\/[0-9a-f-]+$/);
     await expect(learner.getByTestId("quote-1-state")).toHaveText("Waiting on an answer");
-    await learner.getByRole("button", { name: "Accept this quote" }).click();
-    await expect(learner.getByTestId("enquiry-stage")).toHaveText("Confirmed");
-    // the sender cannot pay yet — the rail has no account — and the page says so
-    await expect(learner.getByText(/Payments aren.t switched on yet/)).toBeVisible();
+    /* ⚠⚠ RE-CUT 3 Oct 2026 (the user: "when accepting or rejecting quote for an
+       enquiry should get option to resend again for the Revised Quote or Cancel
+       Enquiry … same closing enquiry option should be with the person receiving
+       it as well with option to do completed status … payment for enquiry should
+       connect to payments"). Declining IS asking for a revision now, and the
+       enquiry stays open; the business sends quote #2; the sender accepts it and
+       is offered a real Pay button (the Cashfree window itself is not driven);
+       the business records the advance by hand, then marks it Completed through
+       its confirm — and the sender reads who closed it. */
+    await learner.getByRole("button", { name: "Ask for a revised quote" }).click();
+    await expect(learner.getByTestId("enquiry-stage")).toHaveText("In talks", { timeout: 15_000 });
+    await expect(learner.getByTestId("revision-asked")).toBeVisible();
+    await expect(learner.getByTestId("quote-1-state")).toHaveText("Revision asked");
 
     await owner.reload();
-    await owner.getByRole("button", { name: "Mark advance received" }).click();
-    await expect(owner.getByTestId("enquiry-stage")).toHaveText("Advance paid");
+    await expect(owner.getByTestId("revision-asked")).toBeVisible();
+    await owner.getByRole("button", { name: "Revise the quote" }).click();
+    /* the composer starts from the price it revises */
+    await expect(owner.getByLabel("Project cost")).toHaveValue("5000");
+    await owner.getByLabel("Project cost").fill("4000");
+    await owner.getByRole("button", { name: "Send this quote" }).click();
+    await expect(owner.getByTestId("enquiry-stage")).toHaveText("Quoted", { timeout: 15_000 });
+
+    await learner.reload();
+    await expect(learner.getByTestId("quote-2-state")).toHaveText("Waiting on an answer");
+    await learner.getByRole("button", { name: "Accept this quote" }).click();
+    await expect(learner.getByTestId("enquiry-stage")).toHaveText("Confirmed", { timeout: 15_000 });
+    /* the payment goes through the rail: the button names the half that is owed,
+       priced by the quote (30% of ₹4,000) */
+    await expect(learner.getByTestId("enquiry-pay")).toHaveText("Pay the advance · ₹1,200");
+
+    await owner.reload();
+    await owner.getByRole("button", { name: "Record the advance received" }).click();
+    await expect(owner.getByTestId("enquiry-stage")).toHaveText("Advance paid", { timeout: 15_000 });
+
+    /* money has moved, so the sender may no longer cancel — and is told why */
+    await learner.reload();
+    await expect(learner.getByText(/A payment has been made on this enquiry/)).toBeVisible();
+    await expect(learner.getByRole("button", { name: "Cancel enquiry" })).toHaveCount(0);
+
+    await owner.getByRole("button", { name: "Mark completed" }).click();
+    await expect(owner.getByTestId("close-confirm")).toBeVisible();
+    await owner.getByRole("button", { name: "Yes — mark completed" }).click();
+    await expect(owner.getByTestId("enquiry-stage")).toHaveText("Completed", { timeout: 15_000 });
+    await expect(owner.getByTestId("enquiry-closed-by")).toContainText("by you");
+
+    await learner.reload();
+    await expect(learner.getByTestId("enquiry-stage")).toHaveText("Completed");
+    await expect(learner.getByTestId("enquiry-closed-by")).toContainText(studioName);
   });
 
   /* ⚠⚠ THE EVENTS TEST WAS HERE AND IS GONE (29 Sep 2026). It was Step 21's
@@ -2389,7 +2430,10 @@ test.describe.serial("DanceOS, end to end", () => {
     await bizSheet.getByRole("button", { name: "Save" }).click();
     await expect(bizSheet).toHaveCount(0);
     await learner.goto("/enquiries");
-    await learner.getByRole("button", { name: "Sent enquiries" }).click();
+    /* ⚠ COMPLETED, NOT SENT, since 3 Oct 2026: the enquiry segment now ends with
+       the business marking this enquiry Completed, and a closed enquiry lives
+       under Completed (C96) — the Sent side holds only what is still open */
+    await learner.getByRole("button", { name: "Completed enquiries" }).click();
     await learner.getByRole("link", { name: `Private Sessions enquiry to ${studioName}` }).click();
     await learner.waitForURL(/\/inbox\/enquiries\/[0-9a-f-]+$/);
     await expect(learner.getByRole("link", { name: `Call ${studioName}` })).toHaveAttribute("href", "tel:+919000011111");
@@ -2397,6 +2441,8 @@ test.describe.serial("DanceOS, end to end", () => {
     // says so rather than offering a dead button. ⚠ On the STUDIO's own desk
     // since 2 Oct 2026 — the unscoped desk is the owner's personal profile.
     await owner.goto(`/enquiries?as=${businessId}`);
+    /* ⚠ the studio's desk opens on Received, and this enquiry was closed */
+    await owner.getByRole("button", { name: "Completed enquiries" }).click();
     await owner.getByRole("link", { name: `Private Sessions enquiry from ${learnerName}` }).click();
     await owner.waitForURL(/\/inbox\/enquiries\/[0-9a-f-]+$/);
     await expect(owner.getByText("No number on this enquiry — quote them here instead")).toBeVisible();

@@ -136,28 +136,37 @@ export const CREW_ENQUIRY_TYPES: EnquiryTypeKey[] = ["celebration", "corporate",
 export const enquiryTypesForCrew = (): EnquiryType[] => ENQ_TYPES.filter((t) => CREW_ENQUIRY_TYPES.includes(t.k));
 
 /** The stages, in the prototype's own words and order (ENQ_STATUSES 4938). */
-export type EnquiryStatus = "new" | "in_talks" | "quoted" | "advance_paid" | "confirmed" | "won" | "lost";
+/** ⚠ 3 Oct 2026: **Won is gone** — Paid is the money landing in full and
+ *  Completed is the business saying the job is done, which were one word before
+ *  and are two moments. **Cancelled** is the third way an enquiry ends: either
+ *  end may call it off (the sender only before any money has moved). */
+export type EnquiryStatus = "new" | "in_talks" | "quoted" | "confirmed" | "advance_paid" | "paid" | "completed" | "lost" | "cancelled";
 
 export const ENQ_STAGE_WORD: Record<EnquiryStatus, string> = {
   new: "New",
   in_talks: "In talks",
   quoted: "Quoted",
-  advance_paid: "Advance paid",
   confirmed: "Confirmed",
-  won: "Won",
+  advance_paid: "Advance paid",
+  paid: "Paid",
+  completed: "Completed",
   lost: "Lost",
+  cancelled: "Cancelled",
 };
 
-export const ENQ_STAGES: EnquiryStatus[] = ["new", "in_talks", "quoted", "advance_paid", "confirmed", "won", "lost"];
+export const ENQ_STAGES: EnquiryStatus[] = ["new", "in_talks", "quoted", "confirmed", "advance_paid", "paid", "completed", "lost", "cancelled"];
+
+/** the three ways an enquiry ENDS — everything under Completed in the Inbox */
+export const ENQ_CLOSED: ReadonlySet<EnquiryStatus> = new Set(["completed", "lost", "cancelled"]);
 
 /** ⚠ THE ROAD AN ENQUIRY TRAVELS, in the order it is travelled (2 Oct 2026, the
  *  user: "better status update"). `ENQ_STAGES` is the order the prototype's
  *  status MENU lists them, which puts Advance paid before Confirmed — the
  *  opposite of what happens. The tracker on every card and the detail page draws
- *  THIS one; Lost is not a step on it but the road ending, drawn apart. */
-export const ENQ_ROAD: EnquiryStatus[] = ["new", "in_talks", "quoted", "confirmed", "advance_paid", "won"];
+ *  THIS one; Lost and Cancelled are not steps on it but the road ending. */
+export const ENQ_ROAD: EnquiryStatus[] = ["new", "in_talks", "quoted", "confirmed", "advance_paid", "paid", "completed"];
 
-/** how far along the road a stage is — Lost answers -1 */
+/** how far along the road a stage is — Lost and Cancelled answer -1 */
 export const roadStep = (s: EnquiryStatus): number => ENQ_ROAD.indexOf(s);
 
 export type QuoteStatus = "sent" | "accepted" | "declined" | "superseded";
@@ -171,6 +180,8 @@ export interface EnquiryQuote {
   status: QuoteStatus;
   advancePaidAt: string | null;
   fullPaidAt: string | null;
+  /** the person quoted declined this one and asked for a revised quote (3 Oct 2026) */
+  revisionAskedAt: string | null;
   createdAt: string;
 }
 
@@ -200,6 +211,9 @@ export interface Enquiry {
   message: string;
   mobile: string | null;
   status: EnquiryStatus;
+  /** when it was closed and by whom — the sender (cancelled) or somebody on the business's side */
+  closedAt: string | null;
+  closedBy: string | null;
   createdAt: string;
   quotes: EnquiryQuote[];
 }
@@ -212,19 +226,26 @@ export const liveQuoteOf = (e: { quotes: EnquiryQuote[] }): EnquiryQuote | null 
  *  in twice (enqStage 4977): a quote can be accepted and paid while the status
  *  menu still says New because nobody touched it. */
 export const enquiryStage = (e: { status: EnquiryStatus; quotes: EnquiryQuote[] }): EnquiryStatus => {
+  /* ⚠ A CLOSE WINS (2 Oct 2026, found while redesigning the status control):
+     with a live quote the derived stage used to override a hand-set close — so
+     pressing "Lost" on a quoted enquiry changed the row and nothing on screen. A
+     close is a decision; the quote's own state is only the default. */
+  if (ENQ_CLOSED.has(e.status)) return e.status;
   const live = liveQuoteOf(e);
   if (!live) return e.status;
-  if (live.fullPaidAt) return "won";
-  /* ⚠ A HAND-SET CLOSE WINS (2 Oct 2026, found while redesigning the status
-     control): the business may close an enquiry as Won or Lost from its menu,
-     and with a live quote the derived stage used to override it — so pressing
-     "Lost" on a quoted enquiry changed the row and changed nothing on screen. A
-     close is a decision; the quote's own state is only the default. */
-  if (e.status === "lost" || e.status === "won") return e.status;
+  if (live.fullPaidAt) return "paid";
   if (live.advancePaidAt) return "advance_paid";
   if (live.status === "accepted") return "confirmed";
-  if (live.status === "declined") return "lost";
+  /* ⚠ a declined quote no longer ends the enquiry (3 Oct 2026): it is the sender
+     asking for a revised one, and the enquiry is back in talks */
+  if (live.status === "declined") return "in_talks";
   return "quoted";
+};
+
+/** the live quote was declined with a revision asked for, and nothing newer sent */
+export const revisionAsked = (e: { quotes: EnquiryQuote[]; status: EnquiryStatus }): boolean => {
+  const live = liveQuoteOf(e);
+  return Boolean(live && live.status === "declined" && live.revisionAskedAt && !ENQ_CLOSED.has(e.status));
 };
 
 /** what an enquiry is worth on the desk: the live quote, else nothing yet */

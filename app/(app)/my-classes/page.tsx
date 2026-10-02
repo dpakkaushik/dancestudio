@@ -425,6 +425,7 @@ export default async function MyClassesPage({ searchParams }: { searchParams: Pr
           businessType="artist_page"
           rooms={[]}
           isOwner
+          suggestedStyles={myPage.styles}
           sheet
           /* the studios this artist OWNS (26 Sep 2026): a class held in one of
              them needs no request, and the form says so */

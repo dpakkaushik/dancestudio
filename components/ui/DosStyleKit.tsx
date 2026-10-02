@@ -77,12 +77,20 @@ export function DosStylePicker({
   all = false,
   placeholder = "Pick a style",
   ariaLabel = "Dance style",
+  suggested = [],
 }: {
   value: string;
   onChange: (style: string) => void;
   all?: boolean;
   placeholder?: string;
   ariaLabel?: string;
+  /** ONE-TAP STYLES (3 Oct 2026, the user: "when creating class selecting dance
+   *  style should be easier"). The styles this business already teaches, drawn
+   *  as chips above the closed row, so the commonest pick is one press instead
+   *  of open → search → press. The full list is still behind the row. Each chip
+   *  is named "Quick pick: {style}" — never the bare style — so a locator that
+   *  finds a list option by its exact name still finds exactly one. */
+  suggested?: string[];
 }) {
   const [open, setOpen] = useState(false);
   const [q, setQ] = useState("");
@@ -93,9 +101,32 @@ export function DosStylePicker({
     setOpen(false);
     setQ("");
   };
+  const known = new Set(DOS_STYLE_REG.map(([n]) => n));
+  const chips = Array.from(new Set(suggested.filter((s) => known.has(s)))).slice(0, 8);
 
   return (
     <>
+      {chips.length ? (
+        <div role="group" aria-label="Quick picks" data-testid="style-quick-picks" style={{ display: "flex", flexWrap: "wrap", gap: 7, marginBottom: 9 }}>
+          {chips.map((s) => {
+            const on = value === s;
+            const c = dosStyleColor(s) || "#5AC8FA";
+            return (
+              <button
+                key={s}
+                type="button"
+                aria-label={`Quick pick: ${s}`}
+                aria-pressed={on}
+                onClick={() => pick(s)}
+                style={{ display: "inline-flex", alignItems: "center", gap: 7, padding: "5px 12px 5px 5px", borderRadius: 999, cursor: "pointer", font: "inherit", fontSize: 13, fontWeight: 800, color: on ? "#fff" : "var(--text)", background: on ? dosToolPaint(c) : "var(--card)", border: `1.5px solid ${on ? c : "var(--el)"}` }}
+              >
+                <DosStyleCoin label={s} size={22} active={on} />
+                {s}
+              </button>
+            );
+          })}
+        </div>
+      ) : null}
       <div
         role="button"
         tabIndex={0}

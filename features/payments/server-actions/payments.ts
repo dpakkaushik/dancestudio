@@ -20,6 +20,7 @@ import {
   attachProviderOrder,
   attachProviderRefund,
   cancelBooking,
+  createEnquiryPaymentOrder,
   createMembershipPaymentOrder,
   createPaymentOrder,
   findMyOrder,
@@ -132,6 +133,8 @@ async function openRail(
   /* the two event tags went with events (29 Sep 2026) */
   if (order.membershipId) tags.membership_id = order.membershipId;
   if (order.membershipPassId) tags.membership_pass_id = order.membershipPassId;
+  if (order.enquiryQuoteId) tags.enquiry_quote_id = order.enquiryQuoteId;
+  if (order.enquiryPart) tags.enquiry_part = order.enquiryPart;
   const cfOrder = await createCashfreeOrder({
     orderId: order.id,
     amountInr: order.amountInr,
@@ -184,6 +187,43 @@ export async function startMembershipCheckoutAction(input: { passId: string; bus
     const order = await createMembershipPaymentOrder(supabase, parsed.data.passId);
     const checkout = await openRail(supabase, user, order, parsed.data.businessName, parsed.data.description);
     revalidatePath("/memberships");
+    return { checkout, error: null };
+  } catch (error: unknown) {
+    return { checkout: null, error: error instanceof Error ? error.message : "Could not start the payment" };
+  }
+}
+
+const startEnquirySchema = z.object({
+  quoteId: z.string().uuid(),
+  enquiryId: z.string().uuid(),
+  businessName: z.string().trim().min(1).max(80),
+  description: z.string().trim().min(1).max(120),
+});
+
+/** ⚠ AN ENQUIRY IS PAID THROUGH THE RAIL (3 Oct 2026, the user: "payment for
+ *  enquiry should connect to payments and take back once payment is
+ *  confirmed"). The order names the accepted quote; the RPC decides which half
+ *  is owed and prices it from the quote. The capture — webhook or the confirm
+ *  below — marks that half paid under the quote's lock, and refunds rather than
+ *  marking a half twice. A crew is still paid directly: a crew has no business
+ *  row for the money to land on, and the RPC says so. */
+export async function startEnquiryCheckoutAction(input: {
+  quoteId: string;
+  enquiryId: string;
+  businessName: string;
+  description: string;
+}): Promise<StartCheckoutResult> {
+  const parsed = startEnquirySchema.safeParse(input);
+  if (!parsed.success) {
+    return { checkout: null, error: "Invalid payment request" };
+  }
+  const { supabase, user } = await requireUser();
+  if (!isCashfreeConfigured()) {
+    return { checkout: null, error: "Payments aren't switched on for this deployment yet — settle directly and they will record it." };
+  }
+  try {
+    const order = await createEnquiryPaymentOrder(supabase, parsed.data.quoteId);
+    const checkout = await openRail(supabase, user, order, parsed.data.businessName, parsed.data.description);
     return { checkout, error: null };
   } catch (error: unknown) {
     return { checkout: null, error: error instanceof Error ? error.message : "Could not start the payment" };
@@ -247,9 +287,21 @@ export async function confirmCheckoutAction(input: { orderId: string }): Promise
       method: success.payment_group ?? null,
     });
     revalidateBookingSurfaces();
+    revalidatePath("/inbox");
+    revalidatePath("/inbox/enquiries/[enquiryId]", "page");
+    revalidatePath("/memberships");
 
-    if (applied.outcome === "enrolled") {
+    /* ⚠ ONE WORD PER SUBJECT FOR "IT LANDED" (3 Oct 2026, found while adding
+       enquiries): a class seat answers `enrolled`, a membership `granted`, an
+       enquiry `paid` — and this read `enrolled` alone, so a paid MEMBERSHIP fell
+       through to "could not be matched" on a payment that had worked. */
+    if (applied.outcome === "enrolled" || applied.outcome === "granted" || applied.outcome === "paid") {
       return { outcome: "booked", error: null };
+    }
+    if (applied.outcome === "refunded") {
+      /* a membership's own refusal (`apply_membership_payment`) files the refund
+         row without handing its id back — the ledger shows it to send */
+      return { outcome: "refund_pending", error: null };
     }
     if (applied.outcome === "duplicate") {
       return applied.order_status === "paid"

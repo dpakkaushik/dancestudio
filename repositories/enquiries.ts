@@ -18,6 +18,7 @@ interface QuoteRow {
   status: QuoteStatus;
   advance_paid_at: string | null;
   full_paid_at: string | null;
+  revision_asked_at: string | null;
   created_at: string;
   deleted_at: string | null;
 }
@@ -34,6 +35,8 @@ interface EnquiryRow {
   message: string;
   mobile: string | null;
   status: EnquiryStatus;
+  closed_at: string | null;
+  closed_by: string | null;
   created_at: string;
   businesses: { name: string; type: BusinessType; phone: string | null; profile_photo_path: string | null } | null;
   crews: { name: string; photo: string | null } | null;
@@ -44,7 +47,7 @@ interface EnquiryRow {
 /* an enquiry names a business OR a crew (18 Sep 2026): both embeds ride along and
    exactly one comes back non-null */
 const ENQUIRY_SELECT =
-  "id, business_id, crew_id, from_user_id, type_key, fields, dates, where_text, message, mobile, status, created_at, businesses (name, type, phone, profile_photo_path), crews (name, photo), profiles (full_name, profile_photo_path), enquiry_quotes (id, n, cost_inr, advance_pct, advance_inr, status, advance_paid_at, full_paid_at, created_at, deleted_at)";
+  "id, business_id, crew_id, from_user_id, type_key, fields, dates, where_text, message, mobile, status, closed_at, closed_by, created_at, businesses (name, type, phone, profile_photo_path), crews (name, photo), profiles (full_name, profile_photo_path), enquiry_quotes (id, n, cost_inr, advance_pct, advance_inr, status, advance_paid_at, full_paid_at, revision_asked_at, created_at, deleted_at)";
 
 const toQuote = (q: QuoteRow): EnquiryQuote => ({
   id: q.id,
@@ -55,6 +58,7 @@ const toQuote = (q: QuoteRow): EnquiryQuote => ({
   status: q.status,
   advancePaidAt: q.advance_paid_at,
   fullPaidAt: q.full_paid_at,
+  revisionAskedAt: q.revision_asked_at,
   createdAt: q.created_at,
 });
 
@@ -87,6 +91,8 @@ const toEnquiry = (r: EnquiryRow): Enquiry => ({
   message: r.message,
   mobile: r.mobile,
   status: r.status,
+  closedAt: r.closed_at,
+  closedBy: r.closed_by,
   createdAt: r.created_at,
   quotes: (r.enquiry_quotes ?? [])
     .filter((q) => !q.deleted_at)
@@ -209,6 +215,16 @@ export async function sendEnquiryQuote(
     p_cost_inr: costInr,
     p_advance_pct: advancePct,
   });
+  if (error) {
+    throw new Error(error.message);
+  }
+}
+
+/** Either end closes an enquiry (3 Oct 2026): the sender may only cancel, and only
+ *  before any money has moved; the business closes as completed, lost or
+ *  cancelled. The RPC decides which end the caller is. */
+export async function closeEnquiry(supabase: SupabaseClient, enquiryId: string, outcome: "completed" | "lost" | "cancelled"): Promise<void> {
+  const { error } = await supabase.rpc("close_enquiry", { p_enquiry_id: enquiryId, p_outcome: outcome });
   if (error) {
     throw new Error(error.message);
   }

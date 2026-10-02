@@ -22,6 +22,9 @@ export interface PaymentOrder {
    *  pass the money turns from `pending_payment` into one somebody holds */
   membershipId: string | null;
   membershipPassId: string | null;
+  /** an enquiry order (3 Oct 2026): the accepted quote, and which half of it */
+  enquiryQuoteId: string | null;
+  enquiryPart: "advance" | "balance" | "full" | null;
   amountInr: number;
   provider: PaymentProvider;
   providerOrderId: string | null;

@@ -92,10 +92,14 @@ const headingOf = (page) =>
     return { count: hs.length, text: hs.map((h) => h.textContent.trim()).join(" | ") };
   });
 
-/** the scan sheet's own way in that a headless browser CAN drive */
+/** the text a camera would have decoded, handed to the open scan sheet.
+ *  ⚠ The visible paste field went on 3 Oct 2026 (the user: "no paste profile
+ *  link option"), and headless Chromium has no BarcodeDetector — so the sheet
+ *  exposes `window.__dosScanFeed` while it is open, which takes exactly the path
+ *  a decode takes. It waits for the sheet to have mounted it. */
 const scanLink = async (page, personId) => {
-  await page.getByLabel("Profile link").fill(`${BASE}/person/${personId}`);
-  await page.getByRole("button", { name: "Use link" }).click();
+  await page.waitForFunction(() => typeof window.__dosScanFeed === "function", null, { timeout: 15000 });
+  await page.evaluate((text) => window.__dosScanFeed(text), `${BASE}/person/${personId}`);
 };
 
 /* ⚠ EVERY "Attendance" LOCATOR IN THIS FILE IS `exact` (28 Sep 2026), and the

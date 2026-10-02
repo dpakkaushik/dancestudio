@@ -55,6 +55,20 @@ export const personIdFromText = (text: string): string | null => {
 
 type Status = "starting" | "scanning" | "unsupported" | "denied";
 
+/** a round door under the confirm card's face — inverted against the theme, the
+ *  29 Sep rule for these two */
+const scanDoor: React.CSSProperties = {
+  width: 52,
+  height: 52,
+  borderRadius: 26,
+  display: "inline-flex",
+  alignItems: "center",
+  justifyContent: "center",
+  background: "var(--text)",
+  color: "var(--solid)",
+  textDecoration: "none",
+};
+
 /** WHAT THE CALLER DID WITH THE PERSON THE SCAN FOUND (28 Sep 2026).
  *
  *  A caller that returns nothing owns the sheet and closes it itself — which is
@@ -92,8 +106,6 @@ export function ScanSheet({
   /* decided once, on the client, at mount — the sheet only ever mounts from a press */
   const [supported] = useState(() => Boolean(detectorCtor()) && typeof navigator !== "undefined" && Boolean(navigator.mediaDevices?.getUserMedia));
   const [status, setStatus] = useState<Status>(supported ? "starting" : "unsupported");
-  const [pasted, setPasted] = useState("");
-  const [pasteErr, setPasteErr] = useState<string | null>(null);
 
   /** ⚠⚠ A SCAN IS NOT A DECISION (28 Sep 2026, the user: "when scanning any
    *  persons qr code for entry for a class or event or in a team should first
@@ -149,6 +161,8 @@ export function ScanSheet({
     setLooking(false);
     if (!out.person) {
       setLookErr(out.error ?? "Nobody on DanceOS at that link");
+      /* a code that finds nobody hands the camera back — it used to stay deaf */
+      armed.current = true;
       return;
     }
     setFound(out.person);
@@ -229,21 +243,31 @@ export function ScanSheet({
     };
   }, [supported, resolve]);
 
-  const usePasted = () => {
-    const id = personIdFromText(pasted);
-    if (!id) {
-      setPasteErr("That is not a DanceOS profile link.");
-      return;
-    }
-    setPasteErr(null);
-    void resolve(id);
-  };
+  /* ⚠⚠ NO PASTE FIELD (3 Oct 2026, the user: "no paste profile link option when
+     scanning qr code"). What survives is an INVISIBLE feed for the shoot scripts:
+     headless Chromium has no `BarcodeDetector`, so a script hands the sheet the
+     text a camera would have decoded, and it takes exactly the path a decode takes
+     — the lookup, the confirm card, the caller's own RPC deciding. It grants
+     nothing a signed-in person could not already do with the server action. */
+  useEffect(() => {
+    const w = window as unknown as { __dosScanFeed?: (text: string) => boolean };
+    w.__dosScanFeed = (text: string) => {
+      const id = personIdFromText(text);
+      if (!id || !armed.current) return false;
+      armed.current = false;
+      void resolve(id);
+      return true;
+    };
+    return () => {
+      delete w.__dosScanFeed;
+    };
+  }, [resolve]);
 
   const line =
     status === "unsupported"
-      ? "This browser cannot read a code from the camera — paste their profile link instead."
+      ? "This browser cannot read a code from the camera — use the DanceOS app on an Android phone, or search their name."
       : status === "denied"
-        ? "The camera was refused — paste their profile link instead."
+        ? "The camera was refused — allow it in the browser's settings, or search their name."
         : status === "starting"
           ? "Starting the camera…"
           : "Point the camera at a DanceOS profile code.";
@@ -283,12 +307,20 @@ export function ScanSheet({
                   you might want to check should not be the faintest thing on the
                   sheet. `--text` on `--solid` is the app's own "opposite", the
                   same pair Confirm below them uses. */}
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginBottom: 10 }}>
-                <Link href={`/person/${found.id}`} target="_blank" rel="noreferrer" aria-label={`View ${found.fullName}'s profile`} style={{ textAlign: "center", padding: "11px 8px", borderRadius: 12, background: "var(--text)", border: "none", color: "var(--solid)", fontSize: 12, fontWeight: 900, textDecoration: "none" }}>
-                  View profile
+              {/* ⚠ ICONS, NO WORDS (3 Oct 2026, the user: "view profile and stats
+                  should be buttons with icons without text") — two round chips under
+                  the face; the accessible names still say what each opens */}
+              <div style={{ display: "flex", justifyContent: "center", gap: 14, marginBottom: 14 }}>
+                <Link href={`/person/${found.id}`} target="_blank" rel="noreferrer" aria-label={`View ${found.fullName}'s profile`} title="Profile" style={scanDoor}>
+                  <svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                    <circle cx="12" cy="8" r="4" />
+                    <path d="M4 21c0-4.4 3.6-7 8-7s8 2.6 8 7" />
+                  </svg>
                 </Link>
-                <Link href={`/person/${found.id}/stats`} target="_blank" rel="noreferrer" aria-label={`${found.fullName}'s record and rank`} style={{ textAlign: "center", padding: "11px 8px", borderRadius: 12, background: "var(--text)", border: "none", color: "var(--solid)", fontSize: 12, fontWeight: 900, textDecoration: "none" }}>
-                  Stats
+                <Link href={`/person/${found.id}/stats`} target="_blank" rel="noreferrer" aria-label={`${found.fullName}'s record and rank`} title="Stats" style={scanDoor}>
+                  <svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" aria-hidden="true">
+                    <path d="M5 20V12M12 20V5M19 20v-9" />
+                  </svg>
                 </Link>
               </div>
               {error || outErr ? <div role="alert" style={{ fontSize: 11, color: "#F87171", marginBottom: 10, fontWeight: 700 }}>{error ?? outErr}</div> : null}
@@ -339,23 +371,7 @@ export function ScanSheet({
           </div>
           {lookErr ? <div role="alert" style={{ fontSize: 11, color: "#F87171", marginBottom: 10, fontWeight: 700 }}>{lookErr}</div> : null}
           {error ? <div style={{ fontSize: 11, color: "#F87171", marginBottom: 10 }}>{error}</div> : null}
-          <div style={{ fontSize: 9.5, fontWeight: 900, letterSpacing: 0.8, color: "var(--muted)", marginBottom: 7 }}>OR PASTE THEIR PROFILE LINK</div>
-          <div style={{ display: "flex", gap: 8 }}>
-            <input
-              value={pasted}
-              onChange={(e) => setPasted(e.target.value.slice(0, 200))}
-              aria-label="Profile link"
-              placeholder="https://…/person/…"
-              autoComplete="off"
-              inputMode="url"
-              style={{ flex: 1, minWidth: 0, background: "var(--el)", border: "none", outline: "none", borderRadius: 11, padding: "10px 11px", color: "var(--text)", fontSize: 12.5, fontFamily: DOS_UI }}
-            />
-            <button type="button" onClick={usePasted} disabled={busy || pasted.trim().length === 0} style={{ padding: "0 14px", borderRadius: 11, background: "var(--text)", color: "var(--solid)", fontWeight: 900, fontSize: 12.5, border: "none", cursor: "pointer", fontFamily: "inherit", opacity: busy || pasted.trim().length === 0 ? 0.45 : 1 }}>
-              Use link
-            </button>
-          </div>
-          {pasteErr ? <div style={{ fontSize: 11, color: "#F87171", marginTop: 8 }}>{pasteErr}</div> : null}
-          <button type="button" onClick={onClose} style={{ marginTop: 14, textAlign: "center", padding: 13, borderRadius: 999, background: "var(--card)", color: "var(--text)", fontWeight: 900, fontSize: 13.5, cursor: "pointer", border: "1.5px solid var(--el)", fontFamily: "inherit", width: "100%" }}>
+          <button type="button" onClick={onClose} style={{ marginTop: 4, textAlign: "center", padding: 13, borderRadius: 999, background: "var(--card)", color: "var(--text)", fontWeight: 900, fontSize: 13.5, cursor: "pointer", border: "1.5px solid var(--el)", fontFamily: "inherit", width: "100%" }}>
             Cancel
           </button>
             </>

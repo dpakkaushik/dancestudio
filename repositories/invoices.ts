@@ -1,5 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { dosClassLabel } from "@/lib/constants/styles";
+import { enquiryTypeOf } from "@/types/enquiry";
 
 /** Invoices (prototype S_invoices 16691-16720): a row per payment — who paid,
  *  for what, how much, its state. A person's ledger is the payments THEY made
@@ -26,7 +27,7 @@ import { dosClassLabel } from "@/lib/constants/styles";
  *  this embed would stop resolving. Soft-delete the rows, keep the tombstones. */
 
 export type InvoiceStatus = "paid" | "refunded";
-export type InvoiceKind = "class" | "event" | "subscription";
+export type InvoiceKind = "class" | "event" | "subscription" | "enquiry";
 
 export interface InvoiceRow {
   id: string;
@@ -54,6 +55,9 @@ interface OrderPaymentRow {
     classes: { style: string; level: string; share_slug: string } | null;
     events: { title: string; share_slug: string } | null;
     businesses: { name: string } | null;
+    /** an enquiry paid online (3 Oct 2026) */
+    enquiry_part?: "advance" | "balance" | "full" | null;
+    enquiry_quotes?: { enquiry_id: string; enquiries: { type_key: string } | null } | null;
   } | null;
 }
 
@@ -68,7 +72,7 @@ interface SubscriptionPaymentRow {
 }
 
 const ORDER_SELECT =
-  "id, amount_inr, method, status, created_at, profiles (full_name), orders!inner (classes (style, level, share_slug), events (title, share_slug), businesses (name))";
+  "id, amount_inr, method, status, created_at, profiles (full_name), orders!inner (enquiry_part, classes (style, level, share_slug), events (title, share_slug), businesses (name), enquiry_quotes (enquiry_id, enquiries (type_key)))";
 const SUBSCRIPTION_SELECT = "id, amount_inr, method, status, created_at, kind, subscriptions (kind, businesses (name))";
 
 const numberOf = (id: string, iso: string) => `INV-${new Date(iso).getFullYear()}-${id.replace(/-/g, "").slice(-4).toUpperCase()}`;
@@ -76,6 +80,22 @@ const numberOf = (id: string, iso: string) => `INV-${new Date(iso).getFullYear()
 const toOrderRow = (r: OrderPaymentRow, side: "mine" | "business"): InvoiceRow => {
   const cls = r.orders?.classes ?? null;
   const ev = r.orders?.events ?? null;
+  const enq = r.orders?.enquiry_quotes ?? null;
+  if (enq) {
+    const part = r.orders?.enquiry_part;
+    return {
+      id: r.id,
+      number: numberOf(r.id, r.created_at),
+      who: side === "mine" ? (r.orders?.businesses?.name ?? "A business") : (r.profiles?.full_name ?? "Someone"),
+      what: `${enquiryTypeOf(enq.enquiries?.type_key ?? "")?.label ?? "Enquiry"} · ${part === "advance" ? "advance" : part === "balance" ? "balance" : "paid in full"}`,
+      amountInr: r.amount_inr,
+      method: r.method,
+      status: r.status === "refunded" ? "refunded" : "paid",
+      paidAt: r.created_at,
+      kind: "enquiry",
+      href: `/inbox/enquiries/${enq.enquiry_id}`,
+    };
+  }
   return {
     id: r.id,
     number: numberOf(r.id, r.created_at),

@@ -167,7 +167,8 @@ try {
     ($ownerAccepts -match "quoted") -and ($deadAccept -match "no longer") -and ($acc.status -eq "accepted") -and ($e1c.status -eq "confirmed"))
 
   # 9. MONEY IS RECORDED BY THE BUSINESS: the sender cannot; the advance once,
-  #    then the balance closes it as Won
+  #    then the balance makes it Paid (3 Oct 2026: Won is gone - Paid is the money,
+  #    Completed is the business closing it)
   $senderPays = Fails { Rpc (Api $l1.token) "record_enquiry_payment" @{ p_quote_id = $q2.id; p_part = "advance" } }
   $adv = Rpc (Api $ownerA.token) "record_enquiry_payment" @{ p_quote_id = $q2.id; p_part = "advance" }
   $twice = Fails { Rpc (Api $ownerA.token) "record_enquiry_payment" @{ p_quote_id = $q2.id; p_part = "advance" } }
@@ -175,13 +176,14 @@ try {
   $bal = Rpc (Api $ownerA.token) "record_enquiry_payment" @{ p_quote_id = $q2.id; p_part = "balance" }
   $e1e = (Get-Rows (Api $ownerA.token) "enquiries?$SEL&id=eq.$($e1.id)")[0]
   Check 9 "Sender recording refused ($senderPays); advance -> $($e1d.status); again refused ($twice); balance -> $($e1e.status), full_paid_at set: $([bool]$bal.full_paid_at)" (
-    ($senderPays -match "business") -and ($null -ne $adv.advance_paid_at) -and ($e1d.status -eq "advance_paid") -and ($twice -match "already") -and ($null -ne $bal.full_paid_at) -and ($e1e.status -eq "won"))
+    ($senderPays -match "business") -and ($null -ne $adv.advance_paid_at) -and ($e1d.status -eq "advance_paid") -and ($twice -match "already") -and ($null -ne $bal.full_paid_at) -and ($e1e.status -eq "paid"))
 
   # 10. the stage menu is the business's: the sender cannot move it; staff of another
   #     business cannot; the artist moves their own to Lost, and a lost enquiry takes no quote
   $senderMoves = Fails { Rpc (Api $l1.token) "set_enquiry_status" @{ p_enquiry_id = $e2.id; p_status = "in_talks" } }
   $strangerMoves = Fails { Rpc (Api $staffA.token) "set_enquiry_status" @{ p_enquiry_id = $e2.id; p_status = "in_talks" } }
-  Rpc (Api $ownerB.token) "set_enquiry_status" @{ p_enquiry_id = $e2.id; p_status = "lost" } | Out-Null
+  # (3 Oct 2026) closing is its own door now - set_enquiry_status moves New / In talks only
+  Rpc (Api $ownerB.token) "close_enquiry" @{ p_enquiry_id = $e2.id; p_outcome = "lost" } | Out-Null
   $closedQuote = Fails { Rpc (Api $ownerB.token) "send_enquiry_quote" @{ p_enquiry_id = $e2.id; p_cost_inr = 12000; p_advance_pct = 0 } }
   $e2b = (Get-Rows (Api $ownerB.token) "enquiries?$SEL&id=eq.$($e2.id)")[0]
   Check 10 "Sender cannot move the stage ($senderMoves); another business cannot ($strangerMoves); the artist marks Lost -> $($e2b.status); quoting a closed one refused ($closedQuote)" (

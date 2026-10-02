@@ -1,4 +1,5 @@
 import { PasswordSignIn } from "@/features/auth/components/PasswordSignIn";
+import { leaveIfSignedIn } from "@/lib/auth/leaveIfSignedIn";
 
 /** Sign in — email + password (7 Sep 2026).
  *
@@ -11,6 +12,7 @@ export default async function EmailLoginPage({
 }: {
   searchParams: Promise<{ error?: string }>;
 }) {
+  await leaveIfSignedIn();
   const { error } = await searchParams;
   return <PasswordSignIn initialError={error ?? null} />;
 }
