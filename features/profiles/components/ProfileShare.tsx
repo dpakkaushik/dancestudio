@@ -1,7 +1,9 @@
 "use client";
 
-import { useState, useSyncExternalStore } from "react";
+import { useEffect, useState, useSyncExternalStore } from "react";
+import { useRouter } from "next/navigation";
 import { QRBlock } from "@/components/ui/QRBlock";
+import { myCheckInSinceAction, type MyCheckIn } from "@/features/attendance/server-actions/myCheckIn";
 import { CENTER_CARD, CENTER_SCRIM } from "@/components/ui/centerModal";
 import { DOS_DISPLAY, DOS_UI } from "@/lib/design/tokens";
 import { useCloseOnBack } from "@/lib/hooks/useCloseOnBack";
@@ -33,11 +35,47 @@ const readServerHost = () => "";
  *  not the QR. Copying is `ProfileLink`'s job, it is the chip directly beside
  *  this one, and it falls back to the clipboard on exactly the laptop that
  *  argument was about. ⚠ Nothing became unreachable, which is the test C31 sets. */
-export function ProfileShare({ path, name }: { path: string; name: string }) {
+export function ProfileShare({ path, name, watchCheckIn = false }: { path: string; name: string; watchCheckIn?: boolean }) {
   const [open, setOpen] = useState(false);
+  const [approved, setApproved] = useState<MyCheckIn | null>(null);
+  const router = useRouter();
   const origin = useSyncExternalStore(subscribeNever, readHost, readServerHost);
   useCloseOnBack(() => setOpen(false), open);
   const link = `${origin}${path}`;
+
+  /* ⚠ THE DOOR'S ANSWER, SHOWN ON THE CODE IT SCANNED (2 Oct 2026, the user:
+     "once the person confirms check in should show class confirmed with a green
+     bounce affect on border of the qr code and a approved status and show the
+     todays schedule section with some smooth animation"). Only your OWN code
+     watches (`watchCheckIn`) — a studio's or a crew's is never checked in.
+     While the sheet is open it asks, every 2.5 s, whether an attendance row of
+     yours appeared after the moment it opened; the first one wins, the frame
+     springs green, and 1.8 s later Home's Today's schedule rises into view with
+     the card saying "✓ Checked in". The poll stops the moment the sheet closes. */
+  useEffect(() => {
+    if (!open || !watchCheckIn) return;
+    const since = new Date(Date.now() - 5_000).toISOString();
+    let alive = true;
+    let handoff: ReturnType<typeof setTimeout> | null = null;
+    const tick = async () => {
+      const hit = await myCheckInSinceAction(since).catch(() => null);
+      if (!alive || !hit) return;
+      alive = false;
+      clearInterval(timer);
+      setApproved(hit);
+      handoff = setTimeout(() => {
+        setOpen(false);
+        setApproved(null);
+        router.push(`/?checkedin=${Date.now()}`, { scroll: false });
+      }, 1800);
+    };
+    const timer = setInterval(() => void tick(), 2500);
+    return () => {
+      alive = false;
+      clearInterval(timer);
+      if (handoff) clearTimeout(handoff);
+    };
+  }, [open, watchCheckIn, router]);
 
   return (
     <>
@@ -60,12 +98,48 @@ export function ProfileShare({ path, name }: { path: string; name: string }) {
             onClick={(e) => e.stopPropagation()}
             style={{ ...CENTER_CARD, fontFamily: DOS_UI, textAlign: "center" }}
           >
-            <b style={{ fontSize: 17, fontFamily: DOS_DISPLAY }}>{name}</b>
-            <div style={{ fontSize: 12, color: "var(--sub)", margin: "4px 0 16px" }}>
-              Point a camera at this to open the profile.
+            <b style={{ fontSize: 17, fontFamily: DOS_DISPLAY }}>{approved ? "Class confirmed" : name}</b>
+            <div aria-live="polite" style={{ fontSize: 12, color: approved ? "#16A34A" : "var(--sub)", fontWeight: approved ? 800 : 400, margin: "4px 0 16px", transition: "color .3s" }}>
+              {approved ? `${approved.classLabel} · you are checked in` : "Point a camera at this to open the profile."}
             </div>
-            <div style={{ display: "flex", justifyContent: "center", marginBottom: 16 }}>
-              <QRBlock code={link} size={232} label={`Profile code for ${name}`} />
+            <div style={{ display: "flex", justifyContent: "center", marginBottom: 16, position: "relative" }}>
+              <div
+                data-testid="qr-frame"
+                data-anim={approved ? "approved" : undefined}
+                style={{
+                  padding: 6,
+                  borderRadius: 22,
+                  border: `3px solid ${approved ? "#22C55E" : "transparent"}`,
+                  transition: "border-color .25s",
+                  animation: approved ? "dosApprovedBounce .9s cubic-bezier(.22,1.2,.36,1)" : undefined,
+                }}
+              >
+                <QRBlock code={link} size={232} label={`Profile code for ${name}`} />
+              </div>
+              {approved ? (
+                <span
+                  data-testid="qr-approved"
+                  role="status"
+                  style={{
+                    position: "absolute",
+                    top: -12,
+                    left: "50%",
+                    transform: "translateX(-50%)",
+                    background: "#22C55E",
+                    color: "#fff",
+                    fontSize: 11,
+                    fontWeight: 900,
+                    letterSpacing: 0.6,
+                    padding: "5px 12px",
+                    borderRadius: 999,
+                    boxShadow: "0 6px 16px rgba(34,197,94,.45)",
+                    animation: "dosPopIn .45s cubic-bezier(.22,1.4,.36,1)",
+                    whiteSpace: "nowrap",
+                  }}
+                >
+                  ✓ APPROVED
+                </span>
+              ) : null}
             </div>
             <button
               type="button"

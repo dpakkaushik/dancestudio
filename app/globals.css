@@ -317,6 +317,35 @@ a:focus-visible:not([data-slot]) {
     opacity: 1;
   }
 }
+/* ⚠ CHECKED IN (2 Oct 2026, the user: "show class confirmed with a green
+   bounce affect on border of the qr code and a approved status … make this one
+   smooth"): the QR's frame springs out in green and settles, the glow fades */
+@keyframes dosApprovedBounce {
+  0% {
+    transform: scale(1);
+    box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.55);
+  }
+  30% {
+    transform: scale(1.06);
+    box-shadow: 0 0 0 10px rgba(34, 197, 94, 0.35);
+  }
+  55% {
+    transform: scale(0.97);
+  }
+  75% {
+    transform: scale(1.02);
+    box-shadow: 0 0 0 16px rgba(34, 197, 94, 0);
+  }
+  100% {
+    transform: scale(1);
+    box-shadow: 0 0 0 0 rgba(34, 197, 94, 0);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  [data-anim="approved"] {
+    animation: none !important;
+  }
+}
 @keyframes dosSheetUp {
   from {
     transform: translateY(100%);

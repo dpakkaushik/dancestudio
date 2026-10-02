@@ -2213,8 +2213,21 @@ test.describe.serial("DanceOS, end to end", () => {
     const card = learner.getByTestId("deck-card").first();
     await expect(card.getByRole("link", { name: `Open ${classTitle}` })).toBeVisible();
     await expect(card.getByText("Booked", { exact: true })).toBeVisible();
-    await expect(card.getByText("Live", { exact: true })).toBeVisible();
-    await expect(card.getByText(/You.re booked/)).toBeVisible();
+    /* ⚠ LIVE IS THE CARD'S FRAME NOW (2 Oct 2026, the user: "live on class cards
+       should not be there and instead the border of card should be green with a
+       live button on top left") — a badge on the card's corner, not a chip in
+       its line */
+    await expect(card.getByTestId("live-badge")).toBeVisible();
+    await expect(card.locator('[data-live="yes"]')).toHaveCount(1);
+    /* ⚠⚠ AND NOTHING UNDER THE CARD (2 Oct 2026, the user: "should not show
+       invoice and cancel booking option on todays schedule tile on home … can
+       also remove you are booked an everything in that section below the bar").
+       Both live on the class page, which the card opens. Asserted at the old
+       place, because a check that only looks at the new place cannot tell you
+       the old one was cleared. */
+    await expect(card.getByText(/You.re booked/)).toHaveCount(0);
+    await expect(card.getByRole("button", { name: "Invoice" })).toHaveCount(0);
+    await expect(card.getByRole("button", { name: /Cancel booking/ })).toHaveCount(0);
     /* ⚠⚠ THE ENTRY-CODE TICKET IS GONE (29 Sep 2026, the user: "scan this at
        door text not required as your personal qr code for user or artist
        profile is being used to enter the classes"). The card drew a 54px QR of
@@ -2224,15 +2237,7 @@ test.describe.serial("DanceOS, end to end", () => {
        decides. What survives is the string it encoded, which was always a
        booking REFERENCE rather than a key, printed where it already was. */
     await expect(learner.getByRole("button", { name: `Show the entry code for ${classTitle}` })).toHaveCount(0);
-    await expect(card.getByText(/^DOS-CL-\d{4}$/)).toBeVisible();
-    await expect(card.getByText("Your own profile QR is what gets you in.")).toBeVisible();
-    // and the invoice, without leaving Home — a free trial prints Free
-    await card.getByRole("button", { name: "Invoice" }).click();
-    const invoice = learner.getByRole("dialog", { name: "Invoice" });
-    await expect(invoice.getByText("Class booking")).toBeVisible();
-    await expect(invoice.getByText("Free", { exact: true })).toBeVisible();
-    await invoice.getByRole("button", { name: "Close" }).click();
-    await expect(invoice).toHaveCount(0);
+    await expect(card.getByText("Your own profile QR is what gets you in.")).toHaveCount(0);
     // the deck is the one list; the door to all bookings is still named beside it
     // (the head's own cyan "All bookings" link went on 18 Sep 2026 with every other
     // blue button; the Classes tile in the grid beneath the shelf is that door now)

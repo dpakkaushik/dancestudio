@@ -139,7 +139,7 @@ export default async function StudioHomePage({ params, searchParams }: { params:
        an authority). EVERY member gets the tile, not just the owner: staff
        answer the phone, which is Step 12's rule and is why `is_enquiry_member`
        admits the whole team. */
-    { name: DOS_TOOLS.enquiries.name, href: `/enquiries?as=${encodeURIComponent(businessId)}`, k: "enquiries", c: DOS_TOOLS.enquiries.c },
+    { name: DOS_TOOLS.enquiries.name, href: desk("enquiries"), k: "enquiries", c: DOS_TOOLS.enquiries.c },
     /* THE STUDIO'S OWN MANDATE IS A TILE ON ITS HOME (26 Sep 2026, the user:
        "studio and organization subscription managed separately from their
        subscription options … subscriptions also become an option on home tab

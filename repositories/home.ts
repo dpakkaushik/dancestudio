@@ -5,7 +5,6 @@ import type { DanceClass } from "@/types/class";
 import type { DeckClassItem, DeckItem, DeckRole } from "@/types/home";
 import type { Business } from "@/types/business";
 import { findMyCalendar, findBusinessCalendar } from "./calendar";
-import { findPaidReceiptsByClassBookings } from "./payments";
 
 /** Home's PassDeck reads (prototype 6863-7104). No table, no RPC, no policy: the
  *  deck is TODAY's slice of rows that already exist — the calendar's three sides
@@ -59,7 +58,23 @@ const classOf = (e: CalendarEntry): DanceClass => ({
   allowsArtistMemberships: false,
 });
 
-const classItem = (e: CalendarEntry, roleLabel: DeckRole, host: boolean, receipt: DeckClassItem["receipt"]): DeckClassItem => ({
+/** Which of these seats of YOURS the door has let in — one live attendance row
+ *  each (Step 10: checking out soft-deletes). Says `user_id` out loud: a studio's
+ *  members read their whole register, and RLS is a ceiling, not a scope. A failed
+ *  read is "nobody checked in", never an error on Home. */
+export async function findMyCheckedInBookings(supabase: SupabaseClient, userId: string, bookingIds: string[]): Promise<Set<string>> {
+  if (bookingIds.length === 0) return new Set();
+  const { data, error } = await supabase
+    .from("attendance")
+    .select("class_booking_id")
+    .eq("user_id", userId)
+    .in("class_booking_id", bookingIds)
+    .is("deleted_at", null);
+  if (error || !data) return new Set();
+  return new Set(data.map((r) => r.class_booking_id as string));
+}
+
+const classItem = (e: CalendarEntry, roleLabel: DeckRole, host: boolean, checkedIn: boolean): DeckClassItem => ({
   kind: "class",
   key: `class:${e.sessionId}`,
   roleLabel,
@@ -74,7 +89,7 @@ const classItem = (e: CalendarEntry, roleLabel: DeckRole, host: boolean, receipt
   businessCity: e.businessCity,
   artist: e.artist,
   classBooking: e.classBooking,
-  receipt,
+  checkedIn,
 });
 
 /** ONE THING IS RUNNING, AND IT IS THE FIRST TILE (prototype 7084-7104). The
@@ -106,17 +121,17 @@ export async function findMyDeck(supabase: SupabaseClient, userId: string, nowIs
   const entries = await findMyCalendar(supabase, userId, from, to);
 
   const live = entries.filter((e) => e.classStatus !== "draft");
-  // one read for every paid seat on the day, not one per card
-  const receipts = await findPaidReceiptsByClassBookings(
+  // one read for every seat you hold today, not one per card
+  const checkedIn = await findMyCheckedInBookings(
     supabase,
+    userId,
     live.filter((e) => e.classBooking?.status === "enrolled").map((e) => e.classBooking!.id)
   );
 
   const rows: DeckItem[] = live.map((e) => {
     const role: DeckRole =
       e.side === "hosting" ? "Teaching" : e.side === "assisting" ? "Assisting" : e.classBooking?.status === "waitlisted" ? "Waitlisted" : "Booked";
-    const r = e.classBooking ? receipts.get(e.classBooking.id) : undefined;
-    return classItem(e, role, e.side === "hosting", r ? { amountInr: r.amountInr, method: r.method } : null);
+    return classItem(e, role, e.side === "hosting", Boolean(e.classBooking && checkedIn.has(e.classBooking.id)));
   });
 
   return settle(rows, new Date(nowIso).getTime());
@@ -128,6 +143,6 @@ export async function findMyDeck(supabase: SupabaseClient, userId: string, nowIs
 export async function findStudioDeck(supabase: SupabaseClient, business: Business, nowIso: string): Promise<DeckItem[]> {
   const { from, to } = todayWindow(nowIso);
   const entries = await findBusinessCalendar(supabase, business.id, { name: business.name, city: business.city }, from, to);
-  const rows: DeckItem[] = entries.filter((e) => e.classStatus !== "draft").map((e) => classItem(e, "At your studio", true, null));
+  const rows: DeckItem[] = entries.filter((e) => e.classStatus !== "draft").map((e) => classItem(e, "At your studio", true, false));
   return settle(rows, new Date(nowIso).getTime());
 }

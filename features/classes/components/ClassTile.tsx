@@ -62,6 +62,10 @@ export interface ClassTileProps {
   /** the ONE running session — a LIST decides which of its rows wears the badge
    *  (8148-8153); nobody else sets it */
   live?: boolean;
+  /** ⚠ YOU ARE IN THE ROOM (2 Oct 2026, the user: "show the todays schedule
+   *  section … with checked in on the class card") — Home's deck sets it off
+   *  your live attendance row; a green stamp in the role chip's place */
+  checkedIn?: boolean;
 }
 
 /**
@@ -73,7 +77,7 @@ export interface ClassTileProps {
  * width of the card, go the two facts that belong to none of them: how full, and
  * what it costs.
  */
-export function ClassTile({ danceClass: c, filled = 0, artist, isToday = false, actions, href, roleLabel = null, live = false }: ClassTileProps) {
+export function ClassTile({ danceClass: c, filled = 0, artist, isToday = false, actions, href, roleLabel = null, live = false, checkedIn = false }: ClassTileProps) {
   const bc = dosStyleColor(c.style);
   const dark = useDosDark();
   const ink = dosStyleInk(bc, dark);
@@ -353,7 +357,7 @@ export function ClassTile({ danceClass: c, filled = 0, artist, isToday = false, 
             Wraps rather than truncates: with the role chip added, three things share this
             line on an 88%-width card, and losing the level to make room for the role is
             trading one fact for another. */}
-        {(underLine || roleLabel || live) && (
+        {(underLine || roleLabel || checkedIn) && (
           <div style={{ display: "flex", alignItems: "center", gap: 7, marginTop: 2, minWidth: 0, flexWrap: "wrap", rowGap: 3 }}>
             {underLine ? (
               <span
@@ -374,7 +378,28 @@ export function ClassTile({ danceClass: c, filled = 0, artist, isToday = false, 
             ) : (
               <span style={{ flex: 1 }} />
             )}
-            {roleLabel ? (
+            {checkedIn ? (
+              /* ⚠ CHECKED IN outranks the role (2 Oct 2026): once the door has let
+                 you in, "Booked" is yesterday's news. It pops in, because the
+                 person is usually watching when it lands. */
+              <span
+                data-testid="checked-in-chip"
+                style={{
+                  flexShrink: 0,
+                  fontSize: 8.5,
+                  fontWeight: 900,
+                  letterSpacing: 0.5,
+                  textTransform: "uppercase",
+                  padding: "2px 8px",
+                  borderRadius: 999,
+                  background: "#22C55E",
+                  color: "#fff",
+                  animation: "dosPopIn .45s cubic-bezier(.22,1.4,.36,1)",
+                }}
+              >
+                ✓ Checked in
+              </span>
+            ) : roleLabel ? (
               <span
                 style={{
                   flexShrink: 0,
@@ -391,29 +416,9 @@ export function ClassTile({ danceClass: c, filled = 0, artist, isToday = false, 
                 {roleLabel}
               </span>
             ) : null}
-            {live ? (
-              <span
-                style={{
-                  marginLeft: "auto",
-                  flexShrink: 0,
-                  display: "inline-flex",
-                  alignItems: "center",
-                  gap: 4,
-                  fontSize: 8.5,
-                  fontWeight: 800,
-                  padding: "2px 7px",
-                  borderRadius: 999,
-                  background: "#22C55E",
-                  color: "#fff",
-                }}
-              >
-                <span style={{ position: "relative", width: 4, height: 4 }}>
-                  <span style={{ position: "absolute", inset: 0, borderRadius: 2, background: "#fff" }} />
-                  <span style={{ position: "absolute", inset: -3, borderRadius: 5, border: "1.5px solid #fff", opacity: 0.5, animation: "dosPulseH 1.4s ease-out infinite" }} />
-                </span>
-                Live
-              </span>
-            ) : null}
+            {/* ⚠ LIVE LEFT THIS LINE (2 Oct 2026, the user: "live on class cards
+                should not be there and istead the border of card should be green
+                with a live button on top left") — see the card's own frame below */}
           </div>
         )}
       </div>
@@ -425,18 +430,54 @@ export function ClassTile({ danceClass: c, filled = 0, artist, isToday = false, 
       aria-label={href ? undefined : `Open ${c.title}`}
       data-card="session"
       data-kind="class"
+      data-live={live ? "yes" : undefined}
       style={{
+        position: "relative",
         overflow: "hidden",
         background: CARD,
         marginBottom: 10,
         opacity: isPast ? 0.6 : 1,
-        border: `1.5px solid ${LINE}`,
+        /* ⚠ A LIVE CARD IS FRAMED GREEN (2 Oct 2026) — the whole card says it,
+           where a small chip on the third line used to */
+        border: live ? "2.5px solid #22C55E" : `1.5px solid ${LINE}`,
         borderRadius: 20,
         display: "flex",
         flexDirection: "column",
-        boxShadow: "0 2px 10px -2px rgba(0,0,0,.28)",
+        boxShadow: live ? "0 0 0 3px rgba(34,197,94,.18), 0 4px 16px -4px rgba(34,197,94,.45)" : "0 2px 10px -2px rgba(0,0,0,.28)",
       }}
     >
+      {live ? (
+        /* the LIVE button, top left, over the date block — `pointerEvents: none`
+           so the sleeve's own link still opens the class under it */
+        <span
+          data-testid="live-badge"
+          style={{
+            position: "absolute",
+            top: 7,
+            left: 7,
+            zIndex: 3,
+            pointerEvents: "none",
+            display: "inline-flex",
+            alignItems: "center",
+            gap: 5,
+            fontSize: 9,
+            fontWeight: 900,
+            letterSpacing: 0.6,
+            textTransform: "uppercase",
+            padding: "3px 8px 3px 7px",
+            borderRadius: 999,
+            background: "#22C55E",
+            color: "#fff",
+            boxShadow: "0 2px 6px rgba(0,0,0,.25)",
+          }}
+        >
+          <span style={{ position: "relative", width: 5, height: 5 }}>
+            <span style={{ position: "absolute", inset: 0, borderRadius: 3, background: "#fff" }} />
+            <span style={{ position: "absolute", inset: -3, borderRadius: 6, border: "1.5px solid #fff", opacity: 0.5, animation: "dosPulseH 1.4s ease-out infinite" }} />
+          </span>
+          Live
+        </span>
+      ) : null}
       {/* the sleeve opens the class page — booking stays outside the link, so a
           button never nests inside an anchor. The card names the session it opens,
           once, in its aria-label (8046-8049). */}

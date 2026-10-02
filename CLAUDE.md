@@ -2,6 +2,47 @@
 
 ## LAST SESSION (2 Oct 2026) — replaced on every push (Rule 13)
 
+> ### EACH PROFILE'S OWN ENQUIRIES, A CREW'S EARNINGS, A QUIETER DECK, AN APPROVED QR, AND THE CLASS AN ARTIST HOLDS IN A STUDIO (2 Oct 2026, latest) — ⚠ ONE MIGRATION WRITTEN, DRY-RUN 10/10 AND **HELD**; app COMMITTED, NOT PUSHED
+> The user's five-part list, plus two reports while it was being built.
+> * **Enquiries per profile**: a studio's tile opens `/business/{id}/enquiries`
+>   and a crew's opens `/crews/{id}/manage/enquiries`. Each is
+>   `EnquiriesDesk`, scoped and Received-only. ⚠ The lists were already
+>   separate; what was wrong is that `/enquiries?as=` sat outside the entity,
+>   so the chrome drew the PERSON. Old links redirect (Rule 14).
+> * **A crew has Earnings** (`findCrewEarnings`): its enquiry money, the only
+>   money a crew takes. There is no expense half.
+> * **Home's deck is the card and nothing else**: BookingStrip, Invoice,
+>   Cancel booking and "You're booked" are gone, along with the deck's receipts
+>   read.
+>   * Live is a green frame plus a LIVE badge at top-left (`live-badge`,
+>     `data-live`), on the deck and on the classes register.
+>   * A card says **✓ Checked in** off your live attendance row
+>     (`findMyCheckedInBookings`).
+> * **The approved QR**: your own QR sheet (Home and the Profile tab only)
+>   polls every 2.5 s while open (`myCheckInSinceAction`, your own rows only).
+>   * On a check-in, the frame springs green (`dosApprovedBounce`) and shows
+>     ✓ APPROVED and "Class confirmed".
+>   * 1.8 s later it hands over to `/?checkedin=`. `CheckedInReveal` glides
+>     Today's schedule into view, lets it rise, and replaces the marker.
+>   * It honours reduced motion.
+> * ⚠⚠ **Check-in notification — `20261002130000_a_check_in_tells_the_person`,
+>   HELD.** `attendance` had no notify trigger at all. The migration adds one
+>   AFTER INSERT trigger: "You are checked in", kind `class`; walk-ins get
+>   nothing. Dry run **10/10 rolled back**: anon 39, policies 103, the function
+>   executable by no client role, told once, check-out silent.
+> * ⚠⚠ **An artist's class in a studio's room was missing in two places**,
+>   found on 11ft down's live Bharatanatyam (Deepak's artist page, venue
+>   accepted).
+>   1. The studio's **Classes register** read `business_id` only. It now
+>      files hosted classes in their tabs, read-only, under **ARTISTS IN YOUR
+>      ROOMS** (`findClassesHostedByBusiness`).
+>   2. The **public schedule and profile** filtered `starts_at >= now`, so the
+>      class vanished the moment it began. They now keep any session that is
+>      **not yet over**, measured 0 on live and 4 on the fix, signed out.
+> * **Verified:** typecheck 0 · lint 0 · build green · `shoot-hero` 186/186 ·
+>   `shoot-tiles` 134/134 · the happy path's deck segment re-cut (both the old
+>   strip's absence and the live badge).
+
 > ### A CREW'S AND A STUDIO'S FOLLOWING IS ITS TEAM, A MEMBER FOLLOWS THEIR TEAMS, AND STATS LOSES HISTORY (2 Oct 2026, latest) — no migration, COMMITTED, NOT PUSHED
 > The user: *"following for crew and studio should by default show list of team
 > members. and reflect in user/ artist profile when seeing following"*, then

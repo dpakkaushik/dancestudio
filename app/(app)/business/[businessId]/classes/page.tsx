@@ -3,7 +3,7 @@ import { ClassForm } from "@/features/classes/components/ClassForm";
 import { ClassesManager } from "@/features/classes/components/ClassesManager";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { findAskedClassPeopleForBusinesses, findClassArtists } from "@/repositories/classPeople";
-import { findClassPublishState, findClassesByBusiness, findVenueRequestsForBusinesses, findWhyNoClass } from "@/repositories/classes";
+import { findClassPublishState, findClassesByBusiness, findClassesHostedByBusiness, findVenueRequestsForBusinesses, findWhyNoClass } from "@/repositories/classes";
 import { countEnrolledBySession } from "@/repositories/classBookings";
 import { findRoomsByBusiness } from "@/repositories/rooms";
 import { findMyMemberships, runsTheBusiness } from "@/repositories/businesses";
@@ -11,6 +11,10 @@ import { findMyMemberships, runsTheBusiness } from "@/repositories/businesses";
 /* the clock lives outside the component (react-hooks/purity) — the register's
    LIVE filter is arithmetic over the moment the page was served */
 const stampNowIso = (): string => new Date().toISOString();
+const hostedWhen = (iso: string | null): string =>
+  iso
+    ? new Intl.DateTimeFormat("en-IN", { timeZone: "Asia/Kolkata", weekday: "short", day: "numeric", month: "short", hour: "numeric", minute: "2-digit" }).format(new Date(iso))
+    : "no date yet";
 
 /** A STUDIO's classes register. Since 18 Sep 2026 every row wears the request
  *  it waits on — the teacher asked and their answer — and Publish is offered
@@ -56,14 +60,19 @@ export default async function BusinessClassesPage({
      second `findMyMembershipRole` round trip: the guard had to know the role
      anyway, so asking twice was a query this page stopped needing. */
   const myRole = seat.memberRole;
-  const classes = await findClassesByBusiness(supabase, businessId);
+  const [classes, hosted] = await Promise.all([
+    findClassesByBusiness(supabase, businessId),
+    findClassesHostedByBusiness(supabase, businessId),
+  ]);
   const sessionIds = classes.map((c) => c.session?.id).filter(Boolean) as string[];
   const [counts, state, artists, whyNoClass, venueRequests, sentAsks] = await Promise.all([
     countEnrolledBySession(supabase, sessionIds),
     findClassPublishState(supabase, businessId).catch(() => new Map()),
     /* the teacher each row's card wears in its centre (18 Sep 2026) — a draft
-       whose ask is unanswered has none, and falls back to the style square */
-    findClassArtists(supabase, classes.map((c) => c.id)),
+       whose ask is unanswered has none, and falls back to the style square.
+       ⚠ The hosted classes ride the same read, so an artist's class in this
+       studio's room wears the artist's face too */
+    findClassArtists(supabase, [...classes.map((c) => c.id), ...hosted.map((h) => h.danceClass.id)]),
     /* the database's sentence, if a new class would be refused here (18 Sep 2026) */
     findWhyNoClass(supabase, businessId),
     /* ⚠⚠ WHO WANTS THIS STUDIO'S ROOMS (30 Sep 2026). A venue request is a class
@@ -103,6 +112,18 @@ export default async function BusinessClassesPage({
         canEdit={myRole === "owner"}
         venueRequests={venueRequests}
         askedTeachers={askedTeachers}
+        /* the artists' classes this studio said yes to, filed in their tabs,
+           read-only — the class is the artist's to edit (2 Oct 2026) */
+        elsewhere={hosted.map((h) => ({
+          id: h.danceClass.id,
+          danceClass: h.danceClass,
+          artist: artists.get(h.danceClass.id) ?? null,
+          city: business.city ?? null,
+          studio: h.hostName,
+          when: hostedWhen(h.danceClass.session?.startsAt ?? null),
+        }))}
+        elsewhereHead="ARTISTS IN YOUR ROOMS"
+        elsewhereChip="Hosted"
         nowIso={stampNowIso()}
       />
       {opening && myRole === "owner" && !whyNoClass ? (

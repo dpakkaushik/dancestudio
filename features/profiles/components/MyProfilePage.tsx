@@ -256,7 +256,7 @@ export function MyProfilePage({
                 {/* this subject's own address, one segment on (22 Sep 2026) — the
                 same string the two chips below already build */}
                 <StatsChip href={`/person/${profile.id}/stats`} />
-                <ProfileShare path={`/person/${profile.id}`} name={profile.fullName} />
+                <ProfileShare path={`/person/${profile.id}`} name={profile.fullName} watchCheckIn />
                 <ProfileLink path={`/person/${profile.id}`} name={profile.fullName} />
               </>
             }

@@ -309,6 +309,8 @@ export function ClassesManager({
   venueRequests = [],
   askedTeachers = {},
   elsewhere = [],
+  elsewhereHead = "AT OTHER STUDIOS",
+  elsewhereChip = "Teaching",
   offerCreate = true,
 }: {
   businessId: string;
@@ -372,6 +374,13 @@ export function ClassesManager({
    *  `elsewhere` rows and no Create control at all: there is nowhere for them to
    *  create one, and the owner-only sentence would name a studio they do not run. */
   offerCreate?: boolean;
+  /** what the `elsewhere` block is called and what its chip says. A person's
+   *  register lists the classes they teach AT OTHER STUDIOS; a STUDIO's lists the
+   *  artists' classes held IN ITS ROOMS (2 Oct 2026, the user: "artist taking
+   *  class in studio not showing up in studios classes section") — the same
+   *  read-only rows, seen from the other side of the venue request. */
+  elsewhereHead?: string;
+  elsewhereChip?: string;
 }) {
   const router = useRouter();
   const search = useSearchParams();
@@ -671,6 +680,7 @@ export function ClassesManager({
               filled={filledOf(c)}
               artist={artists[c.id] ?? null}
               href={`/c/${c.shareSlug}`}
+              live={isLiveAt(c, nowMs)}
               actions={
                 bucketOf(c) === "draft" ? (
                   <>
@@ -793,7 +803,7 @@ export function ClassesManager({
         {away.length > 0 ? (
           <div style={{ marginTop: list.length > 0 ? 18 : 8 }} data-testid="classes-elsewhere">
             {list.length > 0 ? (
-              <div style={{ fontSize: 9.5, fontWeight: 900, letterSpacing: 1, color: SUB, margin: "0 0 9px" }}>AT OTHER STUDIOS · {away.length}</div>
+              <div style={{ fontSize: 9.5, fontWeight: 900, letterSpacing: 1, color: SUB, margin: "0 0 9px" }}>{elsewhereHead} · {away.length}</div>
             ) : null}
             {away.map((e) => (
               <ClassTile
@@ -802,12 +812,13 @@ export function ClassesManager({
                 artist={e.artist}
                 city={e.city}
                 href={`/c/${e.danceClass.shareSlug}`}
+                live={isLiveAt(e.danceClass, nowMs)}
                 actions={
                   <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, flexBasis: "100%" }}>
                     <span style={{ fontSize: 10.5, color: SUB }}>
                       {e.studio} · {e.when}
                     </span>
-                    <span style={{ flexShrink: 0, fontSize: 9.5, fontWeight: 900, letterSpacing: 0.6, textTransform: "uppercase", color: "#F59E0B" }}>Teaching</span>
+                    <span style={{ flexShrink: 0, fontSize: 9.5, fontWeight: 900, letterSpacing: 0.6, textTransform: "uppercase", color: "#F59E0B" }}>{elsewhereChip}</span>
                   </div>
                 }
               />

@@ -301,7 +301,7 @@ export default async function HomePage() {
                   are redirects to exactly this, for the callers that cannot
                   compute it */}
               <StatsChip href={`${publicHref}/stats`} />
-                <ProfileShare path={publicHref} name={profile.fullName} />
+                <ProfileShare path={publicHref} name={profile.fullName} watchCheckIn />
                 <ProfileLink path={publicHref} name={profile.fullName} />
               </>
             }

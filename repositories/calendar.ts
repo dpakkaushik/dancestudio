@@ -270,7 +270,14 @@ async function findVenueEntries(
   const out: CalendarEntry[] = [];
   for (const row of (data ?? []) as unknown as VenueClassRow[]) {
     for (const s of row.class_sessions ?? []) {
-      if (s.deleted_at || !inWindow(s.starts_at, fromIso, toIso)) continue;
+      if (s.deleted_at) continue;
+      /* ⚠ the PUBLIC read keeps a session that has started and not ended (2 Oct
+         2026, the user: "check for the live class in 11 ft down") — a class
+         running right now stays on the studio's schedule until it ends */
+      const inside = publishedOnly
+        ? Date.parse(s.ends_at) > Date.parse(fromIso) && Date.parse(s.starts_at) < Date.parse(toIso)
+        : inWindow(s.starts_at, fromIso, toIso);
+      if (!inside) continue;
       out.push(entryOf(s, row.id, row, business, "hosting", null));
     }
   }
@@ -324,7 +331,10 @@ export async function findPublicBusinessSchedule(
     .eq("classes.status", "published")
     .is("deleted_at", null)
     .is("classes.deleted_at", null)
-    .gte("starts_at", nowIso)
+    /* ⚠ NOT OVER, rather than NOT STARTED (2 Oct 2026): `starts_at >= now`
+       dropped a class the moment it began, so the one class actually running —
+       the live one — was the one a studio's schedule did not show */
+    .gt("ends_at", nowIso)
     .lt("starts_at", toIso)
     .order("starts_at", { ascending: true })
     .limit(MAX_ROWS);

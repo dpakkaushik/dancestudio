@@ -47,8 +47,9 @@ export interface DeckClassItem extends DeckBase {
   artist: ClassArtist | null;
   /** your own booking, when you hold one — its id is the entry code */
   classBooking: { id: string; status: ClassBookingStatus } | null;
-  /** what you paid for the seat, when it was paid for — the invoice's figures */
-  receipt: { amountInr: number; method: string | null } | null;
+  /** the door has let you in (a live attendance row on your booking) — the card
+   *  says "✓ Checked in". ⚠ `receipt` went with the deck's Invoice (2 Oct 2026) */
+  checkedIn: boolean;
 }
 
 export type DeckItem = DeckClassItem;

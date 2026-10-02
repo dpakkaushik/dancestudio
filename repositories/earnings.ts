@@ -342,7 +342,7 @@ export async function findBusinessEarnings(
          presses a revenue row's link, and a link that opens the wrong screen
          fails nothing. ⚠ It carries `?as=` when the ledger is one business's, so
          the desk it opens is scoped the way the tile's is. */
-      { key: "enquiries", label: "Enquiries", by: enquiries, items: enquiriesI, href: one ? `/enquiries?as=${encodeURIComponent(one)}` : "/enquiries" },
+      { key: "enquiries", label: "Enquiries", by: enquiries, items: enquiriesI, href: one ? `/business/${one}/enquiries` : "/enquiries" },
     ],
     [
       { key: "pay", label: "What you paid your people", by: pay, items: payI, href: one ? `/business/${one}/earnings` : undefined },
@@ -393,6 +393,58 @@ export async function findPersonEarnings(
     period,
     keys,
     [{ key: "teaching", label: "Paid by studios", by: taught, items: taughtI, href: "/earnings" }],
+    [],
+    (data?.length ?? 0) < MAX_ROWS
+  );
+}
+
+/** ⚠⚠ WHAT A CREW TOOK (2 Oct 2026, the user: "earnings for crews is missing").
+ *
+ *  A crew sells no seat and no pass and is paid by no studio — the one money a
+ *  crew has in DanceOS is an ENQUIRY: a celebration, a corporate show or a
+ *  collaboration, quoted by its leader, with the advance and the balance
+ *  RECORDED as received (`record_enquiry_payment`, the same rule a studio's
+ *  enquiry money follows — nothing moves through DanceOS). So that is the whole
+ *  revenue, bucketed exactly as `findBusinessEarnings` buckets it, and there is
+ *  no expense half: a crew employs nobody and buys nothing here, the same fact a
+ *  person's ledger states. ⚠ Readable by the LEADER only — the quotes' policy
+ *  admits the crew's leader (`20260918160000`), which is who opens this desk. */
+export async function findCrewEarnings(supabase: SupabaseClient, crewId: string, period: Period, nowIso: string): Promise<EarningsReport> {
+  const { keys } = windowFor(nowIso, period);
+  const { data, error } = await supabase
+    .from("enquiry_quotes")
+    .select("cost_inr, advance_inr, advance_paid_at, full_paid_at, enquiries (type_key, profiles (full_name))")
+    .eq("crew_id", crewId)
+    .is("deleted_at", null)
+    .limit(MAX_ROWS);
+  if (error) throw error;
+  const enquiries: Bucketed = new Map();
+  const enquiriesI: Itemed = new Map();
+  const take = (at: string, amountInr: number, label: string) => {
+    const k = bucketKeyOf(at, period);
+    add(enquiries, k, amountInr);
+    addItem(enquiriesI, k, { label, amountInr, at });
+  };
+  type Named = { full_name: string | null };
+  type QuoteRow = {
+    cost_inr: number;
+    advance_inr: number;
+    advance_paid_at: string | null;
+    full_paid_at: string | null;
+    enquiries?: { type_key: string; profiles?: Named | Named[] | null } | Array<{ type_key: string; profiles?: Named | Named[] | null }> | null;
+  };
+  for (const q of (data ?? []) as unknown as QuoteRow[]) {
+    const e = single(q.enquiries);
+    const what = enquiryWords(e?.type_key);
+    const who = single(e?.profiles)?.full_name;
+    const tail = who ? ` — ${who}` : "";
+    if (q.advance_paid_at) take(q.advance_paid_at, q.advance_inr, `${what} advance${tail}`);
+    if (q.full_paid_at) take(q.full_paid_at, Math.max(0, q.cost_inr - q.advance_inr), `${what} balance${tail}`);
+  }
+  return assemble(
+    period,
+    keys,
+    [{ key: "enquiries", label: "Enquiries", by: enquiries, items: enquiriesI, href: `/crews/${crewId}/manage/enquiries` }],
     [],
     (data?.length ?? 0) < MAX_ROWS
   );

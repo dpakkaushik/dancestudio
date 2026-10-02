@@ -166,9 +166,12 @@ export function InboxScreen({
   nowIso,
   desk = "inbox",
   deskSub = null,
+  receivedOnly = false,
   settings = null,
   artists = {},
 }: {
+  /** a studio's or a crew's desk — what it was asked, and no Sent side */
+  receivedOnly?: boolean;
   /** the profile-tinted wash the rest of the app opens on (5681) */
   accent: string;
   requestsIn: RequestItem[];
@@ -847,6 +850,10 @@ export function InboxScreen({
                 what the screen is for. The same treatment the Stats points card
                 got when it stood full-width between the controls and the board. */}
             {settings}
+            {/* ⚠ NO SENT SIDE ON A STUDIO'S OR A CREW'S DESK (2 Oct 2026) — an
+                enquiry is sent by a person, so the toggle there could only ever
+                offer an empty half */}
+            {receivedOnly ? null : (
             <div style={{ display: "flex", gap: 2, background: "var(--el)", borderRadius: 12, padding: 3, marginBottom: 9 }}>
               {(
                 [
@@ -860,6 +867,7 @@ export function InboxScreen({
                 </div>
               ))}
             </div>
+            )}
             {side.length === 0 ? (
               <div style={emptyBox}>
                 <div style={{ fontSize: 12.5, fontWeight: 800 }}>Nothing here</div>

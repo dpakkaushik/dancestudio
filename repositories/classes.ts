@@ -198,6 +198,36 @@ export async function findClassesByBusiness(
   return (data as unknown as ClassRow[]).map(toClass);
 }
 
+/** THE ARTISTS' CLASSES HELD IN THIS STUDIO'S ROOMS (2 Oct 2026, the user:
+ *  "artist taking class in studio not showing up in studios classes section").
+ *  Such a class belongs to the ARTIST's page (`business_id`), so the register's
+ *  own read above has never returned one — the studio said yes to its room and
+ *  then could not see the class it was hosting, even while it ran. Accepted only:
+ *  an unanswered request is the Requests tab's, a declined one is not here at all.
+ *  The venue team's read is the 18 Sep policy ("a VENUE's team reads the classes
+ *  held at their studio"); `venue_business_id` is said out loud because RLS is a
+ *  ceiling, not a scope. Carries the owning page's name for the row's caption. */
+export async function findClassesHostedByBusiness(
+  supabase: SupabaseClient,
+  businessId: string
+): Promise<Array<{ danceClass: DanceClass; hostName: string }>> {
+  const { data, error } = await supabase
+    .from("classes")
+    .select(`${CLASS_COLUMNS}, host:businesses!classes_business_id_fkey (name)`)
+    .eq("venue_business_id", businessId)
+    .eq("venue_status", "accepted")
+    .neq("business_id", businessId)
+    .neq("status", "draft")
+    .is("deleted_at", null)
+    .order("created_at", { ascending: false })
+    .limit(100);
+  if (error || !data) return [];
+  return (data as unknown as Array<ClassRow & { host: { name: string } | { name: string }[] | null }>).map((r) => {
+    const h = Array.isArray(r.host) ? r.host[0] : r.host;
+    return { danceClass: toClass(r), hostName: h?.name ?? "An artist" };
+  });
+}
+
 /** One class by id (members only via RLS) — for the edit form. */
 export async function findClassById(
   supabase: SupabaseClient,

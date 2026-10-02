@@ -57,7 +57,7 @@ export function CrewHome({ crew, members, header = [], followers = 0, order = nu
        admits for a crew. ⚠ A crew keeps no enquiry-type preferences — its three
        kinds are fixed in `send_enquiry` — so the desk shows it no settings, and
        says so rather than drawing an empty block. */
-    { name: DOS_TOOLS.enquiries.name, href: `/enquiries?as=${encodeURIComponent(`crew-${crew.id}`)}`, k: "enquiries", c: DOS_TOOLS.enquiries.c },
+    { name: DOS_TOOLS.enquiries.name, href: `/crews/${crew.id}/manage/enquiries`, k: "enquiries", c: DOS_TOOLS.enquiries.c },
     /* ⚠ PRACTICE AND CALENDAR (27 Sep 2026, the user: "crew should also get an
        option on home tab called Practice … practice also get added to calendar.
        crews should also have a calendar tab"). Both are the LEADER's desks —
@@ -67,6 +67,10 @@ export function CrewHome({ crew, members, header = [], followers = 0, order = nu
        switch — which read Classes · Events · Practice until 29 Sep 2026. */
     { name: DOS_TOOLS.practice.name, href: `/crews/${crew.id}/manage/practice`, k: "practice", c: DOS_TOOLS.practice.c },
     { name: DOS_TOOLS.calendar.name, href: `/crews/${crew.id}/manage/calendar`, k: "calendar", c: DOS_TOOLS.calendar.c },
+    /* ⚠ EARNINGS (2 Oct 2026, the user: "earnings for crews is missing") — what
+       the crew's enquiries brought in; green clears every other tile on a
+       crew's grid (orange, violet, indigo, cyan) */
+    { name: DOS_TOOLS.earn.name, href: `/crews/${crew.id}/manage/earnings`, k: "earn", c: DOS_TOOLS.earn.c },
   ];
   const shots: HeroShot[] = header.filter((h) => h.url).map((h, i) => ({ key: h.id, src: h.url as string, alt: `Header picture ${i + 1} of ${crew.name}`, signed: h.signed }));
   const whatsapp = whatsappHrefOf(crew.socials);

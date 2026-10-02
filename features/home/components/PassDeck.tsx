@@ -1,151 +1,43 @@
 "use client";
 
-import { useRouter } from "next/navigation";
 import { useState, type ReactNode } from "react";
 import { ClassTile } from "@/features/classes/components/ClassTile";
-import { dosKey } from "@/features/classes/components/ShareSheet";
-import { InvoiceSheet, bookingCodeOf } from "@/features/payments/components/InvoiceSheet";
-import { RefundSheet } from "@/features/payments/components/RefundSheet";
-import { DOS_UI, GREEN, LINE, SKY } from "@/lib/design/tokens";
-import { dateParts, timeRangeOf } from "@/lib/format/session";
+import { DOS_UI, LINE, SKY } from "@/lib/design/tokens";
 import type { DeckClassItem, DeckItem } from "@/types/home";
-
-const DOS_MONO = 'ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace';
 
 /** THE PASS DECK — lifted from the prototype (PassDeck 6863-7204, the rail at
  *  7183-7199): today's sessions as ONE swiped rail of 88%-width cards, snapped to
  *  centre, a row of dots under them saying where you are. One card, everywhere —
  *  the same ClassTile the calendar and Discover draw — each wearing the chip that
- *  says what the session is to you and, on exactly one of them, the Live badge.
- *  ⚠ It drew an `EventCard` too until 29 Sep 2026, when events were removed.
+ *  says what the session is to you and, on exactly one of them, the Live frame.
  *
- *  A booked card carries its BookingActions strip (6399-6448): "You're booked"
- *  with the booking's own reference, and the one segmented pill for the money
- *  side of the booking — Invoice, and Cancel booking. Nothing here is a second
- *  implementation: the sheets are the class page's own.
+ *  ⚠⚠ NOTHING UNDER THE CARD ANY MORE (2 Oct 2026, the user: "should not show
+ *  invoice and cancel booking option on todays schedule tile on home … can also
+ *  remove you are booked an everything in that section below the bar"). The
+ *  BookingActions strip — "You're booked", the reference, "Your own profile QR
+ *  is what gets you in" and the Invoice | Cancel booking pill — is gone with the
+ *  two sheets it opened. Both are still on the class page, which the card opens;
+ *  Home's deck is for glancing at today, not for the money side of a booking.
  *
- *  ⚠⚠ THE DRAWN CODE AND THE TICKET SHEET WENT ON 29 Sep 2026, with the same
- *  classPerson on the class page (the user: "scan this at door text not required as
- *  your personal qr code for user or artist profile is being used to enter the
- *  classes"). The strip drew a 54px QR of `bookingCodeOf(…)` that opened a
- *  full-screen `PassSheet` reading "Scan this at the door." — and **no door in
- *  this app has ever read one**: `ScanSheet` resolves a PERSON's profile link
- *  and `can_run_register_for_class` decides, so a per-booking square was a
- *  credential nothing accepted. What survives is the string it encoded, which
- *  was always a reference rather than a key, printed where it already was. */
-
-/* one grammar for the money sheets — the same date and time the card prints */
-const whenTextOf = (startsAt: string, endsAt: string) => {
-  const when = dateParts(startsAt);
-  return `${when.weekday} ${when.day} ${when.month} · ${timeRangeOf(startsAt, endsAt)}`;
-};
-
-/* ⚠ `RoleChip` AND `LiveBadge` WENT WITH THE EVENT CARD (29 Sep 2026). Both
-   existed for one reason: an event card cannot wear its own role chip or its own
-   Live badge the way `ClassTile` does, so the deck drew them beside it. The deck
-   is classes and nothing else now, and the tile draws both itself. */
-
-/** The booking, in the card's own clothes (BookingActions 6399-6448): the drawn
- *  code, the green DOT carrying "confirmed", the entry code — and the two money
- *  actions merged into one segmented pill, when the booking has a money side. */
-function BookingStrip({
-  code,
-  going,
-  onInvoice,
-  onCancel,
-}: {
-  code: string;
-  going: boolean;
-  onInvoice?: () => void;
-  onCancel?: () => void;
-}) {
-  return (
-    <div style={{ width: "100%" }}>
-      <div style={{ minWidth: 0 }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 6, minWidth: 0 }}>
-          <span style={{ width: 8, height: 8, borderRadius: 4, background: GREEN, flexShrink: 0 }} />
-          <span style={{ fontSize: 12.5, fontWeight: 900, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-            You’re {going ? "going" : "booked"}
-          </span>
-          <span style={{ fontFamily: DOS_MONO, fontSize: 10, color: "var(--muted)", marginLeft: "auto", flexShrink: 0 }}>{code}</span>
-        </div>
-        <div style={{ fontSize: 9.5, color: "var(--muted)", marginTop: 3 }}>
-          Your own profile QR is what gets you in.
-        </div>
-      </div>
-      {onInvoice && onCancel ? (
-        /* one bordered pill, two segments, a hairline between — merged, and both visible */
-        <div style={{ display: "flex", alignItems: "stretch", marginTop: 10, border: `1.5px solid ${LINE}`, borderRadius: 999, overflow: "hidden", background: "var(--solid)" }}>
-          <span
-            role="button"
-            tabIndex={0}
-            onKeyDown={dosKey}
-            aria-label="Invoice"
-            onClick={onInvoice}
-            style={{ flex: 1, display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 6, padding: "10px 6px", fontSize: 11.5, fontWeight: 800, cursor: "pointer", color: "var(--text)", WebkitTapHighlightColor: "transparent" }}
-          >
-            Invoice
-          </span>
-          <span aria-hidden="true" style={{ width: 1, background: LINE }} />
-          <span
-            role="button"
-            tabIndex={0}
-            onKeyDown={dosKey}
-            aria-label="Cancel booking"
-            onClick={onCancel}
-            style={{ flex: 1, display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 6, padding: "10px 6px", fontSize: 11.5, fontWeight: 800, cursor: "pointer", color: "#F87171", WebkitTapHighlightColor: "transparent" }}
-          >
-            Cancel booking
-          </span>
-        </div>
-      ) : null}
-    </div>
-  );
-}
-
+ *  ⚠ A CARD SAYS "CHECKED IN" once the door has let you in (`checkedIn`, off
+ *  your live attendance row) — the other half of the approved-QR moment. */
 export function PassDeck({ items }: { items: DeckItem[] }) {
-  const router = useRouter();
   const [at, setAt] = useState(0);
-  const [inv, setInv] = useState<DeckClassItem | null>(null);
-  const [ref, setRef] = useState<DeckClassItem | null>(null);
-  const [toast, setToast] = useState<string | null>(null);
-  const fire = (m: string) => {
-    setToast(m);
-    setTimeout(() => setToast(null), 2400);
-  };
 
-  const classCard = (p: DeckClassItem): ReactNode => {
-    const c = p.danceClass;
-    const booked = p.classBooking?.status === "enrolled";
-    return (
-      <ClassTile
-        danceClass={c}
-        filled={p.filled}
-        artist={p.artist}
-        city={p.businessCity}
-        href={p.href}
-        /* every card in this rail is today, so the date block says so (8290-8293) */
-        isToday
-        roleLabel={p.roleLabel}
-        live={p.live}
-        actions={
-          booked && p.classBooking ? (
-            <BookingStrip
-              code={bookingCodeOf(p.classBooking.id)}
-              going={false}
-              onInvoice={() => setInv(p)}
-              onCancel={() => setRef(p)}
-            />
-          ) : undefined
-        }
-      />
-    );
-  };
-
-  /* ⚠ `eventCard` was here and went with events (29 Sep 2026) — the one card in
-     this rail that was not a class, drawn by `EventCard` with the role chip and
-     the ticket strip under it. `passSheet` went the same day, with the ticket
-     itself (see the note at the head of this file). */
+  const classCard = (p: DeckClassItem): ReactNode => (
+    <ClassTile
+      danceClass={p.danceClass}
+      filled={p.filled}
+      artist={p.artist}
+      city={p.businessCity}
+      href={p.href}
+      /* every card in this rail is today, so the date block says so (8290-8293) */
+      isToday
+      roleLabel={p.roleLabel}
+      live={p.live}
+      checkedIn={Boolean(p.checkedIn)}
+    />
+  );
 
   return (
     <>
@@ -164,7 +56,7 @@ export function PassDeck({ items }: { items: DeckItem[] }) {
           scrollbarWidth: "none",
           WebkitOverflowScrolling: "touch",
           margin: "0 -16px",
-          padding: "0 16px 2px",
+          padding: "4px 16px 2px",
           fontFamily: DOS_UI,
         }}
       >
@@ -179,55 +71,6 @@ export function PassDeck({ items }: { items: DeckItem[] }) {
           {items.map((p, i) => (
             <span key={p.key} style={{ width: i === at ? 14 : 5, height: 5, borderRadius: 3, transition: "width .2s", background: i === at ? SKY : LINE }} />
           ))}
-        </div>
-      ) : null}
-
-      {inv && inv.classBooking ? (
-        <InvoiceSheet
-          title={inv.danceClass.title}
-          whenText={whenTextOf(inv.startsAt, inv.endsAt)}
-          whereText={[inv.danceClass.room, inv.businessCity].filter(Boolean).join(", ")}
-          classBookingId={inv.classBooking.id}
-          amountInr={inv.receipt?.amountInr ?? null}
-          method={inv.receipt?.method ?? null}
-          onClose={() => setInv(null)}
-        />
-      ) : null}
-      {ref && ref.classBooking ? (
-        <RefundSheet
-          classBookingId={ref.classBooking.id}
-          title={ref.danceClass.title}
-          timeText={whenTextOf(ref.startsAt, ref.endsAt)}
-          amountInr={ref.receipt?.amountInr ?? 0}
-          onClose={() => setRef(null)}
-          onDone={(msg) => {
-            setRef(null);
-            fire(msg);
-            router.refresh();
-          }}
-        />
-      ) : null}
-      {toast ? (
-        <div
-          style={{
-            position: "fixed",
-            bottom: 110,
-            left: "50%",
-            transform: "translateX(-50%)",
-            background: "var(--el)",
-            border: "1.5px solid #EC4899",
-            color: "var(--text)",
-            padding: "11px 18px",
-            borderRadius: 999,
-            fontSize: 13,
-            fontWeight: 700,
-            maxWidth: 390,
-            textAlign: "center",
-            zIndex: 650,
-            fontFamily: DOS_UI,
-          }}
-        >
-          {toast}
         </div>
       ) : null}
     </>

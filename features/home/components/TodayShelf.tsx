@@ -1,5 +1,6 @@
 import { DosShelfHead, HOME_TYPE } from "@/features/home/components/home-kit";
 import { PassDeck } from "@/features/home/components/PassDeck";
+import { CheckedInReveal } from "@/features/home/components/CheckedInReveal";
 import { CARD, LINE, SUB } from "@/lib/design/tokens";
 import type { DeckItem } from "@/types/home";
 
@@ -25,7 +26,8 @@ import type { DeckItem } from "@/types/home";
  *  page's padding, is not clipped. */
 export function TodayShelf({ deck }: { deck: DeckItem[] }) {
   return (
-    <div data-dosfold="deck" style={{ margin: "10px -16px 14px", padding: "0 16px" }}>
+    <div id="today-schedule" data-dosfold="deck" style={{ margin: "10px -16px 14px", padding: "0 16px", scrollMarginTop: "calc(var(--dos-top) + 12px)" }}>
+      <CheckedInReveal />
       <DosShelfHead pad="2px 0 8px">
         Today’s schedule
         <span style={{ ...HOME_TYPE.meta, color: SUB, marginLeft: 8 }}>{deck.length} today</span>
