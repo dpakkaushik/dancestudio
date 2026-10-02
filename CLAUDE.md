@@ -2,6 +2,41 @@
 
 ## LAST SESSION (2 Oct 2026) — replaced on every push (Rule 13)
 
+> ### A SWIPE SWITCHES PROFILE, A PAID PASS IS NOT SOLD TWICE, PAYMENT COMES BACK, AND YOU MAY FOLLOW YOUR OWN STUDIO (2 Oct 2026, latest) — ✅ `20261002120000` APPLIED (dry run 13/13 first)
+> Four of the user's messages in one push:
+> * **The profile chip takes a vertical swipe** (Google-style): up and down step to
+>   the next and previous profile, and a tap still opens the switcher. The chip uses
+>   pointer capture and `touchAction: none`; the menu has no scroller (the user
+>   corrected that reading).
+> * **Tool tiles** are 12.5px with no mid-word break (iPhone).
+> * **Memberships**: an active pass draws **✓ Active** instead of Buy (the
+>   database already refused a second one), and after paying you land on Booked.
+> * ⚠⚠ **Payments stuck on phones**: Cashfree had no `return_url`, so a phone's
+>   redirect flow stranded the buyer. `/pay/return` confirms with the server and
+>   lands on the class or the membership. The SDK preloads; a "Check my payment"
+>   button covers a modal that never resolves. Still sandbox.
+> * **Cancel subscription** is a real button on both subscription screens.
+> * **Discover**: the verified tick rides the name; the quick chips are per tab;
+>   crews show follower counts; followed crews are on Followed by you.
+> * **Enquiries**: a closed enquiry is under **Done** only, and "What you take" is
+>   called **Enquiry settings**.
+> * **Onboarding**: the photo ＋ is on the square from the start. The photo is
+>   staged until the row exists. ⚠ `shoot-hero` caught a real race: a photo picked
+>   while the first save was in flight was staged and never uploaded. Every
+>   Continue now uploads a staged photo.
+> * **Social chips** print the handle, not the whole URL (`handleOf`).
+> * ⚠ **You may follow your own studio or crew** — the user chose "remove the
+>   refusal". `20261002120000` cuts the member refusal from `set_follow` and
+>   `set_crew_follow`, by asserted single occurrence out of the catalog. Grants,
+>   the private-business refusal and anon's refusal are unchanged; 103 policies.
+>   The bell is drawn for members and leaders too. Two proofs were re-cut to the
+>   new rule.
+> * **Verified:**
+>   * typecheck 0 · lint 0 · build green
+>   * proofs `follows` and `profile-pages` green on the applied schema
+>   * `shoot-hero` 186/186 (after the race fix)
+>   * the happy path (tally in the commit that follows)
+
 > ### A BIGGER TOP BAR, AND NO CONTROL ON IT TAKES A SWIPE (2 Oct 2026, latest) — no migration, PUSHED
 > The user: *"make the top bar a bit bigger and apply the swipe function."* The bar
 > is **70px** (was 62; `--dos-top`, so every screen's padding moved with it), the
@@ -11940,6 +11975,12 @@ pan-India. The prototype's `__DOS*` localStorage shapes are the source material
 for the database schema. **The UI is not redesigned** — see Rule 2.
 
 ### Progress tracker — update after EVERY push (Rule 11)
+
+- **A SWIPE SWITCHES PROFILE, PAYMENT COMES BACK, AND YOU MAY FOLLOW YOUR OWN
+  STUDIO — 2 Oct 2026, no step number ⚠ (Rule 9: money return path + a follow
+  rule) — `20261002120000` APPLIED.** It also covers: no double-buy, Cancel
+  subscription, Discover's ticks, quick chips and crew follows, Enquiry settings
+  and Done, the onboarding photo, and social handles. Detail is at the top of this file.
 
 - **THE STATS PAGE GOES BACK IN ONE STEP, AND AN UNPAID PASS IS NOT A SALE — 1 Oct
   2026, no step number ⚠ (Rule 9: money) — `20260930130000` APPLIED** (dry run

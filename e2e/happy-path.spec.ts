@@ -1217,9 +1217,16 @@ test.describe.serial("DanceOS, end to end", () => {
        by the evening ("enquiries should not be on navbar a tab in tools for
        all"); `shoot-tiles` presses the tile on all four grids, so what this
        segment drives is the desk behind it. */
+    /* ⚠⚠ RE-CUT 2 Oct 2026 (the user: "all items on home tab should be for that
+       specific profile"): unscoped, the desk is YOUR PROFILE's, so an enquiry to
+       the STUDIO is on the studio's own desk — `?as={studio}`, the address its
+       tile opens — and NOT on the owner's personal one. Both ends asserted. */
     await owner.goto("/enquiries");
     await expect(owner.getByRole("heading", { level: 1, name: "Enquiries" })).toBeVisible();
-    await expect(owner.getByText("1 waiting on you")).toBeVisible();
+    await expect(owner.getByRole("link", { name: `Private Sessions enquiry from ${learnerName}` })).toHaveCount(0);
+    await owner.goto(`/enquiries?as=${businessId}`);
+    await expect(owner.getByText("1 waiting on you")).toBeVisible({ timeout: 15_000 });
+    await owner.goto("/enquiries");
     /* ⚠⚠ AND THE SETTINGS ARE ON IT (the user: "with its setting as well manged
        from there") — the kinds left the contact ⊕ for the desk the same evening.
        Closed, the disclosure states the standing without opening anything; the
@@ -1237,15 +1244,14 @@ test.describe.serial("DanceOS, end to end", () => {
        ⚠ BOTH ENDS ARE ASSERTED, because a check that only looks at the new place
        cannot tell you the old one was cleared: gone from the unscoped desk, and
        present on the studio's own — which is the address its tile opens. */
-    await expect(owner.getByRole("button", { name: /^Enquiry types/ })).toHaveCount(0);
+    await expect(owner.getByRole("button", { name: /^Enquiry settings/ })).toHaveCount(0);
     await owner.goto(`/enquiries?as=${businessId}`);
     await expect(owner.getByRole("heading", { level: 1, name: "Enquiries" })).toBeVisible();
     /* ⚠ the count is the TYPE's, not a constant: a studio is offered four kinds
        (judging is a person's job), an artist page five, an organization three —
        so the assertion is that a real count is stated rather than which one. */
-    await expect(owner.getByRole("button", { name: /^Enquiry types/ }).first()).toBeVisible();
+    await expect(owner.getByRole("button", { name: /^Enquiry settings/ }).first()).toBeVisible();
     await expect(owner.getByText(/^\d+ of \d+ kinds$/).first()).toBeVisible();
-    await owner.goto("/enquiries");
     await owner.getByRole("link", { name: `Private Sessions enquiry from ${learnerName}` }).click();
     await owner.waitForURL(/\/inbox\/enquiries\/[0-9a-f-]+$/);
     await expect(owner.getByText("WHAT THEY ASKED FOR")).toBeVisible();
@@ -2338,8 +2344,9 @@ test.describe.serial("DanceOS, end to end", () => {
     await learner.waitForURL(/\/inbox\/enquiries\/[0-9a-f-]+$/);
     await expect(learner.getByRole("link", { name: `Call ${studioName}` })).toHaveAttribute("href", "tel:+919000011111");
     // the business's side is unchanged: this enquiry carried no mobile, so it still
-    // says so rather than offering a dead button
-    await owner.goto("/enquiries");
+    // says so rather than offering a dead button. ⚠ On the STUDIO's own desk
+    // since 2 Oct 2026 — the unscoped desk is the owner's personal profile.
+    await owner.goto(`/enquiries?as=${businessId}`);
     await owner.getByRole("link", { name: `Private Sessions enquiry from ${learnerName}` }).click();
     await owner.waitForURL(/\/inbox\/enquiries\/[0-9a-f-]+$/);
     await expect(owner.getByText("No number on this enquiry — quote them here instead")).toBeVisible();
@@ -2482,11 +2489,11 @@ test.describe.serial("DanceOS, end to end", () => {
     await expect(payStep.getByText("2 classes")).toBeVisible();
     await expect(payStep.getByText("Free")).toBeVisible();
     await payStep.getByRole("button", { name: "Buy now" }).click();
-    await expect(learner.getByText("find it under Memberships")).toBeVisible({ timeout: 20_000 });
-
-    // ── which is exactly where it is: the tools' own Memberships section, with
-    // the progress bar reading off real units — nothing used yet
-    await learner.goto("/memberships");
+    /* ── AND IT LANDS ON THE PASS ITSELF (2 Oct 2026, the user: "should take to …
+       membership detail page after payment is done") — the tools' own
+       Memberships section, open on the passes you hold, with the progress bar
+       reading off real units — nothing used yet */
+    await learner.waitForURL(/\/memberships\?show=booked$/, { timeout: 20_000 });
     const held = learner.getByTestId("my-pass").filter({ hasText: passName });
     await expect(held).toBeVisible({ timeout: 15_000 });
     /* BOOKED · MANAGE (19 Sep 2026, the user: "membership columns should be
@@ -2495,11 +2502,13 @@ test.describe.serial("DanceOS, end to end", () => {
     // the bar is drawn from two real numbers, never a stored percentage
     await expect(held.getByTestId("pass-progress")).toHaveAttribute("data-pct", "0");
     await expect(held.getByTestId("pass-progress")).toHaveAttribute("aria-label", "0 of 2 used");
-    // and they may not take a second one while one is live — the database's rule
+    /* and they may not take a second one while one is live — the database's rule,
+       and since 2 Oct 2026 the page's too: no Buy is offered, the row says it is
+       theirs and opens the pass (the user: "should not show option to buy it if
+       already active") */
     await learner.goto(`/studio/${businessId}`);
-    await learner.getByRole("button", { name: `Buy ${passName}` }).click();
-    await learner.getByRole("dialog", { name: "Confirm — no payment" }).getByRole("button", { name: "Buy now" }).click();
-    await expect(learner.getByText("use it up first")).toBeVisible({ timeout: 20_000 });
+    await expect(learner.getByRole("button", { name: `Buy ${passName}` })).toHaveCount(0);
+    await expect(learner.getByRole("link", { name: `${passName} — yours, open it` })).toBeVisible({ timeout: 15_000 });
 
     // ── THE SELLER TRACKS IT, per class and per student (the user's own words).
     // Nothing has been spent yet, so the honest answer is one holder at nothing

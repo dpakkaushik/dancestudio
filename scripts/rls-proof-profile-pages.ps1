@@ -121,18 +121,25 @@ try {
   #    person since 26 Sep 2026, so this is the ordinary rule; the rules that
   #    remain are the ones about the CREW - its leader and its confirmed members
   #    are the crew).
-  $byLead = Fails { Rpc (Api $lead.token) "set_crew_follow" @{ p_crew_id = $crew.id; p_on = $true } }
-  $byMember = Fails { Rpc (Api $member.token) "set_crew_follow" @{ p_crew_id = $crew.id; p_on = $true } }
+  #    !! RE-CUT 2 Oct 2026 (20261002120000): the leader and a member MAY follow
+  #    their own crew now — each follows and unfollows again, so the count the
+  #    checks below read is untouched
+  $byLead = Rpc (Api $lead.token) "set_crew_follow" @{ p_crew_id = $crew.id; p_on = $true }
+  Rpc (Api $lead.token) "set_crew_follow" @{ p_crew_id = $crew.id; p_on = $false } | Out-Null
+  $byMember = Rpc (Api $member.token) "set_crew_follow" @{ p_crew_id = $crew.id; p_on = $true }
+  Rpc (Api $member.token) "set_crew_follow" @{ p_crew_id = $crew.id; p_on = $false } | Out-Null
   $byOrg = Rpc (Api $org.token) "set_crew_follow" @{ p_crew_id = $crew.id; p_on = $true }
   Rpc (Api $org.token) "set_crew_follow" @{ p_crew_id = $crew.id; p_on = $false } | Out-Null
   $byAnon = Fails { Rpc $anonH "set_crew_follow" @{ p_crew_id = $crew.id; p_on = $true } }
-  Check 2 "The leader is refused ($byLead); a member is refused ($byMember); a bystander FOLLOWS the crew ($($byOrg.following), $($byOrg.followers) followers) and unfollows again; the public cannot call it ($([bool]$byAnon))" (
-    ($byLead -match "in this crew") -and ($byMember -match "in this crew") -and ($byOrg.following -eq $true) -and ([int]$byOrg.followers -eq 2) -and ($byAnon -ne ""))
+  Check 2 "The leader follows their own crew ($($byLead.following)); a member does ($($byMember.following)); a bystander FOLLOWS it ($($byOrg.following), $($byOrg.followers) followers) and unfollows again; the public cannot call it ($([bool]$byAnon))" (
+    ($byLead.following -eq $true) -and ($byMember.following -eq $true) -and ($byOrg.following -eq $true) -and ([int]$byOrg.followers -eq 2) -and ($byAnon -ne ""))
 
   # 3. WHO follows is the leader's to read; the row is the follower's own; nobody else's; unfollow soft-deletes
   $leadSees = Get-Rows (Api $lead.token) "follows?crew_id=eq.$($crew.id)&deleted_at=is.null&select=id,follower_id"
   $fanSees = Get-Rows (Api $fan.token) "follows?crew_id=eq.$($crew.id)&deleted_at=is.null&select=id"
-  $memberSees = Get-Rows (Api $member.token) "follows?crew_id=eq.$($crew.id)&select=id"
+  #    (somebody ELSE's rows: since 2 Oct 2026 the member has a follow row of their
+  #    own from check 2, and reading your own row is the point of the policy)
+  $memberSees = Get-Rows (Api $member.token) "follows?crew_id=eq.$($crew.id)&follower_id=neq.$($member.id)&select=id"
   $anonSees = Get-Rows $anonH "follows?crew_id=eq.$($crew.id)&select=id"
   $u1 = Rpc (Api $fan.token) "set_crew_follow" @{ p_crew_id = $crew.id; p_on = $false }
   $allRows = Get-Rows (Api $fan.token) "follows?follower_id=eq.$($fan.id)&crew_id=eq.$($crew.id)&select=id,deleted_at"

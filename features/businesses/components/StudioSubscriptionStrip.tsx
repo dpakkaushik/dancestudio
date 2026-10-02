@@ -119,8 +119,11 @@ export function StudioSubscriptionStrip({
               </button>
             </>
           ) : (
-            <button type="button" onClick={() => setConfirm(true)} aria-label={`Stop ${businessName} renewing`} style={{ background: "none", border: "none", padding: 0, fontFamily: "inherit", fontSize: 10.5, fontWeight: 800, color: SUB, textDecoration: "underline", cursor: "pointer" }}>
-              Stop renewing
+            /* ⚠ A REAL BUTTON NAMED FOR WHAT IT DOES (2 Oct 2026, the user:
+               "subscription should show a button to cancel subscription inside
+               the subscription") — it was an underlined 10.5px "Stop renewing" */
+            <button type="button" data-testid="cancel-subscription" onClick={() => setConfirm(true)} aria-label={`Cancel ${businessName}'s subscription`} style={{ padding: "8px 14px", borderRadius: 999, fontFamily: "inherit", fontSize: 11.5, fontWeight: 900, cursor: "pointer", background: "transparent", border: "1.5px solid #EF4444", color: "#EF4444" }}>
+              Cancel subscription
             </button>
           )
         ) : null}

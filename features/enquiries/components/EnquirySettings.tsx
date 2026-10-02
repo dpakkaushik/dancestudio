@@ -94,12 +94,15 @@ function OneBusiness({ business, showName }: { business: Business; showName: boo
       <button
         type="button"
         aria-expanded={open}
-        aria-label={showName ? `Enquiry types — ${business.name}` : "Enquiry types"}
+        /* "ENQUIRY SETTINGS" (2 Oct 2026, the user: "what you take in enquiries
+           should be enquiry settings") — the visible word and the accessible name
+           move together, the 27 Sep rule */
+        aria-label={showName ? `Enquiry settings — ${business.name}` : "Enquiry settings"}
         onClick={() => setOpen((v) => !v)}
         style={{ display: "flex", alignItems: "center", gap: 10, width: "100%", background: "none", border: "none", padding: 0, cursor: "pointer", fontFamily: "inherit", color: "var(--text)", textAlign: "left" }}
       >
         <span style={{ flex: 1, minWidth: 0 }}>
-          <span style={{ ...fieldLabel, margin: 0, display: "block" }}>What you take{showName ? ` · ${business.name}` : ""}</span>
+          <span style={{ ...fieldLabel, margin: 0, display: "block" }}>Enquiry settings{showName ? ` · ${business.name}` : ""}</span>
           {/* the one figure that says the state without opening anything */}
           <span style={{ fontSize: 11.5, fontWeight: 800, color: SUB }}>{on ? `${liveCount} of ${all.length} kinds` : "Not taking enquiries"}</span>
         </span>

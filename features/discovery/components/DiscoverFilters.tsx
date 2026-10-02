@@ -149,18 +149,51 @@ export function DiscoverFilters({ tab, city, filters, styleOrder, tabs, as = nul
      quick filter that was not shared, and the only place `tab` decided which
      chips these were. With events gone every tab gets the same three. ⚠ The
      Styles tab has its own one (2 Oct 2026): just the styles taught here. */
-  const quick: Array<[string, string, boolean, () => void]> = isStyles ? [["has", `Classes in ${city}`, filters.has, () => go({ ...filters, has: !filters.has })]] : [
-    ["free", "Free", freeOn, () => go({ ...filters, prices: freeOn ? [] : ["free"] })],
-    ["eve", "Evening", filters.when === "evening", () => go({ ...filters, when: filters.when === "evening" ? "any" : "evening" })],
-    /* ⚠ "WITHIN 5 KM", NOT "NEAR ME" (21 Sep 2026). This chip is a RADIUS —
-       `dist === "5"` — and it was called Near me while the chip one row above
-       was ALSO called Near me and meant something else entirely: where the
-       distance is measured FROM. Two controls, one name, one screen, since
-       18 Sep. Merging the origin into the place chip (the user: "merge near me
-       and city filter on discover") is only half the answer while a second
-       thing is still wearing its words; this half costs one string. */
-    ["near", "Within 5 km", filters.dist === "5", () => go({ ...filters, dist: filters.dist === "5" ? "any" : "5" })],
+  /* ⚠⚠ QUICK FILTERS THAT DO SOMETHING ON THE TAB THEY ARE ON (2 Oct 2026, the
+     user: "better quick filters on discover besides the main filter"). The same
+     three chips — Free · Evening · Within 5 km — sat on every tab, and on most
+     of them two did nothing: a studio, an artist and a crew have no price or
+     clock, and only the Studios shelf is measured, so pressing them changed
+     nothing and read as broken (the prototype's own rule, 4456: a filter that
+     cannot be evaluated stands aside — which is why it must not be OFFERED).
+     Each tab offers the chips its own list answers to, and every tab then
+     offers the dance FAMILIES people reach for, one tap each.
+     ⚠ "WITHIN 5 KM", NOT "NEAR ME" (21 Sep 2026) is kept: a radius is named as
+     a radius, and the place chip above is where the distance is measured FROM. */
+  const flipWhen = (w: When) => go({ ...filters, when: filters.when === w ? "any" : w });
+  const flipDist = (d: Dist) => go({ ...filters, dist: filters.dist === d ? "any" : d });
+  const flipSort = (s: SortBy) => go({ ...filters, sort: filters.sort === s ? "near" : s });
+  const quick: Array<[string, string, boolean, () => void]> = isStyles
+    ? [
+        ["has", `Classes in ${city}`, filters.has, () => go({ ...filters, has: !filters.has })],
+        ["popular", "Most classes", filters.sort === "popular", () => flipSort("popular")],
+        ["az", "A–Z", filters.sort === "az", () => flipSort("az")],
+      ]
+    : tab === "classes"
+      ? [
+          ["free", "Free", freeOn, () => go({ ...filters, prices: freeOn ? [] : ["free"] })],
+          ["soon", "Starting soon", filters.sort === "soon", () => flipSort("soon")],
+          ["morn", "Morning", filters.when === "morning", () => flipWhen("morning")],
+          ["eve", "Evening", filters.when === "evening", () => flipWhen("evening")],
+          ["short", "Under 1 hr", filters.dur === "60", () => go({ ...filters, dur: filters.dur === "60" ? "any" : "60" })],
+        ]
+      : tab === "studios"
+        ? [
+            ["d2", "Within 2 km", filters.dist === "2", () => flipDist("2")],
+            ["near", "Within 5 km", filters.dist === "5", () => flipDist("5")],
+          ]
+        : [];
+  /* the families, one tap each — a picked one leaves this row and becomes its
+     removable pill below, so it is never shown twice */
+  const QUICK_FAMS: Array<[string, string]> = [
+    ["Indian classical", "Classical"],
+    ["Bollywood", "Bollywood"],
+    ["Street", "Hip-hop & street"],
+    ["Indian folk", "Folk"],
+    ["Latin", "Latin"],
+    ["Fitness & open", "Fitness"],
   ];
+  const quickFams = QUICK_FAMS.filter(([f]) => STYLE_FAMILIES.includes(f) && !filters.fams.includes(f));
 
   /* the sheet's chips apply live (4844-4849); "Show results" only closes it (4874) */
   const pick =<T extends string>(opts: Array<[T, string]>, val: T, set: (v: T) => void) =>
@@ -272,6 +305,11 @@ export function DiscoverFilters({ tab, city, filters, styleOrder, tabs, as = nul
         </div>
         {quick.map(([k, label, on, fn]) => (
           <div role="button" tabIndex={0} onKeyDown={pressKey(fn)} key={k} aria-label={label} aria-pressed={on} onClick={fn} style={{ flexShrink: 0, display: "inline-flex", alignItems: "center", height: 32, padding: "0 13px", borderRadius: 16, cursor: "pointer", fontWeight: 800, fontSize: 11.5, boxSizing: "border-box", background: on ? "var(--text)" : "transparent", color: on ? "var(--solid)" : "var(--sub)", border: `1.5px solid ${on ? "var(--text)" : "var(--el)"}` }}>
+            {label}
+          </div>
+        ))}
+        {quickFams.map(([f, label]) => (
+          <div role="button" tabIndex={0} onKeyDown={pressKey(() => toggleFam(f))} key={`qf-${f}`} aria-label={`${label} styles`} aria-pressed={false} onClick={() => toggleFam(f)} data-testid="quick-family" style={{ flexShrink: 0, display: "inline-flex", alignItems: "center", height: 32, padding: "0 13px", borderRadius: 16, cursor: "pointer", fontWeight: 800, fontSize: 11.5, boxSizing: "border-box", background: "transparent", color: "var(--sub)", border: "1.5px dashed var(--el)", whiteSpace: "nowrap" }}>
             {label}
           </div>
         ))}

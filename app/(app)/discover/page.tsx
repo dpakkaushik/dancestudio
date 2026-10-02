@@ -25,7 +25,7 @@ import { findClassArtists, findClassesWithArtist } from "@/repositories/classPeo
 import { findPublishedClasses, findPublishedStylesByBusiness } from "@/repositories/classes";
 import { findCrewsByCity } from "@/repositories/crews";
 import { findDiscoverArtists, findNearbyBusinesses, findBusinessCardFacts, type DiscoverArtist, type BusinessCardFacts } from "@/repositories/discovery";
-import { findFollowerCounts, findMyFollowedPeople, findMyFollowing } from "@/repositories/follows";
+import { findCrewFollowerCounts, findFollowerCounts, findMyFollowedCrews, findMyFollowedPeople, findMyFollowing, type FollowedCrew } from "@/repositories/follows";
 import { findStudioHeaderPhotosMany, type HeaderPhoto } from "@/repositories/headerPhotos";
 import { findPersonFollowerCounts } from "@/repositories/publicPerson";
 import type { ClassArtist } from "@/types/classPerson";
@@ -158,8 +158,11 @@ export default async function DiscoverPage({
      profile, and the radius search answers Studios alone */
   const wantsBusinesses = tab === "studios";
   const wantsArtists = tab === "artists";
-  /* the follow shelf heads Studios and Artists for a signed-in person; a crew has no follow yet */
-  const wantsFollows = Boolean(user) && (wantsBusinesses || wantsArtists);
+  /* the follow shelf heads Studios, Artists and — since 2 Oct 2026 — Crews for a
+     signed-in person (the user: "followed crews also dont appear in the followed
+     by you row on discover"; a crew has been followable since 19 Sep) */
+  const wantsCrews = tab === "crews";
+  const wantsFollows = Boolean(user) && (wantsBusinesses || wantsArtists || wantsCrews);
 
   /* every published class is read on every tab: the classes shelf needs them,
      and the style rail is ORDERED by how many classes each style has (4212) */
@@ -225,12 +228,15 @@ export default async function DiscoverPage({
        BEFORE that rule, on 18 Sep 2026.);
      · every business card ends with its styles — the styles of its published
        classes — and a style filter narrows through the same map. */
-  const [crewsRaw, taught, stylesByBusiness] = await Promise.all([
+  const [crewsRaw, taught, stylesByBusiness, followedCrews] = await Promise.all([
     tab === "crews" ? findCrewsByCity(supabase, city) : Promise.resolve([]),
     tab === "classes" ? findClassesWithArtist(supabase, inCity.map((c) => c.id)) : Promise.resolve(new Set<string>()),
     wantsBusinesses ? findPublishedStylesByBusiness(supabase, nearby.map((t) => t.id)) : Promise.resolve(new Map<string, string[]>()),
+    wantsFollows && wantsCrews ? findMyFollowedCrews(supabase) : Promise.resolve([] as FollowedCrew[]),
   ]);
   const crews = tab === "crews" ? filterCrews(crewsRaw, filters) : [];
+  /* one aggregate call for the whole crews shelf — the count every card prints */
+  const crewFollowers = wantsCrews ? await findCrewFollowerCounts(supabase, crews.map((c) => c.id)) : new Map<string, number>();
   const classes = tab === "classes" ? inCity.filter((c) => taught.has(c.id)) : inCity;
 
   /* the second round: what depends on the first — the seat counts, and WHO that
@@ -303,7 +309,9 @@ export default async function DiscoverPage({
       })
     );
   }
-  const followedTiles: FollowedTile[] = wantsArtists
+  const followedTiles: FollowedTile[] = wantsCrews
+    ? followedCrews.map((c) => ({ id: c.crewId, name: c.name, kind: "crew" as const, href: `/crew/${c.crewId}`, photo: photoUrl(c.photo ?? undefined), grad: gradientOf(c.name) }))
+    : wantsArtists
     ? /* the ARTISTS you follow are people (18 Sep 2026): the ones with a live plan, opening their profile */
       followedPeople
         .filter((p) => p.isArtist)
@@ -522,7 +530,7 @@ export default async function DiscoverPage({
       {tab === "crews" && crews.length > 0 && (
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
           {crews.map((c) => (
-            <CrewCard key={c.id} crew={c} />
+            <CrewCard key={c.id} crew={c} followers={crewFollowers.get(c.id) ?? 0} />
           ))}
         </div>
       )}

@@ -122,6 +122,19 @@ export async function findCrewFollowerCount(supabase: SupabaseClient, crewId: st
   return row ? Number(row.followers) : 0;
 }
 
+/** THE FOLLOWER COUNT OF A WHOLE SHELF OF CREWS, in one call (2 Oct 2026) — the
+ *  Discover crew card prints it, the way a studio's and an artist's card print
+ *  theirs. The same anon-readable aggregate the crew's own page reads, never one
+ *  call per card. */
+export async function findCrewFollowerCounts(supabase: SupabaseClient, crewIds: string[]): Promise<Map<string, number>> {
+  const out = new Map<string, number>();
+  if (crewIds.length === 0) return out;
+  const { data, error } = await supabase.rpc("crew_follower_counts", { p_crew_ids: crewIds });
+  if (error) return out;
+  for (const r of (data ?? []) as Array<{ crew_id: string; followers: number }>) out.set(r.crew_id, Number(r.followers));
+  return out;
+}
+
 /** Whether the signed-in person follows this business right now. */
 export async function isFollowingBusiness(supabase: SupabaseClient, businessId: string): Promise<boolean> {
   const {

@@ -3,7 +3,9 @@ import Link from "next/link";
 import { DOS_DISPLAY, DOS_TINT, INK, MUTED } from "@/lib/design/tokens";
 import { initialsOf } from "./discover-kit";
 
-export type FollowedKind = "studio" | "artist";
+/* "crew" since 2 Oct 2026 — a crew has been followable since 19 Sep, and the
+   Crews tab drew no shelf because this union said it could not */
+export type FollowedKind = "studio" | "artist" | "crew";
 
 export interface FollowedTile {
   id: string;
@@ -18,14 +20,15 @@ const shelf: React.CSSProperties = { fontSize: 17, fontWeight: 900, letterSpacin
 /* ⚠ a STUDIO tile borrowed `DOS_TINT.org` — the studio blue an organization wore
    — and that key went with organizations (29 Sep 2026), so the colour is stated
    here instead. It is unchanged on screen. */
-const TINT: Record<FollowedKind, string> = { studio: "#3B82F6", artist: DOS_TINT.artist };
+const TINT: Record<FollowedKind, string> = { studio: "#3B82F6", artist: DOS_TINT.artist, crew: "#EF4444" };
 
 /** "Followed by you" (prototype FollowedRow 4112-4144), heading the Studios and
  *  Artists tabs for a signed-in person: the count beside the heading, then a
  *  swiped rail of 74px squircle tiles — the face (or initials on the gradient),
  *  the name on one line, and the kind in its own tint. NO STAR: "the words are
- *  the label; the shelf is the fact." Crews have no follow yet, so the Crews
- *  tab draws none. */
+ *  the label; the shelf is the fact." The Crews tab draws the crews you follow
+ *  since 2 Oct 2026 (the user: "followed crews also dont appear in the followed
+ *  by you row on discover"). */
 export function FollowedShelf({ rows }: { rows: FollowedTile[] }) {
   if (rows.length === 0) return null;
   return (

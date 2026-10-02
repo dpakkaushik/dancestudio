@@ -848,7 +848,7 @@ const enterEdit = async (page) => {
        would otherwise have no subject at all. */
     await owner.goto(`${BASE}/enquiries?as=${studioId}`, { waitUntil: "networkidle" });
     check(await owner.getByRole("heading", { name: "Enquiries", exact: true }).isVisible().catch(() => false), "enquiries desk: it is a DRILL page with its own title, not a tab under the wordmark (27 Sep 2026)");
-    const enqTypes = owner.getByRole("button", { name: /^Enquiry types/ }).first();
+    const enqTypes = owner.getByRole("button", { name: /^Enquiry settings/ }).first();
     check((await enqTypes.count()) === 1, "enquiries desk: the studio's own What-you-take disclosure is here — the settings moved with the tool");
     await enqTypes.click();
     check((await owner.getByRole("switch", { name: "Take enquiries" }).count()) === 1, "enquiries desk: and the Take-enquiries switch is the first thing under it");

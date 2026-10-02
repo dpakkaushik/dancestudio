@@ -224,20 +224,17 @@ export function PublicProfile({
             /* FOLLOW · STATS · QR · SHARE (21 Sep 2026, the user's own order) */
             chips={
               <>
-                {/* ⚠ NOT DRAWN FOR THE TEAM — this is their own studio, and a
-                    control that exists only to be disabled is noise. Every other
-                    visitor gets a live bell: an organization account may follow
-                    since `20260920180000_an_organization_follows`, so the one
-                    reason it used to be drawn DISABLED has gone. */}
-                {isMember ? null : (
-                  <FollowToggle
-                    target={{ kind: "business", id: business.id }}
-                    initialFollowing={following}
-                    initialFollowers={profile.followers}
-                    accent={RC}
-                    signedIn={signedIn}
-                  />
-                )}
+                {/* ⚠ DRAWN FOR THE TEAM TOO since 2 Oct 2026 (the user: "can remove
+                    the rule for not following your own crew or studio"):
+                    `20261002120000` took the "you already belong to this business"
+                    refusal out of `set_follow`, so the bell is for everybody */}
+                <FollowToggle
+                  target={{ kind: "business", id: business.id }}
+                  initialFollowing={following}
+                  initialFollowers={profile.followers}
+                  accent={RC}
+                  signedIn={signedIn}
+                />
                 <StatsChip href={`/studio/${business.id}/stats`} />
                 <ProfileShare path={path} name={business.name} />
                 <ProfileLink path={path} name={business.name} />

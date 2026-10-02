@@ -82,8 +82,13 @@ export function CompactCard({
             }}
           >
             {name}
+            {/* ⚠ THE TICK RIDES THE NAME ITSELF (2 Oct 2026, the user: "verified
+                badge on studios and artist should be with the name"). It was a
+                sibling of a `flex: 1` name, so it sat at the card's far edge, a
+                gap away from the word it vouches for. Inline after the last word,
+                it follows the name onto its second line too. */}
+            {verified ? <span style={{ display: "inline-block", marginLeft: 4, verticalAlign: -2, lineHeight: 0 }}><VerifiedTick size={13} /></span> : null}
           </span>
-          {verified ? <span style={{ flex: "0 0 auto", marginTop: 2 }}><VerifiedTick size={13} /></span> : null}
         </div>
         <div style={{ marginTop: 4, minWidth: 0, overflow: "hidden", whiteSpace: "nowrap", textOverflow: "ellipsis" }}>
           <DosWhere city={city} km={km ?? null} size={11} />

@@ -45,6 +45,17 @@ export const loadCheckoutJs = (): Promise<void> => {
   return loader;
 };
 
+/** START FETCHING THE SDK BEFORE THE PRESS (2 Oct 2026, the user: "the page
+ *  loading is slow"). The script was only requested when somebody pressed Pay, so
+ *  every first payment waited on a cold download of Cashfree's bundle before the
+ *  window could even begin to open. A payment sheet calls this the moment it is
+ *  drawn; a failure here is swallowed, because the press will try again and say
+ *  so in words. */
+export function preloadCheckout(): void {
+  if (typeof window === "undefined") return;
+  loadCheckoutJs().catch(() => {});
+}
+
 /** A one-off payment (a class seat). Resolves when the modal closes; `error`
  *  means it closed without a payment and nothing was charged. */
 export async function openCashfreeCheckout(paymentSessionId: string, mode: "sandbox" | "production"): Promise<CashfreeCheckoutResult> {

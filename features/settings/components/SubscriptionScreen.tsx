@@ -130,9 +130,18 @@ export function SubscriptionScreen({
                 </div>
               </div>
             ) : (
-              <button type="button" onClick={() => setConfirmCancel(true)} style={{ display: "block", width: "100%", textAlign: "center", fontSize: 10.5, fontWeight: 800, color: "#F87171", padding: 10, cursor: "pointer", background: "none", border: "none", fontFamily: "inherit" }}>
-                Cancel subscription — stays on until {live.currentPeriodEnd ? dateWords(live.currentPeriodEnd) : "the period ends"}
-              </button>
+              /* ⚠ A BUTTON, NOT A FOOTNOTE (2 Oct 2026, the user: "subscription
+                 should show a button to cancel subscription inside the
+                 subscription"). It was 10.5px red text with no edge, read as a
+                 caption rather than a control. */
+              <>
+                <button type="button" data-testid="cancel-subscription" onClick={() => setConfirmCancel(true)} style={{ ...bizBtn, width: "100%", background: "transparent", color: "#EF4444", border: "1.5px solid #EF4444" }}>
+                  Cancel subscription
+                </button>
+                <div style={{ fontSize: 10.5, color: "var(--muted)", textAlign: "center", padding: "6px 0 2px" }}>
+                  Stays on until {live.currentPeriodEnd ? dateWords(live.currentPeriodEnd) : "the period ends"} — nothing more is charged.
+                </div>
+              </>
             )
           ) : live.granted || live.cancelAtPeriodEnd || live.status === "canceled" ? (
             <div style={{ fontSize: 10.5, color: "var(--muted)", textAlign: "center", padding: 10, lineHeight: 1.5 }}>

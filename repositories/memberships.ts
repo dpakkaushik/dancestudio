@@ -30,6 +30,8 @@ export interface MembershipWithUsage extends Membership {
 /** a membership as a shopper sees it on a public page */
 export interface MembershipOnSale extends Omit<Membership, "status"> {
   leftCount: number;
+  /** the caller holds a live pass of this one — Buy is not offered (2 Oct 2026) */
+  held: boolean;
 }
 
 export interface MembershipHolder {
@@ -118,7 +120,33 @@ export async function findBusinessMemberships(supabase: SupabaseClient, business
 export async function findMembershipsOnSale(supabase: SupabaseClient, businessId: string): Promise<MembershipOnSale[]> {
   const { data, error } = await supabase.rpc("public_memberships", { p_business_id: businessId });
   if (error) return [];
-  return ((data ?? []) as Array<Record<string, unknown>>).map((r) => ({
+  const rows = (data ?? []) as Array<Record<string, unknown>>;
+  /* ⚠ WHICH OF THESE YOU ALREADY HOLD (2 Oct 2026, the user: "should not be able
+     to buy twice and should not show option to buy it if already active"). The
+     database refuses a second live pass (`why_no_membership`) and the page went
+     on drawing Buy now over it. The caller's OWN passes, said out loud — RLS
+     admits their own rows, and that is the scope, not a ceiling to lean on. A
+     signed-out visitor holds nothing, so the read is not made for one. */
+  const ids = rows.map((r) => String(r.id));
+  const held = new Set<string>();
+  if (ids.length > 0) {
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    if (user) {
+      const { data: mine } = await supabase
+        .from("membership_passes")
+        .select("membership_id, units_used, units_total")
+        .eq("user_id", user.id)
+        .eq("status", "active")
+        .in("membership_id", ids)
+        .is("deleted_at", null);
+      for (const p of (mine ?? []) as Array<{ membership_id: string; units_used: number; units_total: number }>) {
+        if (Number(p.units_used) < Number(p.units_total)) held.add(p.membership_id);
+      }
+    }
+  }
+  return rows.map((r) => ({
     id: String(r.id),
     name: String(r.name),
     unit: r.unit as Membership["unit"],
@@ -126,6 +154,7 @@ export async function findMembershipsOnSale(supabase: SupabaseClient, businessId
     priceInr: n(r.price_inr),
     totalCount: n(r.total_count),
     leftCount: n(r.left_count),
+    held: held.has(String(r.id)),
   }));
 }
 

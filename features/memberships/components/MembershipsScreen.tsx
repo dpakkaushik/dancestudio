@@ -129,7 +129,10 @@ export function MembershipsScreen({
   business = null,
   sellerPhotos = {},
   usesByPass = {},
+  openOnBooked = false,
 }: {
+  /** open on the passes you hold — `?show=booked`, where a payment lands (2 Oct 2026) */
+  openOnBooked?: boolean;
   /** what this person HOLDS */
   passes: MyPass[];
   /** what their studio or artist page SELLS — empty for a plain user */
@@ -158,7 +161,7 @@ export function MembershipsScreen({
      the tile"). Somebody who SELLS memberships opens on the ones they sell;
      somebody who only holds passes has no Manage side to open, so they land on
      Booked — which is the only segment they have. */
-  const [seg, setSeg] = useState<"mine" | "selling">(canSell ? "selling" : "mine");
+  const [seg, setSeg] = useState<"mine" | "selling">(canSell && !openOnBooked ? "selling" : "mine");
   /* a studio's desk has one side, so the switch is not drawn and cannot be reached */
   const side = business ? "selling" : seg;
   const [toast, setToast] = useState<string | null>(null);
@@ -177,7 +180,9 @@ export function MembershipsScreen({
       if (res.error || !res.checkout) return fire(res.error ?? "Could not start the payment");
       try {
         const result = await openCashfreeCheckout(res.checkout.paymentSessionId, res.checkout.mode);
-        if (result.error) return fire(result.error.message ?? "The payment window closed before the payment finished");
+        if (result.redirect) return; // leaving for /pay/return, which confirms it
+        /* a closed window is still ASKED about below — a UPI payment finished in
+           another app can land after the window gave up (2 Oct 2026) */
       } catch (openError: unknown) {
         return fire(openError instanceof Error ? openError.message : "Could not open the payment window");
       }

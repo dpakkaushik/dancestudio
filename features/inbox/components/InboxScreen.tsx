@@ -732,7 +732,16 @@ export function InboxScreen({
           [String(won.length), "Won", moneyShort(sum(won)), "#22C55E"],
           [`${Math.round((100 * won.length) / Math.max(1, won.length + lost.length))}%`, "Win rate", `${lost.length} lost`, "#F59E0B"],
         ];
-  const filtered = side.filter((e) => enqType === "all" || e.typeKey === enqType).filter((e) => enqSt === "all" || st(e) === enqSt);
+  /* ⚠ A CLOSED ENQUIRY IS IN DONE AND NOWHERE ELSE (2 Oct 2026, the user: "once
+     enquiry is closed should be in done section only"). Won and lost ones were
+     listed here AND under Done, so a finished job sat in the live desk for ever.
+     The LIST is what is still open; the three tiles above still count the whole
+     side, because a win rate is about every enquiry ever answered. */
+  const isClosed = (e: Enquiry) => ["won", "lost"].includes(st(e));
+  const liveSide = side.filter((e) => !isClosed(e));
+  const liveIn = enquiriesIn.filter((e) => !isClosed(e)).length;
+  const liveOut = enquiriesOut.filter((e) => !isClosed(e)).length;
+  const filtered = liveSide.filter((e) => enqType === "all" || e.typeKey === enqType).filter((e) => enqSt === "all" || st(e) === enqSt);
 
   return (
     <div style={{ position: "relative", background: LILAC, color: "var(--text)", maxWidth: 430, margin: "0 auto", fontFamily: DOS_UI, minHeight: "100vh", paddingBottom: 40 }}>
@@ -841,8 +850,8 @@ export function InboxScreen({
             <div style={{ display: "flex", gap: 2, background: "var(--el)", borderRadius: 12, padding: 3, marginBottom: 9 }}>
               {(
                 [
-                  ["in", "Received", enquiriesIn.length],
-                  ["out", "Sent", enquiriesOut.length],
+                  ["in", "Received", liveIn],
+                  ["out", "Sent", liveOut],
                 ] as Array<["in" | "out", string, number]>
               ).map(([k, l, n]) => (
                 <div key={k} role="button" tabIndex={0} aria-pressed={enqSide === k} aria-label={`${l} enquiries`} onKeyDown={pressKey(() => setEnqSide(k))} onClick={() => setEnqSide(k)} style={{ flex: 1, textAlign: "center", padding: "8px 2px", borderRadius: 9, cursor: "pointer", fontSize: 11.5, fontWeight: 800, background: enqSide === k ? "var(--solid)" : "transparent", color: enqSide === k ? "var(--text)" : "var(--sub)", boxShadow: enqSide === k ? "0 1px 4px rgba(0,0,0,.3)" : "none" }}>
@@ -910,11 +919,17 @@ export function InboxScreen({
                 ) : null}
               </>
             )}
-            {side.length > 0 ? (
+            {side.length > 0 && liveSide.length === 0 ? (
+              <div style={emptyBox}>
+                <div style={{ fontSize: 12.5, fontWeight: 800 }}>Nothing open</div>
+                <div style={{ fontSize: 10.5, color: "var(--sub)", marginTop: 3 }}>Won and lost enquiries are under Done.</div>
+              </div>
+            ) : null}
+            {liveSide.length > 0 ? (
               <>
                 <div style={{ display: "flex", gap: 5, marginBottom: 7, overflowX: "auto", scrollbarWidth: "none" }}>
                   {([["all", "All", null] as const, ...ENQ_TYPES.map((t) => [t.k, t.label, t.k] as const)]).map(([k, l, ic]) => {
-                    const n = k === "all" ? side.length : side.filter((e) => e.typeKey === k).length;
+                    const n = k === "all" ? liveSide.length : liveSide.filter((e) => e.typeKey === k).length;
                     if (!n) return null;
                     const on = enqType === k;
                     const c = k === "all" ? "#8B5CF6" : ENQ_TINT[k as EnquiryTypeKey];
@@ -928,7 +943,8 @@ export function InboxScreen({
                   })}
                 </div>
                 <div style={{ display: "flex", gap: 5, marginBottom: 10, overflowX: "auto", scrollbarWidth: "none" }}>
-                  {([["all", "Any stage"] as const, ...ENQ_STAGES.map((s) => [s, ENQ_STAGE_WORD[s]] as const)]).map(([k, l]) => (
+                  {/* the closed stages are Done's, so they are not offered as a filter here */}
+                  {([["all", "Any stage"] as const, ...ENQ_STAGES.filter((s) => s !== "won" && s !== "lost").map((s) => [s, ENQ_STAGE_WORD[s]] as const)]).map(([k, l]) => (
                     <span key={k} role="button" tabIndex={0} aria-pressed={enqSt === k} onKeyDown={pressKey(() => setEnqSt(k as "all" | EnquiryStatus))} onClick={() => setEnqSt(k as "all" | EnquiryStatus)} style={{ flexShrink: 0, padding: "7px 12px", borderRadius: 999, cursor: "pointer", fontSize: 11, fontWeight: 800, background: enqSt === k ? "var(--text)" : "var(--card)", color: enqSt === k ? "var(--solid)" : "var(--sub)", border: `1.5px solid ${enqSt === k ? "var(--text)" : "var(--el)"}` }}>
                       {l}
                     </span>

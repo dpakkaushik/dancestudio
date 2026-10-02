@@ -22,7 +22,10 @@ import { findMyMemberships as findMyTeams } from "@/repositories/businesses";
  *  per-studio desk has always been. So this address means one thing: the passes
  *  you hold, and what you sell as an artist. */
 export default async function MembershipsPage({ searchParams }: { searchParams: Promise<Record<string, string | undefined>> }) {
-  const opening = (await searchParams).new === "1";
+  const sp = await searchParams;
+  const opening = sp.new === "1";
+  /* `?show=booked` opens on the passes you hold — where a payment lands (2 Oct 2026) */
+  const showBooked = sp.show === "booked";
   const supabase = await createSupabaseServerClient();
   const {
     data: { user },
@@ -66,7 +69,7 @@ export default async function MembershipsPage({ searchParams }: { searchParams: 
      gate is re-checked because a query param is a thing anybody can type. */
   return (
     <>
-      <MembershipsScreen passes={passes} selling={selling} canSell={Boolean(owned)} sellerPhotos={sellerPhotos} usesByPass={usesByPass} />
+      <MembershipsScreen passes={passes} selling={selling} canSell={Boolean(owned)} sellerPhotos={sellerPhotos} usesByPass={usesByPass} openOnBooked={showBooked} />
       {opening && owned ? <MembershipForm sellerId={owned.id} sellerName={owned.name} backTo="/memberships" sheet /> : null}
     </>
   );

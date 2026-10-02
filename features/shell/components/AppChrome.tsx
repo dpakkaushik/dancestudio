@@ -345,6 +345,22 @@ export function AppChrome({
      acting as. A `me` row always exists, so this is only null for an admin. */
   const hereItem = switcher.find(isHere) ?? switcher.find((s) => s.kind === "me") ?? switcher[0] ?? null;
 
+  /* ⚠ SWIPE THE PHOTO TO MOVE PROFILE, THE WAY GOOGLE'S AVATAR DOES (2 Oct 2026,
+     the user: "swiping up or down on profile pic should also switch profile …
+     clicking on it it opens switcher how it is now"). A vertical swipe on the
+     chip goes to the NEXT profile in the menu's own order (up) or the PREVIOUS
+     one (down), wrapping at either end; a tap is untouched. It is only a swipe
+     once it is clearly vertical and long enough — a sideways drag or a wobble
+     does nothing at all, which is the 2 Oct "a swipe is not a tap" fix kept. */
+  const SWIPE_SWITCH = 28;
+  const swipeSwitch = (dy: number) => {
+    if (switcher.length < 2 || !hereItem) return;
+    const at = Math.max(0, switcher.findIndex((s) => s.key === hereItem.key));
+    const next = switcher[(at + (dy < 0 ? 1 : -1) + switcher.length) % switcher.length];
+    setOpenFor(null);
+    router.push(next.href);
+  };
+
   /* ══ SETTINGS, FOR THE PROFILE YOU ARE IN (21 Sep 2026, the user: "settings
      are seprate for each profile type according to which profile you are in").
      ⚠ `hereItem` is the whole answer and it already existed — it is what the
@@ -635,8 +651,17 @@ export function AppChrome({
               aria-haspopup="menu"
               aria-expanded={menuOpen}
               {...tapHandlers}
+              /* the finger is captured so a swipe that leaves the 44px chip still
+                 ends here, and `touchAction: none` keeps the browser from taking a
+                 vertical swipe for a page scroll (which would cancel it) */
+              onPointerDown={(e) => { tapHandlers.onPointerDown(e); e.currentTarget.setPointerCapture?.(e.pointerId); }}
+              onPointerUp={(e) => {
+                const dx = e.clientX - tap.x;
+                const dy = e.clientY - tap.y;
+                if (Math.abs(dy) >= SWIPE_SWITCH && Math.abs(dy) > Math.abs(dx) * 1.5) swipeSwitch(dy);
+              }}
               onClick={(e) => { if (wasSwipe(e)) return; setOpenFor(menuOpen ? null : pathname); }}
-              style={{ ...chipStyle, padding: 0, overflow: "hidden", fontFamily: "inherit", border: `2px solid ${hereItem ? SWITCH_TINT[hereItem.kind] : "var(--chip-line)"}`, background: hereItem ? `linear-gradient(135deg,${SWITCH_TINT[hereItem.kind]},${SWITCH_TINT[hereItem.kind]}88)` : "var(--chip-bg)" }}
+              style={{ ...chipStyle, padding: 0, overflow: "hidden", fontFamily: "inherit", touchAction: "none", border: `2px solid ${hereItem ? SWITCH_TINT[hereItem.kind] : "var(--chip-line)"}`, background: hereItem ? `linear-gradient(135deg,${SWITCH_TINT[hereItem.kind]},${SWITCH_TINT[hereItem.kind]}88)` : "var(--chip-bg)" }}
             >
               {hereItem?.photo ? (
                 <Image src={hereItem.photo} alt="" width={44} height={44} style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />

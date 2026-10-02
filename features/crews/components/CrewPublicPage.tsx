@@ -130,17 +130,17 @@ export function CrewPublicPage({
             /* FOLLOW · STATS · QR · SHARE (21 Sep 2026, the user's own order) */
             chips={
               <>
-                {/* not drawn for the crew's own people — their block under the
-                    hero already says which they are */}
-                {viewer === "other" ? (
-                  <FollowToggle
-                    target={{ kind: "crew", id: crew.id }}
-                    initialFollowing={following}
-                    initialFollowers={followers}
-                    accent={RC}
-                    signedIn={signedIn}
-                  />
-                ) : null}
+                {/* ⚠ FOR THE CREW'S OWN PEOPLE TOO since 2 Oct 2026 (the user: "can
+                    remove the rule for not following your own crew") —
+                    `20261002120000` took "you are in this crew" out of
+                    `set_crew_follow` */}
+                <FollowToggle
+                  target={{ kind: "crew", id: crew.id }}
+                  initialFollowing={following}
+                  initialFollowers={followers}
+                  accent={RC}
+                  signedIn={signedIn}
+                />
                 <StatsChip href={`${path}/stats`} />
                 <ProfileShare path={path} name={crew.name} />
                 <ProfileLink path={path} name={crew.name} />

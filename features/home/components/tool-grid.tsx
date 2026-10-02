@@ -285,13 +285,21 @@ export function ToolGrid({ tiles }: { tiles: Tile[] }) {
             style={{
               flex: 1,
               minWidth: 0,
-              fontSize: 14.5,
+              /* ⚠ 12.5px, AND BREAKS ONLY BETWEEN WORDS (2 Oct 2026, the user: "text
+                 on home tab tools should be a bit smaller breaking on apple
+                 devices"). At 14.5px "Memberships" and "Subscription" were wider
+                 than a half-width tile's ~90px of text room on a 360px iPhone, and
+                 `overflowWrap: anywhere` then split them mid-word. They fit whole
+                 at 12.5, and a word is never cut now — only a line between words */
+              fontSize: 12.5,
               fontWeight: 900,
-              letterSpacing: -0.3,
-              lineHeight: 1.1,
+              letterSpacing: -0.2,
+              lineHeight: 1.15,
               color: "#fff",
               fontFamily: DOS_DISPLAY,
-              overflowWrap: "anywhere",
+              overflowWrap: "normal",
+              wordBreak: "normal",
+              hyphens: "none",
             }}
           >
             {t.name}

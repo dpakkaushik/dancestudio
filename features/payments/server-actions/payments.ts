@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 import {
@@ -33,6 +34,16 @@ import type { CheckoutPayload, PaymentOrder } from "@/types/payment";
  *  Cashfree what actually happened on that order — never the browser — and
  *  applies it via the same idempotent RPC the webhook uses. Whichever lands
  *  first wins, the other becomes a no-op. */
+
+/** the canonical origin, the same rule the subscription mandate's return URL
+ *  follows: NEXT_PUBLIC_SITE_URL first, the request's own origin otherwise */
+async function siteOrigin(): Promise<string> {
+  const configured = process.env.NEXT_PUBLIC_SITE_URL?.trim().replace(/\/+$/, "");
+  if (configured) return configured;
+  const h = await headers();
+  const host = h.get("x-forwarded-host") ?? h.get("host");
+  return h.get("origin") ?? (host ? `${h.get("x-forwarded-proto") ?? "https"}://${host}` : "http://localhost:3000");
+}
 
 const NOT_CONFIGURED =
   "Payments aren't switched on for this deployment yet — ask the studio to book you in.";
@@ -114,7 +125,7 @@ async function openRail(
   businessName: string,
   description: string
 ): Promise<CheckoutPayload> {
-  const profile = await findProfileById(supabase, user.id);
+  const [profile, origin] = await Promise.all([findProfileById(supabase, user.id), siteOrigin()]);
   const tags: Record<string, string> = { order_id: order.id, business_id: order.businessId };
   if (order.classId) tags.class_id = order.classId;
   if (order.sessionId) tags.session_id = order.sessionId;
@@ -127,6 +138,15 @@ async function openRail(
     customer: { id: user.id, phone: customerPhoneOf(user.phone), name: profile?.fullName ?? null, email: user.email ?? null },
     note: `${businessName} · ${description}`,
     tags,
+    /* ⚠⚠ WHERE CASHFREE SENDS A PHONE THAT LEFT THE PAGE (2 Oct 2026, the user:
+       "when trying to make payment devices get stucked"). On a phone the checkout
+       often hands off to a UPI app or a bank's page and comes back by REDIRECT
+       rather than by closing the modal — and with no `return_url` it came back to
+       Cashfree's own page, with nothing on our side ever asking what happened.
+       `/pay/return` confirms the order the way the modal path does and lands on
+       the class or the membership. ⚠ Only for an https origin: Cashfree refuses a
+       plain-http return URL, and a refused order is worse than no return URL. */
+    returnUrl: origin.startsWith("https://") ? `${origin}/pay/return?order=${order.id}` : undefined,
   });
   await attachProviderOrder(supabase, order.id, cfOrder.order_id);
   return {

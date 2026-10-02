@@ -147,12 +147,16 @@ try {
   #    apart now: owner A is refused for BELONGING, and owner B, who belongs to
   #    nothing of A's, follows it like anybody else. (26 Sep 2026: both owners
   #    are PEOPLE - the organization login is retired - so this is the plain rule.)
+  #    !! RE-CUT 2 Oct 2026 (20261002120000, the user: "can remove the rule for not
+  #    following your own crew or studio"): the OWNER may follow their own studio
+  #    now. What is still refused is a private business.
   $priv = Fails { Rpc (Api $l1.token) "set_follow" @{ p_business_id = $tb.id; p_on = $true } }
-  $self = Fails { Rpc (Api $ownerA.token) "set_follow" @{ p_business_id = $ta.id; p_on = $true } }
+  $self = Rpc (Api $ownerA.token) "set_follow" @{ p_business_id = $ta.id; p_on = $true }
+  Rpc (Api $ownerA.token) "set_follow" @{ p_business_id = $ta.id; p_on = $false } | Out-Null
   $orgFollows = Rpc (Api $ownerB.token) "set_follow" @{ p_business_id = $ta.id; p_on = $true }
   Rpc (Api $ownerB.token) "set_follow" @{ p_business_id = $ta.id; p_on = $false } | Out-Null
-  Check 8 "Following a private business is refused ($priv); its own owner is refused for BELONGING to it ($self); another studio's owner FOLLOWS it ($($orgFollows.following), $($orgFollows.followers) followers)" (
-    ($priv -match "not open") -and ($self -match "already belong") -and ($orgFollows.following -eq $true) -and ([int]$orgFollows.followers -eq 3))
+  Check 8 "Following a private business is refused ($priv); its own owner FOLLOWS it ($($self.following), $($self.followers) followers); another studio's owner FOLLOWS it ($($orgFollows.following), $($orgFollows.followers) followers)" (
+    ($priv -match "not open") -and ($self.following -eq $true) -and ([int]$self.followers -eq 3) -and ($orgFollows.following -eq $true) -and ([int]$orgFollows.followers -eq 3))
 
   # 9. a stranger cannot follow at all
   $anonFollow = Fails { Rpc $anonH "set_follow" @{ p_business_id = $ta.id; p_on = $true } }

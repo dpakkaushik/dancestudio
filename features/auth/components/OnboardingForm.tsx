@@ -6,7 +6,7 @@ import { DosStyleCoin } from "@/components/ui/DosStyleKit";
 import { AuthShell } from "@/features/auth/components/AuthShell";
 import { finishOnboardingAction, saveProfileBasicsAction } from "@/features/auth/server-actions/auth";
 import { CityPicker } from "@/features/geo/components/CityPicker";
-import { PhotoPicker } from "@/features/media/components/PhotoPicker";
+import { PhotoPicker, uploadPhotoFile } from "@/features/media/components/PhotoPicker";
 import { updateMyProfileAction } from "@/features/profiles/server-actions/profile";
 import { DOS_STYLE_REG, dosStyleColor } from "@/lib/constants/styles";
 import { BTN_STYLE, DOS_DISPLAY, DOS_UI, INK, LINE, SKY, SUB } from "@/lib/design/tokens";
@@ -126,6 +126,13 @@ export function OnboardingForm({
   const [city, setCity] = useState(existing?.city ?? "");
   const [avatarPath, setAvatarPath] = useState<string | null>(existing?.avatarPath ?? null);
   const [saved, setSaved] = useState(Boolean(existing));
+  /* ⚠ A PHOTO PICKED BEFORE THE ROW EXISTS (2 Oct 2026, the user: "add a photo
+     during profile creation should be already on screen with a plus button,
+     right now it is an extra step for it to appear"). Saving a photo needs the
+     profile row, so the picker used to appear only after a first Continue. It is
+     on the square from the start now: the cropped file waits here, previewed,
+     and the one Continue makes the row, uploads it and moves on. */
+  const [staged, setStaged] = useState<{ file: File; url: string } | null>(null);
   const [mine, setMine] = useState<string[]>(existing?.styles ?? []);
   const [yt, setYt] = useState("");
   const [ig, setIg] = useState("");
@@ -146,7 +153,8 @@ export function OnboardingForm({
 
   /* the button says what is missing (3820-3821): the reason, not a grey nothing */
   /* the city is the user's "location" (requirement 2, 9 Sep 2026): asked before the row is made, required by the database too */
-  const missing = !fullName ? "Enter your name" : !city.trim() ? "Enter your city" : saved && !avatarPath ? "Add your profile photo" : "";
+  const missing = !fullName ? "Enter your name" : !city.trim() ? "Enter your city" : saved && !avatarPath && !staged ? "Add your profile photo" : "";
+  const shown = face ?? staged?.url ?? null;
   const ready = !missing;
 
   /* every later screen lands on the ONE record, through the Profile tab's own door */
@@ -210,18 +218,38 @@ export function OnboardingForm({
         {/* ONE PICTURE, SQUARE (3783-3796) — no cover photo. The picker is the app's
             own; it needs the row to exist, so before the first Continue the square explains
             that the photo comes right after the name. */}
-        <div style={{ display: "flex", gap: 14, alignItems: "flex-start" }}>
-          <div aria-label={face ? "Your profile photo" : "Your profile photo, not added yet"} style={{ width: 112, height: 112, borderRadius: 24, overflow: "hidden", background: "rgba(255,255,255,.07)", border: face ? "none" : `2px dashed ${LINE}`, display: "flex", alignItems: "center", justifyContent: "center", color: SUB, fontSize: 26, fontWeight: 800, flexShrink: 0, position: "relative" }}>
-            {face ? <Image src={face} alt="" width={112} height={112} style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} /> : "📷"}
-          </div>
-          <div style={{ flex: 1, minWidth: 0, paddingTop: 6 }}>
-            {saved ? (
-              <PhotoPicker owner={{ kind: "avatar", id: userId }} hasPhoto={Boolean(avatarPath)} label="Change your photo" cropLabel="Profile photo" onSaved={setAvatarPath} />
+        <div style={{ display: "flex", gap: 14, alignItems: "center" }}>
+          <div aria-label={shown ? "Your profile photo" : "Your profile photo, not added yet"} style={{ width: 112, height: 112, borderRadius: 24, overflow: "hidden", background: "rgba(255,255,255,.07)", border: shown ? "none" : `2px dashed ${LINE}`, display: "flex", alignItems: "center", justifyContent: "center", color: SUB, fontSize: 26, fontWeight: 800, flexShrink: 0, position: "relative" }}>
+            {face ? (
+              <Image src={face} alt="" width={112} height={112} style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
+            ) : staged ? (
+              /* a local blob: preview of the cropped file, before it is uploaded */
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={staged.url} alt="" width={112} height={112} style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
             ) : (
-              <div style={{ fontSize: 11.5, color: SUB, lineHeight: 1.5 }}>Your name first — the photo comes right after, on this screen.</div>
+              "📷"
             )}
-            <div style={{ fontSize: 11, color: SUB, margin: "8px 0 0" }}>{face ? "this is how you will look · change it any time" : "your profile photo · required"}</div>
+            {/* THE ＋ IS ON THE SQUARE FROM THE START (2 Oct 2026) — before the row
+                exists it stages the cropped file; after, it uploads as before */}
+            {saved ? (
+              <PhotoPicker overlay owner={{ kind: "avatar", id: userId }} hasPhoto={Boolean(avatarPath)} label="Change your photo" cropLabel="Profile photo" onSaved={setAvatarPath} />
+            ) : (
+              <PhotoPicker
+                overlay
+                owner={{ kind: "avatar", id: userId }}
+                hasPhoto={Boolean(staged)}
+                label="Change your photo"
+                cropLabel="Profile photo"
+                onPicked={(file) =>
+                  setStaged((prev) => {
+                    if (prev) URL.revokeObjectURL(prev.url);
+                    return { file, url: URL.createObjectURL(file) };
+                  })
+                }
+              />
+            )}
           </div>
+          <div style={{ flex: 1, minWidth: 0, fontSize: 11.5, color: SUB, lineHeight: 1.5 }}>{shown ? "this is how you will look · change it any time" : "Tap ＋ to add your profile photo · required"}</div>
         </div>
         <div style={{ height: 22 }} />
 
@@ -230,16 +258,29 @@ export function OnboardingForm({
           disabled={pending || !ready}
           aria-disabled={!ready}
           onClick={() => {
-            if (!saved) {
+            start(async () => {
               /* the first Continue makes the row, and stays — the photo needs it */
-              start(async () => {
+              if (!saved) {
                 const out = await saveProfileBasicsAction({ fullName, role, city: city.trim() });
                 if (out.error) return fire(out.error);
                 setSaved(true);
-              });
-              return;
-            }
-            if (ready) setStep("styles");
+              }
+              /* a photo picked before the row existed goes up now, and the same
+                 press moves on — one Continue, not two (2 Oct 2026). ⚠ Checked on
+                 EVERY press, not only the first: a photo picked while the first
+                 save was still in flight is staged by the deferred picker, and the
+                 next press (row already made) must still upload it */
+              if (staged) {
+                const up = await uploadPhotoFile({ kind: "avatar", id: userId }, staged.file);
+                if (up.error) return fire(up.error);
+                URL.revokeObjectURL(staged.url);
+                setStaged(null);
+                setAvatarPath(up.path);
+                setStep("styles");
+                return;
+              }
+              if (saved && avatarPath) setStep("styles");
+            });
           }}
           style={{ ...BTN_STYLE, background: ready ? SKY : LINE, color: ready ? "#fff" : SUB, marginTop: 4, transition: "all .2s" }}
         >

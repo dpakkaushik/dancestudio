@@ -175,7 +175,11 @@ export function StudioCard({ business, followers = 0, shots = [] }: { business: 
           </span>
           <span style={{ flex: 1, minWidth: 0 }}>
             <span style={{ display: "flex", alignItems: "center", gap: 6, minWidth: 0 }}>
-              <span style={{ flex: 1, minWidth: 0, fontWeight: 900, fontSize: 17, letterSpacing: -0.4, fontFamily: DOS_DISPLAY, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{business.name}</span>
+              {/* ⚠ `flex: 0 1 auto`, NOT `flex: 1` (2 Oct 2026, the user: "verified
+                  badge … should be with the name"): a growing name pushed the tick
+                  to the card's far edge; this one shrinks to the name and ellipsises
+                  only when it must, so the tick sits beside the last letter */}
+              <span style={{ flex: "0 1 auto", minWidth: 0, fontWeight: 900, fontSize: 17, letterSpacing: -0.4, fontFamily: DOS_DISPLAY, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{business.name}</span>
               {business.verifiedAt ? <VerifiedTick size={15} /> : null}
             </span>
             <span style={{ display: "flex", alignItems: "center", gap: 12, minWidth: 0, marginTop: 4 }}>

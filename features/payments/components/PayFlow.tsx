@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { PosterBlock } from "@/features/classes/components/poster";
 import { dosKey } from "@/features/classes/components/ShareSheet";
 import {
@@ -12,7 +12,7 @@ import {
   confirmCheckoutAction,
   startCheckoutAction,
 } from "@/features/payments/server-actions/payments";
-import { openCashfreeCheckout, type CashfreeCheckoutResult } from "@/lib/cashfree/checkout-client";
+import { openCashfreeCheckout, preloadCheckout, type CashfreeCheckoutResult } from "@/lib/cashfree/checkout-client";
 import { DOS_DISPLAY, DOS_UI } from "@/lib/design/tokens";
 
 /** HOW YOU ARE PAYING — the two-step booking flow lifted from prototype S_class
@@ -90,7 +90,15 @@ export function PayFlow({
   const [step, setStep] = useState<"how" | "confirm">(isFree ? "confirm" : "how");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  /* the order whose window is open — kept so a window that never reports back
+     (a phone that went off to a UPI app) can be checked by hand, rather than
+     leaving the sheet on "One moment…" for ever (2 Oct 2026) */
+  const [openOrder, setOpenOrder] = useState<string | null>(null);
   const router = useRouter();
+  // the SDK starts downloading while the person reads the sheet, not after the press
+  useEffect(() => {
+    if (!isFree) preloadCheckout();
+  }, [isFree]);
   const priceText = `₹${priceInr.toLocaleString("en-IN")}`;
 
   const confirmFree = async () => {
@@ -115,8 +123,11 @@ export function PayFlow({
   /* after the modal closes the SERVER asks Cashfree what happened on our order —
      the browser's word for it is never trusted */
   const confirmPaid = async (orderId: string) => {
+    setBusy(true);
+    setError(null);
     const out = await confirmCheckoutAction({ orderId });
     setBusy(false);
+    setOpenOrder(null);
     if (out.error || !out.outcome) {
       setError(out.error ?? "Could not confirm the payment");
       return;
@@ -141,18 +152,21 @@ export function PayFlow({
       return;
     }
     const checkout = res.checkout;
+    setOpenOrder(checkout.orderId);
     let result: CashfreeCheckoutResult;
     try {
       result = await openCashfreeCheckout(checkout.paymentSessionId, checkout.mode);
     } catch (openError: unknown) {
       setBusy(false);
+      setOpenOrder(null);
       setError(openError instanceof Error ? openError.message : "Could not open the payment window");
       return;
     }
+    if (result.redirect) return; // the page is leaving for /pay/return, which confirms it
     if (result.error) {
-      // closed without paying, or the attempt failed — nothing was charged
-      setBusy(false);
-      setError(result.error.message ?? "The payment window closed before the payment finished");
+      /* closed without a payment the window saw — but ASK, rather than assume:
+         a UPI payment finished in another app can land after the window gave up */
+      void confirmPaid(checkout.orderId);
       return;
     }
     void confirmPaid(checkout.orderId);
@@ -344,6 +358,19 @@ export function PayFlow({
             {busy ? "One moment…" : isFree ? "Confirm free trial" : `Pay ${priceText}`}
           </div>
         </div>
+        {/* ⚠ THE WAY OUT OF A WINDOW THAT NEVER REPORTS BACK (2 Oct 2026). On a
+            phone the checkout can hand off to a UPI app and never resolve, which
+            left this sheet on "One moment…" with nothing to press. Asking our
+            server is always safe — it reads Cashfree, never the browser. */}
+        {busy && openOrder ? (
+          <button
+            type="button"
+            onClick={() => void confirmPaid(openOrder)}
+            style={{ display: "block", margin: "12px auto 0", background: "none", border: "none", color: "var(--sub)", fontSize: 11.5, fontWeight: 800, textDecoration: "underline", cursor: "pointer", fontFamily: "inherit" }}
+          >
+            Paid already, or stuck? Check my payment
+          </button>
+        ) : null}
         {error && (
           <div style={{ fontSize: 10.5, color: "#EF4444", fontWeight: 700, marginTop: 10, textAlign: "center" }}>{error}</div>
         )}

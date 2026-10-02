@@ -90,6 +90,26 @@ export async function findMyOrder(
   return { id: row.id, provider: row.provider, providerOrderId: row.provider_order_id, amountInr: row.amount_inr, status: row.status };
 }
 
+/** WHERE A PAID ORDER SHOULD LAND (2 Oct 2026): the class page for a seat, the
+ *  holder's Memberships desk for a pass. The caller's own order only — the
+ *  `user_id` filter says so out loud (RLS is a ceiling, not a scope). */
+export async function findMyOrderLanding(supabase: SupabaseClient, orderId: string, userId: string): Promise<string> {
+  const { data } = await supabase
+    .from("orders")
+    .select("class_id, membership_id")
+    .eq("id", orderId)
+    .eq("user_id", userId)
+    .maybeSingle();
+  const row = data as { class_id: string | null; membership_id: string | null } | null;
+  if (row?.membership_id) return "/memberships?show=booked";
+  if (row?.class_id) {
+    const { data: cls } = await supabase.from("classes").select("share_slug").eq("id", row.class_id).maybeSingle();
+    const slug = (cls as { share_slug: string | null } | null)?.share_slug;
+    if (slug) return `/c/${slug}`;
+  }
+  return "/my-classes";
+}
+
 /** Bind the provider's order id to our order before checkout opens. */
 export async function attachProviderOrder(
   supabase: SupabaseClient,

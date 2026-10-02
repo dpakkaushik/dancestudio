@@ -1,11 +1,12 @@
 "use client";
 
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState, useTransition, type CSSProperties } from "react";
 import { buyMembershipAction } from "@/features/memberships/server-actions/memberships";
 import { money as rupees } from "@/features/payouts/components/earnings-kit";
 import { confirmCheckoutAction, startMembershipCheckoutAction } from "@/features/payments/server-actions/payments";
-import { openCashfreeCheckout } from "@/lib/cashfree/checkout-client";
+import { openCashfreeCheckout, preloadCheckout } from "@/lib/cashfree/checkout-client";
 import { INK, SUB } from "@/lib/design/tokens";
 import type { MembershipOnSale } from "@/repositories/memberships";
 
@@ -62,8 +63,7 @@ export function MembershipsOnSale({
       }
       if (!out.needsPayment) {
         setPaying(null);
-        setNote("🎟 It is yours — find it under Memberships");
-        router.refresh();
+        router.push("/memberships?show=booked");
         return;
       }
       const res = await startMembershipCheckoutAction({ passId: out.passId as string, businessName, description: m.name });
@@ -73,19 +73,19 @@ export function MembershipsOnSale({
       }
       try {
         const result = await openCashfreeCheckout(res.checkout.paymentSessionId, res.checkout.mode);
-        if (result.error) {
-          setPaying(null);
-          return setNote("The payment window closed — it is waiting under Memberships");
-        }
+        if (result.redirect) return; // leaving for /pay/return, which confirms it
       } catch (openError: unknown) {
         setPaying(null);
         return setNote(openError instanceof Error ? openError.message : "Could not open the payment window");
       }
+      /* ASK, whatever the window said — a UPI payment finished in another app
+         can land after the window gave up (2 Oct 2026) */
       const done = await confirmCheckoutAction({ orderId: res.checkout.orderId });
       setPaying(null);
-      if (done.error) return setNote(done.error);
-      setNote("🎟 It is yours — find it under Memberships");
-      router.refresh();
+      if (done.error) return setNote(done.error === "No payment was made" ? "The payment window closed — it is waiting, unpaid, under Memberships" : done.error);
+      /* AND THEN TO THE PASS ITSELF (2 Oct 2026, the user: "should take to …
+         membership detail page after payment is done") */
+      router.push("/memberships?show=booked");
     });
 
   return (
@@ -110,6 +110,13 @@ export function MembershipsOnSale({
             <a href="/login" aria-label={`Buy ${m.name}`} style={{ flexShrink: 0, fontSize: 10.5, fontWeight: 800, color: accent, textDecoration: "none" }}>
               Buy now ›
             </a>
+          ) : m.held ? (
+            /* ⚠ YOURS ALREADY — NOT A SECOND BUY (2 Oct 2026). The database
+               refuses a second live pass; the button no longer offers one, and
+               points at the pass instead */
+            <Link href="/memberships?show=booked" aria-label={`${m.name} — yours, open it`} style={{ flexShrink: 0, fontSize: 11, fontWeight: 900, color: accent, background: `${accent}1f`, border: `1.5px solid ${accent}`, borderRadius: 999, padding: "6.5px 12px", textDecoration: "none", whiteSpace: "nowrap" }}>
+              ✓ Active
+            </Link>
           ) : canBuy && m.leftCount > 0 ? (
             /* A REAL BUTTON, AND IT OPENS THE PAYMENT STEP (19 Sep 2026) */
             <button
@@ -120,7 +127,7 @@ export function MembershipsOnSale({
                  22 Sep mismatch, where a screen reader heard a different verb
                  from the one on the screen */
               aria-label={`Buy ${m.name}`}
-              onClick={() => { setNote(null); setPaying(m); }}
+              onClick={() => { setNote(null); setPaying(m); if (m.priceInr > 0) preloadCheckout(); }}
               style={{ flexShrink: 0, fontSize: 11, fontWeight: 900, color: "#fff", background: accent, border: "none", borderRadius: 999, padding: "8px 14px", cursor: pending ? "wait" : "pointer", fontFamily: "inherit", whiteSpace: "nowrap", boxShadow: `0 3px 10px ${accent}44` }}
             >
               {/* ⚠ "BUY NOW", NOT "TAKE IT" (27 Sep 2026, the user's own word).

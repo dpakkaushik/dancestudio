@@ -58,6 +58,23 @@ const setter = (owner: PhotoOwner, path: string | null): Promise<PhotoActionResu
   }
 };
 
+/** Upload one (already cropped) file for `owner` and record its path — the same
+ *  two steps the picker takes, for a caller that STAGED the file first
+ *  (onboarding, 2 Oct 2026). An orphan file is taken back out if the row refuses. */
+export async function uploadPhotoFile(owner: PhotoOwner, file: File): Promise<{ path: string | null; error: string | null }> {
+  const supabase = createSupabaseBrowserClient();
+  const bucket = bucketFor(owner);
+  const path = photoPath(owner, file);
+  const up = await supabase.storage.from(bucket).upload(path, file, { contentType: file.type, upsert: false });
+  if (up.error) return { path: null, error: up.error.message };
+  const out = await setter(owner, path);
+  if (out.error) {
+    await supabase.storage.from(bucket).remove([path]);
+    return { path: null, error: out.error };
+  }
+  return { path, error: null };
+}
+
 export function PhotoPicker({
   owner,
   hasPhoto,
@@ -68,7 +85,12 @@ export function PhotoPicker({
   compact = false,
   cropLabel,
   onSaved,
+  onPicked,
 }: {
+  /** DEFERRED (2 Oct 2026): hand the CROPPED file back instead of uploading it —
+   *  onboarding holds it until the profile row exists, so the ＋ can be on screen
+   *  from the start rather than appearing after a first Continue */
+  onPicked?: (file: File) => void;
   owner: PhotoOwner;
   hasPhoto: boolean;
   label?: string;
@@ -110,26 +132,21 @@ export function PhotoPicker({
   };
 
   const upload = async (file: File) => {
+    if (onPicked) {
+      onPicked(file);
+      return;
+    }
     setBusy(true);
     setError(null);
     try {
-      const supabase = createSupabaseBrowserClient();
-      const bucket = bucketFor(owner);
-      const path = photoPath(owner, file);
-      const up = await supabase.storage.from(bucket).upload(path, file, { contentType: file.type, upsert: false });
-      if (up.error) {
-        setError(up.error.message);
-        return;
-      }
-      const out = await setter(owner, path);
+      /* the row refusing takes the orphan file back out — the storage policy
+         allows exactly this person to delete exactly this path */
+      const out = await uploadPhotoFile(owner, file);
       if (out.error) {
-        /* the row would not take it, so the orphan file goes back out — the
-           storage policy allows exactly this person to delete exactly this path */
-        await supabase.storage.from(bucket).remove([path]);
         setError(out.error);
         return;
       }
-      if (onSaved) onSaved(path);
+      if (onSaved) onSaved(out.path);
       else router.refresh();
     } finally {
       setBusy(false);
