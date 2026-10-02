@@ -1,4 +1,4 @@
-import { INK, MUTED, SUB } from "@/lib/design/tokens";
+import { MUTED, SUB } from "@/lib/design/tokens";
 
 /** Discover's small shared parts, lifted from prototype S_discover: the place
  *  mark (DosPinIcon 1491), WHERE AS ONE FACT (DosWhere 4293), the follower
@@ -39,22 +39,56 @@ export function DosWhere({ city, km, size = 11 }: { city: string; km?: string | 
   );
 }
 
-/** A FOLLOWER COUNT, WITH SOMETHING TO HOLD ON TO (4277): the two-heads mark,
- *  then the figure set apart and tabular. `word` lets a crew print "4 members"
- *  in the same slot — a crew has no followers to count. */
-export function DosFollowers({ n, size = 12, word }: { n: number; size?: number; word?: string }) {
+/** THE FOLLOWER PILL, TOP RIGHT ON THE PICTURE (2 Oct 2026, the user: "on
+ *  discover cards for studio, crew, artist make follower a pill on top right with
+ *  black and white background according to theme"). The two-heads mark and the
+ *  figure (the prototype's DosFollowers, 4277), in a solid pill pinned to the
+ *  picture's top-right corner — where the eye lands first, instead of a line at
+ *  the card's foot.
+ *
+ *  ⚠ PAINTED WITH THE TOKENS, NOT LITERALS: `--text` ground, `--solid` ink. So it
+ *  is black-on-white or white-on-black by the theme the CARD is drawn in — and
+ *  Discover's shelf sits in an `InvertedPanel`, which swaps exactly those two, so
+ *  the pill always matches the card's own ink rather than the page's. Solid
+ *  either way, so it reads on any photograph under it.
+ *
+ *  The caller positions its parent (`position: relative`); the accessible name
+ *  is the whole sentence, since a bare "12" means nothing read aloud. */
+export function FollowerPill({ n }: { n: number }) {
   return (
-    <span title={word ? undefined : `${fmtF(n)} followers`} style={{ display: "inline-flex", alignItems: "center", gap: 5, minWidth: 0 }}>
-      <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="var(--muted)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <span
+      data-testid="follower-pill"
+      role="img"
+      aria-label={`${n} ${n === 1 ? "follower" : "followers"}`}
+      title={`${fmtF(n)} ${n === 1 ? "follower" : "followers"}`}
+      style={{
+        position: "absolute",
+        top: 8,
+        right: 8,
+        zIndex: 1,
+        display: "inline-flex",
+        alignItems: "center",
+        gap: 4,
+        padding: "3px 8px 3px 7px",
+        borderRadius: 999,
+        background: "var(--text)",
+        color: "var(--solid)",
+        boxShadow: "0 2px 8px rgba(0,0,0,.28)",
+        fontSize: 11,
+        fontWeight: 900,
+        lineHeight: 1.3,
+        fontVariantNumeric: "tabular-nums",
+        letterSpacing: -0.2,
+        whiteSpace: "nowrap",
+      }}
+    >
+      <svg width={12} height={12} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
         <circle cx="9" cy="8.4" r="3.2" />
         <path d="M3 19.5c.7-3.2 3-4.9 6-4.9s5.3 1.7 6 4.9" />
         <circle cx="17.2" cy="9.4" r="2.4" />
         <path d="M15.8 14.4c2.4.2 4.1 1.6 4.7 4.3" />
       </svg>
-      <span style={{ fontSize: size + 1, fontWeight: 900, color: INK, fontVariantNumeric: "tabular-nums", letterSpacing: -0.2, whiteSpace: "nowrap" }}>
-        {fmtF(n)}
-        {word ? <span style={{ fontWeight: 700, color: SUB, marginLeft: 4 }}>{word}</span> : null}
-      </span>
+      {fmtF(n)}
     </span>
   );
 }

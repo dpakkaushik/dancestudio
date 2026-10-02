@@ -9,7 +9,7 @@ import { DISC_RADIUS, DOS_DISPLAY, HERO_HEAD_H, HERO_HEAD_W, INK } from "@/lib/d
 import { photoUrl } from "@/lib/media/photo";
 import { publicProfilePath } from "@/lib/routes/publicProfile";
 import type { NearbyBusiness } from "@/repositories/discovery";
-import { DosFollowers, DosWhere, initialsOf, kmLabel } from "./discover-kit";
+import { DosWhere, FollowerPill, initialsOf, kmLabel } from "./discover-kit";
 
 const CARD = "var(--card)";
 const EL = "var(--el)";
@@ -129,6 +129,7 @@ export function StudioCard({ business, followers = 0, shots = [] }: { business: 
             ))
           )}
         </div>
+        <FollowerPill n={followers} />
         {many ? (
           <div aria-hidden="true" style={{ position: "absolute", left: 0, right: 0, bottom: 10, display: "flex", justifyContent: "center", gap: 5 }}>
             {live.map((s, i) => (
@@ -190,7 +191,7 @@ export function StudioCard({ business, followers = 0, shots = [] }: { business: 
                   is asking somebody to travel. Where the point was never chosen the
                   card says the place and stops. */}
               <DosWhere city={place} km={business.located ? kmLabel(business.distanceKm) : null} />
-              <DosFollowers n={followers} />
+              {/* the follower count moved up onto the picture as a pill (2 Oct 2026) */}
             </span>
           </span>
         </div>

@@ -12,7 +12,7 @@ import { DiscoverTabs } from "@/features/discovery/components/DiscoverTabs";
 import { FollowedShelf, type FollowedTile } from "@/features/discovery/components/FollowedShelf";
 import { PlaceChip } from "@/features/discovery/components/PlaceChip";
 import { StudioCard } from "@/features/discovery/components/StudioCard";
-import { ArtistI, ClassI, DosFollowers, StudioI } from "@/features/discovery/components/discover-kit";
+import { ArtistI, ClassI, StudioI } from "@/features/discovery/components/discover-kit";
 import { anyStyleOk, filterClasses, filterCrews, filterBusinesses, filterStyleShelf, filtersToParams, parseFilters, radiusOf, ALL_CITIES } from "@/features/discovery/filters";
 import { gradientOf } from "@/features/profiles/components/profile-kit";
 import { DOS_STYLE_NAMES } from "@/lib/constants/styles";
@@ -522,7 +522,7 @@ export default async function DiscoverPage({
               city={a.city ?? "—"}
               km={null}
               verified={Boolean(a.verifiedAt)}
-              foot={<DosFollowers n={personCounts.get(a.id)?.followers ?? 0} size={11} />}
+              followers={personCounts.get(a.id)?.followers ?? 0}
             />
           ))}
         </div>

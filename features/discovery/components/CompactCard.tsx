@@ -1,9 +1,8 @@
 import Image from "next/image";
 import Link from "next/link";
-import type { ReactNode } from "react";
 import { VerifiedTick } from "@/features/settings/components/settings-kit";
 import { DOS_DISPLAY, INK } from "@/lib/design/tokens";
-import { DosWhere, initialsOf } from "./discover-kit";
+import { DosWhere, FollowerPill, initialsOf } from "./discover-kit";
 
 const micro: React.CSSProperties = { fontSize: 9.5, fontWeight: 800, letterSpacing: 0.7, textTransform: "uppercase" };
 
@@ -29,7 +28,7 @@ export function CompactCard({
   grad,
   city,
   km,
-  foot,
+  followers,
   verified = false,
 }: {
   href: string;
@@ -40,7 +39,9 @@ export function CompactCard({
   grad: [string, string];
   city: string;
   km?: string | null;
-  foot: ReactNode;
+  /** drawn as the pill on the picture's top-right corner (2 Oct 2026) — it was
+   *  a `foot` slot under a hairline, which only ever held this count */
+  followers: number;
   verified?: boolean;
 }) {
   return (
@@ -52,6 +53,7 @@ export function CompactCard({
           <span style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontSize: 38, fontWeight: 900, letterSpacing: 1, fontFamily: DOS_DISPLAY, textShadow: "0 3px 14px rgba(0,0,0,.35)" }}>{initialsOf(name)}</span>
         )}
         <span style={{ position: "absolute", left: 8, bottom: 8, ...micro, color: "rgba(255,255,255,.92)", padding: "2px 7px", borderRadius: 999, background: "rgba(0,0,0,.36)", backdropFilter: "blur(6px)", WebkitBackdropFilter: "blur(6px)" }}>{label}</span>
+        <FollowerPill n={followers} />
       </div>
       {/* ⚠ THE TEXT UNDER THE PICTURE (2 Oct 2026, the user: "artist and crew
           discover cards text can be adjusted better below the pic"). The name
@@ -94,7 +96,6 @@ export function CompactCard({
           <DosWhere city={city} km={km ?? null} size={11} />
         </div>
       </div>
-      <div style={{ marginTop: "auto", paddingTop: 8, borderTop: "1.5px solid var(--el)", minWidth: 0 }}>{foot}</div>
     </Link>
   );
 }

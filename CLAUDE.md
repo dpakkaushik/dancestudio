@@ -2,6 +2,25 @@
 
 ## LAST SESSION (2 Oct 2026) — replaced on every push (Rule 13)
 
+> ### THE FOLLOWER COUNT IS A PILL ON THE PICTURE (2 Oct 2026, latest) — no migration
+> The user: *"on discover cards for studio, crew, artist make follower a pill on
+> top right with black and white background according to theme."*
+> * **`FollowerPill`** (`discover-kit.tsx`) replaces `DosFollowers`: the
+>   two-heads mark and the count in a solid pill pinned 8px from the picture's
+>   top-right corner, on the studio card's poster rail and on `CompactCard`'s
+>   square (artists and crews). The count left the card's foot; `CompactCard`'s
+>   `foot` slot and its hairline went with it, replaced by a `followers` number.
+> * ⚠ **Painted with `--text` / `--solid`, not literals**, so it is black-on-white
+>   or white-on-black by the theme the CARD is in — and Discover's shelf is an
+>   `InvertedPanel`, so in the dark app theme the cards are light and the pill is
+>   black, and in the light theme it is white. It matches the card, not the page.
+> * Its accessible name is the sentence ("3 followers", "1 follower").
+> * **Verified:** typecheck 0 · lint 0 · build green · a probe **26/26** (both
+>   themes × studios · artists · crews: drawn, pinned 8/8, black-and-white, named;
+>   no page error) and screenshots · `shoot-discover` 45/45 · `shoot-invert`
+>   18/18 run (⚠ its four class-tile checks skip when the city has no upcoming
+>   class — the world, not this change).
+
 > ### THREE INBOX COLUMNS, A DAY THAT READS LEFT TO RIGHT, A WELCOME FOR WHAT YOU CREATE, A MULTI-STYLE PICKER, AND "PAID" AT THE DOOR (2 Oct 2026, latest) — ✅ `20261002140000` APPLIED (dry run 17/17 re-run first, read back live 7/7, PostgREST reloaded) · ✅ PUSHED AND LIVE (`5a8819c`: Vercel READY, alias confirmed on the sha through the API, `stranger-smoke` 8/8 and `shoot-inbox` 34/34 ON THE LIVE SITE)
 > Built by the previous chat, which ran out of room ("Prompt is too long")
 > after putting the migration's list in front of the user; this session read
@@ -17347,6 +17366,7 @@ Home. **Do not "restore parity" on these.**
 | C96 | C94 (that same day): Completed is a fourth pill, split Received · Sent, the kinds mixed | **THREE COLUMNS — Enquiries · Requests · Invites — and Completed is a SIDE of each**: Received · Sent · Completed, each Completed holding that kind's closed rows both ways. The Inbox opens on Enquiries. A studio's and a crew's Enquiries is Received · Completed. ⚠ **Withdrawn is a third answer**, stamped grey — an ask taken back, or an invite revoked, is neither a yes nor a no | 2 Oct 2026, the user: *"completed not in line with enquiries invites and request but with received and sent in their respective section. enquiry should be first. all requests, invites and enquiries should be 3 columns"* — superseding C94 at the same person's word |
 | C97 | Home's deck opens on the live card and paints only it (a green frame, C-series 2 Oct) | **THE DAY READS LEFT TO RIGHT**: what has ended first, framed red with COMPLETED; the live one green; what is still to come amber with UPCOMING — and the rail scrolls itself to the first card not yet over | 2 Oct 2026, the user: *"once class completed for today it should move on the left … completed status same as live with red border on cards, upcoming classes yellow border"* |
 | C98 | Onboarding's "Take a bow" (3926) is the only welcome | **A BOW ON CREATING A STUDIO, A CREW, AND ON BECOMING AN ARTIST** (`WelcomeBow`, `?welcome=studio\|crew\|artist`, cleared by a replace so back never re-opens it). ⚠ An artist mandate returning by full-page redirect (phones) is not confirmed on that screen, so it shows no bow | 2 Oct 2026, the user: *"on creation similar welcome message for studio and crew profiles as we get on sign up for users and same should be once converted and subscribed for being an artist"* |
+| C100 | The follower count sits at the card's foot with its two-heads mark (DosFollowers 4277) | **A SOLID PILL TOP-RIGHT ON THE PICTURE** — studio, artist and crew cards — in `--text` on `--solid`, so it is black or white by the card's own (inverted) theme | 2 Oct 2026, the user: *"on discover cards for studio, crew, artist make follower a pill on top right with black and white background acorrding to theme"* |
 | C99 | A studio and a crew pick their style one at a time (the single `DosStylePicker`, re-opened per style) | **ONE MULTI-PICKER** (`DosStyleMultiPicker`, the prototype's own `multi` mode, 3554): chips with ×, the first marked MAIN with ★ to promote, a searchable list that ticks, eight at most at creation | 2 Oct 2026, the user: *"dance style filter while creating studio and crew should be multi filter and better way to handle in the form"* |
 
 ### UI parity backlog — gaps vs the prototype, tracked so none is forgotten

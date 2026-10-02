@@ -1,5 +1,4 @@
 import { CompactCard } from "@/features/discovery/components/CompactCard";
-import { DosFollowers } from "@/features/discovery/components/discover-kit";
 import { gradientOf } from "@/features/profiles/components/profile-kit";
 import { photoUrl } from "@/lib/media/photo";
 import type { CrewSummary } from "@/types/crew";
@@ -29,10 +28,9 @@ export function CrewCard({ crew, followers = null }: { crew: CrewSummary; follow
       city={crew.city}
       /* ⚠ THE MARK AND THE COUNT, NOTHING ELSE (2 Oct 2026, the user: "should not
          show members lists, only follower icon with counts on cards not full
-         follower written"). The roster size left the card — it is on the crew's
-         own page — and the word went, so a crew's foot reads exactly like a
-         studio's and an artist's. */
-      foot={<DosFollowers n={followers ?? 0} size={11} />}
+         follower written"), and since later the same day a PILL on the picture's
+         top-right corner, like a studio's and an artist's. */
+      followers={followers ?? 0}
     />
   );
 }
