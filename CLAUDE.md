@@ -2,7 +2,7 @@
 
 ## LAST SESSION (2 Oct 2026) — replaced on every push (Rule 13)
 
-> ### THE FOLLOWER COUNT IS A PILL ON THE PICTURE (2 Oct 2026, latest) — no migration
+> ### THE FOLLOWER COUNT IS A PILL ON THE PICTURE (2 Oct 2026, latest) — no migration, ✅ PUSHED AND LIVE (`c0a9026`: Vercel READY, alias confirmed on the sha, the pill probe 26/26 ON THE LIVE SITE)
 > The user: *"on discover cards for studio, crew, artist make follower a pill on
 > top right with black and white background according to theme."*
 > * **`FollowerPill`** (`discover-kit.tsx`) replaces `DosFollowers`: the
