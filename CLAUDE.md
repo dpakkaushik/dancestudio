@@ -2,7 +2,7 @@
 
 ## LAST SESSION (2 Oct 2026) — replaced on every push (Rule 13)
 
-> ### THREE INBOX COLUMNS, A DAY THAT READS LEFT TO RIGHT, A WELCOME FOR WHAT YOU CREATE, A MULTI-STYLE PICKER, AND "PAID" AT THE DOOR (2 Oct 2026, latest) — ✅ `20261002140000` APPLIED (dry run 17/17 re-run first, read back live 7/7, PostgREST reloaded)
+> ### THREE INBOX COLUMNS, A DAY THAT READS LEFT TO RIGHT, A WELCOME FOR WHAT YOU CREATE, A MULTI-STYLE PICKER, AND "PAID" AT THE DOOR (2 Oct 2026, latest) — ✅ `20261002140000` APPLIED (dry run 17/17 re-run first, read back live 7/7, PostgREST reloaded) · ✅ PUSHED AND LIVE (`5a8819c`: Vercel READY, alias confirmed on the sha through the API, `stranger-smoke` 8/8 and `shoot-inbox` 34/34 ON THE LIVE SITE)
 > Built by the previous chat, which ran out of room ("Prompt is too long")
 > after putting the migration's list in front of the user; this session read
 > that list back from its transcript, then applied the migration and pushed on
