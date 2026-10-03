@@ -24,9 +24,9 @@ import {
 import Link from "next/link";
 import { DeskAddButton } from "@/features/settings/components/settings-kit";
 import { DeskBody, DeskTop } from "@/components/ui/DeskSections";
-import { ToolActions, ToolBody, ToolCard, ToolChip, ToolFacts, ToolHead, toolBtn } from "@/components/ui/ToolCard";
+import { ToolActions, ToolBody, ToolCard, ToolChip, ToolFace, ToolFacts, ToolHead, toolBtn } from "@/components/ui/ToolCard";
 import { DeskHero, SheetHandle, sheetBody, sheetWrap } from "@/features/businesses/components/biz-kit";
-import { DOS_DISPLAY, DOS_UI, INK, LILAC, MUTED, SKY, SUB } from "@/lib/design/tokens";
+import { DOS_DISPLAY, DOS_UI, INK, LILAC, MUTED, SUB } from "@/lib/design/tokens";
 import { useCloseOnBack } from "@/lib/hooks/useCloseOnBack";
 import type { MemberRole, TeamMember } from "@/repositories/businesses";
 import type { PayoutMethod, PayoutRecord, PayoutStatus } from "@/types/payout";
@@ -191,7 +191,12 @@ export function StaffDesk({
     email: "",
     role: "trainer",
   });
-  const [payOpen, setPayOpen] = useState(false);
+  /* ⚠ WHO IS BEING PAID, ITS OWN STATE (3 Oct 2026): Pay on the card opened the
+     manage sheet AND the pay sheet over it, so cancelling a payment landed on a
+     sheet nobody had asked for. The manage sheet carries no payment controls now
+     (the user: *"manage page for team without option to see history and record
+     payment in it"*), so the two never open together. */
+  const [payFor, setPayFor] = useState<TeamMember | null>(null);
   const [pay, setPay] = useState<{ amount: string; method: PayoutMethod; status: PayoutStatus; note: string }>({ amount: "", method: "upi", status: "done", note: "" });
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -201,7 +206,7 @@ export function StaffDesk({
   useCloseOnBack(() => setAddOpen(false), addOpen);
   useCloseOnBack(() => setShareInvite(null), Boolean(shareInvite));
   useCloseOnBack(() => setOpenMember(null), Boolean(openMember));
-  useCloseOnBack(() => setPayOpen(false), payOpen);
+  useCloseOnBack(() => setPayFor(null), Boolean(payFor));
 
   /** the labels this profile has to give, and the seats already on the team */
   const roles = rolesFor(businessType);
@@ -441,7 +446,7 @@ export function StaffDesk({
                       <button
                         type="button"
                         aria-label={`Pay ${m.name}`}
-                        onClick={() => { setOpenMember(m); setPay({ amount: "", method: "upi", status: "done", note: "" }); setPayOpen(true); }}
+                        onClick={() => { setPay({ amount: "", method: "upi", status: "done", note: "" }); setError(null); setPayFor(m); }}
                         style={toolBtn("primary", L.colour)}
                       >
                         Pay
@@ -781,8 +786,14 @@ export function StaffDesk({
         </div>
       )}
 
-      {/* ── one teammate: change what they may do, or take them off ── */}
-      {openMember && (
+      {/* ── MANAGE ONE TEAMMATE (3 Oct 2026, the user: *"better designed manage
+          page for team without option to see history and record payment in
+          it"*) — WHO they are, WHAT THEY ARE, WHAT YOU GRANT THEM, and taking
+          them off. Paying and the history are the card's own buttons and the
+          member's page; a sheet about their seat is about their seat. ── */}
+      {openMember && (() => {
+        const L = MEMBER_LABEL[openMember.role];
+        return (
         <div onClick={() => setOpenMember(null)} style={sheetWrap}>
           <div
             role="dialog"
@@ -792,38 +803,36 @@ export function StaffDesk({
             style={sheet}
           >
             <SheetHandle />
-            <b style={{ fontSize: 17, fontFamily: DOS_DISPLAY }}>{openMember.name}</b>
-            <div style={{ fontSize: 11.5, color: SUB, margin: "3px 0 10px" }}>
-              {MEMBER_ROLE_WORD[openMember.role]}
-              {openMember.city ? ` · ${openMember.city}` : ""}
-            </div>
-            {/* ⚠ A DOOR TO THE PERSON (21 Sep 2026). The organization's and the
-                crew's Team rows both wrap the face and the name in a link to
-                `/person/{id}`; this desk's row could not, because the ROW is the
-                manage control — a link inside a `role="button"` is interactive
-                inside interactive. So the door is here, one step in, and every
-                Team desk has one. ⚠ Said plainly: this is the one Team
-                difference left standing, and it is a difference in WHERE the
-                door is, not in whether there is one. */}
-            <Link href={`/person/${openMember.userId}`} style={{ display: "inline-block", fontSize: 11.5, fontWeight: 900, color: "#5AC8FA", textDecoration: "none", marginBottom: 12 }}>
-              Open their profile ›
+            {/* WHO — the card's own head, so the sheet and the card they pressed
+                read as one object. The face and the name are the door to the
+                person (21 Sep 2026: every Team desk has one). */}
+            <Link
+              href={`/person/${openMember.userId}`}
+              aria-label={`Open ${openMember.name}'s profile`}
+              style={{ display: "flex", alignItems: "center", gap: 12, padding: "12px", margin: "0 0 14px", borderRadius: 16, background: `linear-gradient(135deg, ${L.colour}24, ${L.colour}08 62%, transparent)`, border: `1.5px solid ${EL}`, color: INK, textDecoration: "none" }}
+            >
+              <ToolFace name={openMember.name} photoPath={openMember.avatarPath} tint={L.colour} size={52} />
+              <span style={{ flex: 1, minWidth: 0 }}>
+                <span style={{ display: "block", fontSize: 9.5, fontWeight: 900, letterSpacing: 0.8, textTransform: "uppercase", color: L.colour }}>
+                  {MEMBER_ROLE_WORD[openMember.role]} · {KIND_WORD[kindOf(openMember.isArtist)]}
+                </span>
+                <b style={{ display: "block", fontSize: 18, fontFamily: DOS_DISPLAY, letterSpacing: -0.4, lineHeight: 1.2, marginTop: 2, overflowWrap: "anywhere" }}>{openMember.name}</b>
+                <span style={{ display: "block", fontSize: 11.5, color: SUB, marginTop: 2 }}>
+                  {[openMember.style, openMember.city].filter(Boolean).join(" · ") || "On your team"} · <b style={{ color: INK }}>Profile ›</b>
+                </span>
+              </span>
             </Link>
-            {/* ⚠ WHAT THE SEAT CARRIES, MOVED HERE FROM THE ROW (20 Sep 2026).
-                The roster prints a group per label now and its rows are one line
-                each, the way the prototype sets them (18541-18592) — so this
-                sentence, which used to sit under every name and said the same
-                thing for everybody in a group, reads where somebody is actually
-                CHOOSING a label. Nothing was lost; it moved. */}
-            <div style={{ fontSize: 11.5, color: MUTED, marginBottom: 14, lineHeight: 1.5 }}>
-              {MEMBER_GRANTS[openMember.role]}
-            </div>
 
+            {/* WHAT THEY ARE — the labels this profile hands out, each in its own
+                colour, and the sentence for what the chosen one carries under them
+                (20 Sep 2026: it moved here from the row) */}
             <div style={{ fontSize: 10.5, fontWeight: 900, letterSpacing: 1.1, color: "var(--muted)", marginBottom: 7 }}>
               WHAT THEY MAY DO
             </div>
             <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 8 }}>
               {labels.map(([k, word]) => {
                 const on = openMember.role === k;
+                const c = MEMBER_LABEL[k as MemberRole]?.colour ?? SUB;
                 return (
                   <span
                     role="button"
@@ -841,45 +850,48 @@ export function StaffDesk({
                       if (done) setOpenMember({ ...openMember, role: k as MemberRole });
                     }}
                     style={{
+                      display: "inline-flex",
+                      alignItems: "center",
+                      gap: 6,
                       fontSize: 11.5,
                       fontWeight: 800,
                       padding: "7px 12px",
                       borderRadius: 999,
                       cursor: "pointer",
-                      background: on ? "var(--text)" : CARD,
-                      color: on ? "var(--solid)" : SUB,
-                      border: `1.5px solid ${on ? "var(--text)" : EL}`,
+                      background: on ? `${c}26` : CARD,
+                      color: on ? INK : SUB,
+                      border: `1.5px solid ${on ? c : EL}`,
                     }}
                   >
+                    <span aria-hidden="true" style={{ width: 7, height: 7, borderRadius: 4, background: c, flexShrink: 0 }} />
                     {word}
                   </span>
                 );
               })}
             </div>
-            {/* ── WHAT THE STUDIO GRANTS THEM (20 Sep 2026, the user's answer 1:
-                "permission given by Artist or Studio for managing Attendance and
-                Refunds") ────────────────────────────────────────────────────
-                ⚠ These are the only two powers worth granting and the only two
-                the database will take standing — `business_members.can_attendance`
-                and `can_refunds`, read by `can_run_register_for_class` and
-                `can_settle_refunds_for_class`. An owner holds both by their seat,
-                so the block is not drawn for one: a switch that cannot be turned
-                off is not a switch. And a grant is only ever as live as the seat
-                behind it — removing somebody takes both with them. */}
+            <div style={{ fontSize: 11.5, color: MUTED, marginBottom: 6, lineHeight: 1.5 }}>
+              {MEMBER_GRANTS[openMember.role]}
+            </div>
+
+            {/* ── WHAT YOU GRANT THEM (20 Sep 2026) — the two powers the database
+                takes standing. An owner holds both by their seat, so the block is
+                not drawn for one: a switch that cannot be turned off is not a
+                switch. ── */}
             {openMember.role !== "owner" ? (
               <>
-                <div style={{ fontSize: 10.5, fontWeight: 900, letterSpacing: 1.1, color: "var(--muted)", margin: "12px 0 7px" }}>
+                <div style={{ fontSize: 10.5, fontWeight: 900, letterSpacing: 1.1, color: "var(--muted)", margin: "14px 0 7px" }}>
                   WHAT YOU GRANT THEM
                 </div>
+                <div style={{ border: `1.5px solid ${EL}`, borderRadius: 14, padding: "0 12px", background: CARD }}>
                 {(
                   [
                     ["attendance", "Run the register", "Check people in on any class here"],
                     ["refunds", "Settle refunds", "Decide refunds on any class here"],
                   ] as const
-                ).map(([key, title, why]) => {
+                ).map(([key, title, why], i) => {
                   const on = key === "attendance" ? openMember.canAttendance : openMember.canRefunds;
                   return (
-                    <div key={key} style={{ display: "flex", alignItems: "center", gap: 10, padding: "9px 0", borderTop: `1.5px solid ${EL}` }}>
+                    <div key={key} style={{ display: "flex", alignItems: "center", gap: 10, padding: "11px 0", borderTop: i === 0 ? "none" : `1.5px solid ${EL}` }}>
                       <div style={{ flex: 1, minWidth: 0 }}>
                         <div style={{ fontSize: 12.5, fontWeight: 800 }}>{title}</div>
                         <div style={{ fontSize: 11, color: SUB, marginTop: 1 }}>{why}</div>
@@ -907,7 +919,7 @@ export function StaffDesk({
                           height: 24,
                           borderRadius: 999,
                           cursor: "pointer",
-                          background: on ? "var(--text)" : EL,
+                          background: on ? L.colour : EL,
                           position: "relative",
                           transition: "background .15s",
                         }}
@@ -920,151 +932,70 @@ export function StaffDesk({
                     </div>
                   );
                 })}
+                </div>
               </>
             ) : null}
 
-            {/* ── PAY THEM (19 Sep 2026) ─────────────────────────────────────
-                A payment the studio has already made, recorded — Step 13's own
-                limit, and the same ledger the Earnings desk reads as MONEY OUT.
-                Nothing moves through code. ── */}
-            {isOwner ? (
-              <>
-                <div style={{ display: "flex", alignItems: "baseline", gap: 7, margin: "14px 0 7px" }}>
-                  <span style={{ fontSize: 10.5, fontWeight: 900, letterSpacing: 1.1, color: "var(--muted)" }}>PAYMENTS</span>
-                  <span style={{ fontSize: 10.5, color: SUB }}>
-                    {(() => {
-                      const rows = paidTo(openMember.userId);
-                      const total = rows.filter((r) => r.status === "done").reduce((n, r) => n + r.amountInr, 0);
-                      return rows.length === 0 ? "nothing yet" : `${rupees(total)} paid · ${rows.length} ${rows.length === 1 ? "payment" : "payments"}`;
-                    })()}
-                  </span>
-                </div>
-                {/* ⚠⚠ THE LIST LEFT THIS SHEET FOR A PAGE (29 Sep 2026, the
-                    user: "Team payment history to be a button called History
-                    which should show all transactions with that particular
-                    person on a different page").
-                    It drew `slice(0, 6)` under a heading that counted ALL of
-                    them, so a studio paying somebody monthly read twelve
-                    payments over six rows with no way to reach the rest — and a
-                    sheet is 82vh of a phone with a form under it, which is the
-                    wrong shape for a ledger. ⚠ The button is drawn whether or
-                    not there is anything yet: "nothing paid yet" is a fact
-                    about this person, and a control that appears only once
-                    somebody has been paid is one nobody learns is there. */}
-                <Link
-                  href={`/business/${businessId}/staff/${openMember.userId}`}
-                  aria-label={`Payment history for ${openMember.name}`}
-                  style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 4, padding: "11px 13px", borderRadius: 14, background: "var(--card)", border: `1.5px solid ${EL}`, color: "var(--text)", textDecoration: "none", fontWeight: 800, fontSize: 12.5 }}
-                >
-                  <span style={{ flex: 1, minWidth: 0 }}>History</span>
-                  <span style={{ flexShrink: 0, fontSize: 10.5, color: SUB }}>
-                    {paidTo(openMember.userId).length === 0
-                      ? "nothing yet"
-                      : `${paidTo(openMember.userId).length} ${paidTo(openMember.userId).length === 1 ? "payment" : "payments"}`}
-                  </span>
-                  <span aria-hidden="true" style={{ flexShrink: 0, color: SUB }}>›</span>
-                </Link>
+            {error ? <div role="alert" style={{ fontSize: 11.5, color: "#F87171", fontWeight: 700, marginTop: 10 }}>{error}</div> : null}
+
+            <div style={{ display: "flex", gap: 8, marginTop: 16 }}>
+              {/* ⚠⚠ AN OWNER IS REMOVED BY THE PRINCIPAL OWNER, THROUGH A
+                  DIFFERENT DOOR (30 Sep 2026). `remove_business_member` still
+                  refuses EVERY owner, so an owner row calls
+                  `remove_business_owner`, which demotes and then calls it. WHO the
+                  principal is comes from the database, so this button and the RPC
+                  cannot disagree; never on your OWN row. */}
+              {openMember.role !== "owner" || (principalOwnerId === meUserId && openMember.userId !== meUserId) ? (
                 <button
                   type="button"
-                  /* ⚠ NOT "Pay {name}" — the ROW carries that name since 20 Sep
-                     2026, and two controls answering to one name is something
-                     neither a screen reader nor a strict locator can tell apart
-                     (the 19 Sep lesson, met again the day after). */
-                  aria-label={`Record a payment for ${openMember.name}`}
-                  onClick={() => { setPay({ amount: "", method: "upi", status: "done", note: "" }); setPayOpen(true); }}
-                  style={{ width: "100%", marginTop: 10, textAlign: "center", padding: "11px", borderRadius: 999, border: `1.5px dashed ${SKY}`, background: "none", color: SKY, fontWeight: 800, fontSize: 12.5, cursor: "pointer", fontFamily: "inherit" }}
+                  aria-label={`Remove ${openMember.name} from the team`}
+                  onClick={async () => {
+                    const owner = openMember.role === "owner";
+                    const done = await run(
+                      () =>
+                        owner
+                          ? removeOwnerAction({ businessId, userId: openMember.userId })
+                          : removeMemberAction({ businessId, userId: openMember.userId }),
+                      `${openMember.name} taken off the team`
+                    );
+                    if (done) setOpenMember(null);
+                  }}
+                  style={toolBtn("danger", L.colour)}
                 >
-                  ＋ Record a payment
+                  Remove
                 </button>
-              </>
-            ) : null}
-
-            <div style={{ display: "flex", gap: 8, marginTop: 14 }}>
-              {/* ⚠⚠ AN OWNER IS REMOVED BY THE PRINCIPAL OWNER, THROUGH A
-                  DIFFERENT DOOR (30 Sep 2026, the user: *"main person who created
-                  the studio should be able to remove the other owner"*).
-                  `remove_business_member` still refuses EVERY owner — that
-                  refusal is what stops a plain owner-on-owner removal, and it is
-                  kept — so an owner row calls `remove_business_owner`, which
-                  demotes and then calls it. One removal path either way.
-                  ⚠ WHO THE PRINCIPAL IS COMES FROM THE DATABASE
-                  (`business_principal_owner`, the oldest live owner seat), not
-                  from anything derived here, so this button and the RPC cannot
-                  disagree — and it is not drawn for anybody else, because a door
-                  that would be refused is not offered (21 Sep's tile audit).
-                  ⚠ Never on your OWN row: the RPC refuses that too, and the
-                  desk's own rule has always been that a row offers only what it
-                  can actually change. */}
-              {openMember.role !== "owner" || (principalOwnerId === meUserId && openMember.userId !== meUserId) ? (
-              <span
-                role="button"
-                tabIndex={0}
-                onKeyDown={dosKey}
-                aria-label={`Remove ${openMember.name} from the team`}
-                onClick={async () => {
-                  const owner = openMember.role === "owner";
-                  const done = await run(
-                    () =>
-                      owner
-                        ? removeOwnerAction({ businessId, userId: openMember.userId })
-                        : removeMemberAction({ businessId, userId: openMember.userId }),
-                    `${openMember.name} taken off the team`
-                  );
-                  if (done) setOpenMember(null);
-                }}
-                style={{
-                  flex: 1,
-                  textAlign: "center",
-                  padding: "12px",
-                  borderRadius: 999,
-                  background: CARD,
-                  border: `1.5px solid ${EL}`,
-                  fontWeight: 800,
-                  fontSize: 12.5,
-                  cursor: "pointer",
-                  color: "#F87171",
-                }}
-              >
-                Remove
-              </span>
               ) : null}
-              <span
-                role="button"
-                tabIndex={0}
-                onKeyDown={dosKey}
-                onClick={() => setOpenMember(null)}
-                style={{
-                  flex: 1.3,
-                  textAlign: "center",
-                  padding: "12px",
-                  borderRadius: 999,
-                  background: "var(--text)",
-                  color: "var(--solid)",
-                  fontWeight: 900,
-                  fontSize: 12.5,
-                  cursor: "pointer",
-                }}
-              >
+              <button type="button" onClick={() => setOpenMember(null)} style={toolBtn("primary", "#141414", { flex: "1.4 1 0", background: "var(--text)", color: "var(--solid)", borderColor: "var(--text)" })}>
                 Done
-              </span>
+              </button>
             </div>
-            <div style={{ fontSize: 10.5, color: "var(--muted)", marginTop: 10, lineHeight: 1.5 }}>
-              Taking somebody off also ends any class they were holding attendance or refunds on.
-            </div>
+            {openMember.role !== "owner" || principalOwnerId === meUserId ? (
+              <div style={{ fontSize: 10.5, color: "var(--muted)", marginTop: 10, lineHeight: 1.5 }}>
+                Taking somebody off also ends any class they were holding attendance or refunds on.
+              </div>
+            ) : null}
           </div>
         </div>
-      )}
+        );
+      })()}
 
       {/* ── RECORD A PAYMENT — with the method, which is the user's own ask
           ("payment for team members should also give option for payment
-          methods"). The four are the ones the ledger already knows. ── */}
-      {payOpen && openMember && (
-        <div onClick={() => setPayOpen(false)} style={{ ...sheetWrap, zIndex: 620 }}>
-          <div role="dialog" aria-modal="true" aria-label={`Pay ${openMember.name}`} onClick={(e) => e.stopPropagation()} style={sheet}>
+          methods"). The four are the ones the ledger already knows. Opened by
+          Pay on the card, on its own (3 Oct 2026). ── */}
+      {payFor && (
+        <div onClick={() => setPayFor(null)} style={sheetWrap}>
+          <div role="dialog" aria-modal="true" aria-label={`Pay ${payFor.name}`} onClick={(e) => e.stopPropagation()} style={sheet}>
             <SheetHandle />
-            <b style={{ fontSize: 17, fontFamily: DOS_DISPLAY }}>Pay {openMember.name}</b>
-            <div style={{ fontSize: 11.5, color: SUB, margin: "3px 0 14px", lineHeight: 1.5 }}>
-              DanceOS records what you have paid — it does not move the money. This lands in your Earnings as an expense.
+            <div style={{ display: "flex", alignItems: "center", gap: 11, marginBottom: 12 }}>
+              <ToolFace name={payFor.name} photoPath={payFor.avatarPath} tint={MEMBER_LABEL[payFor.role].colour} size={44} />
+              <div style={{ minWidth: 0 }}>
+                <b style={{ display: "block", fontSize: 17, fontFamily: DOS_DISPLAY }}>Pay {payFor.name}</b>
+                <div style={{ fontSize: 11.5, color: SUB, marginTop: 2 }}>{MEMBER_ROLE_WORD[payFor.role]} · lands in your Earnings as an expense</div>
+              </div>
+            </div>
+            <div style={{ fontSize: 11.5, color: SUB, margin: "0 0 14px", lineHeight: 1.5 }}>
+              DanceOS records what you have paid — it does not move the money.
             </div>
 
             <div style={{ fontSize: 12, color: SUB, margin: "0 0 4px" }}>Amount</div>
@@ -1111,8 +1042,10 @@ export function StaffDesk({
               style={inputStyle}
             />
 
+            {error ? <div role="alert" style={{ fontSize: 11.5, color: "#F87171", fontWeight: 700, marginTop: 10 }}>{error}</div> : null}
+
             <div style={{ display: "flex", gap: 8, marginTop: 16 }}>
-              <button type="button" onClick={() => setPayOpen(false)} style={{ flex: 1, textAlign: "center", padding: "12px", borderRadius: 999, background: CARD, border: `1.5px solid ${EL}`, fontWeight: 800, fontSize: 12.5, cursor: "pointer", color: INK, fontFamily: "inherit" }}>
+              <button type="button" onClick={() => setPayFor(null)} style={{ flex: 1, textAlign: "center", padding: "12px", borderRadius: 999, background: CARD, border: `1.5px solid ${EL}`, fontWeight: 800, fontSize: 12.5, cursor: "pointer", color: INK, fontFamily: "inherit" }}>
                 Cancel
               </button>
               <button
@@ -1120,19 +1053,20 @@ export function StaffDesk({
                 disabled={busy || Number(pay.amount) < 1}
                 aria-label="Record this payment"
                 onClick={async () => {
+                  const who = payFor;
                   const done = await run(
                     () =>
                       payTeamMemberAction({
                         businessId,
-                        userId: openMember.userId,
+                        userId: who.userId,
                         amountInr: Number(pay.amount),
                         method: pay.method,
                         status: pay.status,
                         note: pay.note.trim() || null,
                       }),
-                    `${rupees(Number(pay.amount))} recorded for ${openMember.name}`
+                    `${rupees(Number(pay.amount))} recorded for ${who.name}`
                   );
-                  if (done) { setPayOpen(false); setOpenMember(null); }
+                  if (done) setPayFor(null);
                 }}
                 style={{ flex: 1.4, textAlign: "center", padding: "12px", borderRadius: 999, background: Number(pay.amount) >= 1 ? "var(--text)" : EL, color: Number(pay.amount) >= 1 ? "var(--solid)" : "var(--muted)", fontWeight: 900, fontSize: 12.5, cursor: Number(pay.amount) >= 1 ? "pointer" : "default", border: "none", fontFamily: "inherit" }}
               >

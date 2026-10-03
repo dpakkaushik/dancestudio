@@ -46,6 +46,8 @@ export interface MembershipHolder extends PassExpiry {
   unitsUsed: number;
   status: "active" | "used_up" | "cancelled";
   boughtAt: string | null;
+  /** what this holder was charged — the pass's own snapshot of the price */
+  pricePaidInr: number;
 }
 
 /** one of MY memberships — the Memberships tile's list */
@@ -219,9 +221,23 @@ export async function findMembershipHolders(supabase: SupabaseClient, membership
   const { data, error } = await supabase.rpc("membership_holders", { p_membership_id: membershipId });
   if (error) return [];
   const rows = (data ?? []) as Array<Record<string, unknown>>;
-  const expiry = await findPassExpiry(supabase, rows.map((r) => String(r.pass_id)));
+  /* the expiry AND what each holder paid, in one soft read of the pass rows —
+     the seller reads its own passes (`20261003110000`); a refusal reads as no
+     validity and nothing paid, never as an error (3 Oct 2026) */
+  const ids = rows.map((r) => String(r.pass_id));
+  const expiry = new Map<string, PassExpiry>();
+  const paid = new Map<string, number>();
+  if (ids.length > 0) {
+    const { data: passData } = await supabase.from("membership_passes").select("id, validity_days, expires_at, price_inr").in("id", ids.slice(0, 400));
+    const now = Date.now();
+    for (const p of (passData ?? []) as Array<{ id: string; validity_days: number | null; expires_at: string | null; price_inr: number | null }>) {
+      expiry.set(p.id, expiryOf(p.validity_days, p.expires_at, now));
+      paid.set(p.id, n(p.price_inr));
+    }
+  }
   return rows.map((r) => ({
     ...(expiry.get(String(r.pass_id)) ?? NO_EXPIRY),
+    pricePaidInr: paid.get(String(r.pass_id)) ?? 0,
     passId: String(r.pass_id),
     userId: String(r.user_id),
     name: String(r.full_name ?? "Someone"),

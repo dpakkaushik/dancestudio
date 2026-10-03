@@ -2,6 +2,7 @@ import { notFound, redirect } from "next/navigation";
 import { RoutinePage } from "@/features/routines/components/RoutinePage";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { findMyRoutines, findRoutineClasses, findRoutineStudents } from "@/repositories/routines";
+import { findProfileById } from "@/repositories/profiles";
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -21,14 +22,16 @@ export default async function OneRoutinePage({ params }: { params: Promise<{ rou
   if (!user) {
     redirect("/login");
   }
-  const [mine, classes, students] = await Promise.all([
+  const [mine, classes, students, me] = await Promise.all([
     findMyRoutines(supabase).catch(() => []),
     findRoutineClasses(supabase, routineId).catch(() => []),
     findRoutineStudents(supabase, routineId).catch(() => []),
+    /* the maker — the page leads with them, as the card does (3 Oct 2026) */
+    findProfileById(supabase, user.id).catch(() => null),
   ]);
   const routine = mine.find((r) => r.id === routineId);
   if (!routine) {
     notFound();
   }
-  return <RoutinePage routine={routine} classes={classes} students={students} />;
+  return <RoutinePage routine={routine} classes={classes} students={students} maker={{ userId: user.id, name: me?.fullName ?? "You", photoPath: me?.avatarPath ?? null }} />;
 }

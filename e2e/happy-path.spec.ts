@@ -2133,8 +2133,15 @@ test.describe.serial("DanceOS, end to end", () => {
       if (!(await settings.isVisible())) {
         await trainer.getByRole("button", { name: "Settings", exact: true }).click();
       }
-      await expect(settings).toBeVisible({ timeout: 2_000 });
-    }).toPass({ timeout: 15_000 });
+      /* ⚠ SIX seconds per press, not two (3 Oct 2026): the gear PUSHES
+         `?settings=1`, which is a server round trip for this page, and a local
+         `next start` renders `/person/{me}` in ~3 s. A retry every two seconds
+         pressed again mid-flight, and each press ABORTS the navigation before it
+         — traced: `_rsc … net::ERR_ABORTED`, the sheet never opening while one
+         unhurried press opened it every time. A retry must outlast the thing it
+         is waiting for. */
+      await expect(settings).toBeVisible({ timeout: 6_000 });
+    }).toPass({ timeout: 30_000 });
     /* ⚠ NO "YOUR PLAN" SINCE 26 Sep 2026 — the plan is the Subscription tile on Home */
     await expect(settings.getByText("YOUR PLAN")).toHaveCount(0);
     await expect(settings.getByText("ACCOUNT")).toBeVisible();
@@ -2878,9 +2885,15 @@ test.describe.serial("DanceOS, end to end", () => {
        studio paying somebody monthly read twelve payments over six rows with no
        way to reach the rest — and a sheet is the wrong shape for a ledger. Both
        ends: the button is on the sheet, and the rows are on the page. */
+    /* ⚠ AND THE MANAGE SHEET CARRIES NEITHER (3 Oct 2026, the user: *"manage page
+       for team without option to see history and record payment in it"*) — the
+       history is the card's own History button, paying its Pay button */
     await owner.getByRole("button", { name: `Manage ${learnerName}` }).click();
     await expect(memberSheet.getByText("September")).toHaveCount(0);
-    await memberSheet.getByRole("link", { name: `Payment history for ${learnerName}` }).click();
+    await expect(memberSheet.getByRole("link", { name: /history/i })).toHaveCount(0);
+    await expect(memberSheet.getByRole("button", { name: /record a payment|^Pay /i })).toHaveCount(0);
+    await owner.reload();
+    await owner.getByRole("link", { name: `History — ${learnerName}` }).click();
     await owner.waitForURL(new RegExp(`/business/${businessId}/staff/[0-9a-f-]+$`));
     await expect(owner.getByRole("heading", { name: "Team" })).toBeVisible();
     await expect(owner.getByText(learnerName).first()).toBeVisible();
@@ -3374,7 +3387,9 @@ test.describe.serial("DanceOS, end to end", () => {
     await expect(trainer.getByTestId("routine-classes")).toHaveText("1");
     await expect(trainer.getByTestId("routine-sessions")).toHaveText("0");
     await expect(trainer.getByTestId("routine-dancers")).toHaveText("0");
-    await expect(trainer.getByText(/counts people who were CHECKED IN/)).toBeVisible();
+    /* ⚠ the rule, in the redesigned page's own words (3 Oct 2026): a dancer is
+       somebody CHECKED IN to a session, never somebody who booked one */
+    await expect(trainer.getByText(/once they are checked in to a session taught from it/)).toBeVisible();
 
     // ── and now the same routine after a session has actually RUN. The session is
     // back-dated and the register written with the service role — the two things
@@ -3408,7 +3423,11 @@ test.describe.serial("DanceOS, end to end", () => {
     await expect(trainer.getByTestId("routine-dancers")).toHaveText("1", { timeout: 15_000 });
     // and the people are named, with how many of its sessions each turned up to
     await expect(trainer.getByRole("link", { name: `Open ${learnerName}'s profile` })).toBeVisible();
-    await expect(trainer.getByText("DANCERS WHO LEARNED IT · 1")).toBeVisible();
+    /* the section head draws its title and its count as two pieces since the 3 Oct
+       redesign (FigureHead), so the count is the dancers figure above, and the
+       empty-state sentence must be GONE now that somebody has danced it */
+    await expect(trainer.getByText("DANCERS WHO LEARNED IT", { exact: true })).toBeVisible();
+    await expect(trainer.getByText(/once they are checked in to a session taught from it/)).toHaveCount(0);
 
     // ── somebody else's routine is not theirs to see, and not on their desk
     const routineUrl = trainer.url();

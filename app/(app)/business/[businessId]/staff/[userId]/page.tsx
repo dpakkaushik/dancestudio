@@ -1,28 +1,32 @@
 import { notFound, redirect } from "next/navigation";
-import { PersonPayments } from "@/features/staff/components/PersonPayments";
+import { TeamMemberPage, type TeamMemberShow } from "@/features/staff/components/TeamMemberPage";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { findPersonPayHistory } from "@/repositories/payouts";
+import { findTeamMemberWork } from "@/repositories/teamMemberWork";
 import { findMyMemberships, findBusinessTeam, runsTheBusiness } from "@/repositories/businesses";
 
-/** EVERY TRANSACTION WITH ONE PERSON (29 Sep 2026, the user: "Team payment
- *  history to be a button called History which should show all transactions
- *  with that particular person on a different page").
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+/** ONE PERSON ON THIS TEAM — their payments, their stats and how their classes
+ *  went here (29 Sep 2026 as the payment history; 3 Oct 2026 as the team
+ *  member's own page, the user: *"should have payment details, artist stats and
+ *  performance for that team"*). `?show=payments|stats|performance`.
  *
- *  The member sheet drew the last six payments inline with no way to reach the
- *  rest, so a studio that had paid somebody monthly for a year saw half of it
- *  under a total that counted all of it. This is the page behind the History
- *  button on that sheet.
- *
- *  ⚠ THE OWNER'S ALONE, and re-checked here rather than trusted from the sheet.
+ *  ⚠ THE OWNER'S ALONE, and re-checked here rather than trusted from the card.
  *  `runsTheBusiness` lets a manager onto the Team desk (28 Sep 2026, R55/R56)
- *  and what somebody is PAID is the owner's — the same line `StaffDesk` draws
- *  the PAYMENTS block behind. A URL is a request, never an authority. */
-export default async function StaffPersonPaymentsPage({
+ *  and what somebody is PAID is the owner's. A URL is a request, never an
+ *  authority. */
+export default async function TeamMemberRoute({
   params,
+  searchParams,
 }: {
   params: Promise<{ businessId: string; userId: string }>;
+  searchParams: Promise<{ show?: string }>;
 }) {
-  const { businessId, userId } = await params;
+  const [{ businessId, userId }, { show: asked }] = await Promise.all([params, searchParams]);
+  if (!UUID_RE.test(businessId) || !UUID_RE.test(userId)) {
+    notFound();
+  }
   const supabase = await createSupabaseServerClient();
   const {
     data: { user },
@@ -36,27 +40,19 @@ export default async function StaffPersonPaymentsPage({
     redirect(`/business/${businessId}/staff`);
   }
 
-  const [team, history] = await Promise.all([
+  const [team, history, work] = await Promise.all([
     findBusinessTeam(supabase, businessId),
     findPersonPayHistory(supabase, businessId, userId),
+    findTeamMemberWork(supabase, businessId, userId),
   ]);
 
-  /* ⚠ THE NAME COMES OFF THE TEAM, NOT OFF THE PAYMENTS. Somebody who has been
-     paid nothing yet has no payout row to read a name from — and that is the
-     commonest way to arrive here, since History is on every member's sheet. */
+  /* ⚠ THE PERSON COMES OFF THE TEAM, NOT OFF THE PAYMENTS — somebody paid
+     nothing yet has no payout row to read a name from */
   const member = team.find((m) => m.userId === userId);
   if (!member) {
-    /* not on this team: the row does not exist, so neither does the page */
     notFound();
   }
 
-  return (
-    <PersonPayments
-      businessId={businessId}
-      businessName={seat.business.name}
-      personName={member.name}
-      avatarPath={member.avatarPath}
-      history={history}
-    />
-  );
+  const show: TeamMemberShow = asked === "stats" || asked === "performance" ? asked : "payments";
+  return <TeamMemberPage businessId={businessId} businessName={seat.business.name} member={member} history={history} work={work} show={show} />;
 }

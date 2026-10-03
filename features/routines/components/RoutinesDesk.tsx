@@ -1,7 +1,8 @@
 "use client";
 
 import { useState, type CSSProperties } from "react";
-import { ToolActions, ToolBody, ToolCard, ToolChip, ToolFacts, ToolHead, ToolTitle, toolBtn, type ToolFact } from "@/components/ui/ToolCard";
+import { ToolActions, ToolBody, ToolCard, ToolChip, ToolFacts, ToolHead, ToolTitle, type ToolFact } from "@/components/ui/ToolCard";
+import { RoutineMediaButton } from "./routine-kit";
 import { DOS_LEVEL_LABEL, dosStyleColor } from "@/lib/constants/styles";
 import { DOS_UI, INK, LILAC, SUB } from "@/lib/design/tokens";
 import { photoUrl } from "@/lib/media/photo";
@@ -189,35 +190,6 @@ function RoutineCard({
   facts: ToolFact[];
 }) {
   const col = dosStyleColor(style);
-  const media = (kind: "song" | "video", href: string | null, word: string) => {
-    const icon =
-      kind === "song" ? (
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-          <path d="M9 18V5l11-2v13" />
-          <circle cx="6" cy="18" r="3" />
-          <circle cx="17" cy="16" r="3" />
-        </svg>
-      ) : (
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-          <path d="M7 4.8v14.4a1 1 0 0 0 1.5.86l11.6-7.2a1 1 0 0 0 0-1.72L8.5 3.94A1 1 0 0 0 7 4.8z" />
-        </svg>
-      );
-    /* ⚠ INK on a ring of the style's colour, never white ON it: a style colour can
-       be a light one (Bhangra's yellow), and the band this replaced had to darken
-       itself to stay legible */
-    const box: CSSProperties = href ? toolBtn("secondary", col, { borderColor: `${col}99`, background: `${col}12` }) : toolBtn("secondary", col, { color: "var(--muted)", cursor: "default" });
-    return href ? (
-      <a href={href} target="_blank" rel="noreferrer" onClick={(e) => e.stopPropagation()} aria-label={`Open the ${kind} for ${title}`} style={box}>
-        {icon}
-        <span style={{ overflow: "hidden", textOverflow: "ellipsis" }}>{word}</span>
-      </a>
-    ) : (
-      <span style={box}>
-        {icon}
-        No {kind}
-      </span>
-    );
-  };
 
   return (
     <ToolCard testId={testId} href={href} hrefLabel={label}>
@@ -243,8 +215,8 @@ function RoutineCard({
         <ToolFacts tint={col} items={facts} style={{ marginTop: 11 }} />
       </ToolBody>
       <ToolActions>
-        {media("song", song.href, song.word)}
-        {media("video", video, "Video")}
+        <RoutineMediaButton kind="song" href={song.href} word={song.word} title={title} col={col} />
+        <RoutineMediaButton kind="video" href={video} word="Video" title={title} col={col} />
       </ToolActions>
     </ToolCard>
   );
