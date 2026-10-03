@@ -2,6 +2,15 @@
 
 ## LAST SESSION (4 Oct 2026) — replaced on every push (Rule 13)
 
+> ### ROUTINES, STUDENTS, MEMBERSHIPS, ASSETS AND ROOMS: THE FIVE-PART RE-CUT (4 Oct 2026, latest) — no migration · ✅ PUSHED AND LIVE (`3bb8416`: Vercel READY, alias confirmed on the sha through the API, and ON THE LIVE SITE `stranger-smoke` all green · the probe **80/80** in both themes)
+> The user: *"1. routine details 1st column classes with class list … 2. Students:- student cards- no second line below name, member only as a chip on right repeated multiple times on card. student detail page- class as 1st column with class list. Routines as 4th column. 3. Memberships - … on sale to become live only on top right of card as chip, price hours and validity also in boxes on card, remove taken from card. membership detail- holders to be renamed to students, student membership should also show list of classes used in collapsible under student. take it off sale to be on top right as a chip and renamed to delete. 4. asset- add asset to have a photo upload option in squircle 1 photo only, better redesigned asset card with photo. total assets count and total amount in middle section below add asset button. 5. rooms - add room form to have amenities in it and edit only from editing form now not outside. new asset card design how we did for other pages."*
+> * **Routine page:** **Classes · Studios · Students**, Classes first and the default (`routine-class` cards opening the class, the studio's face and name on each).
+> * **Students:** the card has nothing under the name and says "member" once — the **MEMBER** chip (`student-member`); the eyebrow and the Member tile went. The student page is **Classes · Stats · Membership · Routines**, Classes the default; `findStudentRecord` gained `classes` (per class, off the same attendance rows) and `routines` (the classes' `class_routines`, with the maker, degrading to none). Stats' RECENT CLASSES is gone — the Classes column is that list.
+> * **Memberships:** the card's chip reads **LIVE** (or DRAFT), the eyebrow no longer says "On sale", **Price · Hours · Validity** are boxes, **Taken** is gone (the Earnings column has the money). The detail: **Holders → Students** (`?show=students`; `?show=holders` still lands there), each student's classes used in a native `<details>` (`holder-classes`), and **DELETE** is a chip on the card's top right with a portalled confirm — the same `delete_membership`, the same promise (passes already bought keep working).
+> * **Assets:** one **squircle** picture in the Add form — staged with the picker's deferred mode and uploaded against the id `saveAssetAction` now returns; ⚠ the asset crop is the **disc** frame now (it was the 3:2 banner). A ToolCard per asset with the picture as its face, and **count + total value** in a `DeskMiddle` under Add asset (`assets-count`, `assets-total` — the figure alone now, no " total").
+> * **Rooms:** amenities are in the Add form (`createRoomAction` takes them), **Edit opens the same form at `?edit={room}`** (looked up among this studio's rooms), and the desk is a ToolCard per room — Holds, Amenities, the chips — with **no inline input or toggle** left.
+> * **Verified:** typecheck 0 · lint 0 · `audit:reads` 0 · build green · a probe **80/80** in both themes locally and **80/80 on the live site** (each change, no sideways scroll, no page error) · **the happy path 19/19 in 13.0 min**, its five segments re-cut (the room edited through its form, an amenity added in the add form, assets' count, the MEMBER chip, the routine's Classes column).
+
 > ### A ROUTINE'S PAGE IS STUDIOS · STUDENTS, AND ITS CARD IS SMALLER WITH COLOURED BUTTONS (4 Oct 2026, latest) — no migration · ✅ PUSHED AND LIVE (`62d501b`: Vercel READY, alias confirmed on the sha through the API, and ON THE LIVE SITE `stranger-smoke` all green · the routine probe **44/44** in both themes)
 > The user: *"Routine written above routine name on the routine card and routine detail page to be removed, bigger routine name, coloured song and video buttons, watch Video button should only be Video. Taught in section should be separate column named Studios with studio profile pic and name in collapsible detail with dance styles and figures. 2nd column should be Students with list of students who learned it, remove detail above song and video button on routine detail page, delete routine button on top right and should just say delete. smaller card size for routines."*
 > * **The card** (`RoutinesDesk`): no ROUTINE kicker, the name first at 19px, the style and level pills after it, a 40px face and tighter bands (259px tall measured), and **Song / Video filled in the style's colour** — `RoutineMediaButton` is `toolBtn("primary", col)`, so the word's ink is picked off the colour (a light style gets dark ink). "Dancers" reads **Students**.
@@ -12697,6 +12706,12 @@ for the database schema. **The UI is not redesigned** — see Rule 2.
 
 ### Progress tracker — update after EVERY push (Rule 11)
 
+- **ROUTINES, STUDENTS, MEMBERSHIPS, ASSETS AND ROOMS RE-CUT — 4 Oct 2026, no
+  step number — no migration.** A routine's Classes column; a student card that
+  says member once and a four-column student page; LIVE membership cards with
+  price/hours/validity boxes and a Students column with Delete as a chip; an
+  asset picture at add time with count and total in the middle; rooms edited
+  only through their form, amenities included. Detail at the top.
 - **A ROUTINE'S PAGE IS STUDIOS · STUDENTS — 4 Oct 2026, no step number — no
   migration.** A smaller routine card with coloured Song / Video buttons and no
   kicker; the page with Delete on its top right and two columns, Studios (a
