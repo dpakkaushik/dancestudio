@@ -2,7 +2,7 @@
 
 ## LAST SESSION (3 Oct 2026) — replaced on every push (Rule 13)
 
-> ### POSTERS ON THE CARDS, A TEACHER'S FACE FOR A STRANGER, A STUDENT LIST ONLY ITS RUNNERS READ, AN ASSET'S PICTURE, PHONE PUSH, QUIETER TILES AND SQUIRCLE TOPS (3 Oct 2026, latest) — ⚠⚠ Rule 9 (RLS widened AND narrowed; a new table; the database calls out) — ✅ FOUR MIGRATIONS APPLIED (dry runs 11/11 · 19/19 · 9/9 · 19/19 re-run first, read back live 18/18, PostgREST reloaded, a stranger's RPC call proven to resolve) · the whole e2e suite **56/56 in ONE run, 20.2 min on one worker**, no red at any point
+> ### POSTERS ON THE CARDS, A TEACHER'S FACE FOR A STRANGER, A STUDENT LIST ONLY ITS RUNNERS READ, AN ASSET'S PICTURE, PHONE PUSH, QUIETER TILES AND SQUIRCLE TOPS (3 Oct 2026, latest) — ⚠⚠ Rule 9 (RLS widened AND narrowed; a new table; the database calls out) — ✅ FOUR MIGRATIONS APPLIED (dry runs 11/11 · 19/19 · 9/9 · 19/19 re-run first, read back live 18/18, PostgREST reloaded, a stranger's RPC call proven to resolve) · the whole e2e suite **56/56 in ONE run, 20.2 min on one worker**, no red at any point · ✅ PUSHED AND LIVE (`be2e32a`: Vercel READY, alias confirmed on the sha through the API, `stranger-smoke` 8/8, `shoot-hero` 187/187 ON THE LIVE SITE, the push route answering 401 to a wrong secret — so its keys are set — and `/sw.js` served)
 > Built by the previous chat, which died on "Prompt is too long" with the
 > work uncommitted; this session finished it on the user's *"yes"* and
 > *"apply"*. The user's ask: *"not built yet-poster for classes, phone push
