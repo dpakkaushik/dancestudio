@@ -7,8 +7,11 @@ import { toolBtn } from "@/components/ui/ToolCard";
  *  desk and the routine's own page (3 Oct 2026), so a routine's media look and
  *  answer the same wherever they are pressed.
  *
- *  ⚠ INK on a ring of the style's colour, never white ON it: a style colour can
- *  be a light one (Bhangra's yellow).
+ *  ⚠ FILLED IN THE STYLE'S COLOUR (4 Oct 2026, the user: *"coloured song and
+ *  video buttons"*), with the WORD's ink picked by `toolBtn("primary")` off the
+ *  colour itself — a style colour can be a light one (Bhangra's yellow), and
+ *  white on it measured ~2:1. One without media stays a quiet outline, so a
+ *  filled button always means "this opens something".
  *  ⚠ `stopPropagation`, because on the desk the button sits inside a card that
  *  opens on a press — the button is its own link (C117's stretched-link rule). */
 export function RoutineMediaButton({
@@ -40,7 +43,7 @@ export function RoutineMediaButton({
       </svg>
     );
   const box: CSSProperties = href
-    ? toolBtn("secondary", col, { borderColor: `${col}99`, background: `${col}12`, ...extra })
+    ? toolBtn("primary", col, extra)
     : toolBtn("secondary", col, { color: "var(--muted)", cursor: "default", ...extra });
   return href ? (
     <a href={href} target="_blank" rel="noreferrer" onClick={(e) => e.stopPropagation()} aria-label={`Open the ${kind} for ${title}`} style={box}>

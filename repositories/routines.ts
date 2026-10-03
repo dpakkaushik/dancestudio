@@ -131,6 +131,43 @@ export async function findRoutineClasses(supabase: SupabaseClient, routineId: st
   }));
 }
 
+/** THE STUDIO EACH CLASS IS DANCED AT (4 Oct 2026, the user: *"Taught in section
+ *  should be separate column named Studios with studio profile pic and name"*).
+ *
+ *  ⚠ THE VENUE WHEN ONE SAID YES, THE OWNER OTHERWISE. `routine_classes` names
+ *  the class's OWNER, which for an artist's class held in a studio's room is the
+ *  artist's own page — not the studio anybody danced in. The room's studio is
+ *  the answer to "where", so it wins once `venue_status` is accepted.
+ *  ⚠ Read with the CALLER's client, no migration: a class this person teaches
+ *  from is one they can read (published is public, a draft admits its people),
+ *  and a studio's name and picture are public while it is listed. Anything that
+ *  cannot be read degrades to the RPC's own name with initials — never a throw,
+ *  because a picture must not be the reason the routine page does not render. */
+export interface RoutineStudio {
+  id: string;
+  name: string;
+  photoPath: string | null;
+}
+
+export async function findRoutineClassStudios(supabase: SupabaseClient, classIds: string[]): Promise<Map<string, RoutineStudio>> {
+  const out = new Map<string, RoutineStudio>();
+  const ids = [...new Set(classIds)];
+  if (ids.length === 0) return out;
+  const { data: cls, error } = await supabase.from("classes").select("id, business_id, venue_business_id, venue_status").in("id", ids).is("deleted_at", null).limit(ids.length);
+  if (error || !cls) return out;
+  const rows = cls as Array<{ id: string; business_id: string; venue_business_id: string | null; venue_status: string | null }>;
+  const studioOf = new Map(rows.map((c) => [c.id, c.venue_business_id && c.venue_status === "accepted" ? c.venue_business_id : c.business_id]));
+  const bizIds = [...new Set(studioOf.values())];
+  const { data: biz, error: bizErr } = await supabase.from("businesses").select("id, name, profile_photo_path").in("id", bizIds).is("deleted_at", null).limit(bizIds.length);
+  if (bizErr || !biz) return out;
+  const byId = new Map((biz as Array<{ id: string; name: string; profile_photo_path: string | null }>).map((b) => [b.id, { id: b.id, name: b.name, photoPath: b.profile_photo_path ?? null }]));
+  for (const [classId, bizId] of studioOf) {
+    const s = byId.get(bizId);
+    if (s) out.set(classId, s);
+  }
+  return out;
+}
+
 /** Who has danced it, and how many of its sessions each turned up to. */
 export async function findRoutineStudents(supabase: SupabaseClient, routineId: string): Promise<RoutineStudent[]> {
   const { data, error } = await supabase.rpc("routine_students", { p_routine_id: routineId });

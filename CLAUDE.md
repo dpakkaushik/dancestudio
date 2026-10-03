@@ -1,6 +1,13 @@
 # CLAUDE.md — DanceOS
 
-## LAST SESSION (3 Oct 2026) — replaced on every push (Rule 13)
+## LAST SESSION (4 Oct 2026) — replaced on every push (Rule 13)
+
+> ### A ROUTINE'S PAGE IS STUDIOS · STUDENTS, AND ITS CARD IS SMALLER WITH COLOURED BUTTONS (4 Oct 2026, latest) — no migration · PUSH STATUS IN THE LAST BULLET
+> The user: *"Routine written above routine name on the routine card and routine detail page to be removed, bigger routine name, coloured song and video buttons, watch Video button should only be Video. Taught in section should be separate column named Studios with studio profile pic and name in collapsible detail with dance styles and figures. 2nd column should be Students with list of students who learned it, remove detail above song and video button on routine detail page, delete routine button on top right and should just say delete. smaller card size for routines."*
+> * **The card** (`RoutinesDesk`): no ROUTINE kicker, the name first at 19px, the style and level pills after it, a 40px face and tighter bands (259px tall measured), and **Song / Video filled in the style's colour** — `RoutineMediaButton` is `toolBtn("primary", col)`, so the word's ink is picked off the colour (a light style gets dark ink). "Dancers" reads **Students**.
+> * **The page** (`RoutinePage`): the card on top with a 27px name, no kicker, no sentence over the buttons, **Video** (not "Watch video"), and **Delete as one word on the card's top right** (still a confirm, "Delete this routine?"). Then **Studios · Students** columns (`SegmentedPanels sections`, `?show=students`). Studios is a disclosure per studio — its face and name, then the styles taught there as chips, Classes / Sessions held / Students, each class with its bar, and Studio page; the first opens on its own.
+> * ⚠ **The studio is the VENUE when one said yes, the owner otherwise** — `routine_classes` names the class's OWNER, which for an artist's class in a studio's room is the artist's own page. `findRoutineClassStudios` reads the classes and the studios' names and pictures with the CALLER's client (no migration) and degrades to the RPC's name with initials.
+> * **Verified:** typecheck 0 · lint 0 · `audit:reads` 0 · build green · a routine probe **44/44** in both themes (no kicker on either, the name's size, filled media buttons, Video, Delete one word at the top right and asking first, a studio row opening and collapsing, the Students column by its pill, no sideways scroll, no page error). The e2e's routine segment is re-cut to the two columns · **the happy path 19/19 in 12.7 min** — after one red that was not this slice: the person-pages search box still read "Searching…" at its 5 s wait (a server action on a local `next start`; it gets 15 s now, like the suite's other round trips).
 
 > ### FOUR DETAIL PAGES ON THE CARD DESIGN, AND A MEMBERSHIP'S EARNINGS IN A COLUMN OF THEIR OWN (3 Oct 2026, latest) — no migration · ✅ PUSHED AND LIVE (`0e248f7`: Vercel READY, alias confirmed on the sha through the API, and ON THE LIVE SITE `stranger-smoke` all green · the detail probe **64/64** in both themes)
 > The user, across two chats: *"1. better designed inside routine detail page according to new design according to routine cards … 2. better designed team history page according to team member card — should have payment details, artist stats and performance for that team. 3. better designed manage page for team without option to see history and record payment in it. 4. better designed membership detail page according to the new card with details of people and their usage and earnings from membership"*, then *"membership detail in column seprate for earnings"*.
@@ -12690,6 +12697,10 @@ for the database schema. **The UI is not redesigned** — see Rule 2.
 
 ### Progress tracker — update after EVERY push (Rule 11)
 
+- **A ROUTINE'S PAGE IS STUDIOS · STUDENTS — 4 Oct 2026, no step number — no
+  migration.** A smaller routine card with coloured Song / Video buttons and no
+  kicker; the page with Delete on its top right and two columns, Studios (a
+  disclosure per studio, venue first) and Students. Detail at the top.
 - **FOUR DETAIL PAGES ON THE CARD DESIGN, AND A MEMBERSHIP'S EARNINGS IN ITS OWN
   COLUMN — 3 Oct 2026, no step number — no migration.** The routine page, the
   team member page (Payments · Stats · Performance), a manage sheet without

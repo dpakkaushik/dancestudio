@@ -1832,7 +1832,11 @@ test.describe.serial("DanceOS, end to end", () => {
        them is Artists — People is the users WITHOUT a plan — and the one row
        opens /person. The heading is asked for inside the results listbox,
        because the Discover tab tile says "Artists" too. */
-    await expect(learner.getByRole("listbox", { name: "Search results" }).getByText("Artists")).toBeVisible();
+    /* fifteen seconds, not five (4 Oct 2026): the box reads "Searching…" while a
+       server action runs the rate limit and the search, and on a local
+       `next start` that round trip outran five — the snapshot showed the
+       listbox still searching, never a wrong answer */
+    await expect(learner.getByRole("listbox", { name: "Search results" }).getByText("Artists")).toBeVisible({ timeout: 15_000 });
     await learner
       .getByRole("option", { name: new RegExp(`^${trainerName} — Artist`) })
       .and(learner.locator('[href^="/person/"]'))
@@ -3387,8 +3391,18 @@ test.describe.serial("DanceOS, end to end", () => {
     await expect(trainer.getByTestId("routine-classes")).toHaveText("1");
     await expect(trainer.getByTestId("routine-sessions")).toHaveText("0");
     await expect(trainer.getByTestId("routine-dancers")).toHaveText("0");
-    /* ⚠ the rule, in the redesigned page's own words (3 Oct 2026): a dancer is
-       somebody CHECKED IN to a session, never somebody who booked one */
+    /* ⚠ TWO COLUMNS SINCE 4 Oct 2026 — Studios · Students. Studios opens first:
+       the studio the class is danced at, its row open, the class inside it. And
+       Delete is one word on the card's top right, behind a confirm. */
+    await expect(trainer.getByTestId("routine-studio")).toHaveCount(1);
+    await expect(trainer.getByTestId("routine-studio").getByRole("button", { expanded: true })).toBeVisible();
+    await expect(trainer.getByTestId("routine-studio").getByRole("link", { name: /^Open / }).first()).toBeVisible();
+    await expect(trainer.getByRole("button", { name: `Delete ${routineName}` })).toBeVisible();
+    await expect(trainer.getByRole("link", { name: `Open the video for ${routineName}` })).toHaveText("Video");
+    /* the Students column, pressed in place — and the rule in the page's own words:
+       a dancer is somebody CHECKED IN to a session, never somebody who booked one */
+    await trainer.getByRole("link", { name: `Who learned ${routineName}` }).click();
+    await expect(trainer).toHaveURL(/show=students/);
     await expect(trainer.getByText(/once they are checked in to a session taught from it/)).toBeVisible();
 
     // ── and now the same routine after a session has actually RUN. The session is
@@ -3426,7 +3440,7 @@ test.describe.serial("DanceOS, end to end", () => {
     /* the section head draws its title and its count as two pieces since the 3 Oct
        redesign (FigureHead), so the count is the dancers figure above, and the
        empty-state sentence must be GONE now that somebody has danced it */
-    await expect(trainer.getByText("DANCERS WHO LEARNED IT", { exact: true })).toBeVisible();
+    await expect(trainer.getByText("STUDENTS WHO LEARNED IT", { exact: true })).toBeVisible();
     await expect(trainer.getByText(/once they are checked in to a session taught from it/)).toHaveCount(0);
 
     // ── somebody else's routine is not theirs to see, and not on their desk

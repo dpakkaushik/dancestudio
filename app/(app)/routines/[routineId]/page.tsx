@@ -1,7 +1,7 @@
 import { notFound, redirect } from "next/navigation";
 import { RoutinePage } from "@/features/routines/components/RoutinePage";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
-import { findMyRoutines, findRoutineClasses, findRoutineStudents } from "@/repositories/routines";
+import { findMyRoutines, findRoutineClassStudios, findRoutineClasses, findRoutineStudents } from "@/repositories/routines";
 import { findProfileById } from "@/repositories/profiles";
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -10,8 +10,10 @@ const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/
  *  from the caller's OWN list rather than from a read by id, which is what makes
  *  "not found" the honest answer for somebody else's: the usage reads answer
  *  nobody but the owner either, so there is nothing to leak by guessing an id. */
-export default async function OneRoutinePage({ params }: { params: Promise<{ routineId: string }> }) {
+export default async function OneRoutinePage({ params, searchParams }: { params: Promise<{ routineId: string }>; searchParams: Promise<{ show?: string }> }) {
   const { routineId } = await params;
+  /* the column the server opens on — Studios unless the address says Students */
+  const show = (await searchParams).show === "students" ? "students" : "studios";
   if (!UUID_RE.test(routineId)) {
     notFound();
   }
@@ -33,5 +35,15 @@ export default async function OneRoutinePage({ params }: { params: Promise<{ rou
   if (!routine) {
     notFound();
   }
-  return <RoutinePage routine={routine} classes={classes} students={students} maker={{ userId: user.id, name: me?.fullName ?? "You", photoPath: me?.avatarPath ?? null }} />;
+  /* where each class is danced — the Studios column's faces (4 Oct 2026) */
+  const studios = await findRoutineClassStudios(supabase, classes.map((c) => c.classId)).catch(() => new Map());
+  return (
+    <RoutinePage
+      routine={routine}
+      classes={classes.map((c) => ({ ...c, studio: studios.get(c.classId) ?? null }))}
+      students={students}
+      maker={{ userId: user.id, name: me?.fullName ?? "You", photoPath: me?.avatarPath ?? null }}
+      show={show}
+    />
+  );
 }

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, type CSSProperties } from "react";
-import { ToolActions, ToolBody, ToolCard, ToolChip, ToolFacts, ToolHead, ToolTitle, type ToolFact } from "@/components/ui/ToolCard";
+import { ToolActions, ToolBody, ToolCard, ToolChip, ToolFacts, ToolHead, inkOn, type ToolFact } from "@/components/ui/ToolCard";
 import { RoutineMediaButton } from "./routine-kit";
 import { DOS_LEVEL_LABEL, dosStyleColor } from "@/lib/constants/styles";
 import { DOS_UI, INK, LILAC, SUB } from "@/lib/design/tokens";
@@ -200,23 +200,28 @@ function RoutineCard({
         name={maker.name}
         photoPath={maker.photoPath}
         eyebrow={maker.eyebrow}
-        size={52}
+        /* ⚠ SMALLER (4 Oct 2026, the user: "smaller card size for routines"):
+           a 40px face and tighter bands — the routine's NAME is what the card is
+           about, and it is now the biggest thing on it */
+        size={40}
         right={<ToolChip word={status.word} fg={status.strong ? "#22C55E" : SUB} bg={status.strong ? "#22C55E1c" : "var(--el)"} />}
       />
-      <ToolBody>
-        {/* the routine itself — its style as a pill in the style's own colour,
-            its name at the size of a title, where it was taught under it */}
-        <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 7, flexWrap: "wrap" }}>
-          <span style={{ fontSize: 10.5, fontWeight: 900, padding: "4px 10px", borderRadius: 999, background: `linear-gradient(135deg, ${col}, ${col}bb)`, color: "#fff" }}>{style}</span>
-          <span style={{ fontSize: 10.5, fontWeight: 800, padding: "4px 10px", borderRadius: 999, background: "var(--el)", color: SUB }}>{DOS_LEVEL_LABEL[level] ?? level}</span>
+      <ToolBody style={{ padding: "10px 14px 11px" }}>
+        {/* the routine itself — its name first and biggest (⚠ no "ROUTINE" kicker
+            over it any more, 4 Oct 2026: the desk is Routines, so the word said
+            the page's own name back), its style and level as pills beside where
+            it was taught */}
+        <div style={{ fontSize: 19, fontWeight: 900, letterSpacing: -0.35, lineHeight: 1.2, overflowWrap: "anywhere" }}>{title}</div>
+        <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 6, flexWrap: "wrap" }}>
+          <span style={{ fontSize: 10, fontWeight: 900, padding: "3px 9px", borderRadius: 999, background: col, color: inkOn(col) }}>{style}</span>
+          <span style={{ fontSize: 10, fontWeight: 800, padding: "3px 9px", borderRadius: 999, background: "var(--el)", color: SUB }}>{DOS_LEVEL_LABEL[level] ?? level}</span>
+          {sub ? <span style={{ fontSize: 11, color: SUB, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>at {sub}</span> : null}
         </div>
-        <ToolTitle kicker="Routine">{title}</ToolTitle>
-        {sub ? <div style={{ fontSize: 11.5, color: SUB, marginTop: 3 }}>Taught at {sub}</div> : null}
-        <ToolFacts tint={col} items={facts} style={{ marginTop: 11 }} />
+        <ToolFacts tint={col} items={facts} style={{ marginTop: 9 }} />
       </ToolBody>
       <ToolActions>
-        <RoutineMediaButton kind="song" href={song.href} word={song.word} title={title} col={col} />
-        <RoutineMediaButton kind="video" href={video} word="Video" title={title} col={col} />
+        <RoutineMediaButton kind="song" href={song.href} word={song.word} title={title} col={col} extra={{ padding: "8px 10px" }} />
+        <RoutineMediaButton kind="video" href={video} word="Video" title={title} col={col} extra={{ padding: "8px 10px" }} />
       </ToolActions>
     </ToolCard>
   );
@@ -271,7 +276,7 @@ function RoutineRow({ r, me }: { r: RoutineWithUsage; me: Maker }) {
       facts={[
         { label: r.classes === 1 ? "Class" : "Classes", value: r.classes, testId: "routine-classes" },
         { label: r.sessions === 1 ? "Session" : "Sessions", value: r.sessions },
-        { label: r.students === 1 ? "Dancer" : "Dancers", value: r.students },
+        { label: r.students === 1 ? "Student" : "Students", value: r.students },
       ]}
     />
   );
