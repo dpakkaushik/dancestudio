@@ -2,7 +2,7 @@
 
 ## LAST SESSION (3 Oct 2026) — replaced on every push (Rule 13)
 
-> ### AN ENQUIRY RUNS END TO END, AND THE LOWER HALVES ARE GLASS (3 Oct 2026, latest) — ⚠⚠ Rule 9 (MONEY: refunds, additions, the order subject) · ONE MIGRATION WRITTEN, DRY-RUN **110/110** AND **HELD** (#0ba) · COMMITTED, NOT PUSHED
+> ### AN ENQUIRY RUNS END TO END, AND THE LOWER HALVES ARE GLASS (3 Oct 2026, latest) — ⚠⚠ Rule 9 (MONEY: refunds, additions, the order subject) · ✅ `20261003140000` APPLIED (dry run **110/110** re-run first, `db-push -DryRun` exactly the one file, read back live **7/7**: both tables RLS-on with SELECT-only policies, the four old doors gone, the twelve new doors authenticated-only, the three payment helpers executable by no client role, anon **40** unchanged, PostgREST reloaded) · proofs `enquiries payments notifications crews` **4/4** on the migrated schema · `shoot-inbox` **39/39** · the whole e2e suite **48 passed / 1 failed / 7 did not run**, the red a STALE ASSERTION (the wiring slice asked the business's side for the old dashed *"No number on this enquiry — quote them here instead"*, which the rebuilt page deliberately drops; re-cut to assert no Call link), then the happy path once more lost "ROOM ALREADY BUSY" to a 120 s page-load timeout with **1.8 GB of 18.9 GB commit free** (the machine, the fifth time for that segment), then **the happy path 19/19 in 12.7 min** — all 56 green across the runs on one bundle · ✅ PUSHED on the user's *"apply and push once all green"* (given in the previous chat, repeated in this one)
 > **The translucent lower panel** (`c9d38f8`, the user: *"lower half of discover
 > inbox and home should be transluscent with double tone effect"*): `.dos-invert`
 > is two tones over a gradient with two soft glows and a lit top edge, measured
@@ -36,9 +36,9 @@
 >   own terms could aim the send at somebody else's enquiry. The ids are read
 >   with the CALLER's client now; the service role only sends.
 > * **Verified:** typecheck 0 · lint 0 · `audit:reads` 0 · build green · dry run
->   110/110. **Re-cut, NOT run** (they need the migrated schema):
->   `rls-proof-enquiries` checks 6–10, the happy path's enquiry segment, the demo
->   seeder's enquiries, `shoot-inbox`'s declined plant.
+>   110/110. **Run after the apply, all green:** `rls-proof-enquiries` checks
+>   6–10, the happy path's enquiry segment, `shoot-inbox`'s declined plant.
+>   ⚠ The demo seeder's enquiries are re-cut and still NOT run (no re-seed).
 > * ⚠ **The app and the migration go TOGETHER**: the live bundle's buttons call
 >   doors this migration drops, so apply and deploy are one step (#0ba).
 
@@ -10067,8 +10067,11 @@ summary; the report has the evidence.
 
 ## NEXT TO DO — replaced on every push (Rule 13)
 
-0ba. **⚠⚠ ONE MIGRATION WRITTEN, DRY-RUN 110/110 AND HELD — `20261003140000_an_enquiry_runs_end_to_end`.**
-   ⚠ Rule 9 (money). The only pending file. **Apply and deploy are one step**:
+0ba. **~~ONE MIGRATION WRITTEN, DRY-RUN 110/110 AND HELD~~ — ✅ APPLIED AND PUSHED 3 Oct 2026**
+   (the top block has the tally). Nothing is pending in the database. ⚠ Still
+   not driven: the demo seeder's re-cut enquiries (`demo-data.js` has not been
+   re-seeded), and a real Cashfree refund on an accepted ending. The sequence as
+   it ran, kept for the record. ⚠ Rule 9 (money). **Apply and deploy are one step**:
    the live bundle calls `close_enquiry`, `set_enquiry_status` and the old
    quote/answer signatures, which this migration drops. On the user's word:
 ```

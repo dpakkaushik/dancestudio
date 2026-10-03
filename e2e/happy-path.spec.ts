@@ -2463,7 +2463,12 @@ test.describe.serial("DanceOS, end to end", () => {
     await owner.getByRole("button", { name: "Completed enquiries" }).click();
     await owner.getByRole("link", { name: `Private Sessions enquiry from ${learnerName}` }).click();
     await owner.waitForURL(/\/inbox\/enquiries\/[0-9a-f-]+$/);
-    await expect(owner.getByText("No number on this enquiry — quote them here instead")).toBeVisible();
+    /* ⚠ 3 Oct 2026: the rebuilt detail page draws NO Call at all when the
+       enquiry carries no number, rather than a dashed sentence telling a
+       business to "quote them here" on an enquiry that is already completed.
+       Wait for the page itself, then assert the absence. */
+    await expect(owner.getByTestId("enquiry-stage")).toBeVisible();
+    await expect(owner.getByRole("link", { name: new RegExp(`^Call ${learnerName}`) })).toHaveCount(0);
 
     /* ⚠⚠ B6: THE FIGURE IS THE DOOR NOW, FOR EVERYBODY (27 Sep 2026, the user:
        "fix follow following for all profiles. list should open when clicked
