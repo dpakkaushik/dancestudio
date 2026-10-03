@@ -2758,27 +2758,35 @@ test.describe.serial("DanceOS, end to end", () => {
        desk permanently — three fields above the very list they add to, whether or
        not you were adding anything — which is the shape the routine and
        membership forms were in before 21 Sep. */
-    const addAsset = async (name: string, type: string, worth: string) => {
-      await owner.getByRole("link", { name: "Add asset" }).click();
-      const sheet = owner.getByRole("dialog", { name: "Add asset" });
+    /* ⚠ "Add Asset" with a capital A since 4 Oct 2026 — matched EXACTLY, so the
+       case is asserted rather than slipping through Playwright's case-insensitive
+       substring match; and a QUANTITY (at least 1) joined the fields */
+    const addAsset = async (name: string, type: string, worth: string, quantity?: string) => {
+      await owner.getByRole("link", { name: "Add Asset", exact: true }).click();
+      const sheet = owner.getByRole("dialog", { name: "Add Asset" });
       await expect(sheet).toBeVisible({ timeout: 15_000 });
       // ⚠ and the desk is still underneath, not navigated away from
       await expect(owner.getByRole("heading", { level: 1, name: "Assets" })).toBeVisible();
-      // ── THE THREE FIELDS AND NOTHING ELSE (the user's own list)
       await sheet.getByLabel("Asset name").fill(name);
       await pick(sheet, "Type of asset", type);
+      // the quantity starts at 1 and the stepper will not go under it
+      await expect(sheet.getByLabel("Quantity", { exact: true })).toHaveValue("1");
+      await expect(sheet.getByRole("button", { name: "One fewer" })).toBeDisabled();
+      if (quantity) await sheet.getByLabel("Quantity", { exact: true }).fill(quantity);
       await sheet.getByLabel("What it is worth — 0 means you already had it").fill(worth);
-      await sheet.getByRole("button", { name: "Add asset" }).click();
+      await sheet.getByRole("button", { name: "Add Asset", exact: true }).click();
       await owner.getByRole("button", { name: "Add it" }).click();
       await expect(sheet).toBeHidden({ timeout: 15_000 });
     };
+    // ⚠ nothing between the heading and the button any more (4 Oct 2026)
+    await expect(owner.getByText(/What .* owns/)).toHaveCount(0);
 
     /* the bar NAMES the missing answer rather than greying out (15573-15578), and
        ⚠ the VALUE is one of the answers it asks for: on the old card an empty box
        became `Number(value || 0)`, so not typing quietly filed the asset as one
        the business already had — a classPerson about money made by leaving a field alone */
-    await owner.getByRole("link", { name: "Add asset" }).click();
-    const empty = owner.getByRole("dialog", { name: "Add asset" });
+    await owner.getByRole("link", { name: "Add Asset", exact: true }).click();
+    const empty = owner.getByRole("dialog", { name: "Add Asset" });
     /* ⚠ ASKED FOR BY ACCESSIBLE NAME, not by text — the button carries no
        `aria-label`, so what a screen reader hears IS what the screen says. Five
        of these forms grew a fixed one on 22 Sep and this segment caught it. */
@@ -2790,11 +2798,13 @@ test.describe.serial("DanceOS, end to end", () => {
     await expect(empty).toBeHidden({ timeout: 15_000 });
     await expect(owner).toHaveURL(new RegExp(`/business/${businessId}/assets$`));
 
-    await addAsset(assetName, "Sound & AV", "28000");
+    /* ⚠ the shorter type list (4 Oct 2026): Speaker, Props and Other assets are in it */
+    await addAsset(assetName, "Speaker", "28000", "4");
     const row = owner.getByTestId("asset-row").filter({ hasText: assetName });
     await expect(row).toBeVisible({ timeout: 15_000 });
     await expect(row.getByTestId("asset-value")).toHaveText("₹28,000");
-    await expect(row.getByText("Sound & AV")).toBeVisible();
+    await expect(row.getByTestId("asset-quantity")).toHaveText("4");
+    await expect(row.getByText("Speaker", { exact: true })).toBeVisible();
     // the total is COUNTED off the very rows it adds up (Step 25's rule)
     await expect(owner.getByTestId("assets-total")).toHaveText("₹28,000");
     await expect(owner.getByTestId("assets-count")).toHaveText("1");
@@ -2803,18 +2813,30 @@ test.describe.serial("DanceOS, end to end", () => {
        `₹ (0 = old)` placeholder and its own "₹0 (legacy)" row (16792). There is
        no second control, because two ways to say one thing can disagree. */
     const legacyName = `E2E Mirrors ${stamp}`;
-    await addAsset(legacyName, "Mirrors", "0");
+    await addAsset(legacyName, "Other assets", "0");
     const legacy = owner.getByTestId("asset-row").filter({ hasText: legacyName });
     await expect(legacy.getByTestId("asset-value")).toHaveText("₹0 (legacy)", { timeout: 15_000 });
     // and it does not move the total, which is the point of counting it as zero — it moves the COUNT
     await expect(owner.getByTestId("assets-total")).toHaveText("₹28,000");
     await expect(owner.getByTestId("assets-count")).toHaveText("2");
 
-    // ── EDIT IN PLACE, the prototype's own row edit (16823-16830)
-    await row.getByRole("button", { name: `Edit ${assetName}` }).click();
-    await owner.getByLabel(`What ${assetName} is worth`).fill("30000");
-    await row.getByRole("button", { name: "Save" }).click();
+    await expect(legacy.getByText("Other assets", { exact: true })).toBeVisible();
+
+    /* ── EDIT OPENS THE FORM, never a fold on the card (4 Oct 2026, the user:
+       "edit should not open like a collapse should only be editable from the form") */
+    await row.getByRole("link", { name: `Edit ${assetName}` }).click();
+    const editSheet = owner.getByRole("dialog", { name: "Edit Asset" });
+    await expect(editSheet).toBeVisible({ timeout: 15_000 });
+    await expect(owner).toHaveURL(/\?edit=/);
+    await expect(editSheet.getByLabel("Asset name")).toHaveValue(assetName);
+    await expect(editSheet.getByLabel("Quantity", { exact: true })).toHaveValue("4");
+    await editSheet.getByLabel("What it is worth — 0 means you already had it").fill("30000");
+    await editSheet.getByRole("button", { name: "One more" }).click();
+    await editSheet.getByRole("button", { name: "Save Asset", exact: true }).click();
+    await owner.getByRole("button", { name: "Save it" }).click();
+    await expect(editSheet).toBeHidden({ timeout: 15_000 });
     await expect(row.getByTestId("asset-value")).toHaveText("₹30,000", { timeout: 15_000 });
+    await expect(row.getByTestId("asset-quantity")).toHaveText("5");
     await expect(owner.getByTestId("assets-total")).toHaveText("₹30,000");
 
     // ── AND REMOVING ONE IS A SOFT DELETE the list stops carrying

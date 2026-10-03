@@ -30,7 +30,12 @@ export default async function BusinessAssetsPage({
      the same shape as the gear's `?settings=1`. The gate needs no second check
      here for once: this whole page is the owner's, and a non-owner is redirected
      four lines below before anything is rendered at all. */
-  const opening = (await searchParams).new === "1";
+  const sp = await searchParams;
+  const opening = sp.new === "1";
+  /* ⚠ and an asset is EDITED only through the same form, at `?edit={asset}` (4 Oct
+     2026) — looked up among THIS business's own, so the id is a pointer and never
+     an authority (`save_asset` re-checks the owner and the business as well) */
+  const editId = opening ? null : sp.edit ?? null;
   const supabase = await createSupabaseServerClient();
   const {
     data: { user },
@@ -50,10 +55,12 @@ export default async function BusinessAssetsPage({
     redirect(`/business/${businessId}`);
   }
   const assets = await findBusinessAssets(supabase, businessId).catch(() => []);
+  const editing = editId ? assets.find((a) => a.id === editId) ?? null : null;
   return (
     <>
       <AssetsDesk businessId={businessId} businessName={seat.business.name} assets={assets} />
       {opening ? <AssetForm businessId={businessId} businessName={seat.business.name} /> : null}
+      {editing ? <AssetForm key={editing.id} businessId={businessId} businessName={seat.business.name} asset={editing} /> : null}
     </>
   );
 }

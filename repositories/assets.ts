@@ -13,35 +13,40 @@ export type Asset = {
   valueInr: number;
   /** its picture, in media/assets/{business}/… (3 Oct 2026); null = none */
   photoPath: string | null;
+  /** how many of it (4 Oct 2026) — a COUNT, not a multiplier: `valueInr` is what
+   *  the whole lot cost, so no money figure moved when this arrived */
+  quantity: number;
 };
 
-/** the prototype's fourteen words (16800), in its order. The database keeps the
- *  same list as a CHECK, so a category this file does not know about cannot be
- *  stored — and one it forgets cannot be offered. */
+/** NINE WORDS (4 Oct 2026, the user: "shorter and better list for type of asset-
+ *  speaker, props should be there and Other assets also in option"). It was the
+ *  prototype's fourteen (16800); `20261004100000` mapped every existing row onto
+ *  these and the database keeps the same list as a CHECK, so a category this file
+ *  does not know about cannot be stored — and one it forgets cannot be offered.
+ *  Other is LAST, as a last resort is. */
 export const ASSET_CATEGORIES = [
-  "Equipment",
-  "Sound & AV",
-  "Lighting",
-  "Infrastructure",
+  "Speaker",
+  "Mirror",
   "Flooring",
-  "Mirrors",
-  "Costume",
+  "Lighting",
   "Props",
+  "Costume",
   "Furniture",
-  "IT & devices",
-  "Instruments",
-  "Safety",
-  "Merchandise",
-  "Vehicle",
+  "Electronics",
+  "Other",
 ] as const;
 
 export type AssetCategory = (typeof ASSET_CATEGORIES)[number];
 
+/** how a category reads on a card and in the picker — "Other assets", the user's
+ *  own words, while the stored value stays the short "Other" */
+export const assetCategoryWords = (c: string) => (c === "Other" ? "Other assets" : c);
+
 const ROW = "id, name, category, value_inr";
 
-type Row = { id: string; name: string; category: string; value_inr: number; photo_path?: string | null };
+type Row = { id: string; name: string; category: string; value_inr: number; photo_path?: string | null; quantity?: number | null };
 
-const toAsset = (r: Row): Asset => ({ id: r.id, name: r.name, category: r.category, valueInr: r.value_inr, photoPath: r.photo_path ?? null });
+const toAsset = (r: Row): Asset => ({ id: r.id, name: r.name, category: r.category, valueInr: r.value_inr, photoPath: r.photo_path ?? null, quantity: r.quantity ?? 1 });
 
 /** a business's inventory, newest first — the owner's alone, by policy */
 export async function findBusinessAssets(supabase: SupabaseClient, businessId: string): Promise<Asset[]> {
@@ -56,7 +61,12 @@ export async function findBusinessAssets(supabase: SupabaseClient, businessId: s
   /* ⚠ `photo_path` arrives with 20261003120000; until it is applied the read
      answers "column does not exist", so it falls back to the read without it
      rather than taking the desk down (the 27 Sep `poster_path` lesson) */
-  let { data, error } = await read(`${ROW}, photo_path`);
+  /* ⚠ and `quantity` with 20261004100000 — the same fallback, so the desk reads
+     every row as 1 rather than going down if the app ever lands first */
+  let { data, error } = await read(`${ROW}, photo_path, quantity`);
+  if (error && /quantity/.test(error.message)) {
+    ({ data, error } = await read(`${ROW}, photo_path`));
+  }
   if (error && /photo_path/.test(error.message)) {
     ({ data, error } = await read(ROW));
   }
@@ -66,14 +76,17 @@ export async function findBusinessAssets(supabase: SupabaseClient, businessId: s
 
 export async function saveAsset(
   supabase: SupabaseClient,
-  input: { businessId: string; name: string; category: string; valueInr: number; assetId?: string | null }
+  input: { businessId: string; name: string; category: string; valueInr: number; quantity: number; assetId?: string | null }
 ): Promise<string> {
+  /* ⚠ `p_quantity` exists from 20261004100000 — PostgREST resolves an RPC by its
+     argument NAMES, so this call and that migration ship together */
   const { data, error } = await supabase.rpc("save_asset", {
     p_business_id: input.businessId,
     p_name: input.name,
     p_category: input.category,
     p_value_inr: input.valueInr,
     p_asset_id: input.assetId ?? null,
+    p_quantity: input.quantity,
   });
   if (error) throw error;
   return data as string;

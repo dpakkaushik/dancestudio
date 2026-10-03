@@ -35,6 +35,8 @@ const saveSchema = z.object({
   /* ⚠ 0 is a real answer, not a missing one: it means an asset the business
      already had, which the screen prints as "₹0 (legacy)" */
   valueInr: z.number().int().min(0, "A value cannot be negative").max(1000000000),
+  /* how many of it — at least one (4 Oct 2026) */
+  quantity: z.number().int().min(1, "A quantity is at least 1").max(10000, "That is more than one listing should hold"),
 });
 
 const message = (e: unknown) => (e instanceof Error ? e.message : "Something went wrong");

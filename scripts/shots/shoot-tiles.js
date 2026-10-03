@@ -547,7 +547,8 @@ async function personOpensAStudio(page, who, acc, stamp) {
        BUTTON with no round trip, and still owns a history entry so back closes it.
        Assets keeps its `?new=1` link. */
     for (const [tool, label, dialog, blocker, role] of [
-      ["assets", "Add asset", "Add asset", "Name the asset first", "link"],
+      // ⚠ "Add Asset", capital A, since 4 Oct 2026 (the user)
+      ["assets", "Add Asset", "Add Asset", "Name the asset first", "link"],
       ["rooms", "Add room", "Add room", null, "button"],
     ]) {
       await p3.goto(`${BASE}/business/${studio.id}/${tool}`, { waitUntil: "networkidle" });

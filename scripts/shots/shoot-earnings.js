@@ -89,12 +89,12 @@ async function rest(method, pathname, body) {
       method: "upi", paid_on: today, created_by: userId, updated_by: userId,
     });
     await rest("POST", "/rest/v1/assets", {
-      business_id: businessId, name: `Earn PA ${stamp}`, category: "Sound & AV", value_inr: 500,
+      business_id: businessId, name: `Earn PA ${stamp}`, category: "Speaker", value_inr: 500,
       created_by: userId, updated_by: userId,
     });
     // ⚠ and a LEGACY asset, which must add NOTHING to expenses
     await rest("POST", "/rest/v1/assets", {
-      business_id: businessId, name: `Earn Mirrors ${stamp}`, category: "Mirrors", value_inr: 0,
+      business_id: businessId, name: `Earn Mirrors ${stamp}`, category: "Mirror", value_inr: 0,
       created_by: userId, updated_by: userId,
     });
     /* ⚠ WHAT THE STUDIO PAYS DANCEOS — ₹1,200 for the studio plan. The payment
