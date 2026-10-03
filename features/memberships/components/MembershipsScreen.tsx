@@ -11,8 +11,8 @@ import { DeskBody, DeskTop } from "@/components/ui/DeskSections";
 import { ToolActions, ToolBody, ToolCard, ToolChip, ToolFacts, ToolHead, ToolTitle, toolBtn } from "@/components/ui/ToolCard";
 import { DOS_UI, INK, LILAC, SUB } from "@/lib/design/tokens";
 import { money as rupees } from "@/features/payouts/components/earnings-kit";
-import { DOS_LEVEL_LABEL } from "@/lib/constants/styles";
 import type { MembershipWithUsage, MyPass, PassUse } from "@/repositories/memberships";
+import { ProgressBar, SpentOn, expiryWords, unitWord, validityWords } from "./usage-kit";
 
 /** MEMBERSHIPS (19 Sep 2026, the user: "Users should be able to buy from Studio
  *  and Artist Profile Pages and track from memberships section in tools. Artist
@@ -34,52 +34,14 @@ const card: CSSProperties = { background: "var(--card)", border: "1.5px solid va
 /** the Memberships tool's own colour — every card's face, wash and figures */
 const TINT = DOS_TOOLS.memberships.c;
 
-/** HOW FAR THROUGH — the one thing a membership is for (the user: "progress bar
- *  for completion"). Drawn from two real numbers, never a stored percentage. */
-export function ProgressBar({ used, total, tint = "#22C55E", testId }: { used: number; total: number; tint?: string; testId?: string }) {
-  const pct = total > 0 ? Math.min(100, Math.round((used / total) * 100)) : 0;
-  return (
-    <div data-testid={testId} data-pct={pct} aria-label={`${used} of ${total} used`} style={{ marginTop: 6 }}>
-      <div style={{ height: 6, borderRadius: 999, background: "var(--el)", overflow: "hidden" }}>
-        <div style={{ width: `${pct}%`, height: "100%", borderRadius: 999, background: tint }} />
-      </div>
-      <div style={{ display: "flex", justifyContent: "space-between", fontSize: 10, color: SUB, marginTop: 4 }}>
-        <span>
-          {used} of {total} used
-        </span>
-        <span>{total - used} left</span>
-      </div>
-    </div>
-  );
-}
+/* ⚠ `ProgressBar`, `SpentOn` and `unitWord` MOVED to `usage-kit.tsx` (3 Oct
+   2026) — a plain module, so the server-rendered usage page and the student page
+   draw the same bar as this client desk without importing a client module. */
 
-const unitWord = (unit: "classes" | "hours", n: number) => (unit === "hours" ? `${n} ${n === 1 ? "hour" : "hours"}` : `${n} ${n === 1 ? "class" : "classes"}`);
-
-const dayWords = (iso: string) => new Intl.DateTimeFormat("en-IN", { day: "numeric", month: "short", timeZone: "Asia/Kolkata" }).format(new Date(iso));
-
-/** WHAT ONE PASS WAS SPENT ON (30 Sep 2026) — `pass_uses`, the RPC the 19 Sep
- *  migration shipped for exactly this and nothing ever called. The bar says how
- *  far through a pass is; this says WHERE it went, one line per seat, newest
- *  first. Drawn under a holder's bar on the seller's usage page and under your
- *  own pass on the Memberships tile, so both ends read the same rows.
- *  ⚠ Not drawn at all for a pass nothing has been spent on — an empty "Spent on"
- *  under a full bar would be the heading said twice. */
-export function SpentOn({ uses, unit }: { uses: PassUse[]; unit: "classes" | "hours" }) {
-  if (uses.length === 0) return null;
-  return (
-    <div data-testid="spent-on" style={{ marginTop: 8, paddingTop: 8, borderTop: "1.5px solid var(--el)" }}>
-      <div style={{ fontSize: 8.5, fontWeight: 900, letterSpacing: 0.9, color: "var(--muted)", marginBottom: 4 }}>SPENT ON</div>
-      {uses.map((u) => (
-        <Link key={`${u.classId}-${u.startsAt}`} href={`/c/${u.shareSlug}`} aria-label={`Open ${u.style} · ${DOS_LEVEL_LABEL[u.level] ?? u.level}`} style={{ display: "flex", justifyContent: "space-between", gap: 10, padding: "4px 0", fontSize: 10.5, textDecoration: "none", color: INK }}>
-          <span style={{ minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-            <b>{u.style}</b> · {DOS_LEVEL_LABEL[u.level] ?? u.level}
-            <span style={{ color: SUB }}> · {dayWords(u.startsAt)}</span>
-          </span>
-          <span style={{ flexShrink: 0, color: SUB }}>{unitWord(unit, u.units)}</span>
-        </Link>
-      ))}
-    </div>
-  );
+/** the one line under a membership's name that says what it is and what it
+ *  costs — said ONCE, so no tile below repeats it (3 Oct 2026) */
+function MetaLine({ children }: { children: React.ReactNode }) {
+  return <div style={{ fontSize: 12, color: SUB, fontWeight: 700, marginTop: 4 }}>{children}</div>;
 }
 
 /* ⚠ `SellerFace` went on 3 Oct 2026 — the seller's face is the head of the
@@ -211,7 +173,12 @@ export function MembershipsScreen({
                belongs to (`/artist/{id}` lands on their profile, R24) */
             const sellerHref = p.businessType === "studio" ? `/studio/${p.businessId}` : `/artist/${p.businessId}`;
             const unpaid = p.status === "pending_payment";
-            const word = unpaid ? "UNPAID" : p.status === "used_up" ? "USED UP" : p.status === "cancelled" ? "CANCELLED" : "ACTIVE";
+            /* ⚠ EXPIRED is read off the date (3 Oct 2026) — an expired pass is still
+               `active` in the database, and spends nothing */
+            const expired = p.status === "active" && p.expired;
+            const word = unpaid ? "UNPAID" : expired ? "EXPIRED" : p.status === "used_up" ? "USED UP" : p.status === "cancelled" ? "CANCELLED" : "ACTIVE";
+            const live = p.status === "active" && !expired;
+            const until = expiryWords(p);
             /* ⚠⚠ A PASS CARD (3 Oct 2026, the user: *"better and bigger cards …
                each has a profile linked to it … visible with profile pic and name
                and big"*). A pass is a relationship with whoever SOLD it, so the
@@ -229,22 +196,30 @@ export function MembershipsScreen({
                   hrefLabel={`${p.businessName} — open the page`}
                   eyebrow={`Sold by ${p.businessType === "studio" ? "a studio" : "an artist"}`}
                   sub="Your membership"
-                  right={<ToolChip word={word} fg={p.status === "active" ? "#22C55E" : unpaid ? "#F59E0B" : SUB} bg={p.status === "active" ? "#22C55E1c" : unpaid ? "#F59E0B1c" : "var(--el)"} />}
+                  right={<ToolChip word={word} fg={live ? "#22C55E" : unpaid ? "#F59E0B" : expired ? "#F87171" : SUB} bg={live ? "#22C55E1c" : unpaid ? "#F59E0B1c" : expired ? "#F871711c" : "var(--el)"} />}
                 />
                 <ToolBody>
+                  {/* ⚠ SAID ONCE (3 Oct 2026, the user: "price and classes should not
+                      be repeated and fitted properly in card"): the size and the price
+                      are one line under the name, and the bar carries used and left —
+                      the Size / Used / Left tiles said the bar's numbers a second time
+                      and cramped "10 classes" into a third of the card */}
                   <ToolTitle kicker="Membership">{p.name}</ToolTitle>
-                  <ToolFacts
-                    tint={TINT}
-                    style={{ marginTop: 10 }}
-                    items={[
-                      { label: "Size", value: unitWord(p.unit, p.unitsTotal) },
-                      { label: "Used", value: p.unitsUsed },
-                      { label: "Left", value: Math.max(0, p.unitsTotal - p.unitsUsed), tint: p.status === "active" ? "#22C55E" : undefined },
-                    ]}
-                  />
+                  {/* an UNPAID pass carries its price on the Pay button below, so the
+                      line names only what it is worth */}
+                  <MetaLine>
+                    {unitWord(p.unit, p.unitsTotal)}
+                    {unpaid ? "" : ` · ${p.priceInr === 0 ? "Free" : `${rupees(p.priceInr)} paid`}`}
+                  </MetaLine>
+                  {/* how long it lasts — "valid till 2 Nov 2026", or in red once gone */}
+                  {until ? (
+                    <div data-testid="pass-validity" style={{ fontSize: 11, fontWeight: 800, color: expired ? "#F87171" : SUB, marginTop: 3 }}>
+                      {until.charAt(0).toUpperCase() + until.slice(1)}
+                    </div>
+                  ) : null}
                   {unpaid ? null : (
                     <>
-                      <ProgressBar used={p.unitsUsed} total={p.unitsTotal} tint={TINT} testId="pass-progress" />
+                      <ProgressBar used={p.unitsUsed} total={p.unitsTotal} tint={TINT} unit={p.unit} testId="pass-progress" />
                       <SpentOn uses={usesByPass[p.passId] ?? []} unit={p.unit} />
                     </>
                   )}
@@ -287,27 +262,35 @@ export function MembershipsScreen({
                 name={seller?.name ?? business?.name ?? "You"}
                 photoPath={seller?.photoPath ?? null}
                 eyebrow={`On sale · ${seller?.kind === "artist" ? "your artist page" : "your studio"}`}
-                sub={`${rupees(m.revenueInr)} taken`}
                 right={m.status === "draft" ? <ToolChip word="DRAFT" fg={SUB} bg="var(--el)" /> : <ToolChip word="ON SALE" fg="#22C55E" bg="#22C55E1c" />}
               />
               <ToolBody>
+                {/* ⚠ SAID ONCE (3 Oct 2026): the price and the size are ONE line under
+                    the name, where they were tiles — four tiles in a phone's width put
+                    "10 classes" in a box too narrow for it — and what came in is a
+                    tile of its own instead of the head's sub-line */}
                 <ToolTitle kicker="Membership">{m.name}</ToolTitle>
+                <MetaLine>
+                  {m.priceInr === 0 ? "Free" : rupees(m.priceInr)} · {unitWord(m.unit, m.units)}
+                  {validityWords(m.validityDays) ? ` · ${validityWords(m.validityDays)}` : ""}
+                </MetaLine>
                 <ToolFacts
                   tint={TINT}
                   style={{ marginTop: 10 }}
                   items={[
-                    { label: "Price", value: m.priceInr === 0 ? "Free" : rupees(m.priceInr) },
-                    { label: "Size", value: unitWord(m.unit, m.units) },
                     { label: "Sold", value: <>{m.sold}<span style={{ fontSize: 10, color: SUB, fontWeight: 700 }}>/{m.totalCount}</span></>, testId: "membership-sold" },
                     { label: "Active", value: m.active },
+                    { label: "Taken", value: rupees(m.revenueInr) },
                   ]}
                 />
                 {/* how much of what was SOLD has actually been danced — the seller's own bar */}
-                {m.unitsSold > 0 ? <ProgressBar used={m.unitsUsed} total={m.unitsSold} tint="#8B5CF6" testId="selling-progress" /> : null}
+                {m.unitsSold > 0 ? <ProgressBar used={m.unitsUsed} total={m.unitsSold} tint="#8B5CF6" unit={m.unit} leftWord="still owed" usedWord="danced" testId="selling-progress" /> : null}
               </ToolBody>
               <ToolActions>
+                {/* ⚠ "MEMBERSHIP DETAILS" (3 Oct 2026, the user: "Usage & Holders to
+                    be called Membership Details") */}
                 <Link href={`/memberships/${m.id}`} style={toolBtn("tinted", TINT)}>
-                  Usage &amp; holders ›
+                  Membership details ›
                 </Link>
               </ToolActions>
             </ToolCard>
@@ -327,7 +310,7 @@ export function MembershipsScreen({
               `/memberships/new` and took the state with it). */}
           {selling.length === 0 ? (
             <div style={{ ...card, textAlign: "center", fontSize: 12, color: SUB, border: "1.5px dashed var(--el)", lineHeight: 1.5 }}>
-              Nothing on sale yet. A membership is four things — a name, how many classes or hours, a price, and how many you will sell.
+              Nothing on sale yet. A membership is four things — a name, how many hours, a price, and how many you will sell.
             </div>
           ) : null}
         </>

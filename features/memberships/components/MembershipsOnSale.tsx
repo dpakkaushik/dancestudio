@@ -96,7 +96,8 @@ export function MembershipsOnSale({
           <span style={{ flex: 1, minWidth: 0 }}>
             <span style={{ display: "block", fontSize: 12.5, fontWeight: 800, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{m.name}</span>
             <span style={{ display: "block", fontSize: 10.5, color: SUB, marginTop: 1 }}>
-              {m.unit === "hours" ? `${m.units} hours` : `${m.units} classes`} · {m.leftCount > 0 ? `${m.leftCount} left` : "all taken"}
+              {m.unit === "hours" ? `${m.units} hours` : `${m.units} classes`}
+              {m.validityDays ? ` · valid ${m.validityDays} days` : ""} · {m.leftCount > 0 ? `${m.leftCount} left` : "all taken"}
             </span>
           </span>
           {/* ⚠ THE PRICE AND THE BUTTON ARE ONE GROUP (28 Sep 2026, "together").
@@ -176,6 +177,8 @@ export function MembershipsOnSale({
             <div style={{ background: "var(--card)", border: "1.5px solid var(--el)", borderRadius: 16, padding: "11px 13px", margin: "12px 0" }}>
               {[
                 ["Worth", paying.unit === "hours" ? `${paying.units} hours` : `${paying.units} classes`],
+                /* the validity is said where the money is asked for — it is part of what is bought */
+                ...(paying.validityDays ? [["Valid for", `${paying.validityDays} days from purchase`]] : []),
                 ["Paying with", paying.priceInr === 0 ? "—" : "UPI · Cards · Netbanking"],
               ].map(([k, v]) => (
                 <div key={k} style={{ display: "flex", justifyContent: "space-between", gap: 12, padding: "5px 0", fontSize: 12.5 }}>

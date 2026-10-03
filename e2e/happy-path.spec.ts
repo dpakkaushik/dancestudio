@@ -2199,8 +2199,10 @@ test.describe.serial("DanceOS, end to end", () => {
        ⚠ IT IS THE SECOND COLUMN NOW (29 Sep 2026, the user: "same should be for
        studios with 2 colums — your own studios and the second column with where
        your learned"). Taught-at rides in that column under its own head rather
-       than becoming a third: both are "a studio that is not yours". */
-    await trainer.goto("/business?show=learned");
+       than becoming a third: both are "a studio that is not yours".
+       ⚠ AND IT IS ITS OWN THIRD COLUMN SINCE 3 Oct 2026 (the user: "Studio
+       column name- Manage, Team and Student") — `?show=team`. */
+    await trainer.goto("/business?show=team");
     await expect(trainer.getByText("STUDIOS YOU HAVE TAUGHT AT")).toBeVisible();
 
     /* …and the two things this block used to prove ride the OWNER now, which is
@@ -2586,10 +2588,15 @@ test.describe.serial("DanceOS, end to end", () => {
     await expect(owner.getByRole("dialog", { name: "Add membership" })).toBeVisible();
     await expect(owner.getByRole("button", { name: "Name the membership first" })).toBeVisible();
     await owner.getByLabel("Membership name").fill(passName);
-    await owner.getByLabel("How many classes").fill("2");
+    /* hours only since 3 Oct 2026 — there is no Classes / Hours switch any more */
+    await owner.getByLabel("How many hours").fill("2");
     // ⚠ no Continue: four fields, one page (22 Sep 2026)
     await owner.getByLabel("Price", { exact: true }).fill("0");
     await owner.getByLabel("Total memberships").fill("5");
+    /* VALID FOR (3 Oct 2026): 30 · 60 · 90 days, 30 picked until another is */
+    await expect(owner.getByRole("button", { name: "30 days", exact: true })).toHaveAttribute("aria-pressed", "true");
+    await owner.getByRole("button", { name: "60 days", exact: true }).click();
+    await expect(owner.getByRole("button", { name: "60 days", exact: true })).toHaveAttribute("aria-pressed", "true");
     await owner.getByRole("button", { name: "Put it on sale" }).click();
     await owner.getByRole("dialog", { name: "Put this on sale?" }).getByRole("button", { name: "Put it on sale" }).click();
     /* back to the desk that SENT them — it pushed `/memberships` whatever opened
@@ -2604,7 +2611,7 @@ test.describe.serial("DanceOS, end to end", () => {
     const onSale = learner.getByTestId("memberships-on-sale");
     await expect(onSale).toBeVisible({ timeout: 15_000 });
     await expect(onSale.getByText(passName)).toBeVisible();
-    await expect(onSale.getByText("2 classes · 5 left")).toBeVisible();
+    await expect(onSale.getByText("2 hours · valid 60 days · 5 left")).toBeVisible();
 
     /* ── AND A PERSON TAKES IT FROM THERE, through the PAYMENT STEP (19 Sep
        2026, the user: "Membership on profiles to have a better pay button and
@@ -2613,7 +2620,8 @@ test.describe.serial("DanceOS, end to end", () => {
     await learner.getByRole("button", { name: `Buy ${passName}` }).click();
     const payStep = learner.getByRole("dialog", { name: "Confirm — no payment" });
     await expect(payStep).toBeVisible();
-    await expect(payStep.getByText("2 classes")).toBeVisible();
+    await expect(payStep.getByText("2 hours")).toBeVisible();
+    await expect(payStep.getByText("60 days from purchase")).toBeVisible();
     await expect(payStep.getByText("Free")).toBeVisible();
     await payStep.getByRole("button", { name: "Buy now" }).click();
     /* ── AND IT LANDS ON THE PASS ITSELF (2 Oct 2026, the user: "should take to …
@@ -2629,6 +2637,8 @@ test.describe.serial("DanceOS, end to end", () => {
     // the bar is drawn from two real numbers, never a stored percentage
     await expect(held.getByTestId("pass-progress")).toHaveAttribute("data-pct", "0");
     await expect(held.getByTestId("pass-progress")).toHaveAttribute("aria-label", "0 of 2 used");
+    /* a free pass is valid from the moment it is taken — the date is printed */
+    await expect(held.getByTestId("pass-validity")).toContainText("Valid till");
     /* and they may not take a second one while one is live — the database's rule,
        and since 2 Oct 2026 the page's too: no Buy is offered, the row says it is
        theirs and opens the pass (the user: "should not show option to buy it if

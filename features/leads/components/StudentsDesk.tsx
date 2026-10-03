@@ -119,10 +119,9 @@ export function StudentsDesk({
         <input aria-label="Search students" value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search by name or number…" style={{ flex: 1, minWidth: 0, background: "transparent", border: "none", outline: "none", color: INK, fontSize: 12.5, fontFamily: "inherit", textTransform: "none" }} />
       </div>
 
-      {/* WHAT THIS LIST IS — said once, because it is the whole change (21 Sep) */}
-      <div style={{ fontSize: 11, color: SUB, lineHeight: 1.5, padding: "0 2px 10px" }}>
-        Everybody who has been <b>checked in</b> here or holds one of your memberships, plus anybody you added yourself. It counts attendance, not bookings — a seat nobody marked is not a session danced.
-      </div>
+      {/* ⚠ NO EXPLANATION UNDER THE SEARCH (3 Oct 2026, the user: "remove the
+          extra detail below search bar in students") — the empty state still says
+          how somebody becomes a student, which is the one place it is needed */}
       </DeskTop>
 
       <DeskBody>
@@ -194,9 +193,34 @@ export function StudentsDesk({
                     Profile
                   </Link>
                 ) : null}
+                {/* ⚠ STATS AND MEMBERSHIP, NEXT TO PROFILE (3 Oct 2026, the user:
+                    "Students should also have a stats Button next to profile which
+                    should give detail students stats from that artist or Studio …
+                    another button called membership which shows membership details
+                    and usage of that particular student"). Both open the one page
+                    about this person HERE, on its two segments. A walk-in has no
+                    account, so no record to read and neither button. */}
+                {s.userId ? (
+                  <Link href={`/business/${businessId}/students/${s.userId}?show=stats`} aria-label={`Stats — ${s.name}`} style={toolBtn("secondary", TINT)}>
+                    Stats
+                  </Link>
+                ) : null}
+                {s.userId ? (
+                  <Link href={`/business/${businessId}/students/${s.userId}?show=membership`} aria-label={`Membership — ${s.name}`} style={toolBtn("secondary", TINT)}>
+                    Membership
+                  </Link>
+                ) : null}
+                {/* WhatsApp is the glyph alone now, so four doors fit one bar; its
+                    accessible name still says what it does */}
                 {wa.length >= 10 ? (
-                  <a href={`https://wa.me/${wa}`} target="_blank" rel="noreferrer" aria-label={`WhatsApp ${s.name}`} style={toolBtn("secondary", TINT)}>
-                    WhatsApp
+                  <a href={`https://wa.me/${wa}`} target="_blank" rel="noreferrer" aria-label={`WhatsApp ${s.name}`} title="WhatsApp" style={toolBtn("secondary", TINT, s.userId ? { flex: "0 0 40px", padding: "10px 0" } : undefined)}>
+                    {s.userId ? (
+                      <svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M21 11.5a8.4 8.4 0 0 1-12.4 7.4L3 20.5l1.6-5.4A8.5 8.5 0 1 1 21 11.5Z" />
+                      </svg>
+                    ) : (
+                      "WhatsApp"
+                    )}
                   </a>
                 ) : null}
                 {/* only a row the desk itself typed can be removed — the rest are

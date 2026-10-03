@@ -16,6 +16,8 @@ export interface Membership {
   priceInr: number;
   totalCount: number;
   status: "live" | "draft";
+  /** days a pass lasts from purchase; null = never expires (3 Oct 2026) */
+  validityDays: number | null;
 }
 
 /** a membership as its seller sees it: what it has done */
@@ -34,7 +36,7 @@ export interface MembershipOnSale extends Omit<Membership, "status"> {
   held: boolean;
 }
 
-export interface MembershipHolder {
+export interface MembershipHolder extends PassExpiry {
   passId: string;
   userId: string;
   name: string;
@@ -47,7 +49,7 @@ export interface MembershipHolder {
 }
 
 /** one of MY memberships — the Memberships tile's list */
-export interface MyPass {
+export interface MyPass extends PassExpiry {
   passId: string;
   membershipId: string;
   name: string;
@@ -97,10 +99,59 @@ export interface PassForSession {
 
 const n = (v: unknown): number => Number(v ?? 0);
 
+/** HOW LONG A MEMBERSHIP LASTS (3 Oct 2026, the user: "membership should have a
+ *  validity date in no. of days to use it from 30days, 60 days, 90 days"). Days
+ *  from PURCHASE; null on a membership made before validity existed, which never
+ *  expires. */
+export type ValidityDays = 30 | 60 | 90;
+export const VALIDITY_CHOICES: ValidityDays[] = [30, 60, 90];
+
+/** a pass's expiry as every screen reads it — the date, and whether it has passed.
+ *  "Expired" is DERIVED from the date; there is no status for it and no job. */
+export interface PassExpiry {
+  validityDays: number | null;
+  expiresAt: string | null;
+  expired: boolean;
+}
+
+const expiryOf = (validity: unknown, expires: unknown, now = Date.now()): PassExpiry => {
+  const expiresAt = (expires as string | null) ?? null;
+  return { validityDays: validity == null ? null : n(validity), expiresAt, expired: expiresAt != null && new Date(expiresAt).getTime() <= now };
+};
+
+/** ⚠ THE EXTRA READS ARE SEPARATE AND SOFT on purpose: the definer functions'
+ *  RETURNS TABLE shapes are unchanged (a new column there is a drop-and-recreate
+ *  that loses an ACL), and both tables are readable directly by exactly the
+ *  people these screens are for — a membership by anyone while it is live on a
+ *  listed page or by its business, a pass by its holder or the people running the
+ *  business. A refusal, or a column not yet there, reads as "no validity". */
+export async function findMembershipValidity(supabase: SupabaseClient, ids: string[]): Promise<Map<string, number | null>> {
+  const out = new Map<string, number | null>();
+  if (ids.length === 0) return out;
+  const { data, error } = await supabase.from("memberships").select("id, validity_days").in("id", ids.slice(0, 200));
+  if (error) return out;
+  for (const r of (data ?? []) as Array<{ id: string; validity_days: number | null }>) out.set(r.id, r.validity_days == null ? null : n(r.validity_days));
+  return out;
+}
+
+export async function findPassExpiry(supabase: SupabaseClient, passIds: string[]): Promise<Map<string, PassExpiry>> {
+  const out = new Map<string, PassExpiry>();
+  if (passIds.length === 0) return out;
+  const { data, error } = await supabase.from("membership_passes").select("id, validity_days, expires_at").in("id", passIds.slice(0, 400));
+  if (error) return out;
+  const now = Date.now();
+  for (const r of (data ?? []) as Array<{ id: string; validity_days: number | null; expires_at: string | null }>) out.set(r.id, expiryOf(r.validity_days, r.expires_at, now));
+  return out;
+}
+
+const NO_EXPIRY: PassExpiry = { validityDays: null, expiresAt: null, expired: false };
+
 export async function findBusinessMemberships(supabase: SupabaseClient, businessId: string): Promise<MembershipWithUsage[]> {
   const { data, error } = await supabase.rpc("business_memberships", { p_business_id: businessId });
   if (error) throw new Error(`memberships.business failed: ${error.message}`);
-  return ((data ?? []) as Array<Record<string, unknown>>).map((r) => ({
+  const rows = (data ?? []) as Array<Record<string, unknown>>;
+  const validity = await findMembershipValidity(supabase, rows.map((r) => String(r.id)));
+  return rows.map((r) => ({
     id: String(r.id),
     name: String(r.name),
     unit: r.unit as Membership["unit"],
@@ -108,6 +159,7 @@ export async function findBusinessMemberships(supabase: SupabaseClient, business
     priceInr: n(r.price_inr),
     totalCount: n(r.total_count),
     status: r.status as Membership["status"],
+    validityDays: validity.get(String(r.id)) ?? null,
     sold: n(r.sold),
     active: n(r.active),
     unitsSold: n(r.units_sold),
@@ -129,6 +181,7 @@ export async function findMembershipsOnSale(supabase: SupabaseClient, businessId
      signed-out visitor holds nothing, so the read is not made for one. */
   const ids = rows.map((r) => String(r.id));
   const held = new Set<string>();
+  const validity = await findMembershipValidity(supabase, ids);
   if (ids.length > 0) {
     const {
       data: { user },
@@ -136,13 +189,16 @@ export async function findMembershipsOnSale(supabase: SupabaseClient, businessId
     if (user) {
       const { data: mine } = await supabase
         .from("membership_passes")
-        .select("membership_id, units_used, units_total")
+        .select("membership_id, units_used, units_total, expires_at")
         .eq("user_id", user.id)
         .eq("status", "active")
         .in("membership_id", ids)
         .is("deleted_at", null);
-      for (const p of (mine ?? []) as Array<{ membership_id: string; units_used: number; units_total: number }>) {
-        if (Number(p.units_used) < Number(p.units_total)) held.add(p.membership_id);
+      const now = Date.now();
+      /* ⚠ an EXPIRED pass is not held — the database lets them buy another (3 Oct) */
+      for (const p of (mine ?? []) as Array<{ membership_id: string; units_used: number; units_total: number; expires_at?: string | null }>) {
+        const live = !p.expires_at || new Date(p.expires_at).getTime() > now;
+        if (Number(p.units_used) < Number(p.units_total) && live) held.add(p.membership_id);
       }
     }
   }
@@ -153,6 +209,7 @@ export async function findMembershipsOnSale(supabase: SupabaseClient, businessId
     units: n(r.units),
     priceInr: n(r.price_inr),
     totalCount: n(r.total_count),
+    validityDays: validity.get(String(r.id)) ?? null,
     leftCount: n(r.left_count),
     held: held.has(String(r.id)),
   }));
@@ -161,7 +218,10 @@ export async function findMembershipsOnSale(supabase: SupabaseClient, businessId
 export async function findMembershipHolders(supabase: SupabaseClient, membershipId: string): Promise<MembershipHolder[]> {
   const { data, error } = await supabase.rpc("membership_holders", { p_membership_id: membershipId });
   if (error) return [];
-  return ((data ?? []) as Array<Record<string, unknown>>).map((r) => ({
+  const rows = (data ?? []) as Array<Record<string, unknown>>;
+  const expiry = await findPassExpiry(supabase, rows.map((r) => String(r.pass_id)));
+  return rows.map((r) => ({
+    ...(expiry.get(String(r.pass_id)) ?? NO_EXPIRY),
     passId: String(r.pass_id),
     userId: String(r.user_id),
     name: String(r.full_name ?? "Someone"),
@@ -192,7 +252,10 @@ export async function findMembershipClassUsage(supabase: SupabaseClient, members
 export async function findMyMemberships(supabase: SupabaseClient): Promise<MyPass[]> {
   const { data, error } = await supabase.rpc("my_memberships");
   if (error) throw new Error(`memberships.mine failed: ${error.message}`);
-  return ((data ?? []) as Array<Record<string, unknown>>).map((r) => ({
+  const rows = (data ?? []) as Array<Record<string, unknown>>;
+  const expiry = await findPassExpiry(supabase, rows.map((r) => String(r.pass_id)));
+  return rows.map((r) => ({
+    ...(expiry.get(String(r.pass_id)) ?? NO_EXPIRY),
     passId: String(r.pass_id),
     membershipId: String(r.membership_id),
     name: String(r.name),
@@ -267,6 +330,8 @@ export interface MembershipInput {
   priceInr: number;
   totalCount: number;
   status: "live" | "draft";
+  /** 30 · 60 · 90 days from purchase (3 Oct 2026) */
+  validityDays: ValidityDays;
 }
 
 export async function saveMembership(supabase: SupabaseClient, input: MembershipInput): Promise<string> {
@@ -279,6 +344,9 @@ export async function saveMembership(supabase: SupabaseClient, input: Membership
     p_price_inr: input.priceInr,
     p_total_count: input.totalCount,
     p_status: input.status,
+    /* ⚠ needs `20261003160000` — PostgREST resolves an RPC by its argument
+       NAMES, so this key is a PGRST202 until that migration is applied */
+    p_validity_days: input.validityDays,
   });
   if (error) throw new Error(error.message);
   return String((data as { id: string }).id);

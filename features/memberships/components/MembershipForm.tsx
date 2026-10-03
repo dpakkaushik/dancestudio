@@ -3,7 +3,6 @@
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import {
-  EL,
   FORM_LABEL,
   FORM_INPUT,
   FormBar,
@@ -15,8 +14,9 @@ import {
   formPrimary,
 } from "@/components/ui/FormPage";
 import { saveMembershipAction } from "@/features/memberships/server-actions/memberships";
+import { VALIDITY_CHOICES, type ValidityDays } from "@/repositories/memberships";
 import { DOS_TOOLS } from "@/features/businesses/components/biz-kit";
-import { INK, LILAC, SUB } from "@/lib/design/tokens";
+import { INK, SUB } from "@/lib/design/tokens";
 
 /** NEW MEMBERSHIP — a page now, wearing the ADD CLASS anatomy (21 Sep 2026, the
  *  user: *"same should be for new routine and new membership"*).
@@ -53,7 +53,13 @@ export function MembershipForm({
   const [pending, start] = useTransition();
   const [confirm, setConfirm] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
-  const [f, setF] = useState({ name: "", unit: "classes" as "classes" | "hours", units: "10", price: "", total: "20" });
+  /* ⚠⚠ HOURS ONLY (3 Oct 2026, the user: "membership only according to hours not
+     classes"). A membership is sold as a number of HOURS and every seat spends
+     the length of its class off it, so a 90-minute class and a 60-minute one cost
+     what they are worth. The Classes / Hours switch is gone; `unit` is always
+     "hours". ⚠ Passes already sold in classes keep working exactly as bought —
+     a pass snapshots its unit (`membership_passes.unit`) and nothing rewrites it. */
+  const [f, setF] = useState({ name: "", unit: "hours" as const, units: "10", price: "", total: "20", validity: 30 as ValidityDays });
 
   const fire = (m: string) => {
     setToast(m);
@@ -69,7 +75,8 @@ export function MembershipForm({
      order the fields are asked */
   const blockers: string[] = [];
   if (!f.name.trim()) blockers.push("Name the membership first");
-  if (!Number.isFinite(units) || units <= 0) blockers.push(`Say how many ${f.unit} it is worth`);
+  if (!Number.isFinite(units) || units <= 0) blockers.push("Say how many hours it is worth");
+  else if (Math.round(units * 2) !== units * 2) blockers.push("Hours go in halves — 1, 1.5, 2…");
   if (!Number.isFinite(price) || price < 0) blockers.push("Put a price on it — ₹0 is allowed");
   if (!Number.isFinite(total) || total < 1) blockers.push("Say how many of these may be sold");
   const ready = blockers.length === 0;
@@ -85,6 +92,7 @@ export function MembershipForm({
         priceInr: price,
         totalCount: total,
         status: "live",
+        validityDays: f.validity,
       });
       setConfirm(false);
       if (out.error) return fire(out.error);
@@ -102,36 +110,34 @@ export function MembershipForm({
     });
   };
 
-  const unitWord = f.unit === "hours" ? "hours" : "classes";
+  const unitWord = units === 1 ? "hour" : "hours";
 
   return (
     <FormPage title="Add membership" sheet={sheet} onClose={() => router.back()} onBack={() => router.back()}>
       <>
           <div style={FORM_LABEL}>NAME</div>
-          <input aria-label="Membership name" value={f.name} onChange={(e) => setF((x) => ({ ...x, name: e.target.value.slice(0, 80) }))} placeholder="e.g. 10 classes" style={FORM_INPUT} />
+          <input aria-label="Membership name" value={f.name} onChange={(e) => setF((x) => ({ ...x, name: e.target.value.slice(0, 80) }))} placeholder="e.g. 10 hours" style={FORM_INPUT} />
 
-          <div style={FORM_LABEL}>WHAT IT IS WORTH</div>
-          <div style={{ display: "flex", gap: 7, marginBottom: 8 }}>
-            {([["classes", "Classes"], ["hours", "Hours"]] as const).map(([k, l]) => (
+          <div style={FORM_LABEL}>HOURS</div>
+          <input aria-label="How many hours" inputMode="decimal" value={f.units} onChange={(e) => setF((x) => ({ ...x, units: e.target.value }))} placeholder="How many hours" style={FORM_INPUT} />
+
+          {/* ⚠ VALID FOR (3 Oct 2026, the user: "membership should have a validity
+              date in no. of days to use it from 30days, 60 days, 90 days") —
+              counted from the day it is bought; hours left after it lapse */}
+          <div style={FORM_LABEL}>VALID FOR</div>
+          <div role="group" aria-label="Valid for" style={{ display: "flex", gap: 7, marginBottom: 10 }}>
+            {VALIDITY_CHOICES.map((d) => (
               <button
-                key={k}
+                key={d}
                 type="button"
-                onClick={() => setF((x) => ({ ...x, unit: k }))}
-                aria-pressed={f.unit === k}
-                style={{ flex: 1, padding: 10, borderRadius: 10, cursor: "pointer", fontSize: 12, fontWeight: 800, fontFamily: "inherit", border: "none", background: f.unit === k ? INK : EL, color: f.unit === k ? LILAC : SUB }}
+                onClick={() => setF((x) => ({ ...x, validity: d }))}
+                aria-pressed={f.validity === d}
+                style={{ flex: 1, padding: "10px 4px", borderRadius: 10, cursor: "pointer", fontSize: 12, fontWeight: 800, fontFamily: "inherit", border: "none", background: f.validity === d ? INK : "var(--el)", color: f.validity === d ? "var(--solid)" : SUB }}
               >
-                {l}
+                {d} days
               </button>
             ))}
           </div>
-          <input
-            aria-label={f.unit === "hours" ? "How many hours" : "How many classes"}
-            inputMode="decimal"
-            value={f.units}
-            onChange={(e) => setF((x) => ({ ...x, units: e.target.value }))}
-            placeholder={f.unit === "hours" ? "How many hours" : "How many classes"}
-            style={FORM_INPUT}
-          />
 
           <div style={FORM_LABEL}>PRICE</div>
           <input aria-label="Price" inputMode="numeric" value={f.price} onChange={(e) => setF((x) => ({ ...x, price: e.target.value }))} placeholder="₹ — 0 for a free one" style={FORM_INPUT} />
@@ -164,7 +170,7 @@ export function MembershipForm({
         >
           <FormSummary
             tint={DOS_TOOLS.memberships.c}
-            head={<span style={{ fontSize: 11.5, fontWeight: 800 }}>🎟 {units} {unitWord} · {total} on sale</span>}
+            head={<span style={{ fontSize: 11.5, fontWeight: 800 }}>🎟 {units} {unitWord} · valid {f.validity} days · {total} on sale</span>}
           >
             <b style={{ fontSize: 15 }}>{f.name.trim()}</b>
             <div style={{ fontSize: 12, marginTop: 4, fontWeight: 800, color: price === 0 ? "#22C55E" : INK }}>{price === 0 ? "FREE" : rupees(price)}</div>

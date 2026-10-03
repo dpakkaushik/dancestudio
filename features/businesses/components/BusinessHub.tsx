@@ -131,9 +131,9 @@ export function BusinessHub({
 }: {
   /** who taught you at each studio you learned at, keyed by studio id (1 Oct 2026) */
   teachersByStudio?: Record<string, LearnedFrom[]>;
-  /** ⚠ WHICH COLUMN IS OPEN (29 Sep 2026) — `?show=learned`, the URL as the
-   *  state, like every other segmented desk in the app. */
-  show?: "own" | "learned";
+  /** ⚠ WHICH COLUMN IS OPEN (29 Sep 2026) — `?show=team` / `?show=learned`, the
+   *  URL as the state, like every other segmented desk in the app. */
+  show?: "own" | "team" | "learned";
   memberships: MyMembership[];
   /** THE STUDIOS YOU HAVE TAKEN CLASSES AT (18 Sep 2026, the user's Home grid:
    *  a person's Studios tile lists them) — every business behind one of your
@@ -534,9 +534,16 @@ export function BusinessHub({
              head rather than becoming a third: both are "a studio that is not
              yours", and dropping it would lose an artist's teaching history (R22).
              A studio is still listed once. */
+          /* ⚠⚠ AND THREE COLUMNS SINCE 3 Oct 2026 (the user: "Studio column name-
+             Manage, Team and Student"). Taught-at stopped riding inside the second
+             column: a studio whose TEAM you are on and a studio where you are a
+             STUDENT are two relationships, and naming them is what the columns are
+             for. A studio is still listed once — `learnt` already leaves out the
+             studios you own and the ones you are on the team of. */
           segments={[
-            { key: "own", href: "/business", label: "Yours", n: myStudios.length, aria: "The studios you own" },
-            { key: "learned", href: "/business?show=learned", label: "Where you learned", n: learnt.length + theirs.length, aria: "The studios you have learned and taught at" },
+            { key: "own", href: "/business", label: "Manage", n: myStudios.length, aria: "The studios you own" },
+            { key: "team", href: "/business?show=team", label: "Team", n: theirs.length, aria: "The studios whose team you are on" },
+            { key: "learned", href: "/business?show=learned", label: "Student", n: learnt.length, aria: "The studios you have learned at" },
           ]}
           panels={[
             {
@@ -604,6 +611,27 @@ export function BusinessHub({
               ),
             },
             {
+              key: "team",
+              node: (
+                <>
+                  {/* every studio whose team you are on — a trainer's seat, or the
+                      Visiting Faculty seat accepting a class gives you (R19) */}
+                  {theirs.length > 0 ? (
+                    <>
+                      <Head>STUDIOS YOU HAVE TAUGHT AT</Head>
+                      {theirs.map((t) => plainCard(t))}
+                    </>
+                  ) : (
+                    <div style={{ fontSize: 11.5, color: SUB, padding: "4px 2px 0" }}>
+                      {isArtist
+                        ? "The studios whose team you are on will be listed here — accept a class at one and it appears."
+                        : "The studios whose team you are on will be listed here."}
+                    </div>
+                  )}
+                </>
+              ),
+            },
+            {
               key: "learned",
               node: (
                 <>
@@ -612,22 +640,9 @@ export function BusinessHub({
                       <Head>STUDIOS YOU HAVE LEARNT AT</Head>
                       {learnt.map((t) => learnedCard(t))}
                     </>
-                  ) : null}
-                  {/* every studio whose team you are on — a trainer's seat, or the
-                      Visiting Faculty seat accepting a class gives you (R19) */}
-                  {theirs.length > 0 ? (
-                    <div style={{ marginTop: learnt.length > 0 ? 20 : 0 }}>
-                      <Head>STUDIOS YOU HAVE TAUGHT AT</Head>
-                      {theirs.map((t) => plainCard(t))}
-                    </div>
-                  ) : null}
-                  {learnt.length === 0 && theirs.length === 0 ? (
-                    <div style={{ fontSize: 11.5, color: SUB, padding: "4px 2px 0" }}>
-                      {isArtist
-                        ? "The studios you teach at and learn at will be listed here — teach a class at one, or book one."
-                        : "The studios you learn at will be listed here once you have booked a class."}
-                    </div>
-                  ) : null}
+                  ) : (
+                    <div style={{ fontSize: 11.5, color: SUB, padding: "4px 2px 0" }}>The studios you learn at will be listed here once you have booked a class.</div>
+                  )}
                 </>
               ),
             },

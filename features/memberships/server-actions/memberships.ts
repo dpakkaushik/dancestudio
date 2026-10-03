@@ -30,11 +30,18 @@ const saveSchema = z.object({
   membershipId: z.string().uuid().nullable().optional(),
   businessId: z.string().uuid(),
   name: z.string().trim().min(1, "Name the membership").max(80),
-  unit: z.enum(["classes", "hours"]),
-  units: z.number().positive("Say how many").max(999),
+  /* ⚠ HOURS ONLY (3 Oct 2026, the user: "membership only according to hours not
+     classes"). The app no longer makes a class-based membership; passes already
+     sold in classes keep their own snapshot and keep working. ⚠ The DATABASE
+     still accepts "classes" (`save_membership` and the CHECK) — narrowing it is a
+     migration and goes in front of the user first. */
+  unit: z.literal("hours", { message: "A membership is sold in hours" }),
+  units: z.number().positive("Say how many hours").max(999).refine((n) => Number.isInteger(n * 2), "Hours go in halves"),
   priceInr: z.number().int().min(0).max(1000000),
   totalCount: z.number().int().min(1, "Say how many of these may be sold").max(10000),
   status: z.enum(["live", "draft"]),
+  /* 30 · 60 · 90 days from purchase (3 Oct 2026); the RPC refuses anything else too */
+  validityDays: z.union([z.literal(30), z.literal(60), z.literal(90)], { message: "Pick how long it lasts — 30, 60 or 90 days" }),
 });
 
 function revalidateMembershipSurfaces(businessId?: string) {

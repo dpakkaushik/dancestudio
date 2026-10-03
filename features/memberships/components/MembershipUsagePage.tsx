@@ -5,7 +5,7 @@ import { DOS_UI, INK, LILAC, SUB } from "@/lib/design/tokens";
 import { money as rupees } from "@/features/payouts/components/earnings-kit";
 import { photoUrl } from "@/lib/media/photo";
 import type { MembershipClassUse, MembershipHolder, MembershipWithUsage, PassUse } from "@/repositories/memberships";
-import { ProgressBar, SpentOn } from "./MembershipsScreen";
+import { ProgressBar, SpentOn, expiryWords, unitWord, validityWords } from "./usage-kit";
 import { MembershipOffSale } from "./MembershipOffSale";
 
 /** ONE MEMBERSHIP AND ITS USAGE (19 Sep 2026, the user: "make sure able to track
@@ -19,7 +19,6 @@ import { MembershipOffSale } from "./MembershipOffSale";
  *  what came in, and how much of what was sold has been danced. */
 
 const card = { background: "var(--card)", border: "1.5px solid var(--el)", borderRadius: 16, padding: "13px 14px", marginBottom: 10 } as const;
-const unitWord = (unit: "classes" | "hours", n: number) => (unit === "hours" ? `${n} ${n === 1 ? "hour" : "hours"}` : `${n} ${n === 1 ? "class" : "classes"}`);
 
 export function MembershipUsagePage({
   membership,
@@ -42,9 +41,13 @@ export function MembershipUsagePage({
   return (
     <div style={{ background: LILAC, color: INK, maxWidth: 430, margin: "0 auto", fontFamily: DOS_UI, minHeight: "100vh", padding: "14px 16px 40px", boxSizing: "border-box" }}>
       <div style={{ borderRadius: 22, padding: 18, background: "linear-gradient(135deg,#B45309,#7C3AED)", color: "#fff", marginBottom: 12 }}>
+        {/* ⚠ "MEMBERSHIP DETAILS" (3 Oct 2026, the user: "Usage & Holders to be
+            called Membership Details") — the page says what it is over the name */}
+        <div style={{ fontSize: 9.5, fontWeight: 900, letterSpacing: 1, opacity: 0.85, marginBottom: 4 }}>MEMBERSHIP DETAILS</div>
         <h1 style={{ fontSize: 22, fontWeight: 900, margin: 0 }}>{m.name}</h1>
         <div style={{ fontSize: 11.5, opacity: 0.9, marginTop: 3 }}>
           {unitWord(m.unit, m.units)} · {m.priceInr === 0 ? "Free" : rupees(m.priceInr)}
+          {validityWords(m.validityDays) ? ` · ${validityWords(m.validityDays)}` : ""}
           {m.status === "draft" ? " · draft" : ""}
         </div>
       </div>
@@ -63,7 +66,7 @@ export function MembershipUsagePage({
       {m.unitsSold > 0 ? (
         <div style={card}>
           <div style={{ fontSize: 9.5, fontWeight: 900, letterSpacing: 0.9, color: "var(--muted)", marginBottom: 2 }}>HOW MUCH OF WHAT WAS SOLD HAS BEEN DANCED</div>
-          <ProgressBar used={m.unitsUsed} total={m.unitsSold} tint="#8B5CF6" testId="usage-progress" />
+          <ProgressBar used={m.unitsUsed} total={m.unitsSold} tint="#8B5CF6" unit={m.unit} leftWord="still owed" usedWord="danced" testId="usage-progress" />
           {/* ⚠ THE OTHER SIDE OF THE SAME BAR, SAID AS WHAT IT IS (30 Sep 2026): what
               was sold and not yet danced is a class the studio still OWES — the
               liability behind the money under "Taken". Counted, never stored. */}
@@ -113,9 +116,13 @@ export function MembershipUsagePage({
                     {face ? <Image src={face} alt="" width={30} height={30} style={{ width: "100%", height: "100%", objectFit: "cover" }} /> : h.name.split(" ").map((x) => x[0]).join("").slice(0, 2).toUpperCase()}
                   </span>
                   <span style={{ flex: 1, minWidth: 0, fontSize: 12.5, fontWeight: 800, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{h.name}</span>
-                  <span style={{ flexShrink: 0, fontSize: 9, fontWeight: 900, color: h.status === "active" ? "#22C55E" : SUB }}>{h.status === "used_up" ? "USED UP" : h.status.toUpperCase()}</span>
+                  {/* EXPIRED is read off the date — the row is still `active` underneath */}
+                  <span style={{ flexShrink: 0, fontSize: 9, fontWeight: 900, color: h.status === "active" && !h.expired ? "#22C55E" : h.expired ? "#F87171" : SUB }}>
+                    {h.status === "active" && h.expired ? "EXPIRED" : h.status === "used_up" ? "USED UP" : h.status.toUpperCase()}
+                  </span>
                 </Link>
-                <ProgressBar used={h.unitsUsed} total={h.unitsTotal} testId="holder-progress" />
+                {expiryWords(h) ? <div style={{ fontSize: 10.5, color: h.expired ? "#F87171" : SUB, marginTop: 4 }}>{expiryWords(h)}</div> : null}
+                <ProgressBar used={h.unitsUsed} total={h.unitsTotal} tint="#B45309" unit={h.unit} testId="holder-progress" />
                 <SpentOn uses={usesByPass[h.passId] ?? []} unit={h.unit} />
               </div>
             );

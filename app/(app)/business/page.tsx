@@ -28,7 +28,8 @@ import { findMyMemberships } from "@/repositories/businesses";
  *  between the studio and Discover, with the button that sets the mandate up. */
 export default async function BusinessPage({ searchParams }: { searchParams: Promise<Record<string, string | undefined>> }) {
   /* which column the ADDRESS asks for — the URL is the state (19 Sep 2026) */
-  const show = (await searchParams).show === "learned" ? "learned" : "own";
+  const asked = (await searchParams).show;
+  const show = asked === "learned" ? "learned" : asked === "team" ? "team" : "own";
   const supabase = await createSupabaseServerClient();
   const {
     data: { user },

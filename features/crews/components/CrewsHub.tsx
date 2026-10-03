@@ -29,7 +29,6 @@ const sinceWords = (iso: string) => new Intl.DateTimeFormat("en-IN", { timeZone:
  *  said out loud, on their own bar. */
 function CrewCard({ crew, own, since, foundedByMe = false }: { crew: CrewSummary; own: boolean; since: string; foundedByMe?: boolean }) {
   const tint = CREW_TINT;
-  const others = crew.styles.length > 1 ? ` +${crew.styles.length - 1}` : "";
   return (
     <ToolCard href={own ? `/crews/${crew.id}/manage` : `/crew/${crew.id}`} hrefLabel={`${crew.name} — ${own ? "manage the crew" : "open the profile"}`}>
       <ToolHead
@@ -42,11 +41,13 @@ function CrewCard({ crew, own, since, foundedByMe = false }: { crew: CrewSummary
         right={<ToolChip word={own ? "LEADER" : "MEMBER"} fg={own ? tint : SUB} bg={own ? `${tint}18` : "var(--el)"} />}
       />
       <ToolBody>
+        {/* ⚠ NO "DANCES" TILE (3 Oct 2026, the user: "can remove dances from crew
+            cards") — the crew's styles are its own page's business; the card is
+            read by how many dance in it and since when */}
         <ToolFacts
           tint={tint}
           items={[
             { label: crew.members === 1 ? "Member" : "Members", value: crew.members },
-            { label: "Dances", value: `${crew.style || "—"}${others}` },
             { label: own ? "Since" : "Joined", value: sinceWords(since) },
           ]}
         />
@@ -166,8 +167,11 @@ export function CrewsHub({
             sections
             top={hero}
             segments={[
-              { key: "led", href: "/crews", label: "Yours", n: led.length, aria: "The crews you created" },
-              { key: "in", href: "/crews?show=in", label: "You are in", n: member.length, aria: "The crews you are a part of" },
+              /* ⚠ MANAGE · MEMBER (3 Oct 2026, the user: "crew columns name- Manage
+                 and Member") — the words say what you DO with each crew; the arias
+                 stay the sentences a locator and a screen reader read */
+              { key: "led", href: "/crews", label: "Manage", n: led.length, aria: "The crews you created" },
+              { key: "in", href: "/crews?show=in", label: "Member", n: member.length, aria: "The crews you are a part of" },
             ]}
             panels={[
               { key: "led", node: <LedColumn led={led} /> },
