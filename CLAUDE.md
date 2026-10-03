@@ -2,6 +2,28 @@
 
 ## LAST SESSION (3 Oct 2026) — replaced on every push (Rule 13)
 
+> ### PART REFUNDS READ AS PART REFUNDS, THE LOWER HALVES LOSE THE OPPOSITE THEME, AND A REAL SANDBOX REFUND IS DRIVEN END TO END (3 Oct 2026, latest) — ⚠ Rule 9 (money labels) · ✅ `20261003150000` APPLIED (dry run 18/18 re-run first, the only pending file, read back live 8/8) · ✅ PUSHED AND LIVE (`99755dc`: Vercel READY, alias confirmed on the sha through the API, and ON THE LIVE SITE `stranger-smoke` all green · `shoot-invert` 38/38 · `shoot-inbox` 39/39 · `shoot-enquiry-money` **14/14**, a real Cashfree sandbox payment and refund)
+> * **The enquiry migration's two leftovers closed**: the demo world re-seeded with
+>   the re-cut enquiries, and `scripts/shots/shoot-enquiry-money.js` (new) drives a
+>   REAL sandbox payment and refund through an accepted ending — the only stand-in
+>   is Cashfree's checkout WINDOW (the probe pays the app's own session through
+>   the Order Pay API with `testsuccess@gocash`, which really captures).
+> * ⚠ **It found that a part refund marked the whole payment refunded** (#0bb): ₹300
+>   of ₹500 and the receipt sat under Refunded; and a desk-settled refund never
+>   marked the payment at all. The user chose "the label follows the money":
+>   Invoices sum the processed refund rows (**"₹500 · Part refunded · ₹300
+>   refunded"**, filed under Paid), and `apply_refund_update` /
+>   `settle_refund_offline` mark refunded only once the refunds cover the payment.
+>   No figure was ever wrong — Earnings and income subtract the refund rows.
+> * **The opposite-theme panel is off Discover, the Inbox and Home** (C115, the
+>   user: *"remove dual tone effect"* → *"the whole opposite-theme panel"*):
+>   `InvertedPanel ground="page"`, the profile pages keep theirs. `--muted` is
+>   `#858585` / `#6e665b` so it clears 4.5:1 on the card veil.
+> * **Verified:** typecheck 0 · lint 0 · build green · e2e **56/56** across two
+>   runs (one Discover assertion assumed Pune had no Latin class — the re-seeded
+>   demo world has a Salsa class there; re-pinned to the run's own class) ·
+>   `shoot-tiles` 136/136 · and the live checks above.
+
 > ### AN ENQUIRY RUNS END TO END, AND THE LOWER HALVES ARE GLASS (3 Oct 2026, latest) — ⚠⚠ Rule 9 (MONEY: refunds, additions, the order subject) · ✅ `20261003140000` APPLIED (dry run **110/110** re-run first, `db-push -DryRun` exactly the one file, read back live **7/7**: both tables RLS-on with SELECT-only policies, the four old doors gone, the twelve new doors authenticated-only, the three payment helpers executable by no client role, anon **40** unchanged, PostgREST reloaded) · proofs `enquiries payments notifications crews` **4/4** on the migrated schema · `shoot-inbox` **39/39** · the whole e2e suite **48 passed / 1 failed / 7 did not run**, the red a STALE ASSERTION (the wiring slice asked the business's side for the old dashed *"No number on this enquiry — quote them here instead"*, which the rebuilt page deliberately drops; re-cut to assert no Call link), then the happy path once more lost "ROOM ALREADY BUSY" to a 120 s page-load timeout with **1.8 GB of 18.9 GB commit free** (the machine, the fifth time for that segment), then **the happy path 19/19 in 12.7 min** — all 56 green across the runs on one bundle · ✅ PUSHED on the user's *"apply and push once all green"* (given in the previous chat, repeated in this one)
 > **The translucent lower panel** (`c9d38f8`, the user: *"lower half of discover
 > inbox and home should be transluscent with double tone effect"*): `.dos-invert`
@@ -10067,7 +10089,9 @@ summary; the report has the evidence.
 
 ## NEXT TO DO — replaced on every push (Rule 13)
 
-0bb. **⚠ A PARTIAL REFUND MARKS THE WHOLE PAYMENT "REFUNDED" (found 3 Oct 2026 by
+0bb. **~~A PARTIAL REFUND MARKS THE WHOLE PAYMENT "REFUNDED"~~ — ✅ APPLIED AND LIVE
+   3 Oct 2026** (`99755dc`, `shoot-enquiry-money` 14/14 on the live site). Kept for
+   the record. **(found 3 Oct 2026 by
    `shoot-enquiry-money`).** `apply_refund_update` (and `settle_refund_offline`)
    set `payments.status` and `orders.status` to `refunded` whenever a refund
    lands, whatever its amount — always right for a class (a refund is the whole
