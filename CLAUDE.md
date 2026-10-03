@@ -2,7 +2,7 @@
 
 ## LAST SESSION (3 Oct 2026) — replaced on every push (Rule 13)
 
-> ### THE FIGURES AND THE CHIPS ON ONE LINE, THE POSTER'S SPACE KEPT ON HOMES TOO, AND THE INBOX IN THREE SHAPES (3 Oct 2026, latest) — no migration
+> ### THE FIGURES AND THE CHIPS ON ONE LINE, THE POSTER'S SPACE KEPT ON HOMES TOO, AND THE INBOX IN THREE SHAPES (3 Oct 2026, latest) — no migration · ✅ PUSHED AND LIVE (`b507374`: Vercel READY, alias confirmed on the sha through the API, and ON THE LIVE SITE `stranger-smoke` 8/8 · the row one line at 430/390/360/320 · `shoot-inbox` 39/39 · `shoot-hero` 189/189), pushed on the user's *"push to live"* with the whole e2e suite running on `:3100` — it finished **56/56 in 18.5 min on one worker**, no red at any point
 > The user: *"public view follow following in line with stats, qr code button
 > row. always"*, *"and poster if not updated on should leave space on home as
 > well"*, and *"settings for enquiry requests and invites should not have the
