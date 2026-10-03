@@ -2,7 +2,7 @@
 
 ## LAST SESSION (3 Oct 2026) — replaced on every push (Rule 13)
 
-> ### EVERY HOME TOOL PAGE IN DISCOVER'S SECTIONS (3 Oct 2026, latest) — no migration · ✅ PUSHED on the user's *"fix and push all 3 points"* — ⚠ the previous chat's note said "committed locally"; it was NOT (the tree was uncommitted and `DeskSections.tsx` untracked), and a `next start` of its own was still holding :3100. **The leftover sweep ran too** (the user: *"just clear out old test studios"*): `--show-kept` first — kept 23 profiles and 13 businesses, all real or demo — then 27 test businesses and 5 e2e accounts soft-deleted, `ensure-test-phone-profiles` after
+> ### EVERY HOME TOOL PAGE IN DISCOVER'S SECTIONS (3 Oct 2026, latest) — no migration · ✅ PUSHED AND LIVE (`31e6650`: Vercel READY, alias confirmed on the sha through the API, `stranger-smoke` 8/8 and `shoot-tiles` 136/136 ON THE LIVE SITE) on the user's *"fix and push all 3 points"* — ⚠ the previous chat's note said "committed locally"; it was NOT (the tree was uncommitted and `DeskSections.tsx` untracked), and a `next start` of its own was still holding :3100. **The leftover sweep ran too** (the user: *"just clear out old test studios"*): `--show-kept` first — kept 23 profiles and 13 businesses, all real or demo — then 27 test businesses and 5 e2e accounts soft-deleted, `ensure-test-phone-profiles` after
 > The user: *"how you segrated sections in discover inbox and home now do that fo
 > all pages inside the home tools for all profiles."* Row C116.
 > * **`components/ui/DeskSections.tsx`**: `DeskTop` (a `TopPanel` squircle),
