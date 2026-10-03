@@ -1,4 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { dosClassLabel } from "@/lib/constants/styles";
 import { findClassArtists } from "./classPeople";
 import { findPassExpiry, findPassUsesMany, type PassExpiry, type PassUse } from "./memberships";
 
@@ -41,6 +42,17 @@ export interface StudentPass extends PassExpiry {
   uses: PassUse[];
 }
 
+/** a routine taught in one class — what the class tile's breakup links to */
+export interface StudentClassRoutine {
+  routineId: string;
+  title: string;
+  style: string;
+  songTitle: string | null;
+  songUrl: string | null;
+  songIsFile: boolean;
+  videoUrl: string | null;
+}
+
 /** one class they danced here — every session of it they were checked in to */
 export interface StudentClass {
   classId: string;
@@ -50,6 +62,36 @@ export interface StudentClass {
   sessions: number;
   minutes: number;
   lastAt: string;
+  /** who took the class — its confirmed artist (4 Oct 2026); null when none */
+  artist: { userId: string; name: string; photoPath: string | null } | null;
+  /** every session of it they were checked in to, newest first — the breakup */
+  sessionList: Array<{ startsAt: string; minutes: number }>;
+  /** the routines this class teaches — the breakup's links */
+  routines: StudentClassRoutine[];
+}
+
+/** one payment this business took from this student (4 Oct 2026) */
+export interface StudentPayment {
+  id: string;
+  what: string;
+  kind: "class" | "membership" | "enquiry" | "other";
+  amountInr: number;
+  /** processed refunds against it — the label follows the money (3 Oct 2026) */
+  refundedInr: number;
+  paidAt: string;
+  method: string | null;
+  href: string | null;
+}
+
+export interface StudentEarnings {
+  /** everything captured from them here, refunded or not */
+  cameInInr: number;
+  refundedInr: number;
+  netInr: number;
+  byKind: { class: number; membership: number; enquiry: number; other: number };
+  payments: StudentPayment[];
+  /** false when the read hit its guard and the totals are not the whole story */
+  complete: boolean;
 }
 
 /** one routine taught in a class they were checked in to here */
@@ -89,7 +131,12 @@ export interface StudentRecord {
   /** the routines those classes taught, most danced first (4 Oct 2026) */
   routines: StudentRoutine[];
   passes: StudentPass[];
+  /** what this business took from them (4 Oct 2026) — the Earnings column */
+  earnings: StudentEarnings;
 }
+
+/** a runaway guard, not a page size — the totals say when it is hit */
+const MAX_PAYMENTS = 500;
 
 type One<T> = T | T[] | null;
 const one = <T,>(v: One<T>): T | null => (Array.isArray(v) ? (v[0] ?? null) : v);
@@ -119,7 +166,7 @@ export async function findStudentRecord(
   userId: string,
   now: Date = new Date(),
 ): Promise<StudentRecord | null> {
-  const [profile, attendance, bookings, passes] = await Promise.all([
+  const [profile, attendance, bookings, passes, payments] = await Promise.all([
     supabase.from("profiles").select("id, full_name, profile_photo_path, city").eq("id", userId).is("deleted_at", null).maybeSingle(),
     supabase
       .from("attendance")
@@ -143,6 +190,20 @@ export async function findStudentRecord(
       .is("deleted_at", null)
       .order("created_at", { ascending: false })
       .limit(50),
+    /* ⚠ MONEY THIS BUSINESS TOOK FROM THIS PERSON (4 Oct 2026, the user: "replace
+       with earnings from this student"). Orders only — `subscription_*` is a
+       studio paying DanceOS, never a student paying the studio. A refunded
+       payment still CAME IN; what went back is its own figure. */
+    supabase
+      .from("payments")
+      .select("id, amount_inr, method, created_at, refunds (amount_inr, status, deleted_at), orders!inner (membership_id, enquiry_quote_id, enquiry_part, classes (style, level, share_slug), memberships (name))")
+      .eq("business_id", businessId)
+      .eq("user_id", userId)
+      .eq("kind", "order")
+      .in("status", ["captured", "refunded"])
+      .is("deleted_at", null)
+      .order("created_at", { ascending: false })
+      .limit(MAX_PAYMENTS),
   ]);
 
   const p = profile.data as { id: string; full_name: string | null; profile_photo_path: string | null; city: string | null } | null;
@@ -214,9 +275,24 @@ export async function findStudentRecord(
   /* ── the classes, one row each — counted off the same sessions (4 Oct 2026) ── */
   const byClass = new Map<string, StudentClass>();
   for (const s of sessions) {
-    const c = byClass.get(s.classId) ?? { classId: s.classId, shareSlug: s.shareSlug, style: s.style, level: s.level, sessions: 0, minutes: 0, lastAt: s.startsAt };
+    const a = artists.get(s.classId);
+    const c: StudentClass =
+      byClass.get(s.classId) ??
+      {
+        classId: s.classId,
+        shareSlug: s.shareSlug,
+        style: s.style,
+        level: s.level,
+        sessions: 0,
+        minutes: 0,
+        lastAt: s.startsAt,
+        artist: a ? { userId: a.userId, name: a.name, photoPath: a.avatarPath ?? null } : null,
+        sessionList: [],
+        routines: [],
+      };
     c.sessions += 1;
     c.minutes += s.minutes;
+    c.sessionList.push({ startsAt: s.startsAt, minutes: s.minutes });
     if (s.startsAt > c.lastAt) c.lastAt = s.startsAt;
     byClass.set(s.classId, c);
   }
@@ -228,10 +304,13 @@ export async function findStudentRecord(
      record must not 500 over a list beside it. ── */
   const routines: StudentRoutine[] = [];
   if (classes.length > 0) {
-    type RtRow = { class_id: string; routines: One<{ id: string; title: string; style: string; level: string; profiles: One<{ full_name: string | null; profile_photo_path: string | null }> }> };
+    type RtRow = {
+      class_id: string;
+      routines: One<{ id: string; title: string; style: string; level: string; song_title: string | null; song_url: string | null; song_is_file: boolean | null; video_url: string | null; profiles: One<{ full_name: string | null; profile_photo_path: string | null }> }>;
+    };
     const { data: rt } = await supabase
       .from("class_routines")
-      .select("class_id, routines (id, title, style, level, profiles (full_name, profile_photo_path))")
+      .select("class_id, routines (id, title, style, level, song_title, song_url, song_is_file, video_url, profiles (full_name, profile_photo_path))")
       .in("class_id", classes.map((c) => c.classId))
       .is("deleted_at", null)
       .limit(200);
@@ -239,6 +318,11 @@ export async function findStudentRecord(
     for (const row of (rt ?? []) as unknown as RtRow[]) {
       const r = one(row.routines);
       if (!r) continue;
+      /* the class tile's breakup — this routine, on this class, with its links */
+      const cls = byClass.get(row.class_id);
+      if (cls && !cls.routines.some((x) => x.routineId === r.id)) {
+        cls.routines.push({ routineId: r.id, title: r.title, style: r.style, songTitle: r.song_title, songUrl: r.song_url, songIsFile: Boolean(r.song_is_file), videoUrl: r.video_url });
+      }
       const maker = one(r.profiles);
       const entry = byRoutine.get(r.id) ?? { routineId: r.id, title: r.title, style: r.style, level: r.level, makerName: maker?.full_name ?? null, makerPhotoPath: maker?.profile_photo_path ?? null, sessions: 0, classes: 0, classIds: new Set<string>() };
       if (!entry.classIds.has(row.class_id)) {
@@ -272,6 +356,40 @@ export async function findStudentRecord(
     uses: usesByPass[r.id] ?? [],
   }));
 
+  /* ── what this business took from them — the Earnings column (4 Oct 2026) ── */
+  type PayRow = {
+    id: string;
+    amount_inr: number;
+    method: string | null;
+    created_at: string;
+    refunds: Array<{ amount_inr: number; status: string; deleted_at: string | null }> | null;
+    orders: One<{ membership_id: string | null; enquiry_quote_id: string | null; enquiry_part: string | null; classes: One<{ style: string; level: string; share_slug: string }>; memberships: One<{ name: string }> }>;
+  };
+  const payRows = (payments.data ?? []) as unknown as PayRow[];
+  const byKind = { class: 0, membership: 0, enquiry: 0, other: 0 };
+  const payList: StudentPayment[] = payRows.map((r) => {
+    const o = one(r.orders);
+    const cls = one(o?.classes ?? null);
+    const mem = one(o?.memberships ?? null);
+    const kind: StudentPayment["kind"] = cls ? "class" : o?.membership_id ? "membership" : o?.enquiry_quote_id ? "enquiry" : "other";
+    const amount = n(r.amount_inr);
+    /* the processed refund ROWS, never the stored word (3 Oct 2026) */
+    const back = Math.min(amount, (r.refunds ?? []).filter((x) => x.status === "processed" && !x.deleted_at).reduce((s, x) => s + n(x.amount_inr), 0));
+    byKind[kind] += amount;
+    return {
+      id: r.id,
+      what: cls ? dosClassLabel(cls.style, cls.level) : mem ? mem.name : kind === "enquiry" ? `Enquiry · ${o?.enquiry_part === "advance" ? "advance" : o?.enquiry_part === "balance" ? "balance" : "paid in full"}` : "Booking",
+      kind,
+      amountInr: amount,
+      refundedInr: back,
+      paidAt: r.created_at,
+      method: r.method,
+      href: cls ? `/c/${cls.share_slug}` : o?.membership_id ? `/memberships/${o.membership_id}` : null,
+    };
+  });
+  const cameIn = payList.reduce((s, x) => s + x.amountInr, 0);
+  const refunded = payList.reduce((s, x) => s + x.refundedInr, 0);
+
   return {
     userId: p.id,
     name: p.full_name?.trim() || "Someone on DanceOS",
@@ -291,5 +409,13 @@ export async function findStudentRecord(
     classes,
     routines,
     passes: passList,
+    earnings: {
+      cameInInr: cameIn,
+      refundedInr: refunded,
+      netInr: cameIn - refunded,
+      byKind,
+      payments: payList,
+      complete: payRows.length < MAX_PAYMENTS,
+    },
   };
 }

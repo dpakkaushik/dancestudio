@@ -46,6 +46,10 @@ export interface Student {
   sources: StudentSource[];
   booked: number;
   attended: number;
+  /** routines taught in the classes they were checked in to here (4 Oct 2026) */
+  routines: number;
+  /** distinct dance styles of those classes (4 Oct 2026) */
+  styles: number;
   /** a live pass they hold with this business, if any */
   passName: string | null;
 }
@@ -62,8 +66,11 @@ interface ProfileRow {
  *  SOFT: a studio's student list must still draw when one of them is refused. */
 export async function findStudents(supabase: SupabaseClient, businessId: string): Promise<Student[]> {
   const [attendance, bookings, passes, leads] = await Promise.all([
-    supabase.from("attendance").select("user_id").eq("business_id", businessId).is("deleted_at", null).limit(4000),
-    supabase.from("class_bookings").select("user_id").eq("business_id", businessId).is("deleted_at", null).limit(4000),
+    /* the class and its style ride along (4 Oct 2026) — the card's Routines and
+       Styles boxes are counted off the same rows as Attended, so the three can
+       never disagree */
+    supabase.from("attendance").select("user_id, class_id, classes (style)").eq("business_id", businessId).is("deleted_at", null).limit(4000),
+    supabase.from("class_bookings").select("user_id, status").eq("business_id", businessId).is("deleted_at", null).limit(4000),
     /* the passes this business sold, and who holds them. `memberships` carries
        the business; `membership_passes` carries the holder. */
     supabase
@@ -77,13 +84,44 @@ export async function findStudents(supabase: SupabaseClient, businessId: string)
   ]);
 
   const attended = new Map<string, number>();
-  for (const r of ((attendance.data ?? []) as Array<{ user_id: string }>)) {
+  const classesOf = new Map<string, Set<string>>();
+  const stylesOf = new Map<string, Set<string>>();
+  type AttRow = { user_id: string | null; class_id: string; classes: { style: string } | Array<{ style: string }> | null };
+  for (const r of ((attendance.data ?? []) as unknown as AttRow[])) {
+    /* a walk-in's attendance names nobody (20260929130000) — it is not a student row */
+    if (!r.user_id) continue;
     attended.set(r.user_id, (attended.get(r.user_id) ?? 0) + 1);
+    (classesOf.get(r.user_id) ?? classesOf.set(r.user_id, new Set()).get(r.user_id)!).add(r.class_id);
+    const c = Array.isArray(r.classes) ? r.classes[0] : r.classes;
+    if (c?.style) (stylesOf.get(r.user_id) ?? stylesOf.set(r.user_id, new Set()).get(r.user_id)!).add(c.style);
   }
+  /* ⚠ BOOKED IS A LIVE SEAT, said the same way the student's own page says it
+     (4 Oct 2026): a cancelled seat and a waitlist place were counted here and not
+     there, so the card and the page behind it printed two different numbers */
   const booked = new Map<string, number>();
-  for (const r of ((bookings.data ?? []) as Array<{ user_id: string }>)) {
+  for (const r of ((bookings.data ?? []) as Array<{ user_id: string | null; status: string }>)) {
+    if (!r.user_id || r.status !== "enrolled") continue;
     booked.set(r.user_id, (booked.get(r.user_id) ?? 0) + 1);
   }
+
+  /* the routines those classes taught — ONE read for the whole desk. It DEGRADES
+     to none: a routine count must not be the reason the student list fails. */
+  const routinesOfClass = new Map<string, Set<string>>();
+  const allClassIds = [...new Set([...classesOf.values()].flatMap((s) => [...s]))];
+  if (allClassIds.length > 0) {
+    /* ⚠ `routines!inner`, so a link to a routine this reader cannot see (a draft,
+       one taken down) does not count — the student's own page drops the same
+       rows, and the probe caught the card saying 2 where the page said 1 */
+    const { data: rt } = await supabase.from("class_routines").select("class_id, routine_id, routines!inner (id)").in("class_id", allClassIds.slice(0, 500)).is("deleted_at", null).limit(2000);
+    for (const row of ((rt ?? []) as Array<{ class_id: string; routine_id: string }>)) {
+      (routinesOfClass.get(row.class_id) ?? routinesOfClass.set(row.class_id, new Set()).get(row.class_id)!).add(row.routine_id);
+    }
+  }
+  const routineCount = (userId: string) => {
+    const seen = new Set<string>();
+    for (const c of classesOf.get(userId) ?? []) for (const r of routinesOfClass.get(c) ?? []) seen.add(r);
+    return seen.size;
+  };
   const holding = new Map<string, string>();
   /* ⚠ PostgREST types an `!inner` embed as an ARRAY even where it resolves to
      one row, so the name is read off whichever shape arrives rather than
@@ -132,6 +170,8 @@ export async function findStudents(supabase: SupabaseClient, businessId: string)
       sources,
       booked: booked.get(id) ?? 0,
       attended: attended.get(id) ?? 0,
+      routines: routineCount(id),
+      styles: stylesOf.get(id)?.size ?? 0,
       passName: holding.get(id) ?? null,
     });
   }
@@ -139,7 +179,7 @@ export async function findStudents(supabase: SupabaseClient, businessId: string)
   /* the walk-ins: a real student with no account, so no figures to print */
   for (const l of leadRows) {
     if (l.user_id) continue;
-    out.push({ userId: null, leadId: l.id, name: l.name, photoPath: null, mobile: l.mobile, sources: ["added"], booked: 0, attended: 0, passName: null });
+    out.push({ userId: null, leadId: l.id, name: l.name, photoPath: null, mobile: l.mobile, sources: ["added"], booked: 0, attended: 0, routines: 0, styles: 0, passName: null });
   }
 
   /* busiest first, then alphabetical — a studio looks for its regulars */

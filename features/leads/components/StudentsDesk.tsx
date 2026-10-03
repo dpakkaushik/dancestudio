@@ -139,14 +139,12 @@ export function StudentsDesk({
       {list.map((s) => {
         const key = s.userId ?? s.leadId ?? s.name;
         const walkIn = !s.userId;
-        const wa = s.mobile ? waDigits(s.mobile) : "";
         /* ⚠⚠ A STUDENT CARD (3 Oct 2026, the user: *"better and bigger cards …
            each has a profile linked to it which should be visible with profile
            pic and name and big … buttons segregated"*). The PERSON leads, at a
            profile's size, and their face and name are a door to their page where
-           there IS a page — a walk-in has none and does not pretend. Then the three
-           figures a student is read by — how often they came, what they booked,
-           the pass they hold — and the buttons on a bar of their own. */
+           there IS a page — a walk-in has none and does not pretend. Then the four
+           figures a student is read by, and one button on a bar of its own. */
         return (
           <ToolCard key={key} testId="student-card">
             <ToolHead
@@ -165,55 +163,44 @@ export function StudentsDesk({
                  own Membership column, one press away. */
               right={s.passName ? <ToolChip word="MEMBER" fg={TINT} bg={`${TINT}1c`} testId="student-member" /> : null}
             />
+            {/* ⚠ FOUR BOXES (4 Oct 2026, the user: "boxes- Classes attended,
+                classes booked, routines learned and dance styles count"), two to a
+                row so each label is said in full rather than cut to a fragment in
+                a quarter of the card. All four come off the same attendance and
+                booking rows, so a box and the page behind it agree. */}
             <ToolBody>
               <ToolFacts
                 tint={TINT}
                 items={[
-                  { label: "Attended", value: s.attended },
-                  { label: "Booked", value: s.booked },
+                  { label: "Classes attended", value: s.attended, testId: "student-card-attended" },
+                  { label: "Classes booked", value: s.booked, testId: "student-card-booked" },
+                ]}
+              />
+              <ToolFacts
+                tint={TINT}
+                style={{ marginTop: 6 }}
+                items={[
+                  { label: "Routines learned", value: s.routines, testId: "student-card-routines" },
+                  { label: "Dance styles", value: s.styles, testId: "student-card-styles" },
                 ]}
               />
             </ToolBody>
-            {s.userId || wa || s.leadId ? (
+            {s.userId || (s.leadId && walkIn) ? (
               <ToolActions>
+                {/* ⚠ ONE BUTTON (4 Oct 2026, the user: "remove all buttons and one
+                    common button called Student detail which takes inside page.
+                    clicking on profile pic takes on profile"). Profile, Stats,
+                    Membership and WhatsApp are gone: the face and the name above
+                    are the door to their profile, and every column of the page
+                    behind this button is one press inside it. */}
                 {s.userId ? (
-                  <Link href={`/person/${s.userId}`} aria-label={`Profile — ${s.name}`} style={toolBtn("tinted", TINT)}>
-                    Profile
+                  <Link href={`/business/${businessId}/students/${s.userId}`} aria-label={`Student detail — ${s.name}`} data-testid="student-detail" style={toolBtn("primary", TINT)}>
+                    Student detail
                   </Link>
                 ) : null}
-                {/* ⚠ STATS AND MEMBERSHIP, NEXT TO PROFILE (3 Oct 2026, the user:
-                    "Students should also have a stats Button next to profile which
-                    should give detail students stats from that artist or Studio …
-                    another button called membership which shows membership details
-                    and usage of that particular student"). Both open the one page
-                    about this person HERE, on its two segments. A walk-in has no
-                    account, so no record to read and neither button. */}
-                {s.userId ? (
-                  <Link href={`/business/${businessId}/students/${s.userId}?show=stats`} aria-label={`Stats — ${s.name}`} style={toolBtn("secondary", TINT)}>
-                    Stats
-                  </Link>
-                ) : null}
-                {s.userId ? (
-                  <Link href={`/business/${businessId}/students/${s.userId}?show=membership`} aria-label={`Membership — ${s.name}`} style={toolBtn("secondary", TINT)}>
-                    Membership
-                  </Link>
-                ) : null}
-                {/* WhatsApp is the glyph alone now, so four doors fit one bar; its
-                    accessible name still says what it does */}
-                {wa.length >= 10 ? (
-                  <a href={`https://wa.me/${wa}`} target="_blank" rel="noreferrer" aria-label={`WhatsApp ${s.name}`} title="WhatsApp" style={toolBtn("secondary", TINT, s.userId ? { flex: "0 0 40px", padding: "10px 0" } : undefined)}>
-                    {s.userId ? (
-                      <svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                        <path d="M21 11.5a8.4 8.4 0 0 1-12.4 7.4L3 20.5l1.6-5.4A8.5 8.5 0 1 1 21 11.5Z" />
-                      </svg>
-                    ) : (
-                      "WhatsApp"
-                    )}
-                  </a>
-                ) : null}
-                {/* only a row the desk itself typed can be removed — the rest are
-                    consequences of attendance and passes, and un-attending is not
-                    a thing a button can do */}
+                {/* ⚠ A WALK-IN KEEPS ITS REMOVE, and only that: it has no account,
+                    so no page behind a Student detail button, and Remove is the one
+                    way a row the desk itself typed can come off the list */}
                 {s.leadId && walkIn ? (
                   <button type="button" disabled={busyLead === s.leadId} aria-label={`Remove ${s.name}`} onClick={() => void remove(s.leadId as string, s.name)} style={toolBtn("danger", TINT)}>
                     Remove

@@ -24,10 +24,11 @@ export default async function StudentRecordPage({
   if (!UUID_RE.test(businessId) || !UUID_RE.test(userId)) {
     notFound();
   }
-  /* Classes is the first column and the default (4 Oct 2026); the card's Stats
-     and Membership buttons name their own */
+  /* Classes is the first column and the default (4 Oct 2026). Earnings replaced
+     Routines the same day, so an old `?show=routines` link lands on Classes —
+     the routines are inside each class tile now. */
   const asked = (await searchParams).show;
-  const show: StudentShow = asked === "stats" || asked === "membership" || asked === "routines" ? asked : "classes";
+  const show: StudentShow = asked === "stats" || asked === "membership" || asked === "earnings" ? asked : "classes";
   const supabase = await createSupabaseServerClient();
   const {
     data: { user },
