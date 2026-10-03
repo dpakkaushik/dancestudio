@@ -2,7 +2,7 @@
 
 ## LAST SESSION (3 Oct 2026) — replaced on every push (Rule 13)
 
-> ### PROFILE PAGES IN TWO SHAPES, A FOLLOWED CARD ON DISCOVER, AND AN INBOX THAT FILTERS LIKE DISCOVER (3 Oct 2026, latest) — no migration · the whole e2e suite **56/56 in ONE run, 20.4 min on one worker** · COMMITTED, NOT PUSHED (waiting on the user's word, and on item 4)
+> ### PROFILE PAGES IN TWO SHAPES, A FOLLOWED CARD ON DISCOVER, AND AN INBOX THAT FILTERS LIKE DISCOVER (3 Oct 2026, latest) — no migration · the whole e2e suite **56/56 in ONE run, 20.4 min on one worker** · ✅ PUSHED AND LIVE (`212d72a`, on the next chat's *"push to live from previous chat"*: `db-push -DryRun` showed nothing pending, typecheck 0 and lint 0 re-run, Vercel READY with the alias confirmed on the sha through the API, and ON THE LIVE SITE `stranger-smoke` 8/8 · `shoot-inbox` 34/34 · `shoot-invert` 18/18 · `shoot-hero` 187/187). ⚠ The user's item 4 was cut off and is still unknown
 > The user: *"1, dual tone, rounded squircles and on public view for all
 > profiles similar to home tab. 2. followed by you section on discover in
 > seprated squircle card in middle section. 3. inbox- setting inside top
