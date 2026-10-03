@@ -36,7 +36,21 @@ import { PlatformIcon, TYPE } from "./profile-kit";
  *  ⚠ `alignItems: center` since 20 Sep 2026, because the row now ends in the
  *  three chips and a 44px control against a top-aligned number reads as a
  *  mistake; the numbers still start the row. */
-export const FIGURE_ROW: CSSProperties = { display: "flex", alignItems: "center", gap: 22, marginTop: 12, flexWrap: "wrap" };
+/* ⚠⚠ ONE LINE, ALWAYS (3 Oct 2026, the user: "public view follow following in
+   line with stats, qr code button row. always"). It was `flexWrap: "wrap"` with
+   44px chips, and MEASURED that wrapped on every screen including the app's own
+   430px: the two figures are 125px, the four chips 200px, the gaps 44px, the row
+   368px — one pixel over. So the row never wraps, the figures keep their size
+   (`FIGURE_GROUP`), and the CHIPS give way: each starts at 44px and shrinks
+   (staying round) into whatever width is left, down to 28px. That is flexbox
+   doing the arithmetic rather than a pixel guess that is wrong on the next
+   phone. */
+/* ⚠ measured at 320px too: right-aligned chips that do not fit spill LEFT, over
+   the figures, and `scrollWidth` does not count a spill that way — so the gaps
+   and the floor are sized for the narrowest phone, not only for 430 and 360 */
+export const FIGURE_ROW: CSSProperties = { display: "flex", alignItems: "center", gap: 8, marginTop: 12, flexWrap: "nowrap" };
+/** the two figures, as one block that never shrinks or wraps */
+export const FIGURE_GROUP: CSSProperties = { display: "flex", alignItems: "center", gap: 12, flexShrink: 0, whiteSpace: "nowrap" };
 
 /** THE THREE CHIPS — QR · STATS · FOLLOW (20 Sep 2026, the user: "Follow button
  *  to be a bell with qr code and stats. should be placed in same row as follower
@@ -51,10 +65,15 @@ export const FIGURE_ROW: CSSProperties = { display: "flex", alignItems: "center"
  *  One declaration for all three, because the last time a shared look was
  *  written out per component the rows drifted into three different bands. */
 export const PROFILE_CHIP: CSSProperties = {
-  flexShrink: 0,
-  width: 44,
-  height: 44,
-  borderRadius: 22,
+  /* 44px when there is room, shrinking with the row and never below 24 (3 Oct
+     2026) — `aspectRatio` keeps it a circle at whatever width it is given */
+  flex: "0 1 44px",
+  minWidth: 24,
+  maxWidth: 44,
+  aspectRatio: "1 / 1",
+  boxSizing: "border-box",
+  padding: 0,
+  borderRadius: 999,
   display: "inline-flex",
   alignItems: "center",
   justifyContent: "center",
@@ -69,7 +88,7 @@ export const PROFILE_CHIP: CSSProperties = {
 
 /** the chips sit at the row's right edge — `marginLeft: auto` is what puts them
  *  there without a second flex container fighting the figures for space */
-export const CHIP_ROW: CSSProperties = { display: "flex", alignItems: "center", gap: 8, marginLeft: "auto", flexShrink: 0 };
+export const CHIP_ROW: CSSProperties = { display: "flex", alignItems: "center", justifyContent: "flex-end", gap: 5, marginLeft: "auto", flex: "1 1 auto", minWidth: 0 };
 export const figureNum: CSSProperties = { display: "block", fontSize: 22, fontWeight: 900, lineHeight: 1, letterSpacing: -0.6, fontFamily: DOS_DISPLAY, color: INK, fontVariantNumeric: "tabular-nums" };
 export const figureLabel: CSSProperties = { display: "block", ...TYPE.micro, color: MUTED, marginTop: 4 };
 
@@ -185,7 +204,7 @@ export function EntityBand({
   return (
     <>
       <div style={FIGURE_ROW}>
-        {figures}
+        <div style={FIGURE_GROUP}>{figures}</div>
         {chips ? <div style={CHIP_ROW}>{chips}</div> : null}
       </div>
       <EntityStyles styles={styles} aria={styleAria} />

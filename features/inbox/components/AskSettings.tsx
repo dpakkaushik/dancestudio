@@ -31,15 +31,20 @@ function Shell({ title, summary, testId, children }: { title: string; summary: s
         onClick={() => setOpen((v) => !v)}
         style={{ display: "flex", alignItems: "center", gap: 10, width: "100%", background: "none", border: "none", padding: 0, cursor: "pointer", fontFamily: "inherit", color: "var(--text)", textAlign: "left" }}
       >
-        <span style={{ flex: 1, minWidth: 0 }}>
-          <span style={{ ...fieldLabel, margin: 0, display: "block" }}>{title}</span>
-          <span style={{ fontSize: 11.5, fontWeight: 800, color: SUB }}>{summary}</span>
-        </span>
+        {/* ⚠ ONE HEADING (3 Oct 2026, the user: "settings for enquiry requests
+            and invites should not have the second heading") — the state line
+            moved inside the opened panel */}
+        <span style={{ ...fieldLabel, margin: 0, flex: 1, minWidth: 0 }}>{title}</span>
         <span aria-hidden="true" style={{ fontSize: 15, color: MUTED, transform: open ? "rotate(90deg)" : "none", transition: "transform .15s" }}>
           ›
         </span>
       </button>
-      {open ? children : null}
+      {open ? (
+        <>
+          <div style={{ fontSize: 11.5, fontWeight: 800, color: SUB, marginTop: 8 }}>{summary}</div>
+          {children}
+        </>
+      ) : null}
     </div>
   );
 }

@@ -64,8 +64,9 @@ export function HeroRail({
    *  the user: "remove the top backdrop from home tab completly behinde posters").
    *  The thrown shadow and the 24px of air above the poster were the backdrop: a
    *  sleeve lit on the page's ground. Inside the top squircle the panel IS the
-   *  ground, so the poster sits flush in it, and `IdentityHero` does not draw the
-   *  rail at all when there is no poster to show. */
+   *  ground, so the poster sits flush in it. ⚠ With no poster the rail is still
+   *  drawn, as the empty banner (the user, later the same day: a profile with no
+   *  poster "should leave that space", on profiles and on homes). */
   bare?: boolean;
   name: string;
   /** the two colours an empty header stands on */

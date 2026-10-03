@@ -11,7 +11,7 @@ import type { FollowedCrew, PersonFollowRow } from "@/repositories/follows";
 import type { FollowedBusiness } from "@/types/follow";
 import { kindOf, type Profile, type SocialLink } from "@/types/profile";
 import { LinksRowEditor } from "./LinksRowEditor";
-import { CHIP_ROW, FIGURE_ROW, figureLabel, figureNum } from "./profile-band";
+import { CHIP_ROW, FIGURE_GROUP, FIGURE_ROW, figureLabel, figureNum } from "./profile-band";
 import { useRecordLists } from "./RecordLists";
 import { StylesRowEditor } from "./StylesRowEditor";
 import { RoleBadge, Sheet, followTint, initialsOf, type FollowGlyph } from "./profile-kit";
@@ -106,6 +106,7 @@ export function HomeBand({
     <>
       {/* ── THE TWO FIGURES, AND BOTH OPEN THEIR LIST (19 Sep 2026) ── */}
       <div style={FIGURE_ROW}>
+        <div style={FIGURE_GROUP}>
         <button type="button" aria-label={`${followers.length} followers`} onClick={() => { setFollowSeg("All"); setFollowList("followers"); }} style={{ background: "none", border: "none", padding: 0, cursor: "pointer", textAlign: "left", fontFamily: "inherit" }}>
           <span data-testid="home-followers" style={figureNum}>{followers.length}</span>
           <span style={figureLabel}>Followers</span>
@@ -114,6 +115,7 @@ export function HomeBand({
           <span data-testid="home-following" style={figureNum}>{followingN}</span>
           <span style={figureLabel}>Following</span>
         </button>
+        </div>
         {chips ? <div style={CHIP_ROW}>{chips}</div> : null}
       </div>
 

@@ -162,7 +162,17 @@ const pressed = async (loc) => (await loc.getAttribute("aria-pressed").catch(() 
     check(/\bZQ\b/.test(recvText) && !/\bKH\b/.test(recvText), "studio's card: the sender's face, not the studio's own");
     check((await op.getByRole("button", { name: /^Enquiry settings/ }).count()) === 1, "studio inbox: the studio's Enquiry settings moved with the desk");
     check((await op.getByRole("button", { name: "Sent enquiries" }).count()) === 0, "studio inbox: no Sent enquiries side — a studio sends none");
+    /* ⚠ THREE SHAPES (3 Oct 2026, the user: "Received, sent, completed part of
+       upper half. everything below this and above search enquiries is the middle
+       half … search enquiries to till end of page third half") */
+    check((await op.getByTestId("top-panel").getByTestId("inbox-sides").count()) === 1, "inbox: Received · Completed are in the TOP squircle (3 Oct 2026)");
+    check((await op.getByTestId("inbox-overview").getByTestId("pipeline-breakup").count()) === 1, "inbox: the Breakup is in the MIDDLE squircle, its own shape (3 Oct 2026)");
+    check((await op.getByTestId("inbox-panel").getByRole("searchbox").or(op.getByTestId("inbox-panel").getByRole("textbox")).count()) >= 1 && (await op.getByTestId("inbox-overview").getByRole("textbox").count()) === 0, "inbox: the search starts the THIRD panel, under the overview (3 Oct 2026)");
+    check((await op.getByTestId("inbox-overview").getByRole("heading", { name: "Breakup", exact: true }).count()) === 1 && (await op.getByText("Pipeline breakup").count()) === 0, "inbox: it is called Breakup now, not Pipeline breakup (3 Oct 2026)");
+    check(/Total · \d+ enquir/.test(await op.getByTestId("pipeline-breakup").innerText().catch(() => "")), "inbox: the Breakup leads with its total and how many enquiries make it (3 Oct 2026)");
+    await op.screenshot({ path: path.join(__dirname, "shots", "inbox-studio-received.png"), fullPage: true });
     await op.getByRole("button", { name: "Completed enquiries", exact: true }).click();
+    await op.screenshot({ path: path.join(__dirname, "shots", "inbox-studio-completed.png"), fullPage: true });
     check((await op.getByRole("link", { name: `Private Sessions enquiry from Zed Quill ${stamp}` }).count()) === 1, "studio › Enquiries › Completed: the LOST enquiry is here");
 
     /* ── THE OWNER'S OWN INBOX: what they sent, answered or withdrawn ── */

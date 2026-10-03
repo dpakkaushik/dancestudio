@@ -169,7 +169,6 @@ export function PublicProfile({
         {/* ── the profile, lit like a player — the one hero every profile page wears ── */}
         <IdentityHero
           bare
-          reserveHeader
           testId="public-hero"
           name={business.name}
           grad={RG}

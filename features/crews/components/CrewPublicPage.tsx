@@ -99,7 +99,6 @@ export function CrewPublicPage({
         <TopPanel style={{ marginTop: 12 }}>
         <IdentityHero
           bare
-          reserveHeader
           testId="crew-public-hero"
           name={crew.name}
           grad={RG}

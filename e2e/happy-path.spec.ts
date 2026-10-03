@@ -1272,6 +1272,10 @@ test.describe.serial("DanceOS, end to end", () => {
        (judging is a person's job), an artist page five, an organization three —
        so the assertion is that a real count is stated rather than which one. */
     await expect(owner.getByRole("button", { name: /^Enquiry settings/ }).first()).toBeVisible();
+    /* ⚠ the count is INSIDE the settings since 3 Oct 2026 (the user: "settings
+       for enquiry requests and invites should not have the second heading") —
+       the closed card is its title alone, so the count is read once it is open */
+    await owner.getByRole("button", { name: /^Enquiry settings/ }).first().click();
     await expect(owner.getByText(/^\d+ of \d+ kinds$/).first()).toBeVisible();
     await owner.getByRole("link", { name: `Private Sessions enquiry from ${learnerName}` }).click();
     await owner.waitForURL(/\/inbox\/enquiries\/[0-9a-f-]+$/);

@@ -125,25 +125,21 @@ export function IdentityHero({
   corner,
   detailsEdit = null,
   bare = false,
-  reserveHeader = false,
   testId,
   children,
 }: {
-  /** ⚠ A PROFILE PAGE KEEPS THE POSTER'S SPACE (3 Oct 2026, the user: "profiles
-   *  who havent uploaded poster on profiles should leave that space in public
-   *  view it is messing up the alignment"). `bare` alone drops the rail when
-   *  there is no poster — right on a HOME, where the empty square was the
-   *  backdrop the user asked to remove — and on a profile page it made a
-   *  profile with no poster a different shape from every profile beside it, the
-   *  disc and the name jumping to the top of the card. With this the empty
-   *  banner is drawn at the banner's own size, on the profile's own gradient. */
-  reserveHeader?: boolean;
   /** ⚠ A HOME'S HERO STANDS IN THE TOP SQUIRCLE (3 Oct 2026, the user: "even top
    *  of all home, dicover and inbox to be rounded squircle. remove the top
    *  backdrop from home tab completly behinde posters"). Bare, it draws no ground
-   *  of its own, takes no gutter (the panel has one), and with no poster it draws
-   *  NO rail at all — the empty gradient square was the backdrop — so the corner
-   *  chips and the posters' pencil move into the identity row's right edge. */
+   *  of its own and takes no gutter (the panel has one).
+   *  ⚠⚠ AND IT ALWAYS KEEPS THE POSTER'S SPACE (3 Oct 2026, later, the user:
+   *  "profiles who havent uploaded poster on profiles should leave that space in
+   *  public view it is messing up the alignment", then "and poster if not
+   *  updated on should leave space on home as well"). For a few hours a bare
+   *  hero with no poster drew NO rail, so a profile without one was a different
+   *  shape from every profile beside it — the disc and the name jumping to the
+   *  top of the card. The empty banner is drawn at the banner's own size on the
+   *  profile's own gradient now, everywhere, and the corner always pins to it. */
   bare?: boolean;
   name: string;
   /** the two colours the disc's initials and an empty header are painted in */
@@ -237,7 +233,6 @@ export function IdentityHero({
      the height of nobody's name; top-aligned, the picture and the word USER /
      ARTIST / STUDIO / ORGANIZATION share one baseline, which is how every
      profile screen people already know lays this out. */
-  const noHeader = bare && shots.length === 0 && !reserveHeader;
   const cornerColumn: CSSProperties = { display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 6 };
   return (
     <div
@@ -247,11 +242,11 @@ export function IdentityHero({
       {/* THE CORNER IS A COLUMN (19 Sep 2026, the user: "give an eye to view
           profile on the home tab below edit on top right") — the pencil, then
           the eye under it, on every page that has both */}
-      {corner && !noHeader ? (
+      {corner ? (
         <div data-testid="hero-corner" style={{ position: "absolute", right: bare ? 8 : 12, top: bare ? 8 : 12, zIndex: 3, ...cornerColumn }}>{corner}</div>
       ) : null}
 
-      {noHeader ? null : <HeroRail name={name} grad={grad} shots={shots} edit={headerEdit} bare={bare} />}
+      <HeroRail name={name} grad={grad} shots={shots} edit={headerEdit} bare={bare} />
 
       <div style={{ position: "relative", padding: bare ? 0 : "14px 16px" }}>
         <div style={{ display: "flex", alignItems: "flex-start", gap: 13 }}>
@@ -331,17 +326,6 @@ export function IdentityHero({
             {meta ? <div style={{ display: "flex", alignItems: "center", flexWrap: "wrap", gap: 8, marginTop: 6, fontSize: 13, fontWeight: 800, color: INK }}>{meta}</div> : null}
             {detailsEdit}
           </div>
-          {/* with no poster rail there is no corner to pin to — the chips are
-              the row's own right edge, the posters' pencil under them */}
-          {noHeader && (corner || headerEdit) ? (
-            /* `dos-corner-plain` (globals.css): the chips' dark scrim exists to
-               read on a PHOTOGRAPH, and here they stand on the card — so they
-               take the card's own two colours instead */
-            <div data-testid="hero-corner" className="dos-corner-plain" style={{ ...cornerColumn, flexShrink: 0 }}>
-              {corner}
-              {headerEdit}
-            </div>
-          ) : null}
         </div>
         {styles.length ? (
           <div style={{ display: "flex", gap: 5, overflowX: "auto", scrollbarWidth: "none", marginTop: 12, alignItems: "center" }}>

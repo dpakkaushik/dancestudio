@@ -2,7 +2,41 @@
 
 ## LAST SESSION (3 Oct 2026) — replaced on every push (Rule 13)
 
-> ### SCHEDULE IN THE TOP HALF, THE CITY IN WORDS, THE POSTER'S SPACE KEPT, AND A CARD PER CONTACT BUTTON (3 Oct 2026, latest) — no migration
+> ### THE FIGURES AND THE CHIPS ON ONE LINE, THE POSTER'S SPACE KEPT ON HOMES TOO, AND THE INBOX IN THREE SHAPES (3 Oct 2026, latest) — no migration
+> The user: *"public view follow following in line with stats, qr code button
+> row. always"*, *"and poster if not updated on should leave space on home as
+> well"*, and *"settings for enquiry requests and invites should not have the
+> second heading. Received, sent, completed part of upper half. everything below
+> this and above search enquiries is the middle half and should have seprate
+> segragation. search enquiries to till end of page third half. pipeline breakup
+> name change to Breakup by stage and total written better."*
+> * **The figures row never wraps** (C112). Measured first: it wrapped on every
+>   width including 430 (figures 125 + chips 200 + gaps 44 in a 368 row). The
+>   figures are one fixed block and the chips flex from 44px down to 24px,
+>   round: 44 at 430, 42 at 390, 35 at 360, 25 at 320. ⚠ The first cut "fit" at
+>   320 and did not: right-aligned chips spill LEFT over the figures and
+>   `scrollWidth` never counts that direction — the measurement compares the
+>   first chip's left edge to the figures' right edge now.
+> * **The Inbox is three shapes** (C113): the top squircle holds the heading,
+>   the columns, the column's settings and **Received · Sent · Completed**; a
+>   middle squircle (`inbox-overview`) holds the three figures and the
+>   **Breakup** (renamed; the total leads at figure size with "Total · N
+>   enquiries", by type keeps its bars, by stage is one bar split by stage in the
+>   road's own colours with a chip per stage — `Breakup.tsx`); the inverted panel
+>   is the search and the cards. Requests and Invites draw no middle squircle.
+> * **The settings cards carry one heading** — the state line under each title
+>   ("4 of 4 kinds", "Taking every kind") moved inside the opened panel;
+>   `happy-path:1275` opens the card before reading the count.
+> * **Verified:** typecheck 0 · lint 0 · build green · the row measured at 430,
+>   390, 360 and 320 on an artist's and a crew's page, one line and no overlap ·
+>   `shoot-hero` 189/189 (both empty homes keep a 368×257 banner) ·
+>   `shoot-inbox` **39/39** (five new layout checks) · `shoot-invert` 18/18.
+> * **Every hero keeps the banner's space** (C111 widened): homes as well as
+>   profile pages. The `reserveHeader` flag of an hour earlier, the no-rail
+>   branch and `.dos-corner-plain` are deleted; `shoot-hero`'s two "an empty home
+>   draws no rail" checks are re-cut to assert the banner's height.
+
+> ### SCHEDULE IN THE TOP HALF, THE CITY IN WORDS, THE POSTER'S SPACE KEPT, AND A CARD PER CONTACT BUTTON (3 Oct 2026, latest) — no migration · ✅ PUSHED AND LIVE (`8dcbae5`: Vercel READY, alias confirmed on the sha through the API, and ON THE LIVE SITE `stranger-smoke` 8/8 · the stranger probe 30/30 · `shoot-hero` 189/189). Pushed on the user's *"push to live"* with the whole e2e suite still running on `:3100` — it finished **56/56 in 18.4 min on one worker**, no red at any point
 > The user: *"schedule on public view should be part of top half with contact
 > buttons. Location written in words next to dob should not be a hyperlink for
 > all profiles and only city name should be there. profiles who havent uploaded
@@ -14,9 +48,9 @@
 > * **The place on the hero is plain text, the city alone** (C110) — `HeroPlace`
 >   is a span now; a studio prints "Bengaluru", not "Indiranagar, Bengaluru". The
 >   way to Maps is the Location button.
-> * **A profile page keeps the banner's space** (C111) — `IdentityHero
->   reserveHeader` on the four profile pages draws the empty banner on the
->   profile's gradient at the banner's size; HOMES still draw no rail (C105).
+> * **A profile page keeps the banner's space** (C111) — the empty banner on the
+>   profile's gradient at the banner's size. ⚠ Widened to homes in the block
+>   above, and the `reserveHeader` flag this push added is gone with it.
 > * **The contact editor is a card per button** — glyph, "Shown on the page" /
 >   "Not shown" (with the reason when a filled box is still hidden), its own
 >   Remove, its box; Enquiry links to Inbox › Enquiries (the sheet still named
@@ -12445,6 +12479,9 @@ for the database schema. **The UI is not redesigned** — see Rule 2.
 - **SCHEDULE IN THE TOP HALF, THE CITY IN WORDS, THE POSTER'S SPACE KEPT, A CARD
   PER CONTACT BUTTON — 3 Oct 2026, no step number — no migration.** Rows
   C109–C111. Detail at the top.
+- **THE FIGURES ON ONE LINE, THE POSTER'S SPACE ON HOMES, THE INBOX IN THREE
+  SHAPES — 3 Oct 2026, no step number — no migration.** Rows C111 (widened),
+  C112, C113. Detail at the top.
 - **ENQUIRY FOLLOW-UPS, ONLINE ENQUIRY PAYMENT AND INBOX SETTINGS — 3 Oct 2026, no
   step number ⚠ (Rule 9: money + who may ask whom) — `20261003090000` APPLIED.**
   Accept · Ask to revise · Cancel for the sender, Completed · Lost · Cancelled for
@@ -17624,7 +17661,9 @@ Home. **Do not "restore parity" on these.**
 | C108 | The Inbox's settings disclosures open the lower panel; the breakup is a closed disclosure on Received/Sent only; enquiries filter by two chip rows; a quiet column says "all clear" | **The column's settings sit in the top squircle under the columns; the Pipeline breakup is always open, on Completed too; every column and side has Discover's filter anatomy** (`InboxFilters`: search, Filters · N with SORT · TYPE · STAGE/OUTCOME, quick type chips, Clear — the sheet portalled so it reads the page's theme); **a quiet column shows nothing** | 3 Oct 2026, the user: *"inbox- setting inside top squircle with heading, piepline breakup always open in enquires even in completed section, filters for inbox cards like on discove, remove all clear below headings"* |
 | C109 | The public page's Schedule is the one white bar under the action row, and since 3 Oct (C106) the first thing in the lower panel | **The last thing in the TOP squircle**, under the contact buttons (`ScheduleBar`), on a studio's/artist's page, a person's and the Profile tab; the lower panel opens on NEXT SESSIONS | 3 Oct 2026, the user: *"schedule on public view should be part of top half with contact buttons"* |
 | C110 | The place on the hero is underlined and opens Maps (10694-10698); a studio's reads "area, city" | **Plain text, the city alone**, on every profile and home (`HeroPlace` is a span) — a studio's way to Maps is its Location button | 3 Oct 2026, the user: *"Location written in words next to dob should not be a hyperlink for all profiles and only city name should be there"* |
-| C111 | C105: a hero with no poster draws no rail | **A profile PAGE keeps the banner's space** (`reserveHeader`), the empty banner on the profile's gradient; a HOME still draws none | 3 Oct 2026, the user: *"profiles who havent uploaded poster on profiles should leave that space in public view it is messing up the alignment"* |
+| C111 | C105: a hero with no poster draws no rail | **Every hero keeps the banner's space** — profile pages and homes — the empty banner on the profile's gradient, the corner pinned to it; the no-rail branch and `.dos-corner-plain` are deleted | 3 Oct 2026, the user: *"profiles who havent uploaded poster on profiles should leave that space in public view it is messing up the alignment"*, then *"and poster if not updated on should leave space on home as well"* — reversing C105's no-rail half |
+| C113 | C108: the Inbox is two shapes — the top squircle (heading, columns, settings) over one inverted panel holding the sides, the figures, the always-open "Pipeline breakup", the filters and the cards | **THREE SHAPES**: Received · Sent · Completed join the top squircle; the figures and the **Breakup** (renamed, total first, by stage as one split bar with chips) are a middle squircle of their own; the panel is the search to the end of the page. The settings cards lose their second line | 3 Oct 2026, the user: *"Received, sent, completed part of upper half. everything below this and above search enquiries is the middle half and should have seprate segragation. search enquiries to till end of page third half. pipeline breakup name change to Breakup by stage and total written better"* |
+| C112 | The figures row wraps (`flexWrap: wrap`), and with four 44px chips it wrapped on every width, the app's own 430 included (125 + 200 + 44 = 369 in 368) | **ONE LINE, ALWAYS**: the figures are one block that never shrinks (`FIGURE_GROUP`), the chips start at 44px and shrink round into what is left, down to 24px — flexbox's arithmetic, not a pixel guess | 3 Oct 2026, the user: *"public view follow following in line with stats, qr code button row. always"* |
 | C104 | Tool tiles are solid gradients of the tool's colour (BizSection 2497-2583) | **A quiet tile**: `--card` with a 1.5px `--el` border, the name in ink, and the colour only on a small tinted glyph | 3 Oct 2026, the user: *"better design for tool tiles"* → *"Same layout, polished"* → *"should have border and not that colorfull"* |
 | C105 | Each tab's head bleeds a wash across the full width; a home with no posters draws an empty gradient square | **The tops of Home (person, studio, crew), Discover and the Inbox are `TopPanel` squircles**, the Inbox's lower panel too; **a home with no posters draws no rail at all** and its corner chips move into the identity row | 3 Oct 2026, the user: *"inbox end page should also be squircle"*, *"even top of all home, dicover and inbox to be rounded squircle. remove the top backdrop from home tab completly behinde posters"* |
 | C99 | A studio and a crew pick their style one at a time (the single `DosStylePicker`, re-opened per style) | **ONE MULTI-PICKER** (`DosStyleMultiPicker`, the prototype's own `multi` mode, 3554): chips with ×, the first marked MAIN with ★ to promote, a searchable list that ticks, eight at most at creation | 2 Oct 2026, the user: *"dance style filter while creating studio and crew should be multi filter and better way to handle in the form"* |

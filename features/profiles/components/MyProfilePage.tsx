@@ -175,7 +175,6 @@ export function MyProfilePage({
         {/* ── THE PROFILE, LIT LIKE A PLAYER (10574) — the one hero every profile page wears ── */}
         <IdentityHero
           bare
-          reserveHeader
           testId="my-hero"
           name={profile.fullName}
           grad={ring}

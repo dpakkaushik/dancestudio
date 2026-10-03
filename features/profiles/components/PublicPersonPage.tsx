@@ -128,7 +128,6 @@ export function PublicPersonPage({
         {/* ── the profile, lit like a player — the one hero every profile page wears ── */}
         <IdentityHero
           bare
-          reserveHeader
           testId="person-hero"
           name={profile.fullName}
           grad={ring}

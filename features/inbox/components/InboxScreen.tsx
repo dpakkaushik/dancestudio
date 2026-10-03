@@ -18,7 +18,6 @@ import {
   ENQ_CLOSED,
   ENQ_STAGES,
   ENQ_STAGE_WORD,
-  ENQ_TINT,
   ENQ_TYPES,
   enquiryStage,
   enquiryValueInr,
@@ -26,9 +25,10 @@ import {
   type Enquiry,
   type EnquiryTypeKey,
 } from "@/types/enquiry";
-import { DOS_MONO, EnqIcon, agoWords, initialsOf, moneyShort, pressKey } from "./inbox-kit";
+import { DOS_MONO, agoWords, initialsOf, moneyShort, pressKey } from "./inbox-kit";
 import { EnquiryCard } from "@/features/enquiries/components/enquiry-kit";
 import { InboxFilters, NO_FILTER, applyInboxFilter, type InboxFilter, type InboxSort } from "./InboxFilters";
+import { Breakup } from "./Breakup";
 
 /** The Inbox, lifted from prototype S_chats (5617-6098) after internal chat was
  *  removed from the product: "what remains is the work — something somebody has
@@ -732,7 +732,8 @@ export function InboxScreen({
      waits on anybody), painted green so it never reads as owed. And a studio's
      or a crew's Enquiries desk has no Sent side: an enquiry is sent by a person. */
   const sideSwitch = (cur: Side3, set: (s: Side3) => void, nIn: number, nOut: number | null, nDone: number, noun: string, tint: string) => (
-    <div style={{ display: "flex", gap: 6, marginBottom: 10 }}>
+    /* in the TOP squircle since 3 Oct 2026, under the column's settings */
+    <div data-testid="inbox-sides" style={{ display: "flex", gap: 6, marginTop: 12 }}>
       {(
         [
           ["in", "Received", nIn, tint],
@@ -908,7 +909,43 @@ export function InboxScreen({
           user: "setting inside top squircle with heading") — what you take is
           about the column you are in, not one more card among its cards */}
       {colSettings}
+      {/* ⚠ RECEIVED · SENT · COMPLETED ARE PART OF THE UPPER HALF (3 Oct 2026, the
+          user: "Received, sent, completed part of upper half. everything below
+          this and above search enquiries is the middle half and should have
+          seprate segregation. search enquiries to till end of page third
+          half"). So the Inbox is three shapes: this squircle (the heading, the
+          columns, their settings and their sides), the overview squircle under
+          it (the figures and the breakup), and the panel holding the search and
+          the cards. */}
+      {sect === "req"
+        ? sideSwitch(rqSide, pickRqSide, askIn.length, askOut.length, doneAsks.length, "requests", REQ_TINT)
+        : sect === "join"
+          ? sideSwitch(rqSide, pickRqSide, joinIn.length, joinOut.length, doneJoins.length, "invitations", JOIN_TINT.invite ?? REQ_TINT)
+          : /* ⚠ NO SENT SIDE ON A STUDIO'S OR A CREW'S DESK (2 Oct 2026) — an
+               enquiry is sent by a person, so the toggle there could only ever
+               offer an empty half */
+            sideSwitch(enqSide, pickEnqSide, liveIn, receivedOnly ? null : liveOut, doneEnq.length, "enquiries", "#EC4899")}
       </TopPanel>
+
+      {/* ── THE MIDDLE HALF: what the side holds, at a glance (3 Oct 2026) — the
+          three figures and the Breakup, in a squircle of their own. Requests and
+          invites have no figures, so for them it is not drawn at all. ── */}
+      {sect === "enq" && ((enqSide !== "done" && side.length > 0) || brkRows.length > 0) ? (
+        <TopPanel testId="inbox-overview" style={{ margin: "0 16px 12px" }}>
+          {enqSide !== "done" && side.length > 0 ? (
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 7 }}>
+              {tiles.map(([v, l, s2, c2]) => (
+                <div key={l} style={{ background: "var(--solid)", border: "1.5px solid var(--el)", borderTop: `3px solid ${c2}`, borderRadius: 14, padding: "10px 9px" }}>
+                  <div style={{ fontFamily: DOS_MONO, fontSize: 16, fontWeight: 600, letterSpacing: -0.4 }}>{v}</div>
+                  <div style={{ fontSize: 8.5, fontWeight: 900, letterSpacing: 0.4, textTransform: "uppercase", color: "var(--sub)", marginTop: 2 }}>{l}</div>
+                  <div style={{ fontSize: 9.5, color: c2, fontWeight: 700, marginTop: 2, fontFamily: DOS_MONO }}>{s2}</div>
+                </div>
+              ))}
+            </div>
+          ) : null}
+          {brkRows.length > 0 ? <Breakup rows={brkRows} byType={brkByType} sum={sum} stageOf={st} first={!(enqSide !== "done" && side.length > 0)} /> : null}
+        </TopPanel>
+      ) : null}
       {/* ⚠ THE DUAL TONE, RISING FROM THE BOTTOM (3 Oct 2026, the user: "inbox
           dual tone theme from bottom like discover and home"). The heading and the
           three columns stand on the page's ground; everything they choose between
@@ -926,7 +963,6 @@ export function InboxScreen({
 
         {sect === "req" ? (
           <>
-            {sideSwitch(rqSide, pickRqSide, askIn.length, askOut.length, doneAsks.length, "requests", REQ_TINT)}
             {reqBase.length ? <InboxFilters value={fReq} onChange={setFReq} noun="requests" kinds={kindsOf(reqBase)} stages={stagesOf(reqBase, false)} stageLabel="OUTCOME" sorts={REQ_SORTS} /> : null}
             {reqBase.length === 0 ? (
               <div style={emptyBox}>
@@ -945,7 +981,6 @@ export function InboxScreen({
 
         {sect === "join" ? (
           <>
-            {sideSwitch(rqSide, pickRqSide, joinIn.length, joinOut.length, doneJoins.length, "invitations", JOIN_TINT.invite ?? REQ_TINT)}
             {joinBase.length ? <InboxFilters value={fJoin} onChange={setFJoin} noun="invitations" kinds={kindsOf(joinBase)} stages={stagesOf(joinBase, true)} stageLabel="OUTCOME" sorts={REQ_SORTS} /> : null}
             {joinBase.length === 0 ? (
               <div style={emptyBox}>
@@ -964,67 +999,7 @@ export function InboxScreen({
 
         {sect === "enq" ? (
           <>
-            {/* ⚠ WHAT YOU TAKE IS IN THE TOP SQUIRCLE now (3 Oct 2026), under the
-                column's heading — `colSettings` above. */}
-            {/* ⚠ NO SENT SIDE ON A STUDIO'S OR A CREW'S DESK (2 Oct 2026) — an
-                enquiry is sent by a person, so the toggle there could only ever
-                offer an empty half */}
-            {sideSwitch(enqSide, pickEnqSide, liveIn, receivedOnly ? null : liveOut, doneEnq.length, "enquiries", "#EC4899")}
-            {enqSide !== "done" && side.length > 0 ? (
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 7, marginBottom: 8 }}>
-                {tiles.map(([v, l, s2, c2]) => (
-                  <div key={l} style={{ background: "var(--card)", border: "1.5px solid var(--el)", borderTop: `3px solid ${c2}`, borderRadius: 14, padding: "10px 9px" }}>
-                    <div style={{ fontFamily: DOS_MONO, fontSize: 16, fontWeight: 600, letterSpacing: -0.4 }}>{v}</div>
-                    <div style={{ fontSize: 8.5, fontWeight: 900, letterSpacing: 0.4, textTransform: "uppercase", color: "var(--sub)", marginTop: 2 }}>{l}</div>
-                    <div style={{ fontSize: 9.5, color: c2, fontWeight: 700, marginTop: 2, fontFamily: DOS_MONO }}>{s2}</div>
-                  </div>
-                ))}
-              </div>
-            ) : null}
-            {/* ⚠ THE PIPELINE BREAKUP IS ALWAYS OPEN, ON EVERY SIDE (3 Oct 2026, the
-                user: "piepline breakup always open in enquires even in completed
-                section"). It was a disclosure that started closed and only existed
-                on Received and Sent; on Completed it counts what was closed. */}
-            {brkRows.length > 0 ? (
-              <div data-testid="pipeline-breakup" style={{ background: "var(--card)", border: "1.5px solid var(--el)", borderRadius: 14, padding: "12px 13px", marginBottom: 10 }}>
-                <div style={{ display: "flex", alignItems: "baseline", gap: 8, marginBottom: 10 }}>
-                  <span style={{ fontSize: 12, fontWeight: 900, flex: 1 }}>Pipeline breakup</span>
-                  <span style={{ fontFamily: DOS_MONO, fontSize: 10, color: "var(--muted)" }}>{moneyShort(sum(brkRows))} total</span>
-                </div>
-                <div style={{ fontSize: 9, fontWeight: 900, letterSpacing: 0.8, color: "var(--muted)", marginBottom: 8 }}>BY TYPE</div>
-                {brkByType.map((x) => {
-                  const mx = Math.max(...brkByType.map((y) => sum(y.rows)), 1);
-                  const v = sum(x.rows);
-                  return (
-                    <div key={x.k} style={{ marginBottom: 9 }}>
-                      <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
-                        <EnqIcon k={x.k} size={13} color={ENQ_TINT[x.k]} />
-                        <span style={{ flex: 1, fontSize: 11.5, fontWeight: 800 }}>{x.label}</span>
-                        <span style={{ fontFamily: DOS_MONO, fontSize: 10.5, color: "var(--sub)" }}>{x.rows.length}</span>
-                        <span style={{ fontFamily: DOS_MONO, fontSize: 11, fontWeight: 600, width: 52, textAlign: "right" }}>{moneyShort(v)}</span>
-                      </div>
-                      <div style={{ height: 5, borderRadius: 3, background: "var(--el)" }}>
-                        <div style={{ height: 5, borderRadius: 3, width: `${Math.round((100 * v) / mx)}%`, background: ENQ_TINT[x.k] }} />
-                      </div>
-                    </div>
-                  );
-                })}
-                <div style={{ fontSize: 9, fontWeight: 900, letterSpacing: 0.8, color: "var(--muted)", margin: "12px 0 7px" }}>BY STAGE</div>
-                {ENQ_STAGES.map((s2) => {
-                  const rows = brkRows.filter((e) => st(e) === s2);
-                  if (!rows.length) return null;
-                  return (
-                    <div key={s2} style={{ display: "flex", justifyContent: "space-between", gap: 10, padding: "4px 0", fontSize: 11.5, borderBottom: "1.5px solid var(--el)" }}>
-                      <span style={{ color: "var(--sub)" }}>{ENQ_STAGE_WORD[s2]}</span>
-                      <span>
-                        <span style={{ fontFamily: DOS_MONO, color: "var(--muted)", marginRight: 8 }}>{rows.length}</span>
-                        <b style={{ fontFamily: DOS_MONO }}>{moneyShort(sum(rows))}</b>
-                      </span>
-                    </div>
-                  );
-                })}
-              </div>
-            ) : null}
+            {/* the side switch, the figures and the Breakup are in the two squircles above (3 Oct 2026) */}
             {enqBase.length ? <InboxFilters value={fEnq} onChange={setFEnq} noun="enquiries" kinds={enqKinds} stages={enqStages} sorts={ENQ_SORTS} /> : null}
             {enqSide === "done" && doneEnq.length === 0 ? (
               <div style={emptyBox}>
