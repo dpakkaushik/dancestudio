@@ -162,24 +162,53 @@ html.light {
    the dark ones carry the same 0.18 outline. If a future change edits `html.light`
    and not this block, a card inside a panel is a different paper from the same
    card outside one — which is precisely the drift the panel was built to avoid. */
+/* ⚠⚠ TRANSLUCENT AND TWO-TONED (3 Oct 2026, the user: "lower half of discover
+   inbox and home should be transluscent with double tone effect"). The ground is
+   tone B at 86–88% — the page shows through — with tone A washing in from the
+   top-left and two faint accent glows (sky, then fuchsia) at opposite corners.
+   ⚠ `--sub` and `--muted` are RETUNED for the composited ground, not the old
+   opaque one: a translucent light panel over the black page is a grey, and the
+   old greys measured ~2:1 on it. Measured worst case is tone B composited over
+   the page (what `shoot-invert` reads, since it composites `background-color`):
+   dark theme text 9.9:1 · sub 6.5:1 · muted 4.6:1; light theme 10.3 · 6.6 · 4.8.
+   ⚠ NO `backdrop-filter`, deliberately: it makes the panel a containing block
+   for `position: fixed`, and several sheets drawn inside a panel are fixed and
+   unportalled — the stacking-context family this repo has paid for four times.
+   The page behind is flat, so a blur would buy nothing anyway. */
 html.dark .dos-invert {
   --solid: #faf8f5;
   --card: rgba(61, 44, 22, 0.055);
   --el: rgba(61, 44, 22, 0.16);
   --text: #17150f;
-  --sub: #57524a;
-  --muted: #776f63;
+  --sub: #3d3832;
+  --muted: #554f46;
+  --inv-a: rgba(252, 251, 248, 0.94);
+  --inv-b: rgba(228, 221, 210, 0.88);
+  --inv-glow-1: rgba(14, 165, 233, 0.13);
+  --inv-glow-2: rgba(236, 72, 153, 0.1);
+  --inv-edge: rgba(255, 255, 255, 0.55);
 }
 html.light .dos-invert {
   --solid: #0a0a0a;
   --card: rgba(255, 255, 255, 0.07);
   --el: rgba(255, 255, 255, 0.18);
   --text: #fafafa;
-  --sub: #a3a3a3;
-  --muted: #7b7b7b;
+  --sub: #cbcbcb;
+  --muted: #adadad;
+  --inv-a: rgba(8, 8, 10, 0.92);
+  --inv-b: rgba(34, 30, 44, 0.86);
+  --inv-glow-1: rgba(90, 200, 250, 0.14);
+  --inv-glow-2: rgba(236, 72, 153, 0.12);
+  --inv-edge: rgba(255, 255, 255, 0.1);
 }
 .dos-invert {
-  background: var(--solid);
+  background-color: var(--inv-b);
+  background-image:
+    radial-gradient(120% 60% at 0% 0%, var(--inv-glow-1), transparent 62%),
+    radial-gradient(110% 70% at 100% 100%, var(--inv-glow-2), transparent 64%),
+    linear-gradient(158deg, var(--inv-a) 0%, transparent 70%);
+  border: 1px solid var(--inv-edge);
+  box-shadow: inset 0 1px 0 var(--inv-edge), 0 18px 40px -28px rgba(0, 0, 0, 0.55);
   color: var(--text);
 }
 

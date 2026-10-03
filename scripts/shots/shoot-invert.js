@@ -149,6 +149,28 @@ const PROBE = (sel) => {
     await page.evaluate(() => {
       for (const tier of ["text", "sub", "muted"]) document.getElementById(`dos-probe-${tier}`)?.remove();
     });
+    /* ⚠ AND THE SAME THREE INSIDE THE PANEL (3 Oct 2026): the panel turned
+       translucent, so its ground is tone B composited over the page — a fourth
+       colour again — and its greys were retuned for it. Measured, not assumed. */
+    const placed = await page.evaluate(() => {
+      const panel = document.querySelector(".dos-invert");
+      if (!panel) return false;
+      for (const tier of ["text", "sub", "muted"]) {
+        const s = document.createElement("span");
+        s.id = `dos-pprobe-${tier}`;
+        s.style.color = `var(--${tier})`;
+        s.textContent = "Ag";
+        panel.appendChild(s);
+      }
+      return true;
+    });
+    check(placed, `[${theme}] a panel to measure inside`, placed ? "" : "no .dos-invert on Discover");
+    if (placed) {
+      for (const tier of ["text", "sub", "muted"]) {
+        const r = await page.evaluate(PROBE, `#dos-pprobe-${tier}`);
+        check(r && r.ratio >= floor[tier], `[${theme}] --${tier} INSIDE the translucent panel reads at ${floor[tier]}:1 or better`, r ? `${r.ratio}:1 ${r.ink} on ${r.ground}` : "not found");
+      }
+    }
   }
 
   /* ── THE HERO, WHICH THIS FILE HAS NEVER MEASURED (29 Sep 2026) ────────────
