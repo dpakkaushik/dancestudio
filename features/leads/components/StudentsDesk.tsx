@@ -69,7 +69,13 @@ const waDigits = (raw: string): string => {
   return d.length === 10 ? `91${d}` : d;
 };
 
-const looksLikeEmail = (s: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(s.trim());
+/** hours in words — the student page's own rounding, so the card and it agree */
+const hoursWords = (min: number) => {
+  const h = min / 60;
+  return h === 0 ? "0" : h < 10 ? (Math.round(h * 10) / 10).toString() : String(Math.round(h));
+};
+
+const looksLikeEmail =(s: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(s.trim());
 
 /** the Students tool's own colour — the card's face, wash and figures */
 const TINT = DOS_TOOLS.students.c;
@@ -163,24 +169,30 @@ export function StudentsDesk({
                  own Membership column, one press away. */
               right={s.passName ? <ToolChip word="MEMBER" fg={TINT} bg={`${TINT}1c`} testId="student-member" /> : null}
             />
-            {/* ⚠ FOUR BOXES (4 Oct 2026, the user: "boxes- Classes attended,
-                classes booked, routines learned and dance styles count"), two to a
-                row so each label is said in full rather than cut to a fragment in
-                a quarter of the card. All four come off the same attendance and
-                booking rows, so a box and the page behind it agree. */}
+            {/* ⚠ SIX BOXES, THREE TO A ROW (4 Oct 2026, the user: "headings -
+                Attended, Booked, Hours, Turn Up, Routines, dance styles. in
+                boxes"). All six come off the same attendance and booking rows the
+                student's own page counts, so a box and the page agree. */}
             <ToolBody>
               <ToolFacts
                 tint={TINT}
                 items={[
-                  { label: "Classes attended", value: s.attended, testId: "student-card-attended" },
-                  { label: "Classes booked", value: s.booked, testId: "student-card-booked" },
+                  { label: "Attended", value: s.attended, testId: "student-card-attended" },
+                  { label: "Booked", value: s.booked, testId: "student-card-booked" },
+                  { label: "Hours", value: hoursWords(s.minutes), testId: "student-card-hours" },
                 ]}
               />
               <ToolFacts
                 tint={TINT}
                 style={{ marginTop: 6 }}
                 items={[
-                  { label: "Routines learned", value: s.routines, testId: "student-card-routines" },
+                  {
+                    label: "Turn Up",
+                    value: s.turnUp == null ? "—" : `${s.turnUp}%`,
+                    tint: s.turnUp == null ? undefined : s.turnUp >= 75 ? "#22C55E" : s.turnUp >= 50 ? "#F59E0B" : "#F87171",
+                    testId: "student-card-turnup",
+                  },
+                  { label: "Routines", value: s.routines, testId: "student-card-routines" },
                   { label: "Dance styles", value: s.styles, testId: "student-card-styles" },
                 ]}
               />
@@ -193,9 +205,12 @@ export function StudentsDesk({
                     Membership and WhatsApp are gone: the face and the name above
                     are the door to their profile, and every column of the page
                     behind this button is one press inside it. */}
+                {/* ⚠ THE MEMBERSHIP CARD'S BUTTON, EXACTLY (4 Oct 2026, the user:
+                    "button to be similar to membership detail button in terms of
+                    design. d capital for detail") — tinted, with the › */}
                 {s.userId ? (
-                  <Link href={`/business/${businessId}/students/${s.userId}`} aria-label={`Student detail — ${s.name}`} data-testid="student-detail" style={toolBtn("primary", TINT)}>
-                    Student detail
+                  <Link href={`/business/${businessId}/students/${s.userId}`} aria-label={`Student Detail — ${s.name}`} data-testid="student-detail" style={toolBtn("tinted", TINT)}>
+                    Student Detail ›
                   </Link>
                 ) : null}
                 {/* ⚠ A WALK-IN KEEPS ITS REMOVE, and only that: it has no account,

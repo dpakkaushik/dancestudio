@@ -157,7 +157,7 @@ export function MembershipUsagePage({
           />
           <ToolBody>
             {/* ⚠ "MEMBERSHIP DETAILS" (3 Oct 2026, the user's own name for this page) */}
-            <div style={{ fontSize: 9, fontWeight: 900, letterSpacing: 0.8, color: MUTED, textTransform: "uppercase", marginBottom: 3 }}>Membership details</div>
+            <div style={{ fontSize: 9, fontWeight: 900, letterSpacing: 0.8, color: MUTED, textTransform: "uppercase", marginBottom: 3 }}>Membership Details</div>
             <h1 style={{ margin: 0, fontSize: 22, fontWeight: 900, letterSpacing: -0.4, lineHeight: 1.2, overflowWrap: "anywhere" }}>{m.name}</h1>
             {/* ⚠ PRICE · HOURS · VALIDITY IN BOXES, AND NO "TAKEN" (4 Oct 2026) —
                 the card on the desk reads the same; what came in is the Earnings column */}

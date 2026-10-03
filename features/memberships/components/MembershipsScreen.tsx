@@ -294,9 +294,10 @@ export function MembershipsScreen({
               </ToolBody>
               <ToolActions>
                 {/* ⚠ "MEMBERSHIP DETAILS" (3 Oct 2026, the user: "Usage & Holders to
-                    be called Membership Details") */}
+                    be called Membership Details"; the capital D on 4 Oct 2026, "d
+                    capital for detail for both membership and student") */}
                 <Link href={`/memberships/${m.id}`} style={toolBtn("tinted", TINT)}>
-                  Membership details ›
+                  Membership Details ›
                 </Link>
               </ToolActions>
             </ToolCard>

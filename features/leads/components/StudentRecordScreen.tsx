@@ -5,7 +5,7 @@ import { SegmentedPanels } from "@/features/shell/components/SegmentedNav";
 import { ProgressBar, SpentOn, expiryWords, unitWord } from "@/features/memberships/components/usage-kit";
 import { money as rupees } from "@/features/payouts/components/earnings-kit";
 import { RoutineMediaButton } from "@/features/routines/components/routine-kit";
-import { ToolBody, ToolCard, ToolChip, ToolFace, ToolFacts, ToolLive, ToolTitle, inkOn } from "@/components/ui/ToolCard";
+import { ToolBody, ToolCard, ToolChip, ToolFace, ToolFacts, ToolHead, ToolTitle, inkOn, toolBtn } from "@/components/ui/ToolCard";
 import { photoUrl } from "@/lib/media/photo";
 import { FigureHead } from "@/components/ui/FigureHead";
 import { DOS_LEVEL_LABEL, dosStyleColor } from "@/lib/constants/styles";
@@ -161,13 +161,34 @@ const empty: CSSProperties = { ...panel, textAlign: "center", border: "1.5px das
  *  in collapsible tile for a class figures in every section").
  *
  *  THE COLUMN'S FIGURES FIRST — sessions, hours, styles, routines, counted off the
- *  same rows the tiles under them print. Then one tile per class: who took it
- *  (their face and name, a door to their page), its own sessions, hours and
- *  routines, and a native `<details>` holding the BREAKUP — every session they
- *  were checked in to, and each routine the class teaches with its song and video.
- *  ⚠ The tile still opens the class; the artist row and the disclosure switch
- *  pointer events back on (`ToolLive`), the stretched-link rule since 15 Sep. */
+ *  same rows the tiles under them print.
+ *
+ *  ⚠ THEN THE ARTIST IS THE UPPER LAYER AND THE STYLE THE INNER ONE (4 Oct 2026,
+ *  the user, the same day: "artist should be the upper layer and dance style
+ *  being the inner with break up inside"). One card per artist who taught them
+ *  here — the face and name a door to that artist's page, and that artist's own
+ *  figures — and inside it one tile per class they took with that artist, which
+ *  opens (a native `<details>`) onto the BREAKUP: every session they were checked
+ *  in to, each routine the class teaches with its song and video, and the way to
+ *  the class itself. A class with no confirmed artist sits under its own card
+ *  that says so, rather than vanishing. */
+type ArtistGroup = { key: string; userId: string | null; name: string; photoPath: string | null; classes: StudentRecord["classes"] };
+
+function groupByArtist(classes: StudentRecord["classes"]): ArtistGroup[] {
+  const map = new Map<string, ArtistGroup>();
+  for (const c of classes) {
+    const key = c.artist?.userId ?? "none";
+    const g = map.get(key) ?? { key, userId: c.artist?.userId ?? null, name: c.artist?.name ?? "No artist on record", photoPath: c.artist?.photoPath ?? null, classes: [] };
+    g.classes.push(c);
+    map.set(key, g);
+  }
+  const sessionsOf = (g: ArtistGroup) => g.classes.reduce((s, c) => s + c.sessions, 0);
+  /* most danced first; the no-artist card always last */
+  return [...map.values()].sort((a, b) => (a.userId ? 0 : 1) - (b.userId ? 0 : 1) || sessionsOf(b) - sessionsOf(a) || a.name.localeCompare(b.name));
+}
+
 function ClassesPanel({ r }: { r: StudentRecord }) {
+  const groups = groupByArtist(r.classes);
   return (
     <>
       <div style={panel}>
@@ -182,41 +203,63 @@ function ClassesPanel({ r }: { r: StudentRecord }) {
         />
       </div>
       {r.classes.length === 0 ? <div style={empty}>A class appears here once {r.name} is checked in to it.</div> : null}
-      {r.classes.map((c) => {
-        const level = DOS_LEVEL_LABEL[c.level] ?? c.level;
-        const col = dosStyleColor(c.style);
+      {groups.map((g) => {
+        const sessions = g.classes.reduce((s, c) => s + c.sessions, 0);
+        const minutes = g.classes.reduce((s, c) => s + c.minutes, 0);
+        const styles = new Set(g.classes.map((c) => c.style)).size;
+        const routines = new Set(g.classes.flatMap((c) => c.routines.map((x) => x.routineId))).size;
         return (
-          <ToolCard key={c.classId} testId="student-class" href={`/c/${c.shareSlug}`} hrefLabel={`Open ${c.style} · ${level}`} edge={col}>
-            <ToolBody style={{ borderTop: "none" }}>
-              <ToolTitle after={<span style={{ flexShrink: 0, fontSize: 11, color: SUB, fontWeight: 700 }}>{dayWords(c.lastAt)}</span>}>
-                {c.style} · {level}
-              </ToolTitle>
-              {c.artist ? (
-                <ToolLive style={{ marginTop: 8 }}>
-                  <Link href={`/person/${c.artist.userId}`} aria-label={`Open ${c.artist.name}'s profile`} data-testid="student-class-artist" style={{ display: "inline-flex", alignItems: "center", gap: 8, maxWidth: "100%", color: INK, textDecoration: "none" }}>
-                    <ToolFace name={c.artist.name} photoPath={c.artist.photoPath} tint={col} size={30} />
-                    <span style={{ minWidth: 0 }}>
-                      <span style={{ display: "block", fontSize: 8.5, fontWeight: 900, letterSpacing: 0.7, color: MUTED, textTransform: "uppercase" }}>Artist</span>
-                      <span style={{ display: "block", fontSize: 12.5, fontWeight: 800, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{c.artist.name}</span>
-                    </span>
-                  </Link>
-                </ToolLive>
-              ) : (
-                <div style={{ fontSize: 11.5, color: SUB, marginTop: 8 }}>No artist on record for this class.</div>
-              )}
+          <ToolCard key={g.key} testId="student-artist">
+            <ToolHead
+              tint={TINT}
+              name={g.name}
+              photoPath={g.photoPath}
+              href={g.userId ? `/person/${g.userId}` : undefined}
+              hrefLabel={`Open ${g.name}'s profile`}
+              eyebrow={g.userId ? "Artist" : "Artist · none confirmed"}
+              icon={g.userId ? undefined : "—"}
+            />
+            <ToolBody>
               <ToolFacts
-                tint={col}
-                style={{ marginTop: 10 }}
+                tint={TINT}
                 items={[
-                  { label: "Sessions", value: c.sessions },
-                  { label: "Hours", value: hoursWords(c.minutes) },
-                  { label: "Routines", value: c.routines.length },
+                  { label: "Sessions", value: sessions },
+                  { label: "Hours", value: hoursWords(minutes) },
+                  { label: "Styles", value: styles },
+                  { label: "Routines", value: routines },
                 ]}
               />
-              <ToolLive style={{ marginTop: 10 }}>
-                <details data-testid="student-class-breakup" style={{ border: "1.5px solid var(--el)", borderRadius: 12, padding: "9px 11px", background: `${col}0a` }}>
-                  <summary style={{ cursor: "pointer", fontSize: 11.5, fontWeight: 900, color: INK }}>
-                    Breakup · {c.sessions} {c.sessions === 1 ? "session" : "sessions"} · {c.routines.length} {c.routines.length === 1 ? "routine" : "routines"}
+              {g.classes.map((c) => (
+                <ClassTile key={c.classId} c={c} />
+              ))}
+            </ToolBody>
+          </ToolCard>
+        );
+      })}
+    </>
+  );
+}
+
+/** the INNER layer — one class, by its dance style, opening onto its breakup */
+function ClassTile({ c }: { c: StudentRecord["classes"][number] }) {
+  const level = DOS_LEVEL_LABEL[c.level] ?? c.level;
+  const col = dosStyleColor(c.style);
+  return (
+                <details data-testid="student-class" style={{ marginTop: 8, border: "1.5px solid var(--el)", borderLeft: `4px solid ${col}`, borderRadius: 14, padding: "10px 12px", background: `${col}0a` }}>
+                  <summary style={{ cursor: "pointer", display: "flex", alignItems: "center", gap: 8, color: INK }}>
+                    <span style={{ flex: 1, minWidth: 0 }}>
+                      <span style={{ display: "flex", alignItems: "center", gap: 6, minWidth: 0 }}>
+                        <span style={{ flexShrink: 0, padding: "2px 8px", borderRadius: 999, background: col, color: inkOn(col), fontSize: 10, fontWeight: 900 }}>{c.style}</span>
+                        <span style={{ fontSize: 12.5, fontWeight: 900, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{level}</span>
+                      </span>
+                      <span style={{ display: "block", fontSize: 11, color: SUB, marginTop: 4, fontVariantNumeric: "tabular-nums" }}>
+                        {c.sessions} {c.sessions === 1 ? "session" : "sessions"} · {hoursWords(c.minutes)} h · {c.routines.length} {c.routines.length === 1 ? "routine" : "routines"}
+                      </span>
+                    </span>
+                    <span style={{ flexShrink: 0, textAlign: "right", fontSize: 10.5, color: SUB, fontWeight: 700 }}>
+                      {dayWords(c.lastAt)}
+                      <span style={{ display: "block", fontSize: 10, fontWeight: 900, color: INK, marginTop: 3 }}>Breakup ▾</span>
+                    </span>
                   </summary>
                   <div style={{ ...head, margin: "10px 0 4px" }}>SESSIONS</div>
                   {c.sessionList.map((s) => (
@@ -246,13 +289,10 @@ function ClassesPanel({ r }: { r: StudentRecord }) {
                       );
                     })
                   )}
+                  <Link href={`/c/${c.shareSlug}`} aria-label={`Open ${c.style} · ${level}`} style={{ ...toolBtn("secondary", col), marginTop: 10, width: "100%", boxSizing: "border-box" }}>
+                    Open the class ›
+                  </Link>
                 </details>
-              </ToolLive>
-            </ToolBody>
-          </ToolCard>
-        );
-      })}
-    </>
   );
 }
 

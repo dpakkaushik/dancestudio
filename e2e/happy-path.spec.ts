@@ -2970,12 +2970,12 @@ test.describe.serial("DanceOS, end to end", () => {
     const learnerCard = owner.getByTestId("student-card").filter({ has: learnerRow });
     await expect(learnerCard.getByTestId("student-member")).toHaveText("MEMBER");
     await expect(learnerCard.getByText("🎟")).toHaveCount(0);
-    /* ONE BUTTON AND FOUR BOXES (4 Oct 2026, the user: "remove all buttons and one
-       common button called Student detail … boxes- Classes attended, classes
-       booked, routines learned and dance styles count") */
-    await expect(learnerCard.getByRole("link", { name: `Student detail — ${learnerName}` })).toHaveAttribute("href", `/business/${businessId}/students/${learnerId}`);
+    /* ONE BUTTON AND SIX BOXES (4 Oct 2026, the user: "remove all buttons and one
+       common button called Student detail", then "headings - Attended, Booked,
+       Hours, Turn Up, Routines, dance styles … d capital for detail") */
+    await expect(learnerCard.getByRole("link", { name: `Student Detail — ${learnerName}` })).toHaveAttribute("href", `/business/${businessId}/students/${learnerId}`);
     await expect(learnerCard.getByRole("link", { name: /^(Profile|Stats|Membership) — / })).toHaveCount(0);
-    for (const box of ["attended", "booked", "routines", "styles"]) {
+    for (const box of ["attended", "booked", "hours", "turnup", "routines", "styles"]) {
       await expect(learnerCard.getByTestId(`student-card-${box}`)).toHaveCount(1);
     }
 
