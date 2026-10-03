@@ -197,6 +197,9 @@ const tomorrowIst = () => {
 
     /* ── 3 · THE MEMBER IS ASKED, IN THE ASK GROUP ── */
     await member.goto(`${BASE}/inbox`, { waitUntil: "networkidle" });
+    /* ⚠ RE-CUT 3 Oct 2026: the Inbox has OPENED ON ENQUIRIES since 2 Oct (C96),
+       so the ask is one press away, on the Requests column — shoot-inbox's own way in */
+    await pressPill(member, /^Requests/);
     /* ⚠ ON **REQUESTS**, NOT INVITES — which is the C68 split working: joining a
        crew is about belonging and goes to Invites; a practice is about one
        evening and belongs with the class and duet asks. `JOIN_KINDS` decides it

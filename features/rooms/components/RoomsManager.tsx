@@ -4,6 +4,7 @@ import { useState } from "react";
 import { dosKey } from "@/features/classes/components/ShareSheet";
 import { deleteRoomAction, updateRoomAction } from "@/features/rooms/server-actions/rooms";
 import { DeskHero } from "@/features/businesses/components/biz-kit";
+import { DeskBody, DeskTop } from "@/components/ui/DeskSections";
 import { DOS_AMENITIES } from "@/lib/constants/amenities";
 import { DOS_UI } from "@/lib/design/tokens";
 import type { Room } from "@/types/room";
@@ -106,11 +107,13 @@ export function RoomsManager({
       style={{
         maxWidth: 430,
         margin: "0 auto",
-        padding: "8px 16px 40px",
+        padding: "0 16px 40px",
         fontFamily: DOS_UI,
         color: "var(--text)",
       }}
     >
+      <DeskTop style={{ paddingBottom: 2 }}>
+      {/* ⚠ THE TOP SECTION (3 Oct 2026, C116) — the hero, who may edit, and Add */}
       {/* BizShell's hero (2964-2976): the tile's paint, the tool's name, nothing else.
           ⚠⚠ AND IT IS THE SHARED ONE NOW (22 Sep 2026) — it was a HAND-COPY with
           the title as a `<div>`, so this page rendered no `<h1>` at all for a
@@ -140,8 +143,12 @@ export function RoomsManager({
           and leave you to correct both on the row. Capacity is the one field here
           that the database enforces on every booking, so it is asked for. */}
       {canEdit ? <DeskAddButton label="Add room" href="?new=1" /> : null}
+      </DeskTop>
 
-      <div style={card}>
+      {/* ⚠ THE LOWER SECTION (3 Oct 2026, C116) — the place and its rooms. It IS
+          the card that used to hold them: a card inside this squircle would be
+          the same veil twice. */}
+      <DeskBody>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
           <b style={{ fontSize: 14 }}>📍 {businessWhere}</b>
           <span style={{ fontSize: 10.5, fontWeight: 800, color: "var(--sub)" }}>{businessName}</span>
@@ -298,7 +305,6 @@ export function RoomsManager({
             No rooms yet — add the first one above, and your classes can be held in it.
           </div>
         )}
-      </div>
 
       {/* ⚠ the dashed row that stood here is the pill at the TOP of this page now
           (20 Sep 2026) — a studio with eight rooms had to scroll past all of them
@@ -310,6 +316,7 @@ export function RoomsManager({
         A new location is a new studio — create it from Home ▸ Run your business. Rooms cap class
         capacity · no double-booking (server-enforced).
       </div>
+      </DeskBody>
       {toast && (
         <div
           role="status" aria-live="polite" style={{ position: "fixed", bottom: 26, left: "50%", transform: "translateX(-50%)", background: "var(--solid)", border: "1.5px solid #0EA5E9", boxShadow: "0 6px 24px rgba(0,0,0,.45)", color: "var(--text)", padding: "11px 18px", borderRadius: 999, fontSize: 13, fontWeight: 700, maxWidth: 360, textAlign: "center", zIndex: 650 }}

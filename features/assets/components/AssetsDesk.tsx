@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useState, useTransition, type CSSProperties } from "react";
 import { FigureHead } from "@/components/ui/FigureHead";
+import { DeskBody, DeskTop } from "@/components/ui/DeskSections";
 import { removeAssetAction, saveAssetAction } from "@/features/assets/server-actions/assets";
 import { DeskHero, BizToast } from "@/features/businesses/components/biz-kit";
 import { DeskAddButton, eyebrow, rupees } from "@/features/settings/components/settings-kit";
@@ -88,7 +89,9 @@ export function AssetsDesk({ businessId, businessName, assets }: { businessId: s
 
   return (
     <div style={{ background: LILAC, color: INK, maxWidth: 430, margin: "0 auto", fontFamily: DOS_UI, minHeight: "100vh", padding: "0 16px 40px", boxSizing: "border-box" }}>
-      <DeskHero tool="assets" as="h1" margin="12px 0 8px" />
+      <DeskTop style={{ paddingBottom: 2 }}>
+      {/* ⚠ THE TOP SECTION (3 Oct 2026, C116) — the hero, whose it is, and Add */}
+      <DeskHero tool="assets" as="h1" margin="0 0 8px" />
       {/* whose — an organization runs several businesses, and the tool hero names the tool */}
       <div style={{ fontSize: 11.5, color: SUB, fontWeight: 800, margin: "0 0 12px" }}>What {businessName} owns</div>
 
@@ -99,20 +102,27 @@ export function AssetsDesk({ businessId, businessName, assets }: { businessId: s
           and membership forms were in before 21 Sep. The ＋ opens it over the
           desk now, like every other "add something" in the app. */}
       <DeskAddButton label="Add asset" href="?new=1" />
+      </DeskTop>
 
-      {/* ⚠ the rule between the heading and its figure (22 Sep 2026) — a "·"
-          reads as punctuation between two words, not as a heading and the total
-          that belongs to it. The total is still COUNTED off the very rows below
-          it, which is Step 25's rule. */}
-      <FigureHead
-        margin="4px 0 8px"
-        title={<span style={eyebrow}>INVENTORY</span>}
-        figure={
-          <span style={{ ...eyebrow, fontVariantNumeric: "tabular-nums" }} data-testid="assets-total">
-            {rupees(total)} total
-          </span>
+      {/* ⚠ THE LOWER SECTION (3 Oct 2026, C116) — the inventory, headed by its
+          own total (the head of the list, not a middle section of one line) */}
+      <DeskBody
+        head={
+          /* ⚠ the rule between the heading and its figure (22 Sep 2026) — a "·"
+             reads as punctuation between two words, not as a heading and the total
+             that belongs to it. The total is still COUNTED off the very rows below
+             it, which is Step 25's rule. */
+          <FigureHead
+            margin="0 0 8px"
+            title={<span style={eyebrow}>INVENTORY</span>}
+            figure={
+              <span style={{ ...eyebrow, fontVariantNumeric: "tabular-nums" }} data-testid="assets-total">
+                {rupees(total)} total
+              </span>
+            }
+          />
         }
-      />
+      >
 
       {assets.map((a) => (
         <div key={a.id} style={{ ...card, padding: "11px 13px" }} data-testid="asset-row">
@@ -188,6 +198,7 @@ export function AssetsDesk({ businessId, businessName, assets }: { businessId: s
           Nothing on the inventory yet. An asset is three things — what it is, what type it is, and what it cost. Put ₹0 on something you already had.
         </div>
       ) : null}
+      </DeskBody>
 
       <BizToast msg={toast} />
     </div>

@@ -28,20 +28,27 @@ export function InvoicesScreen({ rows, side }: { rows: InvoiceRow[]; side: "mine
     URL.revokeObjectURL(a.href);
   };
   return (
-    <BizPage title="Invoices" sub={`${rows.length} invoice${rows.length === 1 ? "" : "s"}`} grad="linear-gradient(135deg,#64748B,#0EA5E9)">
-      <div style={{ display: "flex", gap: 6, marginBottom: 10 }}>
-        {(
-          [
-            ["all", "All"],
-            ["paid", "Paid"],
-            ["refunded", "Refunded"],
-          ] as Array<["all" | "paid" | "refunded", string]>
-        ).map(([k, l]) => (
-          <button type="button" key={k} aria-pressed={f === k} onClick={() => setF(k)} style={{ ...chip(f === k), flex: 1, textAlign: "center" }}>
-            {l}
-          </button>
-        ))}
-      </div>
+    <BizPage
+      title="Invoices"
+      sub={`${rows.length} invoice${rows.length === 1 ? "" : "s"}`}
+      grad="linear-gradient(135deg,#64748B,#0EA5E9)"
+      top={
+        /* ⚠ THE FILTER IS IN THE TOP SECTION (3 Oct 2026, C116); the ledger is the lower one */
+        <div style={{ display: "flex", gap: 6 }}>
+          {(
+            [
+              ["all", "All"],
+              ["paid", "Paid"],
+              ["refunded", "Refunded"],
+            ] as Array<["all" | "paid" | "refunded", string]>
+          ).map(([k, l]) => (
+            <button type="button" key={k} aria-pressed={f === k} onClick={() => setF(k)} style={{ ...chip(f === k), flex: 1, textAlign: "center" }}>
+              {l}
+            </button>
+          ))}
+        </div>
+      }
+    >
       {shown.map((r) => {
         const body = (
           <>

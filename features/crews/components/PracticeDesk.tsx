@@ -7,6 +7,7 @@ import { DOS_TOOLS, DeskHero } from "@/features/businesses/components/biz-kit";
 import { cancelCrewPracticeAction, respondToPracticeAction, setPracticeAttendanceAction } from "@/features/crews/server-actions/practices";
 import { findPracticePeopleAction } from "@/features/crews/server-actions/practicePeople";
 import { photoUrl } from "@/lib/media/photo";
+import { DeskBody, DeskTop } from "@/components/ui/DeskSections";
 import { DOS_UI, INK, LILAC } from "@/lib/design/tokens";
 import { PRACTICE_TINT, PRACTICE_WORD, practiceWhen, type CrewPractice, type PracticePerson } from "@/types/crewPractice";
 import { CrewFace, Toast, bizBtn, bizCard, pressKey } from "./crew-kit";
@@ -146,11 +147,17 @@ export function PracticeDesk({ crewId, crewName, practices, todayIso }: { crewId
 
   return (
     <div style={{ background: LILAC, color: INK, maxWidth: 430, margin: "0 auto", fontFamily: DOS_UI, padding: "0 16px", boxSizing: "border-box", paddingBottom: "var(--dos-foot)" }}>
-      <DeskHero tool="practice" as="h1" margin="12px 0 8px" />
+      <DeskTop style={{ paddingBottom: 2 }}>
+      {/* ⚠ THE TOP SECTION (3 Oct 2026, C116) — the hero, whose it is, and Arrange */}
+      <DeskHero tool="practice" as="h1" margin="0 0 8px" />
       <div style={{ fontSize: 11.5, color: "var(--sub)", margin: "0 0 12px" }}>{crewName}</div>
 
       {/* ＋ ON TOP (20 Sep 2026's rule for every desk), the shared control */}
       <DeskAddButton label="Arrange a practice" href="?new=1" />
+      </DeskTop>
+
+      <DeskBody>
+      {/* ⚠ THE LOWER SECTION (3 Oct 2026, C116) — the practices */}
 
       {coming.length === 0 && over.length === 0 ? (
         <div style={{ ...bizCard, textAlign: "center", fontSize: 12, color: "var(--sub)", border: "1.5px dashed var(--el)", lineHeight: 1.5 }}>
@@ -171,6 +178,7 @@ export function PracticeDesk({ crewId, crewName, practices, todayIso }: { crewId
           {over.map(card)}
         </>
       ) : null}
+      </DeskBody>
 
       <Toast msg={toast} />
     </div>

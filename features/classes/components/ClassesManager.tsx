@@ -17,6 +17,7 @@ import { ClassTile } from "@/features/classes/components/ClassTile";
 import { DeskAddButton } from "@/features/settings/components/settings-kit";
 import { DOS_TOOLS, dosToolPaint } from "@/features/businesses/components/biz-kit";
 import { useCloseOnBack } from "@/lib/hooks/useCloseOnBack";
+import { DeskBody, DeskTop } from "@/components/ui/DeskSections";
 import { DOS_DISPLAY, DOS_UI, INK, LILAC, SUB } from "@/lib/design/tokens";
 import type { ClassPublishState, VenueRequest } from "@/repositories/classes";
 import type { ClassArtist } from "@/types/classPerson";
@@ -312,7 +313,15 @@ export function ClassesManager({
   elsewhereHead = "AT OTHER STUDIOS",
   elsewhereChip = "Teaching",
   offerCreate = true,
+  sections = true,
 }: {
+  /** ⚠ DRAW IN THE THREE-SECTION LAYOUT (3 Oct 2026, C116): the hero, Create
+   *  and the live filter in a `DeskTop`, the sticky tabs and the list in a
+   *  `DeskBody`. Pass `false` when this register is nested inside a page that
+   *  already wears its own sections (an artist's Manage segment on
+   *  `/my-classes`) — it then renders exactly as before. An `embedded` register
+   *  never draws sections either. */
+  sections?: boolean;
   businessId: string;
   classes: DanceClass[];
   /** Enrolled count per session id — real numbers from Step 4. */
@@ -384,6 +393,7 @@ export function ClassesManager({
 }) {
   const router = useRouter();
   const search = useSearchParams();
+  const inSections = sections && !embedded;
   /* `?new=1` ON TOP OF WHATEVER IS ALREADY THERE (22 Sep 2026) — this register is
      a page of its own AND the Manage segment of `/my-classes`, and on that second
      surface the segment lives in the query, so a bare `?new=1` would take the
@@ -466,25 +476,13 @@ export function ClassesManager({
     </>
   );
 
-  return (
-    <div
-      style={{
-        background: embedded ? "transparent" : LILAC,
-        color: INK,
-        maxWidth: 430,
-        margin: "0 auto",
-        fontFamily: DOS_UI,
-        minHeight: embedded ? undefined : "100vh",
-        paddingBottom: embedded ? 0 : 40,
-      }}
-    >
-      {/* the tool's hero (BizShell 2964-2976): the tile's paint, the tile's name,
-          and nothing else — "a tool's page says what the tile said" (2960-2962).
-          Not drawn when this register sits inside Your classes (18 Sep 2026). */}
-      {!embedded ? (
+  /* the tool's hero (BizShell 2964-2976): the tile's paint, the tile's name,
+     and nothing else — "a tool's page says what the tile said" (2960-2962).
+     Not drawn when this register sits inside Your classes (18 Sep 2026). */
+  const hero = !embedded ? (
         <div
           style={{
-            margin: "12px 16px 0",
+            margin: inSections ? "0 0 10px" : "12px 16px 0",
             borderRadius: 22,
             padding: "15px 17px 14px",
             color: "#fff",
@@ -503,9 +501,14 @@ export function ClassesManager({
             Classes
           </h1>
         </div>
-      ) : null}
+      ) : null;
 
-      <div style={{ padding: embedded ? 0 : "12px 16px 0" }}>
+  /* ⚠ THE TOP SECTION (3 Oct 2026, C116) — what chooses the view: Create class
+     (or the sentence in its place) and the live filter. The tabs are NOT here:
+     they are the sticky row, and a sticky element only sticks inside its own
+     parent, so they open the lower section instead. */
+  const top = (
+      <>
         {/* THE CHIP RAIL IS GONE (18 Sep 2026, the user: "the row below the classes
             heading … which has options like events, students etc. should be
             removed"). Every door it held — Calendar, Media, Students, Rooms,
@@ -548,9 +551,17 @@ export function ClassesManager({
         )}
 
         <LiveBanner n={liveN} on={liveOnly} setOn={setLiveOnly} />
+      </>
+  );
 
+  /* ⚠ THE LOWER SECTION (3 Oct 2026, C116) — the sticky tabs, then the list */
+  const body = (
+      <>
         {/* the three lifecycles, pinned under the top bar (prototype 14995-15006) */}
-        <div style={{ position: "sticky", top: "var(--dos-top)", zIndex: 120, background: LILAC, margin: "0 -16px", padding: "6px 16px 8px" }}>
+        {/* ⚠ an EMBEDDED register (an artist's Manage segment) stands inside
+            `/my-classes`' own lower section, so its band wears that section's
+            ground too — the page's would cut a stripe across the panel */}
+        <div style={{ position: "sticky", top: "var(--dos-top)", zIndex: 120, background: inSections || embedded ? `linear-gradient(var(--card), var(--card)), ${LILAC}` : LILAC, margin: inSections || embedded ? "0 -14px" : "0 -16px", padding: inSections || embedded ? "6px 14px 8px" : "6px 16px 8px", borderRadius: inSections ? "14px 14px 0 0" : undefined }}>
           <div style={{ display: "flex", gap: 2, background: EL, borderRadius: 12, padding: 3 }}>
             {tabs.map((k) => {
               const on = tab === k;
@@ -825,7 +836,40 @@ export function ClassesManager({
             ))}
           </div>
         ) : null}
-      </div>
+      </>
+  );
+
+  return (
+    <div
+      style={{
+        background: embedded ? "transparent" : LILAC,
+        color: INK,
+        maxWidth: 430,
+        margin: "0 auto",
+        fontFamily: DOS_UI,
+        minHeight: embedded ? undefined : "100vh",
+        paddingBottom: embedded ? 0 : 40,
+      }}
+    >
+      {inSections ? (
+        <>
+          {/* ⚠ THE TOP SECTION (3 Oct 2026, C116) */}
+          <DeskTop style={{ margin: "12px 16px 12px", paddingBottom: 4 }}>
+            {hero}
+            {top}
+          </DeskTop>
+          {/* ⚠ THE LOWER SECTION (3 Oct 2026, C116) */}
+          <DeskBody style={{ margin: "0 16px 16px", paddingTop: 8 }}>{body}</DeskBody>
+        </>
+      ) : (
+        <>
+          {hero}
+          <div style={{ padding: embedded ? 0 : "12px 16px 0" }}>
+            {top}
+            {body}
+          </div>
+        </>
+      )}
 
       {ask?.kind === "publish" && (
         <ConfirmSheet

@@ -8,6 +8,7 @@ import { photoUrl } from "@/lib/media/photo";
 import type { LearnedRoutine, RoutineWithUsage } from "@/repositories/routines";
 import { DeskHero } from "@/features/businesses/components/biz-kit";
 import { DeskAddButton } from "@/features/settings/components/settings-kit";
+import { DeskBody, DeskTop } from "@/components/ui/DeskSections";
 
 /** ROUTINES (19 Sep 2026, the user: "Routines are just a combination of Music —
  *  link or MP3 — and Video — link"). The prototype's S_choreos (17115), lifted:
@@ -57,14 +58,17 @@ export function RoutinesDesk({
           reading itself back. ⚠ The counts that STAY are the ones inside a shelf
           head beside its heading (`ManagedScreen`, `/classes`), which is the
           prototype's own DosShelfHead (3446) and a different object. */}
-      <DeskHero tool="routines" as="h1" margin="0 0 12px" />
+      <DeskTop style={{ margin: "0 0 12px" }}>
+      {/* ⚠ THE TOP SECTION (3 Oct 2026, C116): the heading and what chooses the
+          list — the two sides, and on Yours the New routine button and the search */}
+      <DeskHero tool="routines" as="h1" margin="0" />
 
       {/* ── YOURS · LEARNED (20 Sep 2026) — the two sides of a routine: the ones
           you made and teach from, and the ones you were taught. Client state,
           not a URL: both lists are already on the page, so switching is free and
           there is nothing for a server to fetch (the lag the user reported on
           the class columns is a round trip; this one has none). ── */}
-      <div role="group" aria-label="Show" style={{ display: "flex", gap: 2, background: "var(--el)", borderRadius: 12, padding: 3, marginBottom: 11 }}>
+      <div role="group" aria-label="Show" style={{ display: "flex", gap: 2, background: "var(--el)", borderRadius: 12, padding: 3, marginTop: 12, marginBottom: seg === "learned" ? 0 : 11 }}>
         {([["mine", `Yours · ${routines.length}`], ["learned", `Learned · ${learned.length}`]] as const).map(([k, label]) => (
           <button key={k} type="button" onClick={() => setSeg(k)} aria-pressed={seg === k} style={{ flex: 1, padding: "8px 2px", borderRadius: 9, fontSize: 11.5, fontWeight: 800, border: "none", cursor: "pointer", fontFamily: "inherit", background: seg === k ? "var(--solid)" : "transparent", color: seg === k ? INK : SUB }}>
             {label}
@@ -72,6 +76,32 @@ export function RoutinesDesk({
         ))}
       </div>
 
+      {seg === "learned" ? null : (
+        <>
+      {/* ⚠ THE FORM OPENS OVER THIS DESK (22 Sep 2026, the user: "All forms and
+          add buttons anywhere in home tab should open form like how setting page
+          or edit profile page open from the same screen"). It is the SAME form
+          wearing the SAME `FormPage` anatomy it has worn since 21 Sep — only its
+          shell differs — and `/routines/new` still renders it full-page, because
+          a link handed out is a promise (Rule 14) and the installed TWA reopens
+          on the last URL it showed.
+          ⚠ `?new=1` is PUSHED, exactly as the gear pushes `?settings=1`: the
+          param IS the history entry, so the phone's back gesture closes the
+          sheet instead of leaving the desk. */}
+      <DeskAddButton label="New routine" href="?new=1" />
+
+      <div style={{ display: "flex", alignItems: "center", gap: 8, background: "var(--card)", border: "1.5px solid var(--el)", borderRadius: 12, padding: "9px 11px", marginBottom: 0 }}>
+        <span aria-hidden="true" style={{ color: "var(--muted)", fontSize: 13 }}>
+          ⌕
+        </span>
+        <input aria-label="Search routines" value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search routines, styles or songs…" style={{ flex: 1, minWidth: 0, background: "transparent", border: "none", outline: "none", color: INK, fontSize: 12.5, fontFamily: "inherit" }} />
+      </div>
+        </>
+      )}
+      </DeskTop>
+
+      <DeskBody style={{ margin: "0" }}>
+      {/* ⚠ THE LOWER SECTION (3 Oct 2026, C116): the routines themselves */}
       {seg === "learned" ? (
         <>
           <div style={{ fontSize: 11, color: SUB, lineHeight: 1.5, padding: "0 2px 10px" }}>
@@ -88,25 +118,6 @@ export function RoutinesDesk({
         </>
       ) : (
         <>
-      {/* ⚠ THE FORM OPENS OVER THIS DESK (22 Sep 2026, the user: "All forms and
-          add buttons anywhere in home tab should open form like how setting page
-          or edit profile page open from the same screen"). It is the SAME form
-          wearing the SAME `FormPage` anatomy it has worn since 21 Sep — only its
-          shell differs — and `/routines/new` still renders it full-page, because
-          a link handed out is a promise (Rule 14) and the installed TWA reopens
-          on the last URL it showed.
-          ⚠ `?new=1` is PUSHED, exactly as the gear pushes `?settings=1`: the
-          param IS the history entry, so the phone's back gesture closes the
-          sheet instead of leaving the desk. */}
-      <DeskAddButton label="New routine" href="?new=1" />
-
-      <div style={{ display: "flex", alignItems: "center", gap: 8, background: "var(--card)", border: "1.5px solid var(--el)", borderRadius: 12, padding: "9px 11px", marginBottom: 10 }}>
-        <span aria-hidden="true" style={{ color: "var(--muted)", fontSize: 13 }}>
-          ⌕
-        </span>
-        <input aria-label="Search routines" value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search routines, styles or songs…" style={{ flex: 1, minWidth: 0, background: "transparent", border: "none", outline: "none", color: INK, fontSize: 12.5, fontFamily: "inherit" }} />
-      </div>
-
       {list.map((r) => (
         <RoutineRow key={r.id} r={r} />
       ))}
@@ -117,6 +128,7 @@ export function RoutinesDesk({
       ) : null}
         </>
       )}
+      </DeskBody>
     </div>
   );
 }

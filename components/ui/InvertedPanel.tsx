@@ -47,16 +47,19 @@ export function InvertedPanel({
   children,
   style,
   ground = "inverted",
+  testId = "page-panel",
 }: {
   head?: ReactNode;
   children: ReactNode;
   style?: CSSProperties;
   ground?: "inverted" | "page";
+  /** the page-ground squircle's test id (`page-panel` unless a caller names it) */
+  testId?: string;
 }) {
   if (ground === "page") {
     return (
       <div
-        data-testid="page-panel"
+        data-testid={testId}
         style={{ borderRadius: 22, padding: "14px 14px 16px", margin: "12px 0", boxSizing: "border-box", border: "1.5px solid var(--el)", background: "var(--card)", color: "var(--text)", ...style }}
       >
         {head}

@@ -2,6 +2,45 @@
 
 ## LAST SESSION (3 Oct 2026) — replaced on every push (Rule 13)
 
+> ### EVERY HOME TOOL PAGE IN DISCOVER'S SECTIONS (3 Oct 2026, latest) — no migration · ✅ PUSHED on the user's *"fix and push all 3 points"* — ⚠ the previous chat's note said "committed locally"; it was NOT (the tree was uncommitted and `DeskSections.tsx` untracked), and a `next start` of its own was still holding :3100. **The leftover sweep ran too** (the user: *"just clear out old test studios"*): `--show-kept` first — kept 23 profiles and 13 businesses, all real or demo — then 27 test businesses and 5 e2e accounts soft-deleted, `ensure-test-phone-profiles` after
+> The user: *"how you segrated sections in discover inbox and home now do that fo
+> all pages inside the home tools for all profiles."* Row C116.
+> * **`components/ui/DeskSections.tsx`**: `DeskTop` (a `TopPanel` squircle),
+>   `DeskMiddle` and `DeskBody` (the page-ground panel), with test ids
+>   `desk-top` / `desk-middle` / `desk-body`. Every page behind a Home tile —
+>   a person's, an artist's, a studio's and a crew's — puts its heading and what
+>   chooses the view (columns, period, filters, the add button) in the top, a
+>   headline figure in the middle where there is one (Earnings, Refunds, a crew's
+>   Team tiles), and the list in the lower one.
+> * `SegmentedPanels` gained `sections` and a `top` NODE (never a function — the
+>   callers are server components, React #441): the hero and the pills in the
+>   top, the shown panel in the lower. `BizPage` gained `top` / `middle`.
+> * ⚠ **A sticky row must open the LOWER section**, not end the top one — sticky
+>   only sticks inside its parent. The classes register's tabs and the calendar's
+>   controls are the first children of `DeskBody`; the calendar's scroll helper
+>   measures where a sticky block RESTS, not where it starts.
+> * ⚠ **Three stripes, found by a check rather than by eye**: a nested block still
+>   painting the PAGE's ground across a section — the embedded register's sticky
+>   band on `/my-classes`, and the two earnings ledgers (`MyEarnings`,
+>   `EarningsDesk`) when nested. The scratchpad shoot now flags any wide block in
+>   a section painted with the body's colour; 0 left on 84 page loads.
+> * **Two stale shoot checks re-cut, both from 2 Oct and not from this change**
+>   (each failed identically on the live site): `shoot-earnings` asked a person's
+>   own earnings for a payout from their OWN studio, which `findMyEarnings` has
+>   left out since 2 Oct; `shoot-practice` read the Inbox's default column, which
+>   has been Enquiries since 2 Oct (C96) — it presses Requests now.
+> * **Verified:** typecheck 0 · lint 0 · build green · 42 tool pages × 2 themes
+>   for a studio owner and a crew-leading artist: every one has the top and lower
+>   sections, no sideways scroll, no page error, no stripe · `shoot-tiles`
+>   136/136 · `shoot-invert` 38/38 · `shoot-earnings` 29/29 · `shoot-practice`
+>   44/44 · `shoot-classes` 79/79 · `shoot-register` 65/65 · `shoot-seats` 21/21
+>   · re-run on a fresh build in the next chat: typecheck 0 · lint 0 · build
+>   green · **the whole suite 38 passed / 1 failed / 17 did not run in 8.9 min,
+>   then the happy path alone 19/19 in 13.1 min** — all 56 green across the two
+>   on one bundle. ⚠ The one red was the onboarding helper's 5 s wait for the
+>   photo button while the page still read "Saving…" — a slow round trip, not a
+>   wrong value, in a helper this change does not touch.
+
 > ### PART REFUNDS READ AS PART REFUNDS, THE LOWER HALVES LOSE THE OPPOSITE THEME, AND A REAL SANDBOX REFUND IS DRIVEN END TO END (3 Oct 2026, latest) — ⚠ Rule 9 (money labels) · ✅ `20261003150000` APPLIED (dry run 18/18 re-run first, the only pending file, read back live 8/8) · ✅ PUSHED AND LIVE (`99755dc`: Vercel READY, alias confirmed on the sha through the API, and ON THE LIVE SITE `stranger-smoke` all green · `shoot-invert` 38/38 · `shoot-inbox` 39/39 · `shoot-enquiry-money` **14/14**, a real Cashfree sandbox payment and refund)
 > * **The enquiry migration's two leftovers closed**: the demo world re-seeded with
 >   the re-cut enquiries, and `scripts/shots/shoot-enquiry-money.js` (new) drives a
@@ -12593,6 +12632,8 @@ for the database schema. **The UI is not redesigned** — see Rule 2.
 
 ### Progress tracker — update after EVERY push (Rule 11)
 
+- **EVERY HOME TOOL PAGE IN DISCOVER'S SECTIONS — 3 Oct 2026, no step number —
+  no migration.** Row C116. Detail at the top.
 - **POSTERS ON CARDS, TEACHERS' FACES, A STUDENT LIST FOR ITS RUNNERS, ASSET
   PICTURES, PHONE PUSH, QUIETER TILES AND SQUIRCLE TOPS — 3 Oct 2026, no step
   number ⚠ (Rule 9: RLS widened and narrowed, a device table, the database
@@ -17790,6 +17831,7 @@ Home. **Do not "restore parity" on these.**
 | R62 | S_enqdetail (5380) moves an enquiry by a status menu, quotes one figure with an advance, and closes it from the business's side; 3 Oct 2026 (earlier) gave the sender Accept · Ask to revise · Cancel and the business Completed · Lost · Cancelled | **AN ENQUIRY IS A PROCESS, NOT A STATUS** (`20261003140000`): the business accepts or declines (with a reason) a new enquiry; a quote is line items or one total, an advance and a valid-until; the sender accepts it whole or asks for a revision with a reason; accepting puts the project ON; additions and reductions at any stage, each answered; completion needs BOTH ends; ending it before money is immediate (withdrawn by the sender, called off by the business), after money is refund TERMS the other side accepts, counters or refuses. Only owners and managers (a crew's leader) work it. ⚠ Rule 9: an accepted ending's online part is a refund on the enquiry's own orders, sent through Cashfree; the rest is recorded as handed back and is an expense on Earnings | 3 Oct 2026, the user's enquiry spec and their answers to every open point across four rounds ("perfect — whats missing", "whats left — 1. true … 10. true") |
 | C114 | C34/C39: the inverted panel is OPAQUE — `background: var(--solid)` of the other theme | **TRANSLUCENT AND TWO-TONED**: tone B at 86–88% with tone A washing in from the top-left and two faint glows (sky, fuchsia) at opposite corners, a light edge and a soft shadow — on every lower half (Discover, Home, the Inbox, and the profile pages that copy Home). ⚠ `--sub`/`--muted` inside are RETUNED for the composited ground and measured by `shoot-invert` (26/26: muted 4.66 dark, 4.75 light). ⚠ **No `backdrop-filter`**: it makes the panel a containing block for the fixed sheets drawn inside it | 3 Oct 2026, the user: *"lower half of dicover inbox and home should be transluscent with double tone effect"* |
 | C115 | C34/C39/C114: the lower half of Discover, the Inbox and every Home is an `InvertedPanel` on the OPPOSITE theme (translucent and two-toned since 3 Oct) | **ON THE PAGE'S OWN THEME** — `InvertedPanel ground="page"`: the same 22px squircle with the card veil and the 1.5px outline the top panels wear, no palette swap, no context (`data-testid="page-panel"`). ⚠ The PROFILE pages keep the opposite-theme panel — not asked. ⚠ Putting more small text on the card veil exposed `--muted` at **4.06:1 (dark) / 4.24:1 (light)** there, already true on every top squircle — it is `#858585` / `#6e665b` now, ~4.7 / ~4.8 on the card and higher on the page. `shoot-invert` re-cut (38/38): no swapped panel on Discover, the shelf on the page's side, the tiers measured inside it, and the swapped panel's own tiers measured on a studio's page instead | 3 Oct 2026, the user: *"remove dual tone effect from discover, inbox and home"*, and asked which, *"the whole opposite-theme panel"* |
+| C116 | A desk page is one column on the page's ground: its hero, its controls and its list stacked (BizShell 2964-2976) | **Every page behind a Home tool tile wears Discover's sections** — the heading and what chooses the view (columns, period, filters, the add button) in a `DeskTop` squircle, a headline figure in a `DeskMiddle` where there is one, the list in a `DeskBody` (`components/ui/DeskSections.tsx`). `SegmentedPanels sections top={…}` and `BizPage top / middle` carry it to the hubs and the settings ledgers. ⚠ A sticky row opens the lower section (sticky only sticks inside its parent), and a nested block never paints the page's ground across a section | 3 Oct 2026, the user: *"how you segrated sections in discover inbox and home now do that fo all pages inside the home tools for all profiles."* |
 | C113 | C108: the Inbox is two shapes — the top squircle (heading, columns, settings) over one inverted panel holding the sides, the figures, the always-open "Pipeline breakup", the filters and the cards | **THREE SHAPES**: Received · Sent · Completed join the top squircle; the figures and the **Breakup** (renamed, total first, by stage as one split bar with chips) are a middle squircle of their own; the panel is the search to the end of the page. The settings cards lose their second line | 3 Oct 2026, the user: *"Received, sent, completed part of upper half. everything below this and above search enquiries is the middle half and should have seprate segragation. search enquiries to till end of page third half. pipeline breakup name change to Breakup by stage and total written better"* |
 | C112 | The figures row wraps (`flexWrap: wrap`), and with four 44px chips it wrapped on every width, the app's own 430 included (125 + 200 + 44 = 369 in 368) | **ONE LINE, ALWAYS**: the figures are one block that never shrinks (`FIGURE_GROUP`), the chips start at 44px and shrink round into what is left, down to 24px — flexbox's arithmetic, not a pixel guess | 3 Oct 2026, the user: *"public view follow following in line with stats, qr code button row. always"* |
 | C104 | Tool tiles are solid gradients of the tool's colour (BizSection 2497-2583) | **A quiet tile**: `--card` with a 1.5px `--el` border, the name in ink, and the colour only on a small tinted glyph | 3 Oct 2026, the user: *"better design for tool tiles"* → *"Same layout, polished"* → *"should have border and not that colorfull"* |

@@ -490,12 +490,23 @@ export function BusinessHub({
       }}
     >
       <div style={{ padding: "14px 16px 0" }}>
-        {/* the same paint, and the same word, as the tile you pressed to get here */}
+        {/* ⚠ SECTIONS (3 Oct 2026, C116): the heading, the price line and the two
+            column pills in the TOP squircle (`SegmentedPanels sections`), the shown
+            column — Add studio included, it belongs to Yours — in the LOWER one */}
+        <SegmentedPanels
+          /* the key is the SERVER's answer, so a link carrying `?show=` wins over
+             whatever this control last showed (the my-classes note) */
+          key={show}
+          initial={show}
+          label="Show"
+          sections
+          top={
+        <>
         <div
           style={{
             borderRadius: 22,
             padding: "15px 17px 14px",
-            marginBottom: 12,
+            marginBottom: 0,
             position: "relative",
             overflow: "hidden",
             color: "#fff",
@@ -531,26 +542,17 @@ export function BusinessHub({
         {/* THE PRICE, ONCE, FROM THE PRICE LIST (26 Sep 2026) — the one fact the
             cards cannot say until there is one; the Organizations hub prints
             its own the same way */}
-        <div style={{ fontSize: 11, color: SUB, lineHeight: 1.5, margin: "-4px 2px 12px" }}>
+        <div style={{ fontSize: 11, color: SUB, lineHeight: 1.5, margin: "8px 2px 0" }}>
           {studioPrice ? `A studio is ${priceWords(studioPrice.priceInr, studioPrice.period).replace("/mo", " a month")} once DanceOS has verified it.` : "No studio plan is on offer right now — message DanceOS from Settings › Help & support."}
         </div>
-
-        {/* ⚠⚠ TWO COLUMNS (29 Sep 2026, the user: *"same should be for studios
-            with 2 colums — your own studios and the second column with where
-            your learned"*, after the same cut on Crews).
-            They were three stacked sections — YOUR STUDIOS, then STUDIOS YOU
-            HAVE TAUGHT AT, then STUDIOS YOU HAVE LEARNT AT — so a person who
-            owns one and has booked at nine scrolled past all of them.
-            ⚠ TAUGHT AT RIDES IN THE SECOND COLUMN under its own head rather than
-            becoming a third: both are "a studio that is not yours", the user
-            asked for two, and dropping the list would lose an artist's teaching
-            history (R22 built it deliberately). A studio is still listed once. */}
-        <SegmentedPanels
-          /* the key is the SERVER's answer, so a link carrying `?show=` wins over
-             whatever this control last showed (the my-classes note) */
-          key={show}
-          initial={show}
-          label="Show"
+        </>
+          }
+          /* ⚠⚠ TWO COLUMNS (29 Sep 2026, the user: *"same should be for studios
+             with 2 colums — your own studios and the second column with where
+             your learned"*). ⚠ TAUGHT AT RIDES IN THE SECOND COLUMN under its own
+             head rather than becoming a third: both are "a studio that is not
+             yours", and dropping it would lose an artist's teaching history (R22).
+             A studio is still listed once. */
           segments={[
             { key: "own", href: "/business", label: "Yours", n: myStudios.length, aria: "The studios you own" },
             { key: "learned", href: "/business?show=learned", label: "Where you learned", n: learnt.length + theirs.length, aria: "The studios you have learned and taught at" },

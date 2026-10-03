@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useState, type CSSProperties, type ReactNode } from "react";
 import { FigureHead } from "@/components/ui/FigureHead";
+import { DeskBody, DeskMiddle, DeskTop } from "@/components/ui/DeskSections";
 import { DOS_TOOLS, DeskHero } from "@/features/businesses/components/biz-kit";
 import { EarningsChart } from "@/features/payouts/components/EarningsChart";
 import { money } from "@/features/payouts/components/earnings-kit";
@@ -172,20 +173,24 @@ export function EarningsScreen({
   const left = revenue - expenses;
 
   return (
-    <div style={{ background: LILAC, color: INK, maxWidth: 430, margin: "0 auto", fontFamily: DOS_UI, minHeight: "100vh", padding: "12px 16px 40px", boxSizing: "border-box" }}>
+    <div style={{ background: LILAC, color: INK, maxWidth: 430, margin: "0 auto", fontFamily: DOS_UI, minHeight: "100vh", padding: "8px 16px 40px", boxSizing: "border-box" }}>
+      {/* ⚠ THE TOP SECTION (3 Oct 2026, C116): the hero and the period; the chart,
+          the bucket and what is left are the middle; the breakups and whatever the
+          desk adds are the lower section — Discover's and the Inbox's shapes. */}
+      <DeskTop>
       {/* ⚠ THE TOOL'S OWN HERO (2 Oct 2026, the user: "better color scheme for
           all tools and headings inside their pages"). This was the one tile page
           headed by a bare 21px line while every other wears `DeskHero` in its
           tile's colour — so Earnings looked like a different app from Classes. */}
       {title === DOS_TOOLS.earn.name ? (
-        <DeskHero tool="earn" as="h1" margin={sub ? "0 0 6px" : "0 0 12px"} />
+        <DeskHero tool="earn" as="h1" margin="0" />
       ) : (
-        <h1 style={{ fontSize: 21, fontWeight: 900, letterSpacing: -0.4, margin: "0 0 2px" }}>{title}</h1>
+        <h1 style={{ fontSize: 21, fontWeight: 900, letterSpacing: -0.4, margin: 0 }}>{title}</h1>
       )}
-      {sub ? <div style={{ fontSize: 11.5, color: SUB, fontWeight: 800, marginBottom: 12 }}>{sub}</div> : null}
+      {sub ? <div style={{ fontSize: 11.5, color: SUB, fontWeight: 800, marginTop: 6 }}>{sub}</div> : null}
 
       {/* DAY · WEEK · MONTH · YEAR — the period is a LINK, so it is in the URL */}
-      <div role="group" aria-label="Period" style={{ display: "flex", gap: 2, background: "var(--el)", borderRadius: 12, padding: 3, marginBottom: 12 }}>
+      <div role="group" aria-label="Period" style={{ display: "flex", gap: 2, background: "var(--el)", borderRadius: 12, padding: 3, marginTop: 12 }}>
         {PERIODS.map(([p, label]) => {
           const on = report.period === p;
           return (
@@ -202,7 +207,9 @@ export function EarningsScreen({
           );
         })}
       </div>
+      </DeskTop>
 
+      <DeskMiddle>
       <EarningsChart
         buckets={report.buckets.map((b) => ({ key: b.key, revenue: b.revenueInr, expenses: b.expensesInr }))}
         period={report.period}
@@ -227,15 +234,13 @@ export function EarningsScreen({
           each, and the same words for everybody.
           ⚠ The 4,000-row warning below STAYS: it is not an explanation, it is
           the one line that says a printed total is short. */}
-      <Breakup title="REVENUE" lines={here.revenue} total={revenue} tone="#22C55E" empty="Nothing came in." />
-
-      {noExpenses ? null : <Breakup title="EXPENSES" lines={here.expenses} total={expenses} tone="#F87171" empty="Nothing went out." />}
-
       {/* WHAT IS LEFT — revenue minus expenses and nothing else: there is no
           DanceOS fee, no GST on a fee and no TDS rate anybody has set, so none
           is deducted. Said here rather than on the screen, which was the whole
-          of what that paragraph did. */}
-      <div style={{ ...card, background: left < 0 ? "rgba(248,113,113,.10)" : "rgba(34,197,94,.10)", border: `1.5px solid ${left < 0 ? "#F87171" : "#22C55E"}55` }}>
+          of what that paragraph did. ⚠ It is the middle section's headline
+          figure (3 Oct 2026, C116); the two breakups it is the difference of
+          open the lower section. */}
+      <div style={{ ...card, marginBottom: 0, background: left < 0 ? "rgba(248,113,113,.10)" : "rgba(34,197,94,.10)", border: `1.5px solid ${left < 0 ? "#F87171" : "#22C55E"}55` }}>
         <FigureHead
           title={<span style={{ fontSize: 11, fontWeight: 900, letterSpacing: 0.7, color: "var(--muted)" }}>WHAT IS LEFT</span>}
           figure={
@@ -245,6 +250,12 @@ export function EarningsScreen({
           }
         />
       </div>
+      </DeskMiddle>
+
+      <DeskBody>
+      <Breakup title="REVENUE" lines={here.revenue} total={revenue} tone="#22C55E" empty="Nothing came in." />
+
+      {noExpenses ? null : <Breakup title="EXPENSES" lines={here.expenses} total={expenses} tone="#F87171" empty="Nothing went out." />}
 
       {report.complete ? null : (
         <div role="status" style={{ ...card, fontSize: 11, color: "#F59E0B", lineHeight: 1.5 }}>
@@ -253,6 +264,7 @@ export function EarningsScreen({
       )}
 
       {children}
+      </DeskBody>
     </div>
   );
 }

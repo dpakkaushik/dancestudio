@@ -228,7 +228,9 @@ export default async function MyClassesPage({ searchParams }: { searchParams: Pr
           ("counts inside the toggles with total inside the columns"), so nothing
           is left between the heading and the segments but air. The Calendar tile
           on Home is still its door. */}
-      <DeskHero tool="classes" as="h1" margin="0 0 14px" />
+      {/* ⚠ SECTIONS (3 Oct 2026, C116): `SegmentedPanels sections` draws the
+          heading and Booked · Assist · Manage in the TOP squircle and the shown
+          list in the LOWER one — the Inbox's own split. */}
 
       {/* ⚠ SWITCHING A COLUMN DOES NOT GO TO THE SERVER AT ALL (20 Sep 2026, the
           user: "CLASSES LAG ISSUE IS THERE WHEN SWITCHING COLUMNS").
@@ -244,6 +246,8 @@ export default async function MyClassesPage({ searchParams }: { searchParams: Pr
            different `?show=` must win over whatever this control last showed */
         key={show}
         initial={show}
+        sections
+        top={<DeskHero tool="classes" as="h1" margin="0" />}
         segments={showsFor(runs).map((k) => ({
           key: k,
           href: k === "booked" ? "/my-classes" : `/my-classes?show=${k}`,

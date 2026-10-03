@@ -24,6 +24,7 @@ import {
 } from "@/features/staff/server-actions/staff";
 import Link from "next/link";
 import { DeskAddButton } from "@/features/settings/components/settings-kit";
+import { DeskBody, DeskTop } from "@/components/ui/DeskSections";
 import { DOS_TOOLS, DeskHero, SheetHandle, sheetBody, sheetWrap } from "@/features/businesses/components/biz-kit";
 import { DOS_DISPLAY, DOS_UI, INK, LILAC, MUTED, SKY, SUB } from "@/lib/design/tokens";
 import { useCloseOnBack } from "@/lib/hooks/useCloseOnBack";
@@ -260,7 +261,9 @@ export function StaffDesk({
           nothing on screen ever shows it drifting.
           ⚠ AND IT NAMES THE BUSINESS, which the other two desks already did: an
           organization runs several studios, and the tool hero names the tool. */}
-      <DeskHero tool="team" as="h1" margin="12px 0 8px" />
+      <DeskTop style={{ paddingBottom: 4 }}>
+      {/* ⚠ THE TOP SECTION (3 Oct 2026, C116) — the hero, whose team it is, and Add */}
+      <DeskHero tool="team" as="h1" margin="0 0 8px" />
       <Link href={publicHref} style={{ display: "block", fontSize: 11.5, color: SUB, fontWeight: 800, margin: "0 0 12px", textDecoration: "none" }}>
         {businessName} · who it names ›
       </Link>
@@ -286,7 +289,10 @@ export function StaffDesk({
           }}
         />
       ) : null}
+      </DeskTop>
 
+      <DeskBody style={{ paddingBottom: 4 }}>
+      {/* ⚠ THE LOWER SECTION (3 Oct 2026, C116) — the roster and what it says */}
       {/* ── THE ROSTER, GROUPED BY LABEL (20 Sep 2026) ──────────────────────
           The user held up the prototype's own Team screen: *"fix team view like
           this"*. S_team (18679-18698) does not draw a list of people — it draws
@@ -572,6 +578,7 @@ export function StaffDesk({
       {/* ⚠ `role="alert"`, like the other two desks: a refusal that is only a
           red line is a refusal a screen reader never hears */}
       {error && <div role="alert" style={{ fontSize: 11.5, color: "#F87171", fontWeight: 700, marginTop: 10 }}>{error}</div>}
+      </DeskBody>
 
       {/* ── invite: name, email, what they may do ── */}
       {addOpen && (

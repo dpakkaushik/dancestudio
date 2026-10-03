@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
+import { DeskBody, DeskTop } from "@/components/ui/DeskSections";
 import { ClassTile } from "@/features/classes/components/ClassTile";
 import { DOS_TOOLS, dosToolPaint } from "@/features/businesses/components/biz-kit";
 import { dosStyleColor } from "@/lib/constants/styles";
@@ -107,10 +108,29 @@ function dosScrollTo(el: HTMLElement, smooth: boolean) {
   let floor = 0;
   document.querySelectorAll("[data-dos-sticky]").forEach((n) => {
     const r = n.getBoundingClientRect();
-    if (r.height > 0 && r.top <= window.innerHeight * 0.5 && r.bottom > floor) floor = r.bottom;
+    /* ⚠ (3 Oct 2026, C116) the controls are no longer the first thing on the
+       page — the hero sits above them in its own squircle and scrolls away — so
+       measure where a sticky block will REST once the scroll has stuck it, not
+       where it sits before the scroll, or the row lands a hero's height low. */
+    const css = window.getComputedStyle(n);
+    const pin = css.position === "sticky" ? parseFloat(css.top) : NaN;
+    const top = Number.isFinite(pin) && r.top > pin ? pin : r.top;
+    const bottom = top + r.height;
+    if (r.height > 0 && top <= window.innerHeight * 0.5 && bottom > floor) floor = bottom;
   });
   const y = el.getBoundingClientRect().top + window.scrollY - floor - 10;
   window.scrollTo({ top: Math.max(0, y), behavior: smooth ? "smooth" : "auto" });
+}
+
+/** ⚠ THE LOWER SECTION (3 Oct 2026, C116): the sticky controls and the views
+ *  stand in `DeskBody` on your own, a studio's and a crew's calendar — and in
+ *  nothing at all on a PUBLIC schedule, which is somebody's page rather than a
+ *  home tool and keeps its old shape. The sticky block is the body's FIRST child
+ *  so it sticks for the whole length of the schedule (a sticky element only
+ *  sticks within its parent); the body is not a stacking context and does not
+ *  clip, so the date panel's `position: fixed` scrim still covers the screen. */
+function CalendarBody({ sectioned, children }: { sectioned: boolean; children: React.ReactNode }) {
+  return sectioned ? <DeskBody>{children}</DeskBody> : <>{children}</>;
 }
 
 /* ⚠ `toTileClass` MOVED to `types/calendar.ts` on 30 Sep 2026, the day the
@@ -547,40 +567,22 @@ export function CalendarScreen({ mode, months, todayKey, entries, practices = []
         boxSizing: "border-box",
       }}
     >
-      {/* ── the controls stay put; only the sessions scroll (9058-9061) ── */}
-      <div
-        data-dos-sticky="cal"
-        style={{
-          position: "sticky",
-          top: "var(--dos-top)",
-          zIndex: 120,
-          background: LILAC,
-          margin: "0 -16px",
-          padding: "8px 16px 6px",
-          borderBottom: `1.5px solid ${LINE}`,
-        }}
-      >
-        {/* a public schedule draws no hero (9065) — it is somebody's page, not
-            your calendar — so it says whose it is in one quiet line instead */}
-        {/* ⚠ EACH BRANCH CARRIES THE PAGE'S OWN `<h1>` (28 Sep 2026). The chrome
-            stopped printing a drill page's name when the wordmark became
-            constant, so this line and the hero below are the only things naming
-            these five routes (a person's calendar, a studio's, a crew's, and the
-            two public schedules). Nothing is drawn differently — `margin` keeps
-            what each already had, and a quiet line stays a quiet line. */}
-        {isPublic ? (
-          pageTitle ? (
-            <h1 style={{ fontSize: 9.5, fontWeight: 900, letterSpacing: 1.2, color: MUTED, margin: "6px 0 10px", textTransform: "uppercase" }}>
-              {pageTitle} · schedule
-            </h1>
-          ) : null
-        ) : (
+      {/* ⚠ EACH BRANCH CARRIES THE PAGE'S OWN `<h1>` (28 Sep 2026). The chrome
+          stopped printing a drill page's name when the wordmark became
+          constant, so the hero below and the public line further down are the
+          only things naming these five routes (a person's calendar, a studio's,
+          a crew's, and the two public schedules). */}
+      {isPublic ? null : (
+        <DeskTop style={{ margin: "0 0 12px" }}>
+          {/* ⚠ THE TOP SECTION (3 Oct 2026, C116): the hero alone, out of the
+              sticky block — the controls start the lower section, so they stick
+              for the length of the schedule rather than inside this short box */}
           <div
             style={{
               display: "flex",
               alignItems: "center",
               gap: 8,
-              margin: "2px 0 10px",
+              margin: 0,
               borderRadius: 22,
               padding: "15px 17px 14px",
               color: "#fff",
@@ -612,7 +614,33 @@ export function CalendarScreen({ mode, months, todayKey, entries, practices = []
                 2026 with the second stats screen, so that door now leads
                 nowhere in particular; the route is untouched (Rule 14). */}
           </div>
-        )}
+        </DeskTop>
+      )}
+
+      <CalendarBody sectioned={!isPublic}>
+      {/* ── the controls stay put; only the sessions scroll (9058-9061) ── */}
+      <div
+        data-dos-sticky="cal"
+        style={{
+          position: "sticky",
+          top: "var(--dos-top)",
+          zIndex: 120,
+          /* inside the lower section the band spans the section (its 14px
+             padding) and wears the section's own ground — the card veil over
+             the page — opaque, so the sessions scroll under it unseen */
+          background: isPublic ? LILAC : `linear-gradient(${CARD}, ${CARD}), ${LILAC}`,
+          margin: isPublic ? "0 -16px" : "0 -14px",
+          padding: isPublic ? "8px 16px 6px" : "8px 14px 6px",
+          borderBottom: `1.5px solid ${LINE}`,
+        }}
+      >
+        {/* a public schedule draws no hero (9065) — it is somebody's page, not
+            your calendar — so it says whose it is in one quiet line instead */}
+        {isPublic && pageTitle ? (
+          <h1 style={{ fontSize: 9.5, fontWeight: 900, letterSpacing: 1.2, color: MUTED, margin: "6px 0 10px", textTransform: "uppercase" }}>
+            {pageTitle} · schedule
+          </h1>
+        ) : null}
 
         {/* one studio = one location — only rooms need filtering (9076-9098) */}
         {(mode === "studio" || isPublic) && rooms.length > 0 ? (
@@ -1048,6 +1076,7 @@ export function CalendarScreen({ mode, months, todayKey, entries, practices = []
           })}
         </div>
       ) : null}
+      </CalendarBody>
 
       {/* ⚠⚠ THE COMPOSE BUTTON IS GONE ALTOGETHER (29 Sep 2026), and it went in
           two halves a week apart. "Add class" left a STUDIO's calendar on

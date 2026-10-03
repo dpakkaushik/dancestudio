@@ -2,6 +2,7 @@ import Link from "next/link";
 import type { CSSProperties, ReactNode } from "react";
 import { DOS_DISPLAY, DOS_UI, INK, LILAC } from "@/lib/design/tokens";
 import { DeskHero, type DosToolKey } from "@/features/businesses/components/biz-kit";
+import { DeskBody, DeskMiddle, DeskTop } from "@/components/ui/DeskSections";
 
 /** The pieces the settings screens share, lifted from the prototype's BizShell
  *  (2950-2984): the tool card that heads every business page — a 22px-radius
@@ -74,27 +75,53 @@ export const dateWords = (iso: string) => new Intl.DateTimeFormat("en-IN", { tim
  *  `grad` stays for the screens that are NOT tools — Verification is the one
  *  that matters (C53: a desk hero titles itself from `DOS_TOOLS`, and inventing
  *  a tool colour for something on nobody's grid is what that decision refused). */
-export function BizPage({ title, sub, grad, tool, children }: { title: string; sub?: string; grad?: string; tool?: DosToolKey; children: ReactNode }) {
+export function BizPage({
+  title,
+  sub,
+  grad,
+  tool,
+  top,
+  middle,
+  children,
+}: {
+  title: string;
+  sub?: string;
+  grad?: string;
+  tool?: DosToolKey;
+  /** the controls that choose WHAT is shown (segments, filter chips) — drawn in
+   *  the top section under the heading (3 Oct 2026, C116) */
+  top?: ReactNode;
+  /** optional summary figures between the heading and the list (C116) */
+  middle?: ReactNode;
+  children: ReactNode;
+}) {
   return (
     <div style={{ background: LILAC, color: INK, maxWidth: 430, margin: "0 auto", fontFamily: DOS_UI, minHeight: "100vh", padding: "8px 16px 40px", boxSizing: "border-box" }}>
-      {tool ? (
-        /* ⚠ THE SUB-LINE SURVIVES THE SWAP, and it has to: `DeskHero` names the
-           TOOL and an organization runs several businesses, so "whose
-           subscription is this" would otherwise leave the screen — the same
-           reason every other tool hero in the app carries the business's name
-           under it (C49). */
-        <>
-          <DeskHero tool={tool} as="h1" margin={sub ? "0" : "0 0 12px"} />
-          {sub ? <div style={{ fontSize: 11, fontWeight: 700, color: "var(--sub)", margin: "5px 2px 12px" }}>{sub}</div> : null}
-        </>
-      ) : (
-        <div style={{ borderRadius: 22, padding: "15px 17px 14px", marginBottom: 12, position: "relative", overflow: "hidden", color: "#fff", background: grad }}>
-          <div aria-hidden="true" style={{ position: "absolute", right: -28, top: -32, width: 130, height: 130, borderRadius: 65, background: "rgba(255,255,255,.13)" }} />
-          <h1 style={{ fontSize: 21, fontWeight: 800, letterSpacing: -0.5, position: "relative", fontFamily: DOS_DISPLAY, lineHeight: 1.18, margin: 0 }}>{title}</h1>
-          {sub ? <div style={{ fontSize: 11, opacity: 0.9, marginTop: 3, position: "relative" }}>{sub}</div> : null}
-        </div>
-      )}
-      {children}
+      {/* ⚠ THE TOP SECTION (3 Oct 2026, C116): the heading and the controls that
+          choose what is shown; the figures (if any) in the middle; the page's own
+          content in the lower section — Discover's and the Inbox's three shapes. */}
+      <DeskTop>
+        {tool ? (
+          /* ⚠ THE SUB-LINE SURVIVES THE SWAP, and it has to: `DeskHero` names the
+             TOOL and an organization runs several businesses, so "whose
+             subscription is this" would otherwise leave the screen — the same
+             reason every other tool hero in the app carries the business's name
+             under it (C49). */
+          <>
+            <DeskHero tool={tool} as="h1" margin="0" />
+            {sub ? <div style={{ fontSize: 11, fontWeight: 700, color: "var(--sub)", margin: "5px 2px 0" }}>{sub}</div> : null}
+          </>
+        ) : (
+          <div style={{ borderRadius: 22, padding: "15px 17px 14px", position: "relative", overflow: "hidden", color: "#fff", background: grad }}>
+            <div aria-hidden="true" style={{ position: "absolute", right: -28, top: -32, width: 130, height: 130, borderRadius: 65, background: "rgba(255,255,255,.13)" }} />
+            <h1 style={{ fontSize: 21, fontWeight: 800, letterSpacing: -0.5, position: "relative", fontFamily: DOS_DISPLAY, lineHeight: 1.18, margin: 0 }}>{title}</h1>
+            {sub ? <div style={{ fontSize: 11, opacity: 0.9, marginTop: 3, position: "relative" }}>{sub}</div> : null}
+          </div>
+        )}
+        {top ? <div style={{ marginTop: 12 }}>{top}</div> : null}
+      </DeskTop>
+      {middle ? <DeskMiddle>{middle}</DeskMiddle> : null}
+      <DeskBody>{children}</DeskBody>
     </div>
   );
 }

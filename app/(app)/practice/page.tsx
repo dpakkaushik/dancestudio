@@ -50,13 +50,15 @@ export default async function PracticePage({ searchParams }: { searchParams: Pro
   return (
     <div style={{ background: LILAC, color: INK, maxWidth: 430, margin: "0 auto", fontFamily: DOS_UI, minHeight: "100vh", paddingBottom: 40 }}>
       <div style={{ padding: "14px 16px 0" }}>
-        {/* the same paint and the same word as the tile that opened it */}
-        <DeskHero tool="practice" as="h1" margin="0 0 12px" />
+        {/* ⚠ SECTIONS (3 Oct 2026, C116): the heading and the two column pills in
+            the TOP squircle, the shown column's practices in the LOWER one */}
         <SegmentedPanels
           /* the key is the SERVER's answer, so a link carrying `?show=` wins */
           key={show}
           initial={show}
           label="Show"
+          sections
+          top={<DeskHero tool="practice" as="h1" margin="0" />}
           segments={[
             { key: "led", href: "/practice?show=led", label: "Yours", n: led.length, aria: "Practices of the crews you lead" },
             { key: "in", href: "/practice?show=in", label: "You are in", n: member.length, aria: "Practices of the crews you are a part of" },

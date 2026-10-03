@@ -2,6 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useOptimistic, useState, useTransition, type CSSProperties, type ReactNode } from "react";
+import { DeskBody, DeskTop } from "@/components/ui/DeskSections";
 import { INK, SUB } from "@/lib/design/tokens";
 
 /** THE SEGMENTED CONTROL, AND WHY IT IS A CLIENT COMPONENT (20 Sep 2026).
@@ -66,9 +67,9 @@ const WRAP: CSSProperties = { display: "flex", gap: 2, background: "var(--el)", 
 
 /** THE PILL ROW ITSELF — drawn once, used by both controls below, so the
  *  navigating segment and the instant one cannot drift apart. */
-function Pills({ segments, shown, label, onPress }: { segments: Segment[]; shown: string; label: string; onPress: (s: Segment, e: React.MouseEvent) => void }) {
+function Pills({ segments, shown, label, onPress, style }: { segments: Segment[]; shown: string; label: string; onPress: (s: Segment, e: React.MouseEvent) => void; style?: CSSProperties }) {
   return (
-    <div role="group" aria-label={label} style={WRAP}>
+    <div role="group" aria-label={label} style={{ ...WRAP, ...style }}>
       {segments.map((s) => {
         const on = shown === s.key;
         return (
@@ -142,6 +143,8 @@ export function SegmentedPanels({
   initial,
   panels,
   label = "Show",
+  sections = false,
+  top,
 }: {
   segments: Segment[];
   /** the segment the SERVER decided, from `?show=` — the URL still wins on load */
@@ -149,6 +152,15 @@ export function SegmentedPanels({
   /** one node per segment; only the shown one is mounted */
   panels: Array<{ key: string; node: ReactNode }>;
   label?: string;
+  /** ⚠ SECTIONS (3 Oct 2026, C116 — "how you segregated sections in discover
+   *  inbox and home now do that for all pages inside the home tools"): the
+   *  heading (`top`) and the pills in the TOP squircle, the shown panel in the
+   *  LOWER one — the Inbox's own split. A NODE, never a render function: the
+   *  callers are server components, and a function cannot cross into a client
+   *  one (React #441, 21 Sep 2026). */
+  sections?: boolean;
+  /** drawn above the pills inside the top section (the tool's DeskHero, a sub-line) */
+  top?: ReactNode;
 }) {
   /* ⚠ THE CALLER PASSES `key={initial}` — see the note at each call site. React
      keeps a component's state across a re-render at the same position, so
@@ -159,12 +171,12 @@ export function SegmentedPanels({
      not go to the server. */
   const [shown, setShown] = useState(initial);
   const on = panels.find((p) => p.key === shown) ?? panels.find((p) => p.key === initial);
-  return (
-    <>
+  const pills = (
       <Pills
         segments={segments}
         shown={shown}
         label={label}
+        style={sections ? { marginBottom: 0, marginTop: top ? 12 : 0 } : undefined}
         onPress={(s, e) => {
           if (!plainClick(e)) return;
           e.preventDefault();
@@ -182,6 +194,23 @@ export function SegmentedPanels({
           }
         }}
       />
+  );
+  if (sections) {
+    return (
+      <>
+        {/* the callers are desk pages that already pad their own top and foot */}
+        <DeskTop style={{ margin: "0 0 12px" }}>
+          {top}
+          {pills}
+        </DeskTop>
+        <DeskBody style={{ margin: 0 }}>{on?.node ?? null}</DeskBody>
+      </>
+    );
+  }
+  return (
+    <>
+      {top}
+      {pills}
       {on?.node ?? null}
     </>
   );

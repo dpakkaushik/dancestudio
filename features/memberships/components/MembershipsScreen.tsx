@@ -8,6 +8,7 @@ import { confirmCheckoutAction, startMembershipCheckoutAction } from "@/features
 import { openCashfreeCheckout } from "@/lib/cashfree/checkout-client";
 import { DeskHero } from "@/features/businesses/components/biz-kit";
 import { DeskAddButton } from "@/features/settings/components/settings-kit";
+import { DeskBody, DeskTop } from "@/components/ui/DeskSections";
 import { DISC_RADIUS, DOS_UI, INK, LILAC, SUB } from "@/lib/design/tokens";
 import { photoUrl } from "@/lib/media/photo";
 import { money as rupees } from "@/features/payouts/components/earnings-kit";
@@ -193,15 +194,20 @@ export function MembershipsScreen({
     });
 
   return (
-    <div style={{ background: LILAC, color: INK, maxWidth: 430, margin: "0 auto", fontFamily: DOS_UI, minHeight: "100vh", padding: "14px 16px 40px", boxSizing: "border-box" }}>
-      <DeskHero tool="memberships" as="h1" margin={business ? "0 0 4px" : "0 0 10px"} />
+    <div style={{ background: LILAC, color: INK, maxWidth: 430, margin: "0 auto", fontFamily: DOS_UI, minHeight: "100vh", padding: "8px 16px 40px", boxSizing: "border-box" }}>
+      {/* ⚠ THE TOP SECTION (3 Oct 2026, C116): the hero, whose desk it is, the two
+          sides and the add button; the passes or the memberships on sale are the
+          lower section. `DeskAddButton` carries its own 12px foot, so the top's
+          own bottom padding steps back when it is the last thing in it. */}
+      <DeskTop style={side === "selling" ? { paddingBottom: 2 } : undefined}>
+      <DeskHero tool="memberships" as="h1" margin="0" />
 
       {/* a studio's desk says whose it is: an organization runs several, and the
           tool hero names the TOOL and nothing that names the studio */}
-      {business ? <div style={{ fontSize: 11.5, color: SUB, fontWeight: 800, margin: "0 0 12px" }}>What {business.name} sells</div> : null}
+      {business ? <div style={{ fontSize: 11.5, color: SUB, fontWeight: 800, margin: "4px 0 0" }}>What {business.name} sells</div> : null}
 
       {canSell && !business ? (
-        <div role="group" aria-label="Show" style={{ display: "flex", gap: 2, background: "var(--el)", borderRadius: 12, padding: 3, marginBottom: 12 }}>
+        <div role="group" aria-label="Show" style={{ display: "flex", gap: 2, background: "var(--el)", borderRadius: 12, padding: 3, marginTop: 12 }}>
           {/* BOOKED · MANAGE (19 Sep 2026, the user: "membership columns should be
               Booked and Manage") — the same two sides, in the words the Classes
               desk already uses: what you hold, and what you sell */}
@@ -215,7 +221,22 @@ export function MembershipsScreen({
           ))}
         </div>
       ) : null}
+      {side === "selling" ? (
+        <div style={{ marginTop: 12 }}>
+          {/* ⚠ THE FORM IS A PAGE NOW (21 Sep 2026, the user: "same should be for
+              new routine and new membership"). It expanded inside this desk,
+              which is why it looked nothing like Add class. `/memberships/new`
+              wears the shared `FormPage` anatomy and resolves WHOSE membership
+              it is on the server, the same way this desk does.
+              ⚠ AND IT OPENS OVER THIS DESK (22 Sep 2026) — `?new=1` on the page
+              you are already on, so the phone's back gesture closes it; the
+              studio's own desk takes the id from the route, not the link. */}
+          <DeskAddButton label="New membership" href="?new=1" />
+        </div>
+      ) : null}
+      </DeskTop>
 
+      <DeskBody>
       {side === "mine" ? (
         <>
           {passes.map((p) => (
@@ -261,23 +282,6 @@ export function MembershipsScreen({
         </>
       ) : (
         <>
-          {/* ⚠ THE FORM IS A PAGE NOW (21 Sep 2026, the user: "same should be for
-              new routine and new membership"). It expanded inside this desk,
-              which is why it looked nothing like Add class. `/memberships/new`
-              wears the shared `FormPage` anatomy and resolves WHOSE membership
-              it is on the server, the same way this desk does.
-              ⚠ A STUDIO'S DESK NAMES ITSELF IN THE LINK (21 Sep 2026): the page
-              resolves and re-authorizes that id, so the id in the URL decides
-              nothing on its own — but without it a studio owner filling this
-              form would be making a membership for whichever business happened
-              to come back first. */}
-          {/* ⚠ AND IT OPENS OVER THIS DESK (22 Sep 2026) — `?new=1` on the page
-              you are already on, the same shape as the gear's `?settings=1`, so
-              the phone's back gesture closes it. The studio's own desk needs no
-              `?business=` any more: the page it opens on IS that studio's, so
-              the id comes from the route rather than from the link. */}
-          <DeskAddButton label="New membership" href="?new=1" />
-
           {selling.map((m) => (
             <Link key={m.id} href={`/memberships/${m.id}`} aria-label={`Open ${m.name}`} style={{ ...card, display: "block", textDecoration: "none", color: INK }} data-testid="selling-membership">
               <div style={{ display: "flex", alignItems: "baseline", gap: 8 }}>
@@ -325,6 +329,7 @@ export function MembershipsScreen({
           ) : null}
         </>
       )}
+      </DeskBody>
 
       {toast ? (
         <div role="status" style={{ position: "fixed", bottom: 96, left: "50%", transform: "translateX(-50%)", background: "#241B33", color: "#fff", padding: "11px 18px", borderRadius: 999, fontSize: 13, fontWeight: 700, zIndex: 40 }}>

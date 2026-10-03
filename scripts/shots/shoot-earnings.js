@@ -205,11 +205,16 @@ async function rest(method, pathname, body) {
     // ───────────────── a person's own ─────────────────
     await page.goto(`${BASE}/earnings?period=year`, { waitUntil: "networkidle" });
     await page.getByRole("heading", { level: 1, name: "Earnings" }).waitFor({ timeout: 20000 });
+    /* ⚠ RE-CUT 3 Oct 2026: the ₹1,000 payout above is from this person's OWN
+       studio to themselves, and since 2 Oct a person's own earnings leave out
+       every business they OWN (`findMyEarnings` — that money is on the studio's
+       desk, and counting it here was the overlap the user reported). So ₹0 is
+       the rule working, and this asserts it rather than the pre-2 Oct sum. */
     const mineRev = (await page.getByTestId("earn-revenue").innerText()).trim();
-    check(mineRev === rupees(1000), `person · what studios paid them reads ${rupees(1000)} (read ${mineRev})`);
+    check(mineRev === rupees(0), `person · a payout from a studio they OWN is not on their own earnings (read ${mineRev})`);
     check((await page.getByTestId("earn-expenses").count()) === 0, "person · no Expenses block — a person employs nobody");
     const mineLeft = (await page.getByTestId("earn-left").innerText()).trim();
-    check(mineLeft === rupees(1000), `person · so what is left IS what came in (read ${mineLeft})`);
+    check(mineLeft === mineRev, `person · so what is left IS what came in (read ${mineLeft})`);
   } catch (e) {
     console.log("\nTHREW: " + e.message);
     bad++;

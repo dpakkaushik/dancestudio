@@ -16,6 +16,7 @@ import { PeoplePicker } from "@/features/people/components/PeoplePicker";
 import { DeskAddButton } from "@/features/settings/components/settings-kit";
 import { DeskHero, SheetHandle, sheetBody, sheetWrap } from "@/features/businesses/components/biz-kit";
 import { photoUrl } from "@/lib/media/photo";
+import { DeskBody, DeskMiddle, DeskTop } from "@/components/ui/DeskSections";
 import { DOS_DISPLAY, DOS_UI, INK, LILAC } from "@/lib/design/tokens";
 import { CREW_ROLE_TINT, CREW_ROLE_WORD, type Crew, type CrewMember } from "@/types/crew";
 import { Toast, bizCard, sinceWords } from "./crew-kit";
@@ -70,14 +71,31 @@ export function CrewManager({ crew, members }: { crew: Crew; members: CrewMember
 
   return (
     <div style={{ background: LILAC, color: INK, maxWidth: 430, margin: "0 auto", fontFamily: DOS_UI, minHeight: "100vh", padding: "0 16px 40px", boxSizing: "border-box" }}>
+      <DeskTop style={{ paddingBottom: 2 }}>
+      {/* ⚠ THE TOP SECTION (3 Oct 2026, C116) — the hero, whose team it is, and
+          Add (which used to sit under the tiles; it is the desk's primary control) */}
       {/* the tool's hero, as every desk wears it; the line under it says whose */}
-      <DeskHero tool="team" as="h1" margin="12px 0 8px" />
+      <DeskHero tool="team" as="h1" margin="0 0 8px" />
       <Link href={`/crews/${crew.id}/manage`} aria-label={`Back to ${crew.name}'s home`} style={{ display: "block", fontSize: 11, fontWeight: 800, color: "var(--sub)", textDecoration: "none", margin: "0 2px 12px" }}>
         {crew.name} · {crew.style} · {crew.city}
       </Link>
 
-      <div>
-        <div style={{ ...bizCard, borderLeft: "4px solid #EC4899", display: "flex", gap: 8 }}>
+            {/* ⚠ THE SHARED ＋, ON TOP, IN THE SAME WORDS AS EVERY OTHER TEAM DESK
+                (21 Sep 2026, the user: "fix Team pages for all kinds of profile
+                types"). This was a hand-rolled `div role="button"` wearing
+                crew-kit's DASHED `bizBtn`, sitting at the FOOT of the roster and
+                reading "＋ Add member", while a studio's and an organization's
+                said "Add a team member" on the solid pill at the top. It is the
+                third desk of three and the last one still doing it its own way —
+                the organization's was corrected on 21 Sep and this one was
+                missed, which is exactly the shape of C36. */}
+            <DeskAddButton label="Add a team member" onClick={() => setAdd(true)} />
+      </DeskTop>
+
+      {/* ⚠ THE MIDDLE SECTION (3 Oct 2026, C116) — the two figures. The card that
+          held them is gone: inside this squircle it would be the same veil twice. */}
+      <DeskMiddle>
+        <div style={{ display: "flex", gap: 8 }}>
           {(
             [
               /* ⚠ THE THREE TILES WERE Members · Entered · Upcoming, and the two
@@ -98,18 +116,11 @@ export function CrewManager({ crew, members }: { crew: Crew; members: CrewMember
             </div>
           ))}
         </div>
-        {error ? <div style={{ fontSize: 11.5, color: "#F87171", marginBottom: 10 }}>{error}</div> : null}
+      </DeskMiddle>
 
-            {/* ⚠ THE SHARED ＋, ON TOP, IN THE SAME WORDS AS EVERY OTHER TEAM DESK
-                (21 Sep 2026, the user: "fix Team pages for all kinds of profile
-                types"). This was a hand-rolled `div role="button"` wearing
-                crew-kit's DASHED `bizBtn`, sitting at the FOOT of the roster and
-                reading "＋ Add member", while a studio's and an organization's
-                said "Add a team member" on the solid pill at the top. It is the
-                third desk of three and the last one still doing it its own way —
-                the organization's was corrected on 21 Sep and this one was
-                missed, which is exactly the shape of C36. */}
-            <DeskAddButton label="Add a team member" onClick={() => setAdd(true)} />
+      <DeskBody>
+        {/* ⚠ THE LOWER SECTION (3 Oct 2026, C116) — the roster */}
+        {error ? <div style={{ fontSize: 11.5, color: "#F87171", marginBottom: 10 }}>{error}</div> : null}
             {members.map((m, i) => {
               const rc = CREW_ROLE_TINT[m.role];
               const pending = m.status === "asked";
@@ -242,7 +253,7 @@ export function CrewManager({ crew, members }: { crew: Crew; members: CrewMember
                 </div>
               </div>
             ) : null}
-      </div>
+      </DeskBody>
       <Toast msg={toast} />
     </div>
   );

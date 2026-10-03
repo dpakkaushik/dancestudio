@@ -3,6 +3,7 @@ import { DOS_DISPLAY, DOS_UI, INK, LILAC, SUB } from "@/lib/design/tokens";
 import { CREW_TINT, type CrewSummary } from "@/types/crew";
 import { DeskAddButton } from "@/features/settings/components/settings-kit";
 import { SegmentedPanels } from "@/features/shell/components/SegmentedNav";
+import { DeskBody, DeskTop } from "@/components/ui/DeskSections";
 import { CrewI, dosToolPaint } from "./crew-kit";
 import { ReclaimCrewButton } from "./ReclaimCrewButton";
 
@@ -109,15 +110,21 @@ export function CrewsHub({
       state for a question they never asked. They get the Create crew door and
       one line, which is the rule the hub has followed since it grew a segment. */
   const hasCrew = led.length > 0 || member.length > 0;
+  /* the heading — the same paint, and the same word, as the tile you pressed */
+  const hero = (
+    <div style={{ borderRadius: 22, padding: "15px 17px 14px", marginBottom: 0, position: "relative", overflow: "hidden", color: "#fff", background: dosToolPaint(accent) }}>
+      <div style={{ position: "absolute", right: -28, top: -32, width: 130, height: 130, borderRadius: 65, background: "rgba(255,255,255,.13)" }} />
+      {/* the page's own `<h1>` — the chrome no longer prints a drill page's name (28 Sep 2026) */}
+      <h1 style={{ margin: 0, fontSize: 21, fontWeight: 800, letterSpacing: -0.5, position: "relative", fontFamily: DOS_DISPLAY, lineHeight: 1.18 }}>Crews</h1>
+    </div>
+  );
   return (
     <div style={{ background: LILAC, color: INK, maxWidth: 430, margin: "0 auto", fontFamily: DOS_UI, minHeight: "100vh", paddingBottom: 40 }}>
       <div style={{ padding: "14px 16px 0" }}>
-        {/* the same paint, and the same word, as the tile you pressed to get here */}
-        <div style={{ borderRadius: 22, padding: "15px 17px 14px", marginBottom: 12, position: "relative", overflow: "hidden", color: "#fff", background: dosToolPaint(accent) }}>
-          <div style={{ position: "absolute", right: -28, top: -32, width: 130, height: 130, borderRadius: 65, background: "rgba(255,255,255,.13)" }} />
-          {/* the page's own `<h1>` — the chrome no longer prints a drill page's name (28 Sep 2026) */}
-          <h1 style={{ margin: 0, fontSize: 21, fontWeight: 800, letterSpacing: -0.5, position: "relative", fontFamily: DOS_DISPLAY, lineHeight: 1.18 }}>Crews</h1>
-        </div>
+        {/* ⚠ SECTIONS (3 Oct 2026, C116): the heading and the two column pills in
+            the TOP squircle, the shown column (Create crew included — it belongs
+            to Yours) in the LOWER one. With no crew there are no pills, so the
+            heading stands alone on top and the Create door below. */}
         {hasCrew ? (
           <SegmentedPanels
             /* the key is the SERVER's answer, so a link carrying `?show=` wins
@@ -125,6 +132,8 @@ export function CrewsHub({
             key={show}
             initial={show}
             label="Show"
+            sections
+            top={hero}
             segments={[
               { key: "led", href: "/crews", label: "Yours", n: led.length, aria: "The crews you created" },
               { key: "in", href: "/crews?show=in", label: "You are in", n: member.length, aria: "The crews you are a part of" },
@@ -135,7 +144,12 @@ export function CrewsHub({
             ]}
           />
         ) : (
-          <LedColumn led={led} />
+          <>
+            <DeskTop style={{ margin: "0 0 12px" }}>{hero}</DeskTop>
+            <DeskBody style={{ margin: "0" }}>
+              <LedColumn led={led} />
+            </DeskBody>
+          </>
         )}
       </div>
     </div>

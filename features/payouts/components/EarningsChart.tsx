@@ -66,7 +66,10 @@ export function EarningsChart({
   const height = (n: number) => (tallest > 0 ? Math.max(n > 0 ? 2 : 0, Math.round((n / tallest) * 100)) : 0);
 
   return (
-    <div style={{ background: "var(--card)", border: "1.5px solid var(--el)", borderRadius: 16, padding: "12px 12px 8px", marginBottom: 10 }}>
+    /* ⚠ no card of its own (3 Oct 2026, C116): the chart stands in the earnings
+       screen's middle section, which is already the card — a second veil and
+       outline inside it was a card in a card of the same look */
+    <div style={{ marginBottom: 8 }}>
       <div style={{ display: "flex", gap: 6, marginBottom: 10 }}>
         <button type="button" onClick={() => onToggle("revenue")} aria-pressed={showRevenue} style={legendChip(showRevenue, GREEN)}>
           <span aria-hidden="true" style={{ width: 7, height: 7, borderRadius: 2, background: showRevenue ? GREEN : "var(--el)" }} /> Revenue

@@ -54,21 +54,63 @@ export function RefundsLedger({ rows, side, canSettle = false, focusClassId = nu
     });
 
   return (
-    <BizPage title="Refunds" sub={focusTitle && scope === "focus" ? `Settling ${focusTitle}` : `${rupees(sum(["processed"]))} refunded · ${rupees(sum(["requested", "pending"]))} pending`} grad="linear-gradient(135deg,#F59E0B,#EF4444)">
-      {focusTitle ? (
-        <div style={{ display: "flex", gap: 6, marginBottom: 10 }}>
+    <BizPage
+      title="Refunds"
+      sub={focusTitle && scope === "focus" ? `Settling ${focusTitle}` : `${rupees(sum(["processed"]))} refunded · ${rupees(sum(["requested", "pending"]))} pending`}
+      grad="linear-gradient(135deg,#F59E0B,#EF4444)"
+      top={
+        /* ⚠ THE TOP SECTION (3 Oct 2026, C116): which refunds are shown — the class
+           focus and the state chips; the counted tiles are the middle section */
+        <>
+          {focusTitle ? (
+            <div style={{ display: "flex", gap: 6, marginBottom: 10 }}>
+              {(
+                [
+                  ["focus", focusTitle.length > 22 ? focusTitle.slice(0, 22) + "…" : focusTitle],
+                  ["all", "All refunds"],
+                ] as Array<["focus" | "all", string]>
+              ).map(([k, l]) => (
+                <button type="button" key={k} aria-pressed={scope === k} onClick={() => setScope(k)} style={{ ...chip(scope === k), flex: k === "focus" ? 1.4 : 1, textAlign: "center", overflow: "hidden", textOverflow: "ellipsis" }}>
+                  {l}
+                </button>
+              ))}
+            </div>
+          ) : null}
+          <div style={{ display: "flex", gap: 6, overflowX: "auto", scrollbarWidth: "none" }}>
+            {(
+              [
+                ["all", "All"],
+                ["requested", "Requested"],
+                ["pending", "Processing"],
+                ["processed", "Paid"],
+                ["declined", "Declined"],
+              ] as Array<["all" | RefundStatus, string]>
+            ).map(([k, l]) => (
+              <button type="button" key={k} aria-pressed={tab === k} onClick={() => setTab(k)} style={chip(tab === k)}>
+                {l}
+              </button>
+            ))}
+          </div>
+        </>
+      }
+      middle={
+        <div style={{ display: "flex", gap: 8 }}>
           {(
             [
-              ["focus", focusTitle.length > 22 ? focusTitle.slice(0, 22) + "…" : focusTitle],
-              ["all", "All refunds"],
-            ] as Array<["focus" | "all", string]>
-          ).map(([k, l]) => (
-            <button type="button" key={k} aria-pressed={scope === k} onClick={() => setScope(k)} style={{ ...chip(scope === k), flex: k === "focus" ? 1.4 : 1, textAlign: "center", overflow: "hidden", textOverflow: "ellipsis" }}>
-              {l}
-            </button>
+              [count("processed"), "Paid", "#22C55E"],
+              [count("pending"), "Processing", "#F59E0B"],
+              [count("requested"), "Requested", "#3B82F6"],
+              [count("declined") + count("failed"), "Declined", "#F87171"],
+            ] as Array<[number, string, string]>
+          ).map(([v, l, c]) => (
+            <div key={l} style={{ flex: 1, textAlign: "center", background: "var(--el)", borderRadius: 12, padding: "9px 3px", borderTop: `3px solid ${c}` }}>
+              <div style={{ fontSize: 14, fontWeight: 900 }}>{v}</div>
+              <div style={{ fontSize: 8.5, fontWeight: 800, letterSpacing: 0.3, textTransform: "uppercase", color: "var(--sub)", marginTop: 2 }}>{l}</div>
+            </div>
           ))}
         </div>
-      ) : null}
+      }
+    >
       {canSettle && focusTitle && scope === "focus" && openInFocus.length > 0 ? (
         <button type="button" disabled={pending} onClick={approveAll} style={{ ...ghostBtn, background: "var(--text)", color: "var(--solid)", display: "flex", alignItems: "center", justifyContent: "center", gap: 8, marginBottom: 10 }}>
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" aria-hidden="true">
@@ -77,36 +119,6 @@ export function RefundsLedger({ rows, side, canSettle = false, focusClassId = nu
           Refund all {openInFocus.length} · {rupees(openInFocus.reduce((a, r) => a + r.amountInr, 0))}
         </button>
       ) : null}
-      <div style={{ ...bizCard, display: "flex", gap: 8 }}>
-        {(
-          [
-            [count("processed"), "Paid", "#22C55E"],
-            [count("pending"), "Processing", "#F59E0B"],
-            [count("requested"), "Requested", "#3B82F6"],
-            [count("declined") + count("failed"), "Declined", "#F87171"],
-          ] as Array<[number, string, string]>
-        ).map(([v, l, c]) => (
-          <div key={l} style={{ flex: 1, textAlign: "center", background: "var(--el)", borderRadius: 12, padding: "9px 3px", borderTop: `3px solid ${c}` }}>
-            <div style={{ fontSize: 14, fontWeight: 900 }}>{v}</div>
-            <div style={{ fontSize: 8.5, fontWeight: 800, letterSpacing: 0.3, textTransform: "uppercase", color: "var(--sub)", marginTop: 2 }}>{l}</div>
-          </div>
-        ))}
-      </div>
-      <div style={{ display: "flex", gap: 6, overflowX: "auto", scrollbarWidth: "none", marginBottom: 10 }}>
-        {(
-          [
-            ["all", "All"],
-            ["requested", "Requested"],
-            ["pending", "Processing"],
-            ["processed", "Paid"],
-            ["declined", "Declined"],
-          ] as Array<["all" | RefundStatus, string]>
-        ).map(([k, l]) => (
-          <button type="button" key={k} aria-pressed={tab === k} onClick={() => setTab(k)} style={chip(tab === k)}>
-            {l}
-          </button>
-        ))}
-      </div>
       {list.map((r) => (
         <div key={r.id} style={{ ...bizCard, borderLeft: `4px solid ${TONE[r.status]}`, padding: "12px 13px" }}>
           <div style={{ display: "flex", alignItems: "center", gap: 11 }}>

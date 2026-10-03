@@ -6,6 +6,7 @@ import { useState } from "react";
 import { deleteLeadAction } from "@/features/leads/server-actions/leads";
 import { DeskAddButton } from "@/features/settings/components/settings-kit";
 import { DeskHero } from "@/features/businesses/components/biz-kit";
+import { DeskBody, DeskTop } from "@/components/ui/DeskSections";
 import { FigureHead } from "@/components/ui/FigureHead";
 import { DOS_UI, INK, LILAC, SUB } from "@/lib/design/tokens";
 import { useCloseOnBack } from "@/lib/hooks/useCloseOnBack";
@@ -114,7 +115,9 @@ export function StudentsDesk({
   };
 
   return (
-    <div style={{ background: LILAC, color: INK, maxWidth: 430, margin: "0 auto", fontFamily: DOS_UI, minHeight: "100vh", padding: "14px 16px 40px", boxSizing: "border-box" }}>
+    <div style={{ background: LILAC, color: INK, maxWidth: 430, margin: "0 auto", fontFamily: DOS_UI, minHeight: "100vh", padding: "0 16px 40px", boxSizing: "border-box" }}>
+      <DeskTop style={{ paddingBottom: 4 }}>
+      {/* ⚠ THE TOP SECTION (3 Oct 2026, C116) — the hero, Invite, the search and what the list is */}
       <DeskHero tool="students" as="h1" margin="0 0 12px" />
 
       <DeskAddButton label="Invite a student" onClick={() => setInvite(true)} />
@@ -128,6 +131,10 @@ export function StudentsDesk({
       <div style={{ fontSize: 11, color: SUB, lineHeight: 1.5, padding: "0 2px 10px" }}>
         Everybody who has been <b>checked in</b> here or holds one of your memberships, plus anybody you added yourself. It counts attendance, not bookings — a seat nobody marked is not a session danced.
       </div>
+      </DeskTop>
+
+      <DeskBody>
+      {/* ⚠ THE LOWER SECTION (3 Oct 2026, C116) — the students themselves */}
 
       {/* ⚠ the rule between the heading and its figure (22 Sep 2026) — it was a
           "·", which reads as punctuation between two words rather than as a
@@ -188,6 +195,7 @@ export function StudentsDesk({
           Nobody matches that.
         </div>
       ) : null}
+      </DeskBody>
 
       {invite ? <InviteSheet businessName={businessName} inviteUrl={inviteUrl} onClose={() => setInvite(false)} onToast={fire} /> : null}
 

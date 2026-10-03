@@ -85,7 +85,9 @@ export function MyEarnings({
   return (
     <div
       style={{
-        background: LILAC,
+        /* nested under EarningsScreen it stands in that screen's lower section
+           (C116), so it wears the section's ground, not the page's */
+        background: summary ? LILAC : "transparent",
         color: INK,
         maxWidth: 430,
         margin: "0 auto",

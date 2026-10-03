@@ -111,15 +111,21 @@ export function PaymentsScreen({ side, methods, business = null, canEdit = false
   const doneRow = (i: number) => verified && i < 4;
 
   return (
-    <BizPage title={isBiz ? "Payments & verification" : "Payments"} sub={pv === "pay" ? "Cards · UPI · cash" : "Trust & compliance"} grad="linear-gradient(135deg,#22C55E,#3B82F6)">
-      <div style={{ display: "flex", gap: 2, background: "var(--el)", borderRadius: 12, padding: 3, marginBottom: 11 }}>
-        {([["pay", "Payments"], ...(isBiz ? [["ver", "Verification"]] : [])] as Array<["pay" | "ver", string]>).map(([k, l]) => (
-          <button type="button" key={k} aria-pressed={pv === k} onClick={() => setPv(k)} style={{ flex: 1, textAlign: "center", padding: "8px 2px", borderRadius: 9, cursor: "pointer", fontSize: 11.5, fontWeight: 800, border: "none", fontFamily: "inherit", background: pv === k ? "var(--solid)" : "transparent", color: pv === k ? "var(--text)" : "var(--sub)", boxShadow: pv === k ? "0 1px 4px rgba(0,0,0,.3)" : "none" }}>
-            {l}
-          </button>
-        ))}
-      </div>
-
+    <BizPage
+      title={isBiz ? "Payments & verification" : "Payments"}
+      sub={pv === "pay" ? "Cards · UPI · cash" : "Trust & compliance"}
+      grad="linear-gradient(135deg,#22C55E,#3B82F6)"
+      top={
+        /* ⚠ THE SEGMENT IS IN THE TOP SECTION (3 Oct 2026, C116) */
+        <div style={{ display: "flex", gap: 2, background: "var(--el)", borderRadius: 12, padding: 3 }}>
+          {([["pay", "Payments"], ...(isBiz ? [["ver", "Verification"]] : [])] as Array<["pay" | "ver", string]>).map(([k, l]) => (
+            <button type="button" key={k} aria-pressed={pv === k} onClick={() => setPv(k)} style={{ flex: 1, textAlign: "center", padding: "8px 2px", borderRadius: 9, cursor: "pointer", fontSize: 11.5, fontWeight: 800, border: "none", fontFamily: "inherit", background: pv === k ? "var(--solid)" : "transparent", color: pv === k ? "var(--text)" : "var(--sub)", boxShadow: pv === k ? "0 1px 4px rgba(0,0,0,.3)" : "none" }}>
+              {l}
+            </button>
+          ))}
+        </div>
+      }
+    >
       {pv === "ver" && isBiz ? (
         <>
           <div style={{ ...bizCard, borderLeft: `4px solid ${verified ? "#22C55E" : "#F59E0B"}` }}>
