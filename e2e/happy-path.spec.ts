@@ -773,11 +773,19 @@ test.describe.serial("DanceOS, end to end", () => {
     await owner.getByRole("button", { name: "Edit Studio A" }).click();
     const editRoom = owner.getByRole("dialog", { name: "Edit room" });
     await expect(editRoom).toBeVisible({ timeout: 15_000 });
-    await editRoom.getByRole("button", { name: "🪞 Mirrors", exact: true }).click();
+    /* ⚠ an amenity tile is named by its WORDS since 4 Oct 2026 — the drawn icon
+       stands where the emoji was, and the emoji stays only in the stored value */
+    await editRoom.getByRole("button", { name: "Mirrors", exact: true }).click();
     await editRoom.getByRole("button", { name: "Save room" }).click();
     await expect(editRoom).toBeHidden({ timeout: 15_000 });
     const roomA = owner.getByTestId("room-card").filter({ hasText: "Studio A" });
-    await expect(roomA.getByTestId("room-amenities")).toContainText("🪞 Mirrors", { timeout: 15_000 });
+    await expect(roomA.getByTestId("room-amenities")).toContainText("Mirrors", { timeout: 15_000 });
+    await expect(roomA.getByTestId("room-amenities")).not.toContainText("🪞");
+    /* published and completed are BOXES, and the sentence about them is gone */
+    await expect(roomA.getByTestId("room-published")).toBeVisible();
+    await expect(roomA.getByTestId("room-completed")).toBeVisible();
+    await expect(owner.getByTestId("room-in-use")).toHaveCount(0);
+    await expect(owner.getByTestId("rooms-studio-address")).not.toContainText("📍");
     // ⚠ and the card carries no inline control any more
     await expect(owner.getByLabel("Studio A name")).toHaveCount(0);
     await expect(owner.getByRole("button", { name: "Amenities in Studio A" })).toHaveCount(0);
@@ -799,7 +807,7 @@ test.describe.serial("DanceOS, end to end", () => {
     await addRoom.getByLabel("Room name").fill("Studio B");
     await addRoom.getByLabel("How many it holds").fill("12");
     /* ⚠ and the amenities are asked for in the add form too (4 Oct 2026) */
-    await addRoom.getByRole("button", { name: "❄️ AC", exact: true }).click();
+    await addRoom.getByRole("button", { name: "AC", exact: true }).click();
     await addRoom.getByRole("button", { name: "Add room" }).click();
     await expect(addRoom).toBeHidden({ timeout: 15_000 });
     const roomB = owner.getByTestId("room-card").filter({ hasText: "Studio B" });
@@ -809,7 +817,7 @@ test.describe.serial("DanceOS, end to end", () => {
     await expect(roomB.getByText("Capacity", { exact: true })).toBeVisible();
     await expect(owner.getByTestId("rooms-studio")).toBeVisible();
     await expect(owner.getByText(/no two published classes share one/)).toHaveCount(0);
-    await expect(roomB.getByTestId("room-amenities")).toContainText("❄️ AC");
+    await expect(roomB.getByTestId("room-amenities")).toContainText("AC");
     await owner.getByRole("button", { name: "Remove Studio B" }).click();
     await expect(owner.getByTestId("room-card").filter({ hasText: "Studio B" })).toHaveCount(0, { timeout: 15_000 });
 
@@ -1110,7 +1118,8 @@ test.describe.serial("DanceOS, end to end", () => {
     // free class confirms without payment
     await learner.goto(`/c/${shareSlug}`);
     // AT THE STUDIO carries what the room has in it (Step 11) — and the studio row is a door (12291)
-    await expect(learner.getByText("🪞 Mirrors")).toBeVisible();
+    // ⚠ the chip draws the amenity's icon and its WORDS since 4 Oct 2026
+    await expect(learner.getByText("Mirrors", { exact: true })).toBeVisible();
     await expect(learner.getByRole("link", { name: `Open ${studioName}` })).toBeVisible();
     // what the class made is the studio's business, not the room's
     await expect(learner.getByText("WHAT THIS SESSION MADE")).toHaveCount(0);

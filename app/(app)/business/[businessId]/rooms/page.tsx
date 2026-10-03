@@ -2,7 +2,7 @@ import { redirect } from "next/navigation";
 import { RoomsManager } from "@/features/rooms/components/RoomsManager";
 import { reversePlace } from "@/lib/geo/places";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
-import { countPublishedClassesByRoom, findRoomsByBusiness } from "@/repositories/rooms";
+import { countRoomClasses, findRoomsByBusiness } from "@/repositories/rooms";
 import { findMyMemberships, runsTheBusiness } from "@/repositories/businesses";
 
 export default async function BusinessRoomsPage({
@@ -53,8 +53,11 @@ export default async function BusinessRoomsPage({
      page is slow (4 Oct 2026, the user: "make page quicker") */
   const areaCity = [business.area, business.city].filter(Boolean).join(", ") || "Your studio";
   const [rooms, address] = await Promise.all([findRoomsByBusiness(supabase, businessId), fullAddressOf(supabase, businessId, areaCity)]);
-  /* which rooms hold a published class still to run — those offer no Remove */
-  const inUse = Object.fromEntries(await countPublishedClassesByRoom(supabase, rooms.map((r) => r.id)).catch(() => new Map<string, number>()));
+  /* each room's published (still to run — those offer no Remove) and completed
+     classes, the card's two boxes (4 Oct 2026) */
+  const counts = Object.fromEntries(
+    await countRoomClasses(supabase, rooms.map((r) => r.id)).catch(() => new Map<string, { published: number; completed: number }>())
+  );
   /* the room is looked up among THIS studio's own — a pointer, never an authority */
   const editing = !opening && editId ? rooms.find((r) => r.id === editId) ?? null : null;
   return (
@@ -64,7 +67,7 @@ export default async function BusinessRoomsPage({
       businessPhotoPath={business.photoPath ?? null}
       businessAddress={address}
       rooms={rooms}
-      inUse={inUse}
+      counts={counts}
       initialSheet={opening ? { mode: "new" } : editing ? { mode: "edit", room: editing } : null}
       canEdit={canEdit}
     />

@@ -17,6 +17,7 @@ import {
 import { PeoplePicker } from "@/features/people/components/PeoplePicker";
 import { DosStylePicker } from "@/components/ui/DosStyleKit";
 import { Pick } from "@/components/ui/PickSheet";
+import { AmenityIcon, amenityLabel } from "@/components/ui/AmenityIcon";
 import {
   FORM_LABEL,
   FORM_INPUT,
@@ -141,9 +142,20 @@ function RoomList({ rooms, roomId, onPick, emptyWords }: { rooms: Room[]; roomId
             </span>
             <div style={{ flex: 1, minWidth: 0 }}>
               <div style={{ fontSize: 13.5, fontWeight: 800 }}>{r.name}</div>
-              <div style={{ fontSize: 11, color: SUB, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                Holds {r.capacity}
-                {r.amenities.length ? ` · ${r.amenities.join(" ")}` : ""}
+              {/* the amenities as the app's drawn icons, the words on hover and to a
+                  screen reader (4 Oct 2026, "revamp icon for amenities everywhere") */}
+              <div style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 11, color: SUB, overflow: "hidden", whiteSpace: "nowrap" }}>
+                <span>Holds {r.capacity}</span>
+                {r.amenities.length ? (
+                  <span role="img" aria-label={r.amenities.map(amenityLabel).join(", ")} style={{ display: "inline-flex", alignItems: "center", gap: 5 }}>
+                    <span aria-hidden="true">·</span>
+                    {r.amenities.map((a) => (
+                      <span key={a} title={amenityLabel(a)}>
+                        <AmenityIcon value={a} size={13} color={on ? "#3B82F6" : SUB} />
+                      </span>
+                    ))}
+                  </span>
+                ) : null}
               </div>
             </div>
             {on && (

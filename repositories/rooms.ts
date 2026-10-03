@@ -170,6 +170,44 @@ export async function countPublishedClassesByRoom(
   return out;
 }
 
+/** PUBLISHED AND COMPLETED, PER ROOM — the room card's two boxes (4 Oct 2026, the
+ *  user: "room card- published classes and completed classes in boxes").
+ *
+ *  ⚠ "Completed" is DERIVED from the clock, the way every screen here derives it
+ *  (`classPhaseAt`, 30 Sep 2026): nothing in this app ever writes
+ *  `status = 'completed'`, so a published class whose sessions have all ended IS
+ *  the completed one. "Published" is the rest — a published class with a session
+ *  still to run, which is exactly what holds the room (`softDeleteRoom`). A
+ *  published class with no session at all is neither, and is left out. */
+export async function countRoomClasses(
+  supabase: SupabaseClient,
+  roomIds: string[],
+  now: Date = new Date()
+): Promise<Map<string, { published: number; completed: number }>> {
+  const out = new Map<string, { published: number; completed: number }>();
+  if (roomIds.length === 0) return out;
+  const { data, error } = await supabase
+    .from("classes")
+    .select("id, room_id, class_sessions (ends_at, deleted_at)")
+    .in("room_id", roomIds)
+    .in("status", ["published", "completed"])
+    .is("deleted_at", null)
+    .limit(2000);
+  if (error) {
+    throw new Error(`rooms.countRoomClasses failed: ${error.message}`);
+  }
+  const nowMs = now.getTime();
+  for (const row of (data ?? []) as Array<{ room_id: string; class_sessions: Array<{ ends_at: string; deleted_at: string | null }> | null }>) {
+    const ends = (row.class_sessions ?? []).filter((s) => !s.deleted_at).map((s) => Date.parse(s.ends_at));
+    if (ends.length === 0) continue;
+    const cur = out.get(row.room_id) ?? { published: 0, completed: 0 };
+    if (ends.some((t) => t > nowMs)) cur.published += 1;
+    else cur.completed += 1;
+    out.set(row.room_id, cur);
+  }
+  return out;
+}
+
 /** Soft delete. Classes pointing at it keep their room NAME (the FK is ON DELETE
  *  SET NULL only for a hard delete, which never happens) so history stays
  *  readable.

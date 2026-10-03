@@ -4,6 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useActionState, useRef, useState, useSyncExternalStore, type CSSProperties, type ReactNode } from "react";
+import { AmenityChip } from "@/components/ui/AmenityIcon";
 import {
   addWalkInAction,
   bookAtTheDoorAction,
@@ -1364,21 +1365,9 @@ export function ClassDetail({
           {/* what the room HAS — the amenities the studio set on it (12278-12354) */}
           <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 6 }}>
             {roomAmenities.length > 0 ? (
-              roomAmenities.map((a) => (
-                <span
-                  key={a}
-                  style={{
-                    fontSize: 11,
-                    fontWeight: 700,
-                    padding: "5px 10px",
-                    borderRadius: 999,
-                    background: "var(--el)",
-                    color: "var(--sub)",
-                  }}
-                >
-                  {a}
-                </span>
-              ))
+              /* the app's one amenity chip — the drawn icon in the style's colour
+                 (4 Oct 2026, "revamp icon for amenities everywhere") */
+              roomAmenities.map((a) => <AmenityChip key={a} value={a} tint={col} />)
             ) : (
               <span style={{ fontSize: 11, color: "var(--muted)" }}>
                 Nothing listed for {c.room ?? "this venue"} yet.

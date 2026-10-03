@@ -5,6 +5,10 @@ import { FORM_LABEL, FORM_INPUT, FormBar, FormNote, FormPage, FormToast, formPri
 import { DOS_AMENITIES } from "@/lib/constants/amenities";
 import { useCloseOnBack } from "@/lib/hooks/useCloseOnBack";
 import type { Room } from "@/types/room";
+import { AmenityIcon, amenityLabel } from "@/components/ui/AmenityIcon";
+import { DOS_TOOLS } from "@/features/businesses/components/biz-kit";
+
+const TINT = DOS_TOOLS.rooms.c;
 
 /** ADD ROOM / EDIT ROOM — the form, on the app's one form anatomy (22 Sep 2026,
  *  the user: *"form for adding asset and adding room should be same way"*).
@@ -103,29 +107,45 @@ export function RoomForm({
         />
 
         <div style={FORM_LABEL}>AMENITIES</div>
-        <div role="group" aria-label="Amenities" style={{ display: "flex", flexWrap: "wrap", gap: 7 }}>
+        {/* ⚠ A GRID OF TILES, EACH THE AMENITY'S DRAWN ICON OVER ITS WORDS (4 Oct
+            2026, the user: "even in room form change icons") — the emoji stays in
+            the stored value and is not drawn; the accessible name is the words */}
+        <div role="group" aria-label="Amenities" style={{ display: "grid", gridTemplateColumns: "repeat(3, minmax(0, 1fr))", gap: 7 }}>
           {DOS_AMENITIES.map((a) => {
             const on = amenities.includes(a);
+            const words = amenityLabel(a);
             return (
               <button
                 type="button"
                 key={a}
                 aria-pressed={on}
+                aria-label={words}
                 onClick={() => toggle(a)}
                 style={{
-                  fontSize: 12,
-                  fontWeight: 800,
-                  padding: "7px 12px",
-                  borderRadius: 999,
+                  position: "relative",
+                  display: "flex",
+                  flexDirection: "column",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  gap: 6,
+                  minHeight: 70,
+                  padding: "10px 6px 9px",
+                  borderRadius: 14,
                   cursor: "pointer",
                   fontFamily: "inherit",
-                  background: on ? "var(--text)" : "var(--card)",
-                  color: on ? "var(--solid)" : "var(--sub)",
-                  border: `1.5px solid ${on ? "var(--text)" : "var(--el)"}`,
+                  background: on ? `${TINT}1f` : "var(--card)",
+                  color: on ? "var(--text)" : "var(--sub)",
+                  border: `1.5px solid ${on ? TINT : "var(--el)"}`,
+                  transition: "background .15s, border-color .15s",
                 }}
               >
-                {a}
-                {on ? " ✓" : ""}
+                <AmenityIcon value={a} size={22} color={on ? TINT : "var(--sub)"} />
+                <span style={{ fontSize: 11, fontWeight: on ? 800 : 700, lineHeight: 1.2, textAlign: "center" }}>{words}</span>
+                {on ? (
+                  <span aria-hidden="true" style={{ position: "absolute", top: 6, right: 6, width: 15, height: 15, borderRadius: 999, background: TINT, color: "#fff", fontSize: 9, fontWeight: 900, display: "inline-flex", alignItems: "center", justifyContent: "center" }}>
+                    ✓
+                  </span>
+                ) : null}
               </button>
             );
           })}

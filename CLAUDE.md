@@ -2,7 +2,15 @@
 
 ## LAST SESSION (4 Oct 2026) — replaced on every push (Rule 13)
 
-> ### ROOMS: CAPACITY, A ROOM IN USE CANNOT GO, THE STUDIO IN THE MIDDLE, AND ADD / EDIT WITHOUT A WAIT (4 Oct 2026, latest) — no migration · PUSHED (verification below)
+> ### ROOMS: PUBLISHED AND COMPLETED IN BOXES, THE ADDRESS IN TWO LINES, AND ONE DRAWN SET OF AMENITY ICONS — PLUS A HELD MIGRATION THAT MAKES THE DATABASE KEEP THE ROOM RULES (4 Oct 2026, latest) — the UI needs no migration · ⚠ `20261004090000` WRITTEN, DRY-RUN **19/19** AND **HELD** (uncommitted — see NEXT TO DO #0bc)
+> The user: *"rooms- Full address icon remove and text font written in a better way. room card- published classes and completed classes in boxes. remove text from belown which says 1 published class. Revanmp icon for amenities everywhere and make them better according to aesthetics. even in room form change icons."* — and before it, *"push that as well"*, read as the database half of the two room rules.
+> * **The card**: two box rows, **Capacity · Amenities / Published · Completed** (`room-published`, `room-completed` — `countRoomClasses`: a published class with a session still to run is Published and is what holds the room; one whose sessions have all ended is Completed, the clock deciding as everywhere since 30 Sep). The "N published class still to run" sentence (`room-in-use`) is gone — a room with a Published figure simply offers no Remove.
+> * **The address**: no 📍; the street in ink at 12.5px, then city · state · PIN quieter on a second line, the trailing "India" dropped (`splitAddress`).
+> * **Amenity icons** (`components/ui/AmenityIcon.tsx`): twelve line icons in one stroke weight, `AmenityChip` on the room card and the class page, a 3-column tile grid with a ✓ badge in the room form, and small icons on the class form's room rows. ⚠ **The stored value is unchanged** — rooms hold "🪞 Mirrors" and still do; the emoji is only not DRAWN (`amenityLabel`), and an off-registry value (a proof's bare "Mirrors") still draws with a generic mark. ⚠ A tile's accessible name is its WORDS now ("Mirrors", "AC"), so the happy path's locators moved with it.
+> * **The held migration** — one SECURITY DEFINER trigger function (executable by no client role) and one `before update of deleted_at` trigger on `rooms`: a signed-in client may not remove a business's last live room, nor a room holding a published class with a session not yet ended. The service role, a session-less connection and a deleted business are exempt. No table, column, policy, grant or row moves; anon 40, policies 106. Dry run 19/19 rolled back; `db-push -DryRun` lists exactly it.
+> * **Verified:** typecheck 0 · lint 0 · build green · the rooms probe **41/41** in both themes on `:3100` (the two new boxes on every card, the busy rooms reading Published 2 with no Remove and no sentence, no pin glyph, chips drawn as icons with no emoji, twelve icon tiles named by their words, a tile pressing on, add / edit / back as before, no page error) and screenshots in both themes · **the happy path 19/19 in 13.1 min** on the previous bundle (the room segment's new locators are typechecked, not yet run).
+
+> ### ROOMS: CAPACITY, A ROOM IN USE CANNOT GO, THE STUDIO IN THE MIDDLE, AND ADD / EDIT WITHOUT A WAIT (4 Oct 2026, latest) — no migration · ✅ PUSHED AND LIVE (`209c861`: Vercel READY, alias confirmed on the sha through the API, and ON THE LIVE SITE `stranger-smoke` all green · the rooms probe **31/31** in both themes, saves landing in 0.7–1.7 s behind a card drawn on the press)
 > The user: *"room card- hold to be changed to Capacity. room cannot be deleted if classes are alredy published for it. remove text below room at end of page. studio name with profile pic and full address in section between the add room button and the cards. so can remove from below heading."*, then mid-build *"make page quicker for opening add room form and it being created. and for edit."*
 > * **The card** says **Capacity**. ⚠ **A room holding a published class still to run offers no Remove** and says why (`room-in-use`), and `softDeleteRoom` refuses it on the server in words (`countPublishedClassesByRoom`). ⚠ "Published" alone would hold a room for ever — nothing moves a class to `completed` — so it is **published AND a session not yet ended**, an artist's class in the room included. ⚠⚠ **And a studio's LAST room can never be removed** (the user, on the push: *"if only one room can never be deleted"*) — the card has hidden Remove there since 22 Sep, and `softDeleteRoom` now refuses it on the server too ("A studio keeps at least one room"), proven by calling the real function as `demo.eee` on its only room: refused in words, the row untouched. ⚠ The DATABASE refuses neither; a trigger would be a migration.
 > * **The studio** — picture, name, **full address** — is a `DeskMiddle` between Add room and the cards (`rooms-studio`); the "📍 area · name" line under the heading and the sentence at the foot are gone. ⚠ A business stores no street address, so it is the map PIN reverse-geocoded (`reversePlace`, cached), in parallel with the rooms read and **cut off at 1.2 s**; an unplaced pin, no key or a slow geocoder fall back to area, city.
@@ -10221,6 +10229,33 @@ summary; the report has the evidence.
   List / Unlist; no 18+ gate; the dead management token.
 
 ## NEXT TO DO — replaced on every push (Rule 13)
+
+0bc. **⚠ ONE MIGRATION WRITTEN, DRY-RUN 19/19 AND HELD — `20261004090000_a_room_in_use_stays`**
+   (4 Oct 2026; the file and `scripts/dry-run-checks/20261004090000.js` are UNCOMMITTED
+   on purpose until the user approves). Rule 9 (RLS-adjacent: it narrows what the
+   `rooms` UPDATE policy lets an owner or manager do). The whole of it:
+   * `guard_room_removal()` — SECURITY DEFINER, `search_path = public`, revoked from
+     public / anon / authenticated — and `rooms_guard_removal`, `before update of
+     deleted_at` on `rooms`.
+   * For a SIGNED-IN client only, a soft delete is refused when it would remove the
+     business's **last live room** ("A studio keeps at least one room — …") or a
+     room holding a **published class with a session not yet ended** ("This room has
+     N published class(es) still to run — …") — the app's own sentences.
+   * Exempt: the service role, a session-less connection (migrations, sweeps), and
+     any room whose business is itself soft-deleted. A draft, or a published class
+     that is over, holds nothing. An edit that is not a removal is untouched.
+   * No table, column, policy, grant or row; nothing backfilled; anon 40, policies 106.
+   **On the user's word:**
+```
+   $env:NODE_PATH="<scratchpad with pg>\node_modules"
+   node scripts/dry-run-migration.js supabase/migrations/20261004090000_a_room_in_use_stays.sql scripts/dry-run-checks/20261004090000.js   # 19/19
+   powershell -NoProfile -ExecutionPolicy Bypass -File scripts/db-push.ps1 -DryRun   # exactly this one file
+   powershell -NoProfile -ExecutionPolicy Bypass -File scripts/db-push.ps1 2>&1 | Select-String -NotMatch 'Skipping migration|Warning: failed to cache|prerequisite for local'
+   powershell -NoProfile -ExecutionPolicy Bypass -File scripts/run-proofs.ps1 rooms-people
+```
+   ⚠ No PostgREST reload (no column). ⚠ `rls-proof-rooms-people` soft-deletes rooms
+   through the API as an owner — if a check there removes a studio's only room it
+   will now be refused, which is the rule working; re-cut that check, not the trigger.
 
 0bb. **~~A PARTIAL REFUND MARKS THE WHOLE PAYMENT "REFUNDED"~~ — ✅ APPLIED AND LIVE
    3 Oct 2026** (`99755dc`, `shoot-enquiry-money` 14/14 on the live site). Kept for

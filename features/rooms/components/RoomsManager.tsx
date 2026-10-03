@@ -10,6 +10,17 @@ import { DOS_AMENITIES } from "@/lib/constants/amenities";
 import { DOS_DISPLAY, DOS_UI } from "@/lib/design/tokens";
 import type { Room } from "@/types/room";
 import { DeskAddButton } from "@/features/settings/components/settings-kit";
+import { AmenityChip } from "@/components/ui/AmenityIcon";
+
+/** the street on one line, the city / state / PIN on the next — off a geocoder's
+ *  comma-joined address, with its trailing country dropped. A short address
+ *  (just "area, city") stays on one line. */
+function splitAddress(address: string): { street: string; locality: string | null } {
+  const parts = address.split(",").map((p) => p.trim()).filter(Boolean);
+  if (parts.length && /^india$/i.test(parts[parts.length - 1])) parts.pop();
+  if (parts.length <= 2) return { street: parts.join(", ") || address, locality: null };
+  return { street: parts.slice(0, -2).join(", "), locality: parts.slice(-2).join(", ") };
+}
 
 /** The studio's rooms — lifted from the prototype's business settings Rooms
  *  segment (DanceOSApp.jsx:18389-18425). One studio = one location, so these are
@@ -45,7 +56,7 @@ export function RoomsManager({
   businessPhotoPath,
   businessAddress,
   rooms,
-  inUse,
+  counts,
   initialSheet = null,
   canEdit = true,
 }: {
@@ -55,8 +66,8 @@ export function RoomsManager({
   /** the studio's full address — off its map pin where there is one */
   businessAddress: string;
   rooms: Room[];
-  /** room id → published classes still to run in it */
-  inUse: Record<string, number>;
+  /** room id → its published classes still to run, and its completed ones */
+  counts: Record<string, { published: number; completed: number }>;
   /** a `?new=1` or `?edit={room}` link opens the form on arrival */
   initialSheet?: Sheet;
   /** ⚠ may this seat WRITE a room — owner or manager since 28 Sep 2026, which is
@@ -169,9 +180,18 @@ export function RoomsManager({
           <div style={{ flex: 1, minWidth: 0 }}>
             <div style={{ fontSize: 9.5, fontWeight: 900, letterSpacing: 0.8, textTransform: "uppercase", color: TINT }}>Studio</div>
             <div style={{ fontFamily: DOS_DISPLAY, fontSize: 17, fontWeight: 800, letterSpacing: -0.3, lineHeight: 1.2, overflowWrap: "anywhere" }}>{businessName}</div>
-            <div data-testid="rooms-studio-address" style={{ fontSize: 11.5, color: "var(--sub)", lineHeight: 1.45, marginTop: 3, overflowWrap: "anywhere" }}>
-              📍 {businessAddress}
-            </div>
+            {/* ⚠ no pin glyph, and the address in two lines (4 Oct 2026, the user:
+                "Full address icon remove and text font written in a better way") —
+                the street first in ink, then the city, state and PIN quieter */}
+            {(() => {
+              const { street, locality } = splitAddress(businessAddress);
+              return (
+                <div data-testid="rooms-studio-address" style={{ marginTop: 5, overflowWrap: "anywhere" }}>
+                  <div style={{ fontSize: 12.5, fontWeight: 600, color: "var(--text)", lineHeight: 1.4 }}>{street}</div>
+                  {locality ? <div style={{ fontSize: 11.5, fontWeight: 500, color: "var(--sub)", lineHeight: 1.4, marginTop: 1 }}>{locality}</div> : null}
+                </div>
+              );
+            })()}
           </div>
         </div>
       </DeskMiddle>
@@ -179,7 +199,8 @@ export function RoomsManager({
       <DeskBody>
         {list.map((r) => {
           const amen = DOS_AMENITIES.filter((a) => r.amenities.includes(a));
-          const held = inUse[r.id] ?? 0;
+          const held = counts[r.id]?.published ?? 0;
+          const done = counts[r.id]?.completed ?? 0;
           const pending = saving.has(r.id);
           return (
             <ToolCard key={r.id} testId="room-card" dim={pending}>
@@ -199,22 +220,25 @@ export function RoomsManager({
                     { label: amen.length === 1 ? "Amenity" : "Amenities", value: amen.length },
                   ]}
                 />
+                {/* ⚠ PUBLISHED AND COMPLETED IN BOXES, and the sentence that said it is
+                    gone (4 Oct 2026, the user: "published classes and completed
+                    classes in boxes. remove text from belown which says 1 published
+                    class") — a room with a Published figure offers no Remove */}
+                <ToolFacts
+                  tint={TINT}
+                  style={{ marginTop: 6 }}
+                  items={[
+                    { label: "Published", value: held, testId: "room-published" },
+                    { label: "Completed", value: done, testId: "room-completed" },
+                  ]}
+                />
                 <div data-testid="room-amenities" style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 10 }}>
                   {amen.length === 0 ? (
                     <span style={{ fontSize: 11.5, color: "var(--muted)" }}>No amenities yet.</span>
                   ) : (
-                    amen.map((a) => (
-                      <span key={a} style={{ fontSize: 11, fontWeight: 800, padding: "4px 10px", borderRadius: 999, background: `${TINT}1c`, color: "var(--text)", border: "1.5px solid var(--el)" }}>
-                        {a}
-                      </span>
-                    ))
+                    amen.map((a) => <AmenityChip key={a} value={a} tint={TINT} />)
                   )}
                 </div>
-                {held > 0 && canEdit ? (
-                  <div data-testid="room-in-use" style={{ fontSize: 11, color: "var(--sub)", fontWeight: 700, marginTop: 10 }}>
-                    {held} published {held === 1 ? "class" : "classes"} still to run here — it can&rsquo;t be removed until {held === 1 ? "it is" : "they are"} moved or taken down.
-                  </div>
-                ) : null}
               </ToolBody>
               {canEdit && !pending ? (
                 <ToolActions>
