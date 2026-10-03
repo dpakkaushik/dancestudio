@@ -189,8 +189,19 @@ const SDK_STUB = `window.Cashfree = function () {
     }
     if (cfRf?.refund_status === "SUCCESS") check(after.status === "processed", `the studio's ledger reconciled it against Cashfree: ${after.status}`);
     else console.log(`  info Cashfree still says ${cfRf?.refund_status}; the row reads ${after.status} (it lands on a later open)`);
+    /* ⚠ A PART REFUND IS NOT A REFUND OF THE WHOLE (3 Oct 2026, #0bb): ₹300 of ₹500
+       came back, so the payment and the order stay paid — before
+       20261003150000 both read `refunded` */
     const [orderAfter] = await call("GET", `/rest/v1/orders?id=eq.${order.id}&select=status`, svc);
-    console.log(`  info order now: ${orderAfter.status}`);
+    const [payAfter] = await call("GET", `/rest/v1/payments?id=eq.${pays[0].id}&select=status`, svc);
+    check(orderAfter.status === "paid" && payAfter.status === "captured", `₹300 of ₹500 back: the order stays paid and the payment captured (${orderAfter.status} / ${payAfter.status})`);
+    /* and the sender's own receipt says so, filed under Paid */
+    await sp.goto(`${BASE}/invoices`, { waitUntil: "networkidle" });
+    const card = sp.getByRole("link", { name: /^Open INV-/ }).filter({ hasText: "Private Sessions" }).first();
+    const cardText = (await card.innerText().catch(() => "")).replace(/\s+/g, " ");
+    check(/Part refunded/i.test(cardText) && /₹300 refunded/.test(cardText) && /₹500/.test(cardText), `the sender's invoice reads ₹500 · Part refunded · ₹300 refunded (${cardText.slice(0, 120)})`);
+    await sp.getByRole("button", { name: "Refunded", exact: true }).click();
+    check((await sp.getByRole("link", { name: /^Open INV-/ }).filter({ hasText: "Private Sessions" }).count()) === 0, "and it is NOT filed under Refunded");
   } catch (e) {
     check(false, `aborted: ${e.message}`);
   } finally {

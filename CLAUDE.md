@@ -10074,9 +10074,28 @@ summary; the report has the evidence.
    seat), wrong since enquiry endings made a refund PARTIAL: ₹300 back of ₹500 and
    the order reads `refunded`, so the payer's **Invoices** files the ₹500 receipt
    under Refunded. ⚠ **The money is right everywhere** — Earnings and the studio's
-   income subtract the refund ROWS, not the status. The fix is a migration (mark
-   refunded only once the processed refunds cover the payment) plus a decision on
-   what a partly refunded receipt says — put to the user, not built.
+   income subtract the refund ROWS, not the status. ⚠ And the other way round:
+   `settle_refund_offline` marked the ORDER refunded and never the PAYMENT, so a
+   class refund handed back at the desk read "Paid" on the receipt.
+   **The user chose option A with wording 1** ("do it"). ✅ **App half BUILT**:
+   `repositories/invoices.ts` sums the processed refund ROWS and never reads the
+   stored word, so a receipt reads **₹500 · Part refunded · ₹300 refunded**, filed
+   under Paid (`data-testid="part-refunded"`, a `refunded_inr` CSV column) — right
+   before AND after the apply. ⚠⚠ **The migration is WRITTEN, DRY-RUN 18/18 AND
+   HELD** — `20261003150000_a_refund_marks_what_it_covers`:
+   * `apply_refund_update` and `settle_refund_offline` — `create or replace`,
+     same signatures (ACLs unchanged, asserted), the live catalog's own bodies
+     with only the status UPDATEs edited: payment and order go `refunded` only
+     once the processed refunds on them are at least what was paid; the desk path
+     now marks the PAYMENT too.
+   * No table, column, policy or row; nothing backfilled (0 `refunded` payments on
+     production, counted first). Every refunds row names its payment (NOT NULL).
+   * Dry run: partial leaves both paid · a second refund completing it marks both
+     · replay no-op · full refund marks both at once · failed marks nothing · the
+     desk partial/complete both ways · the payer still cannot settle · anon 40 ·
+     policies 106.
+   `shoot-enquiry-money.js` now asserts the order stays paid — it is red on
+   exactly that line until the apply (13/14), which is the migration's own proof.
 
 0ba. **~~ONE MIGRATION WRITTEN, DRY-RUN 110/110 AND HELD~~ — ✅ APPLIED AND PUSHED 3 Oct 2026**
    (the top block has the tally). Nothing is pending in the database. ✅ **And
@@ -17746,6 +17765,7 @@ Home. **Do not "restore parity" on these.**
 | C111 | C105: a hero with no poster draws no rail | **Every hero keeps the banner's space** — profile pages and homes — the empty banner on the profile's gradient, the corner pinned to it; the no-rail branch and `.dos-corner-plain` are deleted | 3 Oct 2026, the user: *"profiles who havent uploaded poster on profiles should leave that space in public view it is messing up the alignment"*, then *"and poster if not updated on should leave space on home as well"* — reversing C105's no-rail half |
 | R62 | S_enqdetail (5380) moves an enquiry by a status menu, quotes one figure with an advance, and closes it from the business's side; 3 Oct 2026 (earlier) gave the sender Accept · Ask to revise · Cancel and the business Completed · Lost · Cancelled | **AN ENQUIRY IS A PROCESS, NOT A STATUS** (`20261003140000`): the business accepts or declines (with a reason) a new enquiry; a quote is line items or one total, an advance and a valid-until; the sender accepts it whole or asks for a revision with a reason; accepting puts the project ON; additions and reductions at any stage, each answered; completion needs BOTH ends; ending it before money is immediate (withdrawn by the sender, called off by the business), after money is refund TERMS the other side accepts, counters or refuses. Only owners and managers (a crew's leader) work it. ⚠ Rule 9: an accepted ending's online part is a refund on the enquiry's own orders, sent through Cashfree; the rest is recorded as handed back and is an expense on Earnings | 3 Oct 2026, the user's enquiry spec and their answers to every open point across four rounds ("perfect — whats missing", "whats left — 1. true … 10. true") |
 | C114 | C34/C39: the inverted panel is OPAQUE — `background: var(--solid)` of the other theme | **TRANSLUCENT AND TWO-TONED**: tone B at 86–88% with tone A washing in from the top-left and two faint glows (sky, fuchsia) at opposite corners, a light edge and a soft shadow — on every lower half (Discover, Home, the Inbox, and the profile pages that copy Home). ⚠ `--sub`/`--muted` inside are RETUNED for the composited ground and measured by `shoot-invert` (26/26: muted 4.66 dark, 4.75 light). ⚠ **No `backdrop-filter`**: it makes the panel a containing block for the fixed sheets drawn inside it | 3 Oct 2026, the user: *"lower half of dicover inbox and home should be transluscent with double tone effect"* |
+| C115 | C34/C39/C114: the lower half of Discover, the Inbox and every Home is an `InvertedPanel` on the OPPOSITE theme (translucent and two-toned since 3 Oct) | **ON THE PAGE'S OWN THEME** — `InvertedPanel ground="page"`: the same 22px squircle with the card veil and the 1.5px outline the top panels wear, no palette swap, no context (`data-testid="page-panel"`). ⚠ The PROFILE pages keep the opposite-theme panel — not asked. ⚠ Putting more small text on the card veil exposed `--muted` at **4.06:1 (dark) / 4.24:1 (light)** there, already true on every top squircle — it is `#858585` / `#6e665b` now, ~4.7 / ~4.8 on the card and higher on the page. `shoot-invert` re-cut (38/38): no swapped panel on Discover, the shelf on the page's side, the tiers measured inside it, and the swapped panel's own tiers measured on a studio's page instead | 3 Oct 2026, the user: *"remove dual tone effect from discover, inbox and home"*, and asked which, *"the whole opposite-theme panel"* |
 | C113 | C108: the Inbox is two shapes — the top squircle (heading, columns, settings) over one inverted panel holding the sides, the figures, the always-open "Pipeline breakup", the filters and the cards | **THREE SHAPES**: Received · Sent · Completed join the top squircle; the figures and the **Breakup** (renamed, total first, by stage as one split bar with chips) are a middle squircle of their own; the panel is the search to the end of the page. The settings cards lose their second line | 3 Oct 2026, the user: *"Received, sent, completed part of upper half. everything below this and above search enquiries is the middle half and should have seprate segragation. search enquiries to till end of page third half. pipeline breakup name change to Breakup by stage and total written better"* |
 | C112 | The figures row wraps (`flexWrap: wrap`), and with four 44px chips it wrapped on every width, the app's own 430 included (125 + 200 + 44 = 369 in 368) | **ONE LINE, ALWAYS**: the figures are one block that never shrinks (`FIGURE_GROUP`), the chips start at 44px and shrink round into what is left, down to 24px — flexbox's arithmetic, not a pixel guess | 3 Oct 2026, the user: *"public view follow following in line with stats, qr code button row. always"* |
 | C104 | Tool tiles are solid gradients of the tool's colour (BizSection 2497-2583) | **A quiet tile**: `--card` with a 1.5px `--el` border, the name in ink, and the colour only on a small tinted glyph | 3 Oct 2026, the user: *"better design for tool tiles"* → *"Same layout, polished"* → *"should have border and not that colorfull"* |

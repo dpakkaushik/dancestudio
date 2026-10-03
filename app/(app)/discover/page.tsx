@@ -454,8 +454,12 @@ export default async function DiscoverPage({
           prints in `--text`, so a two-colour panel would have hidden the lot.
           `InvertedPanel` swaps the palette instead, and the head, the cards, the
           pager and the empty state below need no change of their own — they read
-          the same tokens they always did, which now mean the other theme. */}
+          the same tokens they always did, which now mean the other theme.
+          ⚠⚠ ON THE PAGE'S OWN THEME SINCE 3 Oct 2026 — the user: "remove dual
+          tone effect from discover, inbox and home", and, asked, "the whole
+          opposite-theme panel". The squircle stays; the swap is gone. */}
       <InvertedPanel
+        ground="page"
         head={
           <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", padding: "0 0 10px" }}>
             <div style={{ fontSize: 15, fontWeight: 800, fontFamily: DOS_DISPLAY, letterSpacing: -0.3 }}>{shelfHead}</div>

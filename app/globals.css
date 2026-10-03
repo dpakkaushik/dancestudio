@@ -92,8 +92,12 @@ html.dark {
      is about, one line from where the ask landed, so it is fixed rather than
      left for the check to keep reporting. 4.53:1 now. ⚠ The visible cost is
      real and small: the quietest tier in dark mode is a shade lighter than it
-     was, which narrows the step down from `--sub`. */
-  --muted: #7b7b7b;
+     was, which narrows the step down from `--sub`.
+     ⚠ #858585 SINCE 3 Oct 2026: measured on the CARD veil too, which is where the
+     squircles put small text (the top panels, and since the opposite-theme panel
+     came off Discover, the Inbox and Home, their lower halves as well). #7b7b7b was
+     4.06:1 there; #858585 is ~4.7 on the card and ~5.4 on the page. */
+  --muted: #858585;
   /* shell chrome (prototype 19171-19172, 19249-19251, 19308-19312, 19381) */
   --hdr-bg: rgba(10, 10, 10, 0.72);
   --hdr-line: rgba(255, 255, 255, 0.12);
@@ -127,7 +131,9 @@ html.light {
   --el: rgba(61, 44, 22, 0.16);
   --text: #17150f;
   --sub: #57524a;
-  --muted: #776f63;
+  /* ⚠ #6e665b since 3 Oct 2026 — #776f63 was 4.24:1 on the card veil the
+     squircles stand on; this is ~4.8 there and higher on the page */
+  --muted: #6e665b;
   --hdr-bg: rgba(250, 248, 245, 0.82);
   --hdr-line: rgba(61, 44, 22, 0.12);
   --nav-bg: rgba(250, 248, 245, 0.48);

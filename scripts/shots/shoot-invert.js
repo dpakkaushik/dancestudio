@@ -55,16 +55,24 @@ const PROBE = (sel) => {
        was still compiling /discover — which reads as "the shelf is not in a panel"
        and is really "the page has not rendered". A red that depends on whether
        something else ran first is not evidence (the 11 Sep rule). */
-    await page.waitForSelector(".dos-invert", { timeout: 20000 }).catch(() => {});
+    /* ⚠⚠ RE-CUT 3 Oct 2026: the user took the opposite-theme panel OFF Discover,
+       the Inbox and Home ("remove dual tone effect", and asked, "the whole
+       opposite-theme panel"). The shelf is a squircle on the PAGE's own theme now,
+       so this asserts both ends: no swapped panel on Discover, and the shelf's
+       ground on the same side of the page's. Inside the swapped panel is measured
+       on a studio's page below, which keeps it. */
+    await page.waitForSelector('[data-testid="page-panel"]', { timeout: 20000 }).catch(() => {});
     await page.waitForTimeout(200);
 
-    const panel = await page.evaluate(PROBE, ".dos-invert");
-    if (!panel) { check(false, `[${theme}] the shelf sits in an inverted panel`); continue; }
+    check((await page.locator(".dos-invert").count()) === 0, `[${theme}] Discover draws no opposite-theme panel any more`);
+    const panel = await page.evaluate(PROBE, '[data-testid="page-panel"]');
+    if (!panel) { check(false, `[${theme}] the shelf sits in its squircle on the page's theme`); continue; }
     console.log(`\n  ${theme.toUpperCase()} — panel ground ${panel.ground}`);
 
-    // the panel must be the OPPOSITE of the page
+    // the panel is on the SAME side as the page — dark in dark, light in light
     const body = await page.evaluate(PROBE, "body");
-    check(panel.ground !== body.ground, `[${theme}] the panel's ground is not the page's`, `panel ${panel.ground} vs page ${body.ground}`);
+    const lum = (s) => { const [r, g, b] = s.match(/\d+/g).map(Number); return (0.2126 * r + 0.7152 * g + 0.0722 * b) / 255; };
+    check((lum(panel.ground) < 0.5) === (lum(body.ground) < 0.5), `[${theme}] the shelf's ground matches the page's theme`, `panel ${panel.ground} vs page ${body.ground}`);
 
     // a studio card's NAME, composited through the alpha veil onto the panel
     const cardSel = '[data-testid="shelf-count"]';
@@ -112,7 +120,7 @@ const PROBE = (sel) => {
      *  measure the thing most likely to carry a hand-written colour pair, which
      *  is a control: cards inherit their ink from the tokens and survive the
      *  swap for free, while a button states both sides itself. */
-    const btn = await page.evaluate(PROBE, '[data-testid="class-tile"] button, [data-testid="class-tile"] a[href^="/c/"] ~ * button, .dos-invert button, .dos-invert a[href="/login"]');
+    const btn = await page.evaluate(PROBE, '[data-testid="class-tile"] button, [data-testid="class-tile"] a[href^="/c/"] ~ * button, [data-testid="page-panel"] button, [data-testid="page-panel"] a[href="/login"]');
     if (btn) check(btn.ratio >= 4.5, `[${theme}] a CONTROL on the panel is readable — the six-day bug`, `${btn.ratio}:1 ${btn.ink} on ${btn.ground}`);
     else console.log(`  ..     [${theme}] no control inside the panel to measure`);
   }
@@ -149,11 +157,11 @@ const PROBE = (sel) => {
     await page.evaluate(() => {
       for (const tier of ["text", "sub", "muted"]) document.getElementById(`dos-probe-${tier}`)?.remove();
     });
-    /* ⚠ AND THE SAME THREE INSIDE THE PANEL (3 Oct 2026): the panel turned
-       translucent, so its ground is tone B composited over the page — a fourth
-       colour again — and its greys were retuned for it. Measured, not assumed. */
+    /* ⚠ AND THE SAME THREE INSIDE THE SHELF'S SQUIRCLE (3 Oct 2026): on the
+       page's own theme now, standing on the card veil. The swapped panel's own
+       tiers are measured on a studio's page below, which still wears one. */
     const placed = await page.evaluate(() => {
-      const panel = document.querySelector(".dos-invert");
+      const panel = document.querySelector('[data-testid="page-panel"]');
       if (!panel) return false;
       for (const tier of ["text", "sub", "muted"]) {
         const s = document.createElement("span");
@@ -164,11 +172,11 @@ const PROBE = (sel) => {
       }
       return true;
     });
-    check(placed, `[${theme}] a panel to measure inside`, placed ? "" : "no .dos-invert on Discover");
+    check(placed, `[${theme}] the shelf's squircle to measure inside`, placed ? "" : "no page-panel on Discover");
     if (placed) {
       for (const tier of ["text", "sub", "muted"]) {
         const r = await page.evaluate(PROBE, `#dos-pprobe-${tier}`);
-        check(r && r.ratio >= floor[tier], `[${theme}] --${tier} INSIDE the translucent panel reads at ${floor[tier]}:1 or better`, r ? `${r.ratio}:1 ${r.ink} on ${r.ground}` : "not found");
+        check(r && r.ratio >= floor[tier], `[${theme}] --${tier} inside the shelf's squircle reads at ${floor[tier]}:1 or better`, r ? `${r.ratio}:1 ${r.ink} on ${r.ground}` : "not found");
       }
     }
   }
@@ -223,6 +231,28 @@ const PROBE = (sel) => {
       `[${theme}] ⚠ and the hero has NO WASH — its ground IS the top squircle's untinted card (C83, C106)`,
       `hero ${eyebrow.ground} vs card ${body.ground}`
     );
+
+    /* ⚠ THE SWAPPED PANEL'S OWN TIERS, measured where it still lives (3 Oct 2026):
+       a profile page's lower half is still the opposite theme, translucent, with
+       greys retuned for that composited ground. Moved here from Discover. */
+    const inv = await page.evaluate(() => {
+      const panel = document.querySelector(".dos-invert");
+      if (!panel) return false;
+      for (const tier of ["text", "sub", "muted"]) {
+        const s = document.createElement("span");
+        s.id = `dos-iprobe-${tier}`;
+        s.style.color = `var(--${tier})`;
+        s.textContent = "Ag";
+        panel.appendChild(s);
+      }
+      return true;
+    });
+    if (!inv) { console.log(`  ..     [${theme}] this studio's page draws no lower panel to measure`); continue; }
+    const floor = { text: 7, sub: 4.5, muted: 4.5 };
+    for (const tier of ["text", "sub", "muted"]) {
+      const r = await page.evaluate(PROBE, `#dos-iprobe-${tier}`);
+      check(r && r.ratio >= floor[tier], `[${theme}] --${tier} INSIDE a profile page's opposite-theme panel reads at ${floor[tier]}:1 or better`, r ? `${r.ratio}:1 ${r.ink} on ${r.ground}` : "not found");
+    }
   }
 
   await browser.close();

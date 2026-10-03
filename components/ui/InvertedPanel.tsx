@@ -36,7 +36,34 @@ const InvertedGround = createContext(false);
  *  Read by `useDosDark` — nothing else should need it. */
 export const useInvertedGround = (): boolean => useContext(InvertedGround);
 
-export function InvertedPanel({ head, children, style }: { head?: ReactNode; children: ReactNode; style?: CSSProperties }) {
+/** ⚠ `ground="page"` (3 Oct 2026, the user: "remove dual tone effect from
+ *  discover, inbox and home", and asked which, "the whole opposite-theme panel"):
+ *  the same 22px squircle on the PAGE's own theme — the card veil and outline the
+ *  top panels wear, no palette swap, no context, so everything inside reads the
+ *  page's tokens. Discover's shelf, the Inbox's lower half and every Home's tools
+ *  use it; the profile pages keep the inverted ground, which was not asked. */
+export function InvertedPanel({
+  head,
+  children,
+  style,
+  ground = "inverted",
+}: {
+  head?: ReactNode;
+  children: ReactNode;
+  style?: CSSProperties;
+  ground?: "inverted" | "page";
+}) {
+  if (ground === "page") {
+    return (
+      <div
+        data-testid="page-panel"
+        style={{ borderRadius: 22, padding: "14px 14px 16px", margin: "12px 0", boxSizing: "border-box", border: "1.5px solid var(--el)", background: "var(--card)", color: "var(--text)", ...style }}
+      >
+        {head}
+        {children}
+      </div>
+    );
+  }
   return (
     <InvertedGround.Provider value={true}>
       <div className="dos-invert" style={{ borderRadius: 22, padding: "14px 14px 16px", margin: "12px 0", boxSizing: "border-box", ...style }}>

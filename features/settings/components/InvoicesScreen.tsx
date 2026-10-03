@@ -13,12 +13,13 @@ import { BizPage, bizCard, chip, dayWords, ghostBtn, rupees } from "./settings-k
  *  unpaid (a seat is paid at booking), so those two filters are honest zeros. */
 
 const TONE: Record<string, string> = { paid: "#22C55E", refunded: "#F59E0B" };
+const partly = (r: InvoiceRow) => r.status === "paid" && r.refundedInr > 0;
 
 export function InvoicesScreen({ rows, side }: { rows: InvoiceRow[]; side: "mine" | "business" }) {
   const [f, setF] = useState<"all" | "paid" | "refunded">("all");
   const shown = f === "all" ? rows : rows.filter((r) => r.status === f);
   const csv = () => {
-    const lines = [["number", "kind", "who", "what", "amount_inr", "method", "status", "paid_at"].join(","), ...rows.map((r) => [r.number, r.kind, r.who, r.what, r.amountInr, r.method ?? "", r.status, r.paidAt].map((v) => `"${String(v).replace(/"/g, '""')}"`).join(","))];
+    const lines = [["number", "kind", "who", "what", "amount_inr", "refunded_inr", "method", "status", "paid_at"].join(","), ...rows.map((r) => [r.number, r.kind, r.who, r.what, r.amountInr, r.refundedInr, r.method ?? "", r.status, r.paidAt].map((v) => `"${String(v).replace(/"/g, '""')}"`).join(","))];
     const blob = new Blob([lines.join("\n")], { type: "text/csv" });
     const a = document.createElement("a");
     a.href = URL.createObjectURL(blob);
@@ -54,7 +55,15 @@ export function InvoicesScreen({ rows, side }: { rows: InvoiceRow[]; side: "mine
             </div>
             <div style={{ textAlign: "right", flexShrink: 0 }}>
               <div style={{ fontSize: 13.5, fontWeight: 900 }}>{rupees(r.amountInr)}</div>
-              <div style={{ fontSize: 9, fontWeight: 900, color: TONE[r.status], textTransform: "uppercase" }}>{r.status}</div>
+              {/* ⚠ a PART refund stays a paid receipt and says what came back (3 Oct 2026) */}
+              {partly(r) ? (
+                <>
+                  <div data-testid="part-refunded" style={{ fontSize: 9, fontWeight: 900, color: TONE.refunded, textTransform: "uppercase" }}>Part refunded</div>
+                  <div style={{ fontSize: 9.5, color: "var(--sub)", marginTop: 1 }}>{rupees(r.refundedInr)} refunded</div>
+                </>
+              ) : (
+                <div style={{ fontSize: 9, fontWeight: 900, color: TONE[r.status], textTransform: "uppercase" }}>{r.status}</div>
+              )}
             </div>
           </>
         );

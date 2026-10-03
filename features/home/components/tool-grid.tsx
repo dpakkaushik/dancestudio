@@ -38,7 +38,13 @@ export function ToolsHead({ kind, right = null }: { kind: ToolsKind; right?: Rea
  *  `InvertedPanel` swaps the whole palette for its subtree, so every component
  *  inside reads the tokens and is correct with no change of its own. */
 export function ToolsPanel({ kind, head, children }: { kind: ToolsKind; head?: ReactNode; children: ReactNode }) {
-  return <InvertedPanel head={<ToolsHead kind={kind} right={head} />}>{children}</InvertedPanel>;
+  /* ⚠ on the page's own theme since 3 Oct 2026 — the user took the opposite-theme
+     panel off Home ("remove dual tone effect from discover, inbox and home") */
+  return (
+    <InvertedPanel ground="page" head={<ToolsHead kind={kind} right={head} />}>
+      {children}
+    </InvertedPanel>
+  );
 }
 
 /** THE TOOL TILE AND ITS GLYPHS, ON THEIR OWN (22 Sep 2026).

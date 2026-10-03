@@ -38,6 +38,10 @@ export interface InvoiceRow {
   amountInr: number;
   method: string | null;
   status: InvoiceStatus;
+  /** ⚠ what has actually come back (processed refunds), 3 Oct 2026. Above 0 and
+   *  below `amountInr` is a PART refund: the receipt stays PAID and says how much
+   *  went back — an enquiry ending can refund ₹300 of a ₹500 advance. */
+  refundedInr: number;
   paidAt: string;
   kind: InvoiceKind;
   /** where the row opens — the class page, or the plan; an EVENT row has none */
@@ -50,6 +54,7 @@ interface OrderPaymentRow {
   method: string | null;
   status: "captured" | "failed" | "refunded";
   created_at: string;
+  refunds?: Array<{ amount_inr: number; status: string; deleted_at: string | null }> | null;
   profiles: { full_name: string } | null;
   orders: {
     classes: { style: string; level: string; share_slug: string } | null;
@@ -72,8 +77,19 @@ interface SubscriptionPaymentRow {
 }
 
 const ORDER_SELECT =
-  "id, amount_inr, method, status, created_at, profiles (full_name), orders!inner (enquiry_part, classes (style, level, share_slug), events (title, share_slug), businesses (name), enquiry_quotes (enquiry_id, enquiries (type_key)))";
+  "id, amount_inr, method, status, created_at, refunds (amount_inr, status, deleted_at), profiles (full_name), orders!inner (enquiry_part, classes (style, level, share_slug), events (title, share_slug), businesses (name), enquiry_quotes (enquiry_id, enquiries (type_key)))";
 const SUBSCRIPTION_SELECT = "id, amount_inr, method, status, created_at, kind, subscriptions (kind, businesses (name))";
+
+/** ⚠ THE LABEL FOLLOWS THE MONEY (3 Oct 2026). What came back is summed off the
+ *  processed refund ROWS, and the receipt reads REFUNDED only once they cover the
+ *  payment. The stored word is deliberately NOT read: it was wrong two ways — a
+ *  part refund on the rail stamped the whole payment refunded, and a refund handed
+ *  back at the desk never stamped the payment at all. Every refund row names its
+ *  payment (NOT NULL), and the payer and the business both read their own by RLS. */
+const refundStateOf = (r: OrderPaymentRow): { status: InvoiceStatus; refundedInr: number } => {
+  const back = (r.refunds ?? []).filter((x) => x.status === "processed" && !x.deleted_at).reduce((s, x) => s + x.amount_inr, 0);
+  return { status: r.amount_inr > 0 && back >= r.amount_inr ? "refunded" : "paid", refundedInr: Math.min(back, r.amount_inr) };
+};
 
 const numberOf = (id: string, iso: string) => `INV-${new Date(iso).getFullYear()}-${id.replace(/-/g, "").slice(-4).toUpperCase()}`;
 
@@ -90,7 +106,7 @@ const toOrderRow = (r: OrderPaymentRow, side: "mine" | "business"): InvoiceRow =
       what: `${enquiryTypeOf(enq.enquiries?.type_key ?? "")?.label ?? "Enquiry"} · ${part === "advance" ? "advance" : part === "balance" ? "balance" : "paid in full"}`,
       amountInr: r.amount_inr,
       method: r.method,
-      status: r.status === "refunded" ? "refunded" : "paid",
+      ...refundStateOf(r),
       paidAt: r.created_at,
       kind: "enquiry",
       href: `/inbox/enquiries/${enq.enquiry_id}`,
@@ -106,7 +122,7 @@ const toOrderRow = (r: OrderPaymentRow, side: "mine" | "business"): InvoiceRow =
     what: cls ? dosClassLabel(cls.style, cls.level) : ev ? `Ticket · ${ev.title}` : "Booking",
     amountInr: r.amount_inr,
     method: r.method,
-    status: r.status === "refunded" ? "refunded" : "paid",
+    ...refundStateOf(r),
     paidAt: r.created_at,
     kind: ev ? "event" : "class",
     /* ⚠ an event row has no door since 29 Sep 2026 — see the note at the top */
@@ -125,6 +141,7 @@ const toSubscriptionRow = (r: SubscriptionPaymentRow): InvoiceRow => {
     amountInr: r.amount_inr,
     method: r.method,
     status: r.status === "refunded" ? "refunded" : "paid",
+    refundedInr: r.status === "refunded" ? r.amount_inr : 0,
     paidAt: r.created_at,
     kind: "subscription",
     href: artist ? "/subscription" : "/business",

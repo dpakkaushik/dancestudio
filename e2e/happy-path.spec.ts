@@ -1604,7 +1604,12 @@ test.describe.serial("DanceOS, end to end", () => {
     await learner.goto("/discover?city=Pune&tab=classes&fam=Bollywood");
     await expect(ourTile).toBeVisible();
     await learner.goto("/discover?city=Pune&tab=classes&fam=Latin");
-    await expect(learner.getByText("Nothing in Pune matches that")).toBeVisible();
+    /* ⚠ PINNED TO THIS RUN'S CLASS, not to an empty shelf (3 Oct 2026): the
+       re-seeded demo world has a Salsa class in Pune, so "Nothing in Pune matches
+       that" was a claim about the world, not the filter. Wait for the filtered
+       page (its Remove pill), then assert our Bollywood tile is gone. */
+    await expect(learner.getByRole("button", { name: "Remove Latin family", exact: true })).toBeVisible();
+    await expect(ourTile).toHaveCount(0);
     // and the Styles section has filters of its own: Latin is its three styles
     await learner.goto("/discover?city=Pune&tab=styles&fam=Latin");
     await expect(learner.getByTestId("style-card")).toHaveCount(3);

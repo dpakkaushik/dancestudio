@@ -959,8 +959,10 @@ export function InboxScreen({
           also be squircle"): it ran edge to edge with square bottom corners under
           the floating tab bar; it is Discover's and Home's own shape now — round on
           all four corners, 16px in from each side — and it ends ABOVE the bar
-          rather than behind it, so the last card is never under the tabs. */}
-      <InvertedPanel style={{ flex: 1, margin: "0 16px calc(var(--dos-foot, 96px) + 12px)", borderRadius: 22, padding: "18px 14px 18px" }}>
+          rather than behind it, so the last card is never under the tabs.
+          ⚠⚠ ON THE PAGE'S OWN THEME SINCE 3 Oct 2026 — the user took the
+          opposite-theme panel off Discover, the Inbox and Home; the squircle stays. */}
+      <InvertedPanel ground="page" style={{ flex: 1, margin: "0 16px calc(var(--dos-foot, 96px) + 12px)", borderRadius: 22, padding: "18px 14px 18px" }}>
       <div data-testid="inbox-panel" style={{ position: "relative" }}>
         {error ? <div style={{ fontSize: 11.5, color: "#F87171", marginBottom: 10 }}>{error}</div> : null}
 
