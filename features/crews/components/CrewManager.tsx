@@ -1,6 +1,5 @@
 "use client";
 
-import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
@@ -15,8 +14,8 @@ import {
 import { PeoplePicker } from "@/features/people/components/PeoplePicker";
 import { DeskAddButton } from "@/features/settings/components/settings-kit";
 import { DeskHero, SheetHandle, sheetBody, sheetWrap } from "@/features/businesses/components/biz-kit";
-import { photoUrl } from "@/lib/media/photo";
 import { DeskBody, DeskMiddle, DeskTop } from "@/components/ui/DeskSections";
+import { ToolActions, ToolBody, ToolCard, ToolFacts, ToolHead, toolBtn } from "@/components/ui/ToolCard";
 import { DOS_DISPLAY, DOS_UI, INK, LILAC } from "@/lib/design/tokens";
 import { CREW_ROLE_TINT, CREW_ROLE_WORD, type Crew, type CrewMember } from "@/types/crew";
 import { Toast, bizCard, sinceWords } from "./crew-kit";
@@ -132,54 +131,81 @@ export function CrewManager({ crew, members }: { crew: Crew; members: CrewMember
                 [nx[i], nx[j]] = [nx[j], nx[i]];
                 void run(() => reorderCrewMembersAction({ crewId: crew.id, memberIds: nx.map((x) => x.id) }), "Order saved");
               };
+              /* ⚠⚠ A CREW MEMBER CARD (3 Oct 2026, the user: *"better and bigger
+                 cards for … Team … each has a profile linked to it which should be
+                 visible with profile pic and name and big … buttons segregated"*) —
+                 the studio's Team desk wears the same card. THE PHOTO AND THE NAME
+                 ARE ONE DOOR (16358), at a profile's size; the role in its own colour
+                 rides above the name; ASKED IS NOT JOINED is said in the body; the
+                 arrows stay beside the person they move; and Promote / Make leader /
+                 Remove sit on their own bar — a card only offers what it can change. */
               return (
-                <div key={m.id} style={{ ...bizCard, borderLeft: `4px solid ${rc}`, padding: "11px 13px" }}>
-                  <div style={{ display: "flex", alignItems: "center", gap: 11 }}>
-                    {/* THE PHOTO AND THE NAME ARE THE SAME DOOR (16358): "tapping a
-                        name and expecting nothing to happen is not something anyone
-                        does". The person page landed with the first parity slice, so
-                        both the face and the name open it. */}
-                    <Link href={`/person/${m.userId}`} aria-label={`Open ${m.name}'s profile`} style={{ display: "flex", alignItems: "center", gap: 11, flex: 1, minWidth: 0, color: INK, textDecoration: "none" }}>
-                      <div style={{ width: 36, height: 36, borderRadius: 11, overflow: "hidden", background: `linear-gradient(135deg,${rc},#7C3AED)`, display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontSize: 12, fontWeight: 900, flexShrink: 0 }}>
-                        {photoUrl(m.avatarPath) ? <Image src={photoUrl(m.avatarPath)!} alt="" width={36} height={36} style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} /> : null}
-                        {photoUrl(m.avatarPath) ? null : (
-                        <>{m.name.split(" ").filter(Boolean).map((x) => x[0]).join("").slice(0, 2).toUpperCase()}</>
-                        )}
-                      </div>
-                      <div style={{ flex: 1, minWidth: 0 }}>
-                        <div style={{ fontSize: 13, fontWeight: 900 }}>{m.name}</div>
-                        {/* ASKED IS NOT JOINED */}
-                        {pending ? (
-                          <div style={{ fontSize: 9.5, fontWeight: 800, letterSpacing: 0.4, color: "#F59E0B", marginTop: 1 }}>⏳ Waiting on them to confirm</div>
-                        ) : (
-                          <div style={{ fontSize: 9.5, fontWeight: 800, letterSpacing: 0.4, color: rc, textTransform: "uppercase", marginTop: 1 }}>{CREW_ROLE_WORD[m.role]}</div>
-                        )}
-                        <div style={{ fontSize: 10.5, color: "var(--sub)", marginTop: 2 }}>
-                          {pending ? `asked ${sinceWords(m.createdAt)}` : `since ${sinceWords(m.createdAt)}`}
-                          {m.city ? ` · ${m.city}` : ""}
-                        </div>
-                      </div>
-                    </Link>
-                  </div>
-                  <div style={{ display: "flex", gap: 6, marginTop: 9, flexWrap: "wrap" }}>
-                    {/* AND THE LEADER IS NOT OFFERED "MAKE LEADER" — a row only offers what it can actually change */}
-                    {m.role !== "leader" && !pending ? (
-                      <button
-                        type="button"
-                        disabled={busy}
-                        aria-label={m.role === "trainee" ? `Promote ${m.name}` : `Make ${m.name} leader`}
-                        onClick={() =>
-                          void run(
-                            () => setCrewMemberRoleAction({ memberId: m.id, crewId: crew.id, role: m.role === "trainee" ? "member" : "leader" }),
-                            `${m.name} → ${m.role === "trainee" ? "Member" : "Leader"}`
-                          )
-                        }
-                        style={{ fontSize: 10, fontWeight: 800, padding: "6px 10px", borderRadius: 999, cursor: "pointer", background: "var(--el)", color: "var(--text)", border: "none", fontFamily: "inherit" }}
-                      >
-                        {m.role === "trainee" ? "Promote" : "Make leader"}
-                      </button>
-                    ) : null}
-                    {m.role !== "leader" ? (
+                <ToolCard key={m.id} edge={rc} dim={pending}>
+                  <ToolHead
+                    tint={rc}
+                    name={m.name}
+                    photoPath={m.avatarPath ?? null}
+                    href={`/person/${m.userId}`}
+                    hrefLabel={`Open ${m.name}'s profile`}
+                    /* the row's word, exactly — `CREW_ROLE_WORD` ("Member") */
+                    eyebrow={pending ? "Asked to join" : CREW_ROLE_WORD[m.role]}
+                    sub={m.city ?? null}
+                    right={
+                      /* the crew's profile shows them in this order, so the order has to be movable HERE */
+                      <span style={{ display: "flex", flexDirection: "column", gap: 2, pointerEvents: "auto" }}>
+                        {(
+                          [
+                            ["↑", -1],
+                            ["↓", 1],
+                          ] as Array<[string, -1 | 1]>
+                        ).map(([g, d]) => {
+                          const off = !canMove(d);
+                          return (
+                            <button
+                              key={g}
+                              type="button"
+                              disabled={off || busy}
+                              aria-label={`Move ${m.name} ${d < 0 ? "up" : "down"}`}
+                              onClick={() => move(d)}
+                              style={{ width: 26, height: 24, lineHeight: "23px", textAlign: "center", borderRadius: 8, fontSize: 12, fontWeight: 900, background: "var(--el)", color: off ? "var(--muted)" : "var(--text)", opacity: off ? 0.4 : 1, cursor: off ? "default" : "pointer", border: "none", padding: 0, fontFamily: "inherit" }}
+                            >
+                              {g}
+                            </button>
+                          );
+                        })}
+                      </span>
+                    }
+                  />
+                  <ToolBody>
+                    <ToolFacts
+                      tint={rc}
+                      items={[
+                        { label: pending ? "Asked" : "On the crew since", value: sinceWords(m.createdAt) },
+                        { label: "Status", value: pending ? "Waiting" : "Confirmed", tint: pending ? "#F59E0B" : "#22C55E" },
+                      ]}
+                    />
+                    {/* ASKED IS NOT JOINED */}
+                    {pending ? <div style={{ fontSize: 11, fontWeight: 800, color: "#F59E0B", marginTop: 8 }}>⏳ Waiting on them to confirm</div> : null}
+                  </ToolBody>
+                  {m.role !== "leader" ? (
+                    <ToolActions>
+                      {/* AND THE LEADER IS NOT OFFERED "MAKE LEADER" — a card only offers what it can actually change */}
+                      {!pending ? (
+                        <button
+                          type="button"
+                          disabled={busy}
+                          aria-label={m.role === "trainee" ? `Promote ${m.name}` : `Make ${m.name} leader`}
+                          onClick={() =>
+                            void run(
+                              () => setCrewMemberRoleAction({ memberId: m.id, crewId: crew.id, role: m.role === "trainee" ? "member" : "leader" }),
+                              `${m.name} → ${m.role === "trainee" ? "Member" : "Leader"}`
+                            )
+                          }
+                          style={toolBtn("tinted", rc)}
+                        >
+                          {m.role === "trainee" ? "Promote" : "Make leader"}
+                        </button>
+                      ) : null}
                       <button
                         type="button"
                         disabled={busy}
@@ -190,36 +216,13 @@ export function CrewManager({ crew, members }: { crew: Crew; members: CrewMember
                             pending ? `Withdrawn — ${m.name} is no longer being asked` : `${m.name} removed from the crew`
                           )
                         }
-                        style={{ fontSize: 10, fontWeight: 800, padding: "6px 10px", borderRadius: 999, cursor: "pointer", background: "rgba(239,68,68,.14)", color: "#F87171", border: "none", fontFamily: "inherit" }}
+                        style={toolBtn("danger", rc)}
                       >
                         {pending ? "Withdraw" : "Remove"}
                       </button>
-                    ) : null}
-                    {/* the crew's profile shows them in this order, so the order has to be movable HERE */}
-                    <span style={{ marginLeft: "auto", display: "flex", gap: 4, flexShrink: 0 }}>
-                      {(
-                        [
-                          ["↑", -1],
-                          ["↓", 1],
-                        ] as Array<[string, -1 | 1]>
-                      ).map(([g, d]) => {
-                        const off = !canMove(d);
-                        return (
-                          <button
-                            key={g}
-                            type="button"
-                            disabled={off || busy}
-                            aria-label={`Move ${m.name} ${d < 0 ? "up" : "down"}`}
-                            onClick={() => move(d)}
-                            style={{ width: 26, height: 26, lineHeight: "25px", textAlign: "center", borderRadius: 8, fontSize: 12, fontWeight: 900, background: "var(--el)", color: off ? "var(--muted)" : "var(--text)", opacity: off ? 0.4 : 1, cursor: off ? "default" : "pointer", border: "none", padding: 0, fontFamily: "inherit" }}
-                          >
-                            {g}
-                          </button>
-                        );
-                      })}
-                    </span>
-                  </div>
-                </div>
+                    </ToolActions>
+                  ) : null}
+                </ToolCard>
               );
             })}
             {/* an empty roster said nothing at all, while the other two desks each

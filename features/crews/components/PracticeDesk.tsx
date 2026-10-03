@@ -10,7 +10,8 @@ import { photoUrl } from "@/lib/media/photo";
 import { DeskBody, DeskTop } from "@/components/ui/DeskSections";
 import { DOS_UI, INK, LILAC } from "@/lib/design/tokens";
 import { PRACTICE_TINT, PRACTICE_WORD, practiceWhen, type CrewPractice, type PracticePerson } from "@/types/crewPractice";
-import { CrewFace, Toast, bizBtn, bizCard, pressKey } from "./crew-kit";
+import { CrewFace, Toast, bizCard, pressKey } from "./crew-kit";
+import { toolBtn } from "@/components/ui/ToolCard";
 import { PRACTICE_HEAD, PracticeCard, splitPractices } from "./practice-card";
 
 const TINT = DOS_TOOLS.practice.c;
@@ -95,23 +96,25 @@ export function PracticeDesk({ crewId, crewName, practices, todayIso }: { crewId
         practice={p}
         now={now}
         onAnswer={answer}
+        /* the leader's two buttons ride on the card's own action bar (3 Oct 2026) */
+        actions={
+          p.iLead ? (
+            <>
+              <button type="button" onClick={() => openRegister(p.id)} aria-expanded={isOpen} aria-label={`Register for ${practiceWhen(p.startsAt)}`} style={toolBtn("primary", TINT)}>
+                {isOpen ? "Hide the register" : "Register"}
+              </button>
+              {!cancelled && !past ? (
+                <button type="button" onClick={() => callOff(p.id)} aria-label={`Call off ${practiceWhen(p.startsAt)}`} style={toolBtn("danger", TINT)}>
+                  Call it off
+                </button>
+              ) : null}
+            </>
+          ) : null
+        }
         foot={
           <>
-        {p.iLead ? (
-          <div style={{ display: "flex", gap: 8, marginTop: 10 }}>
-            <button type="button" onClick={() => openRegister(p.id)} aria-expanded={isOpen} aria-label={`Register for ${practiceWhen(p.startsAt)}`} style={{ ...bizBtn, flex: 1, borderStyle: "solid" }}>
-              {isOpen ? "Hide the register" : "Register"}
-            </button>
-            {!cancelled && !past ? (
-              <button type="button" onClick={() => callOff(p.id)} aria-label={`Call off ${practiceWhen(p.startsAt)}`} style={{ ...bizBtn, flex: 1 }}>
-                Call it off
-              </button>
-            ) : null}
-          </div>
-        ) : null}
-
         {isOpen ? (
-          <div style={{ marginTop: 10, borderTop: "1.5px solid var(--el)", paddingTop: 8 }}>
+          <div style={{ borderTop: "1.5px solid var(--el)", padding: "8px 14px 6px" }}>
             {busy === p.id ? <div style={{ fontSize: 11.5, color: "var(--sub)", padding: "8px 0" }}>Reading the register…</div> : null}
             {busy !== p.id && rows.length === 0 ? <div style={{ fontSize: 11.5, color: "var(--muted)", padding: "8px 0" }}>Nobody on it yet.</div> : null}
             {rows.map((m) => (

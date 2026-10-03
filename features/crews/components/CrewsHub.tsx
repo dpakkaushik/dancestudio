@@ -4,6 +4,7 @@ import { CREW_TINT, type CrewSummary } from "@/types/crew";
 import { DeskAddButton } from "@/features/settings/components/settings-kit";
 import { SegmentedPanels } from "@/features/shell/components/SegmentedNav";
 import { DeskBody, DeskTop } from "@/components/ui/DeskSections";
+import { ToolActions, ToolBody, ToolCard, ToolChip, ToolFacts, ToolHead, toolBtn } from "@/components/ui/ToolCard";
 import { CrewI, dosToolPaint } from "./crew-kit";
 import { ReclaimCrewButton } from "./ReclaimCrewButton";
 
@@ -15,28 +16,66 @@ import { ReclaimCrewButton } from "./ReclaimCrewButton";
  *  crews you are simply IN (Profile ›). Where a row goes decides what pressing
  *  it does. */
 
-function Row({ crew, own, sub }: { crew: CrewSummary; own: boolean; sub: string }) {
-  const accent = CREW_TINT;
+const sinceWords = (iso: string) => new Intl.DateTimeFormat("en-IN", { timeZone: "Asia/Kolkata", month: "short", year: "numeric" }).format(new Date(iso));
+
+/** A CREW CARD (3 Oct 2026, the user: *"better and bigger cards … each has a
+ *  profile linked to it … visible with profile pic and name and big"*). The
+ *  profile IS the crew: its picture and its name lead, then the figures a crew is
+ *  read by — how many dance in it, what it dances, since when — then the doors.
+ *
+ *  ⚠ THE WHOLE CARD STILL OPENS WHERE THE ROW DID — the desk for a crew you lead,
+ *  its page for one you are in — through the stretched link, under the same
+ *  accessible name the hub has always given it. The buttons are the two doors
+ *  said out loud, on their own bar. */
+function CrewCard({ crew, own, since, foundedByMe = false }: { crew: CrewSummary; own: boolean; since: string; foundedByMe?: boolean }) {
+  const tint = CREW_TINT;
+  const others = crew.styles.length > 1 ? ` +${crew.styles.length - 1}` : "";
   return (
-    <Link
-      href={own ? `/crews/${crew.id}/manage` : `/crew/${crew.id}`}
-      aria-label={`${crew.name} — ${own ? "manage the crew" : "open the profile"}`}
-      style={{ display: "flex", alignItems: "center", gap: 11, background: "var(--card)", border: "1.5px solid var(--el)", borderLeft: `4px solid ${own ? accent : "var(--el)"}`, borderRadius: 16, padding: "12px 13px", marginBottom: 9, color: INK, textDecoration: "none" }}
-    >
-      <span style={{ width: 36, height: 36, borderRadius: 11, flexShrink: 0, background: own ? `${accent}1c` : "var(--el)", display: "flex", alignItems: "center", justifyContent: "center" }}>
-        <CrewI size={17} color={own ? accent : "var(--sub)"} />
-      </span>
-      <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{ fontSize: 13, fontWeight: 900, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{crew.name}</div>
-        <div style={{ fontSize: 10, color: SUB, marginTop: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{sub}</div>
-      </div>
-      {/* the word on the right is the promise the tap keeps */}
-      <span style={{ fontSize: 10.5, fontWeight: 800, color: own ? accent : SUB, flexShrink: 0 }}>{own ? "Manage ›" : "Profile ›"}</span>
-    </Link>
+    <ToolCard href={own ? `/crews/${crew.id}/manage` : `/crew/${crew.id}`} hrefLabel={`${crew.name} — ${own ? "manage the crew" : "open the profile"}`}>
+      <ToolHead
+        tint={tint}
+        name={crew.name}
+        photoPath={crew.photo}
+        icon={<CrewI size={24} color="#fff" />}
+        eyebrow={own ? "Crew · you lead it" : foundedByMe ? "Crew · you started it" : "Crew · you dance in it"}
+        sub={crew.city}
+        right={<ToolChip word={own ? "LEADER" : "MEMBER"} fg={own ? tint : SUB} bg={own ? `${tint}18` : "var(--el)"} />}
+      />
+      <ToolBody>
+        <ToolFacts
+          tint={tint}
+          items={[
+            { label: crew.members === 1 ? "Member" : "Members", value: crew.members },
+            { label: "Dances", value: `${crew.style || "—"}${others}` },
+            { label: own ? "Since" : "Joined", value: sinceWords(since) },
+          ]}
+        />
+        {foundedByMe ? <div style={{ fontSize: 11, color: SUB, marginTop: 9, lineHeight: 1.45 }}>You started this crew and handed it over.</div> : null}
+      </ToolBody>
+      <ToolActions>
+        {own ? (
+          <>
+            <Link href={`/crews/${crew.id}/manage`} style={toolBtn("primary", tint)}>
+              Manage crew
+            </Link>
+            <Link href={`/crew/${crew.id}`} style={toolBtn("secondary", tint)}>
+              Public page
+            </Link>
+          </>
+        ) : (
+          <>
+            <Link href={`/crew/${crew.id}`} style={toolBtn("tinted", tint)}>
+              Open profile
+            </Link>
+            {/* ⚠ THE FOUNDER'S DOOR BACK (30 Sep 2026) is one of the bar's buttons,
+                still named "Take {crew} back" */}
+            {foundedByMe ? <ReclaimCrewButton crewId={crew.id} crewName={crew.name} wrapStyle={{ flex: "1 1 0", minWidth: 0 }} buttonStyle={{ ...toolBtn("secondary", tint), width: "100%", color: tint }} /> : null}
+          </>
+        )}
+      </ToolActions>
+    </ToolCard>
   );
 }
-
-const sinceWords = (iso: string) => new Intl.DateTimeFormat("en-IN", { timeZone: "Asia/Kolkata", month: "short", year: "numeric" }).format(new Date(iso));
 
 /** THE CREWS YOU RUN — and the door that makes one. */
 function LedColumn({ led }: { led: CrewSummary[] }) {
@@ -48,7 +87,7 @@ function LedColumn({ led }: { led: CrewSummary[] }) {
       {/* opens over this hub (22 Sep 2026); `/crews/new` is still the page */}
       <DeskAddButton label="Create crew" href="?new=1" />
       {led.length ? (
-        led.map((c) => <Row key={c.id} crew={c} own sub={`${c.members} member${c.members === 1 ? "" : "s"} · ${c.style} · ${c.city}`} />)
+        led.map((c) => <CrewCard key={c.id} crew={c} own since={c.createdAt} />)
       ) : (
         <div style={{ fontSize: 11.5, color: SUB, padding: "0 2px 10px" }}>You have not created a crew yet.</div>
       )}
@@ -65,15 +104,7 @@ function MemberColumn({ member }: { member: Array<CrewSummary & { since: string;
   return member.length ? (
     <>
       {member.map((c) => (
-        <div key={c.id}>
-          <Row crew={c} own={false} sub={`${c.style} · ${c.city} · member since ${sinceWords(c.since)}`} />
-          {c.foundedByMe ? (
-            <div style={{ margin: "-4px 2px 12px" }}>
-              <div style={{ fontSize: 10.5, color: SUB, marginBottom: 2 }}>You started this crew and handed it over.</div>
-              <ReclaimCrewButton crewId={c.id} crewName={c.name} />
-            </div>
-          ) : null}
-        </div>
+        <CrewCard key={c.id} crew={c} own={false} since={c.since} foundedByMe={c.foundedByMe} />
       ))}
     </>
   ) : (

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useState, useTransition, type CSSProperties } from "react";
 import { reclaimCrewAction } from "@/features/crews/server-actions/crews";
 import { CREW_TINT } from "@/types/crew";
 
@@ -19,12 +19,23 @@ import { CREW_TINT } from "@/types/crew";
  *  who is not the founder, somebody who already leads it, and a founder who has
  *  LEFT the crew — and printing its sentence rather than a generic one is this
  *  app's grammar everywhere a door can say no. */
-export function ReclaimCrewButton({ crewId, crewName }: { crewId: string; crewName: string }) {
+export function ReclaimCrewButton({
+  crewId,
+  crewName,
+  buttonStyle,
+  wrapStyle,
+}: {
+  crewId: string;
+  crewName: string;
+  /** the card's action bar draws it as one of its own buttons (3 Oct 2026) */
+  buttonStyle?: CSSProperties;
+  wrapStyle?: CSSProperties;
+}) {
   const [busy, start] = useTransition();
   const [error, setError] = useState<string | null>(null);
 
   return (
-    <div style={{ marginTop: 6 }}>
+    <div style={wrapStyle ?? { marginTop: 6 }}>
       <button
         type="button"
         disabled={busy}
@@ -47,6 +58,7 @@ export function ReclaimCrewButton({ crewId, crewName }: { crewId: string; crewNa
           border: `1.5px solid ${CREW_TINT}`,
           fontFamily: "inherit",
           opacity: busy ? 0.6 : 1,
+          ...buttonStyle,
         }}
       >
         {busy ? "Taking it back…" : "Take it back"}

@@ -214,7 +214,9 @@ export async function findRoutinesLearned(supabase: SupabaseClient, userId: stri
   const classIds = [...times.keys()];
   const { data, error } = await supabase
     .from("class_routines")
-    .select("class_id, routines (id, title, style, level, song_title, song_url, song_is_file, video_url, status, created_at), classes (share_slug, style, level, businesses!classes_business_id_fkey (name))")
+    /* ⚠ WHO MADE IT rides along (3 Oct 2026) — the routine card leads with its
+       maker's face and name, the profile it is linked to */
+    .select("class_id, routines (id, title, style, level, song_title, song_url, song_is_file, video_url, status, created_at, profiles (full_name, profile_photo_path)), classes (share_slug, style, level, businesses!classes_business_id_fkey (name))")
     .in("class_id", classIds)
     .is("deleted_at", null)
     .limit(200);

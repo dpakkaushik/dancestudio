@@ -5,6 +5,7 @@ import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { findBusinessCardFacts } from "@/repositories/discovery";
 import { findBusinessMemberships, findMyMemberships, findPassUsesMany } from "@/repositories/memberships";
 import { findMyMemberships as findMyTeams } from "@/repositories/businesses";
+import { findProfileById } from "@/repositories/profiles";
 
 /** /memberships — the Memberships tile (18 Sep 2026's grid), built 19 Sep 2026.
  *  Two sides on one page, because an ARTIST is the account that has both (the
@@ -33,9 +34,12 @@ export default async function MembershipsPage({ searchParams }: { searchParams: 
   if (!user) {
     redirect("/login");
   }
-  const [passes, teams] = await Promise.all([
+  const [passes, teams, me] = await Promise.all([
     findMyMemberships(supabase).catch(() => []),
     findMyTeams(supabase).catch(() => []),
+    /* an artist IS their profile (R24), so what their page sells leads with THEIR
+       face and name — the profile each on-sale card is linked to (3 Oct 2026) */
+    findProfileById(supabase, user.id).catch(() => null),
   ]);
   /* an organization's hosting row sells nothing — a membership is spent on classes */
   const owned = teams.find((m) => m.memberRole === "owner" && m.business.type === "artist_page")?.business ?? null;
@@ -69,7 +73,15 @@ export default async function MembershipsPage({ searchParams }: { searchParams: 
      gate is re-checked because a query param is a thing anybody can type. */
   return (
     <>
-      <MembershipsScreen passes={passes} selling={selling} canSell={Boolean(owned)} sellerPhotos={sellerPhotos} usesByPass={usesByPass} openOnBooked={showBooked} />
+      <MembershipsScreen
+        passes={passes}
+        selling={selling}
+        canSell={Boolean(owned)}
+        sellerPhotos={sellerPhotos}
+        usesByPass={usesByPass}
+        openOnBooked={showBooked}
+        seller={owned ? { name: me?.fullName ?? owned.name, photoPath: me?.avatarPath ?? owned.photoPath ?? null, kind: "artist" } : null}
+      />
       {opening && owned ? <MembershipForm sellerId={owned.id} sellerName={owned.name} backTo="/memberships" sheet /> : null}
     </>
   );

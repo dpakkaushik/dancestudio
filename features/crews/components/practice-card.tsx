@@ -1,12 +1,10 @@
 "use client";
 
-import Image from "next/image";
 import type { ReactNode } from "react";
-import { DISC_RADIUS } from "@/lib/design/tokens";
-import { photoUrl } from "@/lib/media/photo";
+import { SUB } from "@/lib/design/tokens";
 import { PRACTICE_TINT, PRACTICE_WORD, practiceClock, practiceWhen, type CrewPractice } from "@/types/crewPractice";
 import { DOS_TOOLS } from "@/features/businesses/components/biz-kit";
-import { bizBtn, bizCard } from "./crew-kit";
+import { ToolActions, ToolCard, ToolChip, ToolFacts, ToolHead, toolBtn } from "@/components/ui/ToolCard";
 
 const TINT = DOS_TOOLS.practice.c;
 
@@ -32,6 +30,7 @@ export function PracticeCard({
   practice: p,
   now,
   onAnswer,
+  actions = null,
   foot = null,
 }: {
   practice: CrewPractice;
@@ -40,39 +39,46 @@ export function PracticeCard({
    *  on the server so the two cannot disagree about what is over */
   now: number;
   onAnswer: (practiceId: string, accept: boolean) => void;
+  /** the caller's own buttons, on the card's action bar beside the answer pair */
+  actions?: ReactNode;
+  /** anything that opens UNDER the bar — the leader's register */
   foot?: ReactNode;
 }) {
   const cancelled = p.status === "cancelled";
   const past = new Date(p.endsAt).getTime() < now;
-  const face = photoUrl(p.crewPhotoPath);
   const d = dateParts(p.startsAt);
   const share = p.asked > 0 ? Math.min(1, p.going / p.asked) : 0;
-  const chip = (text: string, fg: string, bg: string) => (
-    <span style={{ flexShrink: 0, fontSize: 9.5, fontWeight: 900, letterSpacing: 0.6, padding: "3px 8px", borderRadius: 999, background: bg, color: fg }}>{text}</span>
-  );
+  const canAnswer = !cancelled && !past && p.myStatus !== "leader";
   /* ⚠ THE CARD IS ARRANGED IN THE ORDER IT IS READ (2 Oct 2026, the user:
      "better practice cards, with crew profile photo and arrangement"): WHO it is
      for — the crew's own face and name — then WHEN, as a date block you can read
      across a list without parsing a sentence, then WHERE, then where you stand
-     and how full it is. It used to open on a sentence of date and bury the crew,
-     which on the hub — where practices of several crews sit together — left you
-     reading the small print to learn which crew a card was about. */
+     and how full it is.
+     ⚠⚠ AND SINCE 3 Oct 2026 IT IS THE SHARED TOOL CARD (the user: *"better and
+     bigger cards … each has a profile linked to it … visible with profile pic and
+     name and big … buttons segregated"*): the crew leads at a profile's size and
+     is a door to its page, and every button — the answer pair and whatever the
+     caller adds — sits on one bar under a hairline. */
   return (
-    <div data-testid="practice-card" style={{ ...bizCard, padding: 0, overflow: "hidden", opacity: cancelled ? 0.72 : 1 }}>
-      <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "11px 12px", borderBottom: "1.5px solid var(--el)" }}>
-        <div style={{ width: 40, height: 40, borderRadius: 40 * DISC_RADIUS, overflow: "hidden", flexShrink: 0, background: `linear-gradient(135deg, ${TINT}, ${TINT}99)`, display: "grid", placeItems: "center", color: "#fff", fontWeight: 900, fontSize: 14 }}>
-          {face ? <Image src={face} alt="" width={40} height={40} style={{ width: 40, height: 40, objectFit: "cover" }} /> : initialsOf(p.crewName)}
-        </div>
-        <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ fontSize: 14, fontWeight: 900, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{p.crewName}</div>
-          <div style={{ fontSize: 11, color: "var(--muted)", marginTop: 1 }}>{p.crewStyle ? `${p.crewStyle} · ` : ""}Crew practice</div>
-        </div>
-        {cancelled
-          ? chip("CALLED OFF", "var(--sub)", "var(--el)")
-          : chip(PRACTICE_WORD[p.myStatus].toUpperCase(), PRACTICE_TINT[p.myStatus], `${PRACTICE_TINT[p.myStatus]}22`)}
-      </div>
+    <ToolCard testId="practice-card" dim={cancelled}>
+      <ToolHead
+        tint={TINT}
+        name={p.crewName}
+        photoPath={p.crewPhotoPath}
+        href={`/crew/${p.crewId}`}
+        hrefLabel={`${p.crewName} — the crew's page`}
+        eyebrow={`Crew practice${p.crewStyle ? ` · ${p.crewStyle}` : ""}`}
+        sub={p.iLead ? "You lead this crew" : "You dance in this crew"}
+        right={
+          cancelled ? (
+            <ToolChip word="CALLED OFF" fg={SUB} bg="var(--el)" />
+          ) : (
+            <ToolChip word={PRACTICE_WORD[p.myStatus].toUpperCase()} fg={PRACTICE_TINT[p.myStatus]} bg={`${PRACTICE_TINT[p.myStatus]}22`} />
+          )
+        }
+      />
 
-      <div style={{ display: "flex", gap: 12, padding: "11px 12px" }}>
+      <div style={{ display: "flex", gap: 12, padding: "12px 14px", borderTop: "1.5px solid var(--el)" }}>
         <div aria-hidden style={{ width: 52, flexShrink: 0, borderRadius: 13, background: cancelled ? "var(--el)" : `${TINT}1f`, color: cancelled ? "var(--sub)" : TINT, textAlign: "center", padding: "6px 0", alignSelf: "flex-start" }}>
           <div style={{ fontSize: 9.5, fontWeight: 900, letterSpacing: 0.8 }}>{d.weekday}</div>
           <div style={{ fontSize: 22, fontWeight: 900, lineHeight: 1.05 }}>{d.day}</div>
@@ -85,11 +91,10 @@ export function PracticeCard({
           <div style={{ fontSize: 12, color: "var(--sub)", marginTop: 3, overflowWrap: "anywhere" }}>📍 {p.place}</div>
           {p.note ? <div style={{ fontSize: 11.5, color: "var(--muted)", marginTop: 4, lineHeight: 1.4 }}>{p.note}</div> : null}
           <div style={{ marginTop: 8 }}>
-            <div style={{ display: "flex", justifyContent: "space-between", fontSize: 10.5, color: "var(--muted)", fontWeight: 800 }}>
+            <div style={{ fontSize: 10.5, color: "var(--muted)", fontWeight: 800 }}>
               <span>
                 {p.going} of {p.asked} coming
               </span>
-              {past && !cancelled ? <span>Over</span> : null}
             </div>
             <div style={{ height: 5, borderRadius: 999, background: "var(--el)", overflow: "hidden", marginTop: 4 }}>
               <div style={{ width: `${Math.round(share * 100)}%`, height: "100%", borderRadius: 999, background: cancelled ? "var(--muted)" : TINT }} />
@@ -97,27 +102,41 @@ export function PracticeCard({
           </div>
         </div>
       </div>
-      <div style={{ padding: "0 12px 12px" }}>
+      <div style={{ padding: "0 14px 12px" }}>
+        <ToolFacts
+          tint={TINT}
+          /* what the line above does not already say — how full, how long, and
+             whether it is still to come (the "N of M coming" line stays: it is the
+             sentence the leader's desk has counted the yes by since 27 Sep) */
+          items={[
+            { label: "Turnout", value: `${Math.round(share * 100)}%`, tint: p.going > 0 && !cancelled ? TINT : undefined },
+            { label: "Length", value: lengthWords(p.startsAt, p.endsAt) },
+            { label: "When", value: cancelled ? "Off" : past ? "Over" : "Ahead" },
+          ]}
+        />
+      </div>
 
       {/* ⚠ THE PERSON ASKED ANSWERS HERE, wherever "here" is — the leader's desk,
-          the Crews hub, or their Inbox. A confirmed member reads all three, and a
-          practice shown with no way to answer it is a door that is not a door.
-          One fact, three places you can act on it, exactly as a class ask is
-          answerable from the Inbox and from the class page. */}
-      {!cancelled && !past && p.myStatus !== "leader" ? (
-        <div style={{ display: "flex", gap: 8 }}>
-          <button type="button" onClick={() => onAnswer(p.id, false)} aria-label={`Cannot make ${practiceWhen(p.startsAt)}`} style={{ ...bizBtn, flex: 1, borderStyle: "solid", opacity: p.myStatus === "rejected" ? 0.5 : 1 }}>
-            Cannot make it
-          </button>
-          <button type="button" onClick={() => onAnswer(p.id, true)} aria-label={`Coming to ${practiceWhen(p.startsAt)}`} style={{ ...bizBtn, flex: 1, borderStyle: "solid", background: TINT, color: "#fff", borderColor: TINT, opacity: p.myStatus === "confirmed" ? 0.5 : 1 }}>
-            I am coming
-          </button>
-        </div>
+          the Practice tile, or their Inbox. A practice shown with no way to answer
+          it is a door that is not a door. The pair and the caller's own buttons
+          share ONE bar, under the card's fields. */}
+      {canAnswer || actions ? (
+        <ToolActions>
+          {canAnswer ? (
+            <>
+              <button type="button" onClick={() => onAnswer(p.id, false)} aria-label={`Cannot make ${practiceWhen(p.startsAt)}`} style={toolBtn("secondary", TINT, { opacity: p.myStatus === "rejected" ? 0.55 : 1 })}>
+                Cannot make it
+              </button>
+              <button type="button" onClick={() => onAnswer(p.id, true)} aria-label={`Coming to ${practiceWhen(p.startsAt)}`} style={toolBtn("primary", TINT, { opacity: p.myStatus === "confirmed" ? 0.55 : 1 })}>
+                I am coming
+              </button>
+            </>
+          ) : null}
+          {actions}
+        </ToolActions>
       ) : null}
-
-        {foot}
-      </div>
-    </div>
+      {foot}
+    </ToolCard>
   );
 }
 
@@ -128,13 +147,13 @@ const dateParts = (iso: string) => {
   return { weekday: get("weekday").toUpperCase(), day: get("day"), month: get("month").toUpperCase() };
 };
 
-const initialsOf = (name: string): string =>
-  name
-    .split(/\s+/)
-    .filter(Boolean)
-    .slice(0, 2)
-    .map((w) => w[0]!.toUpperCase())
-    .join("") || "C";
+/** how long a practice runs — "2h", "1h 30m", "45m" */
+const lengthWords = (startIso: string, endIso: string): string => {
+  const mins = Math.max(0, Math.round((new Date(endIso).getTime() - new Date(startIso).getTime()) / 60000));
+  const h = Math.floor(mins / 60);
+  const m = mins % 60;
+  return h && m ? `${h}h ${m}m` : h ? `${h}h` : `${m}m`;
+};
 
 /** COMING UP, then OVER — the one split both screens make, so a practice that is
  *  over on the desk is over on the hub. A called-off practice is OVER whatever

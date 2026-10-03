@@ -1,16 +1,15 @@
 "use client";
 
-import Image from "next/image";
 import Link from "next/link";
 import { useState } from "react";
 import { deleteLeadAction } from "@/features/leads/server-actions/leads";
 import { DeskAddButton } from "@/features/settings/components/settings-kit";
-import { DeskHero } from "@/features/businesses/components/biz-kit";
+import { DOS_TOOLS, DeskHero } from "@/features/businesses/components/biz-kit";
 import { DeskBody, DeskTop } from "@/components/ui/DeskSections";
 import { FigureHead } from "@/components/ui/FigureHead";
+import { ToolActions, ToolBody, ToolCard, ToolChip, ToolFacts, ToolHead, toolBtn } from "@/components/ui/ToolCard";
 import { DOS_UI, INK, LILAC, SUB } from "@/lib/design/tokens";
 import { useCloseOnBack } from "@/lib/hooks/useCloseOnBack";
-import { photoUrl } from "@/lib/media/photo";
 import type { Student } from "@/repositories/students";
 
 /** THE STUDENTS DESK — a list, not a pipeline (21 Sep 2026).
@@ -72,15 +71,8 @@ const waDigits = (raw: string): string => {
 
 const looksLikeEmail = (s: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(s.trim());
 
-function Face({ name, photoPath, size = 38 }: { name: string; photoPath: string | null; size?: number }) {
-  const url = photoPath ? photoUrl(photoPath) : null;
-  const initials = name.split(" ").filter(Boolean).slice(0, 2).map((w) => w[0]?.toUpperCase() ?? "").join("") || "·";
-  return (
-    <span style={{ width: size, height: size, borderRadius: size * 0.3, flexShrink: 0, overflow: "hidden", display: "inline-flex", alignItems: "center", justifyContent: "center", background: "linear-gradient(135deg,#84CC16,#4D7C0F)", color: "#fff", fontSize: size * 0.36, fontWeight: 900 }}>
-      {url ? <Image src={url} alt="" width={size} height={size} style={{ objectFit: "cover", width: size, height: size }} unoptimized /> : initials}
-    </span>
-  );
-}
+/** the Students tool's own colour — the card's face, wash and figures */
+const TINT = DOS_TOOLS.students.c;
 
 export function StudentsDesk({
   businessId,
@@ -147,42 +139,77 @@ export function StudentsDesk({
 
       {list.map((s) => {
         const key = s.userId ?? s.leadId ?? s.name;
-        const meta = [
-          s.attended > 0 ? `${s.attended} in` : null,
-          s.booked > 0 ? `${s.booked} booked` : null,
-          s.passName ? `🎟 ${s.passName}` : null,
-          s.sources.length === 1 && s.sources[0] === "added" ? "added by you" : null,
-        ].filter(Boolean);
+        const walkIn = !s.userId;
+        /* how they came to be a student, in the desk's own words */
+        const how = walkIn
+          ? s.mobile
+            ? `${s.mobile} · not on DanceOS`
+            : "Not on DanceOS"
+          : /* ⚠ THE PASS THEY HOLD IS THE WHY, under their name and inside the
+             door to them — the row has said "🎟 {pass}" since 21 Sep, and moving
+             it into a tile took the reason off the line that names them */
+            s.passName
+            ? `🎟 ${s.passName}`
+            : s.sources.includes("attended")
+            ? s.attended > 0
+              ? "Dances here"
+              : "Booked here"
+            : s.sources.includes("membership")
+              ? "Holds one of your memberships"
+              : "Added by you";
+        const wa = s.mobile ? waDigits(s.mobile) : "";
+        /* ⚠⚠ A STUDENT CARD (3 Oct 2026, the user: *"better and bigger cards …
+           each has a profile linked to it which should be visible with profile
+           pic and name and big … buttons segregated"*). The PERSON leads, at a
+           profile's size, and their face and name are a door to their page where
+           there IS a page — a walk-in has none and does not pretend. Then the three
+           figures a student is read by — how often they came, what they booked,
+           the pass they hold — and the buttons on a bar of their own. */
         return (
-          <div key={key} style={{ background: CARD, border: `1.5px solid ${EL}`, borderRadius: 14, padding: "11px 12px", marginBottom: 8, display: "flex", alignItems: "center", gap: 11 }}>
-            {/* the face and the name are a door to the person, where there IS a
-                person — a walk-in has no profile to open, and does not pretend */}
-            {s.userId ? (
-              <Link href={`/person/${s.userId}`} aria-label={`Open ${s.name}`} style={{ display: "flex", alignItems: "center", gap: 11, flex: 1, minWidth: 0, textDecoration: "none", color: "inherit" }}>
-                <Face name={s.name} photoPath={s.photoPath} />
-                <span style={{ flex: 1, minWidth: 0 }}>
-                  <span style={{ display: "block", fontSize: 13.5, fontWeight: 800, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{s.name}</span>
-                  <span style={{ display: "block", fontSize: 10.5, color: SUB, marginTop: 2 }}>{meta.join(" · ") || "No sessions yet"}</span>
-                </span>
-              </Link>
-            ) : (
-              <span style={{ display: "flex", alignItems: "center", gap: 11, flex: 1, minWidth: 0 }}>
-                <Face name={s.name} photoPath={null} />
-                <span style={{ flex: 1, minWidth: 0 }}>
-                  <span style={{ display: "block", fontSize: 13.5, fontWeight: 800, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{s.name}</span>
-                  <span style={{ display: "block", fontSize: 10.5, color: SUB, marginTop: 2 }}>{s.mobile ? `${s.mobile} · not on DanceOS` : "Not on DanceOS"}</span>
-                </span>
-              </span>
-            )}
-            {/* only a row the desk itself typed can be removed — the rest are
-                consequences of attendance and passes, and un-attending is not a
-                thing a button can do */}
-            {s.leadId && !s.userId ? (
-              <button type="button" disabled={busyLead === s.leadId} aria-label={`Remove ${s.name}`} onClick={() => void remove(s.leadId as string, s.name)} style={{ flexShrink: 0, background: "none", border: "none", color: SUB, fontSize: 15, cursor: "pointer", padding: 4, fontFamily: "inherit" }}>
-                ✕
-              </button>
+          <ToolCard key={key}>
+            <ToolHead
+              tint={TINT}
+              name={s.name}
+              photoPath={s.photoPath}
+              href={s.userId ? `/person/${s.userId}` : undefined}
+              hrefLabel={`Open ${s.name}`}
+              eyebrow={walkIn ? "Walk-in" : s.passName ? "Student · member" : "Student"}
+              sub={how}
+              right={s.passName ? <ToolChip word="MEMBER" fg={TINT} bg={`${TINT}1c`} /> : null}
+            />
+            <ToolBody>
+              <ToolFacts
+                tint={TINT}
+                items={[
+                  { label: "Attended", value: s.attended },
+                  { label: "Booked", value: s.booked },
+                  { label: "Member", value: s.passName ? "Yes" : "No", tint: s.passName ? TINT : undefined },
+                ]}
+              />
+            </ToolBody>
+            {s.userId || wa || s.leadId ? (
+              <ToolActions>
+                {s.userId ? (
+                  <Link href={`/person/${s.userId}`} aria-label={`Profile — ${s.name}`} style={toolBtn("tinted", TINT)}>
+                    Profile
+                  </Link>
+                ) : null}
+                {wa.length >= 10 ? (
+                  <a href={`https://wa.me/${wa}`} target="_blank" rel="noreferrer" aria-label={`WhatsApp ${s.name}`} style={toolBtn("secondary", TINT)}>
+                    WhatsApp
+                  </a>
+                ) : null}
+                {/* only a row the desk itself typed can be removed — the rest are
+                    consequences of attendance and passes, and un-attending is not
+                    a thing a button can do */}
+                {s.leadId && walkIn ? (
+                  <button type="button" disabled={busyLead === s.leadId} aria-label={`Remove ${s.name}`} onClick={() => void remove(s.leadId as string, s.name)} style={toolBtn("danger", TINT)}>
+                    Remove
+                  </button>
+                ) : null}
+              </ToolActions>
             ) : null}
-          </div>
+          </ToolCard>
         );
       })}
 

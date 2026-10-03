@@ -1,16 +1,15 @@
 "use client";
 
-import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState, useTransition, type CSSProperties } from "react";
 import { confirmCheckoutAction, startMembershipCheckoutAction } from "@/features/payments/server-actions/payments";
 import { openCashfreeCheckout } from "@/lib/cashfree/checkout-client";
-import { DeskHero } from "@/features/businesses/components/biz-kit";
+import { DOS_TOOLS, DeskHero } from "@/features/businesses/components/biz-kit";
 import { DeskAddButton } from "@/features/settings/components/settings-kit";
 import { DeskBody, DeskTop } from "@/components/ui/DeskSections";
-import { DISC_RADIUS, DOS_UI, INK, LILAC, SUB } from "@/lib/design/tokens";
-import { photoUrl } from "@/lib/media/photo";
+import { ToolActions, ToolBody, ToolCard, ToolChip, ToolFacts, ToolHead, ToolTitle, toolBtn } from "@/components/ui/ToolCard";
+import { DOS_UI, INK, LILAC, SUB } from "@/lib/design/tokens";
 import { money as rupees } from "@/features/payouts/components/earnings-kit";
 import { DOS_LEVEL_LABEL } from "@/lib/constants/styles";
 import type { MembershipWithUsage, MyPass, PassUse } from "@/repositories/memberships";
@@ -32,7 +31,8 @@ import type { MembershipWithUsage, MyPass, PassUse } from "@/repositories/member
  *  hours with how many, a price, and how many may be sold. */
 
 const card: CSSProperties = { background: "var(--card)", border: "1.5px solid var(--el)", borderRadius: 16, padding: "13px 14px", marginBottom: 10 };
-const btn = (on: boolean): CSSProperties => ({ flex: 1, textAlign: "center", padding: "12px", borderRadius: 999, cursor: "pointer", fontWeight: 900, fontSize: 12.5, fontFamily: "inherit", border: on ? "none" : "1.5px solid var(--el)", background: on ? INK : "var(--card)", color: on ? LILAC : INK });
+/** the Memberships tool's own colour — every card's face, wash and figures */
+const TINT = DOS_TOOLS.memberships.c;
 
 /** HOW FAR THROUGH — the one thing a membership is for (the user: "progress bar
  *  for completion"). Drawn from two real numbers, never a stored percentage. */
@@ -82,46 +82,9 @@ export function SpentOn({ uses, unit }: { uses: PassUse[]; unit: "classes" | "ho
   );
 }
 
-/** WHO SOLD IT — the seller's face beside their name (28 Sep 2026, the user:
- *  "membership should have studio or artist photo with name"). A pass is a
- *  relationship with a studio or an artist, and until now that side of it was a
- *  line of grey text; a face is how every other person and business in this app
- *  is recognised at a glance.
- *
- *  ⚠ THE SQUIRCLE IS `DISC_RADIUS`, not a number typed here — the same share of
- *  the side the 96px disc, the hub's 42px face and the cropper's frame all use
- *  (18 Sep 2026), so this face cannot drift into a different shape.
- *  ⚠ NO PHOTO MEANS INITIALS, never an empty box: the seller may be a business
- *  this person cannot read, and a pass is still a pass without a face on it. */
-function SellerFace({ name, photo }: { name: string; photo: string | null }) {
-  const src = photoUrl(photo);
-  const size = 34;
-  return (
-    <span
-      aria-hidden="true"
-      style={{
-        width: size,
-        height: size,
-        borderRadius: size * DISC_RADIUS,
-        flexShrink: 0,
-        overflow: "hidden",
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        background: "var(--el)",
-        color: SUB,
-        fontSize: 11,
-        fontWeight: 900,
-      }}
-    >
-      {src ? (
-        <Image src={src} alt="" width={size} height={size} style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
-      ) : (
-        name.split(" ").filter(Boolean).map((w) => w[0]).slice(0, 2).join("").toUpperCase()
-      )}
-    </span>
-  );
-}
+/* ⚠ `SellerFace` went on 3 Oct 2026 — the seller's face is the head of the
+   shared `ToolCard` now (`ToolFace`: `DISC_RADIUS`, initials when there is no
+   photo), at a profile's size rather than 34px. */
 
 export function MembershipsScreen({
   passes,
@@ -131,6 +94,7 @@ export function MembershipsScreen({
   sellerPhotos = {},
   usesByPass = {},
   openOnBooked = false,
+  seller = null,
 }: {
   /** open on the passes you hold — `?show=booked`, where a payment lands (2 Oct 2026) */
   openOnBooked?: boolean;
@@ -152,6 +116,9 @@ export function MembershipsScreen({
   /** what each of YOUR passes has been spent on, keyed by pass id (30 Sep 2026);
    *  a pass missing from the map has spent nothing and draws no list */
   usesByPass?: Record<string, PassUse[]>;
+  /** WHO SELLS what is on the Manage side — the studio, or the artist the page
+   *  belongs to — the profile every on-sale card leads with (3 Oct 2026) */
+  seller?: { name: string; photoPath: string | null; kind: "studio" | "artist" } | null;
   /* ⚠ NO `sellerId` / `sellerName` ANY MORE (21 Sep 2026): the form left this
      desk for `/memberships/new`, which resolves whose membership it is on the
      server rather than taking it from a prop. A dead prop is a lie. */
@@ -239,37 +206,62 @@ export function MembershipsScreen({
       <DeskBody>
       {side === "mine" ? (
         <>
-          {passes.map((p) => (
-            <div key={p.passId} style={card} data-testid="my-pass">
-              {/* ⚠ THE SELLER'S FACE LEADS THE ROW (28 Sep 2026) — a pass is a
-                  relationship with a studio or an artist, and the name alone
-                  made that the quietest thing on the card. It is `alignItems:
-                  center` now rather than `baseline`, because a 34px face and a
-                  text baseline have nothing to line up on. */}
-              <div style={{ display: "flex", alignItems: "center", gap: 9 }}>
-                <SellerFace name={p.businessName} photo={sellerPhotos[p.businessId] ?? null} />
-                <span style={{ flex: 1, minWidth: 0 }}>
-                  <span style={{ display: "block", fontSize: 13.5, fontWeight: 900 }}>{p.name}</span>
-                  <Link href={p.businessType === "studio" ? `/studio/${p.businessId}` : "/memberships"} style={{ display: "block", fontSize: 10.5, color: SUB, marginTop: 2, textDecoration: "none" }}>
-                    {p.businessName} · {unitWord(p.unit, p.unitsTotal)}
+          {passes.map((p) => {
+            /* the seller's public face — a studio's page, or the artist the page
+               belongs to (`/artist/{id}` lands on their profile, R24) */
+            const sellerHref = p.businessType === "studio" ? `/studio/${p.businessId}` : `/artist/${p.businessId}`;
+            const unpaid = p.status === "pending_payment";
+            const word = unpaid ? "UNPAID" : p.status === "used_up" ? "USED UP" : p.status === "cancelled" ? "CANCELLED" : "ACTIVE";
+            /* ⚠⚠ A PASS CARD (3 Oct 2026, the user: *"better and bigger cards …
+               each has a profile linked to it … visible with profile pic and name
+               and big"*). A pass is a relationship with whoever SOLD it, so the
+               studio or the artist leads at a profile's size and is a door to
+               their page (28 Sep made the face the row's lead; this makes it the
+               card's). Then the membership itself, its figures, the bar that is
+               the whole point of one, where it went — and the buttons apart. */
+            return (
+              <ToolCard key={p.passId} testId="my-pass">
+                <ToolHead
+                  tint={TINT}
+                  name={p.businessName}
+                  photoPath={sellerPhotos[p.businessId] ?? null}
+                  href={sellerHref}
+                  hrefLabel={`${p.businessName} — open the page`}
+                  eyebrow={`Sold by ${p.businessType === "studio" ? "a studio" : "an artist"}`}
+                  sub="Your membership"
+                  right={<ToolChip word={word} fg={p.status === "active" ? "#22C55E" : unpaid ? "#F59E0B" : SUB} bg={p.status === "active" ? "#22C55E1c" : unpaid ? "#F59E0B1c" : "var(--el)"} />}
+                />
+                <ToolBody>
+                  <ToolTitle kicker="Membership">{p.name}</ToolTitle>
+                  <ToolFacts
+                    tint={TINT}
+                    style={{ marginTop: 10 }}
+                    items={[
+                      { label: "Size", value: unitWord(p.unit, p.unitsTotal) },
+                      { label: "Used", value: p.unitsUsed },
+                      { label: "Left", value: Math.max(0, p.unitsTotal - p.unitsUsed), tint: p.status === "active" ? "#22C55E" : undefined },
+                    ]}
+                  />
+                  {unpaid ? null : (
+                    <>
+                      <ProgressBar used={p.unitsUsed} total={p.unitsTotal} tint={TINT} testId="pass-progress" />
+                      <SpentOn uses={usesByPass[p.passId] ?? []} unit={p.unit} />
+                    </>
+                  )}
+                </ToolBody>
+                <ToolActions>
+                  {unpaid ? (
+                    <button type="button" disabled={pending} onClick={() => payFor(p)} style={toolBtn("primary", TINT)}>
+                      Pay {rupees(p.priceInr)}
+                    </button>
+                  ) : null}
+                  <Link href={sellerHref} style={toolBtn(unpaid ? "secondary" : "tinted", TINT)}>
+                    {p.businessType === "studio" ? "Studio page" : "Artist page"}
                   </Link>
-                </span>
-                <span style={{ flexShrink: 0, fontSize: 9, fontWeight: 900, padding: "3px 8px", borderRadius: 999, background: p.status === "active" ? "rgba(34,197,94,.16)" : "var(--el)", color: p.status === "active" ? "#22C55E" : SUB }}>
-                  {p.status === "pending_payment" ? "UNPAID" : p.status === "used_up" ? "USED UP" : p.status === "cancelled" ? "CANCELLED" : "ACTIVE"}
-                </span>
-              </div>
-              {p.status === "pending_payment" ? (
-                <button type="button" disabled={pending} onClick={() => payFor(p)} style={{ ...btn(true), width: "100%", marginTop: 9 }}>
-                  Pay {rupees(p.priceInr)}
-                </button>
-              ) : (
-                <>
-                  <ProgressBar used={p.unitsUsed} total={p.unitsTotal} testId="pass-progress" />
-                  <SpentOn uses={usesByPass[p.passId] ?? []} unit={p.unit} />
-                </>
-              )}
-            </div>
-          ))}
+                </ToolActions>
+              </ToolCard>
+            );
+          })}
           {passes.length === 0 ? (
             <div style={{ ...card, textAlign: "center", fontSize: 12, color: SUB, border: "1.5px dashed var(--el)", lineHeight: 1.5 }}>
               No memberships yet. A studio or an artist sells them on their profile page —{" "}
@@ -283,31 +275,42 @@ export function MembershipsScreen({
       ) : (
         <>
           {selling.map((m) => (
-            <Link key={m.id} href={`/memberships/${m.id}`} aria-label={`Open ${m.name}`} style={{ ...card, display: "block", textDecoration: "none", color: INK }} data-testid="selling-membership">
-              <div style={{ display: "flex", alignItems: "baseline", gap: 8 }}>
-                <span style={{ flex: 1, minWidth: 0 }}>
-                  <span style={{ display: "block", fontSize: 13.5, fontWeight: 900 }}>
-                    {m.name}
-                    {m.status === "draft" ? <span style={{ marginLeft: 7, fontSize: 8.5, fontWeight: 900, padding: "2px 7px", borderRadius: 999, background: "var(--el)", color: SUB }}>DRAFT</span> : null}
-                  </span>
-                  <span style={{ display: "block", fontSize: 10.5, color: SUB, marginTop: 2 }}>
-                    {unitWord(m.unit, m.units)} · {m.priceInr === 0 ? "Free" : rupees(m.priceInr)}
-                  </span>
-                </span>
-                <span style={{ flexShrink: 0, textAlign: "right" }}>
-                  <span style={{ display: "block", fontSize: 15, fontWeight: 900 }} data-testid="membership-sold">
-                    {m.sold}
-                    <span style={{ fontSize: 10, color: SUB, fontWeight: 700 }}>/{m.totalCount}</span>
-                  </span>
-                  <span style={{ display: "block", fontSize: 9, color: SUB }}>sold</span>
-                </span>
-              </div>
-              {/* how much of what was SOLD has actually been danced — the seller's own bar */}
-              {m.unitsSold > 0 ? <ProgressBar used={m.unitsUsed} total={m.unitsSold} tint="#8B5CF6" testId="selling-progress" /> : null}
-              <div style={{ fontSize: 10.5, color: SUB, marginTop: 7 }}>
-                {rupees(m.revenueInr)} taken · {m.active} active ›
-              </div>
-            </Link>
+            /* ⚠⚠ A MEMBERSHIP ON SALE (3 Oct 2026): the SELLER leads — the studio
+               or the artist whose membership it is, at a profile's size — then the
+               membership's own name, the four facts a seller reads it by, the bar
+               of what was sold that has been danced, and the door to its usage on a
+               bar of its own. The whole card still opens the usage page under the
+               name it has always had. */
+            <ToolCard key={m.id} testId="selling-membership" href={`/memberships/${m.id}`} hrefLabel={`Open ${m.name}`}>
+              <ToolHead
+                tint={TINT}
+                name={seller?.name ?? business?.name ?? "You"}
+                photoPath={seller?.photoPath ?? null}
+                eyebrow={`On sale · ${seller?.kind === "artist" ? "your artist page" : "your studio"}`}
+                sub={`${rupees(m.revenueInr)} taken`}
+                right={m.status === "draft" ? <ToolChip word="DRAFT" fg={SUB} bg="var(--el)" /> : <ToolChip word="ON SALE" fg="#22C55E" bg="#22C55E1c" />}
+              />
+              <ToolBody>
+                <ToolTitle kicker="Membership">{m.name}</ToolTitle>
+                <ToolFacts
+                  tint={TINT}
+                  style={{ marginTop: 10 }}
+                  items={[
+                    { label: "Price", value: m.priceInr === 0 ? "Free" : rupees(m.priceInr) },
+                    { label: "Size", value: unitWord(m.unit, m.units) },
+                    { label: "Sold", value: <>{m.sold}<span style={{ fontSize: 10, color: SUB, fontWeight: 700 }}>/{m.totalCount}</span></>, testId: "membership-sold" },
+                    { label: "Active", value: m.active },
+                  ]}
+                />
+                {/* how much of what was SOLD has actually been danced — the seller's own bar */}
+                {m.unitsSold > 0 ? <ProgressBar used={m.unitsUsed} total={m.unitsSold} tint="#8B5CF6" testId="selling-progress" /> : null}
+              </ToolBody>
+              <ToolActions>
+                <Link href={`/memberships/${m.id}`} style={toolBtn("tinted", TINT)}>
+                  Usage &amp; holders ›
+                </Link>
+              </ToolActions>
+            </ToolCard>
           ))}
           {/* ⚠⚠ `&& !open` USED TO BE HERE, AND IT WAS TWO BUGS (found 21 Sep 2026
               by a PAGEERROR on the studio's brand-new desk, which is empty by

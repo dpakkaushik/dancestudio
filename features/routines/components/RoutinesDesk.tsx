@@ -1,12 +1,12 @@
 "use client";
 
-import Link from "next/link";
 import { useState, type CSSProperties } from "react";
+import { ToolActions, ToolBody, ToolCard, ToolChip, ToolFacts, ToolHead, ToolTitle, toolBtn, type ToolFact } from "@/components/ui/ToolCard";
 import { DOS_LEVEL_LABEL, dosStyleColor } from "@/lib/constants/styles";
 import { DOS_UI, INK, LILAC, SUB } from "@/lib/design/tokens";
 import { photoUrl } from "@/lib/media/photo";
 import type { LearnedRoutine, RoutineWithUsage } from "@/repositories/routines";
-import { DeskHero } from "@/features/businesses/components/biz-kit";
+import { DOS_TOOLS, DeskHero } from "@/features/businesses/components/biz-kit";
 import { DeskAddButton } from "@/features/settings/components/settings-kit";
 import { DeskBody, DeskTop } from "@/components/ui/DeskSections";
 
@@ -26,8 +26,11 @@ const card: CSSProperties = { background: "var(--card)", border: "1.5px solid va
 export function RoutinesDesk({
   routines,
   learned = [],
+  me = { name: "You", photoPath: null },
 }: {
   routines: RoutineWithUsage[];
+  /** the maker of every routine on Yours — the card's linked profile (3 Oct 2026) */
+  me?: Maker;
   /** ⚠ ROUTINES YOU LEARNED (20 Sep 2026, the user: "routines you learned should
    *  also be a seprate tab in routines section and should be visible to user
    *  profiles as well in tools") — what was taught in a class you actually
@@ -119,7 +122,7 @@ export function RoutinesDesk({
       ) : (
         <>
       {list.map((r) => (
-        <RoutineRow key={r.id} r={r} />
+        <RoutineRow key={r.id} r={r} me={me} />
       ))}
       {list.length === 0 ? (
         <div style={{ ...card, textAlign: "center", fontSize: 12, color: SUB, border: "1.5px dashed var(--el)" }}>
@@ -148,6 +151,13 @@ export function RoutinesDesk({
  *  stretched over it is what a press on the card hits, and the content sits above
  *  it with pointer events off — except the two media buttons, which switch them
  *  back on and stay real links of their own (the studio card's pattern). */
+/** ⚠⚠ RE-CUT ON THE SHARED TOOL CARD (3 Oct 2026, the user: *"better and bigger
+ *  cards … each has a profile linked to it which should be visible with profile
+ *  pic and name and big … buttons segregated"*). A routine belongs to a PERSON,
+ *  so the profile it is linked to is WHOEVER MADE IT — you on Yours, the artist on
+ *  Learned — and that face and name lead. Then the routine itself in its style's
+ *  colour, its figures as tiles, and the song and the video on the action bar,
+ *  which is where buttons live on every tool card now. */
 function RoutineCard({
   href,
   label,
@@ -159,7 +169,8 @@ function RoutineCard({
   sub,
   song,
   video,
-  figure,
+  maker,
+  facts,
 }: {
   href: string;
   label: string;
@@ -167,13 +178,15 @@ function RoutineCard({
   title: string;
   style: string;
   level: string;
-  /** a word for the band's right edge — LIVE, DRAFT, or the day it was last danced */
+  /** a word for the head's right edge — LIVE, DRAFT, LEARNED */
   status: { word: string; strong: boolean };
-  /** a line under the style, e.g. the studio it was taught at */
+  /** a line under the routine's name, e.g. the studio it was taught at */
   sub?: string | null;
   song: { href: string | null; word: string };
   video: string | null;
-  figure: { n: number; word: string; testId?: string };
+  /** WHO MADE IT — the profile the card is linked to */
+  maker: { name: string; photoPath: string | null; eyebrow: string };
+  facts: ToolFact[];
 }) {
   const col = dosStyleColor(style);
   const media = (kind: "song" | "video", href: string | null, word: string) => {
@@ -189,26 +202,10 @@ function RoutineCard({
           <path d="M7 4.8v14.4a1 1 0 0 0 1.5.86l11.6-7.2a1 1 0 0 0 0-1.72L8.5 3.94A1 1 0 0 0 7 4.8z" />
         </svg>
       );
-    const box: CSSProperties = {
-      pointerEvents: href ? "auto" : "none",
-      flex: 1,
-      minWidth: 0,
-      display: "flex",
-      alignItems: "center",
-      justifyContent: "center",
-      gap: 7,
-      padding: "9px 10px",
-      borderRadius: 999,
-      background: "var(--el)",
-      border: `1.5px solid ${href ? `${col}55` : "var(--el)"}`,
-      color: href ? INK : "var(--muted)",
-      fontSize: 12,
-      fontWeight: 800,
-      textDecoration: "none",
-      whiteSpace: "nowrap",
-      overflow: "hidden",
-      textOverflow: "ellipsis",
-    };
+    /* ⚠ INK on a ring of the style's colour, never white ON it: a style colour can
+       be a light one (Bhangra's yellow), and the band this replaced had to darken
+       itself to stay legible */
+    const box: CSSProperties = href ? toolBtn("secondary", col, { borderColor: `${col}99`, background: `${col}12` }) : toolBtn("secondary", col, { color: "var(--muted)", cursor: "default" });
     return href ? (
       <a href={href} target="_blank" rel="noreferrer" onClick={(e) => e.stopPropagation()} aria-label={`Open the ${kind} for ${title}`} style={box}>
         {icon}
@@ -223,55 +220,33 @@ function RoutineCard({
   };
 
   return (
-    <div data-testid={testId} style={{ position: "relative", borderRadius: 18, overflow: "hidden", background: "var(--card)", border: "1.5px solid var(--el)", marginBottom: 12, color: INK }}>
-      <Link href={href} aria-label={label} style={{ position: "absolute", inset: 0, zIndex: 0 }} />
-      <div style={{ position: "relative", zIndex: 1, pointerEvents: "none" }}>
-        {/* the band — the style's own colour, darkened a touch so white reads on a
-            light one too */}
-        <div
-          style={{
-            display: "flex",
-            alignItems: "center",
-            gap: 11,
-            padding: "12px 14px",
-            background: `linear-gradient(0deg, rgba(0,0,0,.16), rgba(0,0,0,.16)), linear-gradient(135deg, ${col}, ${col}bb)`,
-            color: "#fff",
-          }}
-        >
-          <span aria-hidden="true" style={{ width: 36, height: 36, borderRadius: 11, flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center", background: "rgba(255,255,255,.2)" }}>
-            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M9 18V5l11-2v13" />
-              <circle cx="6" cy="18" r="3" />
-              <circle cx="17" cy="16" r="3" />
-            </svg>
-          </span>
-          <span style={{ flex: 1, minWidth: 0 }}>
-            <span style={{ display: "block", fontSize: 15, fontWeight: 900, letterSpacing: -0.2, textShadow: "0 1px 3px rgba(0,0,0,.25)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{style}</span>
-            <span style={{ display: "block", fontSize: 10.5, fontWeight: 700, color: "rgba(255,255,255,.88)", marginTop: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-              {DOS_LEVEL_LABEL[level] ?? level}
-              {sub ? ` · ${sub}` : ""}
-            </span>
-          </span>
-          <span style={{ flexShrink: 0, fontSize: 9, fontWeight: 900, letterSpacing: 0.8, padding: "4px 9px", borderRadius: 999, background: status.strong ? "#fff" : "rgba(0,0,0,.24)", color: status.strong ? col : "#fff" }}>{status.word}</span>
+    <ToolCard testId={testId} href={href} hrefLabel={label}>
+      <ToolHead
+        /* the TOOL's colour on the head (a style colour can be too light for an
+           eyebrow on a light card); the style's own colour is on the routine */
+        tint={DOS_TOOLS.routines.c}
+        name={maker.name}
+        photoPath={maker.photoPath}
+        eyebrow={maker.eyebrow}
+        size={52}
+        right={<ToolChip word={status.word} fg={status.strong ? "#22C55E" : SUB} bg={status.strong ? "#22C55E1c" : "var(--el)"} />}
+      />
+      <ToolBody>
+        {/* the routine itself — its style as a pill in the style's own colour,
+            its name at the size of a title, where it was taught under it */}
+        <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 7, flexWrap: "wrap" }}>
+          <span style={{ fontSize: 10.5, fontWeight: 900, padding: "4px 10px", borderRadius: 999, background: `linear-gradient(135deg, ${col}, ${col}bb)`, color: "#fff" }}>{style}</span>
+          <span style={{ fontSize: 10.5, fontWeight: 800, padding: "4px 10px", borderRadius: 999, background: "var(--el)", color: SUB }}>{DOS_LEVEL_LABEL[level] ?? level}</span>
         </div>
-
-        <div style={{ padding: "12px 14px 14px" }}>
-          <div style={{ display: "flex", alignItems: "flex-start", gap: 12 }}>
-            <span style={{ flex: 1, minWidth: 0, fontSize: 16.5, fontWeight: 900, letterSpacing: -0.3, lineHeight: 1.25, display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden", overflowWrap: "anywhere" }}>{title}</span>
-            <span style={{ flexShrink: 0, textAlign: "right" }}>
-              <span data-testid={figure.testId} style={{ display: "block", fontSize: 20, fontWeight: 900, lineHeight: 1, fontVariantNumeric: "tabular-nums" }}>
-                {figure.n}
-              </span>
-              <span style={{ display: "block", fontSize: 9, fontWeight: 800, letterSpacing: 0.6, color: "var(--muted)", marginTop: 3 }}>{figure.word}</span>
-            </span>
-          </div>
-          <div style={{ display: "flex", gap: 8, marginTop: 12 }}>
-            {media("song", song.href, song.word)}
-            {media("video", video, "Video")}
-          </div>
-        </div>
-      </div>
-    </div>
+        <ToolTitle kicker="Routine">{title}</ToolTitle>
+        {sub ? <div style={{ fontSize: 11.5, color: SUB, marginTop: 3 }}>Taught at {sub}</div> : null}
+        <ToolFacts tint={col} items={facts} style={{ marginTop: 11 }} />
+      </ToolBody>
+      <ToolActions>
+        {media("song", song.href, song.word)}
+        {media("video", video, "Video")}
+      </ToolActions>
+    </ToolCard>
   );
 }
 
@@ -294,16 +269,20 @@ function LearnedRow({ r }: { r: LearnedRoutine }) {
       style={r.style}
       level={r.level}
       sub={r.businessName}
-      status={{ word: when ? `LAST ${when.toUpperCase()}` : "LEARNED", strong: false }}
+      status={{ word: "LEARNED", strong: false }}
       song={{ href: songHref, word: r.songIsFile ? "MP3" : "Song" }}
       video={r.videoUrl}
-      figure={{ n: r.sessions, word: r.sessions === 1 ? "SESSION" : "SESSIONS" }}
+      maker={{ name: r.ownerName ?? "The artist", photoPath: r.ownerPhotoPath, eyebrow: "Routine by" }}
+      facts={[
+        { label: r.sessions === 1 ? "Session" : "Sessions", value: r.sessions },
+        { label: "Last danced", value: when ?? "—" },
+      ]}
     />
   );
 }
 
 /** One routine of yours: opens its usage page, and counts the classes that carry it. */
-function RoutineRow({ r }: { r: RoutineWithUsage }) {
+function RoutineRow({ r, me }: { r: RoutineWithUsage; me: Maker }) {
   const songHref = r.songUrl ? (r.songIsFile ? photoUrl(r.songUrl) : r.songUrl) : null;
   return (
     <RoutineCard
@@ -316,7 +295,14 @@ function RoutineRow({ r }: { r: RoutineWithUsage }) {
       status={r.status === "draft" ? { word: "DRAFT", strong: false } : { word: "LIVE", strong: true }}
       song={{ href: songHref, word: r.songTitle ?? (r.songIsFile ? "MP3" : "Song") }}
       video={r.videoUrl}
-      figure={{ n: r.classes, word: r.classes === 1 ? "CLASS" : "CLASSES", testId: "routine-classes" }}
+      maker={{ name: me.name, photoPath: me.photoPath, eyebrow: "Your routine" }}
+      facts={[
+        { label: r.classes === 1 ? "Class" : "Classes", value: r.classes, testId: "routine-classes" },
+        { label: r.sessions === 1 ? "Session" : "Sessions", value: r.sessions },
+        { label: r.students === 1 ? "Dancer" : "Dancers", value: r.students },
+      ]}
     />
   );
 }
+
+type Maker = { name: string; photoPath: string | null };

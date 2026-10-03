@@ -2,6 +2,45 @@
 
 ## LAST SESSION (3 Oct 2026) — replaced on every push (Rule 13)
 
+> ### ONE CARD ANATOMY FOR EVERY HOME TOOL (3 Oct 2026, latest) — no migration · ⚠ COMMITTED, NOT PUSHED
+> The user: *"Home Tools inside on all profiles — better and bigger cards for Crew,
+> Studio, Routines, Team, Students, membership, practice. each has a profile linked
+> to it which should be visible with profile pic and name and big. rest all details
+> arranged properly according to the tool. different looking cards for each tool
+> … buttons segregated as well. find an overall solution for this."* Row C117.
+> * **`components/ui/ToolCard.tsx`** — three bands, always in this order:
+>   **the profile** (`ToolHead`: a 58px squircle face and the name in the display
+>   face over a wash of the tool's colour, an eyebrow saying what the profile is to
+>   the card, a status chip), **the tool's own fields** (`ToolBody` / `ToolTitle` /
+>   `ToolFacts` — figures as label-under-number tiles), and **the buttons** on a bar
+>   of their own (`ToolActions`, `toolBtn`). A card that opens keeps ONE stretched
+>   link with its old accessible name; `inkOn` picks black or white for a tint.
+> * **The linked profile per tool:** Crews → the crew · Studios → the studio ·
+>   Routines → whoever MADE it (you on Yours; the artist on Learned — the learned read
+>   now embeds `profiles`) · Team (a studio's AND a crew's) → the person, a door to
+>   their page · Students → the student (a walk-in has no door) · Memberships → the
+>   SELLER (a held pass) or the business selling it (Manage — both pages pass
+>   `seller`) · Practice → the crew.
+> * **Kept, so every locator still finds its control:** `studio-card`,
+>   `studio-live`, `routine-row`, `learned-row`, `routine-classes`, `my-pass`,
+>   `pass-progress`, `selling-membership`, `membership-sold`, `practice-card`;
+>   "{name} — open the studio" / "— manage the crew" / "— open the profile";
+>   "Manage {name}" (now a button on the bar, no longer the whole row), "Pay {name}",
+>   "Move {name} up", "Show the invite for", "Take {crew} back", "Register for",
+>   "Coming to", "Open the register for", "Open {name}'s profile", "Nothing paid yet",
+>   "₹N paid · N payment", "N of M coming", and the crew desk's exact word "Member".
+> * **Verified:** typecheck 0 · lint 0 · build green · a card probe as three demo
+>   accounts (studio owner, crew-leading artist, learner) over 16 pages × 2 themes
+>   **32/32**, no sideways scroll, no page error · `shoot-practice` 44/44 ·
+>   `shoot-founder` 20/20 · `shoot-seats` 21/21 · `shoot-tiles` 136/136 ·
+>   `shoot-classes` 79/79 · the whole e2e suite **51 passed / 1 failed / 4 did not
+>   run**, then **the happy path alone 19/19 in 13.1 min** — all 56 green across the
+>   two. ⚠ The one red was REAL and mine: the student card had moved "🎟 {pass}" out
+>   of the line under the name into a tile, so the row stopped saying WHY somebody is
+>   a student; the pass is back in that line (the tile reads Member · Yes/No).
+>   ⚠ And a contrast fix found by eye: `inkOn` picks the button's and the face's
+>   ink, because white on the owner's amber measured ~2:1.
+
 > ### EVERY HOME TOOL PAGE IN DISCOVER'S SECTIONS (3 Oct 2026, latest) — no migration · ✅ PUSHED AND LIVE (`31e6650`: Vercel READY, alias confirmed on the sha through the API, `stranger-smoke` 8/8 and `shoot-tiles` 136/136 ON THE LIVE SITE) on the user's *"fix and push all 3 points"* — ⚠ the previous chat's note said "committed locally"; it was NOT (the tree was uncommitted and `DeskSections.tsx` untracked), and a `next start` of its own was still holding :3100. **The leftover sweep ran too** (the user: *"just clear out old test studios"*): `--show-kept` first — kept 23 profiles and 13 businesses, all real or demo — then 27 test businesses and 5 e2e accounts soft-deleted, `ensure-test-phone-profiles` after
 > The user: *"how you segrated sections in discover inbox and home now do that fo
 > all pages inside the home tools for all profiles."* Row C116.
@@ -12632,6 +12671,10 @@ for the database schema. **The UI is not redesigned** — see Rule 2.
 
 ### Progress tracker — update after EVERY push (Rule 11)
 
+- **ONE CARD ANATOMY FOR EVERY HOME TOOL — 3 Oct 2026, no step number — no
+  migration.** Crews, Studios, Routines, Team (a studio's and a crew's), Students,
+  Memberships and Practice on `ToolCard`: the linked profile big, the tool's own
+  figures as tiles, the buttons on their own bar. Row C117. Detail at the top.
 - **EVERY HOME TOOL PAGE IN DISCOVER'S SECTIONS — 3 Oct 2026, no step number —
   no migration.** Row C116. Detail at the top.
 - **POSTERS ON CARDS, TEACHERS' FACES, A STUDENT LIST FOR ITS RUNNERS, ASSET
@@ -17832,6 +17875,7 @@ Home. **Do not "restore parity" on these.**
 | C114 | C34/C39: the inverted panel is OPAQUE — `background: var(--solid)` of the other theme | **TRANSLUCENT AND TWO-TONED**: tone B at 86–88% with tone A washing in from the top-left and two faint glows (sky, fuchsia) at opposite corners, a light edge and a soft shadow — on every lower half (Discover, Home, the Inbox, and the profile pages that copy Home). ⚠ `--sub`/`--muted` inside are RETUNED for the composited ground and measured by `shoot-invert` (26/26: muted 4.66 dark, 4.75 light). ⚠ **No `backdrop-filter`**: it makes the panel a containing block for the fixed sheets drawn inside it | 3 Oct 2026, the user: *"lower half of dicover inbox and home should be transluscent with double tone effect"* |
 | C115 | C34/C39/C114: the lower half of Discover, the Inbox and every Home is an `InvertedPanel` on the OPPOSITE theme (translucent and two-toned since 3 Oct) | **ON THE PAGE'S OWN THEME** — `InvertedPanel ground="page"`: the same 22px squircle with the card veil and the 1.5px outline the top panels wear, no palette swap, no context (`data-testid="page-panel"`). ⚠ The PROFILE pages keep the opposite-theme panel — not asked. ⚠ Putting more small text on the card veil exposed `--muted` at **4.06:1 (dark) / 4.24:1 (light)** there, already true on every top squircle — it is `#858585` / `#6e665b` now, ~4.7 / ~4.8 on the card and higher on the page. `shoot-invert` re-cut (38/38): no swapped panel on Discover, the shelf on the page's side, the tiers measured inside it, and the swapped panel's own tiers measured on a studio's page instead | 3 Oct 2026, the user: *"remove dual tone effect from discover, inbox and home"*, and asked which, *"the whole opposite-theme panel"* |
 | C116 | A desk page is one column on the page's ground: its hero, its controls and its list stacked (BizShell 2964-2976) | **Every page behind a Home tool tile wears Discover's sections** — the heading and what chooses the view (columns, period, filters, the add button) in a `DeskTop` squircle, a headline figure in a `DeskMiddle` where there is one, the list in a `DeskBody` (`components/ui/DeskSections.tsx`). `SegmentedPanels sections top={…}` and `BizPage top / middle` carry it to the hubs and the settings ledgers. ⚠ A sticky row opens the lower section (sticky only sticks inside its parent), and a nested block never paints the page's ground across a section | 3 Oct 2026, the user: *"how you segrated sections in discover inbox and home now do that fo all pages inside the home tools for all profiles."* |
+| C117 | Each desk draws its own row: a 36–42px face, a 13px name, a sub-line, and its buttons mixed into the row (the prototype's DosTeamRow 18541, S_bizhub rows 2621, S_choreos rows 17129, S_memberships 16846) | **ONE CARD ANATOMY FOR SEVEN TOOLS** (`components/ui/ToolCard.tsx`): the profile the card is linked to at a profile's size (a 58px squircle and the name in the display face), the tool's own fields as figure tiles, and every button on a bar of its own under a hairline. Each tool fills it with its own fields — a crew's members/style/since, a studio's rooms/badge/Discover, a routine's classes/sessions/dancers, a team member's paid/payments/powers, a student's attended/booked/pass, a pass's size/used/left, a practice's turnout/length/when. ⚠ "Manage {name}" on the Team desk is a BUTTON on the bar now, not the whole row (a row-as-button held buttons inside it, which is interactive inside interactive) | 3 Oct 2026, the user: *"better and bigger cards for Crew, Studio, Routines, Team, Students, membership, practice. each has a profile linked to it which should be visible with profile pic and name and big … different looking cards for each tool … buttons segregated as well. find an overall solution for this"* |
 | C113 | C108: the Inbox is two shapes — the top squircle (heading, columns, settings) over one inverted panel holding the sides, the figures, the always-open "Pipeline breakup", the filters and the cards | **THREE SHAPES**: Received · Sent · Completed join the top squircle; the figures and the **Breakup** (renamed, total first, by stage as one split bar with chips) are a middle squircle of their own; the panel is the search to the end of the page. The settings cards lose their second line | 3 Oct 2026, the user: *"Received, sent, completed part of upper half. everything below this and above search enquiries is the middle half and should have seprate segragation. search enquiries to till end of page third half. pipeline breakup name change to Breakup by stage and total written better"* |
 | C112 | The figures row wraps (`flexWrap: wrap`), and with four 44px chips it wrapped on every width, the app's own 430 included (125 + 200 + 44 = 369 in 368) | **ONE LINE, ALWAYS**: the figures are one block that never shrinks (`FIGURE_GROUP`), the chips start at 44px and shrink round into what is left, down to 24px — flexbox's arithmetic, not a pixel guess | 3 Oct 2026, the user: *"public view follow following in line with stats, qr code button row. always"* |
 | C104 | Tool tiles are solid gradients of the tool's colour (BizSection 2497-2583) | **A quiet tile**: `--card` with a 1.5px `--el` border, the name in ink, and the colour only on a small tinted glyph | 3 Oct 2026, the user: *"better design for tool tiles"* → *"Same layout, polished"* → *"should have border and not that colorfull"* |

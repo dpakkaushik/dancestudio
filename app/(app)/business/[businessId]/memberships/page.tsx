@@ -64,7 +64,7 @@ export default async function StudioMembershipsPage({ params, searchParams }: { 
      one the URL here already carries, and one this page has already authorized */
   return (
     <>
-      <MembershipsScreen passes={[]} selling={selling} canSell business={{ id: businessId, name: seat.business.name }} />
+      <MembershipsScreen passes={[]} selling={selling} canSell business={{ id: businessId, name: seat.business.name }} seller={{ name: seat.business.name, photoPath: seat.business.photoPath ?? null, kind: "studio" }} />
       {opening ? <MembershipForm sellerId={businessId} sellerName={seat.business.name} backTo={`/business/${businessId}/memberships`} sheet /> : null}
     </>
   );

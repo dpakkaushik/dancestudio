@@ -3,6 +3,7 @@ import { RoutineForm } from "@/features/routines/components/RoutineForm";
 import { RoutinesDesk } from "@/features/routines/components/RoutinesDesk";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { findMyRoutines, findRoutinesLearned } from "@/repositories/routines";
+import { findProfileById } from "@/repositories/profiles";
 
 /** /routines — the Routines tile on an artist's Home (18 Sep 2026), built
  *  19 Sep 2026. The prototype's S_choreos (17115): a routine is a song and a
@@ -24,9 +25,11 @@ export default async function RoutinesPage({ searchParams }: { searchParams: Pro
      and LEARNED, the ones that were taught in a class you actually turned up to.
      A plain user makes none and learns plenty, which is why the tile is on their
      grid now; the making side simply has nothing in it for them, and says so. */
-  const [routines, learned] = await Promise.all([
+  const [routines, learned, me] = await Promise.all([
     findMyRoutines(supabase).catch(() => []),
     findRoutinesLearned(supabase, user.id).catch(() => []),
+    /* the maker of every routine on Yours — the card leads with them (3 Oct 2026) */
+    findProfileById(supabase, user.id).catch(() => null),
   ]);
   /* ⚠ THE FORM OPENS OVER THE DESK (22 Sep 2026), and `?new=1` is what says so —
      the same shape as the gear's `?settings=1`: the phone's back gesture closes
@@ -36,7 +39,7 @@ export default async function RoutinesPage({ searchParams }: { searchParams: Pro
      signed-in person makes routines, and the form is offered to all of them. */
   return (
     <>
-      <RoutinesDesk routines={routines} learned={learned} />
+      <RoutinesDesk routines={routines} learned={learned} me={{ name: me?.fullName ?? "You", photoPath: me?.avatarPath ?? null }} />
       {opening ? <RoutineForm userId={user.id} sheet /> : null}
     </>
   );

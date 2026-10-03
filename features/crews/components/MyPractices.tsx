@@ -6,6 +6,7 @@ import { respondToPracticeAction } from "@/features/crews/server-actions/practic
 import { DOS_TOOLS } from "@/features/businesses/components/biz-kit";
 import type { CrewPractice } from "@/types/crewPractice";
 import { Toast, bizCard } from "./crew-kit";
+import { toolBtn } from "@/components/ui/ToolCard";
 import { PRACTICE_HEAD, PracticeCard, splitPractices } from "./practice-card";
 
 const TINT = DOS_TOOLS.practice.c;
@@ -89,19 +90,18 @@ export function MyPractices({
       practice={p}
       now={now}
       onAnswer={answer}
-      foot={
-        <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 10, flexWrap: "wrap" }}>
-          <span style={{ fontSize: 10.5, fontWeight: 900, color: TINT, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{p.crewName}</span>
-          {p.iLead ? (
-            <Link href={`/crews/${p.crewId}/manage/practice`} aria-label={`Open the register for ${p.crewName}`} style={{ marginLeft: "auto", fontSize: 10.5, fontWeight: 900, color: TINT, textDecoration: "none" }}>
-              Register ›
-            </Link>
-          ) : (
-            <Link href={`/crew/${p.crewId}`} aria-label={`Open ${p.crewName}`} style={{ marginLeft: "auto", fontSize: 10.5, fontWeight: 800, color: "var(--sub)", textDecoration: "none" }}>
-              The crew ›
-            </Link>
-          )}
-        </div>
+      /* the crew's name leads the card now (its head), so the bar carries only the
+         door: the register for a practice you arranged, the crew's page otherwise */
+      actions={
+        p.iLead ? (
+          <Link href={`/crews/${p.crewId}/manage/practice`} aria-label={`Open the register for ${p.crewName}`} style={toolBtn("primary", TINT)}>
+            Register ›
+          </Link>
+        ) : (
+          <Link href={`/crew/${p.crewId}`} aria-label={`Open ${p.crewName}`} style={toolBtn("secondary", TINT)}>
+            The crew ›
+          </Link>
+        )
       }
     />
   );

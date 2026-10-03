@@ -1,6 +1,5 @@
 "use client";
 
-import Image from "next/image";
 import { KIND_WORD, kindOf } from "@/types/profile";
 
 import { useState, useSyncExternalStore } from "react";
@@ -25,10 +24,10 @@ import {
 import Link from "next/link";
 import { DeskAddButton } from "@/features/settings/components/settings-kit";
 import { DeskBody, DeskTop } from "@/components/ui/DeskSections";
-import { DOS_TOOLS, DeskHero, SheetHandle, sheetBody, sheetWrap } from "@/features/businesses/components/biz-kit";
+import { ToolActions, ToolBody, ToolCard, ToolChip, ToolFacts, ToolHead, toolBtn } from "@/components/ui/ToolCard";
+import { DeskHero, SheetHandle, sheetBody, sheetWrap } from "@/features/businesses/components/biz-kit";
 import { DOS_DISPLAY, DOS_UI, INK, LILAC, MUTED, SKY, SUB } from "@/lib/design/tokens";
 import { useCloseOnBack } from "@/lib/hooks/useCloseOnBack";
-import { photoUrl } from "@/lib/media/photo";
 import type { MemberRole, TeamMember } from "@/repositories/businesses";
 import type { PayoutMethod, PayoutRecord, PayoutStatus } from "@/types/payout";
 import type { BusinessType } from "@/types/business";
@@ -127,14 +126,9 @@ const sheet = sheetBody;
    2026). The roster is grouped by LABEL now and every label carries its own ink
    (`MEMBER_LABEL`), so a second colour scale keyed on a coarser word would paint
    Faculty and Visiting faculty and Assistant all the same orange, which is the
-   opposite of what the grouping is for. */
-const gradOf = (name: string): [string, string] => {
-  let h = 0;
-  for (let i = 0; i < name.length; i++) h = (h * 31 + name.charCodeAt(i)) >>> 0;
-  const pal: Array<[string, string]> = [["#2E86DE", "#7C3AED"], ["#8E44AD", "#EC4899"], ["#0D9488", "#2E86DE"], ["#F39C12", "#E84393"], ["#22C55E", "#0D9488"]];
-  return pal[h % pal.length];
-};
-const initialsOf = (name: string) => name.split(" ").filter(Boolean).map((w) => w[0]).slice(0, 2).join("").toUpperCase() || "?";
+   opposite of what the grouping is for.
+   ⚠ The face's own gradient and initials helpers went on 3 Oct 2026: the shared
+   `ToolFace` draws them, in the label's colour. */
 
 
 const PAY_METHODS: ReadonlyArray<readonly [PayoutMethod, string]> = [
@@ -360,181 +354,148 @@ export function StaffDesk({
 
             {members.map((m, i) => {
               const mine = m.userId === meUserId;
-              /* ⚠⚠ AN OWNER'S ROW OPENS TOO (29 Sep 2026, the user: *"owners can
-                 also be paid from the studio"*). It was `isOwner && m.role !==
-                 "owner"`, which closed the WHOLE sheet on every owner row — and
-                 the sheet is where Pay and History live, so a studio could not
-                 record what it had paid the person who runs it. ⚠ The DATABASE
-                 never refused this: `record_team_payment` asks only that they
-                 "are, or have been, on this team", so this was an app-side gate
-                 over a rule that does not exist. Each control inside decides for
-                 itself now — the powers block is still not drawn for an owner (a
-                 switch they hold by their seat is not a switch) and Remove is
-                 still not offered for one. */
+              /* ⚠⚠ AN OWNER'S CARD OPENS TOO (29 Sep 2026, the user: *"owners can
+                 also be paid from the studio"*). `record_team_payment` asks only
+                 that they "are, or have been, on this team" — so the sheet opens on
+                 every row for an owner of the desk, and each control inside decides
+                 for itself (the powers block is still not drawn for an owner, and
+                 Remove is still not offered for one). */
               const manageable = isOwner;
-              const g = gradOf(m.name);
-              const face = photoUrl(m.avatarPath);
+              const paid = paidTo(m.userId);
+              const paidTotal = paid.reduce((n, p) => n + p.amountInr, 0);
+              const powers = m.role === "owner" ? "All" : [m.canAttendance ? "Register" : null, m.canRefunds ? "Refunds" : null].filter(Boolean).join(" · ") || "—";
+              /* ⚠⚠ A TEAM CARD (3 Oct 2026, the user: *"better and bigger cards …
+                 each has a profile linked to it which should be visible with profile
+                 pic and name and big … buttons segregated"*). The PERSON leads —
+                 their face and name at a profile's size, and a door to their page,
+                 which this desk's row could not have while the ROW was the manage
+                 control (21 Sep). Their label in its own colour and what they are on
+                 DanceOS ride above the name; what they dance and where under it;
+                 then the three figures a team row is read by; then the buttons on a
+                 bar of their own — Pay, History, Manage — so arranging, paying and
+                 opening the sheet are three presses that cannot be confused. */
               return (
-                <div
-                  role={manageable ? "button" : undefined}
-                  tabIndex={manageable ? 0 : undefined}
-                  onKeyDown={manageable ? dosKey : undefined}
-                  key={m.userId}
-                  aria-label={manageable ? `Manage ${m.name}` : undefined}
-                  onClick={manageable ? () => setOpenMember(m) : undefined}
-                  style={{ ...card, borderLeft: `4px solid ${L.colour}`, padding: "11px 13px", cursor: manageable ? "pointer" : "default" }}
-                >
-                  {/* DosTeamRow (18541-18592): the face, the name, the label in
-                      its own colour, then what they are on DanceOS and what they
-                      dance — one line, the way the prototype sets it */}
-                  <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                    {/* ⚠ 36px AND A SQUIRCLE (21 Sep 2026), which is what the
-                        organization's and the crew's Team rows already draw and
-                        what C11 made the app's shape for a face. This was a 38px
-                        CIRCLE — the one round avatar left on any Team desk. */}
-                    <span style={{ width: 36, height: 36, borderRadius: 11, flexShrink: 0, overflow: "hidden", display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontSize: 12.5, fontWeight: 900, background: `linear-gradient(135deg,${g[0]},${g[1]})` }}>
-                      {face ? <Image src={face} alt="" width={36} height={36} style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} /> : initialsOf(m.name)}
-                    </span>
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ fontSize: 13.5, fontWeight: 900, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                        {m.name}
-                        {mine && <span style={{ fontSize: 10.5, color: SUB, fontWeight: 700 }}> · you</span>}
-                      </div>
-                      <div style={{ display: "flex", alignItems: "center", gap: 5, marginTop: 2, flexWrap: "wrap" }}>
-                        <span style={{ fontSize: 9.5, fontWeight: 900, letterSpacing: 0.4, textTransform: "uppercase", color: L.colour }}>{MEMBER_ROLE_WORD[m.role]}</span>
-                        <span style={{ fontSize: 9, fontWeight: 800, letterSpacing: 0.3, textTransform: "uppercase", color: MUTED }}>· {KIND_WORD[kindOf(m.isArtist)]}</span>
-                        {/* what they dance — their FIRST style, the one they put first (18563) */}
-                        {m.style ? <span style={{ fontSize: 10.5, color: SUB }}>· {m.style}</span> : null}
-                      </div>
-                    </div>
-                    {/* ── THE ORDER, WITHIN THE GROUP (20 Sep 2026) ──────────
-                        ⚠ The arrows used to walk the WHOLE roster, which made no
-                        sense the moment it was drawn in groups: pressing ▲ on the
-                        first assistant would have swapped them with the last
-                        faculty member and moved them nowhere on screen. They swap
-                        with their NEIGHBOUR IN THE SAME GROUP now, and the stored
-                        `sort` is still one global order — the swap just skips the
-                        rows in between. The owner's alone, and outside the row's
-                        click target so arranging never opens the sheet. */}
-                    {/* ⚠ DRAWN EVEN FOR A GROUP OF ONE, DISABLED — which is what
-                        the prototype's own row does and what the screenshot
-                        shows: the Videographers group has a single person and
-                        their ↑↓ are both there and both greyed. A control that
-                        appears and disappears as a group grows is harder to find
-                        than one that is always in the same place. */}
-                    {isOwner ? (
-                      <div style={{ display: "flex", flexDirection: "column", gap: 1, flexShrink: 0 }} onClick={(e) => e.stopPropagation()}>
-                        {([-1, 1] as const).map((dir) => {
-                          const partner = members[i + dir];
-                          const off = !partner || busy;
-                          return (
-                            <button
-                              key={dir}
-                              type="button"
-                              disabled={off}
-                              aria-label={dir === -1 ? `Move ${m.name} up` : `Move ${m.name} down`}
-                              onClick={() => {
-                                if (!partner) return;
-                                const next = team.map((x) => x.userId);
-                                const a = next.indexOf(m.userId);
-                                const b = next.indexOf(partner.userId);
-                                if (a < 0 || b < 0) return;
-                                [next[a], next[b]] = [next[b], next[a]];
-                                void run(() => reorderMembersAction({ businessId, userIds: next }), null);
-                              }}
-                              style={{ fontSize: 11, lineHeight: 1.1, padding: "2px 5px", background: off ? "transparent" : "var(--el)", borderRadius: 7, border: "none", cursor: off ? "default" : "pointer", color: off ? EL : SUB, fontFamily: "inherit" }}
-                            >
-                              {dir === -1 ? "↑" : "↓"}
-                            </button>
-                          );
-                        })}
+                <ToolCard key={m.userId} edge={L.colour}>
+                  <ToolHead
+                    tint={L.colour}
+                    name={m.name}
+                    photoPath={m.avatarPath}
+                    href={`/person/${m.userId}`}
+                    hrefLabel={`${m.name} — their profile`}
+                    afterName={mine ? <span style={{ flexShrink: 0, fontSize: 10.5, color: SUB, fontWeight: 700 }}>· you</span> : null}
+                    eyebrow={`${MEMBER_ROLE_WORD[m.role]} · ${KIND_WORD[kindOf(m.isArtist)]}`}
+                    sub={[m.style, m.city].filter(Boolean).join(" · ") || null}
+                    right={
+                      /* ── THE ORDER, WITHIN THE GROUP (20 Sep 2026) ── they swap with
+                         their NEIGHBOUR IN THE SAME GROUP; the stored `sort` is still
+                         one global order. Drawn even for a group of one, disabled —
+                         a control that comes and goes is harder to find. */
+                      isOwner ? (
+                        <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
+                          {([-1, 1] as const).map((dir) => {
+                            const partner = members[i + dir];
+                            const off = !partner || busy;
+                            return (
+                              <button
+                                key={dir}
+                                type="button"
+                                disabled={off}
+                                aria-label={dir === -1 ? `Move ${m.name} up` : `Move ${m.name} down`}
+                                onClick={() => {
+                                  if (!partner) return;
+                                  const next = team.map((x) => x.userId);
+                                  const a = next.indexOf(m.userId);
+                                  const b = next.indexOf(partner.userId);
+                                  if (a < 0 || b < 0) return;
+                                  [next[a], next[b]] = [next[b], next[a]];
+                                  void run(() => reorderMembersAction({ businessId, userIds: next }), null);
+                                }}
+                                style={{ fontSize: 12, lineHeight: 1.1, padding: "3px 7px", background: off ? "transparent" : "var(--el)", borderRadius: 8, border: "none", cursor: off ? "default" : "pointer", color: off ? EL : SUB, fontFamily: "inherit" }}
+                              >
+                                {dir === -1 ? "↑" : "↓"}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      ) : null
+                    }
+                  />
+                  <ToolBody>
+                    <ToolFacts
+                      tint={L.colour}
+                      items={[
+                        { label: "Paid", value: rupees(paidTotal) },
+                        { label: paid.length === 1 ? "Payment" : "Payments", value: paid.length },
+                        { label: "Powers", value: powers },
+                      ]}
+                    />
+                    {/* the history in one line, as the row has said it since 20 Sep */}
+                    {manageable ? (
+                      <div style={{ fontSize: 10.5, color: paid.length ? SUB : MUTED, fontWeight: 700, marginTop: 8 }}>
+                        {paid.length ? `${rupees(paidTotal)} paid · ${paid.length} ${paid.length === 1 ? "payment" : "payments"}` : "Nothing paid yet"}
                       </div>
                     ) : null}
-                  </div>
-
-                  {/* ── PAY THEM, FROM THE ROW (20 Sep 2026, the user: "Payment for
-                      team wasnt implemented?"). It WAS — `record_team_payment` and
-                      its history have been here since 19 Sep — but only two taps
-                      in: the row opened a sheet and the button was inside it, and
-                      the row opens only for somebody who is NOT the owner. Every
-                      one of this account's businesses has a team of ONE
-                      (themselves), so there was no row to press and the feature did
-                      not exist from where they sat. It sits OUTSIDE the row's click
-                      target, beside the ▲▼. ── */}
+                  </ToolBody>
                   {manageable ? (
-                    <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 9 }} onClick={(e) => e.stopPropagation()}>
+                    <ToolActions>
                       <button
                         type="button"
                         aria-label={`Pay ${m.name}`}
                         onClick={() => { setOpenMember(m); setPay({ amount: "", method: "upi", status: "done", note: "" }); setPayOpen(true); }}
-                        style={{ fontSize: 11.5, fontWeight: 900, padding: "7px 13px", borderRadius: 999, border: `1.5px solid ${DOS_TOOLS.team.c}55`, background: `${DOS_TOOLS.team.c}14`, color: DOS_TOOLS.team.c, cursor: "pointer", fontFamily: "inherit" }}
+                        style={toolBtn("primary", L.colour)}
                       >
                         Pay
                       </button>
-                      {paidTo(m.userId).length ? (
-                        <span style={{ fontSize: 10.5, color: SUB, fontWeight: 700 }}>
-                          {rupees(paidTo(m.userId).reduce((n, p) => n + p.amountInr, 0))} paid · {paidTo(m.userId).length} {paidTo(m.userId).length === 1 ? "payment" : "payments"}
-                        </span>
-                      ) : (
-                        <span style={{ fontSize: 10.5, color: MUTED, fontWeight: 700 }}>Nothing paid yet</span>
-                      )}
-                    </div>
+                      <Link href={`/business/${businessId}/staff/${m.userId}`} aria-label={`History — ${m.name}`} style={toolBtn("secondary", L.colour)}>
+                        History
+                      </Link>
+                      {/* ⚠ "Manage {name}" is the name the row answered to when the
+                          whole row was the control — kept, so every locator that
+                          opened the sheet still does */}
+                      <button type="button" aria-label={`Manage ${m.name}`} onClick={() => setOpenMember(m)} style={toolBtn("tinted", L.colour)}>
+                        Manage
+                      </button>
+                    </ToolActions>
                   ) : null}
-                </div>
+                </ToolCard>
               );
             })}
 
             {/* ── asked, and not answered yet (18578) — in the group they were
-                asked INTO, wearing the same row so the group reads as one list ── */}
+                asked INTO, wearing the same card so the group reads as one list ── */}
             {waiting.map((inv) => {
-              const g = gradOf(inv.name);
+              const declined = inv.status === "declined";
               return (
-                <div key={inv.id} style={{ ...card, borderLeft: `4px solid ${L.colour}`, padding: "11px 13px", opacity: inv.status === "declined" ? 0.75 : 1 }}>
-                  <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                    {/* ⚠ 36px AND A SQUIRCLE, like the member row directly above
-                        it (27 Sep 2026). The 21 Sep pass fixed the MEMBER row and
-                        missed this one, so a group with somebody waiting drew two
-                        rows side by side with two different faces — the drift is
-                        hardest to see when it is inside one list. */}
-                    <span style={{ width: 36, height: 36, borderRadius: 11, flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontSize: 12.5, fontWeight: 900, background: `linear-gradient(135deg,${g[0]},${g[1]})` }}>
-                      {initialsOf(inv.name)}
-                    </span>
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ fontSize: 13.5, fontWeight: 900, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{inv.name}</div>
-                      <div style={{ display: "flex", alignItems: "center", gap: 5, marginTop: 2, flexWrap: "wrap" }}>
-                        <span style={{ fontSize: 9.5, fontWeight: 900, letterSpacing: 0.4, textTransform: "uppercase", color: L.colour }}>{MEMBER_ROLE_WORD[inv.memberRole]}</span>
-                        {inv.email ? <span style={{ fontSize: 10.5, color: SUB }}>· {inv.email}</span> : null}
-                      </div>
-                      <div style={{ fontSize: 10, fontWeight: 800, marginTop: 3, color: inv.status === "declined" ? "#F87171" : "#F59E0B" }}>
-                        {inv.status === "declined" ? "✕ They said no to being on your team" : "⏳ Waiting on them to confirm"}
-                      </div>
+                <ToolCard key={inv.id} edge={L.colour} dim={declined}>
+                  <ToolHead
+                    tint={L.colour}
+                    name={inv.name}
+                    photoPath={null}
+                    eyebrow={`${MEMBER_ROLE_WORD[inv.memberRole]} · asked`}
+                    sub={inv.email ?? null}
+                    right={<ToolChip word={declined ? "SAID NO" : "WAITING"} fg={declined ? "#F87171" : "#F59E0B"} bg={declined ? "#F8717118" : "#F59E0B18"} />}
+                  />
+                  <ToolBody>
+                    <div style={{ fontSize: 11, fontWeight: 800, color: declined ? "#F87171" : "#F59E0B" }}>
+                      {declined ? "✕ They said no to being on your team" : "⏳ Waiting on them to confirm"}
                     </div>
-                  </div>
+                  </ToolBody>
                   {isOwner && (
-                    <div style={{ display: "flex", gap: 7, marginTop: 9 }}>
-                      <span
-                        role="button"
-                        tabIndex={0}
-                        onKeyDown={dosKey}
-                        aria-label={`Show the invite for ${inv.name}`}
-                        onClick={() => setShareInvite(inv)}
-                        style={{ flex: 1, textAlign: "center", padding: "9px", borderRadius: 999, background: "var(--text)", color: "var(--solid)", fontWeight: 800, fontSize: 12, cursor: "pointer" }}
-                      >
+                    <ToolActions>
+                      <button type="button" aria-label={`Show the invite for ${inv.name}`} onClick={() => setShareInvite(inv)} style={toolBtn("secondary", L.colour)}>
                         Show QR &amp; link
-                      </span>
-                      <span
-                        role="button"
-                        tabIndex={0}
-                        onKeyDown={dosKey}
+                      </button>
+                      <button
+                        type="button"
                         aria-label={`Withdraw the invite for ${inv.name}`}
                         onClick={() => run(() => revokeInviteAction({ businessId, inviteId: inv.id }), `${inv.name} — invite withdrawn`)}
-                        style={{ flex: 1, textAlign: "center", padding: "9px", borderRadius: 999, background: EL, color: "#F87171", fontWeight: 800, fontSize: 12, cursor: "pointer" }}
+                        style={toolBtn("danger", L.colour)}
                       >
                         Withdraw
-                      </span>
-                    </div>
+                      </button>
+                    </ToolActions>
                   )}
-                </div>
+                </ToolCard>
               );
             })}
           </div>

@@ -16,6 +16,7 @@ import { LocationPicker } from "@/features/geo/components/LocationPicker";
 import { createBusinessAction, type BusinessActionState } from "@/features/businesses/server-actions/businesses";
 import { centreOf } from "@/repositories/cities";
 import { DosStyleMultiPicker } from "@/components/ui/DosStyleKit";
+import { ToolActions, ToolBody, ToolCard, ToolChip, ToolFacts, ToolHead, ToolLive, toolBtn } from "@/components/ui/ToolCard";
 import { DOS_DISPLAY, DOS_UI, INK, LILAC, MUTED, SUB } from "@/lib/design/tokens";
 
 import { useCloseOnBack } from "@/lib/hooks/useCloseOnBack";
@@ -301,82 +302,12 @@ export function BusinessHub({
   const gateShut = whyNoStudio;
   const canOpen = gateShut === null;
 
-  const cardStyle = (own: boolean): React.CSSProperties => ({
-    position: "relative",
-    background: CARD,
-    border: `1.5px solid ${EL}`,
-    borderLeft: `4px solid ${own ? ACCENT : EL}`,
-    borderRadius: 16,
-    padding: "12px 13px",
-    marginBottom: 9,
-    color: INK,
-  });
-
-  /** THE FACE BEFORE THE NAME (15 Sep 2026, the user: "show the profile pic
-   *  before the studio name"). Its own picture when it has one — the same
-   *  `businesses.profile_photo_path` the disc on its home wears — and its kind's mark on
-   *  the accent when it does not. */
-  const face = (t: MyMembership["business"], own: boolean) => {
-    const src = photoUrl(t.photoPath);
-    return (
-      <span
-        aria-hidden="true"
-        style={{
-          width: 42,
-          height: 42,
-          borderRadius: 13,
-          flexShrink: 0,
-          overflow: "hidden",
-          position: "relative",
-          background: own ? `${ACCENT}1c` : EL,
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-        }}
-      >
-        {src ? (
-          <Image src={src} alt="" fill sizes="42px" style={{ objectFit: "cover" }} />
-        ) : t.type === "studio" ? (
-          <StudioI size={19} color={own ? ACCENT : "var(--sub)"} />
-        ) : (
-          <ArtistI size={19} color={own ? ACCENT : "var(--sub)"} />
-        )}
-      </span>
-    );
-  };
-
-  /** WHO IT IS — the face, the name with its badge, the line under it. Sits
-   *  BELOW the stretched link (z-index 0) so a tap anywhere on it opens the
-   *  studio; the work below sits above the link so its controls still work. */
-  const identity = (t: MyMembership["business"], own: boolean, right?: React.ReactNode) => {
-    const loc = [t.area, t.city].filter(Boolean).join(", ");
-    const n = roomCounts[t.id] ?? 0;
-    const sub = own
-      ? [loc, `${n} room${n === 1 ? "" : "s"}`].filter(Boolean).join(" · ")
-      : [t.type === "studio" ? "Studio" : "Artist", loc].filter(Boolean).join(" · ");
-    return (
-      <div style={{ position: "relative", zIndex: 0, display: "flex", alignItems: "center", gap: 11 }}>
-        {face(t, own)}
-        <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 5, minWidth: 0 }}>
-            <span style={{ fontSize: 13, fontWeight: 900, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{t.name}</span>
-            {/* THE BADGE IS THE WHOLE VERIFIED STATE (15 Sep 2026, the user:
-                "no need [for the VERIFIED STUDIO line], just show badge for
-                verified along the studio name") */}
-            {t.verifiedAt ? <VerifiedTick size={14} /> : null}
-          </div>
-          <div style={{ fontSize: 10, color: SUB, marginTop: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{sub}</div>
-        </div>
-        {right}
-      </div>
-    );
-  };
-
-  /* the stretched link: the whole card is the control (15 Sep 2026, the user:
-     "no need of manage, clicking over studio card will open the manage screen") */
-  const openLink = (href: string, label: string) => (
-    <Link href={href} aria-label={label} style={{ position: "absolute", inset: 0, zIndex: 1, borderRadius: 16 }} />
-  );
+  /* ⚠ THE OLD ROW HELPERS (`cardStyle`, `face`, `identity`, `openLink`) WENT ON
+     3 Oct 2026 — every card on this hub is the shared `ToolCard` now, whose head
+     is the face at a profile's size, the name with its tick beside it (15 Sep's
+     "just show the badge along the studio name"), and whose stretched link is
+     still the whole card as the control (15 Sep's "clicking over studio card will
+     open the manage screen"). */
 
   /** ONE CARD PER STUDIO (15 Sep 2026). It was three stacked blocks — the row,
    *  the verification strip, the subscription strip — and the user asked for
@@ -395,19 +326,43 @@ export function BusinessHub({
     const canSubscribe = Boolean(st && !st.subscription?.hasAccess && studioPrice && t.verifiedAt);
     /* the form is the work only while there is no badge yet */
     const showForm = Boolean(v && !t.verifiedAt && userId);
+    const n = roomCounts[t.id] ?? 0;
+    /* ⚠ A STUDIO CARD (3 Oct 2026) — the studio is the profile, so its picture
+       and its name lead at a profile's size; then the three facts that say where
+       it stands (its rooms, the badge, Discover); then the work, if any; then the
+       doors on a bar of their own. The whole card still opens the studio's home
+       under the name the hub has always given it. */
     return (
-      <div key={t.id} data-testid="studio-card" style={cardStyle(true)}>
-        {openLink(`/business/${t.id}`, `${t.name} — open the studio`)}
-        {identity(t, true, live ? (
-          <span data-testid="studio-live" style={{ flexShrink: 0, fontSize: 9, fontWeight: 900, letterSpacing: 0.6, padding: "3px 8px", borderRadius: 999, background: "#DCFCE722", color: "#22C55E", border: "1.5px solid #22C55E55" }}>
-            LIVE
-          </span>
-        ) : null)}
+      <ToolCard key={t.id} testId="studio-card" href={`/business/${t.id}`} hrefLabel={`${t.name} — open the studio`}>
+        <ToolHead
+          tint={ACCENT}
+          name={t.name}
+          photoPath={t.photoPath}
+          icon={<StudioI size={26} color="#fff" />}
+          eyebrow="Studio · yours"
+          afterName={t.verifiedAt ? <VerifiedTick size={15} /> : null}
+          sub={[t.area, t.city].filter(Boolean).join(", ") || null}
+          right={
+            live ? (
+              <ToolChip testId="studio-live" word="LIVE" fg="#22C55E" bg="#22C55E1c" />
+            ) : (
+              <ToolChip word="NOT LIVE" fg={SUB} bg="var(--el)" />
+            )
+          }
+        />
+        <ToolBody>
+          <ToolFacts
+            tint={ACCENT}
+            items={[
+              { label: n === 1 ? "Room" : "Rooms", value: n },
+              { label: "Verified", value: t.verifiedAt ? "Yes" : "Not yet", tint: t.verifiedAt ? "#22C55E" : undefined },
+              { label: "Discover", value: live ? "On" : "Off", tint: live ? "#22C55E" : undefined },
+            ]}
+          />
 
-        {/* ── the work, when there is any. Above the stretched link, so a press
-              lands on the control and not on the card. ── */}
+        {/* ── the work, when there is any. Pressable over the stretched link. ── */}
         {showForm || canSubscribe ? (
-          <div style={{ position: "relative", zIndex: 2, marginTop: 10 }}>
+          <ToolLive style={{ marginTop: 10 }}>
             {showForm ? <StudioVerificationStrip business={t} orgId={userId as string} state={v} onDone={fire} /> : null}
             {canSubscribe && studioPrice ? (
               <div style={{ display: "flex", flexWrap: "wrap", gap: 8, alignItems: "center" }}>
@@ -421,7 +376,7 @@ export function BusinessHub({
                 <span style={{ fontSize: 10.5, color: SUB, lineHeight: 1.45 }}>Verified — subscribe to put it on Discover.</span>
               </div>
             ) : null}
-          </div>
+          </ToolLive>
         ) : null}
 
         {/* ── ASK FOR THE PIN (11 Sep 2026): a studio that has never opened the
@@ -429,7 +384,7 @@ export function BusinessHub({
               every other studio there, so Discover cannot say how far away it
               is. Never an error — one thing is simply not said yet. ── */}
         {!t.locationSetAt ? (
-          <div style={{ position: "relative", zIndex: 2, display: "flex", alignItems: "center", gap: 8, marginTop: 10, padding: "8px 10px", borderRadius: 11, background: LILAC, border: `1px dashed ${EL}` }}>
+          <div style={{ pointerEvents: "auto", display: "flex", alignItems: "center", gap: 8, marginTop: 10, padding: "8px 10px", borderRadius: 11, background: LILAC, border: `1px dashed ${EL}` }}>
             <span aria-hidden="true" style={{ flexShrink: 0, lineHeight: 0, color: "#F59E0B" }}>
               <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M12 21s7-6.2 7-11a7 7 0 1 0-14 0c0 4.8 7 11 7 11Z" />
@@ -444,18 +399,50 @@ export function BusinessHub({
             </Link>
           </div>
         ) : null}
-      </div>
+        </ToolBody>
+        <ToolActions>
+          <Link href={`/business/${t.id}`} style={toolBtn("primary", ACCENT)}>
+            Manage studio
+          </Link>
+          <Link href={`/studio/${t.id}`} style={toolBtn("secondary", ACCENT)}>
+            Public page
+          </Link>
+        </ToolActions>
+      </ToolCard>
     );
   };
 
-  /* a studio somebody teaches or learns at: the same card without the studio's
-     paperwork, opening its public page */
-  const plainCard = (t: MyMembership["business"]) => (
-    <div key={t.id} style={cardStyle(false)}>
-      {openLink(publicProfilePath(t), `${t.name} — open the profile`)}
-      {identity(t, false)}
-    </div>
-  );
+  /** a studio somebody teaches or learns at — the same card without the studio's
+   *  paperwork, opening its public page. `how` is what the studio is to them. */
+  const otherCard = (t: MyMembership["business"], how: string, teachers: LearnedFrom[] = [], extra?: React.ReactNode) => {
+    return (
+      <ToolCard key={t.id} href={publicProfilePath(t)} hrefLabel={`${t.name} — open the profile`}>
+        <ToolHead
+          tint={ACCENT}
+          name={t.name}
+          photoPath={t.photoPath}
+          icon={t.type === "studio" ? <StudioI size={26} color="#fff" /> : <ArtistI size={26} color="#fff" />}
+          eyebrow={`${t.type === "studio" ? "Studio" : "Artist"} · ${how}`}
+          afterName={t.verifiedAt ? <VerifiedTick size={15} /> : null}
+          sub={[t.area, t.city].filter(Boolean).join(", ") || null}
+        />
+        {teachers.length > 0 || extra ? (
+          <ToolBody>
+            {teachers.length > 0 ? <ToolFacts tint={ACCENT} items={[{ label: teachers.length === 1 ? "Teacher" : "Teachers", value: teachers.length }, { label: "Classes", value: teachers.reduce((s, a) => s + a.classes, 0) }]} /> : null}
+            {extra}
+          </ToolBody>
+        ) : null}
+        <ToolActions>
+          <Link href={publicProfilePath(t)} style={toolBtn("tinted", ACCENT)}>
+            Open profile
+          </Link>
+        </ToolActions>
+      </ToolCard>
+    );
+  };
+
+  /* a studio somebody teaches at: the same card without the studio's paperwork */
+  const plainCard = (t: MyMembership["business"]) => otherCard(t, "you teach here");
 
   /* ⚠⚠ A STUDIO YOU LEARNED AT CARRIES WHO TAUGHT YOU THERE (1 Oct 2026, the
      user: *"where you learned in studios should have studio list and collapsible
@@ -466,13 +453,7 @@ export function BusinessHub({
      work, so pressing it opens the list rather than the studio's page. */
   const learnedCard = (t: MyMembership["business"]) => {
     const teachers = teachersByStudio[t.id] ?? [];
-    return (
-      <div key={t.id} style={cardStyle(false)}>
-        {openLink(publicProfilePath(t), `${t.name} — open the profile`)}
-        {identity(t, false)}
-        {teachers.length > 0 ? <LearnedFromList studio={t.name} teachers={teachers} /> : null}
-      </div>
-    );
+    return otherCard(t, "you learnt here", teachers, teachers.length > 0 ? <ToolLive><LearnedFromList studio={t.name} teachers={teachers} /></ToolLive> : null);
   };
 
   const setRoom = (i: number, patch: Partial<RoomDraft>) =>
