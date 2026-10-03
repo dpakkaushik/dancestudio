@@ -1,6 +1,8 @@
 import Link from "next/link";
 import { EnquiryButton } from "@/features/enquiries/components/EnquirySheet";
 import { ReportButton } from "@/features/reports/components/ReportButton";
+import { TopPanel } from "@/components/ui/TopPanel";
+import { InvertedPanel } from "@/components/ui/InvertedPanel";
 import { DOS_UI, GOLD, INK, LILAC, MUTED } from "@/lib/design/tokens";
 import { photoUrl } from "@/lib/media/photo";
 import type { HeaderPhoto } from "@/repositories/headerPhotos";
@@ -159,8 +161,14 @@ export function PublicProfile({
   return (
     <div style={{ background: LILAC, color: INK, maxWidth: 430, margin: "0 auto", fontFamily: DOS_UI, minHeight: "100vh", paddingBottom: 40, boxSizing: "border-box" }}>
       <div style={{ padding: "0 16px" }}>
+        {/* ⚠ TWO SHAPES, AS HOME IS (3 Oct 2026, the user: "dual tone, rounded
+            squircles … on public view for all profiles similar to home tab") —
+            the hero and the buttons in the top squircle on the page's own theme,
+            and everything from the Schedule bar down in the InvertedPanel under it */}
+        <TopPanel style={{ marginTop: 12 }}>
         {/* ── the profile, lit like a player — the one hero every profile page wears ── */}
         <IdentityHero
+          bare
           testId="public-hero"
           name={business.name}
           grad={RG}
@@ -296,7 +304,7 @@ export function PublicProfile({
             −6 since 27 Sep 2026, landing it 8px under the links, which is the
             band's own step (`ActionRow` carries the measurement). 6 for the
             team, whose row follows the strip above instead. */}
-        <ActionRow marginTop={isMember ? 6 : undefined}>
+        <ActionRow marginTop={isMember ? 6 : 12}>
           {asksGoHere ? (
             <EnquiryButton
               businessId={business.id}
@@ -313,9 +321,11 @@ export function PublicProfile({
           {whatsappHrefOf(business.socials) ? <MessageButton href={whatsappHrefOf(business.socials) as string} /> : null}
           {pinHref ? <LocationButton href={pinHref} /> : place ? <LocationButton query={`${business.name} ${place}`} /> : null}
         </ActionRow>
+        </TopPanel>
 
+        <InvertedPanel>
         {/* ── THE ONE WHITE BAR THE PAGE IS FOR (10919): the schedule ── */}
-        <div style={{ marginTop: 8 }}>
+        <div>
           <Link href={scheduleHref} aria-label="Schedule" style={bigWhite}>
             <SchedIcon />
             Schedule
@@ -342,6 +352,7 @@ export function PublicProfile({
         {faculty.length ? <PeopleGroup title="Faculty" n={faculty.length}>{faculty.map((m) => teamChip(m, "Faculty"))}</PeopleGroup> : null}
         {visiting.length ? <PeopleGroup title="Visiting faculty" n={visiting.length}>{visiting.map((m) => teamChip(m, "Visiting faculty"))}</PeopleGroup> : null}
         {assistants.length ? <PeopleGroup title="Assistants" n={assistants.length}>{assistants.map((m) => teamChip(m, "Assistant"))}</PeopleGroup> : null}
+        </InvertedPanel>
       </div>
       {/* the quiet control at the foot of a public page (10 Sep 2026) — not for
           its own members, who have the hub for anything that is wrong */}

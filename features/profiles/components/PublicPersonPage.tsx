@@ -1,5 +1,6 @@
 import { EnquiryButton } from "@/features/enquiries/components/EnquirySheet";
 import { ReportButton } from "@/features/reports/components/ReportButton";
+import { TopPanel } from "@/components/ui/TopPanel";
 import { DOS_UI, INK, LILAC } from "@/lib/design/tokens";
 import { photoUrl } from "@/lib/media/photo";
 import type { HeaderPhoto } from "@/repositories/headerPhotos";
@@ -119,8 +120,13 @@ export function PublicPersonPage({
   return (
     <div style={{ background: LILAC, color: INK, maxWidth: 430, margin: "0 auto", fontFamily: DOS_UI, minHeight: "100vh", paddingBottom: 40, boxSizing: "border-box" }}>
       <div style={{ padding: "0 16px" }}>
+        {/* ⚠ TWO SHAPES, AS HOME IS (3 Oct 2026, the user: "dual tone, rounded
+            squircles … on public view for all profiles similar to home tab") — this
+            squircle on the page's theme, and `PersonBody`'s InvertedPanel below */}
+        <TopPanel style={{ marginTop: 12 }}>
         {/* ── the profile, lit like a player — the one hero every profile page wears ── */}
         <IdentityHero
+          bare
           testId="person-hero"
           name={profile.fullName}
           grad={ring}
@@ -248,7 +254,7 @@ export function PublicPersonPage({
             available"). A user's page carries none — the row is simply not drawn.
             One block; Follow is the bell in the figures row above. ── */}
         {/* no gap of its own — the hero's own bottom padding is it (21 Sep 2026) */}
-        <ActionRow>
+        <ActionRow marginTop={12}>
           {asksGoHere ? (
             <EnquiryButton
               businessId={person.artistPageId as string}
@@ -263,6 +269,7 @@ export function PublicPersonPage({
           {kind !== "user" && profile.contactEmail ? <MailButton email={profile.contactEmail} /> : null}
           {kind !== "user" && whatsappHrefOf(profile.socials) ? <MessageButton href={whatsappHrefOf(profile.socials) as string} /> : null}
         </ActionRow>
+        </TopPanel>
 
         {/* ── EVERYTHING FROM HERE DOWN IS `PersonBody`, THE ONE THE PROFILE TAB
             ALSO DRAWS (20 Sep 2026): **Schedule**, then what is on sale, then the

@@ -2,6 +2,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { DOS_DISPLAY, DOS_TINT, INK, MUTED } from "@/lib/design/tokens";
 import { initialsOf } from "./discover-kit";
+import { TopPanel } from "@/components/ui/TopPanel";
 
 /* "crew" since 2 Oct 2026 — a crew has been followable since 19 Sep, and the
    Crews tab drew no shelf because this union said it could not */
@@ -31,8 +32,12 @@ const TINT: Record<FollowedKind, string> = { studio: "#3B82F6", artist: DOS_TINT
  *  by you row on discover"). */
 export function FollowedShelf({ rows }: { rows: FollowedTile[] }) {
   if (rows.length === 0) return null;
+  /* ⚠ ITS OWN SQUIRCLE, BETWEEN THE TWO (3 Oct 2026, the user: "followed by you
+     section on discover in seprated squircle card in middle section") — the same
+     card the top of the page is, untinted, so Discover reads as three shapes:
+     the head, what you follow, and the shelf on the opposite theme */
   return (
-    <div style={{ marginBottom: 14 }}>
+    <TopPanel testId="followed-shelf" style={{ marginTop: 12 }}>
       <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
         <span style={{ ...shelf, color: INK }}>Followed by you</span>
         <span style={{ fontSize: 10.5, fontWeight: 700, fontVariantNumeric: "tabular-nums", letterSpacing: -0.3, color: MUTED }} data-testid="followed-count">
@@ -52,6 +57,6 @@ export function FollowedShelf({ rows }: { rows: FollowedTile[] }) {
           </Link>
         ))}
       </div>
-    </div>
+    </TopPanel>
   );
 }

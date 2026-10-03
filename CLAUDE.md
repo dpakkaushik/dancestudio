@@ -2,6 +2,43 @@
 
 ## LAST SESSION (3 Oct 2026) — replaced on every push (Rule 13)
 
+> ### PROFILE PAGES IN TWO SHAPES, A FOLLOWED CARD ON DISCOVER, AND AN INBOX THAT FILTERS LIKE DISCOVER (3 Oct 2026, latest) — no migration · the whole e2e suite **56/56 in ONE run, 20.4 min on one worker** · COMMITTED, NOT PUSHED (waiting on the user's word, and on item 4)
+> The user: *"1, dual tone, rounded squircles and on public view for all
+> profiles similar to home tab. 2. followed by you section on discover in
+> seprated squircle card in middle section. 3. inbox- setting inside top
+> squircle with heading, piepline breakup always open in enquires even in
+> completed section, filters for inbox cards like on discove, remove all clear
+> below headings enquiries, requests, invites. 4."* — item 4 was cut off.
+> * **Every profile page looks like Home (C106)**: the hero, the band and the
+>   buttons stand in a `TopPanel` squircle (`IdentityHero bare`), and Schedule,
+>   NEXT SESSIONS, memberships and the team stand in an `InvertedPanel` under
+>   it — on a studio's/artist's page, a person's, your own Profile tab and a
+>   crew's. `PersonBody` owns the lower panel and draws none when it would be
+>   empty.
+> * **Discover's "Followed by you" is its own squircle (C107)** between the head
+>   and the shelf (`data-testid="followed-shelf"`).
+> * **The Inbox (C108)**: each column's settings (`AskSettings`,
+>   `EnquirySettings`) sit in the top squircle under the columns; **the Pipeline
+>   breakup is always open** (`pipeline-breakup`), on Received, Sent AND
+>   Completed; **every column and side has Discover's filter anatomy** —
+>   `InboxFilters.tsx`: search, **Filters · N** with SORT BY · TYPE ·
+>   STAGE/OUTCOME, quick type chips, Clear — narrowing cards already on screen
+>   (state, not the URL: nothing new is read). The two old enquiry chip rows are
+>   gone. **A quiet column says nothing** — "all clear" is deleted.
+> * ⚠ **The filter sheet is PORTALLED**: the bar stands inside the Inbox's
+>   `InvertedPanel`, and a sheet drawn in place opened in the opposite theme
+>   (found by screenshot in light).
+> * ⚠ **`shoot-invert`'s hero check moved with the hero**: it compared the
+>   eyebrow's ground to the PAGE, and the hero now stands on the top squircle's
+>   untinted card; it compares to `[data-testid="top-panel"]`, which is what C83
+>   actually forbids (a TINT). 18/18.
+> * **Verified:** typecheck 0 · lint 0 · build green · screenshots in both themes
+>   of all four profile pages, Discover, and a person's and a studio's Inbox
+>   (Received, Sent, Completed, the sheet), no page error · `shoot-inbox` 34/34 ·
+>   `shoot-hero` 187/187 · `shoot-discover` 45/45 · `shoot-invert` 18/18.
+> * ⚠ **Proof leftovers are back on Pune's Discover** ("Mod Studio …", "E2E
+>   Studio …") — the #0aa sweep is a standing chore and waits for the user's word.
+
 > ### POSTERS ON THE CARDS, A TEACHER'S FACE FOR A STRANGER, A STUDENT LIST ONLY ITS RUNNERS READ, AN ASSET'S PICTURE, PHONE PUSH, QUIETER TILES AND SQUIRCLE TOPS (3 Oct 2026, latest) — ⚠⚠ Rule 9 (RLS widened AND narrowed; a new table; the database calls out) — ✅ FOUR MIGRATIONS APPLIED (dry runs 11/11 · 19/19 · 9/9 · 19/19 re-run first, read back live 18/18, PostgREST reloaded, a stranger's RPC call proven to resolve) · the whole e2e suite **56/56 in ONE run, 20.2 min on one worker**, no red at any point · ✅ PUSHED AND LIVE (`be2e32a`: Vercel READY, alias confirmed on the sha through the API, `stranger-smoke` 8/8, `shoot-hero` 187/187 ON THE LIVE SITE, the push route answering 401 to a wrong secret — so its keys are set — and `/sw.js` served)
 > Built by the previous chat, which died on "Prompt is too long" with the
 > work uncommitted; this session finished it on the user's *"yes"* and
@@ -12376,6 +12413,9 @@ for the database schema. **The UI is not redesigned** — see Rule 2.
   number ⚠ (Rule 9: RLS widened and narrowed, a device table, the database
   calling out) — FOUR MIGRATIONS APPLIED (`20261003100000`–`130000`).** Web push
   makes Step 24's first channel real. Detail at the top.
+- **PROFILE PAGES IN TWO SHAPES, A FOLLOWED CARD ON DISCOVER, AN INBOX THAT
+  FILTERS LIKE DISCOVER — 3 Oct 2026, no step number — no migration.** Rows
+  C106–C108. Detail at the top.
 - **ENQUIRY FOLLOW-UPS, ONLINE ENQUIRY PAYMENT AND INBOX SETTINGS — 3 Oct 2026, no
   step number ⚠ (Rule 9: money + who may ask whom) — `20261003090000` APPLIED.**
   Accept · Ask to revise · Cancel for the sender, Completed · Lost · Cancelled for
@@ -17550,6 +17590,9 @@ Home. **Do not "restore parity" on these.**
 | C102 | Routines are an artist's tool (S_choreos 17115) and the row is a list line | **ANYBODY MAKES ROUTINES, AND EACH IS A CARD** — a style-coloured band, the name, the usage figure, Song and Video as buttons | 3 Oct 2026, the user: *"users can also create routines"*, *"proper routine cards"* |
 | C103 | Log out ends the session on one press (11416) | **IT ASKS FIRST** — `LogOutConfirm`, Cancel the default | 3 Oct 2026, the user: *"should not log out without confirmation"* |
 | C100 | The follower count sits at the card's foot with its two-heads mark (DosFollowers 4277) | **A SOLID PILL TOP-RIGHT ON THE PICTURE** — studio, artist and crew cards — in `--text` on `--solid`, so it is black or white by the card's own (inverted) theme | 2 Oct 2026, the user: *"on discover cards for studio, crew, artist make follower a pill on top right with black and white background acorrding to theme"* |
+| C106 | A profile page is one column on the page's ground: hero, buttons, Schedule, memberships, the team | **Two shapes, as Home is** — the hero, the band and the buttons in a `TopPanel` squircle (`IdentityHero bare`), and everything from Schedule down in an `InvertedPanel`, on a studio's/artist's, a person's, your own and a crew's page. `PersonBody` owns the lower panel and draws none when it would be empty | 3 Oct 2026, the user: *"dual tone, rounded squircles and on public view for all profiles similar to home tab"* |
+| C107 | "Followed by you" sits loose between Discover's head and its shelf (FollowedRow 4112) | **Its own untinted squircle**, between the head's and the shelf's | 3 Oct 2026, the user: *"followed by you section on discover in seprated squircle card in middle section"* |
+| C108 | The Inbox's settings disclosures open the lower panel; the breakup is a closed disclosure on Received/Sent only; enquiries filter by two chip rows; a quiet column says "all clear" | **The column's settings sit in the top squircle under the columns; the Pipeline breakup is always open, on Completed too; every column and side has Discover's filter anatomy** (`InboxFilters`: search, Filters · N with SORT · TYPE · STAGE/OUTCOME, quick type chips, Clear — the sheet portalled so it reads the page's theme); **a quiet column shows nothing** | 3 Oct 2026, the user: *"inbox- setting inside top squircle with heading, piepline breakup always open in enquires even in completed section, filters for inbox cards like on discove, remove all clear below headings"* |
 | C104 | Tool tiles are solid gradients of the tool's colour (BizSection 2497-2583) | **A quiet tile**: `--card` with a 1.5px `--el` border, the name in ink, and the colour only on a small tinted glyph | 3 Oct 2026, the user: *"better design for tool tiles"* → *"Same layout, polished"* → *"should have border and not that colorfull"* |
 | C105 | Each tab's head bleeds a wash across the full width; a home with no posters draws an empty gradient square | **The tops of Home (person, studio, crew), Discover and the Inbox are `TopPanel` squircles**, the Inbox's lower panel too; **a home with no posters draws no rail at all** and its corner chips move into the identity row | 3 Oct 2026, the user: *"inbox end page should also be squircle"*, *"even top of all home, dicover and inbox to be rounded squircle. remove the top backdrop from home tab completly behinde posters"* |
 | C99 | A studio and a crew pick their style one at a time (the single `DosStylePicker`, re-opened per style) | **ONE MULTI-PICKER** (`DosStyleMultiPicker`, the prototype's own `multi` mode, 3554): chips with ×, the first marked MAIN with ★ to promote, a searchable list that ticks, eight at most at creation | 2 Oct 2026, the user: *"dance style filter while creating studio and crew should be multi filter and better way to handle in the form"* |

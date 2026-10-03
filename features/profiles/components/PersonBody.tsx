@@ -13,6 +13,7 @@ import { MEMBER_ROLE_WORD } from "@/types/staff";
    more, only associations and chips. */
 import { PeopleGroup, PersonChip, SchedIcon, bigWhite } from "./profile-kit";
 import { NextSessions } from "./NextSessions";
+import { InvertedPanel } from "@/components/ui/InvertedPanel";
 import type { CalendarEntry } from "@/types/calendar";
 import type { ReactNode } from "react";
 
@@ -179,12 +180,23 @@ export function PersonBody({
    *  is what the position chip now carries. */
   const crews = person.crews;
 
+  /* ⚠ THE LOWER HALF OF THE DUAL TONE (3 Oct 2026, the user: "dual tone, rounded
+     squircles … on public view for all profiles similar to home tab"). Home is a
+     squircle on the page's theme over a panel on the opposite one; a person's
+     page is the same two shapes — the hero and buttons above, this below.
+     ⚠ An empty panel is a dark box saying nothing, so with nothing to draw it is
+     not drawn at all (a plain user with no crew and no seat). */
+  const hasAnything =
+    Boolean(scheduleHref) || nextSessions.length > 0 || memberships.length > 0 || Boolean(beforeGroups) ||
+    studios.length > 0 || artistsWith.length > 0 || teamFaculty.length + teamAssistants.length > 0 || crews.length > 0;
+  if (!hasAnything) return null;
+
   return (
-    <>
+    <InvertedPanel style={{ paddingTop: 14 }}>
       {/* ── THE ONE WHITE BAR THE PAGE IS FOR (10919), AND IT IS ALWAYS FIRST ── */}
       {/* (the Studios merge is computed above the return — see `studios`) */}
       {scheduleHref ? (
-        <div style={{ marginTop: 8 }}>
+        <div>
           <Link href={scheduleHref} aria-label="Schedule" style={bigWhite}>
             <SchedIcon />
             Schedule
@@ -306,7 +318,7 @@ export function PersonBody({
           ))}
         </PeopleGroup>
       ) : null}
-    </>
+    </InvertedPanel>
   );
 }
 

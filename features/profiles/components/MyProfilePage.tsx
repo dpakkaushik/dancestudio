@@ -12,6 +12,7 @@ import type { FollowedCrew, PersonFollowRow } from "@/repositories/follows";
 import type { FollowedBusiness } from "@/types/follow";
 import { KIND_WORD, heroMetaWords, kindOf, memberNoWords } from "@/types/profile";
 import { PersonBody } from "./PersonBody";
+import { TopPanel } from "@/components/ui/TopPanel";
 /* ⚠ `LocationButton` and `mapsPinHref` were the retired organization login's
    pin (26 Sep 2026) and went with organizations on 29 Sep — a person's row has
    never carried one */
@@ -168,8 +169,12 @@ export function MyProfilePage({
     <div style={{ background: LILAC, color: INK, maxWidth: 430, margin: "0 auto", fontFamily: DOS_UI, minHeight: "100vh", paddingBottom: 40, boxSizing: "border-box" }}>
       <style>{`@keyframes dosSheetUp{from{transform:translateY(100%)}to{transform:translateY(0)}}`}</style>
       <div style={{ padding: "0 16px" }}>
+        {/* ⚠ TWO SHAPES, AS HOME IS (3 Oct 2026, the user: "dual tone, rounded
+            squircles … on public view for all profiles similar to home tab") */}
+        <TopPanel style={{ marginTop: 12 }}>
         {/* ── THE PROFILE, LIT LIKE A PLAYER (10574) — the one hero every profile page wears ── */}
         <IdentityHero
+          bare
           testId="my-hero"
           name={profile.fullName}
           grad={ring}
@@ -291,7 +296,7 @@ export function MyProfilePage({
             fields. ⚠ Enquiry is drawn and disabled with its reason, as on your
             own public page. ── */}
         {/* no gap of its own — the hero's own bottom padding is it (21 Sep 2026) */}
-        <ActionRow>
+        <ActionRow marginTop={12}>
           {asksGoHere ? (
             <EnquiryButton
               businessId={asksGoHere}
@@ -311,6 +316,7 @@ export function MyProfilePage({
               With organizations gone nothing on a person's row carries a place to
               open, and `profiles.lat/lng` has no writer left. */}
         </ActionRow>
+        </TopPanel>
 
         {/* ── AND EVERYTHING BELOW IS `PersonBody`, THE VERY COMPONENT
             /person/{id} DRAWS (20 Sep 2026): **Schedule**, then what is on sale,

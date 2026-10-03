@@ -35,7 +35,9 @@ import type { Business } from "@/types/business";
 export function EnquirySettings({ businesses }: { businesses: Business[] }) {
   if (businesses.length === 0) return null;
   return (
-    <div style={{ margin: "0 0 14px" }}>
+    /* in the Inbox's TOP squircle since 3 Oct 2026, under the columns — each
+       card carries its own 10px above, and the first one 12 */
+    <div style={{ margin: "2px 0 0" }}>
       {businesses.map((t) => (
         <OneBusiness key={t.id} business={t} showName={businesses.length > 1} />
       ))}

@@ -2,6 +2,8 @@ import Link from "next/link";
 import { EnquiryButton } from "@/features/enquiries/components/EnquirySheet";
 import { ActionRow, CallButton, MailButton, MessageButton, whatsappHrefOf } from "@/features/profiles/components/ContactButtons";
 import { EntityBand } from "@/features/profiles/components/profile-band";
+import { TopPanel } from "@/components/ui/TopPanel";
+import { InvertedPanel } from "@/components/ui/InvertedPanel";
 import { FollowerFigure } from "@/features/profiles/components/FollowerFigure";
 import { FollowingFigure } from "@/features/profiles/components/FollowingFigure";
 import { crewTeamRows } from "@/features/profiles/teamFollowing";
@@ -91,7 +93,12 @@ export function CrewPublicPage({
   return (
     <div style={{ background: LILAC, color: INK, maxWidth: 430, margin: "0 auto", fontFamily: DOS_UI, minHeight: "100vh", paddingBottom: 40, boxSizing: "border-box" }}>
       <div style={{ padding: "0 16px" }}>
+        {/* ⚠ TWO SHAPES, AS HOME IS (3 Oct 2026, the user: "dual tone, rounded
+            squircles … on public view for all profiles similar to home tab") — the
+            hero and buttons up here, the roster in the InvertedPanel below */}
+        <TopPanel style={{ marginTop: 12 }}>
         <IdentityHero
+          bare
           testId="crew-public-hero"
           name={crew.name}
           grad={RG}
@@ -186,14 +193,16 @@ export function CrewPublicPage({
             links, the same step the band's own rows take (`ActionRow` carries
             the measurement). 6 for the crew's own people, whose row follows the
             strip above instead, and a strip pads nothing. */}
-        <ActionRow marginTop={viewer === "other" ? undefined : 6}>
+        <ActionRow marginTop={viewer === "other" ? 12 : 6}>
           {viewer === "other" ? <EnquiryButton businessId={crew.id} crewId={crew.id} businessName={crew.name} businessType="artist_page" signedIn={signedIn} accent={RC} /> : null}
           {/* CALL IS A SWITCH (push 2): the number reaches this page only while the leader's switch is on — the policy on crew_contacts is the switch */}
           {crew.phone && crew.phonePublic ? <CallButton phone={crew.phone} /> : null}
           {crew.contactEmail ? <MailButton email={crew.contactEmail} /> : null}
           {whatsappHrefOf(crew.socials) ? <MessageButton href={whatsappHrefOf(crew.socials) as string} /> : null}
         </ActionRow>
+        </TopPanel>
 
+        <InvertedPanel style={{ paddingTop: 0 }}>
         {/* ── THE ASSOCIATIONS, in one language: a row per person, the group headed with a count ── */}
         {lead.length ? (
           <PeopleGroup title="Crew leader" n={lead.length}>
@@ -210,6 +219,7 @@ export function CrewPublicPage({
             crew had entered, each a door to its page, read off
             `event_bookings.crew_id`. It was the one group on this page that was
             not the roster, and there is nothing left that could fill it. */}
+        </InvertedPanel>
       </div>
     </div>
   );

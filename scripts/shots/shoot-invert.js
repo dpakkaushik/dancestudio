@@ -181,8 +181,14 @@ const PROBE = (sel) => {
     await page.waitForTimeout(200);
 
     const eyebrow = await page.evaluate(PROBE, '[data-testid="hero-eyebrow"]');
-    const body = await page.evaluate(PROBE, "body");
+    /* ⚠ 3 Oct 2026: a profile page's hero stands in the TOP SQUIRCLE now (the
+       user: "dual tone, rounded squircles … on public view for all profiles
+       similar to home tab"), so its ground is that card's `--card`, not the page.
+       What C83 forbids is a TINTED wash, and an untinted card is the opposite of
+       one — so the hero must stand on exactly the card's ground. */
+    const body = await page.evaluate(PROBE, '[data-testid="top-panel"]');
     if (!eyebrow) { check(false, `[${theme}] the hero's eyebrow is measurable`); continue; }
+    if (!body) { check(false, `[${theme}] the profile's top squircle is there`); continue; }
 
     console.log(`\n  ${theme.toUpperCase()} — hero ground ${eyebrow.ground}`);
     check(
@@ -192,8 +198,8 @@ const PROBE = (sel) => {
     );
     check(
       eyebrow.ground === body.ground,
-      `[${theme}] ⚠ and the hero has NO WASH — its ground IS the page's (C83)`,
-      `hero ${eyebrow.ground} vs page ${body.ground}`
+      `[${theme}] ⚠ and the hero has NO WASH — its ground IS the top squircle's untinted card (C83, C106)`,
+      `hero ${eyebrow.ground} vs card ${body.ground}`
     );
   }
 

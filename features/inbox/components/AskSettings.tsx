@@ -21,7 +21,9 @@ import type { AskKind } from "@/repositories/askSettings";
 function Shell({ title, summary, testId, children }: { title: string; summary: string; testId: string; children: ReactNode }) {
   const [open, setOpen] = useState(false);
   return (
-    <div data-testid={testId} style={{ background: "var(--card)", border: "1.5px solid var(--el)", borderRadius: 16, padding: "12px 14px", marginBottom: 12 }}>
+    /* it stands in the Inbox's TOP squircle since 3 Oct 2026, under the columns,
+       so the gap is above it rather than below */
+    <div data-testid={testId} style={{ background: "var(--card)", border: "1.5px solid var(--el)", borderRadius: 16, padding: "12px 14px", marginTop: 12 }}>
       <button
         type="button"
         aria-expanded={open}

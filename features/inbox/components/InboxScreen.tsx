@@ -24,11 +24,11 @@ import {
   enquiryValueInr,
   liveQuoteOf,
   type Enquiry,
-  type EnquiryStatus,
   type EnquiryTypeKey,
 } from "@/types/enquiry";
 import { DOS_MONO, EnqIcon, agoWords, initialsOf, moneyShort, pressKey } from "./inbox-kit";
 import { EnquiryCard } from "@/features/enquiries/components/enquiry-kit";
+import { InboxFilters, NO_FILTER, applyInboxFilter, type InboxFilter, type InboxSort } from "./InboxFilters";
 
 /** The Inbox, lifted from prototype S_chats (5617-6098) after internal chat was
  *  removed from the product: "what remains is the work — something somebody has
@@ -236,9 +236,22 @@ export function InboxScreen({
   const [sect, setSect] = useState<"enq" | "req" | "join">(initialSection === "req" || initialSection === "join" ? initialSection : "enq");
   const [rqSide, setRqSide] = useState<Side3>(initialSection === "done" ? "done" : "in");
   const [enqSide, setEnqSide] = useState<Side3>(initialSection === "done" ? "done" : "in");
-  const [enqType, setEnqType] = useState<"all" | EnquiryTypeKey>("all");
-  const [enqSt, setEnqSt] = useState<"all" | EnquiryStatus>("all");
-  const [brkOpen, setBrkOpen] = useState(false);
+  /* ⚠ ONE FILTER PER COLUMN, DISCOVER'S ANATOMY (3 Oct 2026, the user: "filters
+     for inbox cards like on discover"). It replaces the two chip rows the
+     Enquiries desk had; a side switch clears it, because a STAGE picked on one
+     side (an open one) names nothing on another (Completed holds closed ones). */
+  const [fEnq, setFEnq] = useState<InboxFilter>(NO_FILTER);
+  const [fReq, setFReq] = useState<InboxFilter>(NO_FILTER);
+  const [fJoin, setFJoin] = useState<InboxFilter>(NO_FILTER);
+  const pickEnqSide = (s: Side3) => {
+    setEnqSide(s);
+    setFEnq(NO_FILTER);
+  };
+  const pickRqSide = (s: Side3) => {
+    setRqSide(s);
+    setFReq(NO_FILTER);
+    setFJoin(NO_FILTER);
+  };
   const [busy, setBusy] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -765,7 +778,6 @@ export function InboxScreen({
   const won = side.filter((e) => ["confirmed", "advance_paid", "paid", "completed"].includes(st(e)));
   const lost = side.filter((e) => st(e) === "lost" || st(e) === "cancelled");
   const sum = (a: Enquiry[]) => a.reduce((x, e) => x + enquiryValueInr(e), 0);
-  const byType = ENQ_TYPES.map((t) => ({ k: t.k, label: t.label, rows: side.filter((e) => e.typeKey === t.k) })).filter((x) => x.rows.length);
   const tiles: Array<[string, string, string, string]> =
     enqSide === "out"
       ? [
@@ -787,7 +799,51 @@ export function InboxScreen({
   const liveSide = side.filter((e) => !isClosed(e));
   const liveIn = enquiriesIn.filter((e) => !isClosed(e)).length;
   const liveOut = enquiriesOut.filter((e) => !isClosed(e)).length;
-  const filtered = liveSide.filter((e) => enqType === "all" || e.typeKey === enqType).filter((e) => enqSt === "all" || st(e) === enqSt);
+  /* ── THE FILTERS, READ THE SAME WAY FOR EVERY CARD (3 Oct 2026) ── */
+  const typeLabel = (k: EnquiryTypeKey) => ENQ_TYPES.find((t) => t.k === k)?.label ?? k;
+  const enqRead = {
+    text: (e: Enquiry) => `${e.fromName} ${e.businessName} ${typeLabel(e.typeKey)} ${e.message} ${e.whereText ?? ""} ${e.fields.map(([, v]) => v).join(" ")}`,
+    kind: (e: Enquiry) => e.typeKey,
+    stage: (e: Enquiry) => st(e),
+    at: (e: Enquiry) => e.createdAt,
+    value: (e: Enquiry) => enquiryValueInr(e),
+  };
+  const enqBase = enqSide === "done" ? doneEnq : liveSide;
+  const filtered = applyInboxFilter(enqBase, fEnq, enqRead);
+  const enqKinds = ENQ_TYPES.map((t) => [t.k, t.label, enqBase.filter((e) => e.typeKey === t.k).length] as const).filter(([, , n]) => n > 0);
+  const enqStages = ENQ_STAGES.filter((s) => (enqSide === "done" ? ENQ_CLOSED.has(s) : !ENQ_CLOSED.has(s)) && enqBase.some((e) => st(e) === s)).map((s) => [s, ENQ_STAGE_WORD[s]] as const);
+  const ENQ_SORTS: ReadonlyArray<readonly [InboxSort, string]> = [["new", "Newest"], ["old", "Oldest"], ["value", "Highest value"]];
+  /* the breakup counts what this side holds — every enquiry on Received or Sent
+     (a win rate is about all of them), and the closed ones on Completed */
+  const brkRows = enqSide === "done" ? doneEnq : side;
+  const brkByType = ENQ_TYPES.map((t) => ({ k: t.k, label: t.label, rows: brkRows.filter((e) => e.typeKey === t.k) })).filter((x) => x.rows.length);
+
+  /* requests and invites: the KIND is the thing asked about, and on Completed the
+     STAGE is how it ended */
+  const reqRead = {
+    text: (r: RequestItem) => `${r.subjectTitle} ${r.who} ${r.what} ${r.note ?? ""}`,
+    kind: (r: RequestItem) => r.kind,
+    stage: (r: RequestItem) => r.status ?? "asked",
+    at: (r: RequestItem) => r.at,
+  };
+  const OUTCOMES = (join: boolean) => [["confirmed", join ? "Joined" : "Accepted"], ["rejected", join ? "Declined" : "Rejected"], ["withdrawn", "Withdrawn"]] as const;
+  const kindsOf = (rows: RequestItem[]) =>
+    (Object.keys(KIND_WORD) as Array<RequestItem["kind"]>)
+      .map((k) => [k, KIND_WORD[k][0].toUpperCase() + KIND_WORD[k].slice(1), rows.filter((r) => r.kind === k).length] as const)
+      .filter(([, , n]) => n > 0);
+  const stagesOf = (rows: RequestItem[], join: boolean) => (rqSide === "done" ? OUTCOMES(join).filter(([k]) => rows.some((r) => r.status === k)) : []);
+  const REQ_SORTS: ReadonlyArray<readonly [InboxSort, string]> = [["new", "Newest"], ["old", "Oldest"]];
+  const reqBase = rqSide === "in" ? askIn : rqSide === "out" ? askOut : doneAsks;
+  const joinBase = rqSide === "in" ? joinIn : rqSide === "out" ? joinOut : doneJoins;
+  const reqShown = applyInboxFilter(reqBase, fReq, reqRead);
+  const joinShown = applyInboxFilter(joinBase, fJoin, reqRead);
+  const noMatch = (
+    <div style={emptyBox}>
+      <div style={{ fontSize: 12.5, fontWeight: 800 }}>Nothing matches</div>
+      <div style={{ fontSize: 10.5, color: "var(--sub)", marginTop: 3 }}>Try a different search or clear the filters.</div>
+    </div>
+  );
+  const colSettings = sect === "enq" ? settings : sect === "req" ? requestSettings : inviteSettings;
 
   return (
     <div style={{ position: "relative", background: LILAC, color: "var(--text)", maxWidth: 430, margin: "0 auto", fontFamily: DOS_UI, minHeight: "100vh", display: "flex", flexDirection: "column" }}>
@@ -825,25 +881,33 @@ export function InboxScreen({
           return (
             <div key={k} role="button" tabIndex={0} aria-pressed={on} aria-label={`${l} — ${n} waiting`} onKeyDown={pressKey(() => setSect(k))} onClick={() => setSect(k)} style={colBtn(on, tint)}>
               {l}
-              <span
-                style={{
-                  fontSize: 10,
-                  fontWeight: 900,
-                  fontFamily: DOS_MONO,
-                  letterSpacing: 0,
-                  padding: "2px 8px",
-                  borderRadius: 999,
-                  background: n > 0 ? (on ? "var(--solid)" : tint) : "transparent",
-                  color: n > 0 ? (on ? "var(--text)" : "#fff") : on ? "var(--solid)" : "var(--muted)",
-                  opacity: n > 0 ? 1 : 0.8,
-                }}
-              >
-                {n > 0 ? `${n} new` : "all clear"}
-              </span>
+              {/* ⚠ NOTHING UNDER A QUIET COLUMN (3 Oct 2026, the user: "remove all
+                  clear below headings enquiries, requests, invites") — a count
+                  only when something is new */}
+              {n > 0 ? (
+                <span
+                  style={{
+                    fontSize: 10,
+                    fontWeight: 900,
+                    fontFamily: DOS_MONO,
+                    letterSpacing: 0,
+                    padding: "2px 8px",
+                    borderRadius: 999,
+                    background: on ? "var(--solid)" : tint,
+                    color: on ? "var(--text)" : "#fff",
+                  }}
+                >
+                  {`${n} new`}
+                </span>
+              ) : null}
             </div>
           );
         })}
       </div>
+      {/* ⚠ THE COLUMN'S SETTINGS ARE UP HERE, UNDER ITS HEADING (3 Oct 2026, the
+          user: "setting inside top squircle with heading") — what you take is
+          about the column you are in, not one more card among its cards */}
+      {colSettings}
       </TopPanel>
       {/* ⚠ THE DUAL TONE, RISING FROM THE BOTTOM (3 Oct 2026, the user: "inbox
           dual tone theme from bottom like discover and home"). The heading and the
@@ -862,159 +926,126 @@ export function InboxScreen({
 
         {sect === "req" ? (
           <>
-            {requestSettings}
-            {sideSwitch(rqSide, setRqSide, askIn.length, askOut.length, doneAsks.length, "requests", REQ_TINT)}
-            {(rqSide === "in" ? askIn : rqSide === "out" ? askOut : doneAsks).length === 0 ? (
+            {sideSwitch(rqSide, pickRqSide, askIn.length, askOut.length, doneAsks.length, "requests", REQ_TINT)}
+            {reqBase.length ? <InboxFilters value={fReq} onChange={setFReq} noun="requests" kinds={kindsOf(reqBase)} stages={stagesOf(reqBase, false)} stageLabel="OUTCOME" sorts={REQ_SORTS} /> : null}
+            {reqBase.length === 0 ? (
               <div style={emptyBox}>
                 <div style={{ fontSize: 12.5, fontWeight: 800 }}>{rqSide === "done" ? "Nothing completed yet" : "Nothing here"}</div>
                 <div style={{ fontSize: 10.5, color: "var(--sub)", marginTop: 3 }}>
                   {rqSide === "in" ? "Nobody has asked you onto a class, a room or a practice." : rqSide === "out" ? "You have not asked anybody onto a class or a room." : "Requests land here once they are accepted, rejected or withdrawn."}
                 </div>
               </div>
+            ) : reqShown.length === 0 ? (
+              noMatch
             ) : (
-              (rqSide === "in" ? askIn : rqSide === "out" ? askOut : doneAsks).map(askCard)
+              reqShown.map(askCard)
             )}
           </>
         ) : null}
 
         {sect === "join" ? (
           <>
-            {inviteSettings}
-            {sideSwitch(rqSide, setRqSide, joinIn.length, joinOut.length, doneJoins.length, "invitations", JOIN_TINT.invite ?? REQ_TINT)}
-            {(rqSide === "in" ? joinIn : rqSide === "out" ? joinOut : doneJoins).length === 0 ? (
+            {sideSwitch(rqSide, pickRqSide, joinIn.length, joinOut.length, doneJoins.length, "invitations", JOIN_TINT.invite ?? REQ_TINT)}
+            {joinBase.length ? <InboxFilters value={fJoin} onChange={setFJoin} noun="invitations" kinds={kindsOf(joinBase)} stages={stagesOf(joinBase, true)} stageLabel="OUTCOME" sorts={REQ_SORTS} /> : null}
+            {joinBase.length === 0 ? (
               <div style={emptyBox}>
                 <div style={{ fontSize: 12.5, fontWeight: 800 }}>{rqSide === "done" ? "Nothing completed yet" : "Nothing here"}</div>
                 <div style={{ fontSize: 10.5, color: "var(--sub)", marginTop: 3 }}>
                   {rqSide === "in" ? "Nobody has invited you onto a team or a crew." : rqSide === "out" ? "You have not invited anybody onto a team or a crew." : "Invitations land here once they are joined, declined or withdrawn."}
                 </div>
               </div>
+            ) : joinShown.length === 0 ? (
+              noMatch
             ) : (
-              (rqSide === "in" ? joinIn : rqSide === "out" ? joinOut : doneJoins).map(joinCard)
+              joinShown.map(joinCard)
             )}
           </>
         ) : null}
 
         {sect === "enq" ? (
           <>
-            {/* ⚠ WHAT YOU TAKE, ABOVE WHAT CAME IN (27 Sep 2026). It is a
-                disclosure rather than a block — closed it is one line saying the
-                state ("3 of 5 kinds"), which is the whole of what a desk needs to
-                say when nothing is being changed, and the rows underneath are
-                what the screen is for. The same treatment the Stats points card
-                got when it stood full-width between the controls and the board. */}
-            {settings}
+            {/* ⚠ WHAT YOU TAKE IS IN THE TOP SQUIRCLE now (3 Oct 2026), under the
+                column's heading — `colSettings` above. */}
             {/* ⚠ NO SENT SIDE ON A STUDIO'S OR A CREW'S DESK (2 Oct 2026) — an
                 enquiry is sent by a person, so the toggle there could only ever
                 offer an empty half */}
-            {sideSwitch(enqSide, setEnqSide, liveIn, receivedOnly ? null : liveOut, doneEnq.length, "enquiries", "#EC4899")}
-            {enqSide === "done" ? (
-              doneEnq.length === 0 ? (
-                <div style={emptyBox}>
-                  <div style={{ fontSize: 12.5, fontWeight: 800 }}>Nothing completed yet</div>
-                  <div style={{ fontSize: 10.5, color: "var(--sub)", marginTop: 3 }}>Enquiries land here once they are completed, lost or cancelled.</div>
+            {sideSwitch(enqSide, pickEnqSide, liveIn, receivedOnly ? null : liveOut, doneEnq.length, "enquiries", "#EC4899")}
+            {enqSide !== "done" && side.length > 0 ? (
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 7, marginBottom: 8 }}>
+                {tiles.map(([v, l, s2, c2]) => (
+                  <div key={l} style={{ background: "var(--card)", border: "1.5px solid var(--el)", borderTop: `3px solid ${c2}`, borderRadius: 14, padding: "10px 9px" }}>
+                    <div style={{ fontFamily: DOS_MONO, fontSize: 16, fontWeight: 600, letterSpacing: -0.4 }}>{v}</div>
+                    <div style={{ fontSize: 8.5, fontWeight: 900, letterSpacing: 0.4, textTransform: "uppercase", color: "var(--sub)", marginTop: 2 }}>{l}</div>
+                    <div style={{ fontSize: 9.5, color: c2, fontWeight: 700, marginTop: 2, fontFamily: DOS_MONO }}>{s2}</div>
+                  </div>
+                ))}
+              </div>
+            ) : null}
+            {/* ⚠ THE PIPELINE BREAKUP IS ALWAYS OPEN, ON EVERY SIDE (3 Oct 2026, the
+                user: "piepline breakup always open in enquires even in completed
+                section"). It was a disclosure that started closed and only existed
+                on Received and Sent; on Completed it counts what was closed. */}
+            {brkRows.length > 0 ? (
+              <div data-testid="pipeline-breakup" style={{ background: "var(--card)", border: "1.5px solid var(--el)", borderRadius: 14, padding: "12px 13px", marginBottom: 10 }}>
+                <div style={{ display: "flex", alignItems: "baseline", gap: 8, marginBottom: 10 }}>
+                  <span style={{ fontSize: 12, fontWeight: 900, flex: 1 }}>Pipeline breakup</span>
+                  <span style={{ fontFamily: DOS_MONO, fontSize: 10, color: "var(--muted)" }}>{moneyShort(sum(brkRows))} total</span>
                 </div>
-              ) : (
-                doneEnq.map(enquiryCard)
-              )
-            ) : side.length === 0 ? (
+                <div style={{ fontSize: 9, fontWeight: 900, letterSpacing: 0.8, color: "var(--muted)", marginBottom: 8 }}>BY TYPE</div>
+                {brkByType.map((x) => {
+                  const mx = Math.max(...brkByType.map((y) => sum(y.rows)), 1);
+                  const v = sum(x.rows);
+                  return (
+                    <div key={x.k} style={{ marginBottom: 9 }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
+                        <EnqIcon k={x.k} size={13} color={ENQ_TINT[x.k]} />
+                        <span style={{ flex: 1, fontSize: 11.5, fontWeight: 800 }}>{x.label}</span>
+                        <span style={{ fontFamily: DOS_MONO, fontSize: 10.5, color: "var(--sub)" }}>{x.rows.length}</span>
+                        <span style={{ fontFamily: DOS_MONO, fontSize: 11, fontWeight: 600, width: 52, textAlign: "right" }}>{moneyShort(v)}</span>
+                      </div>
+                      <div style={{ height: 5, borderRadius: 3, background: "var(--el)" }}>
+                        <div style={{ height: 5, borderRadius: 3, width: `${Math.round((100 * v) / mx)}%`, background: ENQ_TINT[x.k] }} />
+                      </div>
+                    </div>
+                  );
+                })}
+                <div style={{ fontSize: 9, fontWeight: 900, letterSpacing: 0.8, color: "var(--muted)", margin: "12px 0 7px" }}>BY STAGE</div>
+                {ENQ_STAGES.map((s2) => {
+                  const rows = brkRows.filter((e) => st(e) === s2);
+                  if (!rows.length) return null;
+                  return (
+                    <div key={s2} style={{ display: "flex", justifyContent: "space-between", gap: 10, padding: "4px 0", fontSize: 11.5, borderBottom: "1.5px solid var(--el)" }}>
+                      <span style={{ color: "var(--sub)" }}>{ENQ_STAGE_WORD[s2]}</span>
+                      <span>
+                        <span style={{ fontFamily: DOS_MONO, color: "var(--muted)", marginRight: 8 }}>{rows.length}</span>
+                        <b style={{ fontFamily: DOS_MONO }}>{moneyShort(sum(rows))}</b>
+                      </span>
+                    </div>
+                  );
+                })}
+              </div>
+            ) : null}
+            {enqBase.length ? <InboxFilters value={fEnq} onChange={setFEnq} noun="enquiries" kinds={enqKinds} stages={enqStages} sorts={ENQ_SORTS} /> : null}
+            {enqSide === "done" && doneEnq.length === 0 ? (
+              <div style={emptyBox}>
+                <div style={{ fontSize: 12.5, fontWeight: 800 }}>Nothing completed yet</div>
+                <div style={{ fontSize: 10.5, color: "var(--sub)", marginTop: 3 }}>Enquiries land here once they are completed, lost or cancelled.</div>
+              </div>
+            ) : enqSide !== "done" && side.length === 0 ? (
               <div style={emptyBox}>
                 <div style={{ fontSize: 12.5, fontWeight: 800 }}>Nothing here</div>
                 <div style={{ fontSize: 10.5, color: "var(--sub)", marginTop: 3 }}>{enqSide === "out" ? "You have not sent any enquiries yet — send one from any profile." : "No enquiries have come in yet."}</div>
               </div>
-            ) : (
-              <>
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 7, marginBottom: 8 }}>
-                  {tiles.map(([v, l, s2, c2]) => (
-                    <div key={l} style={{ background: "var(--card)", border: "1.5px solid var(--el)", borderTop: `3px solid ${c2}`, borderRadius: 14, padding: "10px 9px" }}>
-                      <div style={{ fontFamily: DOS_MONO, fontSize: 16, fontWeight: 600, letterSpacing: -0.4 }}>{v}</div>
-                      <div style={{ fontSize: 8.5, fontWeight: 900, letterSpacing: 0.4, textTransform: "uppercase", color: "var(--sub)", marginTop: 2 }}>{l}</div>
-                      <div style={{ fontSize: 9.5, color: c2, fontWeight: 700, marginTop: 2, fontFamily: DOS_MONO }}>{s2}</div>
-                    </div>
-                  ))}
-                </div>
-                <div role="button" tabIndex={0} aria-expanded={brkOpen} onKeyDown={pressKey(() => setBrkOpen((v) => !v))} onClick={() => setBrkOpen((v) => !v)} style={{ display: "flex", alignItems: "center", gap: 8, background: "var(--card)", border: "1.5px solid var(--el)", borderRadius: 12, padding: "10px 12px", marginBottom: 10, cursor: "pointer" }}>
-                  <span style={{ fontSize: 11.5, fontWeight: 800, flex: 1 }}>Pipeline breakup</span>
-                  <span style={{ fontFamily: DOS_MONO, fontSize: 10, color: "var(--muted)" }}>{moneyShort(sum(side))} total</span>
-                  <span style={{ color: "var(--muted)", fontSize: 12, transform: brkOpen ? "rotate(90deg)" : "none", transition: "transform .16s", display: "inline-block" }}>›</span>
-                </div>
-                {brkOpen ? (
-                  <div style={{ background: "var(--card)", border: "1.5px solid var(--el)", borderRadius: 14, padding: "12px 13px", marginBottom: 10 }}>
-                    <div style={{ fontSize: 9, fontWeight: 900, letterSpacing: 0.8, color: "var(--muted)", marginBottom: 8 }}>BY TYPE</div>
-                    {byType.map((x) => {
-                      const mx = Math.max(...byType.map((y) => sum(y.rows)), 1);
-                      const v = sum(x.rows);
-                      return (
-                        <div key={x.k} style={{ marginBottom: 9 }}>
-                          <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
-                            <EnqIcon k={x.k} size={13} color={ENQ_TINT[x.k]} />
-                            <span style={{ flex: 1, fontSize: 11.5, fontWeight: 800 }}>{x.label}</span>
-                            <span style={{ fontFamily: DOS_MONO, fontSize: 10.5, color: "var(--sub)" }}>{x.rows.length}</span>
-                            <span style={{ fontFamily: DOS_MONO, fontSize: 11, fontWeight: 600, width: 52, textAlign: "right" }}>{moneyShort(v)}</span>
-                          </div>
-                          <div style={{ height: 5, borderRadius: 3, background: "var(--el)" }}>
-                            <div style={{ height: 5, borderRadius: 3, width: `${Math.round((100 * v) / mx)}%`, background: ENQ_TINT[x.k] }} />
-                          </div>
-                        </div>
-                      );
-                    })}
-                    <div style={{ fontSize: 9, fontWeight: 900, letterSpacing: 0.8, color: "var(--muted)", margin: "12px 0 7px" }}>BY STAGE</div>
-                    {ENQ_STAGES.map((s2) => {
-                      const rows = side.filter((e) => st(e) === s2);
-                      if (!rows.length) return null;
-                      return (
-                        <div key={s2} style={{ display: "flex", justifyContent: "space-between", gap: 10, padding: "4px 0", fontSize: 11.5, borderBottom: "1.5px solid var(--el)" }}>
-                          <span style={{ color: "var(--sub)" }}>{ENQ_STAGE_WORD[s2]}</span>
-                          <span>
-                            <span style={{ fontFamily: DOS_MONO, color: "var(--muted)", marginRight: 8 }}>{rows.length}</span>
-                            <b style={{ fontFamily: DOS_MONO }}>{moneyShort(sum(rows))}</b>
-                          </span>
-                        </div>
-                      );
-                    })}
-                  </div>
-                ) : null}
-              </>
-            )}
-            {enqSide !== "done" && side.length > 0 && liveSide.length === 0 ? (
+            ) : enqSide !== "done" && liveSide.length === 0 ? (
               <div style={emptyBox}>
                 <div style={{ fontSize: 12.5, fontWeight: 800 }}>Nothing open</div>
                 <div style={{ fontSize: 10.5, color: "var(--sub)", marginTop: 3 }}>Completed, lost and cancelled enquiries are under Completed.</div>
               </div>
-            ) : null}
-            {enqSide !== "done" && liveSide.length > 0 ? (
-              <>
-                <div style={{ display: "flex", gap: 5, marginBottom: 7, overflowX: "auto", scrollbarWidth: "none" }}>
-                  {([["all", "All", null] as const, ...ENQ_TYPES.map((t) => [t.k, t.label, t.k] as const)]).map(([k, l, ic]) => {
-                    const n = k === "all" ? liveSide.length : liveSide.filter((e) => e.typeKey === k).length;
-                    if (!n) return null;
-                    const on = enqType === k;
-                    const c = k === "all" ? "#8B5CF6" : ENQ_TINT[k as EnquiryTypeKey];
-                    return (
-                      <span key={k} role="button" tabIndex={0} aria-pressed={on} onKeyDown={pressKey(() => setEnqType(k as "all" | EnquiryTypeKey))} onClick={() => setEnqType(k as "all" | EnquiryTypeKey)} style={{ flexShrink: 0, display: "inline-flex", alignItems: "center", gap: 6, padding: "7px 11px", borderRadius: 999, cursor: "pointer", fontSize: 10.5, fontWeight: 800, background: on ? c : "var(--card)", color: on ? "#08060C" : "var(--sub)", border: `1.5px solid ${on ? c : "var(--el)"}` }}>
-                        {ic ? <EnqIcon k={ic} size={12} color={on ? "#08060C" : c} sw={2} /> : null}
-                        {l}
-                        <span style={{ fontFamily: DOS_MONO, fontSize: 9.5, fontWeight: 600, opacity: 0.8 }}>{n}</span>
-                      </span>
-                    );
-                  })}
-                </div>
-                <div style={{ display: "flex", gap: 5, marginBottom: 10, overflowX: "auto", scrollbarWidth: "none" }}>
-                  {/* the closed stages are Done's, so they are not offered as a filter here */}
-                  {([["all", "Any stage"] as const, ...ENQ_STAGES.filter((s) => !ENQ_CLOSED.has(s)).map((s) => [s, ENQ_STAGE_WORD[s]] as const)]).map(([k, l]) => (
-                    <span key={k} role="button" tabIndex={0} aria-pressed={enqSt === k} onKeyDown={pressKey(() => setEnqSt(k as "all" | EnquiryStatus))} onClick={() => setEnqSt(k as "all" | EnquiryStatus)} style={{ flexShrink: 0, padding: "7px 12px", borderRadius: 999, cursor: "pointer", fontSize: 11, fontWeight: 800, background: enqSt === k ? "var(--text)" : "var(--card)", color: enqSt === k ? "var(--solid)" : "var(--sub)", border: `1.5px solid ${enqSt === k ? "var(--text)" : "var(--el)"}` }}>
-                      {l}
-                    </span>
-                  ))}
-                </div>
-                {filtered.length === 0 ? (
-                  <div style={emptyBox}>
-                    <div style={{ fontSize: 12.5, fontWeight: 800 }}>No enquiries match</div>
-                    <div style={{ fontSize: 10.5, color: "var(--sub)", marginTop: 3 }}>Try a different type or stage.</div>
-                  </div>
-                ) : null}
-                {filtered.map(enquiryCard)}
-              </>
-            ) : null}
+            ) : filtered.length === 0 ? (
+              noMatch
+            ) : (
+              filtered.map(enquiryCard)
+            )}
           </>
         ) : null}
 
