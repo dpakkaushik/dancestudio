@@ -10067,11 +10067,32 @@ summary; the report has the evidence.
 
 ## NEXT TO DO — replaced on every push (Rule 13)
 
+0bb. **⚠ A PARTIAL REFUND MARKS THE WHOLE PAYMENT "REFUNDED" (found 3 Oct 2026 by
+   `shoot-enquiry-money`).** `apply_refund_update` (and `settle_refund_offline`)
+   set `payments.status` and `orders.status` to `refunded` whenever a refund
+   lands, whatever its amount — always right for a class (a refund is the whole
+   seat), wrong since enquiry endings made a refund PARTIAL: ₹300 back of ₹500 and
+   the order reads `refunded`, so the payer's **Invoices** files the ₹500 receipt
+   under Refunded. ⚠ **The money is right everywhere** — Earnings and the studio's
+   income subtract the refund ROWS, not the status. The fix is a migration (mark
+   refunded only once the processed refunds cover the payment) plus a decision on
+   what a partly refunded receipt says — put to the user, not built.
+
 0ba. **~~ONE MIGRATION WRITTEN, DRY-RUN 110/110 AND HELD~~ — ✅ APPLIED AND PUSHED 3 Oct 2026**
-   (the top block has the tally). Nothing is pending in the database. ⚠ Still
-   not driven: the demo seeder's re-cut enquiries (`demo-data.js` has not been
-   re-seeded), and a real Cashfree refund on an accepted ending. The sequence as
-   it ran, kept for the record. ⚠ Rule 9 (money). **Apply and deploy are one step**:
+   (the top block has the tally). Nothing is pending in the database. ✅ **And
+   the two things it left were closed the same day** (the user: *"fix last 2 as
+   well"*): the demo world was wiped and re-seeded with the re-cut enquiries
+   (every stage present — advance paid with an addition waiting, a revision then
+   a call-off, completed, quoted, new, withdrawal terms waiting); and a new
+   **`scripts/shots/shoot-enquiry-money.js` drove a REAL Cashfree sandbox refund
+   through an accepted ending, 11/11 first run** — the app opened the order, the
+   probe paid the app's own session through Cashfree's Order Pay API
+   (`testsuccess@gocash`, which really captures — so the only stand-in is the
+   checkout WINDOW), `confirmCheckoutAction` applied the real payment, the owner
+   pressed "Accept these terms" and its action sent ₹300 to Cashfree, Cashfree
+   reported SUCCESS under our `rf_` id, and opening the studio's refunds desk
+   reconciled the row to `processed`. ⚠⚠ **And it found one thing (#0bb).** The
+   sequence as it ran, kept for the record. ⚠ Rule 9 (money). **Apply and deploy are one step**:
    the live bundle calls `close_enquiry`, `set_enquiry_status` and the old
    quote/answer signatures, which this migration drops. On the user's word:
 ```
