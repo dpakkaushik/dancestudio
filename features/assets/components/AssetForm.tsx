@@ -7,7 +7,6 @@ import {
   FORM_INPUT,
   FormBar,
   FormConfirm,
-  FormNote,
   FormPage,
   FormSummary,
   FormToast,
@@ -109,7 +108,7 @@ export function AssetForm({ businessId, asset }: { businessId: string; businessN
   const qty = Number(quantity);
   if (!quantity.trim() || !Number.isFinite(qty) || qty < 1) blockers.push("A quantity is at least 1");
   else if (qty > 10000) blockers.push("That is more than one listing should hold");
-  if (!value.trim()) blockers.push("Say what it is worth — ₹0 if you already had it");
+  if (!value.trim()) blockers.push("Enter the amount — ₹0 if you already had it");
   const ready = blockers.length === 0;
   const worth = Number(value || 0);
   const done = editing ? "Asset saved" : "📦 Asset added";
@@ -208,21 +207,20 @@ export function AssetForm({ businessId, asset }: { businessId: string; businessN
           </button>
         </div>
 
-        <div style={FORM_LABEL}>WHAT IT IS WORTH{qty > 1 ? ` — ALL ${qty}` : ""}</div>
+        {/* ⚠ "AMOUNT", AND NOTHING UNDER IT (4 Oct 2026, the user: "remove text
+            under what its is worth and rename to amount") — the blocker box that
+            sat here repeated what the bar already names, so the bar is the one
+            place a missing answer is said. ₹0 still means one you already had; the
+            row prints "₹0 (legacy)". */}
+        <div style={FORM_LABEL}>AMOUNT{qty > 1 ? ` — ALL ${qty}` : ""}</div>
         <input
           value={value}
           onChange={(e) => setValue(e.target.value.replace(/[^\d]/g, ""))}
-          placeholder="₹ (0 = one you already had)"
-          aria-label="What it is worth — 0 means you already had it"
+          placeholder="₹"
+          aria-label="Amount"
           inputMode="numeric"
           style={FORM_INPUT}
         />
-
-        {/* ⚠ THE ₹0 RULE STAYS ON THE FIELD, NOT HERE — the placeholder reads
-            "₹ (0 = old)" and the row prints "₹0 (legacy)", so the one fact this
-            paragraph carried is said where the number is typed and where it is
-            read. Blockers only. */}
-        <FormNote blockers={blockers.length ? blockers : undefined} />
       </>
 
       <FormBar>

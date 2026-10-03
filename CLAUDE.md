@@ -2,7 +2,15 @@
 
 ## LAST SESSION (4 Oct 2026) — replaced on every push (Rule 13)
 
-> ### ROOMS: PUBLISHED AND COMPLETED IN BOXES, THE ADDRESS IN TWO LINES, AND ONE DRAWN SET OF AMENITY ICONS — PLUS A HELD MIGRATION THAT MAKES THE DATABASE KEEP THE ROOM RULES (4 Oct 2026, latest) — the UI needs no migration · ✅ UI PUSHED AND LIVE (`119ce3d`: Vercel READY, alias confirmed on the sha through the API, and ON THE LIVE SITE `stranger-smoke` all green · the rooms probe **41/41** in both themes) · ⚠ `20261004090000` WRITTEN, DRY-RUN **19/19** AND **HELD** (uncommitted — see NEXT TO DO #0bc)
+> ### ASSETS GET A QUANTITY AND NINE TYPES, EDIT OPENS THE FORM — AND THE DATABASE NOW KEEPS THE ROOM RULES (4 Oct 2026, latest) — ⚠ Rule 9 (RLS-adjacent + an asset value column) · ✅ BOTH HELD MIGRATIONS APPLIED on the user's *"apply and push to live"* (`20261004090000_a_room_in_use_stays`, `20261004100000_an_asset_has_a_quantity_and_a_shorter_list`: dry runs **19/19** and **18/18** re-run first, `db-push -DryRun` exactly the two, applied first try, read back live **10/10**, PostgREST reloaded) · ✅ PUSHED AND LIVE (`b3a305a`: Vercel READY, alias confirmed on the sha through the API, `stranger-smoke` all green ON THE LIVE SITE)
+> * **Rooms, in the database**: a signed-in client may no longer remove a business's last live room, nor a room holding a published class still to run (`rooms_guard_removal`, definer, executable by no client role). Service role, session-less connections and a deleted business are exempt. `rls-proof-rooms-people` green on the migrated schema.
+> * **Assets**: `assets.quantity` (1…10000, the 4 live rows read 1), types cut to **Speaker · Mirror · Flooring · Lighting · Props · Costume · Furniture · Electronics · Other** (shown "Other assets") — production's 4 rows moved as listed (Equipment ×2 → Other, Props, Sound & AV → Speaker); `save_asset` re-created with `p_quantity` last, authenticated only. ⚠ **The price stays the price of the whole lot** (the user did not object to that decision), so Earnings and the total are unchanged. App: Add/Edit/Save **Asset** with a capital A, a quantity stepper from 1, a Quantity box per card, an Items count in the middle, Edit opens the form at `?edit=`, no line under the heading. anon 40, policies 106.
+> * **And the user's next message, in the same push** (*"add asset form remove text under what its is worth and rename to amount . should confirm before removing asset. 2. Crew cards- remove you lead it and you dance in it from cards, remove public page button and profile pic of crew and name should take to profile page of that crew. Mange crew button C capital and button color like open profile button. remove open profile button from crew cards. 3. studio cards- profile pic of studio and name should take to profile page of that studio. remove public page butoon and mage studio button with s capital and button hue to be light."*): the field is **Amount** (aria too), the blocker box under it is gone (the bar names the missing answer); **Remove asks first** (`FormConfirm`, Keep it / Remove it). Crew cards: eyebrow just "Crew" (the LEADER / MEMBER chip says the rest), **Manage Crew** in the tinted paint, no Public page or Open profile, and on a crew you lead the face+name is a door to `/crew/{id}` (`ToolHead href`, labelled "— view its profile page" so it never substring-matches the card's own "open the profile" / "open the studio"). Studio cards: the face+name opens `/studio/{id}`, **Manage Studio** in the light tinted paint, no Public page. A card probe **96/96** in both themes as two studio owners and two crew leaders.
+> * ⚠ **The app half was pushed right after the apply, before the e2e finished**, because the live bundle's picker was offering type words the database had just started refusing — the mismatched state was the worse one.
+> * ⚠⚠ **The happy path found a stale assertion AND explained an old flake.** (1) The asset segment still asked for "What {studio} owns", the line the user had asked to remove — and two lines later asserted its absence. (2) The ROOM ALREADY BUSY segment timed out at 120 s on `Continue` — the shape recorded **five times since 27 Sep as "the machine"**. The page snapshot said otherwise: the bar read **"Pick a date"** with the date box empty and the later `Starts` pick intact — **a fill straight after `goto` landed before hydration and React reset it**. The fill now retries until the bar stops naming the date. **A timeout with a page snapshot is evidence; read the snapshot before blaming the machine.**
+> * **Verified:** typecheck 0 · lint 0 · build green · dry runs 19/19 + 18/18 · live read-back 10/10 · `rls-proof-rooms-people` green · **the happy path 19/19 in 13.0 min** on `:3100` (its asset segment saved a quantity of 4 and edited it to 5 on the migrated database) · `stranger-smoke` all green on the live site.
+
+> ### ROOMS: PUBLISHED AND COMPLETED IN BOXES, THE ADDRESS IN TWO LINES, AND ONE DRAWN SET OF AMENITY ICONS — PLUS A HELD MIGRATION THAT MAKES THE DATABASE KEEP THE ROOM RULES (4 Oct 2026, latest) — the UI needs no migration · ✅ UI PUSHED AND LIVE (`119ce3d`: Vercel READY, alias confirmed on the sha through the API, and ON THE LIVE SITE `stranger-smoke` all green · the rooms probe **41/41** in both themes) · ✅ `20261004090000` APPLIED later the same day (the block above)
 > The user: *"rooms- Full address icon remove and text font written in a better way. room card- published classes and completed classes in boxes. remove text from belown which says 1 published class. Revanmp icon for amenities everywhere and make them better according to aesthetics. even in room form change icons."* — and before it, *"push that as well"*, read as the database half of the two room rules.
 > * **The card**: two box rows, **Capacity · Amenities / Published · Completed** (`room-published`, `room-completed` — `countRoomClasses`: a published class with a session still to run is Published and is what holds the room; one whose sessions have all ended is Completed, the clock deciding as everywhere since 30 Sep). The "N published class still to run" sentence (`room-in-use`) is gone — a room with a Published figure simply offers no Remove.
 > * **The address**: no 📍; the street in ink at 12.5px, then city · state · PIN quieter on a second line, the trailing "India" dropped (`splitAddress`).
@@ -10230,66 +10238,13 @@ summary; the report has the evidence.
 
 ## NEXT TO DO — replaced on every push (Rule 13)
 
-0bd. **⚠ THE ASSETS SLICE — MIGRATION DRY-RUN 18/18 AND HELD, ITS APP HALF BUILT AND
-   UNCOMMITTED, AND THE TWO SHIP TOGETHER** (4 Oct 2026, the user: *"assets- button A
-   capital for asset on both page and form, asset form- quantity in form with 1 minimum
-   while adding. should also be visible on card. edit should not open like a collapse
-   should only be editable from the form. shorter and better list for type of asset-
-   speaker, props should be there and Other assets also in option"*, then *"remove text
-   between heading and add asset button"*).
-   * **`20261004100000_an_asset_has_a_quantity_and_a_shorter_list`** — `assets.quantity
-     integer not null default 1` (CHECK 1…10000; every existing row reads 1; a COUNT,
-     `value_inr` still the price of the whole lot, so no money figure moves); the
-     category CHECK goes from the prototype's fourteen to nine — **Speaker · Mirror ·
-     Flooring · Lighting · Props · Costume · Furniture · Electronics · Other** — with
-     every row mapped (Sound & AV → Speaker, Mirrors → Mirror, IT & devices →
-     Electronics, Equipment / Infrastructure / Instruments / Safety / Merchandise /
-     Vehicle → Other; production holds 4 rows: Equipment ×2 → Other, Props, Sound & AV →
-     Speaker); `save_asset` dropped and re-created with `p_quantity integer default 1`
-     LAST (grants restated: authenticated + service_role, never anon). No policy, no
-     other function; anon 40, policies 106.
-   * **The app half (uncommitted):** "Add Asset" / "Edit Asset" / "Save Asset" with a
-     capital A; a QUANTITY stepper in the form (starts at 1, − disabled at 1, the bar
-     names a 0, leaving the box settles it at 1); a **Quantity** box on every card and
-     an **Items** count in the middle section; **Edit opens the same form at
-     `?edit={asset}`** — no fold on the card (the picture is changed there too); the
-     "What {business} owns" line under the heading is gone; the picker shows "Other
-     assets" for the stored "Other". Probe **27/27** render-only in both themes on
-     `:3100` (no save — `saveAsset` sends `p_quantity`, which PostgREST refuses until
-     the apply). e2e asset segment, `shoot-tiles` and `shoot-earnings` re-cut to the
-     new words.
-   ⚠ **Do NOT push the app half before the apply** — a save on live would answer
-   PGRST202. On the user's word, in this order: dry run again, `db-push -DryRun`
-   (lists this AND #0bc's file — both are held; apply only what was approved, holding
-   the other in the scratchpad), apply, `notify pgrst, 'reload schema'`, then commit and
-   push the assets files, then the happy path on `:3100` (its asset segment saves).
-
-0bc. **⚠ ONE MIGRATION WRITTEN, DRY-RUN 19/19 AND HELD — `20261004090000_a_room_in_use_stays`**
-   (4 Oct 2026; the file and `scripts/dry-run-checks/20261004090000.js` are UNCOMMITTED
-   on purpose until the user approves). Rule 9 (RLS-adjacent: it narrows what the
-   `rooms` UPDATE policy lets an owner or manager do). The whole of it:
-   * `guard_room_removal()` — SECURITY DEFINER, `search_path = public`, revoked from
-     public / anon / authenticated — and `rooms_guard_removal`, `before update of
-     deleted_at` on `rooms`.
-   * For a SIGNED-IN client only, a soft delete is refused when it would remove the
-     business's **last live room** ("A studio keeps at least one room — …") or a
-     room holding a **published class with a session not yet ended** ("This room has
-     N published class(es) still to run — …") — the app's own sentences.
-   * Exempt: the service role, a session-less connection (migrations, sweeps), and
-     any room whose business is itself soft-deleted. A draft, or a published class
-     that is over, holds nothing. An edit that is not a removal is untouched.
-   * No table, column, policy, grant or row; nothing backfilled; anon 40, policies 106.
-   **On the user's word:**
-```
-   $env:NODE_PATH="<scratchpad with pg>\node_modules"
-   node scripts/dry-run-migration.js supabase/migrations/20261004090000_a_room_in_use_stays.sql scripts/dry-run-checks/20261004090000.js   # 19/19
-   powershell -NoProfile -ExecutionPolicy Bypass -File scripts/db-push.ps1 -DryRun   # exactly this one file
-   powershell -NoProfile -ExecutionPolicy Bypass -File scripts/db-push.ps1 2>&1 | Select-String -NotMatch 'Skipping migration|Warning: failed to cache|prerequisite for local'
-   powershell -NoProfile -ExecutionPolicy Bypass -File scripts/run-proofs.ps1 rooms-people
-```
-   ⚠ No PostgREST reload (no column). ⚠ `rls-proof-rooms-people` soft-deletes rooms
-   through the API as an owner — if a check there removes a studio's only room it
-   will now be refused, which is the rule working; re-cut that check, not the trigger.
+0bd. **~~THE ASSETS SLICE AND THE ROOM GUARD, BOTH HELD~~ — ✅ APPLIED AND PUSHED 4 Oct 2026**
+   (`b3a305a`) on the user's *"apply and push to live"*. Nothing is pending in the
+   database. What they leave: the asset price is the price of the WHOLE LOT (a per-item
+   price would be a decision and a migration); the room guard refuses only a SIGNED-IN
+   client, so a service-role script can still remove a studio's last room (deliberate —
+   sweeps and the seeder need it); and there is still no `rls-proof-assets.ps1`, so
+   nothing re-checks the asset policy or the quantity CHECK as regression cover.
 
 0bb. **~~A PARTIAL REFUND MARKS THE WHOLE PAYMENT "REFUNDED"~~ — ✅ APPLIED AND LIVE
    3 Oct 2026** (`99755dc`, `shoot-enquiry-money` 14/14 on the live site). Kept for
@@ -12795,6 +12750,11 @@ for the database schema. **The UI is not redesigned** — see Rule 2.
 
 ### Progress tracker — update after EVERY push (Rule 11)
 
+- **ASSETS GET A QUANTITY AND NINE TYPES; THE DATABASE KEEPS THE ROOM RULES — 4 Oct
+  2026, no step number ⚠ (Rule 9) — TWO MIGRATIONS APPLIED** (`20261004090000`,
+  `20261004100000`). A quantity and a nine-word type list on assets, edit through the
+  form, and a trigger refusing a signed-in client the last room or a room still in
+  use. Detail at the top.
 - **A STUDENT CARD IS ONE BUTTON AND FOUR BOXES; THE STUDENT PAGE GAINS
   EARNINGS — 4 Oct 2026, no step number — no migration.** One Student detail
   button, four boxes, the face to the profile; class tiles with their artist and

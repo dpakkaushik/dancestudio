@@ -31,12 +31,23 @@ function CrewCard({ crew, own, since, foundedByMe = false }: { crew: CrewSummary
   const tint = CREW_TINT;
   return (
     <ToolCard href={own ? `/crews/${crew.id}/manage` : `/crew/${crew.id}`} hrefLabel={`${crew.name} — ${own ? "manage the crew" : "open the profile"}`}>
+      {/* ⚠ THE FACE AND THE NAME ARE THE DOOR TO THE CREW'S PROFILE (4 Oct 2026,
+          the user: "profile pic of crew and name should take to profile page of
+          that crew") — so the Public page and Open profile buttons went. On a
+          crew you lead the rest of the card still opens its desk; on one you
+          dance in the whole card already IS that door, so the head adds none.
+          ⚠ The label avoids "open the profile", which the card's own stretched
+          link carries — Playwright matches a name by substring. And the eyebrow
+          no longer says "you lead it / you dance in it" (the same message) — the
+          LEADER / MEMBER chip says it once. */}
       <ToolHead
         tint={tint}
         name={crew.name}
         photoPath={crew.photo}
         icon={<CrewI size={24} color="#fff" />}
-        eyebrow={own ? "Crew · you lead it" : foundedByMe ? "Crew · you started it" : "Crew · you dance in it"}
+        href={own ? `/crew/${crew.id}` : undefined}
+        hrefLabel={own ? `${crew.name} — view its profile page` : undefined}
+        eyebrow={foundedByMe ? "Crew · you started it" : "Crew"}
         sub={crew.city}
         right={<ToolChip word={own ? "LEADER" : "MEMBER"} fg={own ? tint : SUB} bg={own ? `${tint}18` : "var(--el)"} />}
       />
@@ -53,27 +64,21 @@ function CrewCard({ crew, own, since, foundedByMe = false }: { crew: CrewSummary
         />
         {foundedByMe ? <div style={{ fontSize: 11, color: SUB, marginTop: 9, lineHeight: 1.45 }}>You started this crew and handed it over.</div> : null}
       </ToolBody>
-      <ToolActions>
-        {own ? (
-          <>
-            <Link href={`/crews/${crew.id}/manage`} style={toolBtn("primary", tint)}>
-              Manage crew
-            </Link>
-            <Link href={`/crew/${crew.id}`} style={toolBtn("secondary", tint)}>
-              Public page
-            </Link>
-          </>
-        ) : (
-          <>
-            <Link href={`/crew/${crew.id}`} style={toolBtn("tinted", tint)}>
-              Open profile
-            </Link>
-            {/* ⚠ THE FOUNDER'S DOOR BACK (30 Sep 2026) is one of the bar's buttons,
-                still named "Take {crew} back" */}
-            {foundedByMe ? <ReclaimCrewButton crewId={crew.id} crewName={crew.name} wrapStyle={{ flex: "1 1 0", minWidth: 0 }} buttonStyle={{ ...toolBtn("secondary", tint), width: "100%", color: tint }} /> : null}
-          </>
-        )}
-      </ToolActions>
+      {/* ⚠ "Manage Crew", capital C, in the tinted paint Open profile wore (4 Oct
+          2026, the user). A crew you dance in has no button left — unless you
+          founded it and handed it over, where "Take {crew} back" still lives. */}
+      {own ? (
+        <ToolActions>
+          <Link href={`/crews/${crew.id}/manage`} style={toolBtn("tinted", tint)}>
+            Manage Crew
+          </Link>
+        </ToolActions>
+      ) : foundedByMe ? (
+        <ToolActions>
+          {/* ⚠ THE FOUNDER'S DOOR BACK (30 Sep 2026), still named "Take {crew} back" */}
+          <ReclaimCrewButton crewId={crew.id} crewName={crew.name} wrapStyle={{ flex: "1 1 0", minWidth: 0 }} buttonStyle={{ ...toolBtn("secondary", tint), width: "100%", color: tint }} />
+        </ToolActions>
+      ) : null}
     </ToolCard>
   );
 }

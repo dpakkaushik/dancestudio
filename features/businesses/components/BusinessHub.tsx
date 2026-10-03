@@ -339,6 +339,13 @@ export function BusinessHub({
           name={t.name}
           photoPath={t.photoPath}
           icon={<StudioI size={26} color="#fff" />}
+          /* ⚠ THE FACE AND THE NAME ARE THE DOOR TO THE STUDIO'S PROFILE (4 Oct
+             2026, the user: "profile pic of studio and name should take to profile
+             page of that studio. remove public page button") — the rest of the
+             card still opens its home. The label stays clear of "open the studio",
+             which the card's own link carries (Playwright matches by substring). */
+          href={`/studio/${t.id}`}
+          hrefLabel={`${t.name} — view its profile page`}
           eyebrow="Studio · yours"
           afterName={t.verifiedAt ? <VerifiedTick size={15} /> : null}
           sub={[t.area, t.city].filter(Boolean).join(", ") || null}
@@ -400,12 +407,11 @@ export function BusinessHub({
           </div>
         ) : null}
         </ToolBody>
+        {/* ⚠ "Manage Studio", capital S, in the LIGHT tinted paint (4 Oct 2026, the
+            user: "mage studio button with s capital and button hue to be light") */}
         <ToolActions>
-          <Link href={`/business/${t.id}`} style={toolBtn("primary", ACCENT)}>
-            Manage studio
-          </Link>
-          <Link href={`/studio/${t.id}`} style={toolBtn("secondary", ACCENT)}>
-            Public page
+          <Link href={`/business/${t.id}`} style={toolBtn("tinted", ACCENT)}>
+            Manage Studio
           </Link>
         </ToolActions>
       </ToolCard>

@@ -2738,8 +2738,8 @@ test.describe.serial("DanceOS, end to end", () => {
     await owner.getByRole("link", { name: "Assets", exact: true }).click();
     await owner.waitForURL(new RegExp(`/business/${businessId}/assets$`));
     await expect(owner.getByRole("heading", { level: 1, name: "Assets" })).toBeVisible();
-    // it names the business, because an organization runs several
-    await expect(owner.getByText(`What ${studioName} owns`)).toBeVisible();
+    /* ⚠ no "What {studio} owns" line any more (4 Oct 2026, the user: "remove text
+       between heading and add asset button") — its absence is asserted below */
     // and it is not the shrug it used to be
     await expect(owner.getByText("inventory and what it is worth")).toHaveCount(0);
     /* ⚠ the testid is on the FIGURE now, not on the whole line (22 Sep 2026):
@@ -2773,7 +2773,8 @@ test.describe.serial("DanceOS, end to end", () => {
       await expect(sheet.getByLabel("Quantity", { exact: true })).toHaveValue("1");
       await expect(sheet.getByRole("button", { name: "One fewer" })).toBeDisabled();
       if (quantity) await sheet.getByLabel("Quantity", { exact: true }).fill(quantity);
-      await sheet.getByLabel("What it is worth — 0 means you already had it").fill(worth);
+      // ⚠ "Amount" since 4 Oct 2026 (the user: "rename to amount")
+      await sheet.getByLabel("Amount", { exact: true }).fill(worth);
       await sheet.getByRole("button", { name: "Add Asset", exact: true }).click();
       await owner.getByRole("button", { name: "Add it" }).click();
       await expect(sheet).toBeHidden({ timeout: 15_000 });
@@ -2792,7 +2793,9 @@ test.describe.serial("DanceOS, end to end", () => {
        of these forms grew a fixed one on 22 Sep and this segment caught it. */
     await expect(empty.getByRole("button", { name: "Name the asset first" })).toBeVisible();
     await empty.getByLabel("Asset name").fill("x");
-    await expect(empty.getByRole("button", { name: "Say what it is worth — ₹0 if you already had it" })).toBeVisible();
+    await expect(empty.getByRole("button", { name: "Enter the amount — ₹0 if you already had it" })).toBeVisible();
+    // ⚠ and nothing is written under the Amount box any more (4 Oct 2026) — the bar is the one place it is said
+    await expect(empty.getByText("· Enter the amount", { exact: false })).toHaveCount(0);
     // and system back closes it, leaving the desk exactly where it was
     await owner.goBack();
     await expect(empty).toBeHidden({ timeout: 15_000 });
@@ -2830,7 +2833,7 @@ test.describe.serial("DanceOS, end to end", () => {
     await expect(owner).toHaveURL(/\?edit=/);
     await expect(editSheet.getByLabel("Asset name")).toHaveValue(assetName);
     await expect(editSheet.getByLabel("Quantity", { exact: true })).toHaveValue("4");
-    await editSheet.getByLabel("What it is worth — 0 means you already had it").fill("30000");
+    await editSheet.getByLabel("Amount", { exact: true }).fill("30000");
     await editSheet.getByRole("button", { name: "One more" }).click();
     await editSheet.getByRole("button", { name: "Save Asset", exact: true }).click();
     await owner.getByRole("button", { name: "Save it" }).click();
@@ -2840,7 +2843,16 @@ test.describe.serial("DanceOS, end to end", () => {
     await expect(owner.getByTestId("assets-total")).toHaveText("₹30,000");
 
     // ── AND REMOVING ONE IS A SOFT DELETE the list stops carrying
+    /* ⚠ IT ASKS FIRST (4 Oct 2026, the user: "should confirm before removing
+       asset") — Keep it leaves the row; Remove it takes it off */
     await legacy.getByRole("button", { name: `Remove ${legacyName}` }).click();
+    const ask = owner.getByRole("dialog", { name: "Remove this asset?" });
+    await expect(ask).toBeVisible({ timeout: 15_000 });
+    await ask.getByRole("button", { name: "Keep it" }).click();
+    await expect(ask).toBeHidden();
+    await expect(owner.getByTestId("asset-row").filter({ hasText: legacyName })).toHaveCount(1);
+    await legacy.getByRole("button", { name: `Remove ${legacyName}` }).click();
+    await owner.getByRole("dialog", { name: "Remove this asset?" }).getByRole("button", { name: "Remove it" }).click();
     await expect(owner.getByTestId("asset-row").filter({ hasText: legacyName })).toHaveCount(0, { timeout: 15_000 });
 
     /* ⚠ THE OWNER'S ALONE, and the database says so too (`is_business_owner` is
@@ -3067,7 +3079,16 @@ test.describe.serial("DanceOS, end to end", () => {
        with until somebody presses Publish on the register — which is where the
        question is asked and the sheet answers it. */
     await owner.goto(`/business/${businessId}/classes/new`);
-    await owner.getByLabel("Class date").fill(when.date);
+    /* ⚠ A FILL BEFORE HYDRATION IS NOT A FILL (4 Oct 2026): straight after a
+       `goto`, React can claim the controlled date input AFTER the fill and reset
+       it to "", leaving the bar on "Pick a date" and no Continue for the whole
+       test timeout — the page snapshot showed exactly that, with the Starts pick
+       made later intact. The bar only stops naming the date once React owns the
+       form AND holds the value, so the fill is retried until it does. */
+    await expect(async () => {
+      await owner.getByLabel("Class date").fill(when.date);
+      await expect(owner.getByRole("button", { name: "Pick a date" })).toHaveCount(0, { timeout: 2_000 });
+    }).toPass({ timeout: 30_000 });
     await pick(owner, "Starts", when.time);
     await owner.getByLabel("Dance style", { exact: true }).click();
     await owner.getByRole("button", { name: "Salsa", exact: true }).click();

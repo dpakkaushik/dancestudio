@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState, useTransition, type CSSProperties } from "react";
 import { FigureHead } from "@/components/ui/FigureHead";
+import { FormConfirm, FormSummary } from "@/components/ui/FormPage";
 import { DeskBody, DeskMiddle, DeskTop } from "@/components/ui/DeskSections";
 import { ToolActions, ToolBody, ToolCard, ToolFacts, ToolHead, toolBtn } from "@/components/ui/ToolCard";
 import { removeAssetAction } from "@/features/assets/server-actions/assets";
@@ -62,9 +63,14 @@ export function AssetsDesk({ businessId, assets }: { businessId: string; busines
   const total = assets.reduce((n, a) => n + a.valueInr, 0);
   const pieces = assets.reduce((n, a) => n + a.quantity, 0);
 
+  /* ⚠ REMOVING ASKS FIRST (4 Oct 2026, the user: "should confirm before removing
+     asset") — one press used to soft-delete the row */
+  const [asking, setAsking] = useState<Asset | null>(null);
+
   const drop = (a: Asset) =>
     start(async () => {
       const out = await removeAssetAction({ assetId: a.id, businessId });
+      setAsking(null);
       if (out.error) return fire(out.error);
       fire(`${a.name} removed`);
       router.refresh();
@@ -116,7 +122,7 @@ export function AssetsDesk({ businessId, assets }: { businessId: string; busines
               <Link href={`?edit=${a.id}`} scroll={false} aria-label={`Edit ${a.name}`} style={{ ...toolBtn("tinted", TINT), textDecoration: "none" }}>
                 Edit
               </Link>
-              <button type="button" onClick={() => drop(a)} disabled={pending} aria-label={`Remove ${a.name}`} style={toolBtn("danger", TINT)}>
+              <button type="button" onClick={() => setAsking(a)} disabled={pending} aria-label={`Remove ${a.name}`} style={toolBtn("danger", TINT)}>
                 Remove
               </button>
             </ToolActions>
@@ -129,6 +135,26 @@ export function AssetsDesk({ businessId, assets }: { businessId: string; busines
           </div>
         ) : null}
       </DeskBody>
+
+      {asking ? (
+        <FormConfirm
+          label="Remove this asset?"
+          title="Remove this asset?"
+          cancelWord="Keep it"
+          confirmWord={pending ? "Removing…" : "Remove it"}
+          busy={pending}
+          onCancel={() => setAsking(null)}
+          onConfirm={() => drop(asking)}
+        >
+          <FormSummary tint={TINT} head={<span style={{ fontSize: 11.5, fontWeight: 800 }}>📦 {assetCategoryWords(asking.category)}</span>}>
+            <b style={{ fontSize: 15 }}>
+              {asking.name}
+              {asking.quantity > 1 ? ` × ${asking.quantity}` : ""}
+            </b>
+            <div style={{ fontSize: 12, marginTop: 4, fontWeight: 800, color: asking.valueInr > 0 ? INK : SUB }}>{valueWords(asking.valueInr)}</div>
+          </FormSummary>
+        </FormConfirm>
+      ) : null}
 
       <BizToast msg={toast} />
     </div>
