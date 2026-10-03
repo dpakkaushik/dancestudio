@@ -556,27 +556,39 @@ async function seed() {
     log(`… ${u.name} asks ${(crewId ?? businessId).slice(0, 8)} (${type}${crewId ? ", crew" : ""})`);
     return rpc(u.h, "send_enquiry", { p_business_id: crewId ? null : businessId, p_type_key: type, p_fields: fields, p_dates: [dayShift(days)], p_where: where, p_message: message, p_mobile: "98100 12345", p_crew_id: crewId });
   };
-  const quote = (h, enq, cost, pct) => rpc(h, "send_enquiry_quote", { p_enquiry_id: enq.id, p_cost_inr: cost, p_advance_pct: pct });
-  /* private sessions at Sector 29 — quoted, accepted, advance recorded */
+  /* ⚠ 3 Oct 2026: the business ACCEPTS an enquiry before it prices it, a quote is
+     lines or one total with an advance and a valid-until, and the sender ACCEPTS it
+     whole or asks for a revision with a reason (`20261003140000`) */
+  const quote = async (h, enq, cost, pct, items = null) => {
+    await rpc(h, "respond_to_enquiry", { p_enquiry_id: enq.id, p_accept: true, p_reason: null }).catch(() => null);
+    return rpc(h, "send_enquiry_quote", { p_enquiry_id: enq.id, p_items: items, p_lump_inr: items ? null : cost, p_advance_pct: pct, p_valid_until: dayShift(7), p_note: null });
+  };
+  const accept = (u, q) => rpc(u.h, "answer_enquiry_quote", { p_quote_id: q.id, p_answer: "accept", p_reason: null });
+  /* private sessions at Sector 29 — quoted in lines, accepted, advance recorded, and
+     an ADDITION waiting on Kabir */
   const e1 = await enquire(kabir, s29.id, "private", [["How many people", "2"], ["Where they train", "At the studio"], ["Style", "Hip-Hop"]], 9, "Gurugram", "Eight evening sessions before a wedding — my sister and me.");
-  const q1 = await quote(rhythm.h, e1, 24000, 30);
-  await rpc(kabir.h, "answer_enquiry_quote", { p_quote_id: q1.id, p_accept: true });
+  const q1 = await quote(rhythm.h, e1, 24000, 30, [{ name: "Evening session", qty: 8, unit_inr: 2500 }, { name: "Music edit", qty: 1, unit_inr: 4000 }]);
+  await accept(kabir, q1);
   await rpc(rhythm.h, "record_enquiry_payment", { p_quote_id: q1.id, p_part: "advance" });
-  /* private sessions — quoted, then DECLINED by the person */
+  await rpc(rhythm.h, "send_enquiry_addition", { p_enquiry_id: e1.id, p_items: [{ name: "Extra rehearsal", qty: 2, unit_inr: 2500 }], p_lump_inr: null, p_note: "The two you asked about on Tuesday", p_revises: null });
+  /* private sessions — quoted, a revision ASKED, then DECLINED by the business */
   /* Aki, not Sneha — Sneha is on Sector 29's team, and a member cannot ask their own studio */
   const e2 = await enquire(aki, s29.id, "private", [["How many people", "1"], ["Where they train", "At home"], ["Style", "Salsa"]], 12, "Gurugram", "Salsa at home, weekends.");
   const q2 = await quote(rhythm.h, e2, 18000, 50);
-  await rpc(aki.h, "answer_enquiry_quote", { p_quote_id: q2.id, p_accept: false });
-  await rpc(rhythm.h, "set_enquiry_status", { p_enquiry_id: e2.id, p_status: "lost" });
+  await rpc(aki.h, "answer_enquiry_quote", { p_quote_id: q2.id, p_answer: "revise", p_reason: "Could it be twelve thousand for six sessions?" });
+  await rpc(rhythm.h, "end_enquiry", { p_enquiry_id: e2.id, p_reason: "We cannot go that low for home sessions", p_refund_inr: null });
   /* private sessions at Bounce — new, nobody has answered */
   /* Zaid, not Rohit — Rohit is on Bounce's team */
   await enquire(zaid, bounce.id, "private", [["How many people", "4"], ["Where they train", "At the studio"], ["Style", "Bollywood"]], 15, "New Delhi", "A sangeet routine for four cousins.");
-  /* a CELEBRATION asked of the STUDIO — quoted, accepted, advance and balance: WON */
+  /* a CELEBRATION asked of the STUDIO — quoted, accepted, advance and balance, then
+     COMPLETED from both ends */
   const e4 = await enquire(kabir, dlf.id, "celebration", [["Occasion", "Wedding"], ["Guests", "300"], ["Performers", "6"]], 30, "Gurugram", "A twenty-minute opening act at the reception.");
   const q4 = await quote(rhythm.h, e4, 80000, 40);
-  await rpc(kabir.h, "answer_enquiry_quote", { p_quote_id: q4.id, p_accept: true });
+  await accept(kabir, q4);
   await rpc(rhythm.h, "record_enquiry_payment", { p_quote_id: q4.id, p_part: "advance" });
   await rpc(rhythm.h, "record_enquiry_payment", { p_quote_id: q4.id, p_part: "balance" });
+  await rpc(rhythm.h, "mark_enquiry_complete", { p_enquiry_id: e4.id });
+  await rpc(kabir.h, "mark_enquiry_complete", { p_enquiry_id: e4.id });
   /* a CORPORATE show — quoted, waiting on an answer */
   const e5 = await enquire(zaid, dlf.id, "corporate", [["Kind", "Annual day"], ["Audience", "500"]], 40, "Gurugram", "Twelve minutes, three styles, HDFC annual day.");
   await quote(rhythm.h, e5, 120000, 30);
@@ -591,17 +603,19 @@ async function seed() {
      it. It used to name a seeded event; it names somebody else's now. */
   const e7 = await enquire(nikhil, karanPage.id, "judge", [["Event", "Karnataka B-Boy Championship"], ["Rounds", "3"]], 25, "Bengaluru", "Would you judge the finals? Travel covered.");
   const q7 = await quote(karan.h, e7, 15000, 0);
-  await rpc(nikhil.h, "answer_enquiry_quote", { p_quote_id: q7.id, p_accept: true });
-  /* an artist asked for private sessions — quoted, accepted, advance paid */
+  await accept(nikhil, q7);
+  /* an artist asked for private sessions — quoted, accepted, advance paid, then the
+     sender proposes to WITHDRAW with part of the advance back: terms waiting on Meera */
   const e8 = await enquire(sneha, meeraPage.id, "private", [["How many people", "1"], ["Where they train", "At the studio"], ["Style", "Kathak"]], 10, "Gurugram", "Twelve sessions towards my arangetram.");
   const q8 = await quote(meera.h, e8, 30000, 25);
-  await rpc(sneha.h, "answer_enquiry_quote", { p_quote_id: q8.id, p_accept: true });
+  await accept(sneha, q8);
   await rpc(meera.h, "record_enquiry_payment", { p_quote_id: q8.id, p_part: "advance" });
+  await rpc(sneha.h, "end_enquiry", { p_enquiry_id: e8.id, p_reason: "My arangetram has moved to next year", p_refund_inr: 5000 });
   /* a CREW asked for a celebration — quoted by its leader, waiting */
   /* Rohit, an outsider to the crew (Aki has been asked into it) */
   const e9 = await enquire(rohit, rockers.id, "celebration", [["Occasion", "Sangeet"], ["Guests", "150"], ["Performers", "5"]], 22, "Gurugram", "A crew set at my cousin's sangeet.", rockers.id);
   await quote(aditya.h, e9, 30000, 30);
-  log("Sector 29: private (advance paid), private (declined → lost) · DLF: celebration (WON), corporate (quoted) · EEE: collab (new) · Bounce: private (new), corporate (new) · Namma: celebration (new) · Karan: judge (accepted) · Meera: private (advance paid) · Gurugram Rockers: celebration (quoted)");
+  log("Sector 29: private (advance paid, an addition waiting), private (revision asked → called off) · DLF: celebration (completed), corporate (quoted) · EEE: collab (new) · Bounce: private (new), corporate (new) · Namma: celebration (new) · Karan: judge (on) · Meera: private (withdrawal terms waiting) · Gurugram Rockers: celebration (quoted)");
 
   /* ────────────────────────────────────────────────────────────────────────
      ⚠ EVENTS WERE SEEDED HERE UNTIL 29 Sep 2026, and this is the whole of

@@ -106,6 +106,41 @@ function assemble(
   return { period, buckets, lines, complete };
 }
 
+/** ⚠ ENQUIRY MONEY, READ THE 3 Oct 2026 WAY. One quote row can carry up to two
+ *  takings and they are two acts at two moments: the ADVANCE when it was paid, and
+ *  the BALANCE when the rest was — counted from `balance_paid_inr`, because an
+ *  accepted REDUCTION lowers what the balance turned out to be (an older row has
+ *  no figure and falls back to cost − advance). An ADDITION is one more taking,
+ *  its own whole cost, when it was paid; a reduction is never a taking. */
+const ENQUIRY_QUOTE_COLUMNS = "kind, n, cost_inr, advance_inr, advance_paid_at, full_paid_at, balance_paid_inr, enquiries (type_key, profiles (full_name))";
+type EnquiryQuoteRow = {
+  kind: string | null;
+  n: number;
+  cost_inr: number;
+  advance_inr: number;
+  advance_paid_at: string | null;
+  full_paid_at: string | null;
+  balance_paid_inr: number | null;
+  enquiries?: { type_key: string; profiles?: { full_name: string | null } | Array<{ full_name: string | null }> | null } | Array<{ type_key: string; profiles?: { full_name: string | null } | Array<{ full_name: string | null }> | null }> | null;
+};
+function enquiryTakings(q: EnquiryQuoteRow): Array<{ at: string; amountInr: number; label: string }> {
+  const e = single(q.enquiries);
+  const what = enquiryWords(e?.type_key);
+  const who = single(e?.profiles)?.full_name;
+  const tail = who ? ` — ${who}` : "";
+  const out: Array<{ at: string; amountInr: number; label: string }> = [];
+  if (q.kind === "addition") {
+    if (q.full_paid_at && q.cost_inr > 0) out.push({ at: q.full_paid_at, amountInr: q.cost_inr, label: `${what} addition #${q.n}${tail}` });
+    return out;
+  }
+  if (q.advance_paid_at && q.advance_inr > 0) out.push({ at: q.advance_paid_at, amountInr: q.advance_inr, label: `${what} advance${tail}` });
+  if (q.full_paid_at) {
+    const balance = q.balance_paid_inr ?? Math.max(0, q.cost_inr - q.advance_inr);
+    if (balance > 0) out.push({ at: q.full_paid_at, amountInr: balance, label: `${what} ${q.advance_inr > 0 ? "balance" : "payment"}${tail}` });
+  }
+  return out;
+}
+
 /** WHAT A BUSINESS TOOK AND SPENT — a studio's, an artist page's, or an
  *  organization's own hosting row. Several ids at once, because an organization
  *  is every studio it owns plus that hosting row, added up. */
@@ -119,7 +154,7 @@ export async function findBusinessEarnings(
   if (businessIds.length === 0) return assemble(period, keys, [], [], true);
   const fromDay = from.slice(0, 10);
 
-  const [payments, refunds, payouts, assets, quotes, subs] = await Promise.all([
+  const [payments, refunds, payouts, assets, quotes, subs, handBack] = await Promise.all([
     /* what students paid — the three subjects an order can name (the CHECK
        `orders_subject_check`), so Classes is the residual once the other two
        are taken out, exactly as `findBusinessIncome` reads it.
@@ -174,7 +209,7 @@ export async function findBusinessEarnings(
        been real money invisible on every ledger since. It is revenue. */
     supabase
       .from("enquiry_quotes")
-      .select("cost_inr, advance_inr, advance_paid_at, full_paid_at, enquiries (type_key, profiles (full_name))")
+      .select(ENQUIRY_QUOTE_COLUMNS)
       .in("business_id", businessIds)
       .is("deleted_at", null)
       .limit(MAX_ROWS),
@@ -198,9 +233,24 @@ export async function findBusinessEarnings(
       .in("subscriptions.business_id", businessIds)
       .gte("created_at", from)
       .limit(MAX_ROWS),
+    /* ⚠ AN ENQUIRY'S REFUND HANDED BACK BY HAND (3 Oct 2026, Rule 9). Ending a
+       project after money moved settles a refund: the part that went in through
+       Cashfree goes back the same way (a `refunds` row, counted above), and the
+       rest — what was recorded as received by hand — is `refund_hand_inr` on the
+       accepted terms. It writes no refunds row, so it is read here or nowhere.
+       Through the enquiry, because the terms carry no business of their own. */
+    supabase
+      .from("enquiry_endings")
+      .select("refund_hand_inr, answered_at, enquiries!inner (type_key, business_id, profiles (full_name))")
+      .eq("status", "accepted")
+      .gt("refund_hand_inr", 0)
+      .is("deleted_at", null)
+      .in("enquiries.business_id", businessIds)
+      .gte("answered_at", from)
+      .limit(MAX_ROWS),
   ]);
 
-  for (const r of [payments, refunds, payouts, assets, quotes, subs]) {
+  for (const r of [payments, refunds, payouts, assets, quotes, subs, handBack]) {
     if (r.error) throw r.error;
   }
   const complete =
@@ -209,7 +259,8 @@ export async function findBusinessEarnings(
     (payouts.data?.length ?? 0) < MAX_ROWS &&
     (assets.data?.length ?? 0) < MAX_ROWS &&
     (quotes.data?.length ?? 0) < MAX_ROWS &&
-    (subs.data?.length ?? 0) < MAX_ROWS;
+    (subs.data?.length ?? 0) < MAX_ROWS &&
+    (handBack.data?.length ?? 0) < MAX_ROWS;
 
   const classes: Bucketed = new Map();
   const memberships: Bucketed = new Map();
@@ -293,22 +344,16 @@ export async function findBusinessEarnings(
     take(bought, boughtI, a.created_at, a.value_inr, `${a.name} · ${a.category}${a.value_inr > 0 ? "" : " (already had it)"}`);
   }
 
-  /* the advance when it was paid, and the BALANCE when the rest was — two
-     separate acts, recorded at two separate moments, so they bucket separately */
-  type QuoteRow = {
-    cost_inr: number;
-    advance_inr: number;
-    advance_paid_at: string | null;
-    full_paid_at: string | null;
-    enquiries?: { type_key: string; profiles?: Named | Named[] | null } | Array<{ type_key: string; profiles?: Named | Named[] | null }> | null;
-  };
-  for (const q of (quotes.data ?? []) as unknown as QuoteRow[]) {
-    const e = single(q.enquiries);
-    const what = enquiryWords(e?.type_key);
+  for (const q of (quotes.data ?? []) as unknown as EnquiryQuoteRow[]) {
+    for (const t of enquiryTakings(q)) take(enquiries, enquiriesI, t.at, t.amountInr, t.label);
+  }
+  /* a hand-back is a refund like any other on this ledger — the same line */
+  type HandRow = { refund_hand_inr: number; answered_at: string | null; enquiries?: { type_key: string; profiles?: Named | Named[] | null } | Array<{ type_key: string; profiles?: Named | Named[] | null }> | null };
+  for (const h of (handBack.data ?? []) as unknown as HandRow[]) {
+    if (!h.answered_at) continue;
+    const e = single(h.enquiries);
     const who = single(e?.profiles)?.full_name;
-    const tail = who ? ` — ${who}` : "";
-    if (q.advance_paid_at) take(enquiries, enquiriesI, q.advance_paid_at, q.advance_inr, `${what} advance${tail}`);
-    if (q.full_paid_at) take(enquiries, enquiriesI, q.full_paid_at, Math.max(0, q.cost_inr - q.advance_inr), `${what} balance${tail}`);
+    take(refunded, refundedI, h.answered_at, h.refund_hand_inr, `${enquiryWords(e?.type_key)} refund, by hand${who ? ` — ${who}` : ""}`);
   }
 
   for (const s of (subs.data ?? []) as Array<{ amount_inr: number; created_at: string }>) {
@@ -418,7 +463,7 @@ export async function findCrewEarnings(supabase: SupabaseClient, crewId: string,
   const { keys } = windowFor(nowIso, period);
   const { data, error } = await supabase
     .from("enquiry_quotes")
-    .select("cost_inr, advance_inr, advance_paid_at, full_paid_at, enquiries (type_key, profiles (full_name))")
+    .select(ENQUIRY_QUOTE_COLUMNS)
     .eq("crew_id", crewId)
     .is("deleted_at", null)
     .limit(MAX_ROWS);
@@ -430,21 +475,10 @@ export async function findCrewEarnings(supabase: SupabaseClient, crewId: string,
     add(enquiries, k, amountInr);
     addItem(enquiriesI, k, { label, amountInr, at });
   };
-  type Named = { full_name: string | null };
-  type QuoteRow = {
-    cost_inr: number;
-    advance_inr: number;
-    advance_paid_at: string | null;
-    full_paid_at: string | null;
-    enquiries?: { type_key: string; profiles?: Named | Named[] | null } | Array<{ type_key: string; profiles?: Named | Named[] | null }> | null;
-  };
-  for (const q of (data ?? []) as unknown as QuoteRow[]) {
-    const e = single(q.enquiries);
-    const what = enquiryWords(e?.type_key);
-    const who = single(e?.profiles)?.full_name;
-    const tail = who ? ` — ${who}` : "";
-    if (q.advance_paid_at) take(q.advance_paid_at, q.advance_inr, `${what} advance${tail}`);
-    if (q.full_paid_at) take(q.full_paid_at, Math.max(0, q.cost_inr - q.advance_inr), `${what} balance${tail}`);
+  /* ⚠ a crew's ledger has no expense half, so a refund it handed back when a
+     project ended is not drawn here — recorded in the parity backlog */
+  for (const q of (data ?? []) as unknown as EnquiryQuoteRow[]) {
+    for (const t of enquiryTakings(q)) take(t.at, t.amountInr, t.label);
   }
   return assemble(
     period,

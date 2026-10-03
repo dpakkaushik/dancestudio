@@ -250,6 +250,46 @@ export async function findUnsentRefunds(supabase: SupabaseClient, scope: RefundR
   return ((data ?? []) as unknown as RailRow[]).map(toRail);
 }
 
+/** ⚠ MONEY. The unsent refunds an ENDED ENQUIRY filed (3 Oct 2026) — the online
+ *  part of agreed ending terms, on that enquiry's own orders. Read with the
+ *  SERVICE ROLE by `sendEnquiryRefunds` only, straight after `answer_enquiry_ending`
+ *  admitted the caller; the quote ids are the enquiry's own, stated out loud. */
+export async function findUnsentEnquiryRefunds(admin: SupabaseClient, quoteIds: string[]): Promise<RailRefund[]> {
+  if (quoteIds.length === 0) return [];
+  /* audit-ok: scoped through the embed — `orders.enquiry_quote_id` IN the one
+     enquiry's own quote ids, which the caller read under its own RLS first */
+  const { data, error } = await admin
+    .from("refunds")
+    .select("id, amount_inr, provider, provider_refund_id, payments (provider_payment_id), orders!inner (class_id, business_id, provider_order_id, enquiry_quote_id)")
+    .in("orders.enquiry_quote_id", quoteIds)
+    .eq("status", "pending")
+    .is("provider_refund_id", null)
+    .is("deleted_at", null)
+    .order("created_at", { ascending: true })
+    .limit(50);
+  if (error) {
+    throw new Error(`refunds.unsentEnquiry failed: ${error.message}`);
+  }
+  return ((data ?? []) as unknown as RailRow[]).map(toRail);
+}
+
+/** bind the rail's reference to a refund the service role just sent — the row
+ *  is read back, so a write that moved nothing says so */
+export async function bindRefundReference(admin: SupabaseClient, refundId: string, providerRefundId: string): Promise<void> {
+  const { data, error } = await admin
+    .from("refunds")
+    .update({ provider_refund_id: providerRefundId })
+    .eq("id", refundId)
+    .is("provider_refund_id", null)
+    .select("id");
+  if (error) {
+    throw new Error(error.message);
+  }
+  if (!data || data.length === 0) {
+    throw new Error("that refund already carries a reference");
+  }
+}
+
 /** one unsent refund by id — the desk's "Send through Cashfree" retry */
 export async function findUnsentRefund(supabase: SupabaseClient, refundId: string): Promise<RailRefund | null> {
   const { data, error } = await supabase

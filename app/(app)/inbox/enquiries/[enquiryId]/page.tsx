@@ -4,14 +4,16 @@ import { isCashfreeConfigured } from "@/lib/cashfree/api";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { findMyLedCrews } from "@/repositories/crews";
 import { findEnquiryById } from "@/repositories/enquiries";
-import { findMyBusinesses } from "@/repositories/businesses";
+import { findMyMemberships, runsTheBusiness } from "@/repositories/businesses";
 
 const stampNowIso = (): string => new Date().toISOString();
 
 /** One enquiry (prototype S_enqdetail). RLS admits the two ends only — the
  *  sender, and the business's members or the crew's leader (18 Sep 2026) — so
  *  anybody else gets "not found". Which end the viewer is decides what the page
- *  offers: the side that was asked quotes and records, the sender answers. */
+ *  offers: the side that was asked quotes and records, the sender answers.
+ *  ⚠ 3 Oct 2026: on the business's side only its OWNERS and MANAGERS work an
+ *  enquiry (`can_work_enquiry`) — every other seat reads it and is told so. */
 export default async function EnquiryPage({
   params,
   searchParams,
@@ -32,16 +34,19 @@ export default async function EnquiryPage({
     redirect("/login");
   }
 
-  const [enquiry, businesses, ledCrews] = await Promise.all([findEnquiryById(supabase, enquiryId), findMyBusinesses(supabase), findMyLedCrews(supabase).catch(() => [])]);
+  const [enquiry, seats, ledCrews] = await Promise.all([findEnquiryById(supabase, enquiryId), findMyMemberships(supabase), findMyLedCrews(supabase).catch(() => [])]);
   if (!enquiry) {
     notFound();
   }
-  const mine = enquiry.crewId ? ledCrews.some((c) => c.id === enquiry.crewId) : businesses.some((t) => t.id === enquiry.businessId);
+  const seat = seats.find((m) => m.business.id === enquiry.businessId);
+  const mine = enquiry.crewId ? ledCrews.some((c) => c.id === enquiry.crewId) : Boolean(seat);
+  const canWork = enquiry.crewId ? mine : runsTheBusiness(seat?.memberRole);
 
   return (
     <EnquiryDetail
       enquiry={enquiry}
       mine={mine}
+      canWork={canWork}
       nowIso={stampNowIso()}
       meId={user.id}
       /* online payment is a business's enquiry on a configured rail — a crew has no

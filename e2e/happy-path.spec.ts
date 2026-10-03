@@ -1280,65 +1280,79 @@ test.describe.serial("DanceOS, end to end", () => {
     await owner.getByRole("link", { name: `Private Sessions enquiry from ${learnerName}` }).click();
     await owner.waitForURL(/\/inbox\/enquiries\/[0-9a-f-]+$/);
     await expect(owner.getByText("WHAT THEY ASKED FOR")).toBeVisible();
+    /* ⚠⚠ RE-CUT 3 Oct 2026 — the user's own process, agreed point by point
+       (`20261003140000`): the business ACCEPTS the enquiry before it prices it; a
+       quote is lines or one total with an advance and a valid-until; the sender
+       accepts it whole or asks for a revision WITH A REASON; the project is then
+       on, paid online or recorded by hand; once money has moved, ending it is
+       terms the other side answers; and completing it takes both ends. */
+    await expect(owner.getByTestId("enquiry-stage")).toHaveText("New");
+    await owner.getByRole("button", { name: "Accept enquiry" }).click();
+    await expect(owner.getByTestId("enquiry-stage")).toHaveText("Accepted", { timeout: 15_000 });
     await owner.getByRole("button", { name: "Send a quote" }).click();
-    await owner.getByLabel("Project cost").fill("5000");
-    await owner.getByRole("button", { name: "Send this quote" }).click();
-    await expect(owner.getByTestId("enquiry-stage")).toHaveText("Quoted");
+    await owner.getByRole("button", { name: "One total", exact: true }).click();
+    await owner.getByLabel("Project total").fill("5000");
+    await owner.getByRole("button", { name: "Send quote", exact: true }).click();
+    await expect(owner.getByTestId("enquiry-stage")).toHaveText("Quoted", { timeout: 15_000 });
 
     await learner.goto("/enquiries");
     await learner.getByRole("button", { name: "Sent enquiries" }).click();
     await learner.getByRole("link", { name: `Private Sessions enquiry to ${studioName}` }).click();
     await learner.waitForURL(/\/inbox\/enquiries\/[0-9a-f-]+$/);
     await expect(learner.getByTestId("quote-1-state")).toHaveText("Waiting on an answer");
-    /* ⚠⚠ RE-CUT 3 Oct 2026 (the user: "when accepting or rejecting quote for an
-       enquiry should get option to resend again for the Revised Quote or Cancel
-       Enquiry … same closing enquiry option should be with the person receiving
-       it as well with option to do completed status … payment for enquiry should
-       connect to payments"). Declining IS asking for a revision now, and the
-       enquiry stays open; the business sends quote #2; the sender accepts it and
-       is offered a real Pay button (the Cashfree window itself is not driven);
-       the business records the advance by hand, then marks it Completed through
-       its confirm — and the sender reads who closed it. */
-    await learner.getByRole("button", { name: "Ask for a revised quote" }).click();
-    await expect(learner.getByTestId("enquiry-stage")).toHaveText("In talks", { timeout: 15_000 });
-    await expect(learner.getByTestId("revision-asked")).toBeVisible();
+    /* a revision needs a reason — the sheet will not send without one */
+    await learner.getByRole("button", { name: "Ask to revise" }).click();
+    await learner.getByTestId("ask-revise").getByRole("button", { name: "Ask for a revision" }).click();
+    await expect(learner.getByTestId("ask-revise").getByRole("alert")).toContainText("Say why");
+    await learner.getByTestId("ask-revise").getByLabel("Reason").fill("Could it be four thousand?");
+    await learner.getByTestId("ask-revise").getByRole("button", { name: "Ask for a revision" }).click();
+    await expect(learner.getByTestId("revision-asked")).toBeVisible({ timeout: 15_000 });
+    await expect(learner.getByTestId("revision-asked")).toContainText("Could it be four thousand?");
     await expect(learner.getByTestId("quote-1-state")).toHaveText("Revision asked");
 
     await owner.reload();
-    await expect(owner.getByTestId("revision-asked")).toBeVisible();
+    await expect(owner.getByTestId("revision-asked")).toContainText("Could it be four thousand?");
     await owner.getByRole("button", { name: "Revise the quote" }).click();
     /* the composer starts from the price it revises */
-    await expect(owner.getByLabel("Project cost")).toHaveValue("5000");
-    await owner.getByLabel("Project cost").fill("4000");
-    await owner.getByRole("button", { name: "Send this quote" }).click();
+    await expect(owner.getByLabel("Project total")).toHaveValue("5000");
+    await owner.getByLabel("Project total").fill("4000");
+    await owner.getByRole("button", { name: "Send the revised quote" }).click();
     await expect(owner.getByTestId("enquiry-stage")).toHaveText("Quoted", { timeout: 15_000 });
 
     await learner.reload();
     await expect(learner.getByTestId("quote-2-state")).toHaveText("Waiting on an answer");
     await learner.getByRole("button", { name: "Accept this quote" }).click();
-    await expect(learner.getByTestId("enquiry-stage")).toHaveText("Confirmed", { timeout: 15_000 });
-    /* the payment goes through the rail: the button names the half that is owed,
-       priced by the quote (30% of ₹4,000) */
-    await expect(learner.getByTestId("enquiry-pay")).toHaveText("Pay the advance · ₹1,200");
+    await expect(learner.getByTestId("enquiry-stage")).toHaveText("Ongoing", { timeout: 15_000 });
+    /* the payment goes through the rail: the button names what is owed, priced by
+       the quote (30% of ₹4,000). The Cashfree window itself is not driven. */
+    await expect(learner.getByTestId("enquiry-pay").first()).toHaveText("Pay ₹1,200");
+    await expect(learner.getByTestId("project-total")).toHaveText("₹4,000");
 
     await owner.reload();
-    await owner.getByRole("button", { name: "Record the advance received" }).click();
+    await owner.getByTestId("dues").getByRole("button", { name: "Record received" }).first().click();
     await expect(owner.getByTestId("enquiry-stage")).toHaveText("Advance paid", { timeout: 15_000 });
 
-    /* money has moved, so the sender may no longer cancel — and is told why */
+    /* money has moved, so withdrawing is TERMS the business answers, not an exit */
     await learner.reload();
-    await expect(learner.getByText(/A payment has been made on this enquiry/)).toBeVisible();
-    await expect(learner.getByRole("button", { name: "Cancel enquiry" })).toHaveCount(0);
+    await expect(learner.getByText(/has been paid — propose how much goes back/)).toBeVisible();
 
-    await owner.getByRole("button", { name: "Mark completed" }).click();
-    await expect(owner.getByTestId("close-confirm")).toBeVisible();
-    await owner.getByRole("button", { name: "Yes — mark completed" }).click();
-    await expect(owner.getByTestId("enquiry-stage")).toHaveText("Completed", { timeout: 15_000 });
-    await expect(owner.getByTestId("enquiry-closed-by")).toContainText("by you");
+    /* completion waits for the balance — the button is offered, and off */
+    await expect(owner.getByRole("button", { name: "Mark the project complete" })).toBeDisabled();
+    await owner.getByTestId("dues").getByRole("button", { name: "Record received" }).first().click();
+    await expect(owner.getByTestId("enquiry-stage")).toHaveText("Paid", { timeout: 15_000 });
+    await owner.getByRole("button", { name: "Mark the project complete" }).click();
+    await expect(owner.getByTestId("enquiry-stage")).toHaveText("Completing", { timeout: 15_000 });
+    await expect(owner.getByTestId("completion-waiting")).toBeVisible();
 
     await learner.reload();
-    await expect(learner.getByTestId("enquiry-stage")).toHaveText("Completed");
-    await expect(learner.getByTestId("enquiry-closed-by")).toContainText(studioName);
+    await expect(learner.getByTestId("completion-asked")).toBeVisible();
+    await learner.getByRole("button", { name: "Confirm complete" }).click();
+    await expect(learner.getByTestId("enquiry-stage")).toHaveText("Completed", { timeout: 15_000 });
+    await expect(learner.getByTestId("enquiry-closed-by")).toContainText("by you");
+
+    await owner.reload();
+    await expect(owner.getByTestId("enquiry-stage")).toHaveText("Completed");
+    await expect(owner.getByTestId("enquiry-closed-by")).toContainText(learnerName);
   });
 
   /* ⚠⚠ THE EVENTS TEST WAS HERE AND IS GONE (29 Sep 2026). It was Step 21's

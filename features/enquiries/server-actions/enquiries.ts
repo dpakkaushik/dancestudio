@@ -6,13 +6,20 @@ import { z } from "zod";
 import { LIMITS, withinLimit } from "@/lib/rateLimit";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import {
+  answerEnquiryEnding,
   answerEnquiryQuote,
-  closeEnquiry,
+  cancelEnquiryAddition,
+  declineEnquiryCompletion,
+  endEnquiry,
+  markEnquiryComplete,
   recordEnquiryPayment,
+  respondToEnquiry,
+  retractEnquiryEnding,
   sendEnquiry,
+  sendEnquiryAddition,
   sendEnquiryQuote,
-  setEnquiryStatus,
 } from "@/repositories/enquiries";
+import { sendEnquiryRefunds } from "@/services/refundRail";
 
 /** ⚠ money-adjacent. Step 18's writes. The RPCs decide who may do what — the
  *  sender sends and answers, the business's members quote, move and record —
@@ -24,9 +31,6 @@ export interface EnquiryActionResult {
 }
 
 const TYPE_KEYS = ["celebration", "corporate", "judge", "private", "collab"] as const;
-/* the hand moves left to the business since 3 Oct 2026 — closing is its own door */
-const STAGES = ["new", "in_talks"] as const;
-const OUTCOMES = ["completed", "lost", "cancelled"] as const;
 
 /* an enquiry goes to a BUSINESS or to a CREW (18 Sep 2026) — exactly one, here
    as in the table's CHECK and the RPC */
@@ -43,14 +47,6 @@ const sendSchema = z
   })
   .refine((v) => Boolean(v.businessId) !== Boolean(v.crewId), { message: "an enquiry goes to a business or to a crew" });
 
-const statusSchema = z.object({ enquiryId: z.string().uuid(), status: z.enum(STAGES) });
-const quoteSchema = z.object({
-  enquiryId: z.string().uuid(),
-  costInr: z.number().int().min(1).max(100_000_000),
-  advancePct: z.number().int().min(0).max(100),
-});
-const answerSchema = z.object({ quoteId: z.string().uuid(), accept: z.boolean() });
-const paymentSchema = z.object({ quoteId: z.string().uuid(), part: z.enum(["advance", "balance", "full"]) });
 
 async function requireUser() {
   const supabase = await createSupabaseServerClient();
@@ -90,84 +86,150 @@ export async function sendEnquiryAction(input: z.input<typeof sendSchema>): Prom
   }
 }
 
-export async function setEnquiryStatusAction(input: { enquiryId: string; status: string }): Promise<EnquiryActionResult> {
-  const parsed = statusSchema.safeParse(input);
-  if (!parsed.success) {
-    return { error: "Invalid stage" };
-  }
+/* ═══ THE ENQUIRY'S STEPS (3 Oct 2026) ═══════════════════════════════════════
+   Every rule is the RPC's — who may, in which stage, how much. These validate
+   the shape and pass it on; a refusal comes back in the database's words. */
+
+const reason = z.string().trim().max(500);
+const line = z.object({
+  name: z.string().trim().min(1, "every line needs a name").max(80, "a line's name is up to 80 characters"),
+  qty: z.number().int().min(1).max(9999),
+  unitInr: z.number().int().min(-10_000_000).max(10_000_000).refine((v) => v !== 0, "every line needs a price"),
+});
+const lines = z.array(line).max(30, "up to 30 lines");
+const day = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "not a date");
+
+async function act(op: (s: Awaited<ReturnType<typeof requireUser>>) => Promise<unknown>, enquiryId: string, fallback: string): Promise<EnquiryActionResult> {
   const supabase = await requireUser();
   try {
-    await setEnquiryStatus(supabase, parsed.data.enquiryId, parsed.data.status);
-    revalidateInbox(parsed.data.enquiryId);
+    await op(supabase);
+    revalidateInbox(enquiryId);
     return { error: null };
   } catch (error: unknown) {
-    return { error: error instanceof Error ? error.message : "Could not move that enquiry" };
+    return { error: error instanceof Error ? error.message : fallback };
   }
 }
 
-const closeSchema = z.object({ enquiryId: z.string().uuid(), outcome: z.enum(OUTCOMES) });
+const respondSchema = z.object({ enquiryId: z.string().uuid(), accept: z.boolean(), reason: reason.nullable() });
+export async function respondToEnquiryAction(input: z.input<typeof respondSchema>): Promise<EnquiryActionResult> {
+  const p = respondSchema.safeParse(input);
+  if (!p.success) return { error: p.error.issues[0]?.message ?? "Invalid request" };
+  return act((s) => respondToEnquiry(s, p.data.enquiryId, p.data.accept, p.data.reason || null), p.data.enquiryId, "Could not answer that enquiry");
+}
 
-/** Close an enquiry from either end (3 Oct 2026). */
-export async function closeEnquiryAction(input: { enquiryId: string; outcome: string }): Promise<EnquiryActionResult> {
-  const parsed = closeSchema.safeParse(input);
-  if (!parsed.success) {
-    return { error: "Invalid request" };
-  }
+const quoteSchema = z.object({
+  enquiryId: z.string().uuid(),
+  items: lines.nullable(),
+  lumpInr: z.number().int().min(1).max(100_000_000).nullable(),
+  advancePct: z.number().int().min(0).max(100),
+  validUntil: day.nullable(),
+  note: z.string().trim().max(300).nullable(),
+});
+export async function sendQuoteAction(input: z.input<typeof quoteSchema>): Promise<EnquiryActionResult> {
+  const p = quoteSchema.safeParse(input);
+  if (!p.success) return { error: p.error.issues[0]?.message ?? "Check the quote" };
+  return act((s) => sendEnquiryQuote(s, { ...p.data, note: p.data.note || null }), p.data.enquiryId, "Could not send that quote");
+}
+
+const additionSchema = z.object({
+  enquiryId: z.string().uuid(),
+  items: lines.nullable(),
+  lumpInr: z.number().int().min(-100_000_000).max(100_000_000).nullable(),
+  note: z.string().trim().max(300).nullable(),
+  revises: z.string().uuid().nullable(),
+});
+export async function sendAdditionAction(input: z.input<typeof additionSchema>): Promise<EnquiryActionResult> {
+  const p = additionSchema.safeParse(input);
+  if (!p.success) return { error: p.error.issues[0]?.message ?? "Check the addition" };
+  return act((s) => sendEnquiryAddition(s, { ...p.data, note: p.data.note || null }), p.data.enquiryId, "Could not send that addition");
+}
+
+const quoteRef = z.object({ quoteId: z.string().uuid(), enquiryId: z.string().uuid() });
+export async function cancelAdditionAction(input: z.input<typeof quoteRef>): Promise<EnquiryActionResult> {
+  const p = quoteRef.safeParse(input);
+  if (!p.success) return { error: "Invalid request" };
+  return act((s) => cancelEnquiryAddition(s, p.data.quoteId), p.data.enquiryId, "Could not take that back");
+}
+
+const answerSchema = z.object({
+  quoteId: z.string().uuid(),
+  enquiryId: z.string().uuid(),
+  answer: z.enum(["accept", "revise", "decline"]),
+  reason: reason.nullable(),
+});
+export async function answerQuoteAction(input: z.input<typeof answerSchema>): Promise<EnquiryActionResult> {
+  const p = answerSchema.safeParse(input);
+  if (!p.success) return { error: p.error.issues[0]?.message ?? "Invalid request" };
+  return act((s) => answerEnquiryQuote(s, p.data.quoteId, p.data.answer, p.data.reason || null), p.data.enquiryId, "Could not answer that");
+}
+
+const enquiryRef = z.object({ enquiryId: z.string().uuid() });
+export async function markCompleteAction(input: z.input<typeof enquiryRef>): Promise<EnquiryActionResult> {
+  const p = enquiryRef.safeParse(input);
+  if (!p.success) return { error: "Invalid request" };
+  return act((s) => markEnquiryComplete(s, p.data.enquiryId), p.data.enquiryId, "Could not mark it complete");
+}
+
+const notYetSchema = z.object({ enquiryId: z.string().uuid(), reason: reason.nullable() });
+export async function declineCompletionAction(input: z.input<typeof notYetSchema>): Promise<EnquiryActionResult> {
+  const p = notYetSchema.safeParse(input);
+  if (!p.success) return { error: "Invalid request" };
+  return act((s) => declineEnquiryCompletion(s, p.data.enquiryId, p.data.reason || null), p.data.enquiryId, "Could not answer that");
+}
+
+const endSchema = z.object({
+  enquiryId: z.string().uuid(),
+  reason: z.string().trim().min(1, "say why").max(500),
+  refundInr: z.number().int().min(0).max(100_000_000).nullable(),
+});
+export async function endEnquiryAction(input: z.input<typeof endSchema>): Promise<EnquiryActionResult & { closed?: boolean }> {
+  const p = endSchema.safeParse(input);
+  if (!p.success) return { error: p.error.issues[0]?.message ?? "Invalid request" };
   const supabase = await requireUser();
   try {
-    await closeEnquiry(supabase, parsed.data.enquiryId, parsed.data.outcome);
-    revalidateInbox(parsed.data.enquiryId);
-    return { error: null };
+    const out = await endEnquiry(supabase, p.data.enquiryId, p.data.reason, p.data.refundInr);
+    revalidateInbox(p.data.enquiryId);
+    return { error: null, closed: out.closed };
   } catch (error: unknown) {
-    return { error: error instanceof Error ? error.message : "Could not close that enquiry" };
+    return { error: error instanceof Error ? error.message : "Could not end that" };
   }
 }
 
-export async function sendQuoteAction(input: { enquiryId: string; costInr: number; advancePct: number }): Promise<EnquiryActionResult> {
-  const parsed = quoteSchema.safeParse(input);
-  if (!parsed.success) {
-    return { error: "The cost must be a whole positive amount and the advance a percentage" };
-  }
+const endingSchema = z.object({
+  endingId: z.string().uuid(),
+  enquiryId: z.string().uuid(),
+  answer: z.enum(["accept", "counter", "refuse"]),
+  refundInr: z.number().int().min(0).max(100_000_000).nullable(),
+  reason: reason.nullable(),
+});
+/** ⚠ MONEY: accepting terms files the online refund rows; they are SENT here,
+ *  straight after, so a refund is never a promise left lying in the ledger */
+export async function answerEndingAction(input: z.input<typeof endingSchema>): Promise<EnquiryActionResult> {
+  const p = endingSchema.safeParse(input);
+  if (!p.success) return { error: p.error.issues[0]?.message ?? "Invalid request" };
   const supabase = await requireUser();
   try {
-    await sendEnquiryQuote(supabase, parsed.data.enquiryId, parsed.data.costInr, parsed.data.advancePct);
-    revalidateInbox(parsed.data.enquiryId);
+    const out = await answerEnquiryEnding(supabase, p.data.endingId, p.data.answer, p.data.refundInr, p.data.reason || null);
+    if (out.closed && out.refundOnlineInr > 0) {
+      await sendEnquiryRefunds(supabase, p.data.enquiryId, "DanceOS — agreed refund on an enquiry");
+    }
+    revalidateInbox(p.data.enquiryId);
     return { error: null };
   } catch (error: unknown) {
-    return { error: error instanceof Error ? error.message : "Could not send that quote" };
+    return { error: error instanceof Error ? error.message : "Could not answer those terms" };
   }
 }
 
-export async function answerQuoteAction(input: { quoteId: string; accept: boolean; enquiryId: string }): Promise<EnquiryActionResult> {
-  const parsed = answerSchema.safeParse(input);
-  if (!parsed.success) {
-    return { error: "Invalid request" };
-  }
-  const supabase = await requireUser();
-  try {
-    await answerEnquiryQuote(supabase, parsed.data.quoteId, parsed.data.accept);
-    revalidateInbox(input.enquiryId);
-    return { error: null };
-  } catch (error: unknown) {
-    return { error: error instanceof Error ? error.message : "Could not answer that quote" };
-  }
+const endingRef = z.object({ endingId: z.string().uuid(), enquiryId: z.string().uuid() });
+export async function retractEndingAction(input: z.input<typeof endingRef>): Promise<EnquiryActionResult> {
+  const p = endingRef.safeParse(input);
+  if (!p.success) return { error: "Invalid request" };
+  return act((s) => retractEnquiryEnding(s, p.data.endingId), p.data.enquiryId, "Could not take those back");
 }
 
-export async function recordEnquiryPaymentAction(input: {
-  quoteId: string;
-  part: "advance" | "balance" | "full";
-  enquiryId: string;
-}): Promise<EnquiryActionResult> {
-  const parsed = paymentSchema.safeParse(input);
-  if (!parsed.success) {
-    return { error: "Invalid request" };
-  }
-  const supabase = await requireUser();
-  try {
-    await recordEnquiryPayment(supabase, parsed.data.quoteId, parsed.data.part);
-    revalidateInbox(input.enquiryId);
-    return { error: null };
-  } catch (error: unknown) {
-    return { error: error instanceof Error ? error.message : "Could not record that" };
-  }
+const paymentSchema = z.object({ quoteId: z.string().uuid(), enquiryId: z.string().uuid(), part: z.enum(["advance", "balance", "full", "addition"]) });
+export async function recordEnquiryPaymentAction(input: z.input<typeof paymentSchema>): Promise<EnquiryActionResult> {
+  const p = paymentSchema.safeParse(input);
+  if (!p.success) return { error: "Invalid request" };
+  return act((s) => recordEnquiryPayment(s, p.data.quoteId, p.data.part), p.data.enquiryId, "Could not record that");
 }

@@ -16,12 +16,12 @@ import { InvertedPanel } from "@/components/ui/InvertedPanel";
 import { TopPanel } from "@/components/ui/TopPanel";
 import {
   ENQ_CLOSED,
+  ENQ_ENDED,
   ENQ_STAGES,
   ENQ_STAGE_WORD,
   ENQ_TYPES,
   enquiryStage,
   enquiryValueInr,
-  liveQuoteOf,
   type Enquiry,
   type EnquiryTypeKey,
 } from "@/types/enquiry";
@@ -775,21 +775,24 @@ export function InboxScreen({
   /* ── enquiries desk ── */
   const side = enqSide === "out" ? enquiriesOut : enquiriesIn;
   const st = (e: Enquiry) => enquiryStage(e);
-  const open2 = side.filter((e) => ["new", "in_talks", "quoted"].includes(st(e)));
-  const won = side.filter((e) => ["confirmed", "advance_paid", "paid", "completed"].includes(st(e)));
-  const lost = side.filter((e) => st(e) === "lost" || st(e) === "cancelled");
+  /* the three phases of the 3 Oct 2026 process: being priced, a project that is
+     on, and how it finished — completed, or ended (declined · withdrawn · called off) */
+  const open2 = side.filter((e) => ["new", "accepted", "quoted"].includes(st(e)));
+  const onNow = side.filter((e) => ["ongoing", "advance_paid", "paid", "completing"].includes(st(e)));
+  const done2 = side.filter((e) => st(e) === "completed");
+  const ended = side.filter((e) => ENQ_ENDED.has(st(e)));
   const sum = (a: Enquiry[]) => a.reduce((x, e) => x + enquiryValueInr(e), 0);
   const tiles: Array<[string, string, string, string]> =
     enqSide === "out"
       ? [
           [String(open2.length), "Waiting", moneyShort(sum(open2)), "#3B82F6"],
-          [String(won.length), "Accepted", moneyShort(sum(won)), "#22C55E"],
-          [String(side.filter((e) => liveQuoteOf(e)).length), "Quoted back", `${lost.length} declined`, "#F59E0B"],
+          [String(onNow.length), "On", moneyShort(sum(onNow)), "#22C55E"],
+          [String(done2.length), "Completed", `${ended.length} ended`, "#F59E0B"],
         ]
       : [
           [String(open2.length), "Open", moneyShort(sum(open2)), "#3B82F6"],
-          [String(won.length), "Won", moneyShort(sum(won)), "#22C55E"],
-          [`${Math.round((100 * won.length) / Math.max(1, won.length + lost.length))}%`, "Win rate", `${lost.length} lost`, "#F59E0B"],
+          [String(onNow.length + done2.length), "Won", moneyShort(sum([...onNow, ...done2])), "#22C55E"],
+          [`${Math.round((100 * (onNow.length + done2.length)) / Math.max(1, onNow.length + done2.length + ended.length))}%`, "Win rate", `${ended.length} ended`, "#F59E0B"],
         ];
   /* ⚠ A CLOSED ENQUIRY IS IN DONE AND NOWHERE ELSE (2 Oct 2026, the user: "once
      enquiry is closed should be in done section only"). Won and lost ones were

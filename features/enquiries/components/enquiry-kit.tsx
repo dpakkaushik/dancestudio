@@ -6,6 +6,7 @@ import { EnqIcon, agoWords, dateWords, moneyShort } from "@/features/inbox/compo
 import { DISC_RADIUS, DOS_DISPLAY } from "@/lib/design/tokens";
 import { photoUrl } from "@/lib/media/photo";
 import {
+  ENQ_ENDED,
   ENQ_ROAD,
   ENQ_STAGE_WORD,
   ENQ_TINT,
@@ -32,15 +33,24 @@ import {
 
 /** the colour a stage reads in — one map, so the card's chip and the road agree */
 export const stageTint = (s: EnquiryStatus): string =>
-  s === "completed" || s === "paid" || s === "confirmed" || s === "advance_paid"
+  s === "completed" || s === "paid" || s === "confirmed" || s === "advance_paid" || s === "ongoing" || s === "completing"
     ? "#22C55E"
-    : s === "lost"
+    : s === "lost" || s === "declined"
       ? "#F87171"
-      : s === "cancelled"
+      : s === "cancelled" || s === "withdrawn" || s === "called_off"
         ? "#94A3B8"
         : s === "quoted"
           ? "#F59E0B"
           : "#3B82F6";
+
+/** the sentence under a road that ENDED rather than arrived */
+const endedWords: Partial<Record<EnquiryStatus, string>> = {
+  declined: "The business declined this enquiry.",
+  withdrawn: "This enquiry was withdrawn.",
+  called_off: "This project was called off.",
+  lost: "This enquiry is closed as lost.",
+  cancelled: "This enquiry was cancelled.",
+};
 
 const initials = (name: string): string =>
   name
@@ -94,8 +104,8 @@ export function EnqPair({ e, size = 34 }: { e: Enquiry; size?: number }) {
  *  card's: segments and the current word. The full one names every step. */
 export function EnquiryRoad({ stage, compact = false }: { stage: EnquiryStatus; compact?: boolean }) {
   const at = roadStep(stage);
-  /* lost and cancelled are the road ENDING, not steps on it */
-  const lost = stage === "lost" || stage === "cancelled";
+  /* declined, withdrawn and called off are the road ENDING, not steps on it */
+  const lost = ENQ_ENDED.has(stage);
   const c = stageTint(stage);
   return (
     <div data-testid="enquiry-road" aria-label={`Stage: ${ENQ_STAGE_WORD[stage]}`}>
@@ -117,7 +127,7 @@ export function EnquiryRoad({ stage, compact = false }: { stage: EnquiryStatus; 
         </div>
       )}
       {lost && !compact ? (
-        <div style={{ fontSize: 10.5, fontWeight: 800, color: c, marginTop: 6 }}>{stage === "cancelled" ? "This enquiry was cancelled." : "This enquiry is closed as lost."}</div>
+        <div style={{ fontSize: 10.5, fontWeight: 800, color: c, marginTop: 6 }}>{endedWords[stage] ?? "This enquiry ended."}</div>
       ) : null}
     </div>
   );
@@ -137,7 +147,8 @@ export function EnquiryCard({ e, out, nowIso }: { e: Enquiry; out: boolean; nowI
   const fields = e.fields.filter(([k]) => k !== "Enquiry");
   const headline = fields[0]?.[1] ?? label;
   const when = e.dates.length ? `${dateWords(e.dates[0])}${e.dates.length > 1 ? ` +${e.dates.length - 1}` : ""}` : null;
-  const quotes = e.quotes.length;
+  /* additions are not quotes — the count is of the base quote's revisions */
+  const quotes = e.quotes.filter((q) => q.kind === "quote").length;
   return (
     <Link
       href={`/inbox/enquiries/${e.id}`}

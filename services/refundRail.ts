@@ -2,7 +2,15 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { fetchCashfreeRefund, isCashfreeConfigured, refundCashfreePayment, rupeesToPaise } from "@/lib/cashfree/api";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { applyRefundUpdate } from "@/repositories/payments";
-import { attachSettledRefundReference, findRailPendingRefunds, findUnsentRefunds, type RailRefund, type RefundRailScope } from "@/repositories/refunds";
+import {
+  attachSettledRefundReference,
+  bindRefundReference,
+  findRailPendingRefunds,
+  findUnsentEnquiryRefunds,
+  findUnsentRefunds,
+  type RailRefund,
+  type RefundRailScope,
+} from "@/repositories/refunds";
 
 /** ⚠ MONEY. THE TWO HALVES OF A REFUND THE APP HAD ONLY ONE OF (30 Sep 2026).
  *
@@ -84,6 +92,43 @@ export async function sendUnsentRefunds(supabase: SupabaseClient, scope: RefundR
   }
   for (const r of rows) {
     out[await sendRefundToRail(supabase, r, note)] += 1;
+  }
+  return out;
+}
+
+/** ⚠ MONEY. SEND THE ONLINE PART OF AGREED ENDING TERMS (3 Oct 2026). Called
+ *  right after `answer_enquiry_ending` accepted terms — which is the only thing
+ *  that files these rows, and it admits only the side being asked. Either side
+ *  may be the one accepting, and the PAYER is not somebody
+ *  `attach_settled_refund_reference` admits, so this runs as the service role
+ *  on exactly the enquiry's own orders. A failed send leaves the row `pending`
+ *  and unsent, which the studio's ledger then offers to send again. */
+export async function sendEnquiryRefunds(caller: SupabaseClient, enquiryId: string, note: string): Promise<RailSendResult> {
+  const out: RailSendResult = { sent: 0, skipped: 0, failed: 0 };
+  let admin: SupabaseClient;
+  let rows: RailRefund[];
+  try {
+    /* ⚠ the quote ids are read with the CALLER's client, so RLS decides which
+       enquiry this may touch — the service role is only the hand that sends */
+    const { data: quotes, error } = await caller.from("enquiry_quotes").select("id").eq("enquiry_id", enquiryId);
+    if (error) return out;
+    admin = createSupabaseAdminClient();
+    rows = await findUnsentEnquiryRefunds(admin, ((quotes ?? []) as Array<{ id: string }>).map((q) => q.id));
+  } catch {
+    return out;
+  }
+  for (const r of rows) {
+    if (!isCashfreeConfigured() || !canSend(r)) {
+      out.skipped += 1;
+      continue;
+    }
+    try {
+      const cf = await refundCashfreePayment({ providerOrderId: r.providerOrderId, refundId: r.id, amountInr: r.amountInr, note });
+      await bindRefundReference(admin, r.id, String(cf.cf_refund_id));
+      out.sent += 1;
+    } catch {
+      out.failed += 1;
+    }
   }
   return out;
 }

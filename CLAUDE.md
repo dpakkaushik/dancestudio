@@ -2,6 +2,46 @@
 
 ## LAST SESSION (3 Oct 2026) — replaced on every push (Rule 13)
 
+> ### AN ENQUIRY RUNS END TO END, AND THE LOWER HALVES ARE GLASS (3 Oct 2026, latest) — ⚠⚠ Rule 9 (MONEY: refunds, additions, the order subject) · ONE MIGRATION WRITTEN, DRY-RUN **110/110** AND **HELD** (#0ba) · COMMITTED, NOT PUSHED
+> **The translucent lower panel** (`c9d38f8`, the user: *"lower half of discover
+> inbox and home should be transluscent with double tone effect"*): `.dos-invert`
+> is two tones over a gradient with two soft glows and a lit top edge, measured
+> 4.66:1 / 4.75:1 on its quietest tier. ⚠ **No `backdrop-filter`**: it would make
+> the panel a containing block for every portalled-from-inside fixed sheet.
+> `shoot-invert` 26/26. Row C114.
+> **The enquiry, rebuilt to the user's own process** (every point answered by
+> them across four rounds — R62): the business **accepts or declines (with a
+> reason)** a new enquiry; a quote is **line items or one total**, an advance, a
+> **valid-until** (expired quotes cannot be accepted), a note; the sender
+> **accepts it whole or asks for a revision with a reason**; accepting turns the
+> project **on**; **additions and reductions** at any stage, each accepted or
+> declined (with a reason), a declined one revisable; **completion takes both
+> ends**; ending it **before money is immediate**, **after money is refund terms**
+> the other side accepts, counters or refuses (refused → DanceOS support); an
+> accepted ending sends its online part through Cashfree and records the rest as
+> handed back. Only **owners and managers** work an enquiry (a crew's leader).
+> * `20261003140000_an_enquiry_runs_end_to_end` — the status CHECK widened, the
+>   in-flight rows moved (`in_talks → accepted`, the paid ones `→ ongoing`), two
+>   new tables (`enquiry_quote_items`, `enquiry_endings`, each SELECT-only RLS),
+>   four columns on quotes (`kind`, `valid_until`, `note`, `balance_paid_inr` …),
+>   ten new doors, four dropped (`close_enquiry`, `set_enquiry_status` and the old
+>   two-argument quote/answer), the payment order and applier re-cut, and the
+>   `addition` part on `orders`. **Dry run 110/110, rolled back.**
+> * App: `EnquiryDetail` rewritten, `QuoteComposer` (new), the kit's road and
+>   tints, the Inbox tiles (Open · Won · Win rate over the new phases), Earnings
+>   (the balance actually paid, additions, **hand-backs as a refund expense**).
+> * ⚠⚠ **A Rule-9 hole found by reading my own code before the push**:
+>   `sendEnquiryRefunds` read the quote ids with the SERVICE ROLE off an
+>   `enquiryId` the client sent beside a separate `endingId`, so accepting your
+>   own terms could aim the send at somebody else's enquiry. The ids are read
+>   with the CALLER's client now; the service role only sends.
+> * **Verified:** typecheck 0 · lint 0 · `audit:reads` 0 · build green · dry run
+>   110/110. **Re-cut, NOT run** (they need the migrated schema):
+>   `rls-proof-enquiries` checks 6–10, the happy path's enquiry segment, the demo
+>   seeder's enquiries, `shoot-inbox`'s declined plant.
+> * ⚠ **The app and the migration go TOGETHER**: the live bundle's buttons call
+>   doors this migration drops, so apply and deploy are one step (#0ba).
+
 > ### THE FIGURES AND THE CHIPS ON ONE LINE, THE POSTER'S SPACE KEPT ON HOMES TOO, AND THE INBOX IN THREE SHAPES (3 Oct 2026, latest) — no migration · ✅ PUSHED AND LIVE (`b507374`: Vercel READY, alias confirmed on the sha through the API, and ON THE LIVE SITE `stranger-smoke` 8/8 · the row one line at 430/390/360/320 · `shoot-inbox` 39/39 · `shoot-hero` 189/189), pushed on the user's *"push to live"* with the whole e2e suite running on `:3100` — it finished **56/56 in 18.5 min on one worker**, no red at any point
 > The user: *"public view follow following in line with stats, qr code button
 > row. always"*, *"and poster if not updated on should leave space on home as
@@ -10027,6 +10067,24 @@ summary; the report has the evidence.
 
 ## NEXT TO DO — replaced on every push (Rule 13)
 
+0ba. **⚠⚠ ONE MIGRATION WRITTEN, DRY-RUN 110/110 AND HELD — `20261003140000_an_enquiry_runs_end_to_end`.**
+   ⚠ Rule 9 (money). The only pending file. **Apply and deploy are one step**:
+   the live bundle calls `close_enquiry`, `set_enquiry_status` and the old
+   quote/answer signatures, which this migration drops. On the user's word:
+```
+   $env:NODE_PATH="<scratchpad with pg>\node_modules"
+   node scripts/dry-run-migration.js supabase/migrations/20261003140000_an_enquiry_runs_end_to_end.sql scripts/dry-run-checks/20261003140000.js   # 110/110
+   powershell -NoProfile -ExecutionPolicy Bypass -File scripts/db-push.ps1 -DryRun   # exactly this one file
+   powershell -NoProfile -ExecutionPolicy Bypass -File scripts/db-push.ps1 2>&1 | Select-String -NotMatch 'Skipping migration|Warning: failed to cache|prerequisite for local'
+   # notify pgrst 'reload schema' — new tables, columns and signatures
+   git push origin main   # straight after, then read Vercel's list for the sha
+   powershell -NoProfile -ExecutionPolicy Bypass -File scripts/run-proofs.ps1 enquiries payments notifications crews
+   # then shoot-inbox, the happy path's enquiry segment, the whole suite on :3100
+```
+   ⚠ The re-cut proof, e2e segment, seeder block and shoot have NOT run — they
+   need the migrated schema. ⚠ A crew's ledger has no expense half, so a refund a
+   crew hands back when a project ends is not drawn on its Earnings (backlog).
+
 0b9. **~~ONE MIGRATION WRITTEN, DRY-RUN 10/10 AND HELD~~ — ✅ APPLIED 2 Oct 2026**
    on the user's word, read back live 6/6, and `test2` renamed "Deepak Kaushik"
    and moved to Gurugram. Nothing is pending in the database. The record of what
@@ -17662,6 +17720,7 @@ Home. **Do not "restore parity" on these.**
 | C109 | The public page's Schedule is the one white bar under the action row, and since 3 Oct (C106) the first thing in the lower panel | **The last thing in the TOP squircle**, under the contact buttons (`ScheduleBar`), on a studio's/artist's page, a person's and the Profile tab; the lower panel opens on NEXT SESSIONS | 3 Oct 2026, the user: *"schedule on public view should be part of top half with contact buttons"* |
 | C110 | The place on the hero is underlined and opens Maps (10694-10698); a studio's reads "area, city" | **Plain text, the city alone**, on every profile and home (`HeroPlace` is a span) — a studio's way to Maps is its Location button | 3 Oct 2026, the user: *"Location written in words next to dob should not be a hyperlink for all profiles and only city name should be there"* |
 | C111 | C105: a hero with no poster draws no rail | **Every hero keeps the banner's space** — profile pages and homes — the empty banner on the profile's gradient, the corner pinned to it; the no-rail branch and `.dos-corner-plain` are deleted | 3 Oct 2026, the user: *"profiles who havent uploaded poster on profiles should leave that space in public view it is messing up the alignment"*, then *"and poster if not updated on should leave space on home as well"* — reversing C105's no-rail half |
+| R62 | S_enqdetail (5380) moves an enquiry by a status menu, quotes one figure with an advance, and closes it from the business's side; 3 Oct 2026 (earlier) gave the sender Accept · Ask to revise · Cancel and the business Completed · Lost · Cancelled | **AN ENQUIRY IS A PROCESS, NOT A STATUS** (`20261003140000`): the business accepts or declines (with a reason) a new enquiry; a quote is line items or one total, an advance and a valid-until; the sender accepts it whole or asks for a revision with a reason; accepting puts the project ON; additions and reductions at any stage, each answered; completion needs BOTH ends; ending it before money is immediate (withdrawn by the sender, called off by the business), after money is refund TERMS the other side accepts, counters or refuses. Only owners and managers (a crew's leader) work it. ⚠ Rule 9: an accepted ending's online part is a refund on the enquiry's own orders, sent through Cashfree; the rest is recorded as handed back and is an expense on Earnings | 3 Oct 2026, the user's enquiry spec and their answers to every open point across four rounds ("perfect — whats missing", "whats left — 1. true … 10. true") |
 | C114 | C34/C39: the inverted panel is OPAQUE — `background: var(--solid)` of the other theme | **TRANSLUCENT AND TWO-TONED**: tone B at 86–88% with tone A washing in from the top-left and two faint glows (sky, fuchsia) at opposite corners, a light edge and a soft shadow — on every lower half (Discover, Home, the Inbox, and the profile pages that copy Home). ⚠ `--sub`/`--muted` inside are RETUNED for the composited ground and measured by `shoot-invert` (26/26: muted 4.66 dark, 4.75 light). ⚠ **No `backdrop-filter`**: it makes the panel a containing block for the fixed sheets drawn inside it | 3 Oct 2026, the user: *"lower half of dicover inbox and home should be transluscent with double tone effect"* |
 | C113 | C108: the Inbox is two shapes — the top squircle (heading, columns, settings) over one inverted panel holding the sides, the figures, the always-open "Pipeline breakup", the filters and the cards | **THREE SHAPES**: Received · Sent · Completed join the top squircle; the figures and the **Breakup** (renamed, total first, by stage as one split bar with chips) are a middle squircle of their own; the panel is the search to the end of the page. The settings cards lose their second line | 3 Oct 2026, the user: *"Received, sent, completed part of upper half. everything below this and above search enquiries is the middle half and should have seprate segragation. search enquiries to till end of page third half. pipeline breakup name change to Breakup by stage and total written better"* |
 | C112 | The figures row wraps (`flexWrap: wrap`), and with four 44px chips it wrapped on every width, the app's own 430 included (125 + 200 + 44 = 369 in 368) | **ONE LINE, ALWAYS**: the figures are one block that never shrinks (`FIGURE_GROUP`), the chips start at 44px and shrink round into what is left, down to 24px — flexbox's arithmetic, not a pixel guess | 3 Oct 2026, the user: *"public view follow following in line with stats, qr code button row. always"* |

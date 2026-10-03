@@ -144,50 +144,68 @@ try {
   $direct = Fails { Invoke-RestMethod -Method Post -Uri "$base/rest/v1/enquiries" -Headers (Api $l2.token) -Body (@{ business_id = $ta.id; from_user_id = $l2.id; type_key = "corporate"; message = "x" } | ConvertTo-Json) }
   Check 5 "A direct insert into enquiries is refused ($direct)" ($direct -ne "")
 
-  # 6. STAFF QUOTE (the desk is the studio's CRM); the sender cannot quote their own ask
-  $q1 = Rpc (Api $staffA.token) "send_enquiry_quote" @{ p_enquiry_id = $e1.id; p_cost_inr = 45000; p_advance_pct = 30 }
-  $senderQuotes = Fails { Rpc (Api $l1.token) "send_enquiry_quote" @{ p_enquiry_id = $e1.id; p_cost_inr = 1; p_advance_pct = 0 } }
+  # 6. (3 Oct 2026) ONLY OWNERS AND MANAGERS WORK AN ENQUIRY: staff read it and are
+  #    refused the answer and the quote; the sender cannot quote their own ask; the
+  #    owner accepts it and quotes - lines, a 30% advance, valid a week
+  $staffAnswers = Fails { Rpc (Api $staffA.token) "respond_to_enquiry" @{ p_enquiry_id = $e1.id; p_accept = $true; p_reason = $null } }
+  $staffQuotes = Fails { Rpc (Api $staffA.token) "send_enquiry_quote" @{ p_enquiry_id = $e1.id; p_items = $null; p_lump_inr = 45000; p_advance_pct = 30; p_valid_until = $null; p_note = $null } }
+  $senderQuotes = Fails { Rpc (Api $l1.token) "send_enquiry_quote" @{ p_enquiry_id = $e1.id; p_items = $null; p_lump_inr = 1; p_advance_pct = 0; p_valid_until = $null; p_note = $null } }
+  Rpc (Api $ownerA.token) "respond_to_enquiry" @{ p_enquiry_id = $e1.id; p_accept = $true; p_reason = $null } | Out-Null
+  $week = (Get-Date).AddDays(7).ToString("yyyy-MM-dd")
+  $q1 = Rpc (Api $ownerA.token) "send_enquiry_quote" @{ p_enquiry_id = $e1.id
+    p_items = @(@{ name = "Choreography"; qty = 3; unit_inr = 10000 }, @{ name = "Costumes"; qty = 1; unit_inr = 15000 })
+    p_lump_inr = $null; p_advance_pct = 30; p_valid_until = $week; p_note = "Two rehearsals included" }
   $e1b = (Get-Rows (Api $ownerA.token) "enquiries?$SEL&id=eq.$($e1.id)")[0]
-  Check 6 "Staff quote #$($q1.n): Rs $($q1.cost_inr), advance Rs $($q1.advance_inr) ($($q1.advance_pct)%); enquiry now $($e1b.status); sender quoting refused ($senderQuotes)" (
-    ($q1.n -eq 1) -and ($q1.advance_inr -eq 13500) -and ($q1.status -eq "sent") -and ($e1b.status -eq "quoted") -and ($senderQuotes -match "business"))
+  Check 6 "Staff answering refused ($staffAnswers) and quoting refused ($staffQuotes); sender quoting refused ($senderQuotes); owner quote #$($q1.n) Rs $($q1.cost_inr), advance Rs $($q1.advance_inr); enquiry $($e1b.status)" (
+    ($staffAnswers -match "owners and managers") -and ($staffQuotes -match "owners and managers") -and ($senderQuotes -ne "") -and
+    ($q1.n -eq 1) -and ($q1.cost_inr -eq 45000) -and ($q1.advance_inr -eq 13500) -and ($q1.status -eq "sent") -and ($e1b.status -eq "quoted"))
 
-  # 7. A REVISION SUPERSEDES, IT DOES NOT ERASE: #2 is live, #1 is kept as superseded
-  $q2 = Rpc (Api $ownerA.token) "send_enquiry_quote" @{ p_enquiry_id = $e1.id; p_cost_inr = 50000; p_advance_pct = 50 }
-  $hist = @((Get-Rows (Api $l1.token) "enquiry_quotes?select=n,status,cost_inr&enquiry_id=eq.$($e1.id)&order=n") | Where-Object { $null -ne $_ })
-  Check 7 "Revised: #$($q2.n) Rs $($q2.cost_inr) live; history $(($hist | ForEach-Object { "#$($_.n)=$($_.status)" }) -join ', ')" (
-    ($q2.n -eq 2) -and ($hist.Count -eq 2) -and ($hist[0].status -eq "superseded") -and ($hist[1].status -eq "sent"))
+  # 7. A REVISION ASKED FOR, THEN SUPERSEDED: the sender asks with a reason (the
+  #    quote declines, the enquiry stays open), the owner sends #2 and #1 is kept
+  $noReason = Fails { Rpc (Api $l1.token) "answer_enquiry_quote" @{ p_quote_id = $q1.id; p_answer = "revise"; p_reason = $null } }
+  Rpc (Api $l1.token) "answer_enquiry_quote" @{ p_quote_id = $q1.id; p_answer = "revise"; p_reason = "Two performances, not three" } | Out-Null
+  $q2 = Rpc (Api $ownerA.token) "send_enquiry_quote" @{ p_enquiry_id = $e1.id; p_items = $null; p_lump_inr = 50000; p_advance_pct = 50; p_valid_until = $week; p_note = $null }
+  $hist = @((Get-Rows (Api $l1.token) "enquiry_quotes?select=n,status,cost_inr,answer_reason&enquiry_id=eq.$($e1.id)&kind=eq.quote&order=n") | Where-Object { $null -ne $_ })
+  Check 7 "Revision without a reason refused ($noReason); #1 $($hist[0].status) with its reason kept; #$($q2.n) Rs $($q2.cost_inr) live" (
+    ($noReason -match "what should change") -and ($q2.n -eq 2) -and ($hist.Count -eq 2) -and ($hist[0].answer_reason -eq "Two performances, not three") -and ($hist[1].status -eq "sent"))
 
   # 8. ONLY THE PERSON QUOTED ANSWERS: the studio cannot accept its own price, a
-  #    superseded quote cannot be answered, the sender accepts the live one
-  $ownerAccepts = Fails { Rpc (Api $ownerA.token) "answer_enquiry_quote" @{ p_quote_id = $q2.id; p_accept = $true } }
-  $deadAccept = Fails { Rpc (Api $l1.token) "answer_enquiry_quote" @{ p_quote_id = $q1.id; p_accept = $true } }
-  $acc = Rpc (Api $l1.token) "answer_enquiry_quote" @{ p_quote_id = $q2.id; p_accept = $true }
+  #    replaced quote cannot be answered, the sender accepts the live one - the project is ON
+  $ownerAccepts = Fails { Rpc (Api $ownerA.token) "answer_enquiry_quote" @{ p_quote_id = $q2.id; p_answer = "accept"; p_reason = $null } }
+  $deadAccept = Fails { Rpc (Api $l1.token) "answer_enquiry_quote" @{ p_quote_id = $q1.id; p_answer = "accept"; p_reason = $null } }
+  Rpc (Api $l1.token) "answer_enquiry_quote" @{ p_quote_id = $q2.id; p_answer = "accept"; p_reason = $null } | Out-Null
   $e1c = (Get-Rows (Api $l1.token) "enquiries?$SEL&id=eq.$($e1.id)")[0]
-  Check 8 "Studio answering refused ($ownerAccepts); superseded quote refused ($deadAccept); sender accepts -> $($acc.status), enquiry $($e1c.status)" (
-    ($ownerAccepts -match "quoted") -and ($deadAccept -match "no longer") -and ($acc.status -eq "accepted") -and ($e1c.status -eq "confirmed"))
+  $q2c = @($e1c.enquiry_quotes | Where-Object { $_.id -eq $q2.id })[0]
+  Check 8 "Studio answering refused ($ownerAccepts); replaced quote refused ($deadAccept); sender accepts -> quote $($q2c.status), enquiry $($e1c.status)" (
+    ($ownerAccepts -match "person who was quoted") -and ($deadAccept -match "no longer") -and ($q2c.status -eq "accepted") -and ($e1c.status -eq "ongoing"))
 
-  # 9. MONEY IS RECORDED BY THE BUSINESS: the sender cannot; the advance once,
-  #    then the balance makes it Paid (3 Oct 2026: Won is gone - Paid is the money,
-  #    Completed is the business closing it)
+  # 9. MONEY IS RECORDED BY OWNERS AND MANAGERS: the sender cannot; staff cannot; the
+  #    advance once, then the balance; then the project is completed from both ends
   $senderPays = Fails { Rpc (Api $l1.token) "record_enquiry_payment" @{ p_quote_id = $q2.id; p_part = "advance" } }
-  $adv = Rpc (Api $ownerA.token) "record_enquiry_payment" @{ p_quote_id = $q2.id; p_part = "advance" }
+  $staffPays = Fails { Rpc (Api $staffA.token) "record_enquiry_payment" @{ p_quote_id = $q2.id; p_part = "advance" } }
+  $early = Fails { Rpc (Api $ownerA.token) "mark_enquiry_complete" @{ p_enquiry_id = $e1.id } }
+  Rpc (Api $ownerA.token) "record_enquiry_payment" @{ p_quote_id = $q2.id; p_part = "advance" } | Out-Null
   $twice = Fails { Rpc (Api $ownerA.token) "record_enquiry_payment" @{ p_quote_id = $q2.id; p_part = "advance" } }
+  Rpc (Api $ownerA.token) "record_enquiry_payment" @{ p_quote_id = $q2.id; p_part = "balance" } | Out-Null
+  Rpc (Api $ownerA.token) "mark_enquiry_complete" @{ p_enquiry_id = $e1.id } | Out-Null
   $e1d = (Get-Rows (Api $ownerA.token) "enquiries?$SEL&id=eq.$($e1.id)")[0]
-  $bal = Rpc (Api $ownerA.token) "record_enquiry_payment" @{ p_quote_id = $q2.id; p_part = "balance" }
+  Rpc (Api $l1.token) "mark_enquiry_complete" @{ p_enquiry_id = $e1.id } | Out-Null
   $e1e = (Get-Rows (Api $ownerA.token) "enquiries?$SEL&id=eq.$($e1.id)")[0]
-  Check 9 "Sender recording refused ($senderPays); advance -> $($e1d.status); again refused ($twice); balance -> $($e1e.status), full_paid_at set: $([bool]$bal.full_paid_at)" (
-    ($senderPays -match "business") -and ($null -ne $adv.advance_paid_at) -and ($e1d.status -eq "advance_paid") -and ($twice -match "already") -and ($null -ne $bal.full_paid_at) -and ($e1e.status -eq "paid"))
+  $q2e = @($e1e.enquiry_quotes | Where-Object { $_.id -eq $q2.id })[0]
+  Check 9 "Sender recording refused ($senderPays); staff refused ($staffPays); completing early refused ($early); advance twice refused ($twice); owner marks -> $($e1d.status); sender confirms -> $($e1e.status), full_paid_at set: $([bool]$q2e.full_paid_at)" (
+    ($senderPays -ne "") -and ($staffPays -match "owners and managers") -and ($early -match "still due") -and ($twice -match "already") -and
+    ($e1d.status -eq "completing") -and ($e1e.status -eq "completed") -and ($null -ne $q2e.full_paid_at))
 
-  # 10. the stage menu is the business's: the sender cannot move it; staff of another
-  #     business cannot; the artist moves their own to Lost, and a lost enquiry takes no quote
-  $senderMoves = Fails { Rpc (Api $l1.token) "set_enquiry_status" @{ p_enquiry_id = $e2.id; p_status = "in_talks" } }
-  $strangerMoves = Fails { Rpc (Api $staffA.token) "set_enquiry_status" @{ p_enquiry_id = $e2.id; p_status = "in_talks" } }
-  # (3 Oct 2026) closing is its own door now - set_enquiry_status moves New / In talks only
-  Rpc (Api $ownerB.token) "close_enquiry" @{ p_enquiry_id = $e2.id; p_outcome = "lost" } | Out-Null
-  $closedQuote = Fails { Rpc (Api $ownerB.token) "send_enquiry_quote" @{ p_enquiry_id = $e2.id; p_cost_inr = 12000; p_advance_pct = 0 } }
-  $e2b = (Get-Rows (Api $ownerB.token) "enquiries?$SEL&id=eq.$($e2.id)")[0]
-  Check 10 "Sender cannot move the stage ($senderMoves); another business cannot ($strangerMoves); the artist marks Lost -> $($e2b.status); quoting a closed one refused ($closedQuote)" (
-    ($senderMoves -ne "") -and ($strangerMoves -ne "") -and ($e2b.status -eq "lost") -and ($closedQuote -match "closed"))
+  # 10. answering a new enquiry is the business's: the sender cannot, staff of another
+  #     business cannot; the artist declines theirs with a reason, and a closed enquiry takes no quote
+  $senderMoves = Fails { Rpc (Api $l1.token) "respond_to_enquiry" @{ p_enquiry_id = $e2.id; p_accept = $true; p_reason = $null } }
+  $strangerMoves = Fails { Rpc (Api $staffA.token) "respond_to_enquiry" @{ p_enquiry_id = $e2.id; p_accept = $true; p_reason = $null } }
+  $bareDecline = Fails { Rpc (Api $ownerB.token) "respond_to_enquiry" @{ p_enquiry_id = $e2.id; p_accept = $false; p_reason = $null } }
+  Rpc (Api $ownerB.token) "respond_to_enquiry" @{ p_enquiry_id = $e2.id; p_accept = $false; p_reason = "Booked that weekend" } | Out-Null
+  $closedQuote = Fails { Rpc (Api $ownerB.token) "send_enquiry_quote" @{ p_enquiry_id = $e2.id; p_items = $null; p_lump_inr = 12000; p_advance_pct = 0; p_valid_until = $null; p_note = $null } }
+  $e2b = (Get-Rows (Api $ownerB.token) "enquiries?select=status,close_reason&id=eq.$($e2.id)")[0]
+  Check 10 "Sender cannot answer ($senderMoves); another business cannot ($strangerMoves); declining needs a reason ($bareDecline); declined -> $($e2b.status) '$($e2b.close_reason)'; quoting a closed one refused ($closedQuote)" (
+    ($senderMoves -ne "") -and ($strangerMoves -ne "") -and ($bareDecline -match "say why") -and ($e2b.status -eq "declined") -and ($e2b.close_reason -eq "Booked that weekend") -and ($closedQuote -match "closed"))
 
   # 11. quotes are as private as the enquiry: the bystander and the public read none
   $l2Q = Get-Rows (Api $l2.token) "enquiry_quotes?select=id&enquiry_id=eq.$($e1.id)"

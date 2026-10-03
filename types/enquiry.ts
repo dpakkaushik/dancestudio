@@ -135,54 +135,119 @@ export const enquiryTypesFor = (kind: BusinessType): EnquiryType[] => ENQ_TYPES.
 export const CREW_ENQUIRY_TYPES: EnquiryTypeKey[] = ["celebration", "corporate", "collab"];
 export const enquiryTypesForCrew = (): EnquiryType[] => ENQ_TYPES.filter((t) => CREW_ENQUIRY_TYPES.includes(t.k));
 
-/** The stages, in the prototype's own words and order (ENQ_STATUSES 4938). */
-/** ⚠ 3 Oct 2026: **Won is gone** — Paid is the money landing in full and
- *  Completed is the business saying the job is done, which were one word before
- *  and are two moments. **Cancelled** is the third way an enquiry ends: either
- *  end may call it off (the sender only before any money has moved). */
-export type EnquiryStatus = "new" | "in_talks" | "quoted" | "confirmed" | "advance_paid" | "paid" | "completed" | "lost" | "cancelled";
+/** THE STAGES (3 Oct 2026, the user's end-to-end enquiry, agreed point by point).
+ *
+ *  An enquiry travels New → Accepted → Quoted → Ongoing → (Advance paid → Paid,
+ *  read off the MONEY, never stored) → Completing → Completed, and ends one of
+ *  three other ways: Declined (the business, at the start), Withdrawn (the
+ *  sender), Called off (the business, later). The legacy words stay in the union
+ *  because old closed rows still carry them — Lost and Cancelled are printed as
+ *  they always were; nothing new writes any of the legacy six. */
+export type EnquiryStatus =
+  | "new"
+  | "accepted"
+  | "quoted"
+  | "ongoing"
+  | "advance_paid"
+  | "paid"
+  | "completing"
+  | "completed"
+  | "declined"
+  | "withdrawn"
+  | "called_off"
+  // legacy, read only
+  | "in_talks"
+  | "confirmed"
+  | "lost"
+  | "cancelled";
 
 export const ENQ_STAGE_WORD: Record<EnquiryStatus, string> = {
   new: "New",
-  in_talks: "In talks",
+  accepted: "Accepted",
   quoted: "Quoted",
-  confirmed: "Confirmed",
+  ongoing: "Ongoing",
   advance_paid: "Advance paid",
   paid: "Paid",
+  completing: "Completing",
   completed: "Completed",
+  declined: "Declined",
+  withdrawn: "Withdrawn",
+  called_off: "Called off",
+  in_talks: "In talks",
+  confirmed: "Confirmed",
   lost: "Lost",
   cancelled: "Cancelled",
 };
 
-export const ENQ_STAGES: EnquiryStatus[] = ["new", "in_talks", "quoted", "confirmed", "advance_paid", "paid", "completed", "lost", "cancelled"];
+/** THE ROAD AN ENQUIRY TRAVELS, in the order it is travelled. The tracker on
+ *  every card and the detail page draws this; the endings are the road ending. */
+export const ENQ_ROAD: EnquiryStatus[] = ["new", "accepted", "quoted", "ongoing", "advance_paid", "paid", "completing", "completed"];
 
-/** the three ways an enquiry ENDS — everything under Completed in the Inbox */
-export const ENQ_CLOSED: ReadonlySet<EnquiryStatus> = new Set(["completed", "lost", "cancelled"]);
+/** every way an enquiry ENDS — the Inbox's Completed side holds these */
+export const ENQ_CLOSED: ReadonlySet<EnquiryStatus> = new Set(["completed", "declined", "withdrawn", "called_off", "lost", "cancelled"]);
+/** the three that end it WITHOUT the job being done */
+export const ENQ_ENDED: ReadonlySet<EnquiryStatus> = new Set(["declined", "withdrawn", "called_off", "lost", "cancelled"]);
 
-/** ⚠ THE ROAD AN ENQUIRY TRAVELS, in the order it is travelled (2 Oct 2026, the
- *  user: "better status update"). `ENQ_STAGES` is the order the prototype's
- *  status MENU lists them, which puts Advance paid before Confirmed — the
- *  opposite of what happens. The tracker on every card and the detail page draws
- *  THIS one; Lost and Cancelled are not steps on it but the road ending. */
-export const ENQ_ROAD: EnquiryStatus[] = ["new", "in_talks", "quoted", "confirmed", "advance_paid", "paid", "completed"];
+/** every stage a screen may show, road first, then the endings (filters, the breakup) */
+export const ENQ_STAGES: EnquiryStatus[] = [...ENQ_ROAD, "declined", "withdrawn", "called_off", "lost", "cancelled"];
 
-/** how far along the road a stage is — Lost and Cancelled answer -1 */
+/** how far along the road a stage is — an ending answers -1 */
 export const roadStep = (s: EnquiryStatus): number => ENQ_ROAD.indexOf(s);
 
-export type QuoteStatus = "sent" | "accepted" | "declined" | "superseded";
+export type QuoteStatus = "sent" | "accepted" | "declined" | "superseded" | "cancelled";
+export type QuoteKind = "quote" | "addition";
+
+/** one line of a quote or an addition: a name, a whole quantity, a whole-rupee price */
+export interface QuoteItem {
+  sort: number;
+  name: string;
+  qty: number;
+  unitInr: number;
+  lineInr: number;
+}
 
 export interface EnquiryQuote {
   id: string;
   n: number;
+  /** a quote is the job's price; an addition is something added to a project already on (may be a reduction) */
+  kind: QuoteKind;
   costInr: number;
   advancePct: number;
   advanceInr: number;
   status: QuoteStatus;
   advancePaidAt: string | null;
+  /** a quote: when it was settled in full; an addition: when it was paid */
   fullPaidAt: string | null;
-  /** the person quoted declined this one and asked for a revised quote (3 Oct 2026) */
+  /** the balance actually paid, stamped when it was (a reduction can move it) */
+  balancePaidInr: number | null;
+  /** the person quoted asked for a revised one (a quote) */
   revisionAskedAt: string | null;
+  /** the last day a quote can be accepted, YYYY-MM-DD; null on legacy quotes */
+  validUntil: string | null;
+  note: string | null;
+  /** the sender's reason — for a revision, or for declining an addition */
+  answerReason: string | null;
+  answeredAt: string | null;
+  /** an addition revised from a declined one */
+  revises: string | null;
+  items: QuoteItem[];
   createdAt: string;
+}
+
+/** proposed terms for ending an enquiry after money moved */
+export interface EnquiryEnding {
+  id: string;
+  outcome: "withdrawn" | "called_off";
+  side: "sender" | "business";
+  refundInr: number;
+  reason: string;
+  status: "open" | "accepted" | "countered" | "refused" | "retracted";
+  counterOf: string | null;
+  answerReason: string | null;
+  refundOnlineInr: number | null;
+  refundHandInr: number | null;
+  createdAt: string;
+  answeredAt: string | null;
 }
 
 export interface Enquiry {
@@ -211,42 +276,105 @@ export interface Enquiry {
   message: string;
   mobile: string | null;
   status: EnquiryStatus;
-  /** when it was closed and by whom — the sender (cancelled) or somebody on the business's side */
+  /** when it was closed and by whom */
   closedAt: string | null;
   closedBy: string | null;
+  /** why it ended: the decline reason, or the withdrawal's / call-off's */
+  closeReason: string | null;
+  /** which side marked the project complete first */
+  completeAskedSide: "sender" | "business" | null;
+  completeAskedAt: string | null;
   createdAt: string;
+  /** quotes AND additions, in the order they were sent */
   quotes: EnquiryQuote[];
+  /** every set of ending terms ever proposed, oldest first */
+  endings: EnquiryEnding[];
 }
 
-/** The live quote: the newest one that has not been superseded (enqQuote 5001). */
-export const liveQuoteOf = (e: { quotes: EnquiryQuote[] }): EnquiryQuote | null =>
-  [...e.quotes].filter((q) => q.status !== "superseded").sort((a, b) => a.n - b.n).pop() ?? null;
+/** the IST day as YYYY-MM-DD — what a quote's valid-until is compared with */
+export const istDayKey = (iso: string): string => new Date(new Date(iso).getTime() + 330 * 60_000).toISOString().slice(0, 10);
 
-/** What the enquiry is ACTUALLY on, derived from the quotes rather than typed
- *  in twice (enqStage 4977): a quote can be accepted and paid while the status
- *  menu still says New because nobody touched it. */
+/** The live QUOTE: the newest base quote that has not been superseded (enqQuote 5001). Additions never count. */
+export const liveQuoteOf = (e: { quotes: EnquiryQuote[] }): EnquiryQuote | null =>
+  [...e.quotes].filter((q) => q.kind === "quote" && q.status !== "superseded").sort((a, b) => a.n - b.n).pop() ?? null;
+
+/** the accepted base quote — the price of the project once it is on */
+export const baseQuoteOf = (e: { quotes: EnquiryQuote[] }): EnquiryQuote | null =>
+  [...e.quotes].filter((q) => q.kind === "quote" && q.status === "accepted").sort((a, b) => a.n - b.n).pop() ?? null;
+
+export const additionsOf = (e: { quotes: EnquiryQuote[] }): EnquiryQuote[] => e.quotes.filter((q) => q.kind === "addition").sort((a, b) => a.n - b.n);
+
+/** a quote waiting on an answer past its last day — derived, no cron */
+export const quoteExpired = (q: EnquiryQuote, nowIso: string): boolean =>
+  q.status === "sent" && Boolean(q.validUntil) && (q.validUntil as string) < istDayKey(nowIso);
+
+/** THE MONEY OF ONE ENQUIRY — the same arithmetic as the database's
+ *  `enquiry_money`, so a screen never says a different number from the door. */
+export interface EnquiryMoney {
+  totalInr: number;
+  paidInr: number;
+  outstandingInr: number;
+  advanceDueInr: number;
+  /** what the base asks for after the advance and every accepted reduction */
+  balanceInr: number;
+  balancePaid: boolean;
+  additionsDueInr: number;
+  additionsWaiting: number;
+  readyToComplete: boolean;
+}
+
+export function enquiryMoney(e: { quotes: EnquiryQuote[] }): EnquiryMoney {
+  const b = baseQuoteOf(e);
+  const acc = additionsOf(e).filter((a) => a.status === "accepted");
+  const neg = acc.filter((a) => a.costInr < 0).reduce((s, a) => s + a.costInr, 0);
+  const pos = acc.filter((a) => a.costInr > 0).reduce((s, a) => s + a.costInr, 0);
+  const posPaid = acc.filter((a) => a.costInr > 0 && a.fullPaidAt).reduce((s, a) => s + a.costInr, 0);
+  const waiting = additionsOf(e).filter((a) => a.status === "sent").length;
+  if (!b) {
+    return { totalInr: 0, paidInr: 0, outstandingInr: 0, advanceDueInr: 0, balanceInr: 0, balancePaid: false, additionsDueInr: 0, additionsWaiting: waiting, readyToComplete: false };
+  }
+  const balancePaid = Boolean(b.fullPaidAt);
+  const paid =
+    (b.advancePaidAt ? b.advanceInr : 0) + (balancePaid ? (b.balancePaidInr ?? Math.max(b.costInr - b.advanceInr, 0)) : 0) + posPaid;
+  const total = b.costInr + neg + pos;
+  return {
+    totalInr: total,
+    paidInr: paid,
+    outstandingInr: Math.max(total - paid, 0),
+    advanceDueInr: b.advanceInr > 0 && !b.advancePaidAt ? b.advanceInr : 0,
+    balanceInr: b.costInr - b.advanceInr + neg,
+    balancePaid,
+    additionsDueInr: pos - posPaid,
+    additionsWaiting: waiting,
+    readyToComplete: balancePaid && pos === posPaid && waiting === 0,
+  };
+}
+
+/** What the enquiry is on, for a screen: the stored stage, with the money read
+ *  into a project that is on (Advance paid · Paid) and the legacy words mapped. */
 export const enquiryStage = (e: { status: EnquiryStatus; quotes: EnquiryQuote[] }): EnquiryStatus => {
-  /* ⚠ A CLOSE WINS (2 Oct 2026, found while redesigning the status control):
-     with a live quote the derived stage used to override a hand-set close — so
-     pressing "Lost" on a quoted enquiry changed the row and nothing on screen. A
-     close is a decision; the quote's own state is only the default. */
   if (ENQ_CLOSED.has(e.status)) return e.status;
-  const live = liveQuoteOf(e);
-  if (!live) return e.status;
-  if (live.fullPaidAt) return "paid";
-  if (live.advancePaidAt) return "advance_paid";
-  if (live.status === "accepted") return "confirmed";
-  /* ⚠ a declined quote no longer ends the enquiry (3 Oct 2026): it is the sender
-     asking for a revised one, and the enquiry is back in talks */
-  if (live.status === "declined") return "in_talks";
-  return "quoted";
+  if (e.status === "in_talks") return "accepted";
+  if (e.status === "ongoing" || e.status === "confirmed" || e.status === "advance_paid" || e.status === "paid") {
+    const b = baseQuoteOf(e);
+    if (b?.fullPaidAt) return "paid";
+    if (b?.advancePaidAt && b.advanceInr > 0) return "advance_paid";
+    return "ongoing";
+  }
+  return e.status;
 };
 
-/** the live quote was declined with a revision asked for, and nothing newer sent */
+/** the live quote was sent back with a revision asked for, and nothing newer sent */
 export const revisionAsked = (e: { quotes: EnquiryQuote[]; status: EnquiryStatus }): boolean => {
   const live = liveQuoteOf(e);
   return Boolean(live && live.status === "declined" && live.revisionAskedAt && !ENQ_CLOSED.has(e.status));
 };
 
-/** what an enquiry is worth on the desk: the live quote, else nothing yet */
-export const enquiryValueInr = (e: { quotes: EnquiryQuote[] }): number => liveQuoteOf(e)?.costInr ?? 0;
+/** what an enquiry is worth on the desk: the project's total once on, else the live quote */
+export const enquiryValueInr = (e: { quotes: EnquiryQuote[] }): number => {
+  const m = enquiryMoney(e);
+  return m.totalInr || liveQuoteOf(e)?.costInr || 0;
+};
+
+/** the open ending terms, if any */
+export const openEndingOf = (e: { endings: EnquiryEnding[] }): EnquiryEnding | null => e.endings.find((x) => x.status === "open") ?? null;

@@ -1,5 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
-import type { Enquiry, EnquiryQuote, EnquiryStatus, EnquiryTypeKey, QuoteStatus } from "@/types/enquiry";
+import type { Enquiry, EnquiryEnding, EnquiryQuote, EnquiryStatus, EnquiryTypeKey, QuoteKind, QuoteStatus } from "@/types/enquiry";
 import type { BusinessType } from "@/types/business";
 
 /** Step 18 reads and the RPC wrappers. Both ends of an enquiry read it under
@@ -9,17 +9,50 @@ import type { BusinessType } from "@/types/business";
 
 const MAX_LIST = 300;
 
+interface ItemRow {
+  sort: number;
+  name: string;
+  qty: number;
+  unit_inr: number;
+  line_inr: number;
+  deleted_at: string | null;
+}
+
 interface QuoteRow {
   id: string;
   n: number;
+  kind: QuoteKind;
   cost_inr: number;
   advance_pct: number;
   advance_inr: number;
   status: QuoteStatus;
   advance_paid_at: string | null;
   full_paid_at: string | null;
+  balance_paid_inr: number | null;
   revision_asked_at: string | null;
+  valid_until: string | null;
+  note: string | null;
+  answer_reason: string | null;
+  answered_at: string | null;
+  revises: string | null;
   created_at: string;
+  deleted_at: string | null;
+  enquiry_quote_items: ItemRow[] | null;
+}
+
+interface EndingRow {
+  id: string;
+  outcome: EnquiryEnding["outcome"];
+  side: EnquiryEnding["side"];
+  refund_inr: number;
+  reason: string;
+  status: EnquiryEnding["status"];
+  counter_of: string | null;
+  answer_reason: string | null;
+  refund_online_inr: number | null;
+  refund_hand_inr: number | null;
+  created_at: string;
+  answered_at: string | null;
   deleted_at: string | null;
 }
 
@@ -37,29 +70,59 @@ interface EnquiryRow {
   status: EnquiryStatus;
   closed_at: string | null;
   closed_by: string | null;
+  close_reason: string | null;
+  complete_asked_side: "sender" | "business" | null;
+  complete_asked_at: string | null;
   created_at: string;
   businesses: { name: string; type: BusinessType; phone: string | null; profile_photo_path: string | null } | null;
   crews: { name: string; photo: string | null } | null;
   profiles: { full_name: string; profile_photo_path: string | null } | null;
   enquiry_quotes: QuoteRow[] | null;
+  enquiry_endings: EndingRow[] | null;
 }
 
 /* an enquiry names a business OR a crew (18 Sep 2026): both embeds ride along and
    exactly one comes back non-null */
 const ENQUIRY_SELECT =
-  "id, business_id, crew_id, from_user_id, type_key, fields, dates, where_text, message, mobile, status, closed_at, closed_by, created_at, businesses (name, type, phone, profile_photo_path), crews (name, photo), profiles (full_name, profile_photo_path), enquiry_quotes (id, n, cost_inr, advance_pct, advance_inr, status, advance_paid_at, full_paid_at, revision_asked_at, created_at, deleted_at)";
+  "id, business_id, crew_id, from_user_id, type_key, fields, dates, where_text, message, mobile, status, closed_at, closed_by, close_reason, complete_asked_side, complete_asked_at, created_at, businesses (name, type, phone, profile_photo_path), crews (name, photo), profiles (full_name, profile_photo_path), enquiry_quotes (id, n, kind, cost_inr, advance_pct, advance_inr, status, advance_paid_at, full_paid_at, balance_paid_inr, revision_asked_at, valid_until, note, answer_reason, answered_at, revises, created_at, deleted_at, enquiry_quote_items (sort, name, qty, unit_inr, line_inr, deleted_at)), enquiry_endings (id, outcome, side, refund_inr, reason, status, counter_of, answer_reason, refund_online_inr, refund_hand_inr, created_at, answered_at, deleted_at)";
 
 const toQuote = (q: QuoteRow): EnquiryQuote => ({
   id: q.id,
   n: q.n,
+  kind: q.kind ?? "quote",
   costInr: q.cost_inr,
   advancePct: q.advance_pct,
   advanceInr: q.advance_inr,
   status: q.status,
   advancePaidAt: q.advance_paid_at,
   fullPaidAt: q.full_paid_at,
+  balancePaidInr: q.balance_paid_inr ?? null,
   revisionAskedAt: q.revision_asked_at,
+  validUntil: q.valid_until ?? null,
+  note: q.note ?? null,
+  answerReason: q.answer_reason ?? null,
+  answeredAt: q.answered_at ?? null,
+  revises: q.revises ?? null,
+  items: (q.enquiry_quote_items ?? [])
+    .filter((i) => !i.deleted_at)
+    .map((i) => ({ sort: i.sort, name: i.name, qty: i.qty, unitInr: i.unit_inr, lineInr: i.line_inr }))
+    .sort((a, b) => a.sort - b.sort),
   createdAt: q.created_at,
+});
+
+const toEnding = (x: EndingRow): EnquiryEnding => ({
+  id: x.id,
+  outcome: x.outcome,
+  side: x.side,
+  refundInr: x.refund_inr,
+  reason: x.reason,
+  status: x.status,
+  counterOf: x.counter_of,
+  answerReason: x.answer_reason,
+  refundOnlineInr: x.refund_online_inr,
+  refundHandInr: x.refund_hand_inr,
+  createdAt: x.created_at,
+  answeredAt: x.answered_at,
 });
 
 const toFields = (raw: unknown): Array<[string, string]> =>
@@ -93,11 +156,18 @@ const toEnquiry = (r: EnquiryRow): Enquiry => ({
   status: r.status,
   closedAt: r.closed_at,
   closedBy: r.closed_by,
+  closeReason: r.close_reason ?? null,
+  completeAskedSide: r.complete_asked_side ?? null,
+  completeAskedAt: r.complete_asked_at ?? null,
   createdAt: r.created_at,
   quotes: (r.enquiry_quotes ?? [])
     .filter((q) => !q.deleted_at)
     .map(toQuote)
     .sort((a, b) => a.n - b.n),
+  endings: (r.enquiry_endings ?? [])
+    .filter((x) => !x.deleted_at)
+    .map(toEnding)
+    .sort((a, b) => a.createdAt.localeCompare(b.createdAt)),
 });
 
 /** Enquiries that came IN to the businesses I belong to. */
@@ -197,53 +267,115 @@ export async function sendEnquiry(
   return (data as { id: string }).id;
 }
 
-export async function setEnquiryStatus(supabase: SupabaseClient, enquiryId: string, status: EnquiryStatus): Promise<void> {
-  const { error } = await supabase.rpc("set_enquiry_status", { p_enquiry_id: enquiryId, p_status: status });
+/** a line as the composer sends it */
+export interface QuoteLineInput {
+  name: string;
+  qty: number;
+  unitInr: number;
+}
+
+const toLines = (items: QuoteLineInput[] | null) =>
+  items && items.length ? items.map((i) => ({ name: i.name, qty: i.qty, unit_inr: i.unitInr })) : null;
+
+async function rpc(supabase: SupabaseClient, fn: string, args: Record<string, unknown>): Promise<unknown> {
+  const { data, error } = await supabase.rpc(fn, args);
   if (error) {
     throw new Error(error.message);
   }
+  return data;
 }
 
+/** step 2 — the business accepts the enquiry, or declines it with a reason */
+export async function respondToEnquiry(supabase: SupabaseClient, enquiryId: string, accept: boolean, reason: string | null): Promise<void> {
+  await rpc(supabase, "respond_to_enquiry", { p_enquiry_id: enquiryId, p_accept: accept, p_reason: reason });
+}
+
+/** step 3 — a quote: lines or one total, the advance, the last day it stands */
 export async function sendEnquiryQuote(
   supabase: SupabaseClient,
-  enquiryId: string,
-  costInr: number,
-  advancePct: number
+  input: { enquiryId: string; items: QuoteLineInput[] | null; lumpInr: number | null; advancePct: number; validUntil: string | null; note: string | null }
 ): Promise<void> {
-  const { error } = await supabase.rpc("send_enquiry_quote", {
-    p_enquiry_id: enquiryId,
-    p_cost_inr: costInr,
-    p_advance_pct: advancePct,
+  await rpc(supabase, "send_enquiry_quote", {
+    p_enquiry_id: input.enquiryId,
+    p_items: toLines(input.items),
+    p_lump_inr: input.items && input.items.length ? null : input.lumpInr,
+    p_advance_pct: input.advancePct,
+    p_valid_until: input.validUntil,
+    p_note: input.note,
   });
-  if (error) {
-    throw new Error(error.message);
-  }
 }
 
-/** Either end closes an enquiry (3 Oct 2026): the sender may only cancel, and only
- *  before any money has moved; the business closes as completed, lost or
- *  cancelled. The RPC decides which end the caller is. */
-export async function closeEnquiry(supabase: SupabaseClient, enquiryId: string, outcome: "completed" | "lost" | "cancelled"): Promise<void> {
-  const { error } = await supabase.rpc("close_enquiry", { p_enquiry_id: enquiryId, p_outcome: outcome });
-  if (error) {
-    throw new Error(error.message);
-  }
+/** step 5 — something added to a project already on (negative = a reduction) */
+export async function sendEnquiryAddition(
+  supabase: SupabaseClient,
+  input: { enquiryId: string; items: QuoteLineInput[] | null; lumpInr: number | null; note: string | null; revises: string | null }
+): Promise<void> {
+  await rpc(supabase, "send_enquiry_addition", {
+    p_enquiry_id: input.enquiryId,
+    p_items: toLines(input.items),
+    p_lump_inr: input.items && input.items.length ? null : input.lumpInr,
+    p_note: input.note,
+    p_revises: input.revises,
+  });
 }
 
-export async function answerEnquiryQuote(supabase: SupabaseClient, quoteId: string, accept: boolean): Promise<void> {
-  const { error } = await supabase.rpc("answer_enquiry_quote", { p_quote_id: quoteId, p_accept: accept });
-  if (error) {
-    throw new Error(error.message);
-  }
+export async function cancelEnquiryAddition(supabase: SupabaseClient, quoteId: string): Promise<void> {
+  await rpc(supabase, "cancel_enquiry_addition", { p_quote_id: quoteId });
 }
 
+/** step 4 — the sender: a quote is accepted or a revision asked; an addition accepted or declined */
+export async function answerEnquiryQuote(
+  supabase: SupabaseClient,
+  quoteId: string,
+  answer: "accept" | "revise" | "decline",
+  reason: string | null
+): Promise<void> {
+  await rpc(supabase, "answer_enquiry_quote", { p_quote_id: quoteId, p_answer: answer, p_reason: reason });
+}
+
+/** step 6 — either side marks it complete; the other's mark closes it */
+export async function markEnquiryComplete(supabase: SupabaseClient, enquiryId: string): Promise<void> {
+  await rpc(supabase, "mark_enquiry_complete", { p_enquiry_id: enquiryId });
+}
+
+export async function declineEnquiryCompletion(supabase: SupabaseClient, enquiryId: string, reason: string | null): Promise<void> {
+  await rpc(supabase, "decline_enquiry_completion", { p_enquiry_id: enquiryId, p_reason: reason });
+}
+
+/** withdraw (the sender) or call off (the business); after money, a refund proposal */
+export async function endEnquiry(supabase: SupabaseClient, enquiryId: string, reason: string, refundInr: number | null): Promise<{ closed: boolean }> {
+  const out = (await rpc(supabase, "end_enquiry", { p_enquiry_id: enquiryId, p_reason: reason, p_refund_inr: refundInr })) as { closed?: boolean } | null;
+  return { closed: Boolean(out?.closed) };
+}
+
+export async function answerEnquiryEnding(
+  supabase: SupabaseClient,
+  endingId: string,
+  answer: "accept" | "counter" | "refuse",
+  refundInr: number | null,
+  reason: string | null
+): Promise<{ closed: boolean; refundOnlineInr: number }> {
+  const out = (await rpc(supabase, "answer_enquiry_ending", {
+    p_ending_id: endingId,
+    p_answer: answer,
+    p_refund_inr: refundInr,
+    p_reason: reason,
+  })) as { closed?: boolean; refund_online_inr?: number } | null;
+  return { closed: Boolean(out?.closed), refundOnlineInr: out?.refund_online_inr ?? 0 };
+}
+
+export async function retractEnquiryEnding(supabase: SupabaseClient, endingId: string): Promise<void> {
+  await rpc(supabase, "retract_enquiry_ending", { p_ending_id: endingId });
+}
+
+/** money received outside DanceOS — the business records it */
 export async function recordEnquiryPayment(
   supabase: SupabaseClient,
   quoteId: string,
-  part: "advance" | "balance" | "full"
+  part: "advance" | "balance" | "full" | "addition"
 ): Promise<void> {
-  const { error } = await supabase.rpc("record_enquiry_payment", { p_quote_id: quoteId, p_part: part });
-  if (error) {
-    throw new Error(error.message);
-  }
+  await rpc(supabase, "record_enquiry_payment", { p_quote_id: quoteId, p_part: part });
 }
+
+/** ⚠ status words still used to type a few legacy reads */
+export type { EnquiryStatus };
