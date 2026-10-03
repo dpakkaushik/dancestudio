@@ -2,6 +2,32 @@
 
 ## LAST SESSION (3 Oct 2026) — replaced on every push (Rule 13)
 
+> ### SCHEDULE IN THE TOP HALF, THE CITY IN WORDS, THE POSTER'S SPACE KEPT, AND A CARD PER CONTACT BUTTON (3 Oct 2026, latest) — no migration
+> The user: *"schedule on public view should be part of top half with contact
+> buttons. Location written in words next to dob should not be a hyperlink for
+> all profiles and only city name should be there. profiles who havent uploaded
+> poster on profiles should leave that space in public view it is messing up the
+> alignment"*, then *"better add contact button form can be managed better"*.
+> * **Schedule is the last thing in the top squircle** (C109), under the contact
+>   row, on a studio's/artist's page, a person's and the Profile tab —
+>   `ScheduleBar` in `profile-kit`; `PersonBody` lost `scheduleHref`.
+> * **The place on the hero is plain text, the city alone** (C110) — `HeroPlace`
+>   is a span now; a studio prints "Bengaluru", not "Indiranagar, Bengaluru". The
+>   way to Maps is the Location button.
+> * **A profile page keeps the banner's space** (C111) — `IdentityHero
+>   reserveHeader` on the four profile pages draws the empty banner on the
+>   profile's gradient at the banner's size; HOMES still draw no rail (C105).
+> * **The contact editor is a card per button** — glyph, "Shown on the page" /
+>   "Not shown" (with the reason when a filled box is still hidden), its own
+>   Remove, its box; Enquiry links to Inbox › Enquiries (the sheet still named
+>   the retired "Enquiries tool") and Location to Edit details. `ContactGlyph` is
+>   the one set of marks the buttons and the cards draw.
+> * **Verified:** typecheck 0 · lint 0 · build green · a stranger probe **30/30**
+>   on `:3100` (both themes, a studio with and without posters: Schedule inside
+>   the top panel, no Maps link, the city alone, the banner 368×257 with the disc
+>   under it, no page error) · `shoot-hero` **189/189** (two new contact-card
+>   checks; 187 before).
+
 > ### PROFILE PAGES IN TWO SHAPES, A FOLLOWED CARD ON DISCOVER, AND AN INBOX THAT FILTERS LIKE DISCOVER (3 Oct 2026, latest) — no migration · the whole e2e suite **56/56 in ONE run, 20.4 min on one worker** · ✅ PUSHED AND LIVE (`212d72a`, on the next chat's *"push to live from previous chat"*: `db-push -DryRun` showed nothing pending, typecheck 0 and lint 0 re-run, Vercel READY with the alias confirmed on the sha through the API, and ON THE LIVE SITE `stranger-smoke` 8/8 · `shoot-inbox` 34/34 · `shoot-invert` 18/18 · `shoot-hero` 187/187). ⚠ The user's item 4 was cut off and is still unknown
 > The user: *"1, dual tone, rounded squircles and on public view for all
 > profiles similar to home tab. 2. followed by you section on discover in
@@ -12416,6 +12442,9 @@ for the database schema. **The UI is not redesigned** — see Rule 2.
 - **PROFILE PAGES IN TWO SHAPES, A FOLLOWED CARD ON DISCOVER, AN INBOX THAT
   FILTERS LIKE DISCOVER — 3 Oct 2026, no step number — no migration.** Rows
   C106–C108. Detail at the top.
+- **SCHEDULE IN THE TOP HALF, THE CITY IN WORDS, THE POSTER'S SPACE KEPT, A CARD
+  PER CONTACT BUTTON — 3 Oct 2026, no step number — no migration.** Rows
+  C109–C111. Detail at the top.
 - **ENQUIRY FOLLOW-UPS, ONLINE ENQUIRY PAYMENT AND INBOX SETTINGS — 3 Oct 2026, no
   step number ⚠ (Rule 9: money + who may ask whom) — `20261003090000` APPLIED.**
   Accept · Ask to revise · Cancel for the sender, Completed · Lost · Cancelled for
@@ -17593,6 +17622,9 @@ Home. **Do not "restore parity" on these.**
 | C106 | A profile page is one column on the page's ground: hero, buttons, Schedule, memberships, the team | **Two shapes, as Home is** — the hero, the band and the buttons in a `TopPanel` squircle (`IdentityHero bare`), and everything from Schedule down in an `InvertedPanel`, on a studio's/artist's, a person's, your own and a crew's page. `PersonBody` owns the lower panel and draws none when it would be empty | 3 Oct 2026, the user: *"dual tone, rounded squircles and on public view for all profiles similar to home tab"* |
 | C107 | "Followed by you" sits loose between Discover's head and its shelf (FollowedRow 4112) | **Its own untinted squircle**, between the head's and the shelf's | 3 Oct 2026, the user: *"followed by you section on discover in seprated squircle card in middle section"* |
 | C108 | The Inbox's settings disclosures open the lower panel; the breakup is a closed disclosure on Received/Sent only; enquiries filter by two chip rows; a quiet column says "all clear" | **The column's settings sit in the top squircle under the columns; the Pipeline breakup is always open, on Completed too; every column and side has Discover's filter anatomy** (`InboxFilters`: search, Filters · N with SORT · TYPE · STAGE/OUTCOME, quick type chips, Clear — the sheet portalled so it reads the page's theme); **a quiet column shows nothing** | 3 Oct 2026, the user: *"inbox- setting inside top squircle with heading, piepline breakup always open in enquires even in completed section, filters for inbox cards like on discove, remove all clear below headings"* |
+| C109 | The public page's Schedule is the one white bar under the action row, and since 3 Oct (C106) the first thing in the lower panel | **The last thing in the TOP squircle**, under the contact buttons (`ScheduleBar`), on a studio's/artist's page, a person's and the Profile tab; the lower panel opens on NEXT SESSIONS | 3 Oct 2026, the user: *"schedule on public view should be part of top half with contact buttons"* |
+| C110 | The place on the hero is underlined and opens Maps (10694-10698); a studio's reads "area, city" | **Plain text, the city alone**, on every profile and home (`HeroPlace` is a span) — a studio's way to Maps is its Location button | 3 Oct 2026, the user: *"Location written in words next to dob should not be a hyperlink for all profiles and only city name should be there"* |
+| C111 | C105: a hero with no poster draws no rail | **A profile PAGE keeps the banner's space** (`reserveHeader`), the empty banner on the profile's gradient; a HOME still draws none | 3 Oct 2026, the user: *"profiles who havent uploaded poster on profiles should leave that space in public view it is messing up the alignment"* |
 | C104 | Tool tiles are solid gradients of the tool's colour (BizSection 2497-2583) | **A quiet tile**: `--card` with a 1.5px `--el` border, the name in ink, and the colour only on a small tinted glyph | 3 Oct 2026, the user: *"better design for tool tiles"* → *"Same layout, polished"* → *"should have border and not that colorfull"* |
 | C105 | Each tab's head bleeds a wash across the full width; a home with no posters draws an empty gradient square | **The tops of Home (person, studio, crew), Discover and the Inbox are `TopPanel` squircles**, the Inbox's lower panel too; **a home with no posters draws no rail at all** and its corner chips move into the identity row | 3 Oct 2026, the user: *"inbox end page should also be squircle"*, *"even top of all home, dicover and inbox to be rounded squircle. remove the top backdrop from home tab completly behinde posters"* |
 | C99 | A studio and a crew pick their style one at a time (the single `DosStylePicker`, re-opened per style) | **ONE MULTI-PICKER** (`DosStyleMultiPicker`, the prototype's own `multi` mode, 3554): chips with ×, the first marked MAIN with ★ to promote, a searchable list that ticks, eight at most at creation | 2 Oct 2026, the user: *"dance style filter while creating studio and crew should be multi filter and better way to handle in the form"* |

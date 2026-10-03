@@ -26,7 +26,7 @@ import type { HeaderPhoto } from "@/repositories/headerPhotos";
 import type { HeroShot } from "./HeroRail";
 import { HeroId, HeroPlace, IdentityHero } from "./hero-kit";
 import { EntityBand, figureLabel, figureNum } from "./profile-band";
-import { ROLE_RING, RoleBadge, Sheet, followTint, initialsOf, type FollowGlyph } from "./profile-kit";
+import { ROLE_RING, RoleBadge, ScheduleBar, Sheet, followTint, initialsOf, type FollowGlyph } from "./profile-kit";
 
 /** THE PROFILE TAB — prototype S_profiletab's OWN render (10565-11400), lifted
  *  whole: the profile lit like a player (the role's colour bleeding off the top;
@@ -175,6 +175,7 @@ export function MyProfilePage({
         {/* ── THE PROFILE, LIT LIKE A PLAYER (10574) — the one hero every profile page wears ── */}
         <IdentityHero
           bare
+          reserveHeader
           testId="my-hero"
           name={profile.fullName}
           grad={ring}
@@ -188,9 +189,7 @@ export function MyProfilePage({
              a `prefix` of "20, " while Home joined its own string with a comma,
              so the two wrote the same fact two ways. */
           meta={
-            metaLine ? (
-              profile.city ? <HeroPlace text={metaLine} query={profile.city} /> : <span style={{ fontVariantNumeric: "tabular-nums" }}>{metaLine}</span>
-            ) : null
+            metaLine ? <HeroPlace text={metaLine} /> : null
           }
           avatar={face}
           avatarAlt={profile.fullName}
@@ -316,6 +315,8 @@ export function MyProfilePage({
               With organizations gone nothing on a person's row carries a place to
               open, and `profiles.lat/lng` has no writer left. */}
         </ActionRow>
+        {/* the schedule, in the top half with the contact buttons (3 Oct 2026) */}
+        {scheduleHref ? <ScheduleBar href={scheduleHref} /> : null}
         </TopPanel>
 
         {/* ── AND EVERYTHING BELOW IS `PersonBody`, THE VERY COMPONENT
@@ -331,7 +332,6 @@ export function MyProfilePage({
           signedIn
           memberships={memberships}
           artistTeam={artistTeam}
-          scheduleHref={scheduleHref}
           nextSessions={nextSessions}
           accent={RC}
           /* ⚠ NO "WHAT YOU RUN" GROUP (2 Oct 2026, the user: *"what you run

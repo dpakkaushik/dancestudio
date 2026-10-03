@@ -2,7 +2,7 @@ import Link from "next/link";
 import type { CSSProperties, ReactNode } from "react";
 import { DosStyleTile } from "@/features/discovery/components/DiscoverFilters";
 import { HeroRail, ProfileDisc, type HeroShot } from "@/features/profiles/components/HeroRail";
-import { TYPE, mapsHref } from "@/features/profiles/components/profile-kit";
+import { TYPE } from "@/features/profiles/components/profile-kit";
 import { VerifiedTick } from "@/features/settings/components/settings-kit";
 import { dosStyleColor } from "@/lib/constants/styles";
 import { INK, LILAC, LINE, MUTED, SUB } from "@/lib/design/tokens";
@@ -59,28 +59,17 @@ import { INK, LILAC, LINE, MUTED, SUB } from "@/lib/design/tokens";
  *  number) and is legible on either ground. */
 export const HERO_EYEBROW: CSSProperties = { fontSize: 9.5, fontWeight: 900, letterSpacing: 2.2, textTransform: "uppercase", color: SUB };
 
-/** the place, underlined in the line's own grey, and it opens Maps (10694-10698) */
-export function HeroPlace({ text, query }: { text: string; query?: string }) {
+/** the place on the line under the name — WORDS, NOT A LINK, AND THE CITY ALONE
+ *  (3 Oct 2026, the user: "Location written in words next to dob should not be a
+ *  hyperlink for all profiles and only city name should be there"). It was an
+ *  underlined door to Maps (10694-10698) carrying "Kothrud, Pune" for a studio;
+ *  a studio's way to Maps is its Location button, where the pin is, and a
+ *  person's city was never an address worth opening. */
+export function HeroPlace({ text }: { text: string }) {
   return (
-    <a
-      href={mapsHref(query ?? text)}
-      target="_blank"
-      rel="noreferrer"
-      aria-label="Open this address in Maps"
-      /* it wraps rather than truncating (18 Sep 2026): a place cut to "Kothrud, P…"
-         is not a place, and the line under a name has room for two */
-      style={{
-        minWidth: 0,
-        color: INK,
-        textDecoration: "underline",
-        textDecorationColor: LINE,
-        textUnderlineOffset: 3,
-        overflowWrap: "anywhere",
-        fontVariantNumeric: "tabular-nums",
-      }}
-    >
-      {text}
-    </a>
+    /* it wraps rather than truncating (18 Sep 2026): a place cut to "Pu…" is not
+       a place, and the line under a name has room for two */
+    <span style={{ minWidth: 0, color: INK, overflowWrap: "anywhere", fontVariantNumeric: "tabular-nums" }}>{text}</span>
   );
 }
 
@@ -136,9 +125,19 @@ export function IdentityHero({
   corner,
   detailsEdit = null,
   bare = false,
+  reserveHeader = false,
   testId,
   children,
 }: {
+  /** ⚠ A PROFILE PAGE KEEPS THE POSTER'S SPACE (3 Oct 2026, the user: "profiles
+   *  who havent uploaded poster on profiles should leave that space in public
+   *  view it is messing up the alignment"). `bare` alone drops the rail when
+   *  there is no poster — right on a HOME, where the empty square was the
+   *  backdrop the user asked to remove — and on a profile page it made a
+   *  profile with no poster a different shape from every profile beside it, the
+   *  disc and the name jumping to the top of the card. With this the empty
+   *  banner is drawn at the banner's own size, on the profile's own gradient. */
+  reserveHeader?: boolean;
   /** ⚠ A HOME'S HERO STANDS IN THE TOP SQUIRCLE (3 Oct 2026, the user: "even top
    *  of all home, dicover and inbox to be rounded squircle. remove the top
    *  backdrop from home tab completly behinde posters"). Bare, it draws no ground
@@ -238,7 +237,7 @@ export function IdentityHero({
      the height of nobody's name; top-aligned, the picture and the word USER /
      ARTIST / STUDIO / ORGANIZATION share one baseline, which is how every
      profile screen people already know lays this out. */
-  const noHeader = bare && shots.length === 0;
+  const noHeader = bare && shots.length === 0 && !reserveHeader;
   const cornerColumn: CSSProperties = { display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 6 };
   return (
     <div

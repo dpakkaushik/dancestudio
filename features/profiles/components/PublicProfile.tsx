@@ -24,7 +24,7 @@ import { ProfileLink, ProfileShare } from "./ProfileShare";
 import { StatsChip } from "./StatsChip";
 import { memberNoWords } from "@/types/profile";
 import { HeroDot, HeroId, HeroPlace, IdentityHero } from "./hero-kit";
-import { PROFILE_RING, PeopleGroup, PersonChip, SchedIcon, bigWhite, smallBox } from "./profile-kit";
+import { PROFILE_RING, PeopleGroup, PersonChip, ScheduleBar, smallBox } from "./profile-kit";
 
 /** A STUDIO'S PUBLIC PAGE, lifted from prototype S_profiletab with
  *  `publicEntity="studio"` (10565-11060): THE PROFILE, LIT LIKE A PLAYER — the
@@ -169,6 +169,7 @@ export function PublicProfile({
         {/* ── the profile, lit like a player — the one hero every profile page wears ── */}
         <IdentityHero
           bare
+          reserveHeader
           testId="public-hero"
           name={business.name}
           grad={RG}
@@ -185,10 +186,12 @@ export function PublicProfile({
                 </svg>
                 {business.foundedYear ? `Since ${business.foundedYear}` : `On DanceOS since ${new Intl.DateTimeFormat("en-IN", { timeZone: "Asia/Kolkata", year: "numeric" }).format(new Date(business.createdAt))}`}
               </span>
-              {place ? (
+              {business.city ? (
                 <>
                   <HeroDot />
-                  <HeroPlace text={place} query={`${business.name} ${place}`} />
+                  {/* the CITY alone, in words (3 Oct 2026) — the area and the way
+                      to Maps are the Location button's, where the pin is */}
+                  <HeroPlace text={business.city} />
                 </>
               ) : null}
             </>
@@ -321,18 +324,14 @@ export function PublicProfile({
           {whatsappHrefOf(business.socials) ? <MessageButton href={whatsappHrefOf(business.socials) as string} /> : null}
           {pinHref ? <LocationButton href={pinHref} /> : place ? <LocationButton query={`${business.name} ${place}`} /> : null}
         </ActionRow>
+        {/* ── THE ONE WHITE BAR THE PAGE IS FOR (10919), in the top half with the
+            ways to reach this studio since 3 Oct 2026 (the user: "schedule on
+            public view should be part of top half with contact buttons") ── */}
+        <ScheduleBar href={scheduleHref} />
         </TopPanel>
 
         <InvertedPanel>
-        {/* ── THE ONE WHITE BAR THE PAGE IS FOR (10919): the schedule ── */}
-        <div>
-          <Link href={scheduleHref} aria-label="Schedule" style={bigWhite}>
-            <SchedIcon />
-            Schedule
-          </Link>
-        </div>
-
-        {/* ── AND A TASTE OF WHAT IS BEHIND IT (30 Sep 2026, #0aj) — three
+        {/* ── A TASTE OF WHAT IS BEHIND THE BAR ABOVE (30 Sep 2026, #0aj) — three
             cards, no door of its own, nothing at all when there is nothing ── */}
         <NextSessions entries={nextSessions} />
 

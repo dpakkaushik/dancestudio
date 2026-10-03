@@ -777,7 +777,15 @@ const enterEdit = async (page) => {
        there. A check that only looks at the new place cannot tell you the old one
        was cleared. */
     check((await bizContacts.getByRole("switch", { name: "Take enquiries" }).count()) === 0, "studio contact ⊕: the Take-enquiries switch has LEFT it — the ⊕ draws the button row and nothing else (27 Sep 2026)");
+    /* ⚠ A CARD PER BUTTON (3 Oct 2026, the user: "better add contact button form
+       can be managed better") — a studio's sheet carries all five, in the order
+       its page draws them, and a filled box turns its card live */
+    const cardCount = async (k) => bizContacts.getByTestId(`contact-card-${k}`).count();
+    check((await cardCount("enquiry")) === 1 && (await cardCount("call")) === 1 && (await cardCount("mail")) === 1 && (await cardCount("message")) === 1 && (await cardCount("location")) === 1, "studio contact ⊕: one card per button — Enquiry · Call · Mail · Message · Location (3 Oct 2026)");
     await bizContacts.getByLabel("WhatsApp", { exact: true }).fill("+91 98765 00001");
+    await bizContacts.getByTestId("contact-card-message").getByText("Shown on the page").waitFor({ timeout: 5000 }).catch(() => {});
+    check((await bizContacts.getByTestId("contact-card-message").getByText("Shown on the page").count()) === 1 && (await bizContacts.getByRole("button", { name: "Remove Message" }).count()) === 1, "studio contact ⊕: a filled box makes its card live, with its own Remove (3 Oct 2026)");
+    await bizContacts.screenshot({ path: path.join(OUT, "hero-contacts-studio.png") });
     await bizContacts.getByRole("button", { name: "Save" }).click();
     await bizContacts.waitFor({ state: "detached", timeout: 15000 });
     const msg = owner.getByRole("link", { name: "Message", exact: true });

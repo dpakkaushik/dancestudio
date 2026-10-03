@@ -235,7 +235,7 @@ export default async function HomePage() {
              looks at an organization now, the badge moved to the studio. An
              organization verified under the old model keeps its tick. */
           verified={Boolean(profile.verifiedAt)}
-          meta={metaLine ? place ? <HeroPlace text={metaLine} query={place} /> : <span style={{ fontVariantNumeric: "tabular-nums" }}>{metaLine}</span> : null}
+          meta={metaLine ? <HeroPlace text={metaLine} /> : null}
           /* ⚠ THE STYLES ARE IN THE BAND BELOW, NOT HERE (19 Sep 2026, the user:
              "Dance style for the page should also be editable only from the home
              tab"): drawing them read-only here AND editable below would be the

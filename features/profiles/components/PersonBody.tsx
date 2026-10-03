@@ -1,4 +1,3 @@
-import Link from "next/link";
 import { MembershipsOnSale } from "@/features/memberships/components/MembershipsOnSale";
 import type { MembershipOnSale } from "@/repositories/memberships";
 /* ⚠ `ORG_ROLE_WORD` and `PersonOrganization` went with organizations (29 Sep 2026) */
@@ -11,7 +10,7 @@ import { MEMBER_ROLE_WORD } from "@/types/staff";
    on this page is a `PeopleGroup` of chips, which is the user's own shape from
    the same morning. `Business` went with them: nothing here is a business row any
    more, only associations and chips. */
-import { PeopleGroup, PersonChip, SchedIcon, bigWhite } from "./profile-kit";
+import { PeopleGroup, PersonChip } from "./profile-kit";
 import { NextSessions } from "./NextSessions";
 import { InvertedPanel } from "@/components/ui/InvertedPanel";
 import type { CalendarEntry } from "@/types/calendar";
@@ -61,7 +60,6 @@ export function PersonBody({
   isMe,
   signedIn,
   memberships = [],
-  scheduleHref,
   nextSessions = [],
   accent,
   beforeGroups = null,
@@ -72,10 +70,9 @@ export function PersonBody({
   signedIn: boolean;
   /** what this artist sells through the page behind them (19 Sep 2026) */
   memberships?: MembershipOnSale[];
-  /** the public schedule of a business they run; null draws no bar rather than
-   *  a button pointing nowhere (10868) */
-  scheduleHref: string | null;
-  /** THE FIRST FEW CLASSES BEHIND THAT BAR (30 Sep 2026, backlog #0aj) — the
+  /* ⚠ `scheduleHref` LEFT THIS COMPONENT (3 Oct 2026) — the bar is drawn by
+     each page in its top squircle with the contact buttons (`ScheduleBar`). */
+  /** THE FIRST FEW CLASSES BEHIND THE SCHEDULE BAR (30 Sep 2026, backlog #0aj) — the
    *  same window the schedule page reads, so the summary cannot name a class the
    *  page behind it does not list. Empty draws nothing at all. */
   nextSessions?: CalendarEntry[];
@@ -187,26 +184,21 @@ export function PersonBody({
      ⚠ An empty panel is a dark box saying nothing, so with nothing to draw it is
      not drawn at all (a plain user with no crew and no seat). */
   const hasAnything =
-    Boolean(scheduleHref) || nextSessions.length > 0 || memberships.length > 0 || Boolean(beforeGroups) ||
+    nextSessions.length > 0 || memberships.length > 0 || Boolean(beforeGroups) ||
     studios.length > 0 || artistsWith.length > 0 || teamFaculty.length + teamAssistants.length > 0 || crews.length > 0;
   if (!hasAnything) return null;
 
   return (
     <InvertedPanel style={{ paddingTop: 14 }}>
-      {/* ── THE ONE WHITE BAR THE PAGE IS FOR (10919), AND IT IS ALWAYS FIRST ── */}
-      {/* (the Studios merge is computed above the return — see `studios`) */}
-      {scheduleHref ? (
-        <div>
-          <Link href={scheduleHref} aria-label="Schedule" style={bigWhite}>
-            <SchedIcon />
-            Schedule
-          </Link>
-        </div>
-      ) : null}
+      {/* ⚠ THE SCHEDULE BAR IS NOT HERE ANY MORE (3 Oct 2026, the user:
+          "schedule on public view should be part of top half with contact
+          buttons"). Each page draws `ScheduleBar` at the foot of its top
+          squircle, under the contact row; this panel opens on what is behind it.
+          (the Studios merge is computed above the return — see `studios`) */}
 
-      {/* ── A TASTE OF WHAT IS BEHIND THE BAR (30 Sep 2026, #0aj) — directly
-          under it, so the door and the preview read as one block, and with no
-          door of its own: the bar above IS that door ── */}
+      {/* ── A TASTE OF WHAT IS BEHIND THE BAR (30 Sep 2026, #0aj) — the first
+          thing under the top half's bar, and with no door of its own: the bar
+          IS that door ── */}
       <NextSessions entries={nextSessions} />
 
       {/* ── WHAT THEY SELL (19 Sep 2026): an artist's memberships, bought from

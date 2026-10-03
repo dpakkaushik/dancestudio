@@ -29,16 +29,46 @@ export const CONTACT_LABEL: CSSProperties = { minWidth: 0, overflow: "hidden", t
 const box = CONTACT_BOX;
 const glyph: CSSProperties = { flexShrink: 0, lineHeight: 0, color: SUB };
 
+/** THE BUTTONS' MARKS, DRAWN ONCE (3 Oct 2026) — the contact editor's cards wear
+ *  the same glyph as the button each card makes, so what you edit and what the
+ *  page draws read as one thing. */
+export type ContactKind = "call" | "mail" | "message" | "location" | "enquiry";
+export function ContactGlyph({ kind, size = 14 }: { kind: ContactKind; size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      {kind === "call" ? (
+        <path d="M6.6 3.6c.5-.5 1.4-.4 1.8.2l1.5 2.1c.4.5.3 1.2-.1 1.7l-.9 1c-.2.3-.3.8-.1 1.1a11 11 0 0 0 3 3c.3.2.8.2 1.1-.1l1-.9c.5-.4 1.2-.5 1.7-.1l2.1 1.5c.6.4.7 1.3.2 1.8l-1 1c-.6.6-1.4.8-2.2.6a15.6 15.6 0 0 1-6.8-4.1 15.6 15.6 0 0 1-4.1-6.8c-.2-.8 0-1.6.6-2.2z" />
+      ) : kind === "mail" ? (
+        <>
+          <rect x="3" y="5.5" width="18" height="13" rx="2.5" />
+          <path d="m3.5 7 8.5 6 8.5-6" />
+        </>
+      ) : kind === "message" ? (
+        <>
+          <path d="M4 6h16v10H9l-5 4z" />
+          <path d="M8 10h8M8 13h5" />
+        </>
+      ) : kind === "location" ? (
+        <>
+          <path d="M12 21s-6.5-5.7-6.5-10A6.5 6.5 0 0 1 12 4.5 6.5 6.5 0 0 1 18.5 11c0 4.3-6.5 10-6.5 10z" />
+          <circle cx="12" cy="10.8" r="2.3" />
+        </>
+      ) : (
+        <>
+          <rect x="4" y="4" width="16" height="16" rx="3" />
+          <path d="M8 9h8M8 12.5h8M8 16h5" />
+        </>
+      )}
+    </svg>
+  );
+}
+
 /** Call — a real tel: hand-off to the number on record (10879); drawn only when
  *  there is one. One Call for a studio and an organization alike. */
 export function CallButton({ phone }: { phone: string }) {
   return (
     <a href={`tel:${phone.replace(/\s+/g, "")}`} aria-label="Call" style={box}>
-      <span style={glyph}>
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-          <path d="M6.6 3.6c.5-.5 1.4-.4 1.8.2l1.5 2.1c.4.5.3 1.2-.1 1.7l-.9 1c-.2.3-.3.8-.1 1.1a11 11 0 0 0 3 3c.3.2.8.2 1.1-.1l1-.9c.5-.4 1.2-.5 1.7-.1l2.1 1.5c.6.4.7 1.3.2 1.8l-1 1c-.6.6-1.4.8-2.2.6a15.6 15.6 0 0 1-6.8-4.1 15.6 15.6 0 0 1-4.1-6.8c-.2-.8 0-1.6.6-2.2z" />
-        </svg>
-      </span>
+      <span style={glyph}><ContactGlyph kind="call" /></span>
       <span style={CONTACT_LABEL}>Call</span>
     </a>
   );
@@ -48,12 +78,7 @@ export function CallButton({ phone }: { phone: string }) {
 export function MailButton({ email }: { email: string }) {
   return (
     <a href={`mailto:${email.trim()}`} aria-label="Mail" style={box}>
-      <span style={glyph}>
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-          <rect x="3" y="5.5" width="18" height="13" rx="2.5" />
-          <path d="m3.5 7 8.5 6 8.5-6" />
-        </svg>
-      </span>
+      <span style={glyph}><ContactGlyph kind="mail" /></span>
       <span style={CONTACT_LABEL}>Mail</span>
     </a>
   );
@@ -74,12 +99,7 @@ export const whatsappHrefOf = (socials: Array<{ platform: string; url: string }>
 export function MessageButton({ href }: { href: string }) {
   return (
     <a href={href} target="_blank" rel="noreferrer" aria-label="Message" style={box}>
-      <span style={glyph}>
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-          <path d="M4 6h16v10H9l-5 4z" />
-          <path d="M8 10h8M8 13h5" />
-        </svg>
-      </span>
+      <span style={glyph}><ContactGlyph kind="message" /></span>
       <span style={CONTACT_LABEL}>Message</span>
     </a>
   );
@@ -94,12 +114,7 @@ export const mapsPinHref = (lat: number, lng: number) => `https://www.google.com
 export function LocationButton({ query, href }: { query?: string; href?: string }) {
   return (
     <a href={href ?? mapsHref(query ?? "")} target="_blank" rel="noreferrer" aria-label="Location" style={box}>
-      <span style={glyph}>
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-          <path d="M12 21s-6.5-5.7-6.5-10A6.5 6.5 0 0 1 12 4.5 6.5 6.5 0 0 1 18.5 11c0 4.3-6.5 10-6.5 10z" />
-          <circle cx="12" cy="10.8" r="2.3" />
-        </svg>
-      </span>
+      <span style={glyph}><ContactGlyph kind="location" /></span>
       <span style={CONTACT_LABEL}>Location</span>
     </a>
   );

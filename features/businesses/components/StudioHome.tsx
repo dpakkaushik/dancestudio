@@ -167,7 +167,8 @@ export function StudioHome({
           verified={Boolean(business.verifiedAt)}
           meta={
             <>
-              {place ? <HeroPlace text={place} query={`${business.name} ${place}`} /> : null}
+              {/* the city alone, in words (3 Oct 2026) — see `HeroPlace` */}
+              {business.city ? <HeroPlace text={business.city} /> : null}
               {place ? <HeroDot /> : null}
               {/* "· N rooms" is the hub row's own sub-line (2655), and here it is a door */}
               <Link href={`/business/${business.id}/rooms`} aria-label="Rooms at this studio" style={{ color: SUB, textDecoration: "none", fontWeight: 800 }}>

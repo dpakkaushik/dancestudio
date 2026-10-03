@@ -19,7 +19,7 @@ import { PersonBody } from "./PersonBody";
 import { ProfileLink, ProfileShare } from "./ProfileShare";
 import { StatsChip } from "./StatsChip";
 import { HeroId, HeroPlace, IdentityHero } from "./hero-kit";
-import { Group, ROLE_RING, Row } from "./profile-kit";
+import { Group, ROLE_RING, Row, ScheduleBar } from "./profile-kit";
 
 /* one Group and one Row for both profile screens (they are the same rows) */
 export { Group, Row };
@@ -114,6 +114,7 @@ export function PublicPersonPage({
      ⚠ The rule moved into `personScheduleBusiness` on 30 Sep 2026, when the
      route had to read that same business's sessions for the summary below. */
   const schedule = personScheduleBusiness(person);
+  const scheduleHref = schedule ? `/${schedule.type === "studio" ? "studio" : "artist"}/${schedule.id}/schedule` : null;
   const asksGoHere = kind === "artist" && Boolean(person.artistPageId);
   const canAsk = !isMe && asksGoHere;
 
@@ -127,6 +128,7 @@ export function PublicPersonPage({
         {/* ── the profile, lit like a player — the one hero every profile page wears ── */}
         <IdentityHero
           bare
+          reserveHeader
           testId="person-hero"
           name={profile.fullName}
           grad={ring}
@@ -159,11 +161,7 @@ export function PublicPersonPage({
                   City Name without comma in between", for ALL profiles) — this page
                   built the same sentence its own way, with a `prefix` of "24, ",
                   which is the third screen to have done so. */
-              profile.city ? (
-                <HeroPlace text={metaLine} query={profile.city} />
-              ) : (
-                <span style={{ fontWeight: 800, color: INK, fontVariantNumeric: "tabular-nums" }}>{metaLine}</span>
-              )
+              <HeroPlace text={metaLine} />
             ) : null
           }
           /* ⚠ the BAND draws the styles (20 Sep 2026) — see the note below */
@@ -269,6 +267,9 @@ export function PublicPersonPage({
           {kind !== "user" && profile.contactEmail ? <MailButton email={profile.contactEmail} /> : null}
           {kind !== "user" && whatsappHrefOf(profile.socials) ? <MessageButton href={whatsappHrefOf(profile.socials) as string} /> : null}
         </ActionRow>
+        {/* the schedule, in the top half with the contact buttons (3 Oct 2026) —
+            null draws no bar rather than a button pointing nowhere (10868) */}
+        {scheduleHref ? <ScheduleBar href={scheduleHref} /> : null}
         </TopPanel>
 
         {/* ── EVERYTHING FROM HERE DOWN IS `PersonBody`, THE ONE THE PROFILE TAB
@@ -284,7 +285,6 @@ export function PublicPersonPage({
           signedIn={signedIn}
           memberships={memberships}
           artistTeam={artistTeam}
-          scheduleHref={schedule ? `/${schedule.type === "studio" ? "studio" : "artist"}/${schedule.id}/schedule` : null}
           /* the first few classes behind that bar (30 Sep 2026, #0aj) — read by
              the route, because this component has no client of its own */
           nextSessions={nextSessions}

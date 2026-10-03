@@ -487,6 +487,21 @@ export const SchedIcon = () => (
     <path d="M3.5 9.5h17M8.5 4.5v-2M15.5 4.5v-2" />
   </svg>
 );
+/** THE SCHEDULE BAR, IN THE TOP SQUIRCLE WITH THE CONTACT BUTTONS (3 Oct 2026,
+ *  the user: "schedule on public view should be part of top half with contact
+ *  buttons"). It was the first thing in the lower panel; it is the last thing
+ *  in the upper one now, directly under the row of ways to reach this profile,
+ *  on a studio's/artist's page, a person's and the Profile tab alike. */
+export function ScheduleBar({ href, marginTop = 8 }: { href: string; marginTop?: number }) {
+  return (
+    <div style={{ marginTop }}>
+      <Link href={href} aria-label="Schedule" style={bigWhite}>
+        <SchedIcon />
+        Schedule
+      </Link>
+    </div>
+  );
+}
 /* ── the badge hung bottom-right of a follower's face (11353-11355): an 18px
    circle in the account type's tint with the type's glyph on it. Three small
    marks drawn here — a dancer mid-step, an artist with an arm raised, a studio as

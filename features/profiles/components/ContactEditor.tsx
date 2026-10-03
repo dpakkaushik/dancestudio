@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useState, useTransition } from "react";
+import { useState, useTransition, type CSSProperties, type ReactNode } from "react";
 import { Portal } from "@/components/ui/Portal";
 import { setCrewSocialsAction, updateCrewAction } from "@/features/crews/server-actions/crews";
 import { updateBusinessProfileAction } from "@/features/settings/server-actions/plans";
@@ -12,9 +12,10 @@ import { INK, MUTED, SUB } from "@/lib/design/tokens";
 import type { Crew } from "@/types/crew";
 import type { Profile, SocialLink } from "@/types/profile";
 import { enquiryTypesFor } from "@/types/enquiry";
+import { ContactGlyph, type ContactKind } from "./ContactButtons";
 import { useEditMode } from "./EditMode";
 import { linkChip } from "./profile-band";
-import { Sheet, fieldInput, fieldLabel, sheetBtn } from "./profile-kit";
+import { Sheet, fieldInput, sheetBtn } from "./profile-kit";
 import { useRecordLists } from "./RecordLists";
 
 /** THE CONTACT BUTTONS, EDITED WHERE THEY ARE DRAWN (26 Sep 2026).
@@ -84,6 +85,63 @@ export function Switch({ on, label, onClick }: { on: boolean; label: string; onC
         <span style={{ position: "absolute", top: 3, left: on ? 21 : 3, width: 18, height: 18, borderRadius: 9, background: "#fff", transition: "left .15s" }} />
       </span>
     </button>
+  );
+}
+
+const cardInput: CSSProperties = { ...fieldInput, marginTop: 9 };
+
+/** ONE BUTTON, ONE CARD (3 Oct 2026) — the mark the page draws on the button, its
+ *  name, whether it is on the page right now (with the reason when a filled box
+ *  is still not shown), its own Remove, and the box it is made of under that.
+ *  The card's edge is the theme's ink while the button is live, so the cards
+ *  that make buttons read apart from the ones that do not at a glance. */
+function ButtonCard({
+  kind,
+  name,
+  on,
+  why = null,
+  onRemove,
+  children,
+}: {
+  kind: ContactKind;
+  name: string;
+  on: boolean;
+  why?: string | null;
+  onRemove?: () => void;
+  children?: ReactNode;
+}) {
+  return (
+    <div
+      data-testid={`contact-card-${kind}`}
+      style={{ marginTop: 10, padding: "11px 12px 12px", borderRadius: 14, background: "var(--card)", border: `1.5px solid ${on ? "var(--text)" : "var(--el)"}` }}
+    >
+      <div style={{ display: "flex", alignItems: "center", gap: 9 }}>
+        <span
+          aria-hidden="true"
+          style={{ width: 30, height: 30, borderRadius: 9, flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center", background: on ? "var(--text)" : "var(--el)", color: on ? "var(--solid)" : SUB }}
+        >
+          <ContactGlyph kind={kind} size={15} />
+        </span>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ fontSize: 13.5, fontWeight: 900, color: INK }}>{name}</div>
+          <div style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 10.5, fontWeight: 800, color: SUB, marginTop: 1 }}>
+            <span aria-hidden="true" style={{ width: 7, height: 7, borderRadius: 4, flexShrink: 0, background: on ? "#22C55E" : "var(--el)" }} />
+            {on ? "Shown on the page" : why ?? "Not shown"}
+          </div>
+        </div>
+        {onRemove ? (
+          <button
+            type="button"
+            aria-label={`Remove ${name}`}
+            onClick={onRemove}
+            style={{ flexShrink: 0, height: 30, padding: "0 11px", borderRadius: 999, border: "1.5px solid var(--el)", background: "transparent", color: SUB, fontSize: 11, fontWeight: 900, cursor: "pointer", fontFamily: "inherit" }}
+          >
+            Remove
+          </button>
+        ) : null}
+      </div>
+      {children}
+    </div>
   );
 }
 
@@ -193,101 +251,68 @@ function ContactSheet({ target, onClose }: { target: ContactTarget; onClose: () 
   };
 
   const who = target.kind === "person" ? "your page" : target.kind === "business" ? "its page" : "the crew's page";
-
-  /** the row as the page will draw it, in the page's own order. ⚠ Call obeys
-   *  the SWITCH as well as the box, because that is the rule the page keeps —
-   *  a number with the switch off reaches nobody, and a chip that lit anyway
-   *  would be the preview disagreeing with the thing it previews. */
-  const callOn = Boolean(d.phone.trim()) && (!hasSwitch || d.phonePublic);
-  const preview: Array<[string, boolean]> = [
-    ...(hasEnquiry || (target.kind === "person" && target.isArtist) ? ([["Enquiry", hasEnquiry ? d.enquiry : true] as [string, boolean]]) : []),
-    ["Call", callOn],
-    ["Mail", Boolean(d.email.trim())],
-    ["Message", Boolean(d.whatsapp.trim())],
-    ...(target.kind === "business" ? ([["Location", true] as [string, boolean]]) : []),
-  ];
+  /** a plain user's page draws no buttons at all (the 19 Sep list) — the boxes
+   *  still keep the details on the account, and every card says so */
+  const pageShows = target.kind !== "person" || target.isArtist;
+  /* ⚠ Call obeys the SWITCH as well as the box, because that is the rule the
+     page keeps — a number with the switch off reaches nobody */
+  const callOn = pageShows && Boolean(d.phone.trim()) && (!hasSwitch || d.phonePublic);
+  /* ⚠ enquiries are set in the Inbox's Enquiries column since 2 Oct 2026 (C93,
+     C108) — "the Enquiries tool" this sheet used to name no longer exists */
+  const enquiryHref = target.kind === "business" ? `/business/${target.business.id}/inbox?show=enquiries` : "/inbox?show=enquiries";
 
   return (
     <Portal>
       <Sheet label="Contact buttons" onClose={onClose} maxHeight="88vh">
         <b style={{ fontSize: 16.5, letterSpacing: -0.2 }}>Contact buttons</b>
-
-        {/* ⚠⚠ THE FORM SHOWS WHAT IT IS BUILDING (27 Sep 2026, the user: *"fix
-            add contact buttons form in a better way on all profiles"*).
-            It was a flat stack of boxes under one sentence — *"each button is
-            drawn while its box is filled"* — which is a rule you have to hold in
-            your head while you type, on a sheet whose whole subject is a ROW OF
-            BUTTONS you cannot see from it. So the row is here, live: a chip per
-            button, lit when it will be drawn and dim when it will not, in the
-            order the page draws them. Empty a box and its chip goes out while
-            you watch, which is the sentence made unnecessary rather than
-            reworded — C4c's rule (*helper text only where the control cannot
-            speak*) applied to a control that could speak all along. */}
-        <div aria-hidden="true" style={{ display: "flex", flexWrap: "wrap", gap: 6, margin: "10px 0 2px" }}>
-          {preview.map(([label, on]) => (
-            <span
-              key={label}
-              style={{
-                display: "inline-flex",
-                alignItems: "center",
-                gap: 5,
-                padding: "6px 11px",
-                borderRadius: 999,
-                fontSize: 10.5,
-                fontWeight: 900,
-                background: on ? "var(--text)" : "var(--card)",
-                color: on ? "var(--solid)" : MUTED,
-                border: `1.5px solid ${on ? "var(--text)" : "var(--el)"}`,
-                opacity: on ? 1 : 0.65,
-              }}
-            >
-              {on ? "●" : "○"} {label}
-            </span>
-          ))}
+        <div style={{ fontSize: 11, color: MUTED, margin: "3px 0 4px" }}>
+          {pageShows ? `The buttons on ${who}, in the order they are drawn` : "Kept on your account — a user's page shows no buttons; the Artist plan does"}
         </div>
-        {/* the one thing the chips cannot say: WHOSE page they land on */}
-        <div style={{ fontSize: 10.5, color: MUTED, margin: "6px 0 0" }}>on {who}</div>
 
-        <div style={fieldLabel}>Call · mobile</div>
-        <input aria-label="Phone" type="tel" inputMode="tel" value={d.phone} onChange={(e) => setD((x) => ({ ...x, phone: e.target.value }))} placeholder="+91 98765 43210" style={fieldInput} />
-        {hasSwitch ? (
-          <Switch on={d.phonePublic} label={target.kind === "crew" ? "Show Call on the crew's page" : "Show Call on my profile"} onClick={() => setD((x) => ({ ...x, phonePublic: !x.phonePublic }))} />
-        ) : target.kind === "person" ? (
-          <div style={{ fontSize: 10.5, color: MUTED, marginTop: 4 }}>Kept on your account. A plain user&apos;s page shows no Call; the Artist plan adds the switch.</div>
+        {/* ⚠⚠ A CARD PER BUTTON (3 Oct 2026, the user: "better add contact button
+            form can be managed better"). It was a row of preview chips over a
+            flat stack of boxes, so what you were editing and what it made were
+            two separate lists you matched by eye. Now each button is ONE card in
+            the order the page draws it — its own mark, whether it is on the page
+            right now, the box it is made of, and its own Remove — which is how
+            the styles and links editors already read: a list of things you have,
+            each one yours to change or take off. ⚠ Every box stays drawn, filled
+            or not, because filling an empty box IS how a button is added. */}
+        {(hasEnquiry || (target.kind === "person" && target.isArtist)) ? (
+          <ButtonCard kind="enquiry" name="Enquiry" on={hasEnquiry ? d.enquiry : true}>
+            <Link href={enquiryHref} style={{ display: "inline-block", marginTop: 8, fontSize: 11.5, fontWeight: 900, color: INK, textDecoration: "none" }}>
+              Which kinds you take · Inbox › Enquiries ›
+            </Link>
+          </ButtonCard>
         ) : null}
 
-        <div style={fieldLabel}>Mail · email</div>
-        <input aria-label="Email" type="email" inputMode="email" value={d.email} onChange={(e) => setD((x) => ({ ...x, email: e.target.value }))} placeholder="hello@example.com" style={fieldInput} />
+        <ButtonCard kind="call" name="Call" on={callOn} why={!pageShows ? null : d.phone.trim() && hasSwitch && !d.phonePublic ? "Hidden — the switch below is off" : null} onRemove={d.phone.trim() ? () => setD((x) => ({ ...x, phone: "" })) : undefined}>
+          <input aria-label="Phone" type="tel" inputMode="tel" value={d.phone} onChange={(e) => setD((x) => ({ ...x, phone: e.target.value }))} placeholder="Mobile number, e.g. +91 98765 43210" style={cardInput} />
+          {hasSwitch ? (
+            <Switch on={d.phonePublic} label={target.kind === "crew" ? "Show Call on the crew's page" : "Show Call on my profile"} onClick={() => setD((x) => ({ ...x, phonePublic: !x.phonePublic }))} />
+          ) : null}
+        </ButtonCard>
 
-        <div style={fieldLabel}>Message · WhatsApp</div>
-        <input aria-label="WhatsApp" type="tel" inputMode="tel" value={d.whatsapp} onChange={(e) => setD((x) => ({ ...x, whatsapp: e.target.value }))} placeholder="+91 98765 43210" style={fieldInput} />
+        <ButtonCard kind="mail" name="Mail" on={pageShows && Boolean(d.email.trim())} onRemove={d.email.trim() ? () => setD((x) => ({ ...x, email: "" })) : undefined}>
+          <input aria-label="Email" type="email" inputMode="email" value={d.email} onChange={(e) => setD((x) => ({ ...x, email: e.target.value }))} placeholder="Email address" style={cardInput} />
+        </ButtonCard>
 
-        {/* ⚠⚠ THE ENQUIRY SWITCH AND ITS KINDS LEFT THIS SHEET (27 Sep 2026, the
-            user: *"with its setting as well manged from there"*). Enquiries is a
-            TOOL with a desk of its own since the same evening, and what you take
-            is the first thing that desk is about — so the control moved to it
-            and this sheet keeps the row of buttons it is named after.
+        <ButtonCard kind="message" name="Message" on={pageShows && Boolean(d.whatsapp.trim())} onRemove={d.whatsapp.trim() ? () => setD((x) => ({ ...x, whatsapp: "" })) : undefined}>
+          <input aria-label="WhatsApp" type="tel" inputMode="tel" value={d.whatsapp} onChange={(e) => setD((x) => ({ ...x, whatsapp: e.target.value }))} placeholder="WhatsApp number with country code" style={cardInput} />
+        </ButtonCard>
 
-            ⚠ `d.enquiry` and `d.kinds` STAY, with no control on them, and that
-            is deliberate rather than leftover: `update_business_profile` takes
-            the WHOLE profile, so a Save here that omitted the kinds would empty
-            the column the desk had just set. They are a round-trip carrier now,
-            exactly as `accepts` has been since the Payments desk took those
-            switches — the 26 Sep rule that a door taking the whole record makes
-            every caller a writer of every field. */}
-        {hasEnquiry ? <div style={{ fontSize: 10.5, color: MUTED, marginTop: 10 }}>Which kinds of enquiry it takes is set on the Enquiries tool.</div> : null}
+        {/* ⚠ `d.enquiry` and `d.kinds` carry NO control here and still ride every
+            Save (27 Sep 2026): `update_business_profile` takes the WHOLE profile,
+            so leaving them out would empty the column the Inbox had just set. */}
 
-        {/* ⚠ LOCATION IS NOT A FIELD HERE AND NEVER WAS (27 Sep 2026). It had a
-            `fieldLabel` and a paragraph in place of a control — a heading with
-            nothing under it, which reads as a box that failed to render. The pin
-            is Edit details' and the chip above says the button is on; what is
-            left is the door, one line, where a door belongs. */}
+        {/* LOCATION IS THE PIN, which is Edit details' map — the card says the
+            button is on and is the door to where it is changed */}
         {target.kind === "business" ? (
-          <div style={{ marginTop: 14 }}>
-            <Link href={target.detailsHref} scroll={false} style={{ fontSize: 11.5, fontWeight: 900, color: INK, textDecoration: "none" }}>
-              The pin on the map is in Edit details ›
+          <ButtonCard kind="location" name="Location" on>
+            <Link href={target.detailsHref} scroll={false} style={{ display: "inline-block", marginTop: 8, fontSize: 11.5, fontWeight: 900, color: INK, textDecoration: "none" }}>
+              Move the pin · Edit details ›
             </Link>
-          </div>
+          </ButtonCard>
         ) : null}
 
         {err ? <div role="alert" style={{ fontSize: 12, color: "#F87171", marginTop: 10 }}>{err}</div> : null}
