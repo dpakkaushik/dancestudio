@@ -2,7 +2,7 @@
 
 ## LAST SESSION (3 Oct 2026) — replaced on every push (Rule 13)
 
-> ### ONE CARD ANATOMY FOR EVERY HOME TOOL (3 Oct 2026, latest) — no migration · ⚠ COMMITTED, NOT PUSHED
+> ### ONE CARD ANATOMY FOR EVERY HOME TOOL (3 Oct 2026, latest) — no migration · ✅ PUSHED AND LIVE (`b97385a`: Vercel READY, alias confirmed on the sha through the API, and ON THE LIVE SITE `stranger-smoke` all green · the card probe 32/32), on the user's *"once all green push to live"*
 > The user: *"Home Tools inside on all profiles — better and bigger cards for Crew,
 > Studio, Routines, Team, Students, membership, practice. each has a profile linked
 > to it which should be visible with profile pic and name and big. rest all details
