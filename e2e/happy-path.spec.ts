@@ -767,12 +767,14 @@ test.describe.serial("DanceOS, end to end", () => {
        ⚠ A ROOM IS EDITED ONLY THROUGH ITS FORM since 4 Oct 2026 (the user: "edit
        only from editing form now not outside") — the card shows it, Edit opens
        the same sheet the room was added with, and nothing is written until Save */
-    await owner.getByRole("link", { name: "Edit Studio A" }).click();
+    /* ⚠ QUICK SINCE 4 Oct 2026 (the user: "make page quicker for opening add room
+       form and it being created. and for edit") — Edit opens the sheet from the
+       desk's own state, and ONE press saves: no confirm sheet any more */
+    await owner.getByRole("button", { name: "Edit Studio A" }).click();
     const editRoom = owner.getByRole("dialog", { name: "Edit room" });
     await expect(editRoom).toBeVisible({ timeout: 15_000 });
     await editRoom.getByRole("button", { name: "🪞 Mirrors", exact: true }).click();
     await editRoom.getByRole("button", { name: "Save room" }).click();
-    await owner.getByRole("button", { name: "Save it" }).click();
     await expect(editRoom).toBeHidden({ timeout: 15_000 });
     const roomA = owner.getByTestId("room-card").filter({ hasText: "Studio A" });
     await expect(roomA.getByTestId("room-amenities")).toContainText("🪞 Mirrors", { timeout: 15_000 });
@@ -788,10 +790,9 @@ test.describe.serial("DanceOS, end to end", () => {
        is asked for; the old defaults are prefilled, so the same answer is still
        one press. ⚠ The room is removed again at the end, because the rest of
        this serial story is written against a studio with exactly one. */
-    await owner.getByRole("link", { name: "Add room" }).click();
+    await owner.getByRole("button", { name: "Add room" }).click();
     const addRoom = owner.getByRole("dialog", { name: "Add room" });
     await expect(addRoom).toBeVisible({ timeout: 15_000 });
-    await expect(owner).toHaveURL(/\/rooms\?new=1$/);
     // the defaults are the ones the press used to apply silently
     await expect(addRoom.getByLabel("Room name")).toHaveValue("Room 2");
     await expect(addRoom.getByLabel("How many it holds")).toHaveValue("20");
@@ -800,10 +801,14 @@ test.describe.serial("DanceOS, end to end", () => {
     /* ⚠ and the amenities are asked for in the add form too (4 Oct 2026) */
     await addRoom.getByRole("button", { name: "❄️ AC", exact: true }).click();
     await addRoom.getByRole("button", { name: "Add room" }).click();
-    await owner.getByRole("button", { name: "Add it" }).click();
     await expect(addRoom).toBeHidden({ timeout: 15_000 });
     const roomB = owner.getByTestId("room-card").filter({ hasText: "Studio B" });
     await expect(roomB.getByTestId("room-capacity")).toHaveText("12", { timeout: 15_000 });
+    /* the figure is CAPACITY, the studio stands between Add room and the cards,
+       and the sentence at the foot is gone (4 Oct 2026) */
+    await expect(roomB.getByText("Capacity", { exact: true })).toBeVisible();
+    await expect(owner.getByTestId("rooms-studio")).toBeVisible();
+    await expect(owner.getByText(/no two published classes share one/)).toHaveCount(0);
     await expect(roomB.getByTestId("room-amenities")).toContainText("❄️ AC");
     await owner.getByRole("button", { name: "Remove Studio B" }).click();
     await expect(owner.getByTestId("room-card").filter({ hasText: "Studio B" })).toHaveCount(0, { timeout: 15_000 });

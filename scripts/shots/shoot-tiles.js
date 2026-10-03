@@ -542,17 +542,21 @@ async function personOpensAStudio(page, who, acc, stamp) {
        ⚠ Both are SHEET-ONLY, so unlike the other five there is no page to assert
        at the other end: neither ever had an address, and Rule 14 protects the
        ones that were handed out rather than inventing new ones. */
-    for (const [tool, label, dialog, blocker] of [
-      ["assets", "Add asset", "Add asset", "Name the asset first"],
-      ["rooms", "Add room", "Add room", null],
+    /* ⚠ THE ROOMS SHEET IS NO LONGER AN ADDRESS (4 Oct 2026, the user: "make page
+       quicker for opening add room form") — it opens from the desk's own state, a
+       BUTTON with no round trip, and still owns a history entry so back closes it.
+       Assets keeps its `?new=1` link. */
+    for (const [tool, label, dialog, blocker, role] of [
+      ["assets", "Add asset", "Add asset", "Name the asset first", "link"],
+      ["rooms", "Add room", "Add room", null, "button"],
     ]) {
       await p3.goto(`${BASE}/business/${studio.id}/${tool}`, { waitUntil: "networkidle" });
       const before = await p3.locator("h1").first().innerText().catch(() => "");
-      await p3.getByRole("link", { name: label }).click();
+      await p3.getByRole(role, { name: label }).click();
       const sheet = p3.getByRole("dialog", { name: dialog });
       await sheet.waitFor({ timeout: 15_000 }).catch(() => {});
       check(await sheet.isVisible().catch(() => false), `studio · ${label} opens a sheet over the ${tool} desk`);
-      check(new URL(p3.url()).search === "?new=1", `studio · the ${tool} sheet is the URL (${new URL(p3.url()).search})`);
+      if (role === "link") check(new URL(p3.url()).search === "?new=1", `studio · the ${tool} sheet is the URL (${new URL(p3.url()).search})`);
       check((await p3.locator("h1").first().innerText().catch(() => "")) === before, `studio · the ${tool} desk is still underneath it`);
       /* ⚠ THE BAR NAMES THE MISSING ANSWER rather than greying out (15573-15578),
          and it is the button's ACCESSIBLE NAME that says so, not just its text:

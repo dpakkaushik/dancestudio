@@ -1,8 +1,8 @@
 import { redirect } from "next/navigation";
-import { RoomForm } from "@/features/rooms/components/RoomForm";
 import { RoomsManager } from "@/features/rooms/components/RoomsManager";
+import { reversePlace } from "@/lib/geo/places";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
-import { findRoomsByBusiness } from "@/repositories/rooms";
+import { countPublishedClassesByRoom, findRoomsByBusiness } from "@/repositories/rooms";
 import { findMyMemberships, runsTheBusiness } from "@/repositories/businesses";
 
 export default async function BusinessRoomsPage({
@@ -47,21 +47,45 @@ export default async function BusinessRoomsPage({
      the screen and the database now admit the same two seats. This line said the
      opposite while that migration was still held. */
   const myRole = seat.memberRole;
-  const rooms = await findRoomsByBusiness(supabase, businessId);
   const canEdit = runsTheBusiness(myRole);
+  /* the rooms and the studio's full address in ONE batch — the address is the
+     slow one (a geocoder) and is given a deadline, so it can never be why this
+     page is slow (4 Oct 2026, the user: "make page quicker") */
+  const areaCity = [business.area, business.city].filter(Boolean).join(", ") || "Your studio";
+  const [rooms, address] = await Promise.all([findRoomsByBusiness(supabase, businessId), fullAddressOf(supabase, businessId, areaCity)]);
+  /* which rooms hold a published class still to run — those offer no Remove */
+  const inUse = Object.fromEntries(await countPublishedClassesByRoom(supabase, rooms.map((r) => r.id)).catch(() => new Map<string, number>()));
   /* the room is looked up among THIS studio's own — a pointer, never an authority */
   const editing = !opening && editId ? rooms.find((r) => r.id === editId) ?? null : null;
   return (
-    <>
-      <RoomsManager
-        businessId={businessId}
-        businessName={business.name}
-        businessWhere={[business.area, business.city].filter(Boolean).join(", ") || "Your studio"}
-        rooms={rooms}
-        canEdit={canEdit}
-      />
-      {opening && canEdit ? <RoomForm businessId={businessId} businessName={business.name} defaultName={`Room ${rooms.length + 1}`} /> : null}
-      {editing && canEdit ? <RoomForm key={editing.id} businessId={businessId} businessName={business.name} defaultName={editing.name} room={editing} /> : null}
-    </>
+    <RoomsManager
+      businessId={businessId}
+      businessName={business.name}
+      businessPhotoPath={business.photoPath ?? null}
+      businessAddress={address}
+      rooms={rooms}
+      inUse={inUse}
+      initialSheet={opening ? { mode: "new" } : editing ? { mode: "edit", room: editing } : null}
+      canEdit={canEdit}
+    />
   );
+}
+
+/** THE STUDIO'S FULL ADDRESS (4 Oct 2026, the user: "studio name with profile pic
+ *  and full address"). A business stores no street address — only its area, its
+ *  city and, once the owner placed it, a map PIN — so the full address is what
+ *  the pin resolves to (`reversePlace`, the location picker's own geocoder, cached
+ *  per instance). ⚠ A pin that was never placed is the city's centre, a guess, so
+ *  it is not resolved; ⚠ and the geocoder gets 1.2 s — past that, or with no key,
+ *  or on any error, the area and city stand in rather than the page waiting. */
+async function fullAddressOf(supabase: Awaited<ReturnType<typeof createSupabaseServerClient>>, businessId: string, fallback: string): Promise<string> {
+  try {
+    const { data } = await supabase.from("businesses").select("lat, lng, location_set_at").eq("id", businessId).maybeSingle();
+    const b = data as { lat: number | null; lng: number | null; location_set_at: string | null } | null;
+    if (!b?.location_set_at || b.lat == null || b.lng == null) return fallback;
+    const place = await Promise.race([reversePlace(b.lat, b.lng), new Promise<null>((r) => setTimeout(() => r(null), 1200))]);
+    return place?.label?.trim() || fallback;
+  } catch {
+    return fallback;
+  }
 }

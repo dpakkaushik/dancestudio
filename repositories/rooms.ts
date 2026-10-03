@@ -109,17 +109,19 @@ export async function createRoom(
   return toRoom(data as RoomRow);
 }
 
+/** ⚠ hands back the room AS SAVED (4 Oct 2026) — the desk draws it straight off
+ *  this answer rather than re-reading the page, which is what made Save slow */
 export async function updateRoom(
   supabase: SupabaseClient,
   roomId: string,
   patch: { name?: string; capacity?: number; amenities?: string[] }
-): Promise<void> {
+): Promise<Room> {
   const { data, error } = await supabase
     .from("rooms")
     .update(patch)
     .eq("id", roomId)
     .is("deleted_at", null)
-    .select("id");
+    .select(ROOM_COLUMNS);
 
   if (error) {
     throw new Error(error.message);
@@ -127,6 +129,45 @@ export async function updateRoom(
   if (!data || data.length === 0) {
     throw new Error("Room not found or not yours to edit");
   }
+  return toRoom(data[0] as RoomRow);
+}
+
+/** HOW MANY PUBLISHED CLASSES STILL TO RUN EACH ROOM HOLDS (4 Oct 2026, the user:
+ *  "room cannot be deleted if classes are alredy published for it").
+ *
+ *  ⚠ PUBLISHED AND NOT YET OVER. Nothing in this app ever moves a class to
+ *  'completed' (30 Sep 2026), so "published" alone would hold a room for ever
+ *  over a class that ran last year — and a soft-deleted room loses nothing from
+ *  that history, because a class keeps the room's NAME. What a removal would
+ *  break is a class still on the calendar, so that is what is counted: a live
+ *  published class with a session that has not ended.
+ *  ⚠ It counts an ARTIST's class held in this studio's room too — `room_id` names
+ *  the room whoever owns the class, and the venue's runners may read it. */
+export async function countPublishedClassesByRoom(
+  supabase: SupabaseClient,
+  roomIds: string[],
+  now: Date = new Date()
+): Promise<Map<string, number>> {
+  const out = new Map<string, number>();
+  if (roomIds.length === 0) return out;
+  const { data, error } = await supabase
+    .from("classes")
+    .select("id, room_id, class_sessions!inner (ends_at)")
+    .in("room_id", roomIds)
+    .eq("status", "published")
+    .is("deleted_at", null)
+    .gt("class_sessions.ends_at", now.toISOString())
+    .limit(1000);
+  if (error) {
+    throw new Error(`rooms.countPublishedClasses failed: ${error.message}`);
+  }
+  const seen = new Set<string>();
+  for (const row of (data ?? []) as Array<{ id: string; room_id: string }>) {
+    if (seen.has(row.id)) continue;
+    seen.add(row.id);
+    out.set(row.room_id, (out.get(row.room_id) ?? 0) + 1);
+  }
+  return out;
 }
 
 /** Soft delete. Classes pointing at it keep their room NAME (the FK is ON DELETE
@@ -143,6 +184,33 @@ export async function updateRoom(
  *  the worst kind of wrong answer on a screen about capacity. **A reason that
  *  points at another file's shape goes stale when that file changes.** */
 export async function softDeleteRoom(supabase: SupabaseClient, roomId: string): Promise<void> {
+  /* ⚠ REFUSED WHILE A PUBLISHED CLASS STILL TO RUN IS HELD IN IT (4 Oct 2026) —
+     checked here, on the server, not only by the card hiding its button. ⚠ The
+     database itself does not refuse it; a trigger would be a migration. */
+  /* ⚠ AND NEVER THE LAST ROOM (4 Oct 2026, the user: "if only one room can never
+     be deleted") — the card has hidden Remove on a studio's only room since
+     22 Sep; this is the server saying the same, so a forged press is refused too */
+  const { data: own, error: ownErr } = await supabase.from("rooms").select("business_id").eq("id", roomId).is("deleted_at", null).maybeSingle();
+  if (ownErr) {
+    throw new Error(ownErr.message);
+  }
+  if (own) {
+    const { count, error: countErr } = await supabase
+      .from("rooms")
+      .select("id", { count: "exact", head: true })
+      .eq("business_id", (own as { business_id: string }).business_id)
+      .is("deleted_at", null);
+    if (countErr) {
+      throw new Error(countErr.message);
+    }
+    if ((count ?? 0) <= 1) {
+      throw new Error("A studio keeps at least one room — add another before removing this one");
+    }
+  }
+  const inUse = (await countPublishedClassesByRoom(supabase, [roomId])).get(roomId) ?? 0;
+  if (inUse > 0) {
+    throw new Error(`This room has ${inUse} published ${inUse === 1 ? "class" : "classes"} still to run — move or take ${inUse === 1 ? "it" : "them"} down first`);
+  }
   const { data, error } = await supabase
     .from("rooms")
     .update({ deleted_at: new Date().toISOString() })

@@ -6,6 +6,7 @@ import { z } from "zod";
 import { isAmenity } from "@/lib/constants/amenities";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { createRoom, softDeleteRoom, updateRoom } from "@/repositories/rooms";
+import type { Room } from "@/types/room";
 
 /** Step 11 room actions. Authorization is RLS (owner/trainer of the business);
  *  what a room may hold is validated here, and the amenity vocabulary is closed
@@ -13,6 +14,8 @@ import { createRoom, softDeleteRoom, updateRoom } from "@/repositories/rooms";
 
 export interface RoomActionResult {
   error: string | null;
+  /** the room as saved — the desk draws it at once (4 Oct 2026) */
+  room?: Room;
 }
 
 const amenitiesSchema = z
@@ -52,8 +55,17 @@ async function requireUser() {
   return supabase;
 }
 
-const revalidateRooms = (businessId: string) => {
-  revalidatePath(`/business/${businessId}/rooms`);
+/* ⚠⚠ ONLY A DELETION REVALIDATES (4 Oct 2026, the user: "make page quicker for
+   opening add room form and it being created. and for edit"). Measured: ANY
+   `revalidatePath` inside a server action makes Next re-render the CURRENT page
+   into the action's response — the membership read, the rooms, the address —
+   so Add and Save took 1.7–3.3 s with the database write itself a fraction of
+   it. Every page this touches is dynamic (cookies) and read fresh on the next
+   visit, so revalidating bought nothing; the desk draws the room the save hands
+   back instead. A deletion still revalidates the desk, because it hands nothing
+   back. */
+const revalidateRooms = (businessId: string, desk = false) => {
+  if (desk) revalidatePath(`/business/${businessId}/rooms`);
   revalidatePath(`/business/${businessId}/classes`);
   revalidatePath("/c/[slug]", "page");
 };
@@ -70,9 +82,9 @@ export async function createRoomAction(input: {
   }
   const supabase = await requireUser();
   try {
-    await createRoom(supabase, { ...parsed.data, amenities: parsed.data.amenities ?? [] });
-    revalidateRooms(parsed.data.businessId);
-    return { error: null };
+    const room = await createRoom(supabase, { ...parsed.data, amenities: parsed.data.amenities ?? [] });
+    /* ⚠ NO REVALIDATION ON A SAVE (4 Oct 2026) — see `revalidateRooms` */
+    return { error: null, room };
   } catch (error: unknown) {
     return { error: error instanceof Error ? error.message : "Could not add the room" };
   }
@@ -91,13 +103,12 @@ export async function updateRoomAction(input: {
   }
   const supabase = await requireUser();
   try {
-    await updateRoom(supabase, parsed.data.roomId, {
+    const room = await updateRoom(supabase, parsed.data.roomId, {
       name: parsed.data.name,
       capacity: parsed.data.capacity,
       amenities: parsed.data.amenities,
     });
-    revalidateRooms(parsed.data.businessId);
-    return { error: null };
+    return { error: null, room };
   } catch (error: unknown) {
     return { error: error instanceof Error ? error.message : "Could not save the room" };
   }
@@ -114,7 +125,7 @@ export async function deleteRoomAction(input: {
   const supabase = await requireUser();
   try {
     await softDeleteRoom(supabase, parsed.data.roomId);
-    revalidateRooms(parsed.data.businessId);
+    revalidateRooms(parsed.data.businessId, true);
     return { error: null };
   } catch (error: unknown) {
     return { error: error instanceof Error ? error.message : "Could not remove the room" };
