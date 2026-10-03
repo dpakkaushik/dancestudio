@@ -10230,6 +10230,40 @@ summary; the report has the evidence.
 
 ## NEXT TO DO — replaced on every push (Rule 13)
 
+0bd. **⚠ THE ASSETS SLICE — MIGRATION DRY-RUN 18/18 AND HELD, ITS APP HALF BUILT AND
+   UNCOMMITTED, AND THE TWO SHIP TOGETHER** (4 Oct 2026, the user: *"assets- button A
+   capital for asset on both page and form, asset form- quantity in form with 1 minimum
+   while adding. should also be visible on card. edit should not open like a collapse
+   should only be editable from the form. shorter and better list for type of asset-
+   speaker, props should be there and Other assets also in option"*, then *"remove text
+   between heading and add asset button"*).
+   * **`20261004100000_an_asset_has_a_quantity_and_a_shorter_list`** — `assets.quantity
+     integer not null default 1` (CHECK 1…10000; every existing row reads 1; a COUNT,
+     `value_inr` still the price of the whole lot, so no money figure moves); the
+     category CHECK goes from the prototype's fourteen to nine — **Speaker · Mirror ·
+     Flooring · Lighting · Props · Costume · Furniture · Electronics · Other** — with
+     every row mapped (Sound & AV → Speaker, Mirrors → Mirror, IT & devices →
+     Electronics, Equipment / Infrastructure / Instruments / Safety / Merchandise /
+     Vehicle → Other; production holds 4 rows: Equipment ×2 → Other, Props, Sound & AV →
+     Speaker); `save_asset` dropped and re-created with `p_quantity integer default 1`
+     LAST (grants restated: authenticated + service_role, never anon). No policy, no
+     other function; anon 40, policies 106.
+   * **The app half (uncommitted):** "Add Asset" / "Edit Asset" / "Save Asset" with a
+     capital A; a QUANTITY stepper in the form (starts at 1, − disabled at 1, the bar
+     names a 0, leaving the box settles it at 1); a **Quantity** box on every card and
+     an **Items** count in the middle section; **Edit opens the same form at
+     `?edit={asset}`** — no fold on the card (the picture is changed there too); the
+     "What {business} owns" line under the heading is gone; the picker shows "Other
+     assets" for the stored "Other". Probe **27/27** render-only in both themes on
+     `:3100` (no save — `saveAsset` sends `p_quantity`, which PostgREST refuses until
+     the apply). e2e asset segment, `shoot-tiles` and `shoot-earnings` re-cut to the
+     new words.
+   ⚠ **Do NOT push the app half before the apply** — a save on live would answer
+   PGRST202. On the user's word, in this order: dry run again, `db-push -DryRun`
+   (lists this AND #0bc's file — both are held; apply only what was approved, holding
+   the other in the scratchpad), apply, `notify pgrst, 'reload schema'`, then commit and
+   push the assets files, then the happy path on `:3100` (its asset segment saves).
+
 0bc. **⚠ ONE MIGRATION WRITTEN, DRY-RUN 19/19 AND HELD — `20261004090000_a_room_in_use_stays`**
    (4 Oct 2026; the file and `scripts/dry-run-checks/20261004090000.js` are UNCOMMITTED
    on purpose until the user approves). Rule 9 (RLS-adjacent: it narrows what the
