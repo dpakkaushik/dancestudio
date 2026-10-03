@@ -85,6 +85,21 @@ export async function setPosterAction(input: { kind: "class" | "event"; id: stri
   return { error: null, path: parsed.data.path };
 }
 
+/** AN ASSET'S PICTURE (3 Oct 2026) — the poster door's shape: the file is
+ *  already in `assets/{business}/…`, written under an owner-only policy, and
+ *  `set_asset_photo` re-checks the owner AND the folder. Null takes it off. */
+export async function setAssetPhotoAction(input: { assetId: string; businessId: string; path: string | null }): Promise<PhotoActionResult> {
+  const parsed = z.object({ assetId: z.string().uuid(), businessId: z.string().uuid(), path }).safeParse(input);
+  if (!parsed.success) return { error: "Invalid photo" };
+  const supabase = await requireUser();
+  const { error } = await supabase.rpc("set_asset_photo", { p_asset_id: parsed.data.assetId, p_path: parsed.data.path });
+  if (error) {
+    return { error: error.message };
+  }
+  revalidatePath(`/business/${parsed.data.businessId}/assets`);
+  return { error: null, path: parsed.data.path };
+}
+
 /** AN ARTIST'S GALLERY (14 Sep 2026). The same shape as the three doors above:
  *  the file is already in `gallery/{user}/…` when this runs, and the RPC checks
  *  the folder, the ceiling of ten, and records the row. Removing returns the

@@ -33,6 +33,8 @@ export async function proxy(request: NextRequest) {
  *  Rule 14 does not apply. */
 export const config = {
   matcher: [
-    "/((?!_next/static|_next/image|favicon.ico|api/webhooks|.*\\.(?:svg|png|jpg|jpeg|gif|webp|avif|ico|txt|xml|json|webmanifest)$).*)",
+    /* `sw.js` (3 Oct 2026): the push service worker is a static file, and a
+       browser re-fetches it on its own schedule — no session to refresh */
+    "/((?!_next/static|_next/image|favicon.ico|api/webhooks|sw\\.js|.*\\.(?:svg|png|jpg|jpeg|gif|webp|avif|ico|txt|xml|json|webmanifest)$).*)",
   ],
 };

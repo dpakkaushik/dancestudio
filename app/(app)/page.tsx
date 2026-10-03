@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
+import { TopPanel } from "@/components/ui/TopPanel";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { findProfileById } from "@/repositories/profiles";
 import { findMyDeck } from "@/repositories/home";
@@ -194,8 +195,15 @@ export default async function HomePage() {
       }}
     >
       <div style={{ padding: "0 16px" }}>
+        {/* ⚠ THE TOP OF HOME IS A SQUIRCLE (3 Oct 2026, the user: "even top of all
+            home, dicover and inbox to be rounded squircle. remove the top backdrop
+            from home tab completly behinde posters") — the hero, the band and the
+            contact row in one card; `bare` takes the hero's own ground, gutter and
+            the empty-poster square away */}
+        <TopPanel style={{ marginTop: 12 }}>
         {/* identity hero — the same object the profile and a studio's home wear (prototype 7248-7339, 10575) */}
         <IdentityHero
+          bare
           name={profile.fullName}
           grad={ring}
           /* ⚠ ONE MAP FOR BOTH SCREENS, AND IT IS THE TITLE-CASED ONE (19 Sep
@@ -339,7 +347,7 @@ export default async function HomePage() {
             accessible NAME becomes the reason, so a locator asking for the live
             button cannot match the dead one. ── */}
         {/* no gap of its own — the hero's own bottom padding is it (21 Sep 2026) */}
-        <ActionRow>
+        <ActionRow marginTop={12}>
           {asksGoHere ? (
             <EnquiryButton
               businessId={asksGoHere}
@@ -360,6 +368,7 @@ export default async function HomePage() {
         </ActionRow>
         {/* the ⊕ that makes and unmakes those buttons, while the pencil is pressed (26 Sep 2026) */}
         <ContactEditButton target={{ kind: "person", profile, isArtist }} />
+        </TopPanel>
         <TodayShelf deck={deck} />
 
         {/* ── run your business — the prototype's BizSection (7342-7344, 2497-2583). It is the

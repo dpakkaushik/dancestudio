@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { clearNotificationsAction, markNotificationsReadAction, setNotificationPrefsAction } from "@/features/notifications/server-actions/notifications";
+import { PushDevice } from "@/features/notifications/components/PushDevice";
 import { DOS_DISPLAY, DOS_UI, INK, LILAC, SUB } from "@/lib/design/tokens";
 import { useCloseOnBack } from "@/lib/hooks/useCloseOnBack";
 import { NOTIF_KINDS, agoWords, type AppNotification, type NotificationKind, type NotificationPrefs } from "@/types/notification";
@@ -213,9 +214,13 @@ export function NotificationsScreen({ notifications, prefs, nowIso }: { notifica
                 </div>
               );
             })}
-            {/* said on the screen, because the switch is real and the sending is not */}
+            {/* ⚠ PUSH IS REAL NOW (3 Oct 2026): the switch above says whether DanceOS
+                may push to you at all, and this row is the phone in your hand,
+                which its own browser has to be asked about once */}
+            <PushDevice />
+            {/* said on the screen, because these two switches are real and their sending is not */}
             <div style={{ fontSize: 10, color: "var(--muted)", lineHeight: 1.5, marginTop: 9 }}>
-              Your answer is saved. Today DanceOS shows these here, in the app — a push to your phone, a WhatsApp message and an email each arrive with the thing that sends them.
+              Your answer is saved. WhatsApp and email arrive with the thing that sends them — today DanceOS pushes to your phone and shows everything here.
             </div>
             <button type="button" disabled={busy} aria-label="Save settings" onClick={() => void run(() => setNotificationPrefsAction(draft), "Settings saved").then(() => setPrefOpen(false))} style={{ marginTop: 16, width: "100%", textAlign: "center", padding: "14px", borderRadius: 999, background: INK, color: LILAC, fontWeight: 900, fontSize: 14, cursor: "pointer", border: "none", fontFamily: "inherit" }}>
               Done

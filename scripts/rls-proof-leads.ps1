@@ -83,16 +83,23 @@ try {
   }
   Check 4 "A rival cannot add a lead to your desk" $rivalWriteBlocked
 
-  # 5. the whole team works the desk - STAFF, who are the people who answer the phone
+  # 5. ONLY THE PEOPLE WHO RUN THE BUSINESS work the desk (3 Oct 2026,
+  #    20261003110000 - the user: a visiting teacher or an assistant "should not
+  #    be able to see their studio student list"). Until then every member read
+  #    it; a seat that is not owner or manager reads NOTHING now, in the database.
   Invoke-RestMethod -Method Post -Uri "$base/rest/v1/business_members" -Headers $svcH -Body (@{
     business_id = $ta.id; user_id = $b.user.id; member_role = "staff"; created_by = $a.user.id; updated_by = $a.user.id } | ConvertTo-Json) | Out-Null
   $staffSees = Get-Rows (Api $b.access_token) "leads?id=eq.$($leadRow.id)&select=id,name"
-  Check 5 "Front-desk staff read the desk ($($staffSees.Count))" ($staffSees.Count -eq 1)
+  Invoke-RestMethod -Method Patch -Uri "$base/rest/v1/leads?id=eq.$($leadRow.id)" -Headers (Api $b.access_token) -Body (@{ status = "quoted" } | ConvertTo-Json) | Out-Null
+  $afterStaff = Get-Rows (Api $a.access_token) "leads?id=eq.$($leadRow.id)&select=status"
+  Check 5 "A plain staff seat reads nothing ($($staffSees.Count)) and its PATCH moves nothing (still $($afterStaff[0].status))" (($staffSees.Count -eq 0) -and ($afterStaff[0].status -eq "new"))
 
-  # 6. and staff can move a lead along
+  # 6. the same person made MANAGER reads the desk and moves a lead along
+  Invoke-RestMethod -Method Patch -Uri "$base/rest/v1/business_members?business_id=eq.$($ta.id)&user_id=eq.$($b.user.id)" -Headers $svcH -Body (@{ member_role = "manager" } | ConvertTo-Json) | Out-Null
+  $mgrSees = Get-Rows (Api $b.access_token) "leads?id=eq.$($leadRow.id)&select=id,name"
   Invoke-RestMethod -Method Patch -Uri "$base/rest/v1/leads?id=eq.$($leadRow.id)" -Headers (Api $b.access_token) -Body (@{ status = "quoted" } | ConvertTo-Json) | Out-Null
   $quoted = Get-Rows (Api $a.access_token) "leads?id=eq.$($leadRow.id)&select=status"
-  Check 6 "Staff moved it to Quoted (now $($quoted[0].status))" ($quoted[0].status -eq "quoted")
+  Check 6 "A manager reads the desk ($($mgrSees.Count)) and moved it to Quoted (now $($quoted[0].status))" (($mgrSees.Count -eq 1) -and ($quoted[0].status -eq "quoted"))
 
   # 7. a trial is agreed against a REAL class of this studio
   $starts = (Get-Date).AddDays(5).ToString("yyyy-MM-ddT19:00:00zzz")

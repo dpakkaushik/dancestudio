@@ -17,6 +17,8 @@ export interface MyClassBooking {
   priceInr: number;
   capacity: number;
   classStatus: ClassStatus;
+  /** the uploaded poster the card draws (3 Oct 2026) */
+  posterPath: string | null;
   startsAt: string;
   endsAt: string;
   businessName: string;

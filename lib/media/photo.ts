@@ -54,7 +54,11 @@ export type PhotoOwner =
    *  `auth.uid()` (as `routines/` rightly does for a person's own track) would
    *  scatter one studio's posters across its team's folders. The storage policy
    *  asks `is_business_member` and `set_class_poster` re-checks the same prefix. */
-  | { kind: "poster"; id: string; subject: { kind: "class"; id: string } };
+  | { kind: "poster"; id: string; subject: { kind: "class"; id: string } }
+  /** AN ASSET'S PICTURE (3 Oct 2026) — `id` is the BUSINESS, whose folder it
+   *  goes in, and `assetId` the row it is a picture OF. The owner's alone: the
+   *  storage policy and `set_asset_photo` both ask `is_business_owner`. */
+  | { kind: "asset"; id: string; assetId: string };
 
 /* ⚠ THESE ARE STORAGE FOLDERS, NOT TABLE NAMES, AND THEY ARE NEVER RENAMED (Rule
    16): objects live under them, the storage policies test them by name, and the
@@ -72,7 +76,7 @@ export type PhotoOwner =
    this comment: it does not move, ever, whatever the table is called. They sat
    on one line spelled the same way for three months, which is precisely how the
    16 Sep sweep took the folder with the type. */
-const FOLDER: Record<Exclude<PhotoOwner["kind"], "studioHeader">, string> = { avatar: "avatars", business: "tenants", crew: "crews", gallery: "gallery", poster: "posters" };
+const FOLDER: Record<Exclude<PhotoOwner["kind"], "studioHeader">, string> = { avatar: "avatars", business: "tenants", crew: "crews", gallery: "gallery", poster: "posters", asset: "assets" };
 
 const extOf = (file: { type: string }): string => (file.type === "image/png" ? "png" : file.type === "image/webp" ? "webp" : "jpg");
 const randomName = (): string => (typeof crypto !== "undefined" && "randomUUID" in crypto ? crypto.randomUUID() : `${Date.now()}`);

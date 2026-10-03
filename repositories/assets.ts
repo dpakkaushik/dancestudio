@@ -11,6 +11,8 @@ export type Asset = {
   name: string;
   category: string;
   valueInr: number;
+  /** its picture, in media/assets/{business}/… (3 Oct 2026); null = none */
+  photoPath: string | null;
 };
 
 /** the prototype's fourteen words (16800), in its order. The database keeps the
@@ -37,21 +39,29 @@ export type AssetCategory = (typeof ASSET_CATEGORIES)[number];
 
 const ROW = "id, name, category, value_inr";
 
-type Row = { id: string; name: string; category: string; value_inr: number };
+type Row = { id: string; name: string; category: string; value_inr: number; photo_path?: string | null };
 
-const toAsset = (r: Row): Asset => ({ id: r.id, name: r.name, category: r.category, valueInr: r.value_inr });
+const toAsset = (r: Row): Asset => ({ id: r.id, name: r.name, category: r.category, valueInr: r.value_inr, photoPath: r.photo_path ?? null });
 
 /** a business's inventory, newest first — the owner's alone, by policy */
 export async function findBusinessAssets(supabase: SupabaseClient, businessId: string): Promise<Asset[]> {
-  const { data, error } = await supabase
-    .from("assets")
-    .select(ROW)
-    .eq("business_id", businessId)
-    .is("deleted_at", null)
-    .order("created_at", { ascending: false })
-    .limit(500);
+  const read = (cols: string) =>
+    supabase
+      .from("assets")
+      .select(cols)
+      .eq("business_id", businessId)
+      .is("deleted_at", null)
+      .order("created_at", { ascending: false })
+      .limit(500);
+  /* ⚠ `photo_path` arrives with 20261003120000; until it is applied the read
+     answers "column does not exist", so it falls back to the read without it
+     rather than taking the desk down (the 27 Sep `poster_path` lesson) */
+  let { data, error } = await read(`${ROW}, photo_path`);
+  if (error && /photo_path/.test(error.message)) {
+    ({ data, error } = await read(ROW));
+  }
   if (error) throw error;
-  return ((data ?? []) as Row[]).map(toAsset);
+  return ((data ?? []) as unknown as Row[]).map(toAsset);
 }
 
 export async function saveAsset(

@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { InvertedPanel } from "@/components/ui/InvertedPanel";
+import { TopPanel } from "@/components/ui/TopPanel";
 import { ClassTile } from "@/features/classes/components/ClassTile";
 import { CrewCard } from "@/features/crews/components/CrewCard";
 import { CrewI } from "@/features/crews/components/crew-kit";
@@ -378,11 +379,10 @@ export default async function DiscoverPage({
   return (
     <div
       style={{
-        /* the page's own colour bleeding off the top (4491-4496): stops in PIXELS, so the wash
-           always ends just under the section tabs no matter how long the list below runs */
-        background: `linear-gradient(180deg, ${SKY}80 0px, ${SKY}3d 150px, ${SKY}12 250px, var(--bg) 340px)`,
-        backgroundColor: "var(--bg)",
-        backgroundRepeat: "no-repeat",
+        /* ⚠ NO WASH OFF THE TOP ANY MORE (3 Oct 2026, the user: "even top of all
+           home, discover and inbox to be rounded squircle"): the sky colour that
+           bled off the screen here (4491-4496) is INSIDE the top squircle now */
+        background: "var(--bg)",
         color: INK,
         maxWidth: 430,
         margin: "0 auto",
@@ -427,6 +427,7 @@ export default async function DiscoverPage({
           font"), and both it and the heading read `TAB_TITLE` / `TAB_SUB`, the
           pair the Inbox reads too. ⚠ It still shares the chip's line and still
           ellipsises before it pushes the chip off. */}
+      <TopPanel tint={SKY}>
       <h1 data-testid="discover-title" style={{ ...TAB_TITLE, color: INK }}>
         Discover
       </h1>
@@ -439,6 +440,7 @@ export default async function DiscoverPage({
 
       {/* the search box, the five tabs, the style rail, Filters + quick chips, the filter sheet (Step 23) */}
       <DiscoverFilters tab={tab} city={city} filters={filters} styleOrder={styleOrder} tabs={tabTiles} as={asRaw} />
+      </TopPanel>
 
       {/* "Followed by you" (FollowedRow 4112, mounted 4767) — Studios and Artists, for a signed-in person */}
       {wantsFollows ? <FollowedShelf rows={followedTiles} /> : null}

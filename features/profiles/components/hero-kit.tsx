@@ -135,9 +135,17 @@ export function IdentityHero({
   shots = [],
   corner,
   detailsEdit = null,
+  bare = false,
   testId,
   children,
 }: {
+  /** ⚠ A HOME'S HERO STANDS IN THE TOP SQUIRCLE (3 Oct 2026, the user: "even top
+   *  of all home, dicover and inbox to be rounded squircle. remove the top
+   *  backdrop from home tab completly behinde posters"). Bare, it draws no ground
+   *  of its own, takes no gutter (the panel has one), and with no poster it draws
+   *  NO rail at all — the empty gradient square was the backdrop — so the corner
+   *  chips and the posters' pencil move into the identity row's right edge. */
+  bare?: boolean;
   name: string;
   /** the two colours the disc's initials and an empty header are painted in */
   grad: [string, string];
@@ -230,16 +238,23 @@ export function IdentityHero({
      the height of nobody's name; top-aligned, the picture and the word USER /
      ARTIST / STUDIO / ORGANIZATION share one baseline, which is how every
      profile screen people already know lays this out. */
+  const noHeader = bare && shots.length === 0;
+  const cornerColumn: CSSProperties = { display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 6 };
   return (
-    <div data-testid={testId} style={{ margin: "0 -16px", position: "relative", overflow: "hidden", background: LILAC }}>
+    <div
+      data-testid={testId}
+      style={bare ? { position: "relative" } : { margin: "0 -16px", position: "relative", overflow: "hidden", background: LILAC }}
+    >
       {/* THE CORNER IS A COLUMN (19 Sep 2026, the user: "give an eye to view
           profile on the home tab below edit on top right") — the pencil, then
           the eye under it, on every page that has both */}
-      {corner ? <div data-testid="hero-corner" style={{ position: "absolute", right: 12, top: 12, zIndex: 3, display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 6 }}>{corner}</div> : null}
+      {corner && !noHeader ? (
+        <div data-testid="hero-corner" style={{ position: "absolute", right: bare ? 8 : 12, top: bare ? 8 : 12, zIndex: 3, ...cornerColumn }}>{corner}</div>
+      ) : null}
 
-      <HeroRail name={name} grad={grad} shots={shots} edit={headerEdit} />
+      {noHeader ? null : <HeroRail name={name} grad={grad} shots={shots} edit={headerEdit} bare={bare} />}
 
-      <div style={{ position: "relative", padding: "14px 16px" }}>
+      <div style={{ position: "relative", padding: bare ? 0 : "14px 16px" }}>
         <div style={{ display: "flex", alignItems: "flex-start", gap: 13 }}>
           {avatarSlot ? (
             avatarSlot
@@ -317,6 +332,17 @@ export function IdentityHero({
             {meta ? <div style={{ display: "flex", alignItems: "center", flexWrap: "wrap", gap: 8, marginTop: 6, fontSize: 13, fontWeight: 800, color: INK }}>{meta}</div> : null}
             {detailsEdit}
           </div>
+          {/* with no poster rail there is no corner to pin to — the chips are
+              the row's own right edge, the posters' pencil under them */}
+          {noHeader && (corner || headerEdit) ? (
+            /* `dos-corner-plain` (globals.css): the chips' dark scrim exists to
+               read on a PHOTOGRAPH, and here they stand on the card — so they
+               take the card's own two colours instead */
+            <div data-testid="hero-corner" className="dos-corner-plain" style={{ ...cornerColumn, flexShrink: 0 }}>
+              {corner}
+              {headerEdit}
+            </div>
+          ) : null}
         </div>
         {styles.length ? (
           <div style={{ display: "flex", gap: 5, overflowX: "auto", scrollbarWidth: "none", marginTop: 12, alignItems: "center" }}>

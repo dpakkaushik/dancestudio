@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { TopPanel } from "@/components/ui/TopPanel";
 import { ArrangeTools } from "@/features/home/components/ArrangeTools";
 import type { Tile } from "@/features/home/components/home-kit";
 import type { FollowListResult } from "@/features/profiles/server-actions/followLists";
@@ -150,7 +151,10 @@ export function StudioHome({
         {/* ── the studio, lit like a player: its colour bleeding off the top, its
             pictures as a swipe, its own picture on the disc, then who it is in
             the order you read a business ── */}
+        {/* the top of the home as a squircle, nothing behind the posters (3 Oct 2026) */}
+        <TopPanel style={{ marginTop: 12 }}>
         <IdentityHero
+          bare
           testId="studio-hero"
           name={business.name}
           grad={RG}
@@ -316,7 +320,7 @@ export function StudioHome({
         {/* ⚠ NO GAP OF ITS OWN (21 Sep 2026): the hero's `padding: "14px 16px"`
             above is the gap, and 12 on top of it made 26 where the band's rows
             sit 12 apart. */}
-        <ActionRow>
+        <ActionRow marginTop={12}>
           <EnquiryButton
             businessId={business.id}
             businessName={business.name}
@@ -342,6 +346,7 @@ export function StudioHome({
         </ActionRow>
         {/* the ⊕ that makes and unmakes those buttons — the owner's, while the pencil is pressed (26 Sep 2026) */}
         {editable ? <ContactEditButton target={{ kind: "business", business, detailsHref: `/business/${business.id}?edit=1` }} /> : null}
+        </TopPanel>
 
         {/* ── TODAY, AS THE SCHEDULE IT ACTUALLY IS (7500-7520): every class and
             event running in THIS studio's rooms today, one card each, in the

@@ -20,6 +20,7 @@ interface MyClassBookingRow {
     price_inr: number;
     capacity: number;
     status: ClassStatus;
+    poster_path: string | null;
   } | null;
   businesses: { name: string; city: string | null } | null;
 }
@@ -72,7 +73,7 @@ export async function findMyClassBookings(supabase: SupabaseClient): Promise<MyC
   const { data, error } = await supabase
     .from("class_bookings")
     .select(
-      "id, status, session_id, class_id, class_sessions (starts_at, ends_at), classes (share_slug, style, level, room, price_inr, capacity, status), businesses (name, city)"
+      "id, status, session_id, class_id, class_sessions (starts_at, ends_at), classes (share_slug, style, level, room, price_inr, capacity, status, poster_path), businesses (name, city)"
     )
     .eq("user_id", user.id)
     .in("status", ["enrolled", "waitlisted"])
@@ -98,6 +99,7 @@ export async function findMyClassBookings(supabase: SupabaseClient): Promise<MyC
       priceInr: r.classes!.price_inr,
       capacity: r.classes!.capacity,
       classStatus: r.classes!.status,
+      posterPath: r.classes!.poster_path ?? null,
       startsAt: r.class_sessions!.starts_at,
       endsAt: r.class_sessions!.ends_at,
       businessName: r.businesses?.name ?? "",

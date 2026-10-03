@@ -27,6 +27,8 @@ interface ClassBits {
   price_inr: number;
   capacity: number;
   status: ClassStatus;
+  /** the uploaded poster, which the card now draws (3 Oct 2026) */
+  poster_path: string | null;
 }
 
 interface SessionBits {
@@ -66,7 +68,7 @@ interface BusinessSessionRow {
 }
 
 /* no `title`: a class's label is "{style} · {level}", derived (types/class.ts) */
-const CLASS_BITS = "share_slug, style, level, room, price_inr, capacity, status";
+const CLASS_BITS = "share_slug, style, level, room, price_inr, capacity, status, poster_path";
 
 const entryOf = (
   session: SessionBits,
@@ -86,6 +88,7 @@ const entryOf = (
   priceInr: c.price_inr,
   capacity: c.capacity,
   classStatus: c.status,
+  posterPath: c.poster_path ?? null,
   startsAt: session.starts_at,
   endsAt: session.ends_at,
   dayKey: dayKeyOf(session.starts_at),
@@ -243,6 +246,7 @@ interface VenueClassRow {
   price_inr: number;
   capacity: number;
   status: ClassStatus;
+  poster_path: string | null;
 }
 
 /** the classes a studio HOSTS for artists (venue accepted), as calendar entries;

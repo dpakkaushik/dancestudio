@@ -58,7 +58,15 @@ export function HeroRail({
   grad,
   shots = [],
   edit = null,
+  bare = false,
 }: {
+  /** ⚠ THE HOME'S RAIL STANDS IN A SQUIRCLE, WITH NOTHING BEHIND IT (3 Oct 2026,
+   *  the user: "remove the top backdrop from home tab completly behinde posters").
+   *  The thrown shadow and the 24px of air above the poster were the backdrop: a
+   *  sleeve lit on the page's ground. Inside the top squircle the panel IS the
+   *  ground, so the poster sits flush in it, and `IdentityHero` does not draw the
+   *  rail at all when there is no poster to show. */
+  bare?: boolean;
   name: string;
   /** the two colours an empty header stands on */
   grad: [string, string];
@@ -95,7 +103,7 @@ export function HeroRail({
     background: `linear-gradient(135deg,${grad[0]},${grad[1]})`,
     color: "#fff",
     fontFamily: DOS_DISPLAY,
-    boxShadow: HERO_SQ_SHADOW,
+    boxShadow: bare ? "none" : HERO_SQ_SHADOW,
   };
 
   return (
@@ -145,7 +153,7 @@ export function HeroRail({
             </div>
           );
           return (
-            <div key={s.key} style={{ flex: "0 0 100%", minWidth: 0, scrollSnapAlign: "center", display: "flex", justifyContent: "center", padding: "24px 16px 14px" }}>
+            <div key={s.key} style={{ flex: "0 0 100%", minWidth: 0, scrollSnapAlign: "center", display: "flex", justifyContent: "center", padding: bare ? "0 0 12px" : "24px 16px 14px" }}>
               {/* a picture with nothing behind it is not a button — an empty
                   header square opens nothing rather than an empty viewer */}
               {s.src && !broken[s.key] ? (
@@ -166,7 +174,7 @@ export function HeroRail({
       </div>
       {/* the rail's own bottom-right corner — the same corner the disc's pencil
           sits in, so the two read as one pair rather than two conventions */}
-      {edit ? <div style={{ position: "absolute", right: 12, bottom: 12, zIndex: 2 }}>{edit}</div> : null}
+      {edit ? <div style={{ position: "absolute", right: bare ? 8 : 12, bottom: bare ? 20 : 12, zIndex: 2 }}>{edit}</div> : null}
       </div>
       {open !== null && slides[open]?.src ? (
         <PhotoLightbox
@@ -186,7 +194,10 @@ export function HeroRail({
                 width: i === idx ? 16 : 5,
                 height: 5,
                 borderRadius: 3,
-                background: i === idx ? "#fff" : "rgba(255,255,255,.4)",
+                /* the theme's own ink (3 Oct 2026): the dots sit UNDER the
+                   picture, on the page's ground, where white vanished in the
+                   light theme once the wash went (29 Sep 2026) */
+                background: i === idx ? "var(--text)" : "var(--muted)",
                 transition: "width .18s",
               }}
             />

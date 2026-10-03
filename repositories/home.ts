@@ -42,6 +42,7 @@ const classOf = (e: CalendarEntry): DanceClass => ({
   room: e.room,
   roomId: null,
   poster: null,
+  posterPath: e.posterPath,
   priceInr: e.priceInr,
   capacity: e.capacity,
   status: e.classStatus,

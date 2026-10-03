@@ -2,7 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useRef, useState } from "react";
-import { addMyGalleryPhotoAction, setCrewPhotoAction, setMyAvatarAction, setPosterAction, setBusinessPhotoAction, type PhotoActionResult } from "@/features/media/server-actions/photos";
+import { addMyGalleryPhotoAction, setAssetPhotoAction, setCrewPhotoAction, setMyAvatarAction, setPosterAction, setBusinessPhotoAction, type PhotoActionResult } from "@/features/media/server-actions/photos";
 import { addStudioProofPhotoAction } from "@/features/businesses/server-actions/studioVerification";
 import { PHOTO_TYPES, photoPath, whyNotAPhoto, type PhotoOwner, MEDIA_BUCKET } from "@/lib/media/photo";
 import { PROOF_BUCKET } from "@/lib/media/proof";
@@ -55,6 +55,8 @@ const setter = (owner: PhotoOwner, path: string | null): Promise<PhotoActionResu
        the folder is the authority, the subject is what it is a poster OF */
     case "poster":
       return setPosterAction({ kind: owner.subject.kind, id: owner.subject.id, path });
+    case "asset":
+      return setAssetPhotoAction({ assetId: owner.assetId, businessId: owner.id, path });
   }
 };
 

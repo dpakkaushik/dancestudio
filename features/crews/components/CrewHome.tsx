@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { WelcomeFromUrl } from "@/components/ui/WelcomeBow";
+import { TopPanel } from "@/components/ui/TopPanel";
 import { ArrangeTools } from "@/features/home/components/ArrangeTools";
 import type { Tile } from "@/features/home/components/home-kit";
 import { arrangeTiles, orderOf, toolsLayoutKey } from "@/features/home/toolOrder";
@@ -77,7 +78,10 @@ export function CrewHome({ crew, members, header = [], followers = 0, order = nu
     <RecordListsProvider styles={crew.styles.length ? crew.styles : crew.style ? [crew.style] : []} socials={crew.socials}>
     <div style={{ background: LILAC, color: INK, maxWidth: 430, margin: "0 auto", fontFamily: DOS_UI, boxSizing: "border-box", paddingBottom: "var(--dos-foot)" }}>
       <div style={{ padding: "0 16px" }}>
+        {/* the top of the home as a squircle, nothing behind the posters (3 Oct 2026) */}
+        <TopPanel style={{ marginTop: 12 }}>
         <IdentityHero
+          bare
           testId="crew-hero"
           name={crew.name}
           grad={CREW_GRAD}
@@ -213,7 +217,7 @@ export function CrewHome({ crew, members, header = [], followers = 0, order = nu
             `crew_contacts`' own SELECT policy IS the switch, so a number that
             reaches nobody is not drawn here either. ── */}
         {/* no gap of its own — the hero's own bottom padding is it (21 Sep 2026) */}
-        <ActionRow>
+        <ActionRow marginTop={12}>
           <EnquiryButton
             businessId={crew.id}
             crewId={crew.id}
@@ -229,6 +233,7 @@ export function CrewHome({ crew, members, header = [], followers = 0, order = nu
         </ActionRow>
         {/* the ⊕ that makes and unmakes those buttons, while the pencil is pressed (26 Sep 2026) */}
         <ContactEditButton target={{ kind: "crew", crew, socials: crew.socials }} />
+        </TopPanel>
 
         <div style={{ position: "relative", zIndex: 1, background: LILAC }}>
           {/* arranged on the server, so the first paint is already in this

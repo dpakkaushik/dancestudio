@@ -22,6 +22,9 @@ export interface CalendarEntry {
   priceInr: number;
   capacity: number;
   classStatus: ClassStatus;
+  /** the uploaded poster, which the card draws as a strip (3 Oct 2026); null
+   *  means the class wears no picture and the card is as it always was */
+  posterPath: string | null;
   startsAt: string;
   endsAt: string;
   /** "2026-08-28" in IST — the day the session belongs to */
@@ -66,6 +69,7 @@ export const tileClassOf = (e: CalendarEntry): DanceClass => ({
   room: e.room,
   roomId: null,
   poster: null,
+  posterPath: e.posterPath,
   priceInr: e.priceInr,
   capacity: e.capacity,
   status: e.classStatus,

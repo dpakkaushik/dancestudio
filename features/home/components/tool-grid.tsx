@@ -1,6 +1,6 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
-import { CrewI, dosToolPaint } from "@/features/crews/components/crew-kit";
+import { CrewI } from "@/features/crews/components/crew-kit";
 import { StudioI } from "@/features/shell/components/shell-glyphs";
 import { InvertedPanel } from "@/components/ui/InvertedPanel";
 import { DOS_DISPLAY } from "@/lib/design/tokens";
@@ -221,12 +221,14 @@ export interface Tile {
   c: string;
 }
 
-/** THE GLYPH CHIP, ON ITS OWN (22 Sep 2026) — a black square outlined in the
- *  tile's own colour, so on a tile that IS that colour the icon has an edge to
- *  sit against (2556-2566). Extracted because the ARRANGING list draws the same
- *  chip beside the same name, and this repo's own recurring bill is the second
- *  copy: `linkChip` declared twice, the figure row written out three times,
- *  three copies of the identity band. One chip, two callers. */
+/** THE GLYPH CHIP, ON ITS OWN (22 Sep 2026). Extracted because the ARRANGING
+ *  list draws the same chip beside the same name, and this repo's own recurring
+ *  bill is the second copy. One chip, two callers.
+ *  ⚠ RE-PAINTED 3 Oct 2026 (the user: "same layout, polished … should have
+ *  border and not that colourful"): the TILE is quiet now, so the chip is the
+ *  ONE place the tool's colour lives — a soft wash of it, an edge of it, and the
+ *  glyph in it. It was a black square on a tile painted the colour, and black
+ *  on a quiet tile reads as a hole. */
 export function ToolGlyph({ k, c, size = 38 }: { k: keyof typeof GLYPH; c: string; size?: number }) {
   return (
     <span
@@ -238,7 +240,7 @@ export function ToolGlyph({ k, c, size = 38 }: { k: keyof typeof GLYPH; c: strin
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
-        background: "#0A0A0A",
+        background: `${c}24`,
         border: `1.5px solid ${c}`,
         color: c,
         lineHeight: 0,
@@ -259,20 +261,25 @@ export function ToolGrid({ tiles }: { tiles: Tile[] }) {
           key={t.name}
           href={t.href}
           aria-label={t.name}
+          /* ⚠ A QUIET TILE (3 Oct 2026, the user: "should have border and not
+             that colourful"): the panel's own card veil and a visible neutral
+             edge, with the colour moved onto the glyph chip alone. ⚠ These are
+             TOKENS, not literals, because the panel INVERTS the theme — `--card`,
+             `--el` and `--text` mean the other theme's values in here, so the
+             tile reads right on both grounds with no branch of its own. */
           style={{
-            background: dosToolPaint(t.c),
-            border: `1.5px solid ${t.c}`,
+            background: "var(--card)",
+            border: "1.5px solid var(--el)",
             borderRadius: 16,
-            padding: "9px 11px",
-            minHeight: 58,
+            padding: "10px 12px",
+            minHeight: 60,
             display: "flex",
             alignItems: "center",
             justifyContent: "flex-start",
-            gap: 10,
+            gap: 11,
             cursor: "pointer",
             boxSizing: "border-box",
             WebkitTapHighlightColor: "transparent",
-            boxShadow: `0 3px 12px ${t.c}33`,
             transition: "transform .12s",
             textDecoration: "none",
           }}
@@ -295,7 +302,7 @@ export function ToolGrid({ tiles }: { tiles: Tile[] }) {
               fontWeight: 900,
               letterSpacing: -0.2,
               lineHeight: 1.15,
-              color: "#fff",
+              color: "var(--text)",
               fontFamily: DOS_DISPLAY,
               overflowWrap: "normal",
               wordBreak: "normal",

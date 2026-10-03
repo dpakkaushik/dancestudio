@@ -275,7 +275,9 @@ const enterEdit = async (page) => {
     check((await owner.getByRole("button", { name: "Edit contact buttons" }).count()) === 1, "studio home: and the ⊕ that makes and unmakes Call · Mail · Message · Enquiry (26 Sep 2026)");
     check((await owner.getByRole("link", { name: "Edit details" }).getAttribute("href")) === `/business/${studioId}?edit=1`, "studio home: Edit details lands on the sheet's own address (?edit=1)");
     check((await owner.getByLabel("Add a header picture").count()) === 0, "studio home: no Add tile ON the header itself — the ⊕ opens the grid");
-    check((await rail(owner).getAttribute("role")) === null, "studio home: an empty header is one square, so no swipe");
+    /* ⚠ 3 Oct 2026, the user: "remove the top backdrop from home tab completly
+       behinde posters" — an empty header is NO rail now, not one grey square */
+    check((await rail(owner).count()) === 0, "studio home: an empty header draws no rail and no backdrop (3 Oct 2026)");
     check((await owner.getByText(/^Managing/).count()) === 0, "studio home: no Managing strip");
     /* ⚠ THE BAND, THE SAME ONE EVERY PROFILE WEARS (20 Sep 2026). A studio's home
        had the hero and then went straight to the deck — no figures at all — while
@@ -877,7 +879,7 @@ const enterEdit = async (page) => {
     await me.goto(`${BASE}/`);
     await me.getByRole("heading", { name: "Rhea Kapoor", exact: true }).waitFor();
     check((await discImgs(me)) === 1, "user home: the profile photo is on the disc");
-    check((await rail(me).getAttribute("role")) === null, "user home: an empty header, so no swipe");
+    check((await rail(me).count()) === 0, "user home: an empty header draws no rail and no backdrop (3 Oct 2026)");
     check((await me.getByLabel("Add a header picture").count()) === 0, "user home: NO Add tile on the hero — the header is filled behind the disc");
     check((await me.getByLabel("Change your photo").count()) === 0, "user home: NO ＋ on the disc either");
     check(await me.getByText(/^User(-\d{6})?$/).first().isVisible(), "user home: the role word, with the account number against it");

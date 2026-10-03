@@ -183,6 +183,19 @@ html.light .dos-invert {
   color: var(--text);
 }
 
+/* A home's corner chips when there is no poster under them (3 Oct 2026): their
+   inline paint is a dark scrim made to read on a photograph, which turns muddy on
+   the light card. `!important` because the paint is inline; a PRESSED edit
+   pencil keeps its own inverted fill. */
+.dos-corner-plain > a,
+.dos-corner-plain > button:not([aria-pressed="true"]) {
+  background: var(--solid) !important;
+  color: var(--text) !important;
+  border-color: var(--el) !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+
 /* ── The phone's own furniture — safe-area insets + top-bar height, published once
    (prototype 19194-19199). Zero on desktop; real on notched phones via viewport-fit=cover. */
 /* ⚠ THE BAR IS 70px (2 Oct 2026, the user again: "make the top bar a bit bigger"; it was 62 from 28 Sep, 54 before that) (28 Sep 2026, the user: "make the top bar a bit

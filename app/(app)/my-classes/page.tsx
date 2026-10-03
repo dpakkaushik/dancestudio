@@ -29,6 +29,7 @@ const toTileClass = (e: MyClassBooking): DanceClass => ({
   // booking row carries neither id
   roomId: null,
   poster: null,
+  posterPath: e.posterPath,
   priceInr: e.priceInr,
   capacity: e.capacity,
   status: e.classStatus,

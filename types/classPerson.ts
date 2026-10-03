@@ -55,6 +55,9 @@ export interface MyClassPersonAsk extends ClassPerson {
   classPriceInr: number;
   classCapacity: number;
   classStatus: "draft" | "published" | "completed";
+  /** the uploaded poster the card draws (3 Oct 2026); optional so a hand-built
+   *  ask (the Inbox's fallback rows) needs no change */
+  classPosterPath?: string | null;
   sessionId: string | null;
   endsAt: string | null;
   businessCity: string | null;
@@ -83,6 +86,7 @@ export const askToTileClass = (c: MyClassPersonAsk): DanceClass => ({
   room: c.classRoom,
   roomId: null,
   poster: null,
+  posterPath: c.classPosterPath ?? null,
   priceInr: c.classPriceInr,
   capacity: c.classCapacity,
   status: c.classStatus,

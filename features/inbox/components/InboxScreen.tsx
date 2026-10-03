@@ -13,6 +13,7 @@ import { DOS_DISPLAY, DOS_UI, LILAC, SKY, TAB_SUB, TAB_TITLE } from "@/lib/desig
 import type { DanceClass } from "@/types/class";
 import type { ClassArtist } from "@/types/classPerson";
 import { InvertedPanel } from "@/components/ui/InvertedPanel";
+import { TopPanel } from "@/components/ui/TopPanel";
 import {
   ENQ_CLOSED,
   ENQ_STAGES,
@@ -792,7 +793,10 @@ export function InboxScreen({
     <div style={{ position: "relative", background: LILAC, color: "var(--text)", maxWidth: 430, margin: "0 auto", fontFamily: DOS_UI, minHeight: "100vh", display: "flex", flexDirection: "column" }}>
       {/* the profile-tinted wash a TAB opens on (5681) — `/inbox` is a tab; the
           Enquiries tool page that wore none is gone (2 Oct 2026) */}
-      <div aria-hidden="true" style={{ position: "absolute", top: 0, left: 0, right: 0, height: 230, pointerEvents: "none", background: `linear-gradient(180deg, ${accent}5c 0%, ${accent}20 44%, transparent 100%)` }} />
+      {/* ⚠ THE WASH IS INSIDE THE TOP SQUIRCLE NOW (3 Oct 2026, the user: "even
+          top of all home, discover and inbox to be rounded squircle") — it bled
+          off the top of the screen as a 230px backdrop until today */}
+      <TopPanel tint={accent} style={{ margin: "12px 16px 12px" }}>
       {/* ⚠⚠ THE HEADING WAS MISSING (27 Sep 2026, the user: "inbox heading is
           missing"). The three-desk re-cut earlier the same day took the title
           out with the paragraph beside it, and `/inbox` is a TAB — so the chrome
@@ -802,7 +806,7 @@ export function InboxScreen({
           21 Sep, `EventForm` and `/rooms` 22 Sep), and the one thing a screen
           reader has to move by. Discover's own head is the model: a display
           heading with the count as its sub-line. */}
-      <div style={{ padding: "12px 16px 0", position: "relative" }}>
+      <div style={{ position: "relative" }}>
         {/* ⚠ `TAB_TITLE` / `TAB_SUB` (2 Oct 2026): the same heading and the same
             line under it as Discover's, read from one token pair. */}
         <h1 data-testid="inbox-title" style={TAB_TITLE}>Inbox</h1>
@@ -815,7 +819,7 @@ export function InboxScreen({
           {owed > 0 ? `${owed} waiting on you` : "Nothing waiting on you"}
         </div>
       </div>
-      <div data-testid="inbox-columns" style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 10, padding: "0 16px 16px", position: "relative" }}>
+      <div data-testid="inbox-columns" style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 10, position: "relative" }}>
         {SECT.map(([k, l, n, tint]) => {
           const on = sect === k;
           return (
@@ -840,15 +844,19 @@ export function InboxScreen({
           );
         })}
       </div>
+      </TopPanel>
       {/* ⚠ THE DUAL TONE, RISING FROM THE BOTTOM (3 Oct 2026, the user: "inbox
           dual tone theme from bottom like discover and home"). The heading and the
           three columns stand on the page's ground; everything they choose between
           stands on the OPPOSITE theme, in the same `InvertedPanel` Discover's shelf
           and every home's tools wear — which swaps the palette, so the cards, the
-          class tiles and the empty boxes below need no change of their own. It
-          runs to the foot of the screen, so it reads as the lower half of the page
-          rather than one more card. */}
-      <InvertedPanel style={{ flex: 1, margin: 0, borderRadius: "28px 28px 0 0", padding: "18px 16px 120px" }}>
+          class tiles and the empty boxes below need no change of their own.
+          ⚠ A SQUIRCLE, NOT A SHEET (3 Oct 2026, the user: "inbox end page should
+          also be squircle"): it ran edge to edge with square bottom corners under
+          the floating tab bar; it is Discover's and Home's own shape now — round on
+          all four corners, 16px in from each side — and it ends ABOVE the bar
+          rather than behind it, so the last card is never under the tabs. */}
+      <InvertedPanel style={{ flex: 1, margin: "0 16px calc(var(--dos-foot, 96px) + 12px)", borderRadius: 22, padding: "18px 14px 18px" }}>
       <div data-testid="inbox-panel" style={{ position: "relative" }}>
         {error ? <div style={{ fontSize: 11.5, color: "#F87171", marginBottom: 10 }}>{error}</div> : null}
 

@@ -53,7 +53,22 @@ export async function findClassPeopleByClass(
   if (error) {
     throw new Error(`classPeople.findByClass failed: ${error.message}`);
   }
-  return (data as unknown as ClassPersonRow[]).map(toClassPerson);
+  const rows = data as unknown as ClassPersonRow[];
+  const people = rows.map(toClassPerson);
+  /* ⚠ THE TEACHER'S FACE FOR A STRANGER (3 Oct 2026) — the same decision as the
+     card's, on the class page: a confirmed artist whose profile this reader may
+     not see is named from `public_class_teachers`, which answers for exactly
+     the rows Step 11 publishes. Assistants are untouched; the decision was the
+     teacher's face. A failed call leaves the page as it was. */
+  const hidden = people.findIndex((p, i) => p.kind === "artist" && p.status === "confirmed" && !rows[i].profiles);
+  if (hidden >= 0) {
+    const { data: pub, error: pubErr } = await supabase.rpc("public_class_teachers", { p_class_ids: [classId] });
+    const t = !pubErr ? ((pub ?? []) as Array<{ user_id: string; full_name: string | null; profile_photo_path: string | null }>)[0] : undefined;
+    if (t && t.full_name && t.user_id === people[hidden].userId) {
+      people[hidden] = { ...people[hidden], personName: t.full_name, avatarPath: t.profile_photo_path ?? null };
+    }
+  }
+  return people;
 }
 
 /** THE TEACHER ON EACH OF THESE CLASSES (18 Sep 2026, the user: "class cards
@@ -66,9 +81,11 @@ export async function findClassPeopleByClass(
  *  been signed-in-only since Step 1, so the embedded name and photo come back
  *  NULL for anon. A row with no readable name is dropped rather than drawn as
  *  "Someone" (the rule `publicProfile`'s Faculty list already follows), so on a
- *  signed-out Discover the card keeps the style square. Putting a teacher's face
- *  in front of the logged-out world is a migration and a privacy decision, not a
- *  card change — backlog row. */
+ *  signed-out Discover the card kept the style square.
+ *  ⚠ DECIDED 3 Oct 2026 — the user: a stranger "should see teachers face". The
+ *  rows a stranger's read drops are filled from `public_class_teachers`
+ *  (20261003100000), which hands back the name and picture of exactly the
+ *  confirmed artists Step 11 already publishes, and nothing else. */
 export async function findClassArtists(
   supabase: SupabaseClient,
   classIds: string[]
@@ -101,6 +118,26 @@ export async function findClassArtists(
       avatarPath: row.profiles.profile_photo_path ?? null,
       userId: row.user_id,
     });
+  }
+
+  /* ⚠ A STRANGER SEES THE TEACHER'S FACE TOO (3 Oct 2026, the user's decision).
+     `profiles` is signed-in only, so for a signed-out reader every row above
+     came back with no name and was dropped — and the card fell back to the
+     style square. `public_class_teachers` hands back the name and the picture
+     of the CONFIRMED artist of a PUBLISHED class of a LISTED business, and
+     nothing else of the profile. It is asked only for the classes still
+     missing, so a signed-in reader's own drafts keep coming from the read above.
+     ⚠ A failed call (before 20261003100000 is applied it is PGRST202) leaves
+     the card as it was rather than failing a public shelf. */
+  const missing = ids.filter((id) => !out.has(id));
+  if (missing.length > 0) {
+    const { data: pub, error: pubErr } = await supabase.rpc("public_class_teachers", { p_class_ids: missing.slice(0, 500) });
+    if (!pubErr) {
+      for (const r of (pub ?? []) as Array<{ class_id: string; user_id: string; full_name: string | null; profile_photo_path: string | null }>) {
+        if (!r.full_name || out.has(r.class_id)) continue;
+        out.set(r.class_id, { name: r.full_name, avatarPath: r.profile_photo_path ?? null, userId: r.user_id });
+      }
+    }
   }
   return out;
 }
@@ -151,6 +188,7 @@ interface MyAskRow extends ClassPersonRow {
     price_inr: number;
     capacity: number;
     status: "draft" | "published" | "completed";
+    poster_path: string | null;
     businesses: { name: string; city: string | null } | null;
     class_sessions: Array<{ id: string; starts_at: string; ends_at: string }> | null;
   } | null;
@@ -161,7 +199,7 @@ interface MyAskRow extends ClassPersonRow {
  *  class cards in same way" — and the ask's own STATUS, so an answered ask can
  *  still be listed in the Inbox ("enquiries and requests don't get removed
  *  after accepting"). */
-const ASK_SELECT = `${CLAIM_COLUMNS}, deleted_at, classes (id, style, level, share_slug, room, price_inr, capacity, status, businesses!classes_business_id_fkey (name, city), class_sessions (id, starts_at, ends_at))`;
+const ASK_SELECT = `${CLAIM_COLUMNS}, deleted_at, classes (id, style, level, share_slug, room, price_inr, capacity, status, poster_path, businesses!classes_business_id_fkey (name, city), class_sessions (id, starts_at, ends_at))`;
 const toAsk = (r: MyAskRow): MyClassPersonAsk => {
   const first = [...(r.classes!.class_sessions ?? [])].sort((a, b) => a.starts_at.localeCompare(b.starts_at))[0] ?? null;
   return {
@@ -177,6 +215,7 @@ const toAsk = (r: MyAskRow): MyClassPersonAsk => {
     classPriceInr: r.classes!.price_inr,
     classCapacity: r.classes!.capacity,
     classStatus: r.classes!.status,
+    classPosterPath: r.classes!.poster_path ?? null,
     sessionId: first?.id ?? null,
     endsAt: first?.ends_at ?? null,
     businessCity: r.classes!.businesses?.city ?? null,

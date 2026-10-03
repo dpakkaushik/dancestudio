@@ -121,6 +121,21 @@ export function ClassTile({ danceClass: c, filled = 0, artist, isToday = false, 
   const grad = personGrad(false);
   const centreLabel = artist?.name ?? "";
 
+  /* ⚠ THE UPLOADED POSTER, ON THE CARD (3 Oct 2026, the user's answer: "show
+     it on the cards"). Since 27 Sep a studio could put a real flyer on a class
+     and it showed on the class page alone — every card still drew the style
+     square. A poster is cropped 3:2 (the `banner` frame), so the card shows
+     nearly all of it as a 2:1 strip and the class page shows the whole. ⚠ A class with no picture
+     draws NOTHING here, so it looks exactly as it always did. Decorative: the
+     link around it already names the class, and a second name is noise. */
+  const posterSrc = photoUrl(c.posterPath ?? null);
+  const posterStrip = posterSrc ? (
+    <div data-testid="card-poster" style={{ aspectRatio: "2 / 1", overflow: "hidden", background: ground, borderBottom: `2px solid ${bc}` }}>
+      {/* eslint-disable-next-line @next/next/no-img-element -- a public bucket URL whose box this card already decides; next/image would add a loader to every card on a shelf */}
+      <img src={posterSrc} alt="" aria-hidden="true" loading="lazy" style={{ display: "block", width: "100%", height: "100%", objectFit: "cover" }} />
+    </div>
+  ) : null;
+
   const sleeve = (
     <div style={{ display: "flex", alignItems: "stretch", minWidth: 0, overflow: "hidden", borderBottom: `2px solid ${bc}` }}>
       {/* ── LEFT · WHEN — a calendar block: the weekday over the day over the month,
@@ -532,10 +547,14 @@ export function ClassTile({ danceClass: c, filled = 0, artist, isToday = false, 
           once, in its aria-label (8046-8049). */}
       {href ? (
         <Link href={href} aria-label={`Open ${c.title}`} style={{ display: "block", color: INK, textDecoration: "none" }}>
+          {posterStrip}
           {sleeve}
         </Link>
       ) : (
-        sleeve
+        <>
+          {posterStrip}
+          {sleeve}
+        </>
       )}
 
       {/* ── UNDER ALL THREE · HOW FULL, AND WHAT IT COSTS (8491-8526). "6 spots left"

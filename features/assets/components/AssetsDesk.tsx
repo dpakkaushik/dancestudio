@@ -6,7 +6,10 @@ import { FigureHead } from "@/components/ui/FigureHead";
 import { removeAssetAction, saveAssetAction } from "@/features/assets/server-actions/assets";
 import { DeskHero, BizToast } from "@/features/businesses/components/biz-kit";
 import { DeskAddButton, eyebrow, rupees } from "@/features/settings/components/settings-kit";
+import { Pick } from "@/components/ui/PickSheet";
+import { PhotoPicker } from "@/features/media/components/PhotoPicker";
 import { DOS_UI, INK, LILAC, SUB } from "@/lib/design/tokens";
+import { photoUrl } from "@/lib/media/photo";
 import { ASSET_CATEGORIES, type Asset } from "@/repositories/assets";
 
 /** ASSETS — what a business owns and what it is worth (21 Sep 2026, the user:
@@ -30,10 +33,10 @@ import { ASSET_CATEGORIES, type Asset } from "@/repositories/assets";
  *  "INVENTORY · ₹1,72,500 total" over the very rows it adds up, which is Step
  *  25's rule: a figure and the list behind it are the same number.
  *
- *  ⚠ NO PHOTO, deliberately. The prototype's form has one (16802-16810) and the
- *  user's list is "just … name type of asset and price". A picture of a PA
- *  system is a storage folder, a policy and a cropper for a field nobody asked
- *  for; it is a backlog row instead. */
+ *  ⚠ A PICTURE SINCE 3 Oct 2026 (the user: "do small extras"). It was left out
+ *  on 21 Sep because the user's list was "just … name type of asset and price";
+ *  it is added on an existing asset from Edit, not asked for in the add form,
+ *  so adding one is still those three fields. */
 
 const card: CSSProperties = { background: "var(--card)", border: "1.5px solid var(--el)", borderRadius: 16, padding: "13px 14px", marginBottom: 10 };
 const field: CSSProperties = { width: "100%", boxSizing: "border-box", background: "var(--solid)", border: "1.5px solid var(--el)", borderRadius: 12, padding: "10px 12px", fontSize: 13, color: INK, outline: "none", fontFamily: "inherit" };
@@ -51,6 +54,7 @@ export function AssetsDesk({ businessId, businessName, assets }: { businessId: s
   const [editing, setEditing] = useState<string | null>(null);
   const [editName, setEditName] = useState("");
   const [editValue, setEditValue] = useState("");
+  const [editCategory, setEditCategory] = useState("");
 
   const fire = (m: string) => {
     setToast(m);
@@ -65,7 +69,7 @@ export function AssetsDesk({ businessId, businessName, assets }: { businessId: s
         assetId: a.id,
         businessId,
         name: editName.trim() || a.name,
-        category: a.category as (typeof ASSET_CATEGORIES)[number],
+        category: (editCategory || a.category) as (typeof ASSET_CATEGORIES)[number],
         valueInr: Number(editValue || 0),
       });
       if (out.error) return fire(out.error);
@@ -113,6 +117,12 @@ export function AssetsDesk({ businessId, businessName, assets }: { businessId: s
       {assets.map((a) => (
         <div key={a.id} style={{ ...card, padding: "11px 13px" }} data-testid="asset-row">
           <div style={{ display: "flex", alignItems: "center", gap: 11 }}>
+            {/* its picture, when it has one (3 Oct 2026, the backlog's R45 leftover);
+                a row with none draws exactly as it always did */}
+            {photoUrl(a.photoPath) ? (
+              // eslint-disable-next-line @next/next/no-img-element -- a public bucket URL in a box this row decides
+              <img src={photoUrl(a.photoPath)!} alt="" data-testid="asset-photo" style={{ width: 44, height: 44, borderRadius: 11, objectFit: "cover", flexShrink: 0, border: "1.5px solid var(--el)" }} />
+            ) : null}
             <div style={{ flex: 1, minWidth: 0 }}>
               <div style={{ fontSize: 13, fontWeight: 800, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{a.name}</div>
               <div style={{ fontSize: 10.5, color: SUB }}>{a.category}</div>
@@ -127,6 +137,7 @@ export function AssetsDesk({ businessId, businessName, assets }: { businessId: s
                 setEditing(open ? null : a.id);
                 setEditName(a.name);
                 setEditValue(String(a.valueInr));
+                setEditCategory(a.category);
               }}
               aria-label={`Edit ${a.name}`}
               style={{ fontSize: 10, fontWeight: 800, color: SUB, cursor: "pointer", background: "none", border: "none", fontFamily: "inherit", flexShrink: 0 }}
@@ -140,6 +151,27 @@ export function AssetsDesk({ businessId, businessName, assets }: { businessId: s
           {editing === a.id ? (
             <div style={{ marginTop: 9 }}>
               <input value={editName} onChange={(e) => setEditName(e.target.value)} aria-label={`Name of ${a.name}`} maxLength={80} style={{ ...field, borderRadius: 10, padding: "9px 11px", fontSize: 12.5, marginBottom: 8 }} />
+              {/* ⚠ THE TYPE IS EDITABLE TOO (3 Oct 2026) — it was the one field of the
+                  three that could only be fixed by deleting the asset and adding it again */}
+              <Pick
+                value={editCategory}
+                rows={ASSET_CATEGORIES.map((k) => ({ value: k, label: k }))}
+                onPick={setEditCategory}
+                ariaLabel={`Type of ${a.name}`}
+                style={{ ...field, borderRadius: 10, padding: "9px 11px", fontSize: 12.5, fontWeight: 700, marginBottom: 8 }}
+              />
+              <div style={{ marginBottom: 8 }}>
+                <PhotoPicker
+                  owner={{ kind: "asset", id: businessId, assetId: a.id }}
+                  hasPhoto={Boolean(a.photoPath)}
+                  label={a.photoPath ? `Change the picture of ${a.name}` : `Add a picture of ${a.name}`}
+                  cropLabel="Asset picture"
+                  onSaved={() => {
+                    fire("Picture saved");
+                    router.refresh();
+                  }}
+                />
+              </div>
               <div style={{ display: "flex", gap: 8 }}>
                 <input value={editValue} onChange={(e) => setEditValue(e.target.value.replace(/[^\d]/g, ""))} aria-label={`What ${a.name} is worth`} inputMode="numeric" style={{ ...field, borderRadius: 10, padding: "9px 11px", fontSize: 12.5, flex: 1, width: "auto" }} />
                 <button type="button" onClick={() => saveEdit(a)} disabled={pending} style={{ ...primary, width: "auto", padding: "9px 16px", borderRadius: 10, fontSize: 12 }}>
