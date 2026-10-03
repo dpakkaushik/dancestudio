@@ -763,10 +763,22 @@ test.describe.serial("DanceOS, end to end", () => {
     await owner.goto(`/business/${businessId}`);
     await owner.getByRole("link", { name: "Rooms", exact: true }).click();
     await owner.waitForURL(/\/business\/[0-9a-f-]+\/rooms$/);
-    // amenities live with the room and show up on the public class page
-    await owner.getByRole("button", { name: "Amenities in Studio A" }).click();
-    await owner.getByRole("button", { name: "🪞 Mirrors", exact: true }).click();
-    await expect(owner.getByText("🪞 Mirrors", { exact: false }).first()).toBeVisible();
+    /* amenities live with the room and show up on the public class page.
+       ⚠ A ROOM IS EDITED ONLY THROUGH ITS FORM since 4 Oct 2026 (the user: "edit
+       only from editing form now not outside") — the card shows it, Edit opens
+       the same sheet the room was added with, and nothing is written until Save */
+    await owner.getByRole("link", { name: "Edit Studio A" }).click();
+    const editRoom = owner.getByRole("dialog", { name: "Edit room" });
+    await expect(editRoom).toBeVisible({ timeout: 15_000 });
+    await editRoom.getByRole("button", { name: "🪞 Mirrors", exact: true }).click();
+    await editRoom.getByRole("button", { name: "Save room" }).click();
+    await owner.getByRole("button", { name: "Save it" }).click();
+    await expect(editRoom).toBeHidden({ timeout: 15_000 });
+    const roomA = owner.getByTestId("room-card").filter({ hasText: "Studio A" });
+    await expect(roomA.getByTestId("room-amenities")).toContainText("🪞 Mirrors", { timeout: 15_000 });
+    // ⚠ and the card carries no inline control any more
+    await expect(owner.getByLabel("Studio A name")).toHaveCount(0);
+    await expect(owner.getByRole("button", { name: "Amenities in Studio A" })).toHaveCount(0);
 
     /* ⚠ ADDING A ROOM IS A FORM NOW (22 Sep 2026, the user: "form for adding
        asset and adding room should be same way"). Until today the ＋ CREATED the
@@ -785,13 +797,16 @@ test.describe.serial("DanceOS, end to end", () => {
     await expect(addRoom.getByLabel("How many it holds")).toHaveValue("20");
     await addRoom.getByLabel("Room name").fill("Studio B");
     await addRoom.getByLabel("How many it holds").fill("12");
+    /* ⚠ and the amenities are asked for in the add form too (4 Oct 2026) */
+    await addRoom.getByRole("button", { name: "❄️ AC", exact: true }).click();
     await addRoom.getByRole("button", { name: "Add room" }).click();
     await owner.getByRole("button", { name: "Add it" }).click();
     await expect(addRoom).toBeHidden({ timeout: 15_000 });
-    await expect(owner.getByLabel("Studio B name")).toHaveValue("Studio B", { timeout: 15_000 });
-    await expect(owner.getByLabel("Studio B capacity")).toHaveValue("12");
+    const roomB = owner.getByTestId("room-card").filter({ hasText: "Studio B" });
+    await expect(roomB.getByTestId("room-capacity")).toHaveText("12", { timeout: 15_000 });
+    await expect(roomB.getByTestId("room-amenities")).toContainText("❄️ AC");
     await owner.getByRole("button", { name: "Remove Studio B" }).click();
-    await expect(owner.getByLabel("Studio B name")).toHaveCount(0, { timeout: 15_000 });
+    await expect(owner.getByTestId("room-card").filter({ hasText: "Studio B" })).toHaveCount(0, { timeout: 15_000 });
 
     /* ---- THE TRAINER SIGNS UP FIRST, AND IS THEN ASKED BY NAME (Step 12b,
        re-cut 20 Sep 2026) -------------------------------------------------
@@ -2718,7 +2733,11 @@ test.describe.serial("DanceOS, end to end", () => {
        user asked for "a sprator between title and figure" on every counted head.
        Asserting the figure alone is the better test anyway — it was checking the
        heading's punctuation as well as the money. */
-    await expect(owner.getByTestId("assets-total")).toHaveText("₹0 total");
+    /* ⚠ AND SINCE 4 Oct 2026 the count and the total are their own middle
+       section, under Add asset (the user: "total assets count and total amount in
+       middle section below add asset button") — two figures, each a tile */
+    await expect(owner.getByTestId("assets-total")).toHaveText("₹0");
+    await expect(owner.getByTestId("assets-count")).toHaveText("0");
 
     /* ⚠ THE FORM OPENS OVER THE DESK (22 Sep 2026, the user: "form for adding
        asset and adding room should be same way"). It was a card standing on this
@@ -2763,7 +2782,8 @@ test.describe.serial("DanceOS, end to end", () => {
     await expect(row.getByTestId("asset-value")).toHaveText("₹28,000");
     await expect(row.getByText("Sound & AV")).toBeVisible();
     // the total is COUNTED off the very rows it adds up (Step 25's rule)
-    await expect(owner.getByTestId("assets-total")).toHaveText("₹28,000 total");
+    await expect(owner.getByTestId("assets-total")).toHaveText("₹28,000");
+    await expect(owner.getByTestId("assets-count")).toHaveText("1");
 
     /* ⚠ ₹0 IS THE "OLD ASSET" ANSWER, not a missing one — the prototype's own
        `₹ (0 = old)` placeholder and its own "₹0 (legacy)" row (16792). There is
@@ -2772,15 +2792,16 @@ test.describe.serial("DanceOS, end to end", () => {
     await addAsset(legacyName, "Mirrors", "0");
     const legacy = owner.getByTestId("asset-row").filter({ hasText: legacyName });
     await expect(legacy.getByTestId("asset-value")).toHaveText("₹0 (legacy)", { timeout: 15_000 });
-    // and it does not move the total, which is the point of counting it as zero
-    await expect(owner.getByTestId("assets-total")).toHaveText("₹28,000 total");
+    // and it does not move the total, which is the point of counting it as zero — it moves the COUNT
+    await expect(owner.getByTestId("assets-total")).toHaveText("₹28,000");
+    await expect(owner.getByTestId("assets-count")).toHaveText("2");
 
     // ── EDIT IN PLACE, the prototype's own row edit (16823-16830)
     await row.getByRole("button", { name: `Edit ${assetName}` }).click();
     await owner.getByLabel(`What ${assetName} is worth`).fill("30000");
     await row.getByRole("button", { name: "Save" }).click();
     await expect(row.getByTestId("asset-value")).toHaveText("₹30,000", { timeout: 15_000 });
-    await expect(owner.getByTestId("assets-total")).toHaveText("₹30,000 total");
+    await expect(owner.getByTestId("assets-total")).toHaveText("₹30,000");
 
     // ── AND REMOVING ONE IS A SOFT DELETE the list stops carrying
     await legacy.getByRole("button", { name: `Remove ${legacyName}` }).click();
@@ -2943,8 +2964,12 @@ test.describe.serial("DanceOS, end to end", () => {
 
     const learnerRow = owner.getByRole("link", { name: `Open ${learnerName}` });
     await expect(learnerRow).toHaveAttribute("href", `/person/${learnerId}`, { timeout: 15_000 });
-    /* the row says WHY they are here — the pass they hold, not a stage somebody set */
-    await expect(learnerRow).toContainText("🎟");
+    /* the card says WHY they are here — they hold a pass, so the MEMBER chip; not a
+       stage somebody set. ⚠ Said ONCE since 4 Oct 2026 (the user: "no second line
+       below name, member only as a chip on right"): the "🎟 {pass}" line is gone */
+    const learnerCard = owner.getByTestId("student-card").filter({ has: learnerRow });
+    await expect(learnerCard.getByTestId("student-member")).toHaveText("MEMBER");
+    await expect(learnerCard.getByText("🎟")).toHaveCount(0);
 
     /* ── THE INVITE IS A HAND-OFF, and the link it hands off carries this
        studio's own page. There is no SMS provider and Resend reaches nobody but
@@ -3391,9 +3416,15 @@ test.describe.serial("DanceOS, end to end", () => {
     await expect(trainer.getByTestId("routine-classes")).toHaveText("1");
     await expect(trainer.getByTestId("routine-sessions")).toHaveText("0");
     await expect(trainer.getByTestId("routine-dancers")).toHaveText("0");
-    /* ⚠ TWO COLUMNS SINCE 4 Oct 2026 — Studios · Students. Studios opens first:
-       the studio the class is danced at, its row open, the class inside it. And
-       Delete is one word on the card's top right, behind a confirm. */
+    /* ⚠ THREE COLUMNS SINCE 4 Oct 2026 — Classes · Studios · Students. Classes
+       opens first (the user: "routine details 1st column classes with class
+       list"): the one class it is on, a card that opens the class. */
+    await expect(trainer.getByTestId("routine-class")).toHaveCount(1);
+    await expect(trainer.getByTestId("routine-class").getByRole("link", { name: /^Open / })).toHaveCount(1);
+    /* then Studios: the studio the class is danced at, its row open, the class
+       inside it. And Delete is one word on the card's top right, behind a confirm. */
+    await trainer.getByRole("link", { name: `Where ${routineName} is danced` }).click();
+    await expect(trainer).toHaveURL(/show=studios/);
     await expect(trainer.getByTestId("routine-studio")).toHaveCount(1);
     await expect(trainer.getByTestId("routine-studio").getByRole("button", { expanded: true })).toBeVisible();
     await expect(trainer.getByTestId("routine-studio").getByRole("link", { name: /^Open / }).first()).toBeVisible();

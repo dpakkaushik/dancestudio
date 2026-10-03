@@ -3,14 +3,14 @@
 import { useRouter } from "next/navigation";
 import { useState, useTransition, type CSSProperties } from "react";
 import { FigureHead } from "@/components/ui/FigureHead";
-import { DeskBody, DeskTop } from "@/components/ui/DeskSections";
+import { DeskBody, DeskMiddle, DeskTop } from "@/components/ui/DeskSections";
+import { ToolActions, ToolBody, ToolCard, ToolFacts, ToolHead, toolBtn } from "@/components/ui/ToolCard";
 import { removeAssetAction, saveAssetAction } from "@/features/assets/server-actions/assets";
-import { DeskHero, BizToast } from "@/features/businesses/components/biz-kit";
+import { DOS_TOOLS, DeskHero, BizToast } from "@/features/businesses/components/biz-kit";
 import { DeskAddButton, eyebrow, rupees } from "@/features/settings/components/settings-kit";
 import { Pick } from "@/components/ui/PickSheet";
 import { PhotoPicker } from "@/features/media/components/PhotoPicker";
 import { DOS_UI, INK, LILAC, SUB } from "@/lib/design/tokens";
-import { photoUrl } from "@/lib/media/photo";
 import { ASSET_CATEGORIES, type Asset } from "@/repositories/assets";
 
 /** ASSETS — what a business owns and what it is worth (21 Sep 2026, the user:
@@ -46,6 +46,9 @@ const primary: CSSProperties = { textAlign: "center", padding: 13, borderRadius:
 /** the prototype's own money grammar for this screen: a real value, or the words
  *  that say it is one the business already had (16812) */
 const valueWords = (n: number) => (n > 0 ? rupees(n) : "₹0 (legacy)");
+
+/** the Assets tool's own colour — the card's face, wash and figures */
+const TINT = DOS_TOOLS.assets.c;
 
 export function AssetsDesk({ businessId, businessName, assets }: { businessId: string; businessName: string; assets: Asset[] }) {
   const router = useRouter();
@@ -104,42 +107,44 @@ export function AssetsDesk({ businessId, businessName, assets }: { businessId: s
       <DeskAddButton label="Add asset" href="?new=1" />
       </DeskTop>
 
-      {/* ⚠ THE LOWER SECTION (3 Oct 2026, C116) — the inventory, headed by its
-          own total (the head of the list, not a middle section of one line) */}
-      <DeskBody
-        head={
-          /* ⚠ the rule between the heading and its figure (22 Sep 2026) — a "·"
-             reads as punctuation between two words, not as a heading and the total
-             that belongs to it. The total is still COUNTED off the very rows below
-             it, which is Step 25's rule. */
-          <FigureHead
-            margin="0 0 8px"
-            title={<span style={eyebrow}>INVENTORY</span>}
-            figure={
-              <span style={{ ...eyebrow, fontVariantNumeric: "tabular-nums" }} data-testid="assets-total">
-                {rupees(total)} total
-              </span>
-            }
-          />
-        }
-      >
+      {/* ⚠ THE MIDDLE SECTION (4 Oct 2026, the user: "total assets count and total
+          amount in middle section below add asset button"). Both are COUNTED off
+          the very cards below them, never stored (Step 25's rule). */}
+      <DeskMiddle>
+        <ToolFacts
+          tint={TINT}
+          items={[
+            { label: assets.length === 1 ? "Asset" : "Assets", value: assets.length, testId: "assets-count" },
+            { label: "Total value", value: rupees(total), testId: "assets-total" },
+          ]}
+        />
+      </DeskMiddle>
+
+      {/* ⚠ THE LOWER SECTION — a card per asset, its picture as the card's face */}
+      <DeskBody head={<FigureHead margin="0 0 8px" title={<span style={eyebrow}>INVENTORY</span>} />}>
 
       {assets.map((a) => (
-        <div key={a.id} style={{ ...card, padding: "11px 13px" }} data-testid="asset-row">
-          <div style={{ display: "flex", alignItems: "center", gap: 11 }}>
-            {/* its picture, when it has one (3 Oct 2026, the backlog's R45 leftover);
-                a row with none draws exactly as it always did */}
-            {photoUrl(a.photoPath) ? (
-              // eslint-disable-next-line @next/next/no-img-element -- a public bucket URL in a box this row decides
-              <img src={photoUrl(a.photoPath)!} alt="" data-testid="asset-photo" style={{ width: 44, height: 44, borderRadius: 11, objectFit: "cover", flexShrink: 0, border: "1.5px solid var(--el)" }} />
-            ) : null}
-            <div style={{ flex: 1, minWidth: 0 }}>
-              <div style={{ fontSize: 13, fontWeight: 800, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{a.name}</div>
-              <div style={{ fontSize: 10.5, color: SUB }}>{a.category}</div>
-            </div>
-            <b style={{ fontSize: 12.5, flexShrink: 0 }} data-testid="asset-value">
-              {valueWords(a.valueInr)}
-            </b>
+        /* ⚠⚠ AN ASSET CARD (4 Oct 2026, the user: "better redesigned asset card
+           with photo") — the app's one card: the picture in its squircle and the
+           name at a profile's size, its type over it; what it is worth as a
+           figure; Edit and Remove on a bar of their own. */
+        <ToolCard key={a.id} testId="asset-row">
+          <ToolHead
+            tint={TINT}
+            name={a.name}
+            photoPath={a.photoPath}
+            eyebrow={a.category}
+            icon={<span aria-hidden="true" style={{ fontSize: 24 }}>📦</span>}
+          />
+          <ToolBody>
+            <ToolFacts
+              tint={TINT}
+              items={[
+                { label: a.valueInr > 0 ? "Worth" : "Already had", value: valueWords(a.valueInr), testId: "asset-value", tint: a.valueInr > 0 ? undefined : SUB },
+              ]}
+            />
+          </ToolBody>
+          <ToolActions>
             <button
               type="button"
               onClick={() => {
@@ -150,16 +155,17 @@ export function AssetsDesk({ businessId, businessName, assets }: { businessId: s
                 setEditCategory(a.category);
               }}
               aria-label={`Edit ${a.name}`}
-              style={{ fontSize: 10, fontWeight: 800, color: SUB, cursor: "pointer", background: "none", border: "none", fontFamily: "inherit", flexShrink: 0 }}
+              aria-expanded={editing === a.id}
+              style={toolBtn("tinted", TINT)}
             >
               Edit
             </button>
-            <button type="button" onClick={() => drop(a)} disabled={pending} aria-label={`Remove ${a.name}`} style={{ color: "#F87171", fontSize: 15, cursor: "pointer", background: "none", border: "none", fontFamily: "inherit", flexShrink: 0, lineHeight: 1 }}>
-              ✕
+            <button type="button" onClick={() => drop(a)} disabled={pending} aria-label={`Remove ${a.name}`} style={toolBtn("danger", TINT)}>
+              Remove
             </button>
-          </div>
+          </ToolActions>
           {editing === a.id ? (
-            <div style={{ marginTop: 9 }}>
+            <div style={{ padding: "0 12px 12px" }}>
               <input value={editName} onChange={(e) => setEditName(e.target.value)} aria-label={`Name of ${a.name}`} maxLength={80} style={{ ...field, borderRadius: 10, padding: "9px 11px", fontSize: 12.5, marginBottom: 8 }} />
               {/* ⚠ THE TYPE IS EDITABLE TOO (3 Oct 2026) — it was the one field of the
                   three that could only be fixed by deleting the asset and adding it again */}
@@ -190,7 +196,7 @@ export function AssetsDesk({ businessId, businessName, assets }: { businessId: s
               </div>
             </div>
           ) : null}
-        </div>
+        </ToolCard>
       ))}
 
       {assets.length === 0 ? (

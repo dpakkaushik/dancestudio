@@ -23,7 +23,8 @@ import { RoutineMediaButton } from "./routine-kit";
  *  of students who learned it, remove detail above song and video button …
  *  delete routine button on top right and should just say delete"*).
  *
- *  ⚠ IT IS THE ROUTINE CARD, OPENED, and then TWO COLUMNS:
+ *  ⚠ IT IS THE ROUTINE CARD, OPENED, and then THREE COLUMNS — CLASSES first
+ *  since 4 Oct 2026 (every class it is taught in, a card each), then:
  *   · STUDIOS — where it is danced, a studio per row with its face and name,
  *     each opening onto the styles taught there, its figures and its classes;
  *   · STUDENTS — the people CHECKED IN to a session taught from it, never the
@@ -138,7 +139,7 @@ export function RoutinePage({
   classes,
   students,
   maker,
-  show = "studios",
+  show = "classes",
 }: {
   routine: Routine;
   classes: ClassAt[];
@@ -146,7 +147,7 @@ export function RoutinePage({
   /** WHO MADE IT — the profile the routine is linked to, as on its card */
   maker: { userId: string; name: string; photoPath: string | null };
   /** the column the server opens on, from `?show=` */
-  show?: "studios" | "students";
+  show?: "classes" | "studios" | "students";
 }) {
   const router = useRouter();
   const col = dosStyleColor(routine.style);
@@ -261,7 +262,52 @@ export function RoutinePage({
     </>
   );
 
-  /* ── COLUMN 1: STUDIOS ── */
+  /* ── COLUMN 1: CLASSES (4 Oct 2026, the user: "routine details 1st column
+     classes with class list. new column") — every class it is taught in, the
+     busiest first, each a door to the class, with where it is danced ── */
+  const classMax = Math.max(1, ...classes.map((c) => c.sessions));
+  const classesPanel = (
+    <div data-testid="routine-class-list">
+      {classes.length === 0 ? (
+        <div style={{ ...panel, textAlign: "center", border: "1.5px dashed var(--el)", fontSize: 11.5, color: SUB, lineHeight: 1.5 }}>Not on a class yet. Open a class you take and add it from the class&rsquo;s own page.</div>
+      ) : (
+        [...classes]
+          .sort((a, b) => b.sessions - a.sessions || a.style.localeCompare(b.style))
+          .map((c) => {
+            const cc = dosStyleColor(c.style);
+            const level = DOS_LEVEL_LABEL[c.level] ?? c.level;
+            const where = c.studio?.name ?? c.businessName;
+            return (
+              <ToolCard key={c.classId} testId="routine-class" href={`/c/${c.shareSlug}`} hrefLabel={`Open ${c.style} · ${level}`} edge={cc}>
+                <ToolBody style={{ borderTop: "none" }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                    <span style={{ flex: 1, minWidth: 0, fontSize: 15, fontWeight: 900, letterSpacing: -0.2, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                      {c.style} · {level}
+                    </span>
+                    {c.status === "draft" ? <ToolChip word="DRAFT" fg={SUB} bg="var(--el)" /> : null}
+                  </div>
+                  <div style={{ display: "flex", alignItems: "center", gap: 7, marginTop: 6, fontSize: 11.5, color: SUB, minWidth: 0 }}>
+                    <ToolFace name={where} photoPath={c.studio?.photoPath ?? null} tint={TOOL} size={20} />
+                    <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{where}</span>
+                  </div>
+                  <ToolFacts
+                    tint={cc}
+                    style={{ marginTop: 10 }}
+                    items={[
+                      { label: "Sessions held", value: c.sessions },
+                      { label: c.students === 1 ? "Student" : "Students", value: c.students },
+                    ]}
+                  />
+                  <Bar value={c.sessions} max={classMax} tint={cc} />
+                </ToolBody>
+              </ToolCard>
+            );
+          })
+      )}
+    </div>
+  );
+
+  /* ── COLUMN 2: STUDIOS ── */
   const studiosPanel = (
     <div data-testid="routine-studios">
       {studios.length === 0 ? (
@@ -272,7 +318,7 @@ export function RoutinePage({
     </div>
   );
 
-  /* ── COLUMN 2: STUDENTS ── */
+  /* ── COLUMN 3: STUDENTS ── */
   const studentsPanel = (
     <Section title="STUDENTS WHO LEARNED IT" figure={students.length}>
       {students.length === 0 ? (
@@ -307,10 +353,12 @@ export function RoutinePage({
         sections
         top={top}
         segments={[
+          { key: "classes", href: `${base}?show=classes`, label: "Classes", n: classes.length, aria: `Classes that teach ${routine.title}` },
           { key: "studios", href: `${base}?show=studios`, label: "Studios", n: studios.length, aria: `Where ${routine.title} is danced` },
           { key: "students", href: `${base}?show=students`, label: "Students", n: students.length, aria: `Who learned ${routine.title}` },
         ]}
         panels={[
+          { key: "classes", node: classesPanel },
           { key: "studios", node: studiosPanel },
           { key: "students", node: studentsPanel },
         ]}

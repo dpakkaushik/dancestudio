@@ -3,29 +3,23 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { deleteMembershipAction } from "@/features/memberships/server-actions/memberships";
+import { CENTER_CARD, CENTER_SCRIM } from "@/components/ui/centerModal";
+import { Portal } from "@/components/ui/Portal";
+import { useCloseOnBack } from "@/lib/hooks/useCloseOnBack";
 import { SUB } from "@/lib/design/tokens";
 
-/** TAKE IT OFF SALE (28 Sep 2026, the user: "option to take membership of
- *  sale").
+/** DELETE A MEMBERSHIP (28 Sep 2026 as "Take it off sale"; 4 Oct 2026, the user:
+ *  *"take it off sale to be on top right as a chip and renamed to delete"*).
  *
- *  ⚠ THE WHOLE DOOR ALREADY EXISTED AND NOTHING OPENED IT. `delete_membership`
- *  has been on the database since 19 Sep, `deleteMembership` in the repository
- *  and `deleteMembershipAction` as a server action — and no screen offered any
- *  of them, so a membership, once created, was on its seller's public page for
- *  ever. The dead-code sweep earlier today found the action unused and KEPT it
- *  deliberately for exactly this reason: an export nothing calls is sometimes a
- *  feature nobody can reach.
- *
- *  ⚠⚠ AND "OFF SALE" IS WHAT THE RPC ALREADY DOES, WHICH IS WHY THE WORDS HERE
- *  ARE NOT "DELETE". Its own comment: *"taking it off sale is not taking it
- *  back: every pass already bought keeps its units and keeps working."* So the
- *  sentence under the button is a promise the database keeps, not reassurance —
- *  and the confirm says it, because a seller with live holders deserves to know
+ *  ⚠ THE WORD CHANGED AND THE ACT DID NOT. `delete_membership`'s own comment:
+ *  *"taking it off sale is not taking it back: every pass already bought keeps its
+ *  units and keeps working."* So the chip says Delete, and the confirm still says
+ *  what the database promises — a seller with live holders deserves to know that
  *  before pressing rather than after.
  *
- *  ⚠ It is on the membership's OWN page rather than on its row in the list: the
- *  row is a full-card `<Link>`, and a button inside an anchor is interactive
- *  inside interactive — the same thing C49 refused on the studio Team desk. */
+ *  ⚠ A CHIP ON THE CARD'S TOP RIGHT, and the question in a centred dialog — the
+ *  card's head has no room for a second paragraph, and the confirm is portalled
+ *  so no panel can clip it (the 16 Sep stacking lesson). */
 export function MembershipOffSale({ membershipId, name, active }: { membershipId: string; name: string; active: number }) {
   const router = useRouter();
   const [ask, setAsk] = useState(false);
@@ -43,61 +37,72 @@ export function MembershipOffSale({ membershipId, name, active }: { membershipId
       return;
     }
     /* back to the desk it was opened from — the membership is not there any
-       more, so staying on its page would be a screen about a thing off sale */
-    router.replace("/memberships");
-    router.refresh();
+       more, so staying on its page would be a screen about a thing gone.
+       ⚠ The dialog closes FIRST, which spends its own history entry on a
+       microtask; the replace is a beat behind it, the way the other sheets
+       here do it (600 ms), or the replace would land on the dialog's entry and
+       leave this page's live underneath it. */
+    setAsk(false);
+    setTimeout(() => {
+      router.replace("/memberships");
+      router.refresh();
+    }, 600);
   };
 
-  if (!ask) {
-    return (
-      <div style={{ marginTop: 14 }}>
-        <button
-          type="button"
-          onClick={() => setAsk(true)}
-          aria-label={`Take ${name} off sale`}
-          style={{ width: "100%", padding: "11px 12px", borderRadius: 12, background: "transparent", border: "1.5px solid var(--el)", color: "#F87171", fontSize: 12.5, fontWeight: 900, cursor: "pointer", fontFamily: "inherit" }}
-        >
-          Take it off sale
-        </button>
-        <div style={{ fontSize: 10.5, color: SUB, lineHeight: 1.5, margin: "6px 2px 0" }}>
-          It stops being offered on your page. Every pass already bought keeps its units and keeps working.
-        </div>
-      </div>
-    );
-  }
-
   return (
-    <div role="group" aria-label="Take it off sale?" style={{ marginTop: 14, background: "var(--card)", border: "1.5px solid var(--el)", borderRadius: 16, padding: "13px 14px" }}>
-      <div style={{ fontSize: 12.5, fontWeight: 900 }}>Take {name} off sale?</div>
-      <div style={{ fontSize: 11, color: SUB, lineHeight: 1.5, margin: "4px 0 10px" }}>
-        {active > 0
-          ? `${active} ${active === 1 ? "person holds" : "people hold"} one. Theirs keep working — this only stops new ones being bought.`
-          : "Nobody holds one. It simply stops being offered."}
-      </div>
-      {err ? (
-        <div role="alert" style={{ fontSize: 11, color: "#F87171", fontWeight: 700, marginBottom: 8 }}>
-          {err}
+    <>
+      <button
+        type="button"
+        onClick={() => setAsk(true)}
+        aria-label={`Delete ${name}`}
+        style={{ flexShrink: 0, fontSize: 9, fontWeight: 900, letterSpacing: 0.7, padding: "4px 9px", borderRadius: 999, background: "#F871711c", color: "#F87171", border: "1.5px solid #F8717155", cursor: "pointer", fontFamily: "inherit", pointerEvents: "auto" }}
+      >
+        DELETE
+      </button>
+      {ask ? <Confirm name={name} active={active} busy={busy} err={err} onKeep={() => setAsk(false)} onGo={go} /> : null}
+    </>
+  );
+}
+
+function Confirm({ name, active, busy, err, onKeep, onGo }: { name: string; active: number; busy: boolean; err: string | null; onKeep: () => void; onGo: () => void }) {
+  useCloseOnBack(onKeep);
+  return (
+    <Portal>
+      <div onClick={onKeep} style={CENTER_SCRIM}>
+        <div role="alertdialog" aria-modal="true" aria-label={`Delete ${name}?`} onClick={(e) => e.stopPropagation()} style={{ ...CENTER_CARD, padding: "18px 16px 16px" }}>
+          <div style={{ fontSize: 15, fontWeight: 900 }}>Delete {name}?</div>
+          <div style={{ fontSize: 11.5, color: SUB, lineHeight: 1.5, margin: "6px 0 14px" }}>
+            {active > 0
+              ? `${active} ${active === 1 ? "person holds" : "people hold"} one. Theirs keep working — this only stops new ones being bought.`
+              : "Nobody holds one. It simply stops being offered."}
+          </div>
+          {err ? (
+            <div role="alert" style={{ fontSize: 11, color: "#F87171", fontWeight: 700, marginBottom: 8 }}>
+              {err}
+            </div>
+          ) : null}
+          <div style={{ display: "flex", gap: 8 }}>
+            <button
+              type="button"
+              onClick={onKeep}
+              disabled={busy}
+              autoFocus
+              style={{ flex: 1, padding: "11px 12px", borderRadius: 12, background: "var(--el)", border: "none", color: "var(--text)", fontSize: 12.5, fontWeight: 900, cursor: busy ? "not-allowed" : "pointer", fontFamily: "inherit" }}
+            >
+              Keep it
+            </button>
+            <button
+              type="button"
+              onClick={onGo}
+              disabled={busy}
+              aria-label={`Confirm — delete ${name}`}
+              style={{ flex: 1, padding: "11px 12px", borderRadius: 12, background: "#DC2626", border: "none", color: "#fff", fontSize: 12.5, fontWeight: 900, cursor: busy ? "not-allowed" : "pointer", fontFamily: "inherit" }}
+            >
+              {busy ? "Deleting…" : "Delete"}
+            </button>
+          </div>
         </div>
-      ) : null}
-      <div style={{ display: "flex", gap: 8 }}>
-        <button
-          type="button"
-          onClick={() => setAsk(false)}
-          disabled={busy}
-          style={{ flex: 1, padding: "10px 12px", borderRadius: 12, background: "var(--el)", border: "none", color: "var(--text)", fontSize: 12, fontWeight: 900, cursor: busy ? "not-allowed" : "pointer", fontFamily: "inherit" }}
-        >
-          Keep it
-        </button>
-        <button
-          type="button"
-          onClick={go}
-          disabled={busy}
-          aria-label={`Confirm — take ${name} off sale`}
-          style={{ flex: 1, padding: "10px 12px", borderRadius: 12, background: "#F87171", border: "none", color: "#fff", fontSize: 12, fontWeight: 900, cursor: busy ? "not-allowed" : "pointer", fontFamily: "inherit" }}
-        >
-          {busy ? "Taking it off…" : "Take it off sale"}
-        </button>
       </div>
-    </div>
+    </Portal>
   );
 }

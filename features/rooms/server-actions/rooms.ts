@@ -24,6 +24,8 @@ const createSchema = z.object({
   businessId: z.string().uuid(),
   name: z.string().trim().min(1, "Give the room a name").max(80),
   capacity: z.coerce.number().int().min(1, "A room holds at least one").max(500, "That is too many"),
+  /* asked for in the add form since 4 Oct 2026 — absent means none */
+  amenities: amenitiesSchema.optional(),
 });
 
 const updateSchema = z.object({
@@ -60,6 +62,7 @@ export async function createRoomAction(input: {
   businessId: string;
   name: string;
   capacity: number;
+  amenities?: string[];
 }): Promise<RoomActionResult> {
   const parsed = createSchema.safeParse(input);
   if (!parsed.success) {
@@ -67,7 +70,7 @@ export async function createRoomAction(input: {
   }
   const supabase = await requireUser();
   try {
-    await createRoom(supabase, { ...parsed.data, amenities: [] });
+    await createRoom(supabase, { ...parsed.data, amenities: parsed.data.amenities ?? [] });
     revalidateRooms(parsed.data.businessId);
     return { error: null };
   } catch (error: unknown) {

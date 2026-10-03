@@ -41,6 +41,30 @@ export interface StudentPass extends PassExpiry {
   uses: PassUse[];
 }
 
+/** one class they danced here — every session of it they were checked in to */
+export interface StudentClass {
+  classId: string;
+  shareSlug: string;
+  style: string;
+  level: string;
+  sessions: number;
+  minutes: number;
+  lastAt: string;
+}
+
+/** one routine taught in a class they were checked in to here */
+export interface StudentRoutine {
+  routineId: string;
+  title: string;
+  style: string;
+  level: string;
+  makerName: string | null;
+  makerPhotoPath: string | null;
+  /** sessions they attended of the classes it is taught in */
+  sessions: number;
+  classes: number;
+}
+
 export interface StudentRecord {
   userId: string;
   name: string;
@@ -60,7 +84,10 @@ export interface StudentRecord {
   months: Array<{ key: string; label: string; n: number }>;
   styles: Array<{ style: string; n: number }>;
   teachers: Array<{ userId: string; name: string; photoPath: string | null; n: number }>;
-  recent: StudentSession[];
+  /** every class they danced here, the most recent first (4 Oct 2026) */
+  classes: StudentClass[];
+  /** the routines those classes taught, most danced first (4 Oct 2026) */
+  routines: StudentRoutine[];
   passes: StudentPass[];
 }
 
@@ -184,6 +211,46 @@ export async function findStudentRecord(
   }
   const teachers = [...byTeacher.values()].sort((a, b) => b.n - a.n || a.name.localeCompare(b.name));
 
+  /* ── the classes, one row each — counted off the same sessions (4 Oct 2026) ── */
+  const byClass = new Map<string, StudentClass>();
+  for (const s of sessions) {
+    const c = byClass.get(s.classId) ?? { classId: s.classId, shareSlug: s.shareSlug, style: s.style, level: s.level, sessions: 0, minutes: 0, lastAt: s.startsAt };
+    c.sessions += 1;
+    c.minutes += s.minutes;
+    if (s.startsAt > c.lastAt) c.lastAt = s.startsAt;
+    byClass.set(s.classId, c);
+  }
+  const classes = [...byClass.values()].sort((a, b) => b.lastAt.localeCompare(a.lastAt));
+
+  /* ── the routines those classes taught. `class_routines` is readable by
+     whoever can read the class (20260919160000), and a business's runners read
+     its classes. ⚠ It DEGRADES to none rather than failing the page — the
+     record must not 500 over a list beside it. ── */
+  const routines: StudentRoutine[] = [];
+  if (classes.length > 0) {
+    type RtRow = { class_id: string; routines: One<{ id: string; title: string; style: string; level: string; profiles: One<{ full_name: string | null; profile_photo_path: string | null }> }> };
+    const { data: rt } = await supabase
+      .from("class_routines")
+      .select("class_id, routines (id, title, style, level, profiles (full_name, profile_photo_path))")
+      .in("class_id", classes.map((c) => c.classId))
+      .is("deleted_at", null)
+      .limit(200);
+    const byRoutine = new Map<string, StudentRoutine & { classIds: Set<string> }>();
+    for (const row of (rt ?? []) as unknown as RtRow[]) {
+      const r = one(row.routines);
+      if (!r) continue;
+      const maker = one(r.profiles);
+      const entry = byRoutine.get(r.id) ?? { routineId: r.id, title: r.title, style: r.style, level: r.level, makerName: maker?.full_name ?? null, makerPhotoPath: maker?.profile_photo_path ?? null, sessions: 0, classes: 0, classIds: new Set<string>() };
+      if (!entry.classIds.has(row.class_id)) {
+        entry.classIds.add(row.class_id);
+        entry.sessions += byClass.get(row.class_id)?.sessions ?? 0;
+      }
+      byRoutine.set(r.id, entry);
+    }
+    for (const { classIds, ...r } of byRoutine.values()) routines.push({ ...r, classes: classIds.size });
+    routines.sort((a, b) => b.sessions - a.sessions || a.title.localeCompare(b.title));
+  }
+
   /* ── the passes they hold or held with this business, and where each went ── */
   type PassRow = { id: string; membership_id: string; status: StudentPass["status"]; unit: StudentPass["unit"]; units_total: number; units_used: number; price_inr: number; bought_at: string | null; memberships: One<{ name: string }> };
   const passRows = (passes.data ?? []) as unknown as PassRow[];
@@ -221,7 +288,8 @@ export async function findStudentRecord(
     months,
     styles,
     teachers,
-    recent: sessions.slice(0, 12),
+    classes,
+    routines,
     passes: passList,
   };
 }

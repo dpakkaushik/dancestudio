@@ -12,7 +12,7 @@ import { ToolActions, ToolBody, ToolCard, ToolChip, ToolFacts, ToolHead, ToolTit
 import { DOS_UI, INK, LILAC, SUB } from "@/lib/design/tokens";
 import { money as rupees } from "@/features/payouts/components/earnings-kit";
 import type { MembershipWithUsage, MyPass, PassUse } from "@/repositories/memberships";
-import { ProgressBar, SpentOn, expiryWords, unitWord, validityWords } from "./usage-kit";
+import { ProgressBar, SpentOn, expiryWords, unitWord } from "./usage-kit";
 
 /** MEMBERSHIPS (19 Sep 2026, the user: "Users should be able to buy from Studio
  *  and Artist Profile Pages and track from memberships section in tools. Artist
@@ -261,26 +261,32 @@ export function MembershipsScreen({
                 tint={TINT}
                 name={seller?.name ?? business?.name ?? "You"}
                 photoPath={seller?.photoPath ?? null}
-                eyebrow={`On sale · ${seller?.kind === "artist" ? "your artist page" : "your studio"}`}
-                right={m.status === "draft" ? <ToolChip word="DRAFT" fg={SUB} bg="var(--el)" /> : <ToolChip word="ON SALE" fg="#22C55E" bg="#22C55E1c" />}
+                eyebrow={seller?.kind === "artist" ? "Your artist page" : "Your studio"}
+                /* ⚠ "LIVE", AND ONLY HERE (4 Oct 2026, the user: "on sale to become
+                   live only on top right of card as chip") — the eyebrow no longer
+                   says "On sale" a second time */
+                right={m.status === "draft" ? <ToolChip word="DRAFT" fg={SUB} bg="var(--el)" testId="membership-state" /> : <ToolChip word="LIVE" fg="#22C55E" bg="#22C55E1c" testId="membership-state" />}
               />
               <ToolBody>
-                {/* ⚠ SAID ONCE (3 Oct 2026): the price and the size are ONE line under
-                    the name, where they were tiles — four tiles in a phone's width put
-                    "10 classes" in a box too narrow for it — and what came in is a
-                    tile of its own instead of the head's sub-line */}
                 <ToolTitle kicker="Membership">{m.name}</ToolTitle>
-                <MetaLine>
-                  {m.priceInr === 0 ? "Free" : rupees(m.priceInr)} · {unitWord(m.unit, m.units)}
-                  {validityWords(m.validityDays) ? ` · ${validityWords(m.validityDays)}` : ""}
-                </MetaLine>
+                {/* ⚠ PRICE · HOURS · VALIDITY IN BOXES, AND NO "TAKEN" (4 Oct 2026, the
+                    user: "price hours and validity also in boxes on card, remove taken
+                    from card"). What came in is the membership's own Earnings column. */}
                 <ToolFacts
                   tint={TINT}
                   style={{ marginTop: 10 }}
                   items={[
+                    { label: "Price", value: m.priceInr === 0 ? "Free" : rupees(m.priceInr), testId: "membership-price" },
+                    { label: m.unit === "hours" ? "Hours" : "Classes", value: m.units, testId: "membership-units" },
+                    { label: "Validity", value: m.validityDays ? `${m.validityDays} days` : "No end", testId: "membership-validity" },
+                  ]}
+                />
+                <ToolFacts
+                  tint={TINT}
+                  style={{ marginTop: 6 }}
+                  items={[
                     { label: "Sold", value: <>{m.sold}<span style={{ fontSize: 10, color: SUB, fontWeight: 700 }}>/{m.totalCount}</span></>, testId: "membership-sold" },
                     { label: "Active", value: m.active },
-                    { label: "Taken", value: rupees(m.revenueInr) },
                   ]}
                 />
                 {/* how much of what was SOLD has actually been danced — the seller's own bar */}

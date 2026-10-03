@@ -12,8 +12,9 @@ const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/
  *  nobody but the owner either, so there is nothing to leak by guessing an id. */
 export default async function OneRoutinePage({ params, searchParams }: { params: Promise<{ routineId: string }>; searchParams: Promise<{ show?: string }> }) {
   const { routineId } = await params;
-  /* the column the server opens on — Studios unless the address says Students */
-  const show = (await searchParams).show === "students" ? "students" : "studios";
+  /* the column the server opens on — Classes, the first, unless the address names another (4 Oct 2026) */
+  const asked = (await searchParams).show;
+  const show = asked === "students" || asked === "studios" ? asked : "classes";
   if (!UUID_RE.test(routineId)) {
     notFound();
   }

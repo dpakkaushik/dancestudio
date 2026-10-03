@@ -1,20 +1,30 @@
 "use client";
 
+import Link from "next/link";
 import { useState } from "react";
-import { dosKey } from "@/features/classes/components/ShareSheet";
-import { deleteRoomAction, updateRoomAction } from "@/features/rooms/server-actions/rooms";
-import { DeskHero } from "@/features/businesses/components/biz-kit";
+import { deleteRoomAction } from "@/features/rooms/server-actions/rooms";
+import { DOS_TOOLS, DeskHero } from "@/features/businesses/components/biz-kit";
 import { DeskBody, DeskTop } from "@/components/ui/DeskSections";
+import { ToolActions, ToolBody, ToolCard, ToolFacts, ToolHead, toolBtn } from "@/components/ui/ToolCard";
 import { DOS_AMENITIES } from "@/lib/constants/amenities";
 import { DOS_UI } from "@/lib/design/tokens";
 import type { Room } from "@/types/room";
 import { DeskAddButton } from "@/features/settings/components/settings-kit";
 
 /** The studio's rooms — lifted from the prototype's business settings Rooms
- *  segment (DanceOSApp.jsx:18389-18425): a card per room with its name and
- *  capacity edited in place, the amenities folded away until you want them, and
- *  the closing note that says what a room actually decides. One studio = one
- *  location, so these are THIS studio's rooms; another branch is another studio. */
+ *  segment (DanceOSApp.jsx:18389-18425). One studio = one location, so these are
+ *  THIS studio's rooms; another branch is another studio.
+ *
+ *  ⚠⚠ A CARD PER ROOM, AND NOTHING EDITED IN PLACE (4 Oct 2026, the user: "add
+ *  room form to have amenities in it and edit only from editing form now not
+ *  outside. new asset card design how we did for other pages"). The row used to
+ *  carry the name and the capacity as live inputs committed on blur, and the
+ *  amenities as toggles each written on a press — three doors to one room. The
+ *  card SHOWS the room now: its name at a profile's size, how many it holds and
+ *  how many amenities as figures, the amenities as chips; Edit opens the one
+ *  form at `?edit={room}`, which is also where a room is added. */
+
+const TINT = DOS_TOOLS.rooms.c;
 
 export function RoomsManager({
   businessId,
@@ -27,303 +37,111 @@ export function RoomsManager({
   businessName: string;
   businessWhere: string;
   rooms: Room[];
-  /** ⚠ may this seat WRITE a room — owner or trainer, which is what the two
-   *  policies on `rooms` admit. Without it the whole editor was drawn for
-   *  everybody and every press was refused (21 Sep 2026). */
+  /** ⚠ may this seat WRITE a room — owner or manager since 28 Sep 2026, which is
+   *  what the two policies on `rooms` admit */
   canEdit?: boolean;
 }) {
-  const [amenFor, setAmenFor] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [toast, setToast] = useState<string | null>(null);
-  /* the row being typed in — committed on blur, so every keystroke is not a write */
-  /** ⚠ THE CAPACITY IS TEXT WHILE IT IS BEING TYPED (28 Sep 2026, the same
-   *  "stagnant 0" the class form had). Holding it as a NUMBER made the field
-   *  impossible to clear: backspace it to nothing and `Number("") || 1` is 1, so
-   *  React put the 1 straight back and the only way to type 30 over it was to
-   *  leave the 1 in front. The number is derived at COMMIT, where it is the only
-   *  thing that matters, and the floor is applied there rather than on every
-   *  keystroke. */
-  const [draft, setDraft] = useState<{ id: string; name: string; capacity: string } | null>(null);
-  const capacityOf = (text: string) => Math.max(1, Math.min(500, Math.trunc(Number(text) || 0)));
 
   const fire = (m: string) => {
     setToast(m);
     setTimeout(() => setToast(null), 2200);
   };
 
-  const run = async (op: () => Promise<{ error: string | null }>, doneMsg: string | null) => {
+  const remove = async (r: Room) => {
     if (busy) return;
     setBusy(true);
     setError(null);
-    const out = await op();
+    const out = await deleteRoomAction({ businessId, roomId: r.id });
     setBusy(false);
     if (out.error) {
       setError(out.error);
       return;
     }
-    if (doneMsg) fire(doneMsg);
-  };
-
-  const commit = (room: Room) => {
-    if (!draft || draft.id !== room.id) return;
-    const name = draft.name.trim();
-    const capacity = capacityOf(draft.capacity);
-    setDraft(null);
-    if (!name || (name === room.name && capacity === room.capacity)) return;
-    void run(
-      () => updateRoomAction({ businessId, roomId: room.id, name, capacity, amenities: room.amenities }),
-      null
-    );
-  };
-
-  const toggleAmenity = (room: Room, amenity: string) => {
-    const on = room.amenities.includes(amenity);
-    const amenities = on
-      ? room.amenities.filter((a) => a !== amenity)
-      : [...room.amenities, amenity];
-    void run(
-      () =>
-        updateRoomAction({
-          businessId,
-          roomId: room.id,
-          name: room.name,
-          capacity: room.capacity,
-          amenities,
-        }),
-      on ? `${amenity} removed from ${room.name}` : `${amenity} added to ${room.name}`
-    );
-  };
-
-  const card: React.CSSProperties = {
-    background: "var(--card)",
-    borderRadius: 16,
-    padding: 14,
-    marginBottom: 10,
+    fire(`${r.name} removed`);
   };
 
   return (
-    <div
-      style={{
-        maxWidth: 430,
-        margin: "0 auto",
-        padding: "0 16px 40px",
-        fontFamily: DOS_UI,
-        color: "var(--text)",
-      }}
-    >
+    <div style={{ maxWidth: 430, margin: "0 auto", padding: "0 16px 40px", fontFamily: DOS_UI, color: "var(--text)" }}>
       <DeskTop style={{ paddingBottom: 2 }}>
-      {/* ⚠ THE TOP SECTION (3 Oct 2026, C116) — the hero, who may edit, and Add */}
-      {/* BizShell's hero (2964-2976): the tile's paint, the tool's name, nothing else.
-          ⚠⚠ AND IT IS THE SHARED ONE NOW (22 Sep 2026) — it was a HAND-COPY with
-          the title as a `<div>`, so this page rendered no `<h1>` at all for a
-          screen reader while every other desk renders one. That is the same gap
-          `DeskHero as="h1"` closed for the desks on 18 Sep, that the studio's
-          Team desk carried until 21 Sep, and that `EventForm` carried until
-          yesterday — three times now, always a copy that LOOKS identical and is
-          not the same element, which is the kind nothing on screen ever shows.
-          Found by a browser check asking what this page's heading is. */}
-      <DeskHero tool="rooms" as="h1" margin="0 0 12px" />
-
-      {/* ⚠ AND ONLY FOR SOMEBODY WHO MAY ACTUALLY EDIT ONE (21 Sep 2026). Rooms
-          are written by an OWNER or a TRAINER — "rooms are plain studio config,
-          not a seat ledger" — and this desk had no role at all, so a visiting
-          teacher, an assistant and the front desk were shown the ＋, the delete
-          ✕ and every amenity toggle, and each press came back an RLS refusal
-          with nothing said. A door that would be refused is not offered. */}
-      {!canEdit ? (
-        <div role="status" style={{ ...card, fontSize: 12, color: "var(--sub)", lineHeight: 1.5, marginBottom: 12 }}>
-          These are the studio&rsquo;s rooms. Changing them is the owner&rsquo;s and the faculty&rsquo;s.
+        {/* the shared tool hero — the page's own `<h1>` (22 Sep 2026) */}
+        <DeskHero tool="rooms" as="h1" margin="0 0 8px" />
+        <div style={{ fontSize: 11.5, color: "var(--sub)", fontWeight: 800, margin: "0 0 12px" }}>
+          📍 {businessWhere} · {businessName}
         </div>
-      ) : null}
-      {/* ＋ AT THE TOP, LIKE CLASSES AND EVENTS (20 Sep 2026, the user's list 14).
-          ⚠ AND IT OPENS A FORM NOW (22 Sep 2026, the user: "form for adding asset
-          and adding room should be same way"). It used to CREATE the room on the
-          press — named after a counter, holding twenty people nobody had chosen —
-          and leave you to correct both on the row. Capacity is the one field here
-          that the database enforces on every booking, so it is asked for. */}
-      {canEdit ? <DeskAddButton label="Add room" href="?new=1" /> : null}
+        {/* ⚠ only for somebody who may actually edit one (21 Sep 2026) */}
+        {!canEdit ? (
+          <div role="status" style={{ background: "var(--card)", borderRadius: 14, padding: 12, fontSize: 12, color: "var(--sub)", lineHeight: 1.5 }}>
+            These are the studio&rsquo;s rooms. Changing them is the owner&rsquo;s and the managers&rsquo;.
+          </div>
+        ) : (
+          <DeskAddButton label="Add room" href="?new=1" />
+        )}
       </DeskTop>
 
-      {/* ⚠ THE LOWER SECTION (3 Oct 2026, C116) — the place and its rooms. It IS
-          the card that used to hold them: a card inside this squircle would be
-          the same veil twice. */}
       <DeskBody>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-          <b style={{ fontSize: 14 }}>📍 {businessWhere}</b>
-          <span style={{ fontSize: 10.5, fontWeight: 800, color: "var(--sub)" }}>{businessName}</span>
-        </div>
-        <div style={{ fontSize: 12, color: "var(--sub)", marginTop: 2 }}>
-          {rooms.length} room{rooms.length === 1 ? "" : "s"} · one studio = one location
-        </div>
         {rooms.map((r) => {
-          const open = amenFor === r.id;
-          const editing = draft?.id === r.id;
+          const amen = DOS_AMENITIES.filter((a) => r.amenities.includes(a));
           return (
-            <div key={r.id} style={{ background: "var(--el)", borderRadius: 12, padding: "8px 11px", marginTop: 8 }}>
-              <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-                <input
-                  value={editing ? draft.name : r.name}
-                  aria-label={`${r.name} name`}
-                  onChange={(e) =>
-                    setDraft({ id: r.id, name: e.target.value, capacity: editing ? draft.capacity : String(r.capacity) })
-                  }
-                  onBlur={() => commit(r)}
-                  readOnly={!canEdit}
-                  style={{
-                    flex: 2,
-                    minWidth: 0,
-                    background: "transparent",
-                    border: "none",
-                    outline: "none",
-                    color: "var(--text)",
-                    fontSize: 12.5,
-                    fontWeight: 800,
-                    fontFamily: "inherit",
-                  }}
+            <ToolCard key={r.id} testId="room-card">
+              <ToolHead
+                tint={TINT}
+                name={r.name}
+                photoPath={null}
+                eyebrow="Room"
+                icon={<span aria-hidden="true" style={{ fontSize: 24 }}>🚪</span>}
+              />
+              <ToolBody>
+                <ToolFacts
+                  tint={TINT}
+                  items={[
+                    { label: "Holds", value: r.capacity, testId: "room-capacity" },
+                    { label: amen.length === 1 ? "Amenity" : "Amenities", value: amen.length },
+                  ]}
                 />
-                <span style={{ fontSize: 11, color: "var(--sub)" }}>cap</span>
-                <input
-                  type="number"
-                  min={1}
-                  value={editing ? draft.capacity : String(r.capacity)}
-                  aria-label={`${r.name} capacity`}
-                  onChange={(e) =>
-                    setDraft({
-                      id: r.id,
-                      name: editing ? draft.name : r.name,
-                      capacity: e.target.value,
-                    })
-                  }
-                  onBlur={() => commit(r)}
-                  readOnly={!canEdit}
-                  style={{
-                    width: 52,
-                    background: "transparent",
-                    border: "1.5px solid var(--card)",
-                    borderRadius: 8,
-                    outline: "none",
-                    color: "var(--text)",
-                    fontSize: 12.5,
-                    fontWeight: 800,
-                    padding: "3px 6px",
-                    fontFamily: "inherit",
-                  }}
-                />
-                {canEdit && rooms.length > 1 && (
-                  <span
-                    role="button"
-                    tabIndex={0}
-                    onKeyDown={dosKey}
-                    aria-label={`Remove ${r.name}`}
-                    onClick={() => void run(() => deleteRoomAction({ businessId, roomId: r.id }), `${r.name} removed`)}
-                    style={{ fontSize: 13, color: "var(--sub)", cursor: "pointer" }}
-                  >
-                    ✕
-                  </span>
-                )}
-              </div>
-              {/* the amenities live with the room, folded away until you want them */}
-              <div
-                role="button"
-                tabIndex={0}
-                onKeyDown={dosKey}
-                aria-expanded={open}
-                aria-label={`Amenities in ${r.name}`}
-                onClick={() => setAmenFor(open ? null : r.id)}
-                style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 7, cursor: "pointer" }}
-              >
-                <span style={{ fontSize: 11, fontWeight: 800, color: "var(--sub)" }}>Amenities</span>
-                <span
-                  style={{
-                    fontSize: 10.5,
-                    color: "var(--muted)",
-                    flex: 1,
-                    minWidth: 0,
-                    overflow: "hidden",
-                    textOverflow: "ellipsis",
-                    whiteSpace: "nowrap",
-                  }}
-                >
-                  {r.amenities.length ? r.amenities.join("  ") : "none yet"}
-                </span>
-                <span
-                  style={{
-                    fontSize: 13,
-                    color: "var(--muted)",
-                    transform: open ? "rotate(90deg)" : "none",
-                    transition: "transform .15s",
-                  }}
-                >
-                  ›
-                </span>
-              </div>
-              {open && (
-                <div
-                  style={{
-                    display: "flex",
-                    flexWrap: "wrap",
-                    gap: 6,
-                    marginTop: 8,
-                    paddingTop: 8,
-                    borderTop: "1.5px solid var(--card)",
-                  }}
-                >
-                  {DOS_AMENITIES.map((a) => {
-                    const on = r.amenities.includes(a);
-                    return (
-                      <span
-                        role="button"
-                        tabIndex={0}
-                        onKeyDown={dosKey}
-                        key={a}
-                        aria-pressed={on}
-                        onClick={() => canEdit && toggleAmenity(r, a)}
-                        style={{
-                          fontSize: 11,
-                          fontWeight: 700,
-                          padding: "5px 10px",
-                          borderRadius: 999,
-                          cursor: "pointer",
-                          background: on ? "var(--text)" : "var(--card)",
-                          color: on ? "var(--solid)" : "var(--sub)",
-                          border: `1.5px solid ${on ? "var(--text)" : "var(--el)"}`,
-                        }}
-                      >
+                <div data-testid="room-amenities" style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 10 }}>
+                  {amen.length === 0 ? (
+                    <span style={{ fontSize: 11.5, color: "var(--muted)" }}>No amenities yet.</span>
+                  ) : (
+                    amen.map((a) => (
+                      <span key={a} style={{ fontSize: 11, fontWeight: 800, padding: "4px 10px", borderRadius: 999, background: `${TINT}1c`, color: "var(--text)", border: "1.5px solid var(--el)" }}>
                         {a}
-                        {on ? " ✓" : ""}
                       </span>
-                    );
-                  })}
+                    ))
+                  )}
                 </div>
-              )}
-            </div>
+              </ToolBody>
+              {canEdit ? (
+                <ToolActions>
+                  <Link href={`?edit=${r.id}`} scroll={false} aria-label={`Edit ${r.name}`} style={toolBtn("tinted", TINT)}>
+                    Edit
+                  </Link>
+                  {rooms.length > 1 ? (
+                    <button type="button" disabled={busy} onClick={() => void remove(r)} aria-label={`Remove ${r.name}`} style={toolBtn("danger", TINT)}>
+                      Remove
+                    </button>
+                  ) : null}
+                </ToolActions>
+              ) : null}
+            </ToolCard>
           );
         })}
-        {rooms.length === 0 && (
-          <div style={{ fontSize: 11.5, color: "var(--muted)", marginTop: 10 }}>
-            No rooms yet — add the first one above, and your classes can be held in it.
-          </div>
-        )}
+        {rooms.length === 0 ? (
+          <div style={{ fontSize: 11.5, color: "var(--muted)", marginTop: 4 }}>No rooms yet — add the first one above, and your classes can be held in it.</div>
+        ) : null}
 
-      {/* ⚠ the dashed row that stood here is the pill at the TOP of this page now
-          (20 Sep 2026) — a studio with eight rooms had to scroll past all of them
-          to add a ninth */}
-      {error && (
-        <div style={{ fontSize: 11.5, color: "#EF4444", fontWeight: 700, marginTop: 10 }}>{error}</div>
-      )}
-      <div style={{ fontSize: 11.5, color: "var(--muted)", marginTop: 8, lineHeight: 1.5 }}>
-        A new location is a new studio — create it from Home ▸ Run your business. Rooms cap class
-        capacity · no double-booking (server-enforced).
-      </div>
+        {error ? <div role="alert" style={{ fontSize: 11.5, color: "#EF4444", fontWeight: 700, marginTop: 10 }}>{error}</div> : null}
+        <div style={{ fontSize: 11.5, color: "var(--muted)", marginTop: 8, lineHeight: 1.5 }}>
+          A room caps a class&rsquo;s capacity, and no two published classes share one at the same time.
+        </div>
       </DeskBody>
-      {toast && (
-        <div
-          role="status" aria-live="polite" style={{ position: "fixed", bottom: 26, left: "50%", transform: "translateX(-50%)", background: "var(--solid)", border: "1.5px solid #0EA5E9", boxShadow: "0 6px 24px rgba(0,0,0,.45)", color: "var(--text)", padding: "11px 18px", borderRadius: 999, fontSize: 13, fontWeight: 700, maxWidth: 360, textAlign: "center", zIndex: 650 }}
-        >
+      {toast ? (
+        <div role="status" aria-live="polite" style={{ position: "fixed", bottom: 26, left: "50%", transform: "translateX(-50%)", background: "var(--solid)", border: "1.5px solid #0EA5E9", boxShadow: "0 6px 24px rgba(0,0,0,.45)", color: "var(--text)", padding: "11px 18px", borderRadius: 999, fontSize: 13, fontWeight: 700, maxWidth: 360, textAlign: "center", zIndex: 650 }}>
           {toast}
         </div>
-      )}
+      ) : null}
     </div>
   );
 }

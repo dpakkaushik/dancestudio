@@ -1,5 +1,5 @@
 import { notFound, redirect } from "next/navigation";
-import { StudentRecordScreen } from "@/features/leads/components/StudentRecordScreen";
+import { StudentRecordScreen, type StudentShow } from "@/features/leads/components/StudentRecordScreen";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { findMyMemberships, runsTheBusiness } from "@/repositories/businesses";
 import { findStudentRecord } from "@/repositories/studentRecord";
@@ -24,7 +24,10 @@ export default async function StudentRecordPage({
   if (!UUID_RE.test(businessId) || !UUID_RE.test(userId)) {
     notFound();
   }
-  const show = (await searchParams).show === "membership" ? "membership" : "stats";
+  /* Classes is the first column and the default (4 Oct 2026); the card's Stats
+     and Membership buttons name their own */
+  const asked = (await searchParams).show;
+  const show: StudentShow = asked === "stats" || asked === "membership" || asked === "routines" ? asked : "classes";
   const supabase = await createSupabaseServerClient();
   const {
     data: { user },

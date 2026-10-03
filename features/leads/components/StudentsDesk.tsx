@@ -139,23 +139,6 @@ export function StudentsDesk({
       {list.map((s) => {
         const key = s.userId ?? s.leadId ?? s.name;
         const walkIn = !s.userId;
-        /* how they came to be a student, in the desk's own words */
-        const how = walkIn
-          ? s.mobile
-            ? `${s.mobile} · not on DanceOS`
-            : "Not on DanceOS"
-          : /* ⚠ THE PASS THEY HOLD IS THE WHY, under their name and inside the
-             door to them — the row has said "🎟 {pass}" since 21 Sep, and moving
-             it into a tile took the reason off the line that names them */
-            s.passName
-            ? `🎟 ${s.passName}`
-            : s.sources.includes("attended")
-            ? s.attended > 0
-              ? "Dances here"
-              : "Booked here"
-            : s.sources.includes("membership")
-              ? "Holds one of your memberships"
-              : "Added by you";
         const wa = s.mobile ? waDigits(s.mobile) : "";
         /* ⚠⚠ A STUDENT CARD (3 Oct 2026, the user: *"better and bigger cards …
            each has a profile linked to it which should be visible with profile
@@ -165,16 +148,22 @@ export function StudentsDesk({
            figures a student is read by — how often they came, what they booked,
            the pass they hold — and the buttons on a bar of their own. */
         return (
-          <ToolCard key={key}>
+          <ToolCard key={key} testId="student-card">
             <ToolHead
               tint={TINT}
               name={s.name}
               photoPath={s.photoPath}
               href={s.userId ? `/person/${s.userId}` : undefined}
               hrefLabel={`Open ${s.name}`}
-              eyebrow={walkIn ? "Walk-in" : s.passName ? "Student · member" : "Student"}
-              sub={how}
-              right={s.passName ? <ToolChip word="MEMBER" fg={TINT} bg={`${TINT}1c`} /> : null}
+              eyebrow={walkIn ? "Walk-in" : "Student"}
+              /* ⚠ NOTHING UNDER THE NAME, AND "MEMBER" SAID ONCE (4 Oct 2026, the
+                 user: "student cards- no second line below name, member only as a
+                 chip on right repeated multiple times on card"). The card said it
+                 three times — "Student · member" over the name, the chip, and a
+                 Member · Yes tile — and the pass's name on a line under it. The
+                 chip is the one place left; the pass itself is on the student's
+                 own Membership column, one press away. */
+              right={s.passName ? <ToolChip word="MEMBER" fg={TINT} bg={`${TINT}1c`} testId="student-member" /> : null}
             />
             <ToolBody>
               <ToolFacts
@@ -182,7 +171,6 @@ export function StudentsDesk({
                 items={[
                   { label: "Attended", value: s.attended },
                   { label: "Booked", value: s.booked },
-                  { label: "Member", value: s.passName ? "Yes" : "No", tint: s.passName ? TINT : undefined },
                 ]}
               />
             </ToolBody>

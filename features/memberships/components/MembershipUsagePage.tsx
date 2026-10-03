@@ -8,7 +8,7 @@ import { ToolActions, ToolBody, ToolCard, ToolChip, ToolFacts, ToolHead, toolBtn
 import { FigureHead } from "@/components/ui/FigureHead";
 import { SegmentedPanels } from "@/features/shell/components/SegmentedNav";
 import type { MembershipClassUse, MembershipHolder, MembershipWithUsage, PassUse } from "@/repositories/memberships";
-import { ProgressBar, SpentOn, expiryWords, unitWord, validityWords } from "./usage-kit";
+import { ProgressBar, SpentOn, expiryWords, unitWord } from "./usage-kit";
 import { MembershipOffSale } from "./MembershipOffSale";
 
 /** ONE MEMBERSHIP — ITS PEOPLE, THEIR USAGE AND WHAT IT EARNED (19 Sep 2026;
@@ -21,8 +21,9 @@ import { MembershipOffSale } from "./MembershipOffSale";
  *   · TOP — the card on the desk at full size: who sells it, the membership with
  *     its price, size and validity said ONCE, the three figures and the bar of
  *     what was sold that has been danced;
- *   · HOLDERS — THE PEOPLE: everybody holding one, each with what they paid, how
- *     far through they are and where it went; then the classes it was spent on;
+ *   · STUDENTS (Holders until 4 Oct 2026) — THE PEOPLE: everybody holding one,
+ *     each with what they paid, how far through they are and, folded, the
+ *     classes they used it on; then the classes it was spent on;
  *   · EARNINGS — THE MONEY: what came in, per holder and per hour, what the hours
  *     still owed are worth, and the last six months of sales.
  *
@@ -142,26 +143,39 @@ export function MembershipUsagePage({
             photoPath={seller?.photoPath ?? null}
             href={seller?.href}
             hrefLabel={seller ? `${seller.name} — open the page` : undefined}
-            eyebrow={`On sale · ${seller?.kind === "artist" ? "your artist page" : "your studio"}`}
+            eyebrow={seller?.kind === "artist" ? "Your artist page" : "Your studio"}
             size={52}
-            right={live ? <ToolChip word="ON SALE" fg="#22C55E" bg="#22C55E1c" /> : <ToolChip word="DRAFT" fg={SUB} bg="var(--el)" />}
+            /* ⚠ LIVE, AND DELETE BESIDE IT (4 Oct 2026, the user: "take it off sale
+               to be on top right as a chip and renamed to delete") — the owner's
+               alone, because `delete_membership` refuses anybody else */
+            right={
+              <>
+                {live ? <ToolChip word="LIVE" fg="#22C55E" bg="#22C55E1c" /> : <ToolChip word="DRAFT" fg={SUB} bg="var(--el)" />}
+                {canManage ? <MembershipOffSale membershipId={m.id} name={m.name} active={m.active} /> : null}
+              </>
+            }
           />
           <ToolBody>
             {/* ⚠ "MEMBERSHIP DETAILS" (3 Oct 2026, the user's own name for this page) */}
             <div style={{ fontSize: 9, fontWeight: 900, letterSpacing: 0.8, color: MUTED, textTransform: "uppercase", marginBottom: 3 }}>Membership details</div>
             <h1 style={{ margin: 0, fontSize: 22, fontWeight: 900, letterSpacing: -0.4, lineHeight: 1.2, overflowWrap: "anywhere" }}>{m.name}</h1>
-            {/* said ONCE — no tile below repeats it */}
-            <div style={{ fontSize: 12, color: SUB, fontWeight: 700, marginTop: 4 }}>
-              {m.priceInr === 0 ? "Free" : rupees(m.priceInr)} · {unitWord(m.unit, m.units)}
-              {validityWords(m.validityDays) ? ` · ${validityWords(m.validityDays)}` : ""}
-            </div>
+            {/* ⚠ PRICE · HOURS · VALIDITY IN BOXES, AND NO "TAKEN" (4 Oct 2026) —
+                the card on the desk reads the same; what came in is the Earnings column */}
             <ToolFacts
               tint={TINT}
               style={{ marginTop: 12 }}
               items={[
+                { label: "Price", value: m.priceInr === 0 ? "Free" : rupees(m.priceInr) },
+                { label: m.unit === "hours" ? "Hours" : "Classes", value: m.units },
+                { label: "Validity", value: m.validityDays ? `${m.validityDays} days` : "No end" },
+              ]}
+            />
+            <ToolFacts
+              tint={TINT}
+              style={{ marginTop: 6 }}
+              items={[
                 { label: "Sold", value: `${m.sold}/${m.totalCount}`, testId: "usage-sold" },
                 { label: "Active", value: String(m.active), testId: "usage-active" },
-                { label: "Taken", value: rupees(m.revenueInr), testId: "usage-taken" },
               ]}
             />
             {m.unitsSold > 0 ? (
@@ -220,10 +234,11 @@ export function MembershipUsagePage({
       </div>
   );
 
-  /* ── COLUMN 1: THE PEOPLE, THEN WHERE IT WENT ── */
+  /* ── COLUMN 1: STUDENTS — THE PEOPLE, THEN WHERE IT WENT (renamed from
+     Holders 4 Oct 2026, the user: "holders to be renamed to students") ── */
   const holdersPanel = (
       <div data-testid="membership-holders">
-        <SectionHead title="WHO HOLDS ONE" figure={holders.length} />
+        <SectionHead title="STUDENTS" figure={holders.length} />
         {people.length === 0 ? (
           <div style={{ ...panel, textAlign: "center", border: "1.5px dashed var(--el)", fontSize: 12, color: SUB, lineHeight: 1.5 }}>Nobody has taken one yet. It is on your public page while it is live.</div>
         ) : (
@@ -249,7 +264,20 @@ export function MembershipUsagePage({
                 <ToolBody>
                   {until ? <div style={{ fontSize: 11, fontWeight: 800, color: expired ? "#F87171" : SUB }}>{until.charAt(0).toUpperCase() + until.slice(1)}</div> : null}
                   <ProgressBar used={h.unitsUsed} total={h.unitsTotal} tint={TINT} unit={h.unit} testId="holder-progress" />
-                  <SpentOn uses={usesByPass[h.passId] ?? []} unit={h.unit} />
+                  {/* ⚠ THE CLASSES THEY USED IT ON, FOLDED (4 Oct 2026, the user:
+                      "student membership should also show list of classes used in
+                      collapsible under student"). A native disclosure, so it is
+                      announced and keyboard-reachable with no script. */}
+                  {(usesByPass[h.passId] ?? []).length > 0 ? (
+                    <details data-testid="holder-classes" style={{ marginTop: 8 }}>
+                      <summary style={{ cursor: "pointer", fontSize: 11.5, fontWeight: 800, color: INK, listStyle: "revert" }}>
+                        Classes used · {(usesByPass[h.passId] ?? []).length}
+                      </summary>
+                      <SpentOn uses={usesByPass[h.passId] ?? []} unit={h.unit} />
+                    </details>
+                  ) : (
+                    <div style={{ fontSize: 11, color: SUB, marginTop: 8 }}>No class used yet.</div>
+                  )}
                 </ToolBody>
               </ToolCard>
             );
@@ -284,11 +312,6 @@ export function MembershipUsagePage({
             ))
           )}
         </div>
-
-        {/* ⚠ THE OWNER'S ALONE — `delete_membership` refuses anybody else; alone
-            at the foot, because it is the one control here that changes what
-            the public can buy */}
-        {canManage ? <MembershipOffSale membershipId={m.id} name={m.name} active={m.active} /> : null}
       </div>
   );
 
@@ -306,7 +329,7 @@ export function MembershipUsagePage({
         sections
         top={top}
         segments={[
-          { key: "holders", href: `${base}?show=holders`, label: "Holders", n: holders.length, aria: `Who holds ${m.name}` },
+          { key: "holders", href: `${base}?show=students`, label: "Students", n: holders.length, aria: `Students holding ${m.name}` },
           { key: "earnings", href: `${base}?show=earnings`, label: "Earnings", aria: `What ${m.name} earned` },
         ]}
         panels={[

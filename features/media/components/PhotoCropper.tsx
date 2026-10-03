@@ -460,4 +460,7 @@ function Stage({ file, frame, onCancel, onUse }: { file: File; frame: CropFrame;
 
 /** which frame an owner's picture is drawn in — the disc for a person's or a
  *  business's profile picture, a square for everything else */
-export const frameForOwnerKind = (kind: PhotoOwner["kind"]): CropFrame => (kind === "avatar" || kind === "business" ? "disc" : "banner");
+/* ⚠ an ASSET is a squircle since 4 Oct 2026 (the user: "photo upload option in
+   squircle 1 photo only") — its card draws it as the card's face, the same
+   shape as a profile's disc */
+export const frameForOwnerKind = (kind: PhotoOwner["kind"]): CropFrame => (kind === "avatar" || kind === "business" || kind === "asset" ? "disc" : "banner");

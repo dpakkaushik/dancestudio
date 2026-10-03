@@ -16,7 +16,10 @@ export default async function BusinessRoomsPage({
   /* the form opens over the desk at `?new=1` (22 Sep 2026) — and the gate is
      re-checked below against `canEdit`, because a query parameter is a request
      and never an authority */
-  const opening = (await searchParams).new === "1";
+  const sp = await searchParams;
+  const opening = sp.new === "1";
+  /* and a room is EDITED only through the same form, at `?edit={room}` (4 Oct 2026) */
+  const editId = sp.edit ?? null;
   const supabase = await createSupabaseServerClient();
   const {
     data: { user },
@@ -46,6 +49,8 @@ export default async function BusinessRoomsPage({
   const myRole = seat.memberRole;
   const rooms = await findRoomsByBusiness(supabase, businessId);
   const canEdit = runsTheBusiness(myRole);
+  /* the room is looked up among THIS studio's own — a pointer, never an authority */
+  const editing = !opening && editId ? rooms.find((r) => r.id === editId) ?? null : null;
   return (
     <>
       <RoomsManager
@@ -56,6 +61,7 @@ export default async function BusinessRoomsPage({
         canEdit={canEdit}
       />
       {opening && canEdit ? <RoomForm businessId={businessId} businessName={business.name} defaultName={`Room ${rooms.length + 1}`} /> : null}
+      {editing && canEdit ? <RoomForm key={editing.id} businessId={businessId} businessName={business.name} defaultName={editing.name} room={editing} /> : null}
     </>
   );
 }

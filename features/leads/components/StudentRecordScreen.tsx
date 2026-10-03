@@ -4,9 +4,9 @@ import { DOS_TOOLS } from "@/features/businesses/components/biz-kit";
 import { SegmentedPanels } from "@/features/shell/components/SegmentedNav";
 import { ProgressBar, SpentOn, expiryWords, unitWord } from "@/features/memberships/components/usage-kit";
 import { money as rupees } from "@/features/payouts/components/earnings-kit";
-import { ToolBody, ToolCard, ToolChip, ToolFace, ToolFacts, ToolTitle } from "@/components/ui/ToolCard";
+import { ToolBody, ToolCard, ToolChip, ToolFace, ToolFacts, ToolTitle, inkOn } from "@/components/ui/ToolCard";
 import { FigureHead } from "@/components/ui/FigureHead";
-import { DOS_LEVEL_LABEL } from "@/lib/constants/styles";
+import { DOS_LEVEL_LABEL, dosStyleColor } from "@/lib/constants/styles";
 import { DOS_DISPLAY, DOS_UI, INK, LILAC, MUTED, SUB } from "@/lib/design/tokens";
 import type { StudentRecord } from "@/repositories/studentRecord";
 
@@ -147,20 +147,82 @@ function StatsPanel({ r }: { r: StudentRecord }) {
         )}
       </Section>
 
-      <Section title="RECENT CLASSES" figure={r.attended}>
-        {r.recent.length === 0 ? (
-          <div style={{ fontSize: 11.5, color: SUB }}>A class appears here once they are checked in to it.</div>
-        ) : (
-          r.recent.map((s) => (
-            <Link key={`${s.classId}-${s.startsAt}`} href={`/c/${s.shareSlug}`} aria-label={`Open ${s.style} · ${DOS_LEVEL_LABEL[s.level] ?? s.level}`} style={{ display: "flex", justifyContent: "space-between", gap: 10, padding: "7px 0", borderBottom: "1.5px solid var(--el)", fontSize: 11.5, textDecoration: "none", color: INK }}>
-              <span style={{ minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                <b>{s.style}</b> · {DOS_LEVEL_LABEL[s.level] ?? s.level}
-              </span>
-              <span style={{ flexShrink: 0, color: SUB }}>{dayWords(s.startsAt)}</span>
-            </Link>
-          ))
-        )}
-      </Section>
+    </>
+  );
+}
+
+/** CLASSES — the first column (4 Oct 2026, the user: "student detail page- class
+ *  as 1st column with class list"). One row per class they were checked in to
+ *  here, the most recent first, each a door to the class. ⚠ It replaces the
+ *  Stats column's RECENT CLASSES, which listed the same sessions a second time. */
+function ClassesPanel({ r }: { r: StudentRecord }) {
+  if (r.classes.length === 0) {
+    return <div style={{ ...panel, textAlign: "center", border: "1.5px dashed var(--el)", fontSize: 12, color: SUB, lineHeight: 1.55 }}>A class appears here once {r.name} is checked in to it.</div>;
+  }
+  return (
+    <>
+      {r.classes.map((c) => {
+        const level = DOS_LEVEL_LABEL[c.level] ?? c.level;
+        const col = dosStyleColor(c.style);
+        return (
+          <ToolCard key={c.classId} testId="student-class" href={`/c/${c.shareSlug}`} hrefLabel={`Open ${c.style} · ${level}`} edge={col}>
+            <ToolBody style={{ borderTop: "none" }}>
+              <ToolTitle after={<span style={{ flexShrink: 0, fontSize: 11, color: SUB, fontWeight: 700 }}>{dayWords(c.lastAt)}</span>}>
+                {c.style} · {level}
+              </ToolTitle>
+              <ToolFacts
+                tint={col}
+                style={{ marginTop: 10 }}
+                items={[
+                  { label: "Sessions", value: c.sessions },
+                  { label: "Hours", value: hoursWords(c.minutes) },
+                ]}
+              />
+            </ToolBody>
+          </ToolCard>
+        );
+      })}
+    </>
+  );
+}
+
+/** ROUTINES — the fourth column (4 Oct 2026): what the classes they danced here
+ *  taught, with who made each. ⚠ Not a door: a routine's own page is its MAKER's,
+ *  and a studio is usually not the maker. */
+function RoutinesPanel({ r }: { r: StudentRecord }) {
+  if (r.routines.length === 0) {
+    return <div style={{ ...panel, textAlign: "center", border: "1.5px dashed var(--el)", fontSize: 12, color: SUB, lineHeight: 1.55 }}>None of the classes {r.name} danced here teach a routine yet.</div>;
+  }
+  return (
+    <>
+      {r.routines.map((rt) => {
+        const col = dosStyleColor(rt.style);
+        return (
+          <ToolCard key={rt.routineId} testId="student-routine" edge={col}>
+            <ToolBody style={{ borderTop: "none" }}>
+              <ToolTitle>{rt.title}</ToolTitle>
+              <div style={{ display: "flex", alignItems: "center", gap: 7, marginTop: 6, fontSize: 11.5, color: SUB }}>
+                <span style={{ padding: "3px 9px", borderRadius: 999, background: col, color: inkOn(col), fontSize: 10.5, fontWeight: 900 }}>{rt.style}</span>
+                <span>{DOS_LEVEL_LABEL[rt.level] ?? rt.level}</span>
+                {rt.makerName ? (
+                  <span style={{ display: "inline-flex", alignItems: "center", gap: 5, minWidth: 0, overflow: "hidden" }}>
+                    · <ToolFace name={rt.makerName} photoPath={rt.makerPhotoPath} tint={col} size={18} />
+                    <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{rt.makerName}</span>
+                  </span>
+                ) : null}
+              </div>
+              <ToolFacts
+                tint={col}
+                style={{ marginTop: 10 }}
+                items={[
+                  { label: "Sessions", value: rt.sessions },
+                  { label: rt.classes === 1 ? "Class" : "Classes", value: rt.classes },
+                ]}
+              />
+            </ToolBody>
+          </ToolCard>
+        );
+      })}
     </>
   );
 }
@@ -209,7 +271,9 @@ function MembershipPanel({ r, businessName }: { r: StudentRecord; businessName: 
   );
 }
 
-export function StudentRecordScreen({ businessId, businessName, record, show }: { businessId: string; businessName: string; record: StudentRecord; show: "stats" | "membership" }) {
+export type StudentShow = "classes" | "stats" | "membership" | "routines";
+
+export function StudentRecordScreen({ businessId, businessName, record, show }: { businessId: string; businessName: string; record: StudentRecord; show: StudentShow }) {
   const r = record;
   const base = `/business/${businessId}/students/${r.userId}`;
   const top = (
@@ -237,13 +301,21 @@ export function StudentRecordScreen({ businessId, businessName, record, show }: 
         label="Show"
         sections
         top={top}
+        /* ⚠ FOUR COLUMNS (4 Oct 2026, the user: "student detail page- class as
+           1st column with class list. Routines as 4th column") — Classes ·
+           Stats · Membership · Routines. The card's Stats and Membership buttons
+           still open their own column by `?show=`. */
         segments={[
+          { key: "classes", href: `${base}?show=classes`, label: "Classes", n: r.classes.length, aria: `${r.name}'s classes here` },
           { key: "stats", href: `${base}?show=stats`, label: "Stats", aria: `${r.name}'s stats here` },
           { key: "membership", href: `${base}?show=membership`, label: "Membership", n: r.passes.length, aria: `${r.name}'s memberships here` },
+          { key: "routines", href: `${base}?show=routines`, label: "Routines", n: r.routines.length, aria: `${r.name}'s routines here` },
         ]}
         panels={[
+          { key: "classes", node: <ClassesPanel r={r} /> },
           { key: "stats", node: <StatsPanel r={r} /> },
           { key: "membership", node: <MembershipPanel r={r} businessName={businessName} /> },
+          { key: "routines", node: <RoutinesPanel r={r} /> },
         ]}
       />
     </div>

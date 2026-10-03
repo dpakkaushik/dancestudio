@@ -12,7 +12,9 @@ import { ASSET_CATEGORIES, removeAsset, saveAsset } from "@/repositories/assets"
  *  form cannot send a word the database would refuse with a 400, and there
  *  because a CHECK is the only thing a direct PostgREST caller meets. */
 
-export type AssetResult = { error: string | null };
+/** `id` is the asset the save wrote — the add form uploads its staged picture
+ *  against it once the row exists (4 Oct 2026) */
+export type AssetResult = { error: string | null; id?: string };
 
 async function me() {
   const supabase = await createSupabaseServerClient();
@@ -43,13 +45,14 @@ export async function saveAssetAction(input: z.input<typeof saveSchema>): Promis
     return { error: parsed.error.issues[0]?.message ?? "Check the form" };
   }
   const supabase = await me();
+  let id: string;
   try {
-    await saveAsset(supabase, parsed.data);
+    id = await saveAsset(supabase, parsed.data);
   } catch (e: unknown) {
     return { error: message(e) };
   }
   revalidatePath(`/business/${parsed.data.businessId}/assets`);
-  return { error: null };
+  return { error: null, id };
 }
 
 export async function removeAssetAction(input: { assetId: string; businessId: string }): Promise<AssetResult> {
