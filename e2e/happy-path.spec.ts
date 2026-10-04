@@ -2093,7 +2093,9 @@ test.describe.serial("DanceOS, end to end", () => {
        not the page's. */
     await expect(trainer.getByRole("dialog", { name: "Edit profile" })).toHaveCount(0, { timeout: 20_000 });
     await trainer.goto("/profile");
-    await expect(trainer.getByText("24 Yrs · Pune")).toBeVisible({ timeout: 15_000 });
+    /* ⚠ each fact wears its icon since 4 Oct 2026, so the line is two pieces */
+    await expect(trainer.getByTestId("hero-age")).toHaveText("24 Yrs", { timeout: 15_000 });
+    await expect(trainer.getByTestId("hero-city")).toHaveText("Pune");
 
     /* ---- THE BAND IS EDITED ON HOME (19 Sep 2026, the user: "Dance style for
        the page should also be editable only from the home tab … social media
@@ -2283,7 +2285,9 @@ test.describe.serial("DanceOS, end to end", () => {
     /* the trainer's plan is an admin's GRANT (segment 4), so it renews nothing
        and there is no Cancel to press — the screen says exactly that */
     await expect(trainer.getByText("ACTIVE · GRANTED")).toBeVisible();
-    await expect(trainer.getByText("This period does not renew. Once it ends you can subscribe again from here.")).toBeVisible();
+    /* ⚠ A CANCEL BUTTON ON EVERY CARD (4 Oct 2026, the user: "cancel button for
+       all") — on a grant it is drawn DISABLED and its words say why */
+    await expect(trainer.getByRole("button", { name: "Granted — nothing renews" })).toBeDisabled();
     await expect(trainer.getByRole("button", { name: /^Cancel subscription/ })).toHaveCount(0);
     // what was paid for stands: the same profile is still an artist
     await trainer.goto("/profile");
@@ -2325,7 +2329,8 @@ test.describe.serial("DanceOS, end to end", () => {
     // ⚠ NO BIO ANYWHERE (20 Sep 2026): the page draws none, on any of the five kinds.
     await learner.goto(`/person/${trainerId}`);
     await expect(learner.getByText("Movement is a language.")).toHaveCount(0);
-    await expect(learner.getByText("24 Yrs · Pune")).toBeVisible();
+    await expect(learner.getByTestId("hero-age")).toHaveText("24 Yrs");
+    await expect(learner.getByTestId("hero-city")).toHaveText("Pune");
     /* the tile names whose style it is (15 Sep 2026, when this page moved onto
        `IdentityHero`, which takes a `styleAria`) — a bare "Kathak" is the label
        nothing has carried since */
@@ -2988,8 +2993,17 @@ test.describe.serial("DanceOS, end to end", () => {
        (19 Sep 2026, R35) — it is a salary, not a bill for sessions — so the page
        says that rather than drawing an empty list under it. */
     await expect(owner.getByText("Not against sessions — recorded as an amount.")).toBeVisible();
-    await owner.getByRole("link", { name: "Back to the team" }).click();
-    await owner.waitForURL(new RegExp(`/business/${businessId}/staff$`));
+    /* ⚠ NO PROFILE / BACK TO THE TEAM BUTTONS, AND STATS · CLASSES (4 Oct 2026, the
+       user: "remove profile and back to team button. stats and performance merged
+       into one section called Stats. New section for Classes") */
+    await expect(owner.getByRole("link", { name: "Back to the team" })).toHaveCount(0);
+    await expect(owner.getByRole("link", { name: "Profile", exact: true })).toHaveCount(0);
+    await expect(owner.getByRole("link", { name: /how .* classes went/i })).toHaveCount(0);
+    await owner.getByRole("link", { name: new RegExp(`^${learnerName}'s classes here \\(\\d+\\)$`) }).click();
+    await expect(owner).toHaveURL(/\?show=classes$/, { timeout: 15_000 });
+    await owner.getByRole("link", { name: `${learnerName}'s stats here` }).click();
+    await expect(owner.getByTestId("team-dancers")).toBeVisible({ timeout: 15_000 });
+    await owner.goto(`/business/${businessId}/staff`);
 
     await owner.goto(`/business/${businessId}/earnings`);
     await expect(owner.getByText("₹2,500").first()).toBeVisible({ timeout: 15_000 });

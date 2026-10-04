@@ -21,14 +21,14 @@ import { TodayShelf } from "@/features/home/components/TodayShelf";
 import { HomeBand } from "@/features/profiles/components/HomeBand";
 import { HeaderEditButton, PicturesButton } from "@/features/profiles/components/PicturesSheet";
 import type { HeroShot } from "@/features/profiles/components/HeroRail";
-import { PersonIcon, ROLE_RING, cornerChip } from "@/features/profiles/components/profile-kit";
+import { EyeIcon, ROLE_RING, cornerChip } from "@/features/profiles/components/profile-kit";
 import { ActionRow, CallButton, MailButton, MessageButton, whatsappHrefOf } from "@/features/profiles/components/ContactButtons";
 import { ContactEditButton } from "@/features/profiles/components/ContactEditor";
 import { EditModeButton, EditModeProvider } from "@/features/profiles/components/EditMode";
 import { RecordListsProvider } from "@/features/profiles/components/RecordLists";
 import { PersonDetailsEdit } from "@/features/profiles/components/EditProfileSheet";
 import { EnquiryButton } from "@/features/enquiries/components/EnquirySheet";
-import { HeroId, HeroPlace, IdentityHero } from "@/features/profiles/components/hero-kit";
+import { HeroId, HeroPersonMeta, IdentityHero } from "@/features/profiles/components/hero-kit";
 import { KIND_WORD, heroMetaWords, kindOf, memberNoWords } from "@/types/profile";
 import { MEMBER_ROLE_WORD } from "@/types/staff";
 
@@ -235,7 +235,7 @@ export default async function HomePage() {
              looks at an organization now, the badge moved to the studio. An
              organization verified under the old model keeps its tick. */
           verified={Boolean(profile.verifiedAt)}
-          meta={metaLine ? <HeroPlace text={metaLine} /> : null}
+          meta={metaLine ? <HeroPersonMeta age={profile.age} city={place} /> : null}
           /* ⚠ THE STYLES ARE IN THE BAND BELOW, NOT HERE (19 Sep 2026, the user:
              "Dance style for the page should also be editable only from the home
              tab"): drawing them read-only here AND editable below would be the
@@ -279,8 +279,10 @@ export default async function HomePage() {
                fewer (C37's "one corner, the same on every home" still holds). */
             <>
               <EditModeButton />
-              <Link href={publicHref} aria-label="Your profile" style={cornerChip}>
-                <PersonIcon />
+              {/* ⚠ AN EYE, LIKE A STUDIO'S AND A CREW'S (4 Oct 2026, the user:
+                  "Public page button should be an eye like for studio and crews") */}
+              <Link href={publicHref} aria-label="Public view" style={cornerChip}>
+                <EyeIcon />
               </Link>
             </>
           }

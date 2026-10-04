@@ -50,9 +50,11 @@ export default async function BusinessSubscriptionPage({ params }: { params: Pro
   const verified = Boolean(business.verifiedAt);
 
   return (
-    <BizPage title="Subscription" tool="subscription" sub={`${business.name} · one studio, one mandate`}>
+    /* ⚠ THE CARD SAYS WHOSE (4 Oct 2026) — the sub-line under the heading went
+       with the card's design; the studio's face and name lead the card */
+    <BizPage title="Subscription" tool="subscription">
       {state ? (
-        <StudioSubscriptionStrip businessId={businessId} businessName={business.name} state={state} studioPrice={price} heading={business.name} />
+        <StudioSubscriptionStrip businessId={businessId} businessName={business.name} photoPath={business.photoPath ?? null} state={state} studioPrice={price} />
       ) : (
         <div style={{ fontSize: 12, color: "var(--sub)", fontWeight: 700 }}>Where this subscription stands could not be read just now. Try again in a moment.</div>
       )}

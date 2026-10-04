@@ -5,7 +5,7 @@ import { ArrangeTools } from "@/features/home/components/ArrangeTools";
 import type { Tile } from "@/features/home/components/home-kit";
 import { arrangeTiles, orderOf, toolsLayoutKey } from "@/features/home/toolOrder";
 import type { HeroShot } from "@/features/profiles/components/HeroRail";
-import { HeroDot, HeroId, IdentityHero } from "@/features/profiles/components/hero-kit";
+import { HeroDot, HeroFact, HeroId, IdentityHero } from "@/features/profiles/components/hero-kit";
 import { memberNoWords } from "@/types/profile";
 import { EntityBand } from "@/features/profiles/components/profile-band";
 import { FollowerFigure } from "@/features/profiles/components/FollowerFigure";
@@ -45,7 +45,6 @@ import { CrewPicturesButton, CrewPostersButton } from "./CrewPictures";
  *  crew's page as a stranger sees it. The picker that sat under the hero moved
  *  into the sheet, where every other picture in the app is changed. */
 export function CrewHome({ crew, members, header = [], followers = 0, order = null, editOpen = false }: { crew: Crew; members: CrewMember[]; header?: HeaderPhoto[]; /** how many follow this crew — `crew_follower_counts`, aggregate-only (20 Sep 2026) */ followers?: number; /** this leader's own arrangement of THIS crew's tools (22 Sep 2026) */ order?: string[] | null; /** `?edit=1`, which Settings' "Edit crew" navigates here with (22 Sep 2026) — the leader's alone, and `requireLedCrew` is what has already said so */ editOpen?: boolean }) {
-  const confirmed = members.filter((m) => m.status === "confirmed").length;
   const asked = members.filter((m) => m.status === "asked").length;
   const tiles: Tile[] = [
     { name: DOS_TOOLS.team.name, href: `/crews/${crew.id}/manage/team`, k: "team", c: DOS_TOOLS.team.c },
@@ -91,11 +90,10 @@ export function CrewHome({ crew, members, header = [], followers = 0, order = nu
           verified={false}
           meta={
             <>
-              <span>{crew.city}</span>
-              <HeroDot />
-              <span data-testid="crew-home-members">
-                {confirmed} member{confirmed === 1 ? "" : "s"}
-              </span>
+              {/* ⚠ THE CITY WITH ITS PIN, AND NO MEMBERS COUNT (4 Oct 2026, the user:
+                  "remove members count on home next to location in crew home") —
+                  the Team tile is where the roster is counted */}
+              <HeroFact icon="pin">{crew.city}</HeroFact>
               {asked > 0 ? (
                 <>
                   <HeroDot />

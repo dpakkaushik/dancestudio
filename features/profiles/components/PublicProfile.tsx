@@ -23,7 +23,7 @@ import type { HeroShot } from "./HeroRail";
 import { ProfileLink, ProfileShare } from "./ProfileShare";
 import { StatsChip } from "./StatsChip";
 import { memberNoWords } from "@/types/profile";
-import { HeroDot, HeroId, HeroPlace, IdentityHero } from "./hero-kit";
+import { HeroDot, HeroFact, HeroId, IdentityHero } from "./hero-kit";
 import { PROFILE_RING, PeopleGroup, PersonChip, ScheduleBar, smallBox } from "./profile-kit";
 
 /** A STUDIO'S PUBLIC PAGE, lifted from prototype S_profiletab with
@@ -190,7 +190,7 @@ export function PublicProfile({
                   <HeroDot />
                   {/* the CITY alone, in words (3 Oct 2026) — the area and the way
                       to Maps are the Location button's, where the pin is */}
-                  <HeroPlace text={business.city} />
+                  <HeroFact icon="pin">{business.city}</HeroFact>
                 </>
               ) : null}
             </>

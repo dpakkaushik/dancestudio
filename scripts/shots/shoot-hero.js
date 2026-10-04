@@ -700,8 +700,8 @@ const enterEdit = async (page) => {
        that moved nobody anywhere. Asserting the resolved address is STRICTER:
        a corner pointing at the wrong account would have passed the old line. */
     /* the corner opens this PERSON's own profile (26 Sep 2026: `/person/{id}`, C40) */
-    check((await owner.getByRole("link", { name: "Your profile", exact: true }).count()) === 1 && (await owner.getByRole("link", { name: "Your profile", exact: true }).getAttribute("href")) === `/person/${ownerId}`, "owner home: the corner opens this person's own profile (21 Sep 2026; a person's since 26 Sep)");
-    check((await owner.getByRole("link", { name: "Public view", exact: true }).count()) === 0, "owner home: no eye — its public page is the Share chip, and the corner no longer loops");
+    /* ⚠ an EYE named "Public view" since 4 Oct 2026, like a studio's and a crew's */
+    check((await owner.getByRole("link", { name: "Public view", exact: true }).count()) === 1 && (await owner.getByRole("link", { name: "Public view", exact: true }).getAttribute("href")) === `/person/${ownerId}`, "owner home: the corner eye opens this person's own profile (21 Sep 2026; an eye since 4 Oct)");
     /* a plain user's Home carries no Enquiry — they have no artist page for one to land on */
     check((await owner.getByRole("button", { name: /enquiries come to you here/ }).count()) === 0, "owner home: no Enquiry on a plain user's Home — they hold no artist page for one to land on");
     /* INVERTED 26 Sep 2026: the pencil is BACK on the corner, and it toggles
@@ -900,8 +900,7 @@ const enterEdit = async (page) => {
     check((await me.getByLabel("Change your photo").count()) === 0, "user home: NO ＋ on the disc either");
     check(await me.getByText(/^User(-\d{6})?$/).first().isVisible(), "user home: the role word, with the account number against it");
     /* the destination rather than the spelling — see the owner's own corner above */
-    check((await me.getByRole("link", { name: "Your profile", exact: true }).count()) === 1 && (await me.getByRole("link", { name: "Your profile", exact: true }).getAttribute("href")) === `/person/${userId}`, "user home: the corner opens this person's own profile (21 Sep 2026)");
-    check((await me.getByRole("link", { name: "Public view", exact: true }).count()) === 0, "user home: no eye — this is the end of the loop the user reported");
+    check((await me.getByRole("link", { name: "Public view", exact: true }).count()) === 1 && (await me.getByRole("link", { name: "Public view", exact: true }).getAttribute("href")) === `/person/${userId}`, "user home: the corner eye opens this person's own profile (an eye since 4 Oct 2026)");
     /* ⚠ A PLAIN USER'S ROW IS NOT DRAWN AT ALL, which is what the public page
        does too ("user — nothing", the 19 Sep list): they have no artist page for
        an enquiry to land on, so a dead Enquiry would be worse than none */

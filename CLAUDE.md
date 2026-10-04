@@ -2,6 +2,27 @@
 
 ## LAST SESSION (4 Oct 2026) — replaced on every push (Rule 13)
 
+> ### SIX ASKS: AN ASSET TAP THAT ALWAYS ANSWERS, STUDENT COUNTS IN THE MIDDLE, A BIGGER MEMBERSHIP NAME, EVERY TEAM ROLE COUNTED, A TEAM HISTORY OF STATS · CLASSES, SUBSCRIPTION CARDS, AND AN EYE + ICONS ON EVERY HOME (4 Oct 2026, latest) — no migration · ⚠ Rule 9 (Subscription's Stop renewing moved onto a new card, same action)
+> The user: *"1. asset picture tap not working. 2. invite student form remove text below heading. Student tab - Total Students count and Total membership students count in a seprate section above cards … membership card- rename your artist page with Membership. remove membership above membership name. make membership name bigger. 3. Team-count for each role should be mentioned even if 0. Team History page- remove text between heading and card, remove profile and back to team button. stats and performance merged into one section called Stats. New section for Classes with classes list dance style wise … 4.Subscription- new page design … Subscription card with full details of every subscription, cancel button for all … 5. home for user and artist - Public page button should be an eye like for studio and crews, icon in front of age … icon for location … for all profiles. remove members count on home next to location in crew home."*
+> * **Assets:** the face is ALWAYS a button. ⚠ The "not working" tap was assets with no picture stored, so the face was not a button at all; without a picture it now opens the edit form, where a picture is added. A refused picture upload stays on screen for 3.2 s instead of vanishing with the sheet.
+> * **Students:** a `DeskMiddle` with **Total Students · Membership Students**, counted off the cards below (`students-total`, `students-members`). There is no text under Invite Student's heading.
+> * **Memberships:** the card's eyebrow reads **Membership** (it was "Your artist page"), the kicker above the name is gone, and the name is bigger (`ToolTitle size`).
+> * **Team:** every label this profile hands out gets a count tile, 0 included, three to a row.
+> * **The member's history page** (`TeamMemberPage`) has no sentence under the heading and no Profile or Back to the team buttons. Its columns are **Payments · Stats · Classes**:
+>   * Stats is the old Stats and Performance merged into one.
+>   * Classes (`?show=classes`) is new: the member's classes here grouped by dance style, each with a collapsible breakup.
+> * **Subscription:** `SubscriptionCard.tsx` (new) gives one card per subscription, on `/subscription` and `/business/{id}/subscription` and in the studio strip.
+>   * It shows the face, the standing chip, and price · billing · started · paid through · next charge · method · reference.
+>   * **Every card has a Cancel button**, behind `ConfirmDialog` and the same `cancelSubscriptionAction`. On a grant or an ending plan the button is drawn disabled, with the reason as its words.
+> * **Homes:** a person's corner is now an **eye named "Public view"**, like a studio's and a crew's. It still opens `/person/{id}`, and profile pages still have no corner, so C37's loop stays cut.
+>   * `HeroFact` / `HeroPersonMeta` put a calendar icon before the age and a pin before the city on every profile (`hero-age`, `hero-city`).
+>   * The crew home's member count beside the location is gone.
+> * **Verified:**
+>   * typecheck 0 · lint 0 · build green.
+>   * The previous chat's probes passed 60/60 and 28/28 in both themes.
+>   * **The whole e2e suite passed 56/56 in 18.9 min** on one worker on `:3100`, against a fresh bundle. ⚠ The previous chat's run left no log (that chat died on "Prompt is too long"), so it was re-run from scratch.
+>   * **`shoot-hero` 187/187.** Its two reds were checks that contradicted the line above them: each asserted "no eye" while the line above now requires exactly one. The previous chat renamed the positive check and missed the negative one, so both negative checks are deleted.
+
 > ### FIVE SMALL ASKS: AN ASSET'S PICTURE OPENS, "INVITE STUDENT", A MEMBERSHIP CARD'S FACE IS A DOOR, ROUTINES IN ONE HUE WITH A DETAIL BUTTON, AND A CLEANER TEAM DESK — EVERY REMOVAL ASKS FIRST (4 Oct 2026, latest) — no migration · ✅ PUSHED AND LIVE (`888cb24`: Vercel READY, alias confirmed on the sha through the API, and ON THE LIVE SITE the probe **54/54** in both themes and `stranger-smoke` all green)
 > The user: *"1. clicking on asset photo on asset card should open asset photo. if asset amount 0 should say Old in place of (Legacy). 2. invite a student butuuon should rename to Invite Student. 3. membership card clicking on profile pic and name should take to profile page. membership detail page remove your page and all memberships button. should confirm before deleting membership. 4. Routine cards-your routine above artist name should be just Routine. song and video buttons in routines color hue not according to dance styles. should confirm before deleting a routine. Another Routine Detail Button with song and video. 5. Team- Add a team member button to be renamed as Add Team Members. remove text between heading and button. section in between with total members count below count member role wise . team card- remove dance styles, you should have y capital and become a pill on top right. remove nothing paid yet. Add a team member form-remove tesm below heading. manage team member- confirm before removing team member. remove view profile button, remove text below what they may do , rename what they may do to Role and what you grant them to Permissions, remove text below remove and done buttons."*
 > * **`components/ui/ConfirmDialog.tsx`** (new) — one centred, portalled question (back closes it), the membership delete's own dialog made shared. Used by the routine page's Delete and the Team desk's Remove. ⚠ The routine's question WAS a confirm, but an inline panel under the card — below the fold on a phone, so Delete looked like it did nothing. The membership delete already asked (verified, unchanged); the asset Remove keeps its bottom-sheet confirm from the push before.
@@ -12758,6 +12779,12 @@ for the database schema. **The UI is not redesigned** — see Rule 2.
 
 ### Progress tracker — update after EVERY push (Rule 11)
 
+- **SIX ASKS: ASSETS, STUDENTS, MEMBERSHIPS, TEAM HISTORY, SUBSCRIPTION CARDS AND
+  HOME ICONS — 4 Oct 2026, no step number — no migration.** The asset tap always
+  answers. Students get counts in a middle section, and the membership name is
+  bigger. Every team role is counted, and the team history page is Payments · Stats · Classes.
+  Each subscription is a card with Cancel, and every person's home has an eye plus
+  age and city icons. Detail at the top.
 - **FIVE SMALL ASKS — ASSETS, STUDENTS, MEMBERSHIPS, ROUTINES, TEAM — 4 Oct 2026, no step
   number — no migration.** A shared centred `ConfirmDialog`; the asset picture opens; Invite
   Student; a membership card's face is a door; routines in one hue with a Routine Detail

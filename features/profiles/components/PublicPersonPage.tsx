@@ -18,7 +18,7 @@ import type { HeroShot } from "./HeroRail";
 import { PersonBody } from "./PersonBody";
 import { ProfileLink, ProfileShare } from "./ProfileShare";
 import { StatsChip } from "./StatsChip";
-import { HeroId, HeroPlace, IdentityHero } from "./hero-kit";
+import { HeroId, HeroPersonMeta, IdentityHero } from "./hero-kit";
 import { Group, ROLE_RING, Row, ScheduleBar } from "./profile-kit";
 
 /* one Group and one Row for both profile screens (they are the same rows) */
@@ -160,7 +160,7 @@ export function PublicPersonPage({
                   City Name without comma in between", for ALL profiles) — this page
                   built the same sentence its own way, with a `prefix` of "24, ",
                   which is the third screen to have done so. */
-              <HeroPlace text={metaLine} />
+              <HeroPersonMeta age={profile.age} city={profile.city} />
             ) : null
           }
           /* ⚠ the BAND draws the styles (20 Sep 2026) — see the note below */

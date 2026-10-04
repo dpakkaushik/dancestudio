@@ -11,7 +11,7 @@ import { FollowToggle } from "@/features/profiles/components/FollowToggle";
 import type { HeroShot } from "@/features/profiles/components/HeroRail";
 import { ProfileLink, ProfileShare } from "@/features/profiles/components/ProfileShare";
 import { StatsChip } from "@/features/profiles/components/StatsChip";
-import { HeroDot, HeroId, IdentityHero } from "@/features/profiles/components/hero-kit";
+import { HeroDot, HeroFact, HeroId, IdentityHero } from "@/features/profiles/components/hero-kit";
 import { memberNoWords } from "@/types/profile";
 import { PeopleGroup, PersonChip, smallBox } from "@/features/profiles/components/profile-kit";
 import { DOS_UI, GOLD, INK, LILAC, MUTED } from "@/lib/design/tokens";
@@ -115,7 +115,7 @@ export function CrewPublicPage({
                 Since {joinedYear(crew.createdAt)}
               </span>
               <HeroDot />
-              <span>{crew.city}</span>
+              <HeroFact icon="pin">{crew.city}</HeroFact>
             </>
           }
           /* ⚠ the BAND draws the style (20 Sep 2026) — the hero renders its own

@@ -3,7 +3,7 @@ import type { CSSProperties, ReactNode } from "react";
 
 import { DeskHero } from "@/features/businesses/components/biz-kit";
 import { SegmentedPanels } from "@/features/shell/components/SegmentedNav";
-import { ToolActions, ToolBody, ToolCard, ToolChip, ToolFacts, ToolHead, ToolTitle, toolBtn } from "@/components/ui/ToolCard";
+import { ToolBody, ToolCard, ToolChip, ToolFacts, ToolHead, ToolTitle, toolBtn } from "@/components/ui/ToolCard";
 import { FigureHead } from "@/components/ui/FigureHead";
 import { PayHistoryExport } from "./PayHistoryExport";
 import { DOS_UI, GREEN, INK, LILAC, MUTED, SUB } from "@/lib/design/tokens";
@@ -197,6 +197,11 @@ function PaymentsPanel({ history, work, personName, businessName, tint }: { hist
 /* ── STATS ───────────────────────────────────────────────────────────── */
 function StatsPanel({ work, tint }: { work: TeamMemberWork; tint: string }) {
   const styleMax = Math.max(1, ...work.styles.map((s) => s.n));
+  const held = work.taught + work.assisted;
+  const turnUp = pct(work.dancers, work.booked);
+  const fill = pct(work.dancers, work.seats);
+  const perSession = held > 0 ? Math.round((work.dancers / held) * 10) / 10 : null;
+  const visits = work.distinctDancers > 0 ? Math.round((work.dancers / work.distinctDancers) * 10) / 10 : null;
   return (
     <>
       <div style={panel}>
@@ -215,6 +220,26 @@ function StatsPanel({ work, tint }: { work: TeamMemberWork; tint: string }) {
             { label: "Upcoming", value: work.upcoming },
             { label: work.classes.length === 1 ? "Class" : "Classes", value: work.classes.length },
             { label: work.styles.length === 1 ? "Style" : "Styles", value: work.styles.length },
+          ]}
+        />
+        {/* ⚠ PERFORMANCE IS PART OF STATS (4 Oct 2026, the user: "stats and
+            performance merged into one section called Stats") */}
+        <ToolFacts
+          tint={tint}
+          style={{ marginTop: 6 }}
+          items={[
+            { label: "Dancers in", value: work.dancers, testId: "team-dancers" },
+            { label: "People", value: work.distinctDancers },
+            { label: "Per session", value: perSession ?? "—" },
+          ]}
+        />
+        <ToolFacts
+          tint={tint}
+          style={{ marginTop: 6 }}
+          items={[
+            { label: "Turn-up", value: turnUp == null ? "—" : `${turnUp}%`, tint: pctTint(turnUp) },
+            { label: "Room full", value: fill == null ? "—" : `${fill}%`, tint: pctTint(fill, 70, 40) },
+            { label: "Visits each", value: visits ?? "—" },
           ]}
         />
         <div style={{ fontSize: 11, color: SUB, lineHeight: 1.5, marginTop: 10 }}>
@@ -252,94 +277,100 @@ function StatsPanel({ work, tint }: { work: TeamMemberWork; tint: string }) {
           ))
         )}
       </Section>
-
-      <Section title="THEIR CLASSES HERE" figure={work.classes.length}>
-        {work.classes.length === 0 ? (
-          <div style={{ fontSize: 11.5, color: SUB }}>Not on a class here yet. Put them on one from the class form or the class page.</div>
-        ) : (
-          work.classes.map((c) => (
-            <Link key={c.classId} href={`/c/${c.shareSlug}`} aria-label={`Open ${c.title}`} style={{ display: "block", padding: "9px 0", borderBottom: "1.5px solid var(--el)", textDecoration: "none", color: INK, opacity: c.closed ? 0.6 : 1 }}>
-              <span style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                <b style={{ flex: 1, minWidth: 0, fontSize: 12.5, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{c.title}</b>
-                <ToolChip word={c.closed ? "ENDED" : c.kind === "artist" ? "TAKES IT" : "ASSISTS"} fg={c.closed ? SUB : tint} bg={c.closed ? "var(--el)" : `${tint}1c`} />
-              </span>
-              <span style={{ display: "block", fontSize: 11, color: SUB, marginTop: 3 }}>
-                {c.held} held{c.upcoming ? ` · ${c.upcoming} to come` : ""}
-                {c.ratePerSessionInr > 0 ? ` · ${rupees(c.ratePerSessionInr)} a session` : ""}
-                {c.nextAt ? ` · next ${whenWords(c.nextAt)}` : ""}
-              </span>
-            </Link>
-          ))
-        )}
-      </Section>
     </>
   );
 }
 
-/* ── PERFORMANCE ─────────────────────────────────────────────────────── */
-function PerformancePanel({ work, tint }: { work: TeamMemberWork; tint: string }) {
-  const held = work.taught + work.assisted;
-  const turnUp = pct(work.dancers, work.booked);
-  const fill = pct(work.dancers, work.seats);
-  const perSession = held > 0 ? Math.round((work.dancers / held) * 10) / 10 : null;
-  const visits = work.distinctDancers > 0 ? Math.round((work.dancers / work.distinctDancers) * 10) / 10 : null;
-  const rated = work.classes.filter((c) => c.held > 0);
+/* ── CLASSES ─────────────────────────────────────────────────────────── */
+/** ⚠ THEIR CLASSES HERE, DANCE STYLE BY DANCE STYLE (4 Oct 2026, the user: "New
+ *  section for Classes with classes list dance style wise for that team and
+ *  collapsible details in break up for it"). A head per style with its counts,
+ *  then a native <details> per class opening onto its breakup — the figures the
+ *  old Performance column printed class by class, plus the door to the class. */
+function ClassesPanel({ work, tint }: { work: TeamMemberWork; tint: string }) {
+  const byStyle = new Map<string, TeamMemberWork["classes"]>();
+  for (const c of work.classes) byStyle.set(c.style, [...(byStyle.get(c.style) ?? []), c]);
+  const groups = [...byStyle.entries()].sort((x, y) => y[1].reduce((n, c) => n + c.held, 0) - x[1].reduce((n, c) => n + c.held, 0) || x[0].localeCompare(y[0]));
+  if (groups.length === 0) {
+    return (
+      <div style={{ ...panel, textAlign: "center", border: "1.5px dashed var(--el)", fontSize: 12, color: SUB, lineHeight: 1.5 }}>
+        Not on a class here yet. Put them on one from the class form or the class page.
+      </div>
+    );
+  }
   return (
     <>
-      <div style={panel}>
-        <ToolFacts
-          tint={tint}
-          items={[
-            { label: "Dancers in", value: work.dancers, testId: "team-dancers" },
-            { label: "People", value: work.distinctDancers },
-            { label: "Per session", value: perSession ?? "—" },
-          ]}
-        />
-        <ToolFacts
-          tint={tint}
-          style={{ marginTop: 6 }}
-          items={[
-            { label: "Turn-up", value: turnUp == null ? "—" : `${turnUp}%`, tint: pctTint(turnUp) },
-            { label: "Room full", value: fill == null ? "—" : `${fill}%`, tint: pctTint(fill, 70, 40) },
-            { label: "Visits each", value: visits ?? "—" },
-          ]}
-        />
-        <div style={{ fontSize: 11, color: SUB, lineHeight: 1.5, marginTop: 10 }}>
-          Turn-up is the people checked in out of the seats booked; room full is checked in out of the room&rsquo;s capacity. Both count the sessions that have ended with them on the class.
-        </div>
-      </div>
-
-      <Section title="CLASS BY CLASS" figure={rated.length}>
-        {rated.length === 0 ? (
-          <div style={{ fontSize: 11.5, color: SUB }}>A class appears here once a session of it has ended with them on it.</div>
-        ) : (
-          rated.map((c) => {
-            const f = pct(c.dancers, c.seats);
-            const t = pct(c.dancers, c.booked);
-            return (
-              <div key={c.classId} style={{ padding: "8px 0", borderBottom: "1.5px solid var(--el)" }}>
-                <div style={{ display: "flex", gap: 10, alignItems: "baseline" }}>
-                  <b style={{ flex: 1, minWidth: 0, fontSize: 12.5, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{c.title}</b>
-                  <span style={{ flexShrink: 0, fontSize: 11, color: SUB, fontVariantNumeric: "tabular-nums" }}>
-                    {c.dancers} in · {c.held} {c.held === 1 ? "session" : "sessions"}
-                  </span>
-                </div>
-                <div style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 6 }} title={f == null ? "No capacity on record" : `${f}% of the room`}>
-                  <span style={{ width: 66, flexShrink: 0, fontSize: 10, fontWeight: 900, letterSpacing: 0.5, color: MUTED }}>ROOM FULL</span>
-                  <Bar value={c.dancers} max={c.seats} tint={tint} />
-                  <span style={{ flexShrink: 0, minWidth: 34, textAlign: "right", fontSize: 11, fontWeight: 900, fontVariantNumeric: "tabular-nums" }}>{f == null ? "—" : `${f}%`}</span>
-                </div>
-                <div style={{ fontSize: 10.5, color: SUB, marginTop: 4 }}>Turn-up {t == null ? "— (nobody booked)" : `${t}%`}</div>
-              </div>
-            );
-          })
-        )}
-      </Section>
+      {groups.map(([style, list]) => {
+        const held = list.reduce((n, c) => n + c.held, 0);
+        const dancers = list.reduce((n, c) => n + c.dancers, 0);
+        return (
+          <div key={style} data-testid="team-class-style" style={panel}>
+            <FigureHead
+              margin="0 0 8px"
+              title={<span style={{ fontSize: 14, fontWeight: 900, letterSpacing: -0.2 }}>{style}</span>}
+              figure={<span style={{ ...head, fontVariantNumeric: "tabular-nums" }}>{list.length} {list.length === 1 ? "CLASS" : "CLASSES"}</span>}
+            />
+            <ToolFacts
+              tint={tint}
+              items={[
+                { label: list.length === 1 ? "Class" : "Classes", value: list.length },
+                { label: held === 1 ? "Session" : "Sessions", value: held },
+                { label: "Dancers in", value: dancers },
+              ]}
+            />
+            {list.map((c) => {
+              const f = pct(c.dancers, c.seats);
+              const t = pct(c.dancers, c.booked);
+              return (
+                <details key={c.classId} data-testid="team-class" style={{ marginTop: 8, borderRadius: 14, border: "1.5px solid var(--el)", background: `${tint}0a`, opacity: c.closed ? 0.7 : 1 }}>
+                  <summary style={{ listStyle: "none", cursor: "pointer", padding: "10px 12px", display: "flex", alignItems: "center", gap: 8 }}>
+                    <b style={{ flex: 1, minWidth: 0, fontSize: 12.5, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{c.title}</b>
+                    <ToolChip word={c.closed ? "ENDED" : c.kind === "artist" ? "TAKES IT" : "ASSISTS"} fg={c.closed ? SUB : tint} bg={c.closed ? "var(--el)" : `${tint}1c`} />
+                    <span aria-hidden="true" style={{ color: MUTED, fontSize: 12 }}>▾</span>
+                  </summary>
+                  <div style={{ padding: "0 12px 12px" }}>
+                    <div style={{ fontSize: 9.5, fontWeight: 900, letterSpacing: 0.8, color: MUTED, margin: "2px 0 6px" }}>BREAKUP</div>
+                    <ToolFacts
+                      tint={tint}
+                      items={[
+                        { label: "Held", value: c.held },
+                        { label: "To come", value: c.upcoming },
+                        { label: "Dancers in", value: c.dancers },
+                      ]}
+                    />
+                    <ToolFacts
+                      tint={tint}
+                      style={{ marginTop: 6 }}
+                      items={[
+                        { label: "Turn-up", value: t == null ? "—" : `${t}%`, tint: pctTint(t) },
+                        { label: "Room full", value: f == null ? "—" : `${f}%`, tint: pctTint(f, 70, 40) },
+                        { label: "A session", value: c.ratePerSessionInr > 0 ? rupees(c.ratePerSessionInr) : "—" },
+                      ]}
+                    />
+                    {c.held > 0 ? (
+                      <div style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 8 }} title={f == null ? "No capacity on record" : `${f}% of the room`}>
+                        <span style={{ width: 66, flexShrink: 0, fontSize: 10, fontWeight: 900, letterSpacing: 0.5, color: MUTED }}>ROOM FULL</span>
+                        <Bar value={c.dancers} max={c.seats} tint={tint} />
+                      </div>
+                    ) : null}
+                    <div style={{ fontSize: 11, color: SUB, marginTop: 8 }}>
+                      {c.nextAt ? <>Next {whenWords(c.nextAt)}</> : c.lastAt ? <>Last {whenWords(c.lastAt)}</> : "No session dated yet"}
+                    </div>
+                    <Link href={`/c/${c.shareSlug}`} aria-label={`Open ${c.title}`} style={{ ...toolBtn("tinted", tint), display: "inline-flex", marginTop: 10, textDecoration: "none" }}>
+                      Open the class ›
+                    </Link>
+                  </div>
+                </details>
+              );
+            })}
+          </div>
+        );
+      })}
     </>
   );
 }
 
-export type TeamMemberShow = "payments" | "stats" | "performance";
+export type TeamMemberShow = "payments" | "stats" | "classes";
 
 export function TeamMemberPage({
   businessId,
@@ -364,8 +395,8 @@ export function TeamMemberPage({
      the Team desk, so the press and the page read as one object */
   const top = (
     <>
-      <DeskHero tool="team" as="h1" margin="0 0 6px" />
-      <div style={{ fontSize: 11.5, color: SUB, fontWeight: 800, margin: "0 0 12px" }}>{businessName}</div>
+      {/* ⚠ NOTHING BETWEEN THE HEADING AND THE CARD (4 Oct 2026, the user) */}
+      <DeskHero tool="team" as="h1" margin="0 0 12px" />
       <ToolCard edge={tint} testId="team-member">
         <ToolHead
           tint={tint}
@@ -387,14 +418,8 @@ export function TeamMemberPage({
             ]}
           />
         </ToolBody>
-        <ToolActions>
-          <Link href={`/person/${member.userId}`} style={toolBtn("tinted", tint)}>
-            Profile
-          </Link>
-          <Link href={`/business/${businessId}/staff`} style={toolBtn("secondary", tint)}>
-            Back to the team
-          </Link>
-        </ToolActions>
+        {/* ⚠ NO PROFILE, NO BACK TO THE TEAM (4 Oct 2026, the user) — the face and
+            the name above are the door to their profile, and back is back */}
       </ToolCard>
     </>
   );
@@ -409,12 +434,12 @@ export function TeamMemberPage({
         segments={[
           { key: "payments", href: `${base}?show=payments`, label: "Payments", n: history.payouts.length, aria: `What ${member.name} has been paid` },
           { key: "stats", href: `${base}?show=stats`, label: "Stats", aria: `${member.name}'s stats here` },
-          { key: "performance", href: `${base}?show=performance`, label: "Performance", aria: `How ${member.name}'s classes went here` },
+          { key: "classes", href: `${base}?show=classes`, label: "Classes", n: work.classes.length, aria: `${member.name}'s classes here` },
         ]}
         panels={[
           { key: "payments", node: <PaymentsPanel history={history} work={work} personName={member.name} businessName={businessName} tint={tint} /> },
           { key: "stats", node: <StatsPanel work={work} tint={tint} /> },
-          { key: "performance", node: <PerformancePanel work={work} tint={tint} /> },
+          { key: "classes", node: <ClassesPanel work={work} tint={tint} /> },
         ]}
       />
     </div>

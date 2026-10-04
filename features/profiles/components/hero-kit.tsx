@@ -5,7 +5,7 @@ import { HeroRail, ProfileDisc, type HeroShot } from "@/features/profiles/compon
 import { TYPE } from "@/features/profiles/components/profile-kit";
 import { VerifiedTick } from "@/features/settings/components/settings-kit";
 import { dosStyleColor } from "@/lib/constants/styles";
-import { INK, LILAC, LINE, MUTED, SUB } from "@/lib/design/tokens";
+import { GOLD, INK, LILAC, LINE, MUTED, SUB } from "@/lib/design/tokens";
 
 /** THE IDENTITY HERO — one object, every profile page (14 Sep 2026; re-cut
  *  15 Sep 2026).
@@ -74,6 +74,51 @@ export function HeroPlace({ text }: { text: string }) {
 }
 
 export const HeroDot = () => <span style={{ color: LINE }}>·</span>;
+
+/** ⚠ AN ICON IN FRONT OF EVERY FACT ON THE LINE (4 Oct 2026, the user: "icon in
+ *  front of age like studio and crew profiles. icon for location similar to age
+ *  for location for all profiles"). A studio's and a crew's public page have
+ *  drawn a calendar before "Since 2016" since the parity audit; a person's age
+ *  now wears the same mark, and every city a pin in the same stroke and gold. */
+const FACT_ICON: Record<"calendar" | "pin", ReactNode> = {
+  calendar: (
+    <>
+      <rect x="3.5" y="4.5" width="17" height="16" rx="3" />
+      <path d="M3.5 9.5h17M8.5 4.5v-2M15.5 4.5v-2" />
+    </>
+  ),
+  pin: (
+    <>
+      <path d="M12 21s-6.5-5.6-6.5-11a6.5 6.5 0 0 1 13 0c0 5.4-6.5 11-6.5 11z" />
+      <circle cx="12" cy="10" r="2.4" />
+    </>
+  ),
+};
+
+export function HeroFact({ icon, children, testId }: { icon: "calendar" | "pin"; children: ReactNode; testId?: string }) {
+  return (
+    <span data-testid={testId} style={{ display: "inline-flex", alignItems: "center", gap: 5, fontWeight: 800, color: INK, minWidth: 0, overflowWrap: "anywhere" }}>
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={GOLD} strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" style={{ flexShrink: 0 }}>
+        {FACT_ICON[icon]}
+      </svg>
+      {children}
+    </span>
+  );
+}
+
+/** a PERSON's line — "📅 24 Yrs · 📍 Pune", the words `heroMetaWords` has built
+ *  since 19 Sep, each with its mark; null when there is neither */
+export function HeroPersonMeta({ age, city }: { age: number | null | undefined; city: string | null | undefined }) {
+  const place = (city ?? "").trim();
+  if (age == null && !place) return null;
+  return (
+    <>
+      {age != null ? <HeroFact icon="calendar" testId="hero-age">{age} Yrs</HeroFact> : null}
+      {age != null && place ? <HeroDot /> : null}
+      {place ? <HeroFact icon="pin" testId="hero-city">{place}</HeroFact> : null}
+    </>
+  );
+}
 
 /** THE ACCOUNT NUMBER, AT THE RIGHT END OF THE TYPE'S LINE (19 Sep 2026, the
  *  user: "Profile Type with ID on right … In one line besides profile pic").

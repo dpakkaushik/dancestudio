@@ -53,6 +53,7 @@ export default async function TeamMemberRoute({
     notFound();
   }
 
-  const show: TeamMemberShow = asked === "stats" || asked === "performance" ? asked : "payments";
+  /* ⚠ an old `?show=performance` lands on Stats, which holds it now (4 Oct 2026) */
+  const show: TeamMemberShow = asked === "stats" || asked === "performance" ? "stats" : asked === "classes" ? "classes" : "payments";
   return <TeamMemberPage businessId={businessId} businessName={seat.business.name} member={member} history={history} work={work} show={show} />;
 }

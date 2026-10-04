@@ -212,12 +212,12 @@ export function ToolBody({ children, style }: { children: ReactNode; style?: CSS
 
 /** the OBJECT the card is about, when it is not the profile — a pass's name, a
  *  routine's, a practice's hour. A kicker over it says what kind of thing it is. */
-export function ToolTitle({ kicker, children, after }: { kicker?: ReactNode; children: ReactNode; after?: ReactNode }) {
+export function ToolTitle({ kicker, children, after, size = 16 }: { kicker?: ReactNode; children: ReactNode; after?: ReactNode; size?: number }) {
   return (
     <div style={{ display: "flex", alignItems: "flex-start", gap: 10 }}>
       <div style={{ flex: 1, minWidth: 0 }}>
         {kicker ? <div style={{ fontSize: 9, fontWeight: 900, letterSpacing: 0.8, color: MUTED, textTransform: "uppercase", marginBottom: 3 }}>{kicker}</div> : null}
-        <div style={{ fontSize: 16, fontWeight: 900, letterSpacing: -0.25, lineHeight: 1.25, overflowWrap: "anywhere" }}>{children}</div>
+        <div style={{ fontSize: size, fontWeight: 900, letterSpacing: size > 18 ? -0.5 : -0.25, lineHeight: size > 18 ? 1.15 : 1.25, overflowWrap: "anywhere" }}>{children}</div>
       </div>
       {after}
     </div>

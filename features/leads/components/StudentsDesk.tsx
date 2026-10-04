@@ -5,7 +5,7 @@ import { useState } from "react";
 import { deleteLeadAction } from "@/features/leads/server-actions/leads";
 import { DeskAddButton } from "@/features/settings/components/settings-kit";
 import { DOS_TOOLS, DeskHero } from "@/features/businesses/components/biz-kit";
-import { DeskBody, DeskTop } from "@/components/ui/DeskSections";
+import { DeskBody, DeskMiddle, DeskTop } from "@/components/ui/DeskSections";
 import { FigureHead } from "@/components/ui/FigureHead";
 import { ToolActions, ToolBody, ToolCard, ToolChip, ToolFacts, ToolHead, toolBtn } from "@/components/ui/ToolCard";
 import { DOS_UI, INK, LILAC, SUB } from "@/lib/design/tokens";
@@ -102,6 +102,9 @@ export function StudentsDesk({
     setTimeout(() => setToast(null), 2400);
   };
 
+  /** the students holding a live pass here */
+  const members = students.filter((s) => s.passName).length;
+
   const term = q.trim().toLowerCase();
   const list = term ? students.filter((s) => s.name.toLowerCase().includes(term) || (s.mobile ?? "").includes(term)) : students;
 
@@ -130,6 +133,19 @@ export function StudentsDesk({
           how somebody becomes a student, which is the one place it is needed */}
       </DeskTop>
 
+      {/* ⚠ THE MIDDLE SECTION (4 Oct 2026, the user: "Total Students count and Total
+          membership students count in a seprate section above cards how its done
+          for assets") — counted off the very cards below, never stored */}
+      <DeskMiddle>
+        <ToolFacts
+          tint={TINT}
+          items={[
+            { label: "Total Students", value: students.length, testId: "students-total" },
+            { label: "Membership Students", value: members, testId: "students-members" },
+          ]}
+        />
+      </DeskMiddle>
+
       <DeskBody>
       {/* ⚠ THE LOWER SECTION (3 Oct 2026, C116) — the students themselves */}
 
@@ -139,7 +155,6 @@ export function StudentsDesk({
       <FigureHead
         margin="0 2px 8px"
         title={<span style={deskHead}>STUDENTS</span>}
-        figure={<span style={{ ...deskHead, fontVariantNumeric: "tabular-nums" }}>{students.length}</span>}
       />
 
       {list.map((s) => {
@@ -293,9 +308,10 @@ function InviteSheet({
         style={{ background: "var(--solid)", color: INK, borderRadius: "24px 24px 0 0", padding: "18px 16px 28px", width: "100%", maxWidth: 430, boxSizing: "border-box", animation: "dosSheetUp .28s cubic-bezier(.22,.9,.34,1)" }}
       >
         <div style={{ width: 40, height: 4, borderRadius: 2, background: EL, margin: "0 auto 14px" }} />
-        <b style={{ fontSize: 17 }}>Invite Student</b>
-        <div style={{ fontSize: 12, color: SUB, margin: "3px 0 14px", lineHeight: 1.5 }}>
-          Send them the link from your own WhatsApp, messages or mail. They join DanceOS, and appear here by themselves the first time they dance with you.
+        {/* ⚠ NOTHING UNDER THE HEADING (4 Oct 2026, the user: "invite student form
+            remove text below heading") */}
+        <div style={{ marginBottom: 14 }}>
+          <b style={{ fontSize: 17 }}>Invite Student</b>
         </div>
 
         <div role="group" aria-label="Invite by" style={{ display: "flex", gap: 2, background: EL, borderRadius: 12, padding: 3, marginBottom: 10 }}>

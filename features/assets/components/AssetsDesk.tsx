@@ -119,8 +119,12 @@ export function AssetsDesk({ businessId, assets }: { businessId: string; busines
               icon={<span aria-hidden="true" style={{ fontSize: 24 }}>📦</span>}
               /* ⚠ THE PICTURE OPENS ITSELF (4 Oct 2026, the user: "clicking on asset
                  photo on asset card should open asset photo") — only when there is one */
-              onFace={a.photoPath ? () => setViewing(a) : undefined}
-              faceLabel={`View the picture of ${a.name}`}
+              onFace={a.photoPath ? () => setViewing(a) : () => router.push(`?edit=${a.id}`, { scroll: false })}
+              /* ⚠ A TAP ALWAYS ANSWERS (4 Oct 2026, the user: "asset picture tap not
+                 working") — their assets had no picture stored, so the face was not
+                 a button and the tap did nothing; without one it opens the form
+                 where a picture is added */
+              faceLabel={a.photoPath ? `View the picture of ${a.name}` : `Add a picture of ${a.name}`}
             />
             <ToolBody>
               <ToolFacts

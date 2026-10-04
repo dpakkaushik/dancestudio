@@ -204,7 +204,8 @@ export function MembershipsScreen({
                       are one line under the name, and the bar carries used and left —
                       the Size / Used / Left tiles said the bar's numbers a second time
                       and cramped "10 classes" into a third of the card */}
-                  <ToolTitle kicker="Membership">{p.name}</ToolTitle>
+                  {/* ⚠ NO "MEMBERSHIP" OVER THE NAME, AND THE NAME BIGGER (4 Oct 2026, the user) */}
+                  <ToolTitle size={21}>{p.name}</ToolTitle>
                   {/* an UNPAID pass carries its price on the Pay button below, so the
                       line names only what it is worth */}
                   <MetaLine>
@@ -266,14 +267,19 @@ export function MembershipsScreen({
                    to profile page") — the rest of the card still opens its details */
                 href={seller?.href}
                 hrefLabel={seller?.href ? `${seller.name} — view its profile page` : undefined}
-                eyebrow={seller?.kind === "artist" ? "Your artist page" : "Your studio"}
+                /* ⚠ "Membership" (4 Oct 2026, the user: "rename your artist page with
+                   Membership") — the face and the name already say whose it is */
+                eyebrow="Membership"
                 /* ⚠ "LIVE", AND ONLY HERE (4 Oct 2026, the user: "on sale to become
                    live only on top right of card as chip") — the eyebrow no longer
                    says "On sale" a second time */
                 right={m.status === "draft" ? <ToolChip word="DRAFT" fg={SUB} bg="var(--el)" testId="membership-state" /> : <ToolChip word="LIVE" fg="#22C55E" bg="#22C55E1c" testId="membership-state" />}
               />
               <ToolBody>
-                <ToolTitle kicker="Membership">{m.name}</ToolTitle>
+                {/* ⚠ NO "MEMBERSHIP" OVER THE NAME, AND THE NAME BIGGER (4 Oct 2026, the
+                    user: "remove membership above membership name. make membership
+                    name bigger") — the eyebrow above says it once */}
+                <ToolTitle size={21}>{m.name}</ToolTitle>
                 {/* ⚠ PRICE · HOURS · VALIDITY IN BOXES, AND NO "TAKEN" (4 Oct 2026, the
                     user: "price hours and validity also in boxes on card, remove taken
                     from card"). What came in is the membership's own Earnings column. */}

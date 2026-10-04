@@ -7,7 +7,7 @@ import { arrangeTiles, orderOf, toolsLayoutKey } from "@/features/home/toolOrder
 import { TodayShelf } from "@/features/home/components/TodayShelf";
 import { BusinessEditFromUrl } from "@/features/profiles/components/BusinessEditSheet";
 import type { HeroShot } from "@/features/profiles/components/HeroRail";
-import { HeroDot, HeroId, HeroPlace, IdentityHero } from "@/features/profiles/components/hero-kit";
+import { HeroDot, HeroFact, HeroId, IdentityHero } from "@/features/profiles/components/hero-kit";
 import { memberNoWords } from "@/types/profile";
 import { EntityBand } from "@/features/profiles/components/profile-band";
 import { FollowerFigure } from "@/features/profiles/components/FollowerFigure";
@@ -168,7 +168,8 @@ export function StudioHome({
           meta={
             <>
               {/* the city alone, in words (3 Oct 2026) — see `HeroPlace` */}
-              {business.city ? <HeroPlace text={business.city} /> : null}
+              {/* ⚠ a pin before the city (4 Oct 2026), the same mark on every profile */}
+              {business.city ? <HeroFact icon="pin">{business.city}</HeroFact> : null}
               {place ? <HeroDot /> : null}
               {/* "· N rooms" is the hub row's own sub-line (2655), and here it is a door */}
               <Link href={`/business/${business.id}/rooms`} aria-label="Rooms at this studio" style={{ color: SUB, textDecoration: "none", fontWeight: 800 }}>

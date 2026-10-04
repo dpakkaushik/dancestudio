@@ -94,9 +94,9 @@ export function AssetForm({ businessId, asset }: { businessId: string; businessN
     setPreview(URL.createObjectURL(file));
   };
 
-  const fire = (m: string) => {
+  const fire = (m: string, ms = 2400) => {
     setToast(m);
-    setTimeout(() => setToast(null), 2400);
+    setTimeout(() => setToast(null), ms);
   };
 
   /* ⚠ THE VALUE IS ASKED FOR RATHER THAN DEFAULTED. On the desk an empty box
@@ -127,10 +127,16 @@ export function AssetForm({ businessId, asset }: { businessId: string; businessN
       if (out.error) return fire(out.error);
       /* the picture goes up against the row; a refused picture is said and does
          not undo the asset, which is already on the inventory */
+      /* ⚠ A REFUSED PICTURE STAYS ON SCREEN (4 Oct 2026). It used to flash for
+         0.6 s and leave with the sheet, so an asset added without its picture
+         looked like a tap that did nothing on the card afterwards. */
+      let wait = 600;
       if (photo && out.id) {
         const up = await uploadPhotoFile({ kind: "asset", id: businessId, assetId: out.id }, photo);
-        if (up.error) fire(`${editing ? "Asset saved" : "Asset added"} — the picture did not save: ${up.error}`);
-        else fire(done);
+        if (up.error) {
+          wait = 3200;
+          fire(`${editing ? "Asset saved" : "Asset added"} — the picture did not save: ${up.error}`, wait);
+        } else fire(done);
       } else {
         fire(done);
       }
@@ -140,7 +146,7 @@ export function AssetForm({ businessId, asset }: { businessId: string; businessN
       setTimeout(() => {
         router.back();
         router.refresh();
-      }, 600);
+      }, wait);
     });
 
   return (

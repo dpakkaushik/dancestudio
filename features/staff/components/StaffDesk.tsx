@@ -212,10 +212,17 @@ export function StaffDesk({
   const labels = labelsFor(businessType);
   const onTeam = team.map((m) => m.userId);
   const paidTo = (userId: string) => payments.filter((p) => p.userId === userId);
-  /** how many hold each label, in the roster's own order — only the labels somebody holds */
-  const roleCounts = MEMBER_LABEL_ORDER.map((r) => ({ r, n: team.filter((m) => m.role === r).length }))
-    .filter((x) => x.n > 0)
-    .map((x) => ({ label: MEMBER_LABEL[x.r].short, value: x.n, testId: `team-count-${x.r}`, tint: MEMBER_LABEL[x.r].colour }));
+  /** how many hold each label, in the roster's own order — ⚠ EVERY label this
+   *  profile hands out, 0 included (4 Oct 2026, the user: "count for each role
+   *  should be mentioned even if 0"), plus any label somebody holds that this
+   *  profile no longer offers. Three to a row, so the words stay whole. */
+  const shown = new Set<string>([...labels.map(([r]) => r), ...team.map((m) => m.role)]);
+  const roleCounts = MEMBER_LABEL_ORDER.filter((r) => shown.has(r)).map((r) => {
+    const n = team.filter((m) => m.role === r).length;
+    return { label: MEMBER_LABEL[r].short, value: n, testId: `team-count-${r}`, tint: n > 0 ? MEMBER_LABEL[r].colour : undefined };
+  });
+  const roleRows: (typeof roleCounts)[] = [];
+  for (let i = 0; i < roleCounts.length; i += 3) roleRows.push(roleCounts.slice(i, i + 3));
 
   const fire = (m: string) => {
     setToast(m);
@@ -295,7 +302,9 @@ export function StaffDesk({
           roster below, never stored */}
       <DeskMiddle>
         <ToolFacts tint={DOS_TOOLS.team.c} items={[{ label: team.length === 1 ? "Member" : "Total members", value: team.length, testId: "team-total" }]} />
-        {roleCounts.length ? <ToolFacts tint={DOS_TOOLS.team.c} style={{ marginTop: 6 }} items={roleCounts} /> : null}
+        {roleRows.map((row, i) => (
+          <ToolFacts key={i} tint={DOS_TOOLS.team.c} style={{ marginTop: 6 }} items={row} />
+        ))}
       </DeskMiddle>
 
       <DeskBody style={{ paddingBottom: 4 }}>
