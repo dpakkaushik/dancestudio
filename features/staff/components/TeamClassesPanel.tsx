@@ -35,10 +35,17 @@ const panel: CSSProperties = { background: "var(--card)", border: "1.5px solid v
 const head: CSSProperties = { fontSize: 10, fontWeight: 900, letterSpacing: 1, color: MUTED };
 const pct = (a: number, b: number): number | null => (b > 0 ? Math.round((a / b) * 100) : null);
 const pctTint = (p: number | null, good = 75, ok = 50) => (p == null ? MUTED : p >= good ? "#22C55E" : p >= ok ? "#F59E0B" : "#F87171");
-const whenWords = (iso: string): string => {
+/* a session's DATE and TIME as two answers (4 Oct 2026, the user: "next/ last
+   should be date and Time"), both in IST */
+const dateWords = (iso: string): string => {
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return "";
-  return d.toLocaleString("en-IN", { day: "numeric", month: "short", hour: "numeric", minute: "2-digit", timeZone: "Asia/Kolkata" });
+  return d.toLocaleDateString("en-IN", { weekday: "short", day: "numeric", month: "short", year: "numeric", timeZone: "Asia/Kolkata" });
+};
+const timeWords = (iso: string): string => {
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return "";
+  return d.toLocaleTimeString("en-IN", { hour: "numeric", minute: "2-digit", timeZone: "Asia/Kolkata" });
 };
 
 /** the room-full bar — booked seats over capacity, with the figure beside it */
@@ -248,8 +255,33 @@ export function TeamClassesPanel({
                         ["Where", [c.venueName, c.room].filter(Boolean).join(" · ") || null],
                         /* held · to come and the pay a session left at the user's word
                            (4 Oct 2026: "held, a session, To come and pay can be removed") */
-                        ["Turn-up", t != null && c.held > 0 ? `${t}% of booked seats came` : null],
-                        [c.nextAt ? "Next" : "Last", c.nextAt ? whenWords(c.nextAt) : c.lastAt ? whenWords(c.lastAt) : null],
+                        /* STUDENTS — booked and checked in (4 Oct 2026, the user: "should
+                           show Turn up and Student- Booked and Checked in"). Over the
+                           sessions held; before any is held, the seats booked so far.
+                           ⚠ A class the member made themselves is theirs: this team reads
+                           its seats and never its register, so it claims no check-ins. */
+                        [
+                          "Students",
+                          c.held > 0
+                            ? [`${c.booked} booked`, c.dancers != null ? `${c.dancers} checked in` : null].filter(Boolean).join(" · ")
+                            : c.fillBasis === "upcoming"
+                              ? `${c.fillBooked} booked so far`
+                              : "None booked yet",
+                        ],
+                        [
+                          "Turn-up",
+                          c.dancers == null
+                            ? "Not shown — their own class's register is theirs"
+                            : c.held === 0
+                              ? "Once a session is held"
+                              : t == null
+                                ? "Nobody was booked"
+                                : `${t}%`,
+                        ],
+                        /* the next session when there is one, else the last — its date
+                           and its time on two rows, the date saying which it is */
+                        ["Date", (c.nextAt ?? c.lastAt) ? `${dateWords((c.nextAt ?? c.lastAt) as string)} · ${c.nextAt ? "next session" : "last session"}` : null],
+                        ["Time", (c.nextAt ?? c.lastAt) ? timeWords((c.nextAt ?? c.lastAt) as string) : null],
                         [
                           "Status",
                           c.closedWhy === "deleted"
