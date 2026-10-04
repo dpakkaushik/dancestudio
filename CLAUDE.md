@@ -2,6 +2,26 @@
 
 ## LAST SESSION (4 Oct 2026) — replaced on every push (Rule 13)
 
+> ### MEMBER DETAIL'S PAYMENTS IS EARNINGS, AND THE CREW FORM SAYS CITY ONCE (4 Oct 2026, latest) — no migration · ✅ PUSHED AND LIVE (`1008618`: Vercel READY, alias confirmed on the sha through the API, `stranger-smoke` all green ON THE LIVE SITE)
+> The user: *"create crew form city repeated twice remove the small one. Team member detail payment section should be renamed as Earnings- should show key stats on top and give break up first revenue for the team then break up of what was paid to them and what is still owed by them - whatever left is the Total earnings"*. The previous chat built and checked this and died on "Prompt is too long" while the e2e was still running. This session re-verified it and pushed it on *"push to live"*.
+> * **The column is Earnings** (`?show=earnings`; an old `?show=payments` lands there).
+>   * Key stats on top: **Revenue · Paid them · Still owed**, then **Total earnings · Payments · Last paid**.
+>   * Then the breakup, in the user's order:
+>     * **REVENUE FOR THE TEAM**, per class, less processed refunds.
+>     * **PAID TO THEM** (settled, plus in transit or on hold).
+>     * **STILL OWED TO THEM**, per class as sessions × rate.
+>     * **TOTAL EARNINGS** = revenue − paid − owed. It can be negative, and is then red.
+> * `findTeamMemberWork` reads payments and refunds through `orders!inner (class_id, session_id)`.
+>   * Both are scoped to this business and its classes.
+>   * Each counts only on sessions the member was CREDITED with.
+>   * ⚠ A seat paid with a pass brings no payment row, so it is left out, and the panel says so.
+>   * ⚠ "Paid" includes amounts recorded against no session (R35).
+> * **Create crew:** the CityPicker's small second "City" label is gone (`label=""`). The accessible name is still "Choose a city".
+> * **Verified:**
+>   * typecheck 0 · lint 0 · `audit:reads` 0 · build green.
+>   * **The happy path 19/19 in 14.4 min** on `:3100`. Its team segment asserts the Earnings link, ₹2,500 paid, the three breakup heads and TOTAL EARNINGS.
+>   * The previous chat checked the revenue sum against a hand count on real money.
+
 > ### A ROUTINE'S CLASSES IN THE SAME SHAPE, NO STUDIOS COLUMN, AND "CLASS DETAIL ›" ACROSS ITS ROW (4 Oct 2026, latest) — no migration · ✅ PUSHED AND LIVE (`769c816`: Vercel READY, alias confirmed on the sha through the API, `stranger-smoke` all green and the probe **29/29** in both themes ON THE LIVE SITE)
 > The user: *"Routine detail - remove studio section. Classes section to be Manged hoe we did for student detail and team member detail. make sure to make it according to details relevant for a routine.. In last collapse for all such class sections change open classes button to Class Detail and should cover its entire row."* Built by the previous chat, which died on "Prompt is too long" at the user's *"push to live"*; this session re-verified and pushed it.
 > * **The routine page is Classes · Students.** The Studios column is gone and is the **Studio** grouping inside Classes; an old `?show=studios` lands on Classes (Rule 14).
