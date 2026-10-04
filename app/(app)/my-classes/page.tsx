@@ -342,7 +342,15 @@ export default async function MyClassesPage({ searchParams }: { searchParams: Pr
                     city={e.businessCity}
                     href={`/c/${e.shareSlug}`}
                     relation="booked"
-                    actions={<EnrollButton sessionId={e.sessionId} isFull={false} isSignedIn mine={{ id: e.id, status: e.status }} priceInr={e.priceInr} shareSlug={e.shareSlug} />}
+                    /* ⚠ A CLASS THAT IS OVER OFFERS NO WAY OUT OF ITS SEAT (4 Oct 2026,
+                       the user: "cancel / refund class should not be possible if class
+                       is over"). The card stays — it is the record of a class you took —
+                       and the Cancel / refund control goes; the database refuses it too. */
+                    actions={
+                      Date.parse(e.endsAt) > Date.parse(nowIso) ? (
+                        <EnrollButton sessionId={e.sessionId} isFull={false} isSignedIn mine={{ id: e.id, status: e.status }} priceInr={e.priceInr} shareSlug={e.shareSlug} />
+                      ) : undefined
+                    }
                   />
                 ))}
                 {class_bookings.length === 0 && (

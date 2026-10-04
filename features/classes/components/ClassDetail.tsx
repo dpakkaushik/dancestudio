@@ -39,6 +39,8 @@ import type { RefundRequest } from "@/types/refund";
 import { AddAssistant, AssistantControls } from "./ClassTeamControls";
 import { ScanSheet, type ScanOutcome } from "@/features/people/components/ScanSheet";
 import { ClassShare } from "./ClassShare";
+import { ClassDeleteChip } from "./ClassDeleteChip";
+import { DancerIcon, Half, SeatBar, WhenTile } from "./ClassTile";
 import { PosterSheet } from "./PosterSheet";
 import { DOS_POSTERS, DOS_SLEEVE, DosPosterSleeve, PosterBlock, dosPosterAuto, useDosFold } from "./poster";
 import { dosKey } from "./ShareSheet";
@@ -109,25 +111,32 @@ const subscribeNever = () => () => {};
 const readOrigin = () => window.location.origin;
 const readServerOrigin = () => "";
 
-/* one section shape for the whole page — prototype DSecTint (11545-11551) */
+/* one section shape for the whole page — prototype DSecTint (11545-11551),
+   ⚠ ON THE CLASS CARD'S ANATOMY SINCE 4 Oct 2026 (the user: "revamp class detail
+   page also in new theme like class cards"): a 20px card with its head as a
+   band over the style's own wash — the icon in a tinted squircle, the heading
+   in the display face — and the body under a hairline, the way every tool
+   card's bands stack. The heading's WORDS are unchanged (a locator reads them). */
 function Sec({ icon, label, col, children }: { icon: ReactNode; label: string; col: string; children: ReactNode }) {
   return (
     <div
+      data-sec={label}
       style={{
         background: "var(--card)",
         border: "1.5px solid var(--el)",
-        borderLeft: `3px solid ${col}55`,
-        borderRadius: 16,
-        padding: "12px 14px",
-        marginBottom: 10,
+        borderRadius: 20,
+        overflow: "hidden",
+        marginBottom: 12,
         textAlign: "left",
       }}
     >
-      <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
-        {icon}
-        <span style={{ fontSize: 10.5, fontWeight: 900, letterSpacing: 1.2, color: "var(--sub)" }}>{label}</span>
+      <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 14px", background: `linear-gradient(135deg, ${col}1f, ${col}08)`, borderBottom: `1.5px solid ${col}26` }}>
+        <span aria-hidden="true" style={{ width: 30, height: 30, borderRadius: 10, flexShrink: 0, background: `${col}24`, display: "flex", alignItems: "center", justifyContent: "center" }}>
+          {icon}
+        </span>
+        <span style={{ fontFamily: DOS_DISPLAY, fontSize: 12.5, fontWeight: 900, letterSpacing: 0.5, color: "var(--text)", minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{label}</span>
       </div>
-      {children}
+      <div style={{ padding: "12px 14px 13px" }}>{children}</div>
     </div>
   );
 }
@@ -364,8 +373,7 @@ export function ClassDetail({
   const isDraft = c.status === "draft";
   const isFree = c.priceInr === 0;
   const price = isFree ? "Free" : `₹${c.priceInr}`;
-  const spotsLeft = Math.max(0, c.capacity - filled);
-  const pct = c.capacity > 0 ? Math.min(100, Math.round((100 * filled) / c.capacity)) : 0;
+  /* the seats are written on the card's own `SeatBar` (4 Oct 2026) */
   const soldOut = filled >= c.capacity && c.capacity > 0;
   const booked = mine?.status === "enrolled";
 
@@ -393,8 +401,6 @@ export function ClassDetail({
   const runsThisClass = isOwner || myClassPerson?.status === "confirmed";
   const showBar = !runsThisClass && !done && c.session !== null;
 
-  const ground = `linear-gradient(150deg, ${col}47 0%, ${col}24 55%, ${col}17 100%)`;
-  const weave = `repeating-linear-gradient(45deg, ${col}1a 0 6px, transparent 6px 12px)`;
   /* THE PLACE IS THE VENUE (19 Sep 2026, the user: "right Studio inside the class
      section"): an artist's class held in a studio's room names THE STUDIO THAT
      SAID YES, not the artist page that owns the class — the room is theirs. A
@@ -410,6 +416,25 @@ export function ClassDetail({
   const whereBits = [c.room, placeCity].filter(Boolean).join(" · ");
   const mapsQuery = [c.room, placeName, placeArea, placeCity].filter(Boolean).join(", ");
   const mapsLink = !placeIsStudio && c.mapsUrl ? c.mapsUrl : `https://maps.google.com/?q=${encodeURIComponent(mapsQuery)}`;
+
+  /* THE TWO HALVES (4 Oct 2026) — the card's own rule (`ClassTile`), with the
+     page's door on the artist half. The artist is whoever is down to take it
+     (the ask, dimmed, for the studio's own people), else the maker when the maker
+     IS an artist, else nobody yet. The studio is the maker when the maker is a
+     studio, else the venue that said yes, else nothing — and the artist half
+     spans the card. ⚠ The studio half is NOT a link: AT THE STUDIO below is the
+     studio's door, and a second link with the same name is one control too many
+     for a screen reader (and a strict locator). */
+  const classOwner = c.owner ?? null;
+  const artistMade = classOwner?.kind === "artist";
+  const studioMade = classOwner?.kind === "studio";
+  const studioHalf = studioMade ? classOwner : (c.venue ?? null);
+  const madeBy = classOwner ? `Created by ${classOwner.name} — ${classOwner.kind === "artist" ? "an artist" : "a studio"}` : undefined;
+  const artistHalf: { name: string; photoPath: string | null; icon?: ReactNode; eyebrow: string; dim: boolean; href?: string; hrefLabel?: string } = whoTakes
+    ? { name: whoTakes.personName, photoPath: whoTakes.avatarPath, eyebrow: artist ? "Artist" : "Artist · Asked", dim: !artist, href: `/person/${whoTakes.userId}`, hrefLabel: `Open ${whoTakes.personName}` }
+    : artistMade && classOwner
+      ? { name: classOwner.name, photoPath: classOwner.photoPath, eyebrow: "Artist", dim: false, href: ownerHref ?? undefined, hrefLabel: `${classOwner.name} — their profile` }
+      : { name: "No teacher yet", photoPath: null, icon: DancerIcon, eyebrow: "Artist", dim: false };
 
   /* one grammar for the money sheets — the same date/time the card prints */
   const whenText = when
@@ -564,6 +589,8 @@ export function ClassDetail({
   return (
     <div
       style={{
+        /* relative so the Delete chip sits on the page's own top-right corner */
+        position: "relative",
         background: "var(--bg)",
         maxWidth: 430,
         margin: "0 auto",
@@ -599,17 +626,41 @@ export function ClassDetail({
         ) : null}
       </DosPosterSleeve>
 
+      {/* ── DELETE, TOP RIGHT OF THE PAGE (4 Oct 2026, the user: "delete class
+          removed from class card and goes on top right of class detail page").
+          The owner's alone, and never once the class is over — calling off a
+          finished class would refund every paid seat for a class that already
+          happened ("cancel / refund class should not be possible if class is
+          over"). The register's row no longer carries it. ── */}
+      {isOwner && !done ? (
+        <div style={{ position: "absolute", top: 12, right: 16, zIndex: 3 }}>
+          <ClassDeleteChip classId={c.id} businessId={c.businessId} title={c.title} isDraft={isDraft} enrolled={filled} />
+        </div>
+      ) : null}
+
       {/* ── A STATUS IS NOT A BUTTON: a finished class — or the fact that you are on
-          its team — is said once, at the top, with the rest of what this session is
-          (11816-11843). The one action that was on the old bar came with it: a
-          finished class of your own is where you go looking for what still has to
-          be paid back. ── */}
+          its team — is said once, at the top (11816-11843), as a band in the
+          card's own anatomy. ⚠ NO "Refunds ›" ON IT (4 Oct 2026, the user:
+          "remove refunds button on class cards") — the Refunds tab under the
+          card is the queue, one press away, and a second door to it here was
+          the same subject twice. ── */}
       {(done || assisting) && (
         <div style={{ padding: "14px 16px 0", position: "relative", zIndex: 1, background: "var(--bg)" }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 11, padding: "12px 14px", borderRadius: 16, background: "var(--card)", border: `1.5px solid ${done ? "var(--el)" : col + "55"}` }}>
-            <span style={{ width: 32, height: 32, borderRadius: 16, flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 15, background: done ? "var(--el)" : `${col}22` }}>
+          <div
+            data-testid={done ? "class-over-band" : "class-assisting-band"}
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: 12,
+              padding: "13px 14px",
+              borderRadius: 20,
+              background: done ? "var(--card)" : `linear-gradient(135deg, ${col}26, ${col}0d)`,
+              border: `1.5px solid ${done ? "var(--el)" : col + "55"}`,
+            }}
+          >
+            <span style={{ width: 38, height: 38, borderRadius: 12, flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 17, background: done ? "var(--el)" : `${col}2e` }}>
               {done ? (
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--sub)" strokeWidth="2.4" strokeLinecap="round">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--sub)" strokeWidth="2.4" strokeLinecap="round">
                   <path d="m5 12.5 4.5 4.5L19 7.5" />
                 </svg>
               ) : (
@@ -617,10 +668,10 @@ export function ClassDetail({
               )}
             </span>
             <div style={{ flex: 1, minWidth: 0 }}>
-              <div style={{ fontSize: 12.5, fontWeight: 900 }}>{done ? "Class completed" : "You're assisting on this class"}</div>
-              <div style={{ fontSize: 10.5, color: "var(--sub)", marginTop: 1 }}>
+              <div style={{ fontFamily: DOS_DISPLAY, fontSize: 15, fontWeight: 900, letterSpacing: -0.2 }}>{done ? "Class completed" : "You're assisting on this class"}</div>
+              <div style={{ fontSize: 11, color: "var(--sub)", marginTop: 2, lineHeight: 1.4 }}>
                 {done
-                  ? `${when ? `${when.weekday} ${when.day} ${when.month}` : "This session is over"} · final register below`
+                  ? `${when ? `${when.weekday} ${when.day} ${when.month}` : "This session is over"} · it can no longer be cancelled or refunded`
                   : canAtt && canRef
                     ? "You manage attendance and refunds."
                     : canAtt
@@ -630,280 +681,122 @@ export function ClassDetail({
                         : `Assisting ${artist?.personName ?? "the artist"} — no admin tools on this one.`}
               </div>
             </div>
-            {done && canSettleRefunds ? (
-              <button type="button" aria-label="Open refunds for this class" onClick={() => setOwnerSeg("ref")} style={{ fontSize: 10.5, fontWeight: 800, color: col, cursor: "pointer", flexShrink: 0, background: "none", border: "none", fontFamily: "inherit" }}>
-                Refunds ›
-              </button>
-            ) : null}
           </div>
         </div>
       )}
 
-      {/* ── THE CARD, OPENED — same three rows in the same order (11844-11961) ── */}
+      {/* ── THE CARD, OPENED — ON THE CLASS CARD'S OWN ANATOMY (4 Oct 2026, the
+          user: "revamp class detail page also in new theme like class cards").
+          The same two halves (the artist on the left, the studio on the right,
+          the maker's half shaded), the style's name at display size, the day,
+          the date and the time in ONE tile, and the seats written on the bar
+          with the price beside it — `Half`, `WhenTile` and `SeatBar` are the
+          card's own components, so the page and the card cannot describe one
+          class two ways. ── */}
       <div style={{ padding: "0 16px 10px", position: "relative", zIndex: 1, background: "var(--bg)" }}>
-        <div style={{ height: 1, background: "var(--el)", margin: "16px 0 20px" }} />
+        <div style={{ height: 1, background: "var(--el)", margin: "16px 0 18px" }} />
         <div
+          data-testid="class-page-card"
           style={{
-            borderRadius: 20,
+            borderRadius: 22,
             overflow: "hidden",
-            border: "1.5px solid var(--el)",
-            borderTop: `3px solid ${col}`,
+            border: liveNow && !done ? "2.5px solid #22C55E" : "1.5px solid var(--el)",
             background: "var(--card)",
-            boxShadow: "0 1px 3px rgba(0,0,0,.25)",
+            boxShadow: liveNow && !done ? "0 0 0 3px rgba(34,197,94,.18), 0 4px 16px -4px rgba(34,197,94,.45)" : "0 1px 3px rgba(0,0,0,.25)",
           }}
         >
-          <div style={{ display: "flex", alignItems: "stretch", minWidth: 0, overflow: "hidden", borderBottom: `2px solid ${col}` }}>
-            {/* the calendar block on the dance's own colour */}
-            <div
-              style={{
-                position: "relative",
-                width: 104,
-                flexShrink: 0,
-                boxSizing: "border-box",
-                padding: "11px 5px",
-                display: "flex",
-                flexDirection: "column",
-                alignItems: "center",
-                justifyContent: "center",
-                textAlign: "center",
-                background: ground,
-              }}
-            >
-              <span aria-hidden="true" style={{ position: "absolute", inset: 0, background: weave, opacity: 0.5 }} />
-              {when ? (
-                <>
-                  <span
-                    style={{
-                      position: "relative",
-                      fontSize: 9.5,
-                      fontWeight: 900,
-                      letterSpacing: 1.2,
-                      textTransform: "uppercase",
-                      color: ink,
-                      lineHeight: 1.2,
-                    }}
-                  >
-                    {when.weekday}
-                  </span>
-                  <span
-                    style={{
-                      position: "relative",
-                      fontSize: 26,
-                      fontWeight: 900,
-                      letterSpacing: -1,
-                      lineHeight: 1.05,
-                      color: "var(--text)",
-                      fontFamily: DOS_DISPLAY,
-                      fontVariantNumeric: "tabular-nums",
-                    }}
-                  >
-                    {when.day}
-                  </span>
-                  <span
-                    style={{
-                      position: "relative",
-                      fontSize: 10,
-                      fontWeight: 900,
-                      letterSpacing: 1,
-                      textTransform: "uppercase",
-                      color: "var(--sub)",
-                      lineHeight: 1.3,
-                    }}
-                  >
-                    {when.month}
-                  </span>
-                </>
-              ) : (
-                <span style={{ position: "relative", fontSize: 12, fontWeight: 900, color: "var(--text)" }}>—</span>
-              )}
-              {time && (
-                <span
-                  style={{
-                    position: "relative",
-                    marginTop: 6,
-                    fontSize: 9.5,
-                    fontWeight: 800,
-                    color: "var(--text)",
-                    fontVariantNumeric: "tabular-nums",
-                    letterSpacing: -0.1,
-                  }}
-                >
-                  {time}
-                </span>
-              )}
-              {durNice && (
-                <span style={{ position: "relative", fontSize: 9, fontWeight: 700, color: "var(--sub)", marginTop: 2 }}>
-                  {durNice}
-                </span>
-              )}
+          {/* BAND 1 — the two profiles. The artist half is a door to the person
+              (11900), and the studio's own people also see an unanswered ask,
+              dimmed — nobody outside the team does (`askedArtist` is null
+              unless `isMember`). */}
+          <div data-testid="class-head" style={{ display: "flex", alignItems: "stretch" }}>
+            <Half
+              side="artist"
+              tint={col}
+              big
+              name={artistHalf.name}
+              photoPath={artistHalf.photoPath}
+              icon={artistHalf.icon}
+              eyebrow={artistHalf.eyebrow}
+              made={artistMade}
+              mirrored={false}
+              dim={artistHalf.dim}
+              href={artistHalf.href}
+              hrefLabel={artistHalf.hrefLabel}
+              title={artistMade ? madeBy : undefined}
+            />
+            {studioHalf ? (
+              <Half
+                side="studio"
+                tint={col}
+                big
+                name={studioHalf.name}
+                photoPath={studioHalf.photoPath}
+                eyebrow="Studio"
+                made={studioMade}
+                mirrored
+                title={studioMade ? madeBy : undefined}
+              />
+            ) : null}
+          </div>
+
+          {/* BAND 2 — the class */}
+          <div style={{ padding: "14px 14px 15px" }}>
+            <div data-testid="class-title-row" style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: "4px 9px", minWidth: 0 }}>
+              {/* ⚠ THE PAGE'S OWN `<h1>` (28 Sep 2026) — the style IS this page's
+                  name. Bigger since 4 Oct 2026 ("Bigger Style Name"). */}
+              <h1 style={{ margin: 0, minWidth: 0, fontFamily: DOS_DISPLAY, fontSize: 31, fontWeight: 900, letterSpacing: -1.1, lineHeight: 1.04, color: ink, overflowWrap: "normal", wordBreak: "normal" }}>{c.style}</h1>
+              <span style={{ flexShrink: 0, fontSize: 10, fontWeight: 900, letterSpacing: 0.6, textTransform: "uppercase", color: "var(--muted)" }}>{levelWord}</span>
+              <span style={{ marginLeft: "auto", flexShrink: 0, display: "inline-flex", alignItems: "center", gap: 6 }}>
+                {liveNow && !done ? (
+                  <span style={{ display: "inline-flex", alignItems: "center", gap: 4, fontSize: 9, fontWeight: 900, letterSpacing: 0.7, textTransform: "uppercase", padding: "4px 9px", borderRadius: 999, background: GREEN, color: "#fff" }}>Live</span>
+                ) : done ? (
+                  <span style={{ fontSize: 9, fontWeight: 900, letterSpacing: 0.7, textTransform: "uppercase", padding: "4px 9px", borderRadius: 999, background: "var(--el)", color: "var(--sub)" }}>Completed</span>
+                ) : isDraft ? (
+                  <span style={{ fontSize: 9, fontWeight: 900, letterSpacing: 0.7, textTransform: "uppercase", padding: "4px 9px", borderRadius: 999, background: "rgba(245,158,11,.18)", color: "#F59E0B" }}>Draft</span>
+                ) : null}
+              </span>
             </div>
 
-            {/* the artist column — who is taking it, beside when it runs (11900-11920).
-                A stranger is still shown a CONFIRMED classPerson only; the face is a door.
-                ⚠ THE STUDIO'S OWN PEOPLE ALSO SEE THE ASK (28 Sep 2026), dimmed and
-                marked, because this is where the person taking the class belongs —
-                they used to appear under CLASS ASSISTANTS instead, which is the
-                bug this splits. Nobody outside the team sees an unanswered ask:
-                `askedArtist` is null unless `isMember`. */}
-            {whoTakes && (
-              <div style={{ position: "relative", width: 96, flexShrink: 0, boxSizing: "border-box", padding: "11px 6px", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 6, background: ground }}>
-                <span aria-hidden="true" style={{ position: "absolute", inset: 0, background: weave, opacity: 0.5 }} />
-                <span aria-hidden="true" style={{ position: "absolute", right: 0, top: 8, bottom: 8, borderRight: `1.5px dashed ${col}80` }} />
-                <Link
-                  href={`/person/${whoTakes.userId}`}
-                  aria-label={`Open ${whoTakes.personName}`}
-                  style={{ position: "relative", width: 62, height: 62, borderRadius: 17, overflow: "hidden", display: "inline-flex", alignItems: "center", justifyContent: "center", background: "linear-gradient(150deg,#2E86DE,#3498DB)", color: "#fff", fontSize: 22, fontWeight: 900, letterSpacing: 0.5, fontFamily: DOS_DISPLAY, textDecoration: "none", boxShadow: `0 4px 14px -3px rgba(0,0,0,.55), 0 0 0 2px ${col}44`, opacity: artist ? 1 : 0.55 }}
-                >
-                  {photoUrl(whoTakes.avatarPath) ? <Image src={photoUrl(whoTakes.avatarPath)!} alt="" width={62} height={62} style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} /> : initialsOf(whoTakes.personName)}
-                </Link>
-                <span style={{ position: "relative", width: "100%", fontSize: 10.5, fontWeight: 800, lineHeight: 1.2, height: 25, color: "var(--text)", textAlign: "center", display: "block", overflow: "hidden" }}>{whoTakes.personName}</span>
-                {artist ? null : (
-                  <span style={{ position: "relative", fontSize: 8.5, fontWeight: 900, letterSpacing: 0.4, color: GOLD, marginTop: -4 }}>⏳ ASKED</span>
-                )}
+            {/* the owner's two moves on the person taking it: a STUDIO's owner may
+                pick somebody else (18 Sep 2026), and the job chips on a confirmed
+                artist — `20260928100000` made the register a default an owner may
+                take back, and this is its only door */}
+            {(isOwner && !done && c.businessType === "studio") || (isOwner && !done && artist) ? (
+              <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 8, marginTop: 8, minWidth: 0 }}>
+                {isOwner && !done && artist ? <AssistantControls classPerson={artist} isOwner={isOwner} col={col} remove={false} /> : null}
+                {isOwner && !done && c.businessType === "studio" ? (
+                  <Link href={`/business/${c.businessId}/classes/${c.id}/edit`} aria-label="Change the artist taking this class" style={{ marginLeft: "auto", flexShrink: 0, fontSize: 10.5, fontWeight: 800, color: col, padding: "4px 10px", borderRadius: 999, border: `1.5px solid ${col}66`, textDecoration: "none" }}>
+                    Change artist
+                  </Link>
+                ) : null}
               </div>
-            )}
+            ) : null}
 
-            <div
-              style={{
-                flex: 1,
-                minWidth: 0,
-                boxSizing: "border-box",
-                padding: "11px 12px 11px 13px",
-                display: "flex",
-                flexDirection: "column",
-                justifyContent: "center",
-                gap: 3,
-              }}
-            >
-              <div style={{ display: "flex", alignItems: "center", gap: 7, minWidth: 0 }}>
-                {/* ⚠ THE PAGE'S OWN `<h1>` (28 Sep 2026). The chrome stopped
-                    printing a drill page's name when the wordmark became
-                    constant, and the headline on the card IS this page's name —
-                    so it is the heading rather than a span. Nothing moves:
-                    `margin: 0` replaces the browser's own `<h1>` margin. */}
-                <h1
-                  style={{
-                    flex: 1,
-                    minWidth: 0,
-                    margin: 0,
-                    fontSize: 23,
-                    fontWeight: 900,
-                    letterSpacing: -0.9,
-                    lineHeight: 1.06,
-                    color: ink,
-                    fontFamily: DOS_DISPLAY,
-                    display: "block",
-                    overflow: "hidden",
-                    maxHeight: "2.2em",
-                  }}
-                >
-                  {c.style}
-                </h1>
-                {liveNow && !done && (
-                  <span
-                    style={{
-                      flexShrink: 0,
-                      display: "inline-flex",
-                      alignItems: "center",
-                      gap: 4,
-                      fontSize: 9,
-                      fontWeight: 800,
-                      padding: "2px 8px",
-                      borderRadius: 999,
-                      background: GREEN,
-                      color: "#fff",
-                    }}
-                  >
-                    Live
-                  </span>
-                )}
-              </div>
-              <div
+            {/* THE DAY, THE DATE AND THE TIME IN ONE TILE, with how long it runs */}
+            <div style={{ marginTop: 12 }}>
+              <WhenTile startsAt={c.session?.startsAt ?? null} tint={col} big extra={durNice} />
+            </div>
+
+            {/* THE SEATS WRITTEN ON THE BAR, THE PRICE BESIDE IT (4 Oct 2026). A
+                class that is over has no spots to offer, so the bar says so. */}
+            <div style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 10, minWidth: 0 }}>
+              <SeatBar taken={filled} cap={c.capacity} tint={col} height={30} leftWord={done ? "Class over" : undefined} />
+              <span
+                data-testid="class-fact-price"
                 style={{
-                  fontSize: 10,
-                  fontWeight: 800,
-                  letterSpacing: 0.6,
-                  textTransform: "uppercase",
-                  color: "var(--muted)",
-                  overflow: "hidden",
-                  textOverflow: "ellipsis",
-                  whiteSpace: "nowrap",
+                  flexShrink: 0,
+                  fontSize: 18,
+                  fontWeight: 900,
+                  letterSpacing: -0.3,
+                  // Ink, as on the card: #4ADE80 measured ~1.6:1 on the light card.
+                  color: "var(--text)",
+                  fontVariantNumeric: "tabular-nums",
                 }}
               >
-                {[levelWord, "CLASS"].join(" · ")}
-              </div>
-              {/* a STUDIO's owner may pick somebody else to take it; an artist's own
-                  class is theirs, so there is nobody to change (18 Sep 2026) */}
-              {isOwner && !done && c.businessType === "studio" ? (
-                <div style={{ display: "flex", alignItems: "center", marginTop: 4, minWidth: 0 }}>
-                  <Link href={`/business/${c.businessId}/classes/${c.id}/edit`} aria-label="Change the artist taking this class" style={{ marginLeft: "auto", flexShrink: 0, fontSize: 9.5, fontWeight: 800, color: col, padding: "2px 7px", borderRadius: 999, border: `1.5px solid ${col}66`, textDecoration: "none" }}>
-                    Change
-                  </Link>
-                </div>
-              ) : null}
-              {/* ⚠⚠ THE OWNER'S TWO JOB CHIPS ON THE PERSON TAKING THE CLASS
-                  (28 Sep 2026). `20260928100000` made the register a DEFAULT they
-                  are born with and an owner may take back, and
-                  `set_class_person_powers` has always accepted an artist classPerson —
-                  but this control lived inside the ASSISTANTS section, so the
-                  taking-back half had no door and could only be reached by a
-                  hand-written API call. Confirmed classPeople only: an ask has nothing
-                  to grant yet. */}
-              {isOwner && !done && artist ? (
-                <div style={{ marginTop: 5, minWidth: 0 }}>
-                  <AssistantControls classPerson={artist} isOwner={isOwner} col={col} remove={false} />
-                </div>
-              ) : null}
+                {price}
+              </span>
             </div>
-          </div>
-          <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "6px 12px 8px", borderTop: `1.5px solid ${col}33` }}>
-            <div style={{ flex: 1, minWidth: 0 }}>
-              {done ? (
-                <div style={{ fontSize: 11, fontWeight: 800, color: "var(--sub)" }}>{filled} attended</div>
-              ) : (
-                <>
-                  <div style={{ height: 5, borderRadius: 3, background: "var(--el)", overflow: "hidden" }}>
-                    <div
-                      style={{
-                        height: 5,
-                        borderRadius: 3,
-                        width: `${pct}%`,
-                        background: soldOut ? "#EF4444" : `linear-gradient(90deg,${col},${col}99)`,
-                      }}
-                    />
-                  </div>
-                  <div
-                    style={{
-                      fontSize: 10,
-                      fontWeight: 700,
-                      color: soldOut ? "#F87171" : "var(--muted)",
-                      marginTop: 4,
-                      fontVariantNumeric: "tabular-nums",
-                    }}
-                  >
-                    {soldOut
-                      ? `Class full · ${c.capacity} booked`
-                      : `${filled} of ${c.capacity} booked · ${spotsLeft} spots left`}
-                  </div>
-                </>
-              )}
-            </div>
-            <span
-              style={{
-                flexShrink: 0,
-                fontSize: 13,
-                fontWeight: 900,
-                padding: "4px 10px",
-                borderRadius: 9,
-                background: `${col}1a`,
-                border: `1.5px solid ${col}44`,
-                color: isFree ? "#4ADE80" : "var(--text)",
-                fontVariantNumeric: "tabular-nums",
-                letterSpacing: -0.2,
-              }}
-            >
-              {price}
-            </span>
           </div>
         </div>
 
@@ -911,7 +804,7 @@ export function ClassDetail({
             (prototype 11961-11970) ── */}
         {ownerTabs && (
           <>
-          <div style={{ display: "flex", gap: 2, background: "var(--el)", borderRadius: 12, padding: 3, marginTop: 8 }}>
+          <div style={{ display: "flex", gap: 2, background: "var(--el)", borderRadius: 14, padding: 3, marginTop: 10 }}>
             {(
               [
                 ["details", "Details"],
@@ -986,15 +879,14 @@ export function ClassDetail({
         {myClassPerson && myClassPerson.status === "asked" && (
           <div
             style={{
-              background: "var(--card)",
+              background: `linear-gradient(135deg, ${GOLD}24, ${GOLD}08), var(--card)`,
               border: `1.5px solid ${GOLD}66`,
-              borderLeft: `3px solid ${GOLD}`,
-              borderRadius: 16,
-              padding: "12px 14px",
-              marginBottom: 10,
+              borderRadius: 20,
+              padding: "13px 14px",
+              marginBottom: 12,
             }}
           >
-            <div style={{ fontSize: 12.5, fontWeight: 900 }}>
+            <div style={{ fontFamily: DOS_DISPLAY, fontSize: 14, fontWeight: 900 }}>
               {c.businessName} wants you {myClassPerson.kind === "artist" ? "taking this class" : "assisting on this session"}
             </div>
             <div style={{ fontSize: 10.5, color: "var(--sub)", marginTop: 2, lineHeight: 1.45 }}>
@@ -1069,10 +961,10 @@ export function ClassDetail({
             would have taken the seat AND hidden it — no code, no invoice and no
             way to cancel. Whoever may book may see what they booked. */}
         {mine && !runsThisClass && !done && booked && (
-          <div style={{ background: "var(--card)", border: "1.5px solid var(--el)", borderRadius: 16, padding: "12px", marginBottom: 10 }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 6, minWidth: 0 }}>
-              <span style={{ width: 8, height: 8, borderRadius: 4, background: GREEN, flexShrink: 0 }} />
-              <span style={{ fontSize: 12.5, fontWeight: 900, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+          <div style={{ background: "linear-gradient(135deg, rgba(34,197,94,.16), rgba(34,197,94,.04)), var(--card)", border: "1.5px solid rgba(34,197,94,.42)", borderRadius: 20, padding: "13px 14px", marginBottom: 12 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 7, minWidth: 0 }}>
+              <span style={{ width: 9, height: 9, borderRadius: 5, background: GREEN, flexShrink: 0 }} />
+              <span style={{ fontFamily: DOS_DISPLAY, fontSize: 14, fontWeight: 900, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                 You’re booked
               </span>
               <span style={{ fontFamily: DOS_MONO, fontSize: 10, color: "var(--muted)", marginLeft: "auto", flexShrink: 0 }}>

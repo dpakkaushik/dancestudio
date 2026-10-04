@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import type { CSSProperties, ReactNode } from "react";
-import { ToolActions, ToolBody, ToolFace, ToolFacts, type ToolFact } from "@/components/ui/ToolCard";
+import { ToolActions, ToolBody, ToolFace } from "@/components/ui/ToolCard";
 import { dosStyleColor, DOS_LEVEL_LABEL } from "@/lib/constants/styles";
 import { DOS_DISPLAY, INK, LINE, MUTED, SUB } from "@/lib/design/tokens";
 import { dosStyleInk } from "@/lib/format/styleInk";
@@ -12,15 +12,84 @@ import { CLASS_RELATION, type ClassRelation } from "@/lib/format/classLabels";
 import type { ClassOwner, DanceClass } from "@/types/class";
 import { useDosDark } from "./poster";
 
-/** Seats read as a decision, not a fraction — what is LEFT is what you act on
- *  (prototype 8073-8079); the bar above the words says how full before you read them. */
-const seatsOf = (taken: number, cap: number) => {
-  const left = cap - taken;
+/** The seats, written ON the bar (4 Oct 2026, the user: "spots left should be
+ *  written like 2/20 Booked · 18 Spots Left on the bar"): what is taken against
+ *  what there is, then what is left — the fraction AND the decision, in one line
+ *  the bar's own fill sits under. A full class says so instead of "0 left".
+ *  `fill` is the bar's colour: amber at the last three places, red when full. */
+export const seatsOf = (taken: number, cap: number) => {
+  const left = Math.max(0, cap - taken);
   const pct = cap > 0 ? Math.min(100, Math.round((100 * taken) / cap)) : 0;
-  if (left <= 0) return { txt: "Class full", tone: "#F87171", pct: 100 };
-  if (left <= 3) return { txt: `${left} spot${left === 1 ? "" : "s"} left`, tone: "#F59E0B", pct };
-  return { txt: `${left} spots left`, tone: SUB, pct };
+  const booked = `${taken}/${cap} Booked`;
+  if (left <= 0) return { booked, left: "Class full", txt: `${booked} · Class full`, pct: 100, fill: "#F87171" };
+  const leftWord = `${left} Spot${left === 1 ? "" : "s"} Left`;
+  return { booked, left: leftWord, txt: `${booked} · ${leftWord}`, pct, fill: left <= 3 ? "#F59E0B" : null };
 };
+
+/** THE SEAT BAR — a capsule the fill rises through, the words written on it.
+ *  Shared by the card and the class page so the two cannot describe one class
+ *  two ways. The fill is the style's colour at a third of its strength (the
+ *  ink reads over it in both themes) with a solid strip along its foot. */
+export function SeatBar({ taken, cap, tint, note, height = 26, testId = "class-fact-spots", leftWord }: { taken: number; cap: number; tint: string; note?: string | null; height?: number; testId?: string; /** replaces "N Spots Left" — a class that is over has none to offer */ leftWord?: string }) {
+  const raw = seatsOf(taken, cap);
+  const s = leftWord ? { ...raw, left: leftWord, txt: `${raw.booked} · ${leftWord}`, fill: null } : raw;
+  const col = s.fill ?? tint;
+  return (
+    <span
+      role="img"
+      aria-label={`${s.txt}${note ? ` · ${note}` : ""}`}
+      data-testid="class-seat-bar"
+      data-pct={s.pct}
+      style={{ position: "relative", display: "block", flex: 1, minWidth: 0, height, borderRadius: 999, background: "var(--el)", overflow: "hidden" }}
+    >
+      <span aria-hidden="true" style={{ position: "absolute", left: 0, top: 0, bottom: 0, width: `${s.pct}%`, background: `${col}57`, transition: "width .3s" }}>
+        <span style={{ position: "absolute", left: 0, right: 0, bottom: 0, height: 3, background: col }} />
+      </span>
+      <span
+        data-testid={testId}
+        aria-hidden="true"
+        style={{ position: "relative", display: "flex", alignItems: "center", height: "100%", padding: "0 11px", gap: 5, fontSize: 11.5, fontWeight: 900, color: INK, fontVariantNumeric: "tabular-nums", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}
+      >
+        <span>{s.booked}</span>
+        <span style={{ color: SUB, fontWeight: 700 }}>·</span>
+        <span style={{ color: s.fill === "#F87171" ? "#EF4444" : INK }}>{s.left}</span>
+        {note ? <span style={{ color: MUTED, fontWeight: 700 }}>· {note}</span> : null}
+      </span>
+    </span>
+  );
+}
+
+/** THE WHEN TILE — the day, the date and the time in ONE tile (4 Oct 2026, the
+ *  user: "Date, Time, Day together in one tile"), on the card and on the class
+ *  page. The two parts keep their old test ids so a probe still finds each. */
+export function WhenTile({ startsAt, isToday = false, tint, extra, big = false }: { startsAt: string | null; isToday?: boolean; tint: string; extra?: string | null; big?: boolean }) {
+  const p = startsAt ? dateParts(startsAt) : null;
+  const day = p ? (isToday ? "Today" : p.weekday.charAt(0) + p.weekday.slice(1).toLowerCase()) : "Date";
+  const date = p ? `${p.day} ${p.month.charAt(0)}${p.month.slice(1).toLowerCase()}` : "to be set";
+  const time = startsAt ? timeOf(startsAt) : "—";
+  const fs = big ? 19 : 16;
+  return (
+    <div
+      data-testid="class-fact-when"
+      style={{ display: "flex", alignItems: "center", gap: 11, borderRadius: 14, background: `${tint}12`, border: "1.5px solid var(--el)", padding: big ? "12px 14px" : "9px 12px", minWidth: 0 }}
+    >
+      <span aria-hidden="true" style={{ flexShrink: 0, width: big ? 34 : 28, height: big ? 34 : 28, borderRadius: 10, background: `${tint}26`, color: tint, display: "flex", alignItems: "center", justifyContent: "center" }}>
+        <svg width={big ? 18 : 15} height={big ? 18 : 15} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.2} strokeLinecap="round" strokeLinejoin="round">
+          <rect x="3.5" y="5" width="17" height="15.5" rx="3" />
+          <path d="M8 3v4M16 3v4M3.5 10h17" />
+        </svg>
+      </span>
+      <span style={{ minWidth: 0, display: "flex", alignItems: "baseline", flexWrap: "wrap", gap: "2px 7px", fontSize: fs, fontWeight: 900, letterSpacing: -0.3, lineHeight: 1.15, color: INK, fontVariantNumeric: "tabular-nums" }}>
+        <span data-testid="class-fact-day">{day}</span>
+        <span aria-hidden="true" style={{ color: MUTED, fontWeight: 700 }}>·</span>
+        <span data-testid="class-fact-date" style={{ whiteSpace: "nowrap" }}>{date}</span>
+        <span aria-hidden="true" style={{ color: MUTED, fontWeight: 700 }}>·</span>
+        <span data-testid="class-fact-time" style={{ whiteSpace: "nowrap" }}>{time}</span>
+        {extra ? <span style={{ fontSize: fs - 5, fontWeight: 800, color: SUB, letterSpacing: 0, whiteSpace: "nowrap" }}>{extra}</span> : null}
+      </span>
+    </div>
+  );
+}
 
 export interface ClassTileArtist {
   name: string;
@@ -75,7 +144,7 @@ const DECK_FRAME = {
 } as const;
 
 /* the dancer mark for a half with nobody to draw */
-const DancerIcon = (
+export const DancerIcon = (
   <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
     <circle cx="13" cy="4.5" r="2" />
     <path d="M12 7.5 8 11l3 2-1 7" />
@@ -90,33 +159,80 @@ const CHIP: CSSProperties = { flexShrink: 0, fontSize: 9, fontWeight: 900, lette
  *  same face and the same type on both. The right half is MIRRORED (face on the
  *  outer edge, words toward the centre), so the two read as a pair rather than
  *  as a list of two. The maker's half wears the darker shade. */
-function Half({ side, tint, name, photoPath, eyebrow, icon, made, mirrored, title }: { side: "artist" | "studio"; tint: string; name: string; photoPath: string | null; eyebrow: ReactNode; icon?: ReactNode; made: boolean; mirrored: boolean; title?: string }) {
-  return (
-    <div
-      data-testid={made ? "class-owner" : undefined}
-      data-owner-kind={made ? side : undefined}
-      data-half={side}
-      title={title}
-      style={{
-        flex: "1 1 0",
-        minWidth: 0,
-        display: "flex",
-        flexDirection: mirrored ? "row-reverse" : "row",
-        alignItems: "center",
-        gap: 10,
-        padding: "13px 12px 12px",
-        /* ⚠ THE SHADE IS THE WORD "created by" (4 Oct 2026, the user: "highlighted
-           with left or right side between artist and studio in a darker shade to
-           represent that") — the maker's half is deeper, the other quiet */
-        background: made ? `linear-gradient(135deg, ${tint}5c, ${tint}38)` : `linear-gradient(135deg, ${tint}16, ${tint}08)`,
-        borderLeft: mirrored ? `1.5px solid ${tint}33` : undefined,
-      }}
-    >
-      <ToolFace name={name} photoPath={photoPath} tint={tint} size={46} icon={icon} />
-      <span style={{ flex: 1, minWidth: 0, display: "block", textAlign: mirrored ? "right" : "left" }}>
-        <span style={{ display: "block", fontSize: 9, fontWeight: 900, letterSpacing: 0.8, textTransform: "uppercase", color: tint, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{eyebrow}</span>
-        <span style={{ display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden", overflowWrap: "anywhere", marginTop: 2, fontFamily: DOS_DISPLAY, fontSize: 14.5, fontWeight: 800, letterSpacing: -0.3, lineHeight: 1.18, color: INK }}>{name}</span>
+export function Half({
+  side,
+  tint,
+  name,
+  photoPath,
+  eyebrow,
+  icon,
+  made,
+  mirrored,
+  title,
+  href,
+  hrefLabel,
+  big = false,
+  dim = false,
+}: {
+  side: "artist" | "studio";
+  tint: string;
+  name: string;
+  photoPath: string | null;
+  eyebrow: ReactNode;
+  icon?: ReactNode;
+  made: boolean;
+  mirrored: boolean;
+  title?: string;
+  /** THE CLASS PAGE'S HALVES ARE DOORS (4 Oct 2026) — a card's are not, because
+   *  the card is ONE stretched link and a link inside a link is interactive
+   *  inside interactive. */
+  href?: string;
+  hrefLabel?: string;
+  /** the page's larger face and name */
+  big?: boolean;
+  /** an ask nobody has answered yet — the studio's own people see it, dimmed */
+  dim?: boolean;
+}) {
+  const style: CSSProperties = {
+    flex: "1 1 0",
+    minWidth: 0,
+    display: "flex",
+    flexDirection: mirrored ? "row-reverse" : "row",
+    alignItems: "center",
+    gap: big ? 12 : 10,
+    padding: big ? "16px 14px 15px" : "13px 12px 12px",
+    /* ⚠ THE SHADE IS THE WORD "created by" (4 Oct 2026, the user: "highlighted
+       with left or right side between artist and studio in a darker shade to
+       represent that") — the maker's half is deeper, the other quiet */
+    background: made ? `linear-gradient(135deg, ${tint}5c, ${tint}38)` : `linear-gradient(135deg, ${tint}16, ${tint}08)`,
+    borderLeft: mirrored ? `1.5px solid ${tint}33` : undefined,
+    color: INK,
+    textDecoration: "none",
+  };
+  const inner = (
+    <>
+      <span style={{ flexShrink: 0, opacity: dim ? 0.55 : 1, display: "inline-flex" }}>
+        <ToolFace name={name} photoPath={photoPath} tint={tint} size={big ? 56 : 46} icon={icon} />
       </span>
+      <span style={{ flex: 1, minWidth: 0, display: "block", textAlign: mirrored ? "right" : "left" }}>
+        <span style={{ display: "block", fontSize: big ? 9.5 : 9, fontWeight: 900, letterSpacing: 0.8, textTransform: "uppercase", color: tint, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{eyebrow}</span>
+        <span style={{ display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden", overflowWrap: "anywhere", marginTop: 2, fontFamily: DOS_DISPLAY, fontSize: big ? 16.5 : 14.5, fontWeight: 800, letterSpacing: -0.3, lineHeight: 1.18, color: INK }}>{name}</span>
+      </span>
+    </>
+  );
+  const common = {
+    "data-testid": made ? "class-owner" : undefined,
+    "data-owner-kind": made ? side : undefined,
+    "data-half": side,
+    title,
+  };
+  return href ? (
+    <Link href={href} aria-label={hrefLabel ?? `Open ${name}`} {...common} style={style}>
+      {inner}
+    </Link>
+  ) : (
+    <div {...common} style={style}>
+      {inner}
     </div>
   );
 }
@@ -153,8 +269,6 @@ export function ClassTile({ danceClass: c, filled = 0, artist, isToday = false, 
   const bc = dosStyleColor(c.style);
   const dark = useDosDark();
   const ink = dosStyleInk(bc, dark);
-  const when = c.session ? dateParts(c.session.startsAt) : null;
-  const seats = seatsOf(filled, c.capacity);
   const priceAmt = c.priceInr === 0 ? "Free" : `₹${c.priceInr}`;
   const levelWord = DOS_LEVEL_LABEL[c.level] ?? c.level;
   const isPast = c.status === "completed";
@@ -213,17 +327,6 @@ export function ClassTile({ danceClass: c, filled = 0, artist, isToday = false, 
     </span>
   ) : null;
 
-  /* Date · Time — figures as tiles, read across without parsing; the spots and
-     the price went under the bar (the user: "bar should have spots left below
-     and price with it") */
-  const facts: ToolFact[] = [
-    {
-      label: when ? when.weekday : "Date",
-      value: isToday ? "Today" : when ? `${when.day} ${when.month.charAt(0)}${when.month.slice(1).toLowerCase()}` : "—",
-      testId: "class-fact-date",
-    },
-    { label: "Time", value: c.session ? timeOf(c.session.startsAt) : "—", testId: "class-fact-time" },
-  ];
 
   return (
     <div
@@ -284,7 +387,9 @@ export function ClassTile({ danceClass: c, filled = 0, artist, isToday = false, 
               the row WRAPS rather than the style breaking mid-word
               ("Contemporar / y", seen when a chip shared its line) */}
           <div data-testid="class-title-row" style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: "4px 8px", minWidth: 0 }}>
-            <span data-testid="class-title" style={{ minWidth: 0, fontFamily: DOS_DISPLAY, fontSize: 19, fontWeight: 900, letterSpacing: -0.6, lineHeight: 1.12, color: ink, overflowWrap: "normal", wordBreak: "normal" }}>{headText}</span>
+            {/* ⚠ BIGGER (4 Oct 2026, the user: "Bigger Style Name") — 25px, the
+                size a tool card's own heading is set at */}
+            <span data-testid="class-title" style={{ minWidth: 0, fontFamily: DOS_DISPLAY, fontSize: 25, fontWeight: 900, letterSpacing: -0.9, lineHeight: 1.05, color: ink, overflowWrap: "normal", wordBreak: "normal" }}>{headText}</span>
             <span style={{ flexShrink: 0, fontSize: 9.5, fontWeight: 900, letterSpacing: 0.6, textTransform: "uppercase", color: MUTED }}>{levelWord}</span>
             <span style={{ marginLeft: "auto", flexShrink: 0, display: "inline-flex", alignItems: "center", gap: 6 }}>
               {timeBadge}
@@ -292,24 +397,19 @@ export function ClassTile({ danceClass: c, filled = 0, artist, isToday = false, 
               {href ? <span aria-hidden="true" style={{ color: LINE, fontSize: 15, fontWeight: 600, lineHeight: 1 }}>›</span> : null}
             </span>
           </div>
-          <ToolFacts items={facts} tint={bc} style={{ marginTop: 10 }} />
-          {/* THE BAR, THEN THE SPOTS LEFT UNDER IT WITH THE PRICE BESIDE THEM
-              (8491-8526, re-cut 4 Oct 2026 at the user's word): how full before
-              the words are read, what is left as the decision, what it costs
-              closing the line. A status rides with the spots when it has one. */}
+          {/* THE DAY, THE DATE AND THE TIME IN ONE TILE (4 Oct 2026) */}
           <div style={{ marginTop: 10 }}>
-            <span style={{ display: "block", height: 5, borderRadius: 3, background: "var(--el)", overflow: "hidden" }}>
-              <span style={{ display: "block", height: 5, borderRadius: 3, width: `${seats.pct}%`, background: seats.pct >= 100 ? "#F87171" : seats.pct >= 85 ? "#F59E0B" : bc, transition: "width .3s" }} />
-            </span>
-            <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 10, marginTop: 6, minWidth: 0 }}>
-              <span data-testid="class-fact-spots" style={{ minWidth: 0, fontSize: 11, fontWeight: 800, color: seats.tone, fontVariantNumeric: "tabular-nums", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                {seats.txt}
-                {note ? <span style={{ color: MUTED, fontWeight: 700 }}> · {note}</span> : null}
-              </span>
-              {/* ₹300 is the number you compare; "per session" belongs on the
-                  page's booking bar, not beside every figure (8127-8132) */}
-              <span data-testid="class-fact-price" style={{ flexShrink: 0, fontSize: 15, fontWeight: 900, letterSpacing: -0.3, color: INK, fontVariantNumeric: "tabular-nums" }}>{priceAmt}</span>
-            </div>
+            <WhenTile startsAt={c.session?.startsAt ?? null} isToday={isToday} tint={bc} />
+          </div>
+          {/* THE SEATS WRITTEN ON THE BAR, THE PRICE BESIDE IT (4 Oct 2026, the
+              user: "2/20 Booked · 18 Spots Left on the bar"): how full is the
+              fill, the words say it in numbers, what it costs closes the line.
+              A status (Draft / Completed) rides on the bar when it has one. */}
+          <div style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 10, minWidth: 0 }}>
+            <SeatBar taken={filled} cap={c.capacity} tint={bc} note={note} />
+            {/* ₹300 is the number you compare; "per session" belongs on the
+                page's booking bar, not beside every figure (8127-8132) */}
+            <span data-testid="class-fact-price" style={{ flexShrink: 0, fontSize: 16, fontWeight: 900, letterSpacing: -0.3, color: INK, fontVariantNumeric: "tabular-nums" }}>{priceAmt}</span>
           </div>
         </ToolBody>
 

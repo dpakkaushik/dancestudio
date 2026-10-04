@@ -1,5 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { ClassMoney, OrderStatus, PaidReceipt, PaymentOrder, PaymentProvider, RefundOutcome } from "@/types/payment";
+import { assertBookingNotOver } from "./classBookings";
 
 interface OrderRow {
   id: string;
@@ -154,6 +155,8 @@ export async function cancelBooking(
   classBookingId: string,
   reason: string | null
 ): Promise<RefundOutcome | null> {
+  /* ⚠ a finished class is final — no cancel and no refund (4 Oct 2026) */
+  await assertBookingNotOver(supabase, classBookingId);
   const { data, error } = await supabase.rpc("cancel_class_booking_with_reason", {
     p_class_booking_id: classBookingId,
     p_reason: reason,

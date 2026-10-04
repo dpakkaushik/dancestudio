@@ -509,6 +509,15 @@ export async function softDeleteClass(
   if (!mine) {
     throw new Error("Class not found or not yours to delete");
   }
+  /* ⚠ A FINISHED CLASS IS FINAL (4 Oct 2026, the user: "cancel / refund class
+     should not be possible if class is over"). Calling it off would cancel every
+     seat AND refund every paid one automatically — money back for a class that
+     already happened. The class page draws no Delete once it is over; this is
+     the server's half, and the held migration `20261004170000` is the
+     database's. */
+  if (mine.session && Date.parse(mine.session.endsAt) <= Date.now()) {
+    throw new Error("This class is over — it can no longer be cancelled or refunded");
+  }
 
   /* ⚠⚠ THE SEATS COME OFF FIRST, AND THE MONEY GOES BACK WITH THEM (30 Sep 2026).
      The delete sheet has read "{n} enrolled students must be refunded — you'll

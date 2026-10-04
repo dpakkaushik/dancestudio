@@ -225,7 +225,11 @@ const BOOK_ON_PAGE = /^Book (free trial|this class)$/;
     await oPage.waitForTimeout(400);
     check((await oPage.getByRole("link", { name: "Edit", exact: true }).count()) > 0, "the OWNER is offered Edit on the same draft — the gate is the SEAT, not the screen");
     check((await oPage.getByRole("button", { name: /^Publish($| —)/ }).count()) > 0, "…and Publish");
-    check((await oPage.getByRole("button", { name: "Delete", exact: true }).count()) > 0, "…and Delete");
+    /* ⚠ AND NO DELETE ON THE ROW, FOR THE OWNER EITHER (4 Oct 2026, the user:
+       "delete class removed from class card and goes on top right of class
+       detail page"). It is the chip on the class page now — step 9 presses it. */
+    check((await oPage.getByRole("button", { name: "Delete", exact: true }).count()) === 0 && (await oPage.getByTestId("class-delete").count()) === 0, "…and NO Delete on the row — it lives on the class page's top right since 4 Oct 2026");
+    check((await oPage.getByRole("link", { name: "Refunds", exact: true }).count()) === 0, "…and no Refunds pill on any card either (4 Oct 2026)");
 
     const completedPill = oPage.getByRole("button", { name: /^Completed,/ });
     check(/Completed, 1 classes/.test(await completedPill.getAttribute("aria-label")), `⚠⚠ the Completed tab counts the class that has RUN — nothing ever writes 'completed' (read "${await completedPill.getAttribute("aria-label")}")`);
@@ -392,6 +396,31 @@ const BOOK_ON_PAGE = /^Book (free trial|this class)$/;
     const sumY = await lPage.getByTestId("next-sessions").evaluate((el) => el.getBoundingClientRect().top);
     check(sumY > barY, `…drawn UNDER the bar rather than above it (bar ${Math.round(barY)}, summary ${Math.round(sumY)})`);
 
+    /* ══ 8b · A CLASS THAT IS OVER IS FINAL (4 Oct 2026) ══════════════════════
+       The user: "cancel / refund class should not be possible if class is over".
+       Its page offers its owner no Delete (calling a finished class off would
+       refund every paid seat), its band says why, and a learner holding a seat on
+       it is offered no way out of it on their own list. ⚠ The DATABASE half is
+       the held migration `20261004170000` — its dry run proves the refusals. */
+    await oPage.goto(`${BASE}/c/${ranSlug}`, { waitUntil: "networkidle" });
+    check((await oPage.getByTestId("class-delete").count()) === 0, "⚠ a class that has RUN offers its owner no Delete");
+    const overBand = oPage.getByTestId("class-over-band");
+    check((await overBand.count()) === 1 && /can no longer be cancelled or refunded/.test(await overBand.innerText()), "…its band says it can no longer be cancelled or refunded");
+    check(!/Refunds ›/.test(await text(oPage)), "…and carries no Refunds › of its own — the Refunds tab is the queue");
+    const ranSes = (await rows(owner.h, `class_sessions?class_id=eq.${ran}&select=id`))[0].id;
+    await call("POST", "/rest/v1/class_bookings", H_SERVICE, {
+      session_id: ranSes, class_id: ran, business_id: studio.id,
+      user_id: learner.id, status: "enrolled", created_by: learner.id, updated_by: learner.id,
+    }, "a seat on the class that ran");
+    /* ⚠ `?show=booked` — `SegmentedPanels` mounts only the shown panel, and a
+       person who runs something opens on Manage (the 29 Sep lesson) */
+    await lPage.goto(`${BASE}/my-classes?show=booked`, { waitUntil: "networkidle" });
+    const ranCard = lPage.locator('[data-card="session"]').filter({ has: lPage.locator(`a[href^="/c/${ranSlug}"]`) });
+    check((await ranCard.count()) === 1, "the learner's Booked list still carries the class they took — it is the record");
+    check((await ranCard.getByRole("button", { name: /Cancel/ }).count()) === 0 && (await ranCard.getByRole("link", { name: /Cancel/ }).count()) === 0, "⚠ …and offers no Cancel or refund on it");
+    const aheadCard = lPage.locator('[data-card="session"]').filter({ has: lPage.locator(`a[href^="/c/${aheadSlug}"]`) });
+    check((await aheadCard.getByRole("button", { name: /Cancel/ }).count()) + (await aheadCard.getByRole("link", { name: /Cancel/ }).count()) > 0, "…while the class still AHEAD keeps its way out — the gate is the clock, not the list");
+
     /* ══ 9 · CALLING A CLASS OFF GIVES THE MONEY BACK (#0b3) ══════════════════
        ⚠⚠ THE SHEET HAS PROMISED THIS SINCE 29 Aug 2026 AND NOTHING DID IT. It
        reads "{n} enrolled students must be refunded — you'll settle each refund
@@ -438,30 +467,28 @@ const BOOK_ON_PAGE = /^Book (free trial|this class)$/;
     const before = await rows(H_SERVICE, `refunds?order_id=eq.${order[0].id}&select=id`);
     check(before.length === 0, "a paid seat on a published class, and NO refund against it yet");
 
-    await oPage.goto(`${BASE}/business/${studio.id}/classes`, { waitUntil: "networkidle" });
-    await oPage.getByRole("button", { name: /^Published,/ }).click();
-    await oPage.waitForTimeout(400);
-    /* ⚠ THE ROW IS THE CONTAINER THAT HOLDS BOTH THE TITLE AND THE BUTTON.
-       Filtering on the text alone matches an inner box that holds no button
-       (and an outer one that holds every row's), so it is narrowed by BOTH and
-       `.last()` takes the deepest — document order puts an ancestor first. */
-    const row = oPage
-      .locator("div")
-      .filter({ hasText: "Contemporary" })
-      .filter({ has: oPage.getByRole("button", { name: "Delete", exact: true }) })
-      .last();
-    await row.getByRole("button", { name: "Delete", exact: true }).click();
-    await oPage.waitForTimeout(400);
-
-    const sheet = await text(oPage);
-    check(/1 enrolled student must be refunded/.test(sheet), "⚠ the sheet still makes the promise it has made since 29 Aug 2026");
-    const go = oPage.getByRole("button", { name: "Delete & manage refunds", exact: true });
+    /* ⚠ THE DELETE IS ON THE CLASS PAGE NOW (4 Oct 2026, the user: "delete class
+       removed from class card and goes on top right of class detail page") — the
+       chip on the page's top right, behind the same question in the same words. */
+    const pricedSlug = (await rows(H_SERVICE, `classes?id=eq.${priced}&select=share_slug`))[0].share_slug;
+    await oPage.goto(`${BASE}/c/${pricedSlug}`, { waitUntil: "networkidle" });
+    const chip = oPage.getByTestId("class-delete");
+    check((await chip.count()) === 1, "⚠ the class page carries the Delete chip for its owner");
+    const chipBox = await chip.boundingBox();
+    const vw = oPage.viewportSize()?.width ?? 1280;
+    const pageBox = await oPage.locator("[data-testid='class-page-card']").boundingBox();
+    check(!!chipBox && !!pageBox && chipBox.x + chipBox.width > pageBox.x + pageBox.width - 40 && chipBox.y < pageBox.y, `…on the page's TOP RIGHT, above the card (chip ${Math.round(chipBox?.x ?? 0)},${Math.round(chipBox?.y ?? 0)} · card right ${Math.round((pageBox?.x ?? 0) + (pageBox?.width ?? 0))} · viewport ${vw})`);
+    await chip.click();
+    const dialog = oPage.getByRole("alertdialog", { name: "Delete this published class?" });
+    await dialog.waitFor({ timeout: 10000 });
+    check(/1 enrolled student must be refunded/.test(await dialog.innerText()), "⚠ the question still makes the promise it has made since 29 Aug 2026");
+    const go = dialog.getByRole("button", { name: "Delete & manage refunds", exact: true });
     check((await go.count()) === 1, "…and the button still names the refunds");
     await go.click();
 
-    /* the desk the sheet sends them to — where there was never anything to settle */
-    await oPage.waitForURL(/\/earnings$/, { timeout: 30000 });
-    check(/\/earnings$/.test(new URL(oPage.url()).pathname), "…and it lands on the money desk, as it always said it would");
+    /* the desk the promise sends them to: the refunds, where each one is settled */
+    await oPage.waitForURL(/\/refunds$/, { timeout: 30000 });
+    check(/\/business\/[^/]+\/refunds$/.test(new URL(oPage.url()).pathname), "…and it lands on the studio's refunds desk — the next screen the sentence names");
 
     /* ⚠ READ IT BACK OUT OF THE DATABASE. The screen navigating proves nothing
        about whether a refund exists — that was true for a month. */

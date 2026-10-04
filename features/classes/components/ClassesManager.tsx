@@ -2,11 +2,10 @@
 
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useActionState, useEffect, useRef, useState } from "react";
+import { useActionState, useState } from "react";
 import type { ReactNode } from "react";
 import {
   checkRoomClashAction,
-  deleteClassAction,
   publishClassAction,
   respondToVenueRequestAction,
   type ClassActionState,
@@ -409,26 +408,12 @@ export function ClassesManager({
      async calls rather than form actions, so they carry their own busy state */
   const [busy, setBusy] = useState<string | null>(null);
   const [rowError, setRowError] = useState<string | null>(null);
-  const [ask, setAsk] = useState<{ kind: "publish" | "draft" | "published"; c: DanceClass; clash?: RoomClash } | null>(null);
+  const [ask, setAsk] = useState<{ kind: "publish"; c: DanceClass; clash?: RoomClash } | null>(null);
   /* the sentence a refused Publish would have raised, said before the press */
   const [note, setNote] = useState<string | null>(null);
   /* named for what it is — the action's result — so the `publishState` PROP
      (what each class still waits for) keeps the name that reads correctly */
   const [publishResult, publishFormAction] = useActionState(publishClassAction, initialState);
-  const [deleteState, deleteFormAction] = useActionState(deleteClassAction, initialState);
-
-  /* "Delete & manage refunds" (15102-15104): the delete runs, and once it has
-     landed the page moves on to where the money is settled. The action state
-     is a fresh object after every round-trip, which is what this watches. */
-  const goAfterDelete = useRef<string | null>(null);
-  const lastDelete = useRef(deleteState);
-  useEffect(() => {
-    if (deleteState === lastDelete.current) return;
-    lastDelete.current = deleteState;
-    const to = goAfterDelete.current;
-    goAfterDelete.current = null;
-    if (to && !deleteState.error) router.push(to);
-  }, [deleteState, router]);
 
   const nowMs = new Date(nowIso).getTime();
   const liveN = classes.filter((c) => isLiveAt(c, nowMs)).length + elsewhere.filter((e) => isLiveAt(e.danceClass, nowMs)).length;
@@ -455,7 +440,7 @@ export function ClassesManager({
   if (liveOnly) list = list.filter((c) => isLiveAt(c, nowMs));
   const away = tab === "requests" ? [] : elsewhere.filter((e) => bucketOf(e.danceClass) === tab && (!liveOnly || isLiveAt(e.danceClass, nowMs)));
   const filledOf = (c: DanceClass) => (c.session ? filledBySession[c.session.id] ?? 0 : 0);
-  const actionError = publishResult.error || deleteState.error || rowError;
+  const actionError = publishResult.error || rowError;
 
   /* one shape for the two controls that are not forms: mark the row busy, say
      what went wrong if anything did, and re-read the page when it landed */
@@ -770,9 +755,10 @@ export function ClassesManager({
                     >
                       Publish
                     </button>
-                    <button type="button" onClick={() => setAsk({ kind: "draft", c })} style={pill(true)}>
-                      Delete
-                    </button>
+                    {/* ⚠ NO DELETE ON THE CARD (4 Oct 2026, the user: "delete class
+                        removed from class card and goes on top right of class
+                        detail page"). The card opens the class page, where Delete
+                        is the chip on its top right, behind the same question. */}
                       </>
                     ) : null}
                   </>
@@ -781,23 +767,14 @@ export function ClassesManager({
                     {chipRow}
                     {/* ⚠ NO ROSTER PILL (4 Oct 2026, the user: "remove roster
                         button"). The card opens the class page, whose Attendance
-                        tab IS the register; the `/roster` route stays (Rule 14). */}
-                    {canEdit ? (
-                      <button type="button" onClick={() => setAsk({ kind: "published", c })} style={pill(true)}>
-                        Delete
-                      </button>
-                    ) : null}
+                        tab IS the register; the `/roster` route stays (Rule 14).
+                        ⚠ AND NO DELETE (4 Oct 2026, later) — it is the chip on the
+                        class page's top right now. */}
                   </>
-                ) : (
-                  /* a completed class has one move left (15048-15049): its refunds,
-                     which live on the class page's own Refunds segment.
-                     ⚠ It reaches this branch off the CLOCK now (30 Sep 2026) — a
-                     class whose session is over, whatever `status` still says,
-                     because nothing in this app has ever written `completed`. */
-                  <Link href={`/c/${c.shareSlug}`} style={{ ...pill(false), textDecoration: "none" }}>
-                    Refunds
-                  </Link>
-                )
+                ) : /* ⚠ NO REFUNDS PILL ON A COMPLETED CARD (4 Oct 2026, the user:
+                       "remove refunds button on class cards"). The card opens the
+                       class page, whose Refunds tab is the queue. */
+                null
               }
             />
             );
@@ -887,57 +864,9 @@ export function ClassesManager({
           }
         />
       )}
-      {ask?.kind === "draft" && (
-        <ConfirmSheet
-          title="Delete this draft?"
-          body={`${ask.c.title} has never been published, so nobody has booked it — deleting it takes it off your list for good.`}
-          keepLabel="Keep it"
-          goLabel="Delete draft"
-          goDanger
-          onClose={() => setAsk(null)}
-          form={(go) => (
-            <form action={deleteFormAction} onSubmit={() => setAsk(null)} style={{ flex: 1.3, display: "flex" }}>
-              {hiddenRefs(ask.c)}
-              {go}
-            </form>
-          )}
-        />
-      )}
-      {ask?.kind === "published" &&
-        (() => {
-          const n = filledOf(ask.c);
-          /* deleting a published class takes money back off people (15098-15104);
-             with nobody booked it is a plain delete */
-          return (
-            <ConfirmSheet
-              title="Delete this published class?"
-              body={
-                n > 0
-                  ? `${ask.c.title} · ${n} enrolled ${n === 1 ? "student" : "students"} must be refunded — you'll settle each refund on the next screen.`
-                  : `${ask.c.title} comes off the listing immediately. Nobody has booked it, so there is nothing to refund.`
-              }
-              keepLabel="Keep it"
-              goLabel={n > 0 ? "Delete & manage refunds" : "Delete class"}
-              goDanger
-              onClose={() => setAsk(null)}
-              form={(go) => (
-                <form
-                  action={deleteFormAction}
-                  onSubmit={() => {
-                    /* a soft-deleted class no longer resolves at its own link, so the
-                       refunds are settled from the money desk */
-                    if (n > 0) goAfterDelete.current = `/business/${businessId}/earnings`;
-                    setAsk(null);
-                  }}
-                  style={{ flex: 1.3, display: "flex" }}
-                >
-                  {hiddenRefs(ask.c)}
-                  {go}
-                </form>
-              )}
-            />
-          );
-        })()}
+      {/* ⚠ THE TWO DELETE SHEETS LIVE ON THE CLASS PAGE NOW (4 Oct 2026) —
+          `ClassDeleteChip`, top right of `/c/{slug}`, with the same words and the
+          same "Delete & manage refunds" promise. */}
     </div>
   );
 }

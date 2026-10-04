@@ -1081,6 +1081,13 @@ test.describe.serial("DanceOS, end to end", () => {
     await expect(owner.getByRole("link", { name: `Open ${trainerName}` })).toBeVisible();
     await expect(owner.getByRole("link", { name: "Change the artist taking this class" })).toBeVisible();
     // the Poster chip in the sleeve opens the drawn designs (11812, 12768)
+    /* ⚠ BACK TO THE TOP FIRST (4 Oct 2026). The sleeve folds away as the page
+       scrolls (`useDosFold`) and is `visibility: hidden` past 86% gone, which
+       takes the chip out of the accessibility tree. The re-themed class card is
+       taller, so pressing the tab strip above scrolled far enough to fold it —
+       the run waited 120 s for a button that was on the page and hidden. */
+    await owner.evaluate(() => window.scrollTo(0, 0));
+    await expect(owner.getByRole("button", { name: "Change the poster" })).toBeVisible();
     await owner.getByRole("button", { name: "Change the poster" }).click();
     const posterSheet = owner.getByRole("dialog", { name: "Poster" });
     await posterSheet.getByRole("button", { name: "Poster design Split" }).click();
