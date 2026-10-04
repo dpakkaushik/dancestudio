@@ -162,7 +162,8 @@ async function signUp(page, email) {
       ["managed", "/managed"],
       ["calendar", "/calendar"],
       ["crews", "/crews"],
-      ["classes", "/classes"],
+      /* Discover's Classes shelf — `/classes` was its second copy until 5 Oct 2026 */
+      ["classes", "/discover?tab=classes"],
       ["earnings", "/earnings"],
       /* the subscriptions slice, 10 Sep 2026 */
       ["subscription", "/subscription"],

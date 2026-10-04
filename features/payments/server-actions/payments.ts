@@ -61,7 +61,6 @@ async function requireUser() {
 }
 
 function revalidateBookingSurfaces() {
-  revalidatePath("/classes");
   revalidatePath("/my-classes");
   revalidatePath("/discover");
   revalidatePath("/");

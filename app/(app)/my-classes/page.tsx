@@ -407,7 +407,9 @@ export default async function MyClassesPage({ searchParams }: { searchParams: Pr
                 {class_bookings.length === 0 && (
                   <div style={{ textAlign: "center", padding: "40px 20px", color: SUB, border: "1.5px dashed var(--el)", borderRadius: 20, fontSize: 13 }}>
                     Nothing booked yet —{" "}
-                    <Link href="/classes" style={{ color: "#5AC8FA", fontWeight: 800 }}>
+                    {/* Discover's own Classes shelf (5 Oct 2026) — `/classes` was a second
+                        copy of it, and its address forwards there now */}
+                    <Link href="/discover?tab=classes" style={{ color: "#5AC8FA", fontWeight: 800 }}>
                       find a class
                     </Link>{" "}
                     to get started.

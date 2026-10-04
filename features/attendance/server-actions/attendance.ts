@@ -36,7 +36,8 @@ async function requireUser() {
 
 function revalidateRegisterSurfaces() {
   revalidatePath("/c/[slug]", "page");
-  revalidatePath("/classes");
+  /* Discover's Classes shelf — `/classes` was its second copy until 5 Oct 2026 */
+  revalidatePath("/discover");
   revalidatePath("/my-classes");
   revalidatePath("/");
 }

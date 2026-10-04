@@ -23,6 +23,13 @@ import { test, expect, devices, type Page } from "@playwright/test";
 test.use({ ...devices["Pixel 7"] });
 
 const FILTERS = '[aria-label="All filters"]';
+/* the page a person was on BEFORE Discover, so back has somewhere it could go.
+   It was `/classes` until 5 Oct 2026, when that listing (a second copy of
+   Discover's Classes tab) went and its address began forwarding to Discover —
+   which would make "before" and "after" the same page. The Terms page is open
+   to a signed-out visitor, as this spec is, and forwards nowhere. */
+const BEFORE = "/legal/terms";
+const BEFORE_URL = /\/legal\/terms/;
 const DIALOG = '[role="dialog"]';
 
 /** Discover reads Supabase through the PostGIS `nearby_businesses` RPC, which can
@@ -44,7 +51,7 @@ test.describe.serial("system back and the sheets", () => {
   test("back closes the open sheet and leaves the page underneath alone", async ({ page }) => {
     /* a page before this one, so "back" has somewhere it COULD go — the point of
        the check is that it does not go there while a sheet is open */
-    await page.goto("/classes", { waitUntil: "domcontentloaded" });
+    await page.goto(BEFORE, { waitUntil: "domcontentloaded" });
     await openDiscover(page);
 
     await page.locator(FILTERS).click();
@@ -61,7 +68,7 @@ test.describe.serial("system back and the sheets", () => {
   });
 
   test("Show results turns the sheet's entry into the results page; back from there is the unfiltered list, then leaves", async ({ page }) => {
-    await page.goto("/classes", { waitUntil: "domcontentloaded" });
+    await page.goto(BEFORE, { waitUntil: "domcontentloaded" });
     await openDiscover(page);
 
     await page.locator(FILTERS).click();
@@ -83,11 +90,11 @@ test.describe.serial("system back and the sheets", () => {
     await expect(page).toHaveURL(/\/discover(?!.*sort=price)/);
 
     await page.goBack(); // and THIS one leaves
-    await expect(page).toHaveURL(/\/classes/);
+    await expect(page).toHaveURL(BEFORE_URL);
   });
 
   test("an entry a scrim-close leaves behind is skipped: one back leaves the page", async ({ page }) => {
-    await page.goto("/classes", { waitUntil: "domcontentloaded" });
+    await page.goto(BEFORE, { waitUntil: "domcontentloaded" });
     await openDiscover(page);
 
     await page.locator(FILTERS).click();
@@ -99,15 +106,15 @@ test.describe.serial("system back and the sheets", () => {
     await expect(page.locator(DIALOG)).toHaveCount(0);
 
     await page.goBack();
-    await expect(page).toHaveURL(/\/classes/);
+    await expect(page).toHaveURL(BEFORE_URL);
   });
 
   test("ordinary route back is untouched", async ({ page }) => {
-    await page.goto("/classes", { waitUntil: "domcontentloaded" });
+    await page.goto(BEFORE, { waitUntil: "domcontentloaded" });
     await openDiscover(page);
 
     await page.goBack();
 
-    await expect(page).toHaveURL(/\/classes/);
+    await expect(page).toHaveURL(BEFORE_URL);
   });
 });

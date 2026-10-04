@@ -428,7 +428,8 @@ const valueOf = (page, label) => page.getByLabel(label).inputValue();
     const NAMED = [
       ["/notifications", "notifications"],
       ["/calendar", "the calendar"],
-      ["/classes", "the class listing"],
+      /* `/classes` (the class listing) went on 5 Oct 2026 — a second copy of
+         Discover's Classes tab, whose address forwards there now */
       ["/support", "support"],
       ["/memberships", "memberships"],
       ["/inbox", "the inbox"],

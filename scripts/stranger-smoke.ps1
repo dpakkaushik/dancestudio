@@ -230,7 +230,9 @@ $forwards = @(
   @("/memberships/new?business=$fake", "/business/$fake/memberships"),
   @("/memberships/new", "/memberships"),
   # a pointer that is not a uuid must NOT be spliced into a path
-  @("/memberships/new?business=not-a-uuid", "/memberships")
+  @("/memberships/new?business=not-a-uuid", "/memberships"),
+  # a second copy of another screen (5 Oct 2026, stage 2)
+  @("/classes", "/discover")
 )
 $lost = @()
 foreach ($f in $forwards) {

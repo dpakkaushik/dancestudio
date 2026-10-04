@@ -133,6 +133,15 @@ const nextConfig: NextConfig = {
         permanent: false,
       },
       { source: "/memberships/new", destination: "/memberships", permanent: false },
+
+      /* ══ TWO SCREENS THAT WERE A SECOND COPY OF ANOTHER (5 Oct 2026, the user:
+         "can you also find duplicate pages … fix all 3 in 2 stages") ══
+         `/classes` was the learner's class listing from Step 3 — and since Step 5
+         Discover's Classes tab is the same shelf of the same cards, with the city,
+         the filters and the style rail around it. One link still opened the old
+         one (My classes' "find a class"); it opens Discover now. Any `?as=` rides
+         along onto Discover, which reads it the same way. */
+      { source: "/classes", destination: "/discover?tab=classes", permanent: false },
     ];
   },
 };

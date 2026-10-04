@@ -141,7 +141,8 @@ export async function POST(req: Request) {
         }
       }
       result = applied;
-      revalidatePath("/classes");
+      /* Discover's Classes shelf — `/classes` was its second copy until 5 Oct 2026 */
+      revalidatePath("/discover");
       revalidatePath("/my-classes");
       revalidatePath("/");
       revalidatePath("/c/[slug]", "page");

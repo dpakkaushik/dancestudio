@@ -39,7 +39,6 @@ export async function enrollAction(
   const supabase = await requireUser();
   try {
     const status = await bookClassSession(supabase, parsed.data.sessionId);
-    revalidatePath("/classes");
     revalidatePath("/my-classes");
     revalidatePath("/discover");
     revalidatePath("/");
@@ -70,7 +69,6 @@ export async function cancelClassBookingAction(
   const supabase = await requireUser();
   try {
     await cancelClassBooking(supabase, parsed.data.classBookingId);
-    revalidatePath("/classes");
     revalidatePath("/my-classes");
     revalidatePath("/discover");
     revalidatePath("/");
