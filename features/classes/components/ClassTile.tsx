@@ -324,6 +324,13 @@ export function ClassTile({ danceClass: c, filled = 0, artist, isToday = false, 
       ? { name: owner.name, photoPath: owner.photoPath, icon: undefined as ReactNode }
       : { name: "No teacher yet", photoPath: null, icon: DancerIcon };
   const madeBy = owner ? `Created by ${owner.name} — ${owner.kind === "artist" ? "an artist" : "a studio"}` : undefined;
+  /* ⚠ THE GREEN RING IS A DRAFT'S ALONE (4 Oct 2026, the user: "remove green ring
+     from class cards after published. green ring should not be visible on
+     discover schedule"). It says which side has said yes while the class waits
+     for its yeses; a published class needed every one of them to publish, so
+     there it would say the same thing on every card — and Discover and a public
+     schedule only ever draw published classes. */
+  const ringsOn = c.status === "draft";
 
   /* the chip on the title line: CHECKED IN outranks the relation (2 Oct 2026) —
      once the door has let you in, "Booked" is yesterday's news */
@@ -389,12 +396,13 @@ export function ClassTile({ danceClass: c, filled = 0, artist, isToday = false, 
             mirrored={false}
             title={artistMade ? madeBy : undefined}
             /* a confirmed teacher, or the artist whose own class it is (seated as
-               its confirmed teacher at birth) — never "No teacher yet" */
-            confirmed={Boolean(artist) || (artistMade && Boolean(owner))}
+               its confirmed teacher at birth) — never "No teacher yet"; and only
+               on a draft (`ringsOn`) */
+            confirmed={ringsOn && (Boolean(artist) || (artistMade && Boolean(owner)))}
           />
           {/* the studio half is only ever drawn for a side that has said yes: the
               studio that made the class, or the venue that ACCEPTED the room */}
-          {studioSide ? <Half side="studio" tint={bc} name={studioSide.name} photoPath={studioSide.photoPath} eyebrow="Studio" made={studioMade} mirrored title={studioMade ? madeBy : undefined} confirmed /> : null}
+          {studioSide ? <Half side="studio" tint={bc} name={studioSide.name} photoPath={studioSide.photoPath} eyebrow="Studio" made={studioMade} mirrored title={studioMade ? madeBy : undefined} confirmed={ringsOn} /> : null}
         </div>
 
         {/* BAND 2 — the class: the style in its own ink, the level, what it is to you */}

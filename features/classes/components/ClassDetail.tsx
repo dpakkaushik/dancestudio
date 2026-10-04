@@ -755,11 +755,13 @@ export function ClassDetail({
               href={artistHalf.href}
               hrefLabel={artistHalf.hrefLabel}
               title={artistMade ? madeBy : undefined}
-              confirmed={artistHalf.confirmed}
+              /* ⚠ the ring is a DRAFT's alone, as on the card (4 Oct 2026, the
+                 user: "remove green ring from class cards after published") */
+              confirmed={isDraft && artistHalf.confirmed}
             />
             {/* the studio half is only drawn for a side that has said yes — the
                 studio that made the class, or the venue that ACCEPTED (`c.venue`
-                is null until then) — so it always wears the green ring */}
+                is null until then) — so on a draft it always wears the ring */}
             {studioHalf ? (
               <Half
                 side="studio"
@@ -771,7 +773,7 @@ export function ClassDetail({
                 made={studioMade}
                 mirrored
                 title={studioMade ? madeBy : undefined}
-                confirmed
+                confirmed={isDraft}
               />
             ) : null}
           </div>
