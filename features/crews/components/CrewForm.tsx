@@ -110,7 +110,7 @@ export function CrewForm({ defaultCity, sheet = false }: { defaultCity: string |
           <input value={name} aria-label="Crew name" onChange={(e) => setName(e.target.value.slice(0, 64))} placeholder="e.g. EEE Crew" style={FORM_INPUT} />
 
           <div style={FORM_LABEL}>CITY</div>
-          <CityPicker value={city || null} label="City" onChange={(next) => setCity(next ?? "")} />
+          <CityPicker value={city || null} label="" onChange={(next) => setCity(next ?? "")} />
 
           <div style={FORM_LABEL}>DANCE STYLES</div>
           {/* the app's one style list (9561), several at once since 2 Oct 2026 —

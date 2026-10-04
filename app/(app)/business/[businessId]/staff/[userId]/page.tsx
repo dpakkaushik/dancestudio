@@ -60,8 +60,9 @@ export default async function TeamMemberRoute({
     memberPhoto: member.avatarPath,
   });
 
-  /* ⚠ an old `?show=performance` lands on Stats, which holds it now (4 Oct 2026) */
-  const show: TeamMemberShow = asked === "stats" || asked === "performance" ? "stats" : asked === "classes" ? "classes" : "payments";
+  /* ⚠ an old `?show=performance` lands on Stats, which holds it now, and an old
+     `?show=payments` on Earnings, which holds the payments (4 Oct 2026) */
+  const show: TeamMemberShow = asked === "stats" || asked === "performance" ? "stats" : asked === "classes" ? "classes" : "earnings";
   return (
     <TeamMemberPage
       businessId={businessId}

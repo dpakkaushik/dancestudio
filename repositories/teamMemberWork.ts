@@ -79,6 +79,12 @@ export interface TeamMemberClass {
   /** WHY it is closed, so the screen says it in words rather than a bare
    *  "ENDED": the class was deleted, or they were taken off it */
   closedWhy: "deleted" | "removed" | null;
+  /** EARNINGS (4 Oct 2026) — on a class this business made: what came in on the
+   *  sessions they took (net of refunds handed back), and what is still owed to
+   *  them for it. Zero on a class of their own, which brings this team nothing. */
+  revenueInr: number;
+  owedInr: number;
+  owedSessions: number;
 }
 
 export interface TeamMemberWork {
@@ -97,6 +103,17 @@ export interface TeamMemberWork {
   /** taught, not yet settled, at each claim's own rate */
   owedInr: number;
   owedSessions: number;
+  /** ⚠ EARNINGS (4 Oct 2026, the user: "break up first revenue for the team then
+   *  … what was paid to them and what is still owed … whatever left is the Total
+   *  earnings"). REVENUE is the money that came in on the sessions they took HERE
+   *  — captured payments on those sessions' orders, a later-refunded payment
+   *  included (it came in), with the processed refunds on them as their own
+   *  line. Only this business's classes: their own classes held here bring the
+   *  team nothing. ⚠ A seat paid with a pass brings no payment row — that money
+   *  came in when the pass was sold — so it is not in this figure, and the
+   *  screen says so rather than pricing it. */
+  revenueGrossInr: number;
+  revenueRefundedInr: number;
   firstAt: string | null;
   lastAt: string | null;
   months: Array<{ key: string; label: string; n: number }>;
@@ -253,6 +270,8 @@ export async function findTeamMemberWork(
     seats: 0,
     owedInr: 0,
     owedSessions: 0,
+    revenueGrossInr: 0,
+    revenueRefundedInr: 0,
     firstAt: null,
     lastAt: null,
     months: lastSixMonths(now).map((m) => ({ ...m, n: 0 })),
@@ -263,7 +282,7 @@ export async function findTeamMemberWork(
   if (classIds.length === 0 && ownIds.length === 0) return empty;
 
   const none = { data: [] as unknown[], error: null };
-  const [sessionsRes, ownSessionsRes, attendanceRes, linesRes, artists] = await Promise.all([
+  const [sessionsRes, ownSessionsRes, attendanceRes, linesRes, artists, paymentsRes, refundsRes] = await Promise.all([
     classIds.length
       ? supabase.from("class_sessions").select("id, class_id, starts_at, ends_at").eq("business_id", businessId).in("class_id", classIds).is("deleted_at", null).limit(MAX_ROWS)
       : Promise.resolve(none),
@@ -274,12 +293,36 @@ export async function findTeamMemberWork(
       : Promise.resolve(none),
     supabase.from("payout_lines").select("session_id").eq("business_id", businessId).eq("user_id", userId).is("deleted_at", null).limit(MAX_ROWS),
     findClassArtists(supabase, classIds).catch(() => new Map()),
+    /* EARNINGS — the money in on this business's classes they are on; payments
+       carry no class or session, so the order is the spine (findClassMoney's) */
+    classIds.length
+      ? supabase
+          .from("payments")
+          .select("amount_inr, orders!inner (class_id, session_id)")
+          .eq("business_id", businessId)
+          .in("orders.class_id", classIds)
+          .in("status", ["captured", "refunded"])
+          .is("deleted_at", null)
+          .limit(MAX_ROWS)
+      : Promise.resolve(none),
+    classIds.length
+      ? supabase
+          .from("refunds")
+          .select("amount_inr, orders!inner (class_id, session_id)")
+          .eq("business_id", businessId)
+          .in("orders.class_id", classIds)
+          .eq("status", "processed")
+          .is("deleted_at", null)
+          .limit(MAX_ROWS)
+      : Promise.resolve(none),
   ]);
   for (const [what, res] of [
     ["sessions", sessionsRes],
     ["own sessions", ownSessionsRes],
     ["attendance", attendanceRes],
     ["lines", linesRes],
+    ["payments", paymentsRes],
+    ["refunds", refundsRes],
   ] as const) {
     if (res.error) throw new Error(`teamMemberWork.${what} failed: ${res.error.message}`);
   }
@@ -367,6 +410,9 @@ export async function findTeamMemberWork(
       lastAt: null,
       closed: true,
       closedWhy: cls.deleted_at ? "deleted" : "removed",
+      revenueInr: 0,
+      owedInr: 0,
+      owedSessions: 0,
       upBooked: 0,
       upSeats: 0,
     } as TeamMemberClass & { upBooked: number; upSeats: number };
@@ -406,6 +452,8 @@ export async function findTeamMemberWork(
         if (!settled.has(s.id) && n(c.pay_per_session_inr) > 0) {
           out.owedInr += n(c.pay_per_session_inr);
           out.owedSessions += 1;
+          row.owedInr += n(c.pay_per_session_inr);
+          row.owedSessions += 1;
         }
         const k = monthKey(s.starts_at);
         byMonth.set(k, (byMonth.get(k) ?? 0) + 1);
@@ -424,6 +472,27 @@ export async function findTeamMemberWork(
     }
     rows.set(c.class_id, row);
   }
+
+  /* EARNINGS — only on a session they were CREDITED with (held while they were
+     on it), so a class they joined late brings in only what came after */
+  type MoneyRow = { amount_inr: number; orders: One<{ class_id: string; session_id: string | null }> };
+  const moneyOf = (list: MoneyRow[], add: (classId: string, inr: number) => void) => {
+    for (const p of list) {
+      const o = one(p.orders);
+      if (!o?.session_id || !credited.has(o.session_id)) continue;
+      add(o.class_id, n(p.amount_inr));
+    }
+  };
+  moneyOf((paymentsRes.data ?? []) as unknown as MoneyRow[], (classId, inr) => {
+    out.revenueGrossInr += inr;
+    const row = rows.get(classId);
+    if (row) row.revenueInr += inr;
+  });
+  moneyOf((refundsRes.data ?? []) as unknown as MoneyRow[], (classId, inr) => {
+    out.revenueRefundedInr += inr;
+    const row = rows.get(classId);
+    if (row) row.revenueInr -= inr;
+  });
 
   /* their own classes held here — shown, never counted into the team's money */
   for (const cls of ownClasses) {
@@ -462,6 +531,11 @@ export async function findTeamMemberWork(
     months: lastSixMonths(now).map((m) => ({ ...m, n: byMonth.get(m.key) ?? 0 })),
     styles: [...byStyle.entries()].map(([style, count]) => ({ style, n: count })).sort((a, b) => b.n - a.n || a.style.localeCompare(b.style)),
     classes: classes.sort((a, b) => Number(a.closed) - Number(b.closed) || b.held - a.held || a.title.localeCompare(b.title)),
-    complete: claims.length < MAX_CLAIMS && sessions.length < MAX_ROWS && attendance.length < MAX_ROWS,
+    complete:
+      claims.length < MAX_CLAIMS &&
+      sessions.length < MAX_ROWS &&
+      attendance.length < MAX_ROWS &&
+      (paymentsRes.data ?? []).length < MAX_ROWS &&
+      (refundsRes.data ?? []).length < MAX_ROWS,
   };
 }

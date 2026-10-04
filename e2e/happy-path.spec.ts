@@ -3031,6 +3031,17 @@ test.describe.serial("DanceOS, end to end", () => {
        (19 Sep 2026, R35) — it is a salary, not a bill for sessions — so the page
        says that rather than drawing an empty list under it. */
     await expect(owner.getByText("Not against sessions — recorded as an amount.")).toBeVisible();
+    /* ⚠ THE COLUMN IS EARNINGS (4 Oct 2026, the user: "payment section should be
+       renamed as Earnings … revenue … what was paid to them … still owed …
+       whatever left is the Total earnings") — the ₹2,500 salary is money paid to
+       them, so it comes off revenue in the statement */
+    await expect(owner.getByRole("link", { name: /earns the team/ })).toHaveCount(1);
+    await expect(owner.getByRole("link", { name: /has been paid/ })).toHaveCount(0);
+    await expect(owner.getByTestId("team-paid")).toContainText("₹2,500");
+    await expect(owner.getByTestId("team-earnings-breakup")).toContainText("REVENUE FOR THE TEAM");
+    await expect(owner.getByTestId("team-earnings-breakup")).toContainText("PAID TO THEM");
+    await expect(owner.getByTestId("team-earnings-breakup")).toContainText("STILL OWED TO THEM");
+    await expect(owner.getByTestId("team-total-line")).toContainText("TOTAL EARNINGS");
     /* ⚠ NO PROFILE / BACK TO THE TEAM BUTTONS, AND STATS · CLASSES (4 Oct 2026, the
        user: "remove profile and back to team button. stats and performance merged
        into one section called Stats. New section for Classes") */

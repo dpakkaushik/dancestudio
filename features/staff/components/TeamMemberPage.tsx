@@ -103,17 +103,52 @@ function MonthsChart({ months, tint }: { months: TeamMemberWork["months"]; tint:
   );
 }
 
-/* ── PAYMENTS ─────────────────────────────────────────────────────────── */
-function PaymentsPanel({ history, work, personName, businessName, tint }: { history: PersonPayHistory; work: TeamMemberWork; personName: string; businessName: string; tint: string }) {
+/* one line of the breakup: a label, a sub-line, and the figure on the right */
+function Line({ label, sub, value, strong, tint, testId }: { label: ReactNode; sub?: ReactNode; value: string; strong?: boolean; tint?: string; testId?: string }) {
+  return (
+    <div data-testid={testId} style={{ display: "flex", alignItems: "baseline", gap: 10, padding: strong ? "7px 0 3px" : "4px 0" }}>
+      <span style={{ flex: 1, minWidth: 0 }}>
+        <span style={{ display: "block", fontSize: strong ? 12.5 : 11.5, fontWeight: strong ? 900 : 700, color: strong ? INK : SUB, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{label}</span>
+        {sub ? <span style={{ display: "block", fontSize: 10.5, color: MUTED, marginTop: 1 }}>{sub}</span> : null}
+      </span>
+      <b style={{ flexShrink: 0, fontSize: strong ? 14 : 12, fontWeight: strong ? 900 : 800, color: tint ?? INK, fontVariantNumeric: "tabular-nums" }}>{value}</b>
+    </div>
+  );
+}
+
+const rule: CSSProperties = { borderTop: "1.5px solid var(--el)", margin: "8px 0 2px" };
+
+/* ── EARNINGS ─────────────────────────────────────────────────────────── */
+/** ⚠ WHAT THIS PERSON EARNS THE TEAM (4 Oct 2026, the user: "Team member detail
+ *  payment section should be renamed as Earnings — should show key stats on top
+ *  and give break up first revenue for the team then break up of what was paid
+ *  to them and what is still owed by them — whatever left is the Total
+ *  earnings"). One statement, in that order:
+ *    REVENUE  — what came in on the sessions they took here, less refunds
+ *    − PAID TO THEM  — every payment recorded to them, settled and in transit
+ *    − STILL OWED  — sessions taken and not paid yet, at each class's rate
+ *    = TOTAL EARNINGS  — what is left for the team.
+ *  ⚠ "Paid" is every payment to them on this team, including an amount recorded
+ *  against no session (R35) — that is money out for them, so it comes off. */
+function EarningsPanel({ history, work, personName, businessName, tint }: { history: PersonPayHistory; work: TeamMemberWork; personName: string; businessName: string; tint: string }) {
   const last = history.payouts[0]?.paidOn ?? null;
+  const revenue = work.revenueGrossInr - work.revenueRefundedInr;
+  const paid = history.paidInr + history.pendingInr;
+  const total = revenue - paid - work.owedInr;
+  const minus = (v: number) => (v > 0 ? `− ${rupees(v)}` : rupees(0));
+  const totalWords = total < 0 ? `− ${rupees(-total)}` : rupees(total);
+  const totalTint = total > 0 ? GREEN : total < 0 ? "#F87171" : undefined;
+  const earning = work.classes.filter((c) => c.origin === "business" && (c.revenueInr !== 0 || c.held > 0));
+  const owing = work.classes.filter((c) => c.owedSessions > 0);
   return (
     <>
+      {/* KEY STATS — the four figures of the statement, then the ledger's own */}
       <div style={panel}>
         <ToolFacts
           tint={tint}
           items={[
-            { label: "Settled", value: rupees(history.paidInr), testId: "team-settled" },
-            { label: "Not landed", value: rupees(history.pendingInr) },
+            { label: "Revenue", value: rupees(revenue), testId: "team-revenue" },
+            { label: "Paid them", value: rupees(paid), testId: "team-paid" },
             { label: "Still owed", value: rupees(work.owedInr), tint: work.owedInr > 0 ? "#F59E0B" : undefined, testId: "team-owed" },
           ]}
         />
@@ -121,23 +156,51 @@ function PaymentsPanel({ history, work, personName, businessName, tint }: { hist
           tint={tint}
           style={{ marginTop: 6 }}
           items={[
+            { label: "Total earnings", value: totalWords, tint: totalTint, testId: "team-total-earnings" },
             { label: history.payouts.length === 1 ? "Payment" : "Payments", value: history.payouts.length },
-            { label: "Sessions paid", value: history.sessionsPaid },
             { label: "Last paid", value: last ? dayWords(last).replace(/ \d{4}$/, "") : "—" },
           ]}
         />
-        {/* what OWED means, in one line — the pay ledger's rule, so the two agree */}
-        <div style={{ fontSize: 11, color: SUB, lineHeight: 1.5, marginTop: 10 }}>
-          {work.owedSessions > 0 ? (
-            <>
-              {work.owedSessions} {work.owedSessions === 1 ? "session" : "sessions"} taken and not paid yet, at each class&rsquo;s own rate.
-            </>
-          ) : (
-            "Every session they have taken here at a rate is paid."
-          )}
-        </div>
         {/* ⚠ A CAPPED READ SAYS SO (21 Sep 2026) */}
         {!history.complete || !work.complete ? <div style={{ fontSize: 10.5, color: "#F59E0B", marginTop: 8, lineHeight: 1.45 }}>Counting the latest 4,000 rows only — the figures above may be short.</div> : null}
+      </div>
+
+      {/* THE BREAKUP, in the user's own order */}
+      <div style={panel} data-testid="team-earnings-breakup">
+        <FigureHead margin="0 0 6px" title={<span style={head}>REVENUE FOR THE TEAM</span>} figure={<span style={{ ...head, fontVariantNumeric: "tabular-nums" }}>{rupees(revenue)}</span>} />
+        {earning.length === 0 ? (
+          <div style={{ fontSize: 11.5, color: SUB }}>Nothing has come in on a session they took here yet.</div>
+        ) : (
+          earning.map((c) => (
+            <Line key={c.classId} label={c.title} sub={`${c.held} ${c.held === 1 ? "session" : "sessions"} taken`} value={rupees(c.revenueInr)} testId="team-revenue-class" />
+          ))
+        )}
+        {work.revenueRefundedInr > 0 ? <Line label="Refunded" sub="handed back on those sessions" value={minus(work.revenueRefundedInr)} /> : null}
+        <div style={{ fontSize: 10.5, color: MUTED, marginTop: 6, lineHeight: 1.45 }}>Seats paid with a membership are not here — that money came in when the pass was sold.</div>
+
+        <div style={rule} />
+        <FigureHead margin="8px 0 6px" title={<span style={head}>PAID TO THEM</span>} figure={<span style={{ ...head, fontVariantNumeric: "tabular-nums" }}>{minus(paid)}</span>} />
+        <Line label="Settled" sub={`${history.payouts.filter((p) => payoutTone(p.status) === "done").length} of ${history.payouts.length} payments`} value={rupees(history.paidInr)} testId="team-settled" />
+        {history.pendingInr > 0 ? <Line label="In transit or on hold" value={rupees(history.pendingInr)} /> : null}
+
+        <div style={rule} />
+        <FigureHead margin="8px 0 6px" title={<span style={head}>STILL OWED TO THEM</span>} figure={<span style={{ ...head, fontVariantNumeric: "tabular-nums" }}>{minus(work.owedInr)}</span>} />
+        {owing.length === 0 ? (
+          <div style={{ fontSize: 11.5, color: SUB }}>Every session they have taken here at a rate is paid.</div>
+        ) : (
+          owing.map((c) => (
+            <Line
+              key={c.classId}
+              label={c.title}
+              sub={`${c.owedSessions} ${c.owedSessions === 1 ? "session" : "sessions"} × ${rupees(c.ratePerSessionInr ?? 0)}`}
+              value={rupees(c.owedInr)}
+              testId="team-owed-class"
+            />
+          ))
+        )}
+
+        <div style={{ ...rule, borderTopWidth: 2 }} />
+        <Line label="TOTAL EARNINGS" sub="Revenue, less what was paid and what is still owed" value={totalWords} strong tint={totalTint} testId="team-total-line" />
       </div>
 
       <FigureHead
@@ -262,7 +325,7 @@ function StatsPanel({ work, tint }: { work: TeamMemberWork; tint: string }) {
   );
 }
 
-export type TeamMemberShow = "payments" | "stats" | "classes";
+export type TeamMemberShow = "earnings" | "stats" | "classes";
 
 export function TeamMemberPage({
   businessId,
@@ -345,12 +408,12 @@ export function TeamMemberPage({
         sections
         top={top}
         segments={[
-          { key: "payments", href: `${base}?show=payments`, label: "Payments", aria: `What ${member.name} has been paid` },
+          { key: "earnings", href: `${base}?show=earnings`, label: "Earnings", aria: `What ${member.name} earns the team` },
           { key: "stats", href: `${base}?show=stats`, label: "Stats", aria: `${member.name}'s stats here` },
           { key: "classes", href: `${base}?show=classes`, label: "Classes", aria: `${member.name}'s classes here` },
         ]}
         panels={[
-          { key: "payments", node: <PaymentsPanel history={history} work={work} personName={member.name} businessName={businessName} tint={tint} /> },
+          { key: "earnings", node: <EarningsPanel history={history} work={work} personName={member.name} businessName={businessName} tint={tint} /> },
           { key: "stats", node: <StatsPanel work={work} tint={tint} /> },
           {
             key: "classes",
