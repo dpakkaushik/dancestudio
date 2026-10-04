@@ -2,7 +2,7 @@
 
 ## LAST SESSION (4 Oct 2026) — replaced on every push (Rule 13)
 
-> ### A CREW TAKES NO ENQUIRIES (4 Oct 2026, latest) — ⚠ Rule 9 (a door removed, one enquiry taken down) · ✅ `20261004140000` APPLIED
+> ### A CREW TAKES NO ENQUIRIES (4 Oct 2026, latest) — ⚠ Rule 9 (a door removed, one enquiry taken down) · ✅ `20261004140000` APPLIED · ✅ PUSHED AND LIVE (`c75902c`: Vercel READY, alias confirmed on the sha through the API, `stranger-smoke` all green and a crew/studio Enquiry check **4/4** ON THE LIVE SITE; **the happy path 19/19 in 13.3 min** on `:3100` against the pushed bundle)
 > The user: *"remove enquiries for crew"*. The previous chat built and dry-ran it, put the list in front of the user, got *"push to live"* and died on "Prompt is too long". This session re-verified and pushed it.
 > * **What production held, counted first:** ONE live crew enquiry. It was a Gurugram Rockers celebration from a demo account, quoted ₹30,000, the quote still `sent`. No order, payment or refund stood behind it.
 > * **The migration:**
@@ -23,7 +23,8 @@
 >   * `db-push -DryRun` listed exactly the one file, which applied first try. Live read-back **8/8**; PostgREST reloaded.
 >   * Proofs `enquiries` · `crews` · `notifications` **3/3** on the migrated schema.
 >   * The previous chat's browser probe ran **10/10** on `:3100`.
->   * ⚠ That chat's happy path never ran (its log is empty). It is re-run on this bundle after the push.
+>   * ⚠ That chat's happy path never ran (its log is empty). Re-run on the pushed bundle against the migrated database: **19/19 in 13.3 min**.
+>   * ⚠ A stale `next start` from 14:10 was holding `:3100` again, and was stopped before the e2e ran.
 
 > ### ONLY A STUDIO SELLS A MEMBERSHIP — ARTISTS' MEMBERSHIPS AND THE PASSES BOUGHT FROM THEM REMOVED (4 Oct 2026, latest) — ⚠ Rule 9 (memberships are money) · ✅ `20261004130000` APPLIED · ✅ PUSHED AND LIVE (`225cb8f`: Vercel READY, alias confirmed on the sha through the API)
 > The user: *"remove membership creation from artists and remove the ones previously created or purchased. memberships can only be created by studios."*
