@@ -78,7 +78,8 @@ export async function addClassRoutineAction(input: z.input<typeof onClass>): Pro
     /* ⚠ A ROUTINE OF THE CLASS'S OWN STYLE (4 Oct 2026, the user: "add a routine
        should only add routines of the same dance style"). The picker offers only
        those; this asks again on the server so a hand-made request cannot put a
-       Kathak routine on a Hip-Hop class through the app. */
+       Kathak routine on a Hip-Hop class through the app — and since
+       20261004180000 `add_class_routine` refuses it too, in the same words. */
     const [cls, routine] = await Promise.all([
       supabase.from("classes").select("style").eq("id", parsed.data.classId).maybeSingle(),
       supabase.from("routines").select("style").eq("id", parsed.data.routineId).maybeSingle(),

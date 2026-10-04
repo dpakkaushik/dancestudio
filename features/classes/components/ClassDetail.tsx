@@ -639,6 +639,9 @@ export function ClassDetail({
         onOpen={() => setPosterViewOpen(true)}
         label="Open the poster"
       >
+        {/* ⚠ TOP LEFT of the poster, not top right (4 Oct 2026, #0bg): the owner's
+            Delete chip sits on the PAGE's top right, and at 360–430px the two
+            landed on each other. Both pressed, and it read cramped. */}
         {canManage && !done ? (
           <button
             type="button"
@@ -647,7 +650,7 @@ export function ClassDetail({
               e.stopPropagation();
               setPosterOpen(true);
             }}
-            style={{ position: "absolute", right: 6, top: 6, padding: "4px 9px", borderRadius: 999, cursor: "pointer", background: "rgba(0,0,0,.6)", color: "#fff", fontSize: 9, fontWeight: 800, border: "none", fontFamily: "inherit" }}
+            style={{ position: "absolute", left: 6, top: 6, padding: "4px 9px", borderRadius: 999, cursor: "pointer", background: "rgba(0,0,0,.6)", color: "#fff", fontSize: 9, fontWeight: 800, border: "none", fontFamily: "inherit" }}
           >
             Poster
           </button>

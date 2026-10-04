@@ -393,8 +393,11 @@ async function seed() {
   /* ── assistants: one confirmed with the attendance job, one still asked ── */
   const asst = await rpc(rhythm.h, "ask_class_person", { p_class_id: pastContemp.id, p_user_id: aditya.id, p_kind: "assistant", p_can_attendance: true, p_pay_per_session_inr: 600 });
   await rpc(aditya.h, "respond_to_class_ask", { p_class_person_id: asst.id, p_accept: true });
-  await rpc(rhythm.h, "ask_class_person", { p_class_id: hiphop.id, p_user_id: kabir.id, p_kind: "assistant", p_can_attendance: true });
-  log("Aditya assisted Meera's past Contemporary class (attendance job, ₹600) · Kabir has an assistant ask waiting on Hip-Hop");
+  /* ⚠ an assistant comes from the studio's own team or the asker's crews (4 Oct
+     2026, 20261004180000) — Kabir, whose invite is still unanswered, is on
+     neither, so the waiting ask goes to Sneha, who is on the team */
+  await rpc(rhythm.h, "ask_class_person", { p_class_id: hiphop.id, p_user_id: sneha.id, p_kind: "assistant", p_can_attendance: true });
+  log("Aditya assisted Meera's past Contemporary class (attendance job, ₹600) · Sneha has an assistant ask waiting on Hip-Hop");
 
   /* ────────────────────────────────────────────────────────────────────────
      BOOKINGS, A FULL CLASS, PAST REGISTERS
@@ -658,6 +661,9 @@ async function seed() {
   const wip = await mkRoutine(meera, { title: "Winter Piece (WIP)", style: "Contemporary", level: "professional", song: "Nocturne", songUrl: "https://open.spotify.com/track/nocturne", video: "https://youtu.be/nocturne-wip", status: "draft" });
   const cypher = await mkRoutine(aditya, { title: "Cypher Basics 101", style: "Hip-Hop", level: "beginner", song: "The World Is Yours", songUrl: "https://open.spotify.com/track/world-is-yours", video: "https://youtu.be/cypher-basics" });
   const kala = await mkRoutine(aditya, { title: "Kala Chashma Remix", style: "Bollywood", song: "Kala Chashma", songUrl: "https://open.spotify.com/track/kala-chashma", video: "https://youtu.be/kala-chashma-routine" });
+  /* ⚠ a routine goes on a class of its OWN style (4 Oct 2026, 20261004180000) —
+     the Popping class had the Hip-Hop routine on it until then */
+  const waves = await mkRoutine(aditya, { title: "Waves & Tuts", style: "Popping", level: "intermediate", song: "Pop Lock and Drop It", songUrl: "https://open.spotify.com/track/pop-lock", video: "https://youtu.be/waves-tuts" });
   const firePower = await mkRoutine(karan, { title: "Power Moves 1", style: "Breaking", level: "intermediate", song: "Apache", songUrl: "https://youtu.be/apache-break", video: "https://youtu.be/power-moves-1" });
   const eeeSet = await mkRoutine(rhea, { title: "Monsoon Set", style: "Hip-Hop", song: "Barsaat", songUrl: "https://open.spotify.com/track/barsaat", video: "https://youtu.be/monsoon-set" });
   /* on the classes they were really taught from — the past ones give real usage */
@@ -665,7 +671,7 @@ async function seed() {
   await onClass(meera, dlfContemp.id, breath.id);
   await onClass(meera, pastKathak.id, kathakTarana.id);
   await onClass(meera, pastBounce.id, breath.id);
-  await onClass(aditya, pastPopping.id, cypher.id);
+  await onClass(aditya, pastPopping.id, waves.id);
   await onClass(aditya, hiphop.id, cypher.id);
   await onClass(aditya, pastDlfHiphop.id, cypher.id);
   await onClass(aditya, bolly.id, kala.id);
@@ -675,7 +681,7 @@ async function seed() {
   await onClass(karan, nammaBreaking.id, firePower.id);
   await onClass(rhea, pastEee.id, eeeSet.id);
   await onClass(rhea, rheaOwn.id, eeeSet.id);
-  log("Meera: Breath & Release (3 classes, two of them past), Tarana in Bhairavi, Winter Piece (draft) · Aditya: Cypher Basics 101 (4), Kala Chashma Remix (2) · Karan: Power Moves 1 (2) · Rhea: Monsoon Set (2)");
+  log("Meera: Breath & Release (3 classes, two of them past), Tarana in Bhairavi, Winter Piece (draft) · Aditya: Cypher Basics 101 (3), Waves & Tuts (1, past), Kala Chashma Remix (2) · Karan: Power Moves 1 (2) · Rhea: Monsoon Set (2)");
   log("their usage is counted from the registers above — sessions held and the dancers who checked in");
 
   /* ────────────────────────────────────────────────────────────────────────

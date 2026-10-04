@@ -69,7 +69,8 @@ export async function askClassPersonAction(input: {
     /* ⚠ AN ASSISTANT COMES FROM YOUR TEAM OR YOUR CREWS (4 Oct 2026, the user:
        "only people from your own team members or crew members. no one else").
        The picker offers only that list; this is the same list asked again on the
-       server, so a hand-made request cannot ask anybody else through the app. */
+       server, so a hand-made request cannot ask anybody else through the app —
+       and since 20261004180000 `ask_class_person` refuses it too, for every door. */
     if (parsed.data.kind === "assistant") {
       const { data: cls } = await supabase.from("classes").select("business_id").eq("id", parsed.data.classId).maybeSingle();
       const businessId = (cls as { business_id: string } | null)?.business_id;

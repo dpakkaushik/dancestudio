@@ -282,10 +282,13 @@ export type PoolPerson = Profile & { isArtist: boolean; from: string };
  *     assistant;
  *   · the confirmed members of every crew the person asking is confirmed in.
  *  The person asking is left out. Each read is under its own policy: a team the
- *  caller is not on reads nothing, and a crew's confirmed roster is public. ⚠ It
- *  is the APP's rule — the picker offers only this list and `askClassPersonAction`
- *  refuses anyone outside it — while `ask_class_person` itself still accepts
- *  anybody, so a direct API call is not refused until a migration says so. */
+ *  caller is not on reads nothing, and a crew's confirmed roster is public. The
+ *  picker offers only this list, `askClassPersonAction` refuses anyone outside
+ *  it, and since 20261004180000 `ask_class_person` refuses anybody outside the
+ *  same three sources itself, in the same words — so a direct API call is
+ *  refused too. ⚠ The database reads WITHOUT the caller's RLS, so it may admit a
+ *  little more than this list ever offers (never less); the asker themselves is
+ *  one such case, which this list leaves out and the database allows. */
 export async function findAssistantPool(supabase: SupabaseClient, businessId: string): Promise<PoolPerson[]> {
   const {
     data: { user },

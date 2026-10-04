@@ -39,6 +39,21 @@ function Get-Rows($headers, $path) {
   return ,@(($res.Content | ConvertFrom-Json) | Where-Object { $null -ne $_ })
 }
 function Expect-Fail($script) { try { & $script | Out-Null; return $false } catch { return $true } }
+# the refusal's own words ("" when it was not refused) - PS 5.1 hides a 400's body
+# in ErrorDetails on one call and only in the rewound response stream on the next
+function Why-Fail($script) {
+  try { & $script | Out-Null; return "" }
+  catch {
+    $msg = $_.Exception.Message
+    $body = $_.ErrorDetails.Message
+    if (-not $body) {
+      try { $s = $_.Exception.Response.GetResponseStream(); $s.Position = 0
+        $body = (New-Object System.IO.StreamReader($s)).ReadToEnd() } catch {}
+    }
+    try { if ($body) { $j = $body | ConvertFrom-Json; if ($j.message) { $msg = $j.message } } } catch {}
+    return $msg
+  }
+}
 function Check($n, $label, $ok) {
   "$n. $label $(if ($ok) {'-- OK'} else {'-- !!! FAILED !!!'})"
   if (-not $ok) { $script:pass = $false }
@@ -129,12 +144,15 @@ try {
     p_starts_at = $farOverlap; p_ends_at = $farOverlapEnd; p_room_id = $roomRow.id }
   Check 6 "A draft may share the slot" ($null -ne $draft.id)
 
-  # 7. ANYONE ON DANCEOS CAN BE ASKED, AND AN ORGANIZATION CANNOT (18 Sep 2026).
-  #    This check used to assert the opposite - "only your own team" - which the
-  #    user replaced: "who is taking class should be any user or artist and should
-  #    send a request". B is not on this team yet (they join below), so asking them
-  #    is exactly the case that used to be refused.
-  $offTeamAsk = Rpc (Api $a.access_token) "ask_class_person" @{ p_class_id = $byName.id; p_user_id = $b.user.id; p_kind = "assistant" }
+  # 7. ANYONE ON DANCEOS CAN BE ASKED TO TEACH (18 Sep 2026). The user: "who is
+  #    taking class should be any user or artist and should send a request". B is
+  #    not on this team yet (they join below), so asking them is exactly the case
+  #    that used to be refused.
+  #    RE-CUT 4 Oct 2026: this asked B as an ASSISTANT until the user narrowed
+  #    assistants to "only people from your own team members or crew members"
+  #    (20261004180000) - so the off-team ask is to TEACH now, which is still
+  #    anybody, and 7d below proves the assistant half is refused.
+  $offTeamAsk = Rpc (Api $a.access_token) "ask_class_person" @{ p_class_id = $byName.id; p_user_id = $b.user.id; p_kind = "artist" }
   # RE-CUT 26 Sep 2026: the owner is a PERSON now (the organization login is
   # retired), and an owner naming THEMSELVES is seated CONFIRMED at once - nobody
   # is asked to say yes to themselves (20260926090000). The row is then erased
@@ -161,6 +179,14 @@ try {
   Rpc (Api $a.access_token) "withdraw_class_ask" @{ p_class_person_id = $draftAsk.id } | Out-Null
   $afterWithdraw = Get-Rows (Api $b.access_token) "classes?id=eq.$($draft.id)&select=id"
   Check "7c" "Withdrawing the ask takes the read back with it ($($afterWithdraw.Count) rows)" ($afterWithdraw.Count -eq 0)
+
+  # 7d. AN ASSISTANT COMES FROM YOUR TEAM OR YOUR CREWS, AND NOBODY ELSE (4 Oct
+  #     2026, 20261004180000). C is a fresh person on no team and in no crew, so
+  #     the database refuses them in the app's own words, and leaves no row.
+  $offPoolWhy = Why-Fail { Rpc (Api $a.access_token) "ask_class_person" @{ p_class_id = $byName.id; p_user_id = $cUser.id; p_kind = "assistant" } }
+  $offPoolRows = Get-Rows $svcH "class_people?class_id=eq.$($byName.id)&user_id=eq.$($cUser.id)&select=id"
+  Check "7d" "Somebody off the team and in no crew cannot be asked to ASSIST ('$offPoolWhy'), and no row is left ($($offPoolRows.Count))" (
+    ($offPoolWhy -match "Only people on your team or in your crews can be asked to assist") -and ($offPoolRows.Count -eq 0))
 
   # B joins A's studio as STAFF (staff invites arrive with Step 12 - service role
   # stands in). Staff on purpose: a trainer could run the register anyway, so only
