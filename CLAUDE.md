@@ -2,6 +2,36 @@
 
 ## LAST SESSION (4 Oct 2026) — replaced on every push (Rule 13)
 
+> ### THREE KINDS OF ENQUIRY — CHOREOGRAPHER · PERFORMER · JUDGE / GUEST — AND EVERY OLD ENQUIRY TAKEN DOWN (4 Oct 2026, latest) — ⚠ Rule 9 (money recorded by hand leaves the ledgers) · ✅ `20261004150000` APPLIED · ✅ PUSHED AND LIVE (`bcfedac`: Vercel READY, alias confirmed on the sha through the API)
+> The user, over five messages: *"list out all types on enquiries … into 3 broad enquiries — as a Choreographer, Performer, Judge/guest. and limit the options"*, then *"reduce options"*, *"trip options even more and remove dance styles … in choreographer"*, *"trim down even more"*, *"build this one"*, and *"remove all old enquiries entirely so the data doesnt clash and push to live"*.
+> * **The kinds (`types/enquiry.ts`), seven options in all, down from about 50:**
+>   * **Choreographer** (a studio or an artist): What for = Event · Classes · Shoot, plus how many sessions. No dance style.
+>   * **Performer** (a studio or an artist): What for = Event · Shoot, plus number of performances.
+>   * **Judge / Guest** (an artist only; keeps the key `judge`): As = Judge · Guest, plus which event.
+>   * Each option tile says what it covers, for example "wedding, party, show or festival" (`notes` on a select field).
+>   * The old four (celebration · corporate · private · collab) are **gone from the code**, along with their icons.
+> * **The sheet:** a studio is offered two kinds and an artist three, in one row. The music-note and star icons are new.
+> * **The migration:**
+>   * ⚠⚠ **Every enquiry on record was soft-deleted**, along with its quotes, quote lines, endings and the **53 notifications** that opened them: 22 rows, every one of an old kind. Counted first: **no order, payment or refund** stood behind any of them.
+>   * ⚠ **11 quotes carried money recorded by hand**, so that money leaves the Earnings ledgers. It includes ₹30,000 on 11ft down (from naman.nanda@palliatrans.com) and ₹12,500 on the user's artist page (from jishnu.nanda@gmail.com). The rest was demo and e2e data.
+>   * The user said "entirely". They were soft-deleted rather than erased because of that money and Rule 3, so one UPDATE brings any row back.
+>   * `enquiries_type_key_check`: a LIVE row is choreographer, performer or judge. An old kind survives only on a deleted row.
+>   * `send_enquiry` (two asserted anchors, same signature, still definer, still not anon's) sends only the three. A studio asked for Judge / Guest is refused with "only an artist can be invited as a judge or guest".
+> * **Harness moved to the three kinds:** the seeder's ten enquiries, `rls-proof-enquiries` (an old kind is refused), `rls-proof-settings-screens`, `shoot-inbox`, `shoot-enquiry-money` and the happy path (a Choreographer · Classes enquiry).
+> * ⚠ **The demo world holds no enquiries until the next re-seed** (`node scripts/demo-data.js wipe` then `seed`).
+> * **Verified:**
+>   * typecheck 0 · lint 0 · `audit:reads` 0 · build green.
+>   * Dry run **18/18**, rolled back. `db-push -DryRun` listed exactly the one file, which applied first try.
+>   * Live read-back **11/11**; PostgREST reloaded.
+>   * Proofs `enquiries` · `settings-screens` · `notifications` **3/3**.
+>   * A browser probe ran **29/29** in both themes on `:3100` AND ON THE LIVE SITE:
+>     * the right kinds for a studio and an artist;
+>     * the options and their notes, and no dance style;
+>     * no old enquiry left;
+>     * no sideways scroll and no page error.
+>   * `stranger-smoke` all green on the live site.
+>   * **The happy path ran 19/19 in 13.2 min** on `:3100` against the pushed bundle. Its enquiry segment sends a real Choreographer · Classes enquiry and takes it through quote, advance and completion.
+
 > ### A CREW TAKES NO ENQUIRIES (4 Oct 2026, latest) — ⚠ Rule 9 (a door removed, one enquiry taken down) · ✅ `20261004140000` APPLIED · ✅ PUSHED AND LIVE (`c75902c`: Vercel READY, alias confirmed on the sha through the API, `stranger-smoke` all green and a crew/studio Enquiry check **4/4** ON THE LIVE SITE; **the happy path 19/19 in 13.3 min** on `:3100` against the pushed bundle)
 > The user: *"remove enquiries for crew"*. The previous chat built and dry-ran it, put the list in front of the user, got *"push to live"* and died on "Prompt is too long". This session re-verified and pushed it.
 > * **What production held, counted first:** ONE live crew enquiry. It was a Gurugram Rockers celebration from a demo account, quoted ₹30,000, the quote still `sent`. No order, payment or refund stood behind it.
@@ -12959,6 +12989,11 @@ for the database schema. **The UI is not redesigned** — see Rule 2.
 
 ### Progress tracker — update after EVERY push (Rule 11)
 
+- **THREE KINDS OF ENQUIRY, EVERY OLD ONE TAKEN DOWN — 4 Oct 2026, no step
+  number ⚠ (Rule 9) — `20261004150000` APPLIED, PUSHED AND LIVE (`bcfedac`).**
+  Choreographer · Performer · Judge / Guest, seven options in all. The 22 old
+  enquiries, with their quotes, endings and notifications, are soft-deleted.
+  Detail at the top.
 - **A CREW TAKES NO ENQUIRIES — 4 Oct 2026, no step number ⚠ (Rule 9) —
   `20261004140000` APPLIED, PUSHED.** `send_enquiry` refuses a crew and the one
   live crew enquiry was soft-deleted. The crew Enquiry buttons, the crew Inbox's
