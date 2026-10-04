@@ -49,7 +49,7 @@ export const ENQ_TYPES: EnquiryType<SendableEnquiryTypeKey>[] = [
   {
     k: "choreographer",
     label: "Choreographer",
-    sub: "events · classes · shoots",
+    sub: "Choreography for an event, classes or a shoot",
     c: "#8B5CF6",
     to: ["studio", "artist_page"],
     fields: [
@@ -66,7 +66,7 @@ export const ENQ_TYPES: EnquiryType<SendableEnquiryTypeKey>[] = [
   {
     k: "performer",
     label: "Performer",
-    sub: "events · shoots",
+    sub: "A performance at an event or a shoot",
     c: "#EC4899",
     to: ["studio", "artist_page"],
     fields: [
@@ -86,7 +86,7 @@ export const ENQ_TYPES: EnquiryType<SendableEnquiryTypeKey>[] = [
   {
     k: "judge",
     label: "Judge / Guest",
-    sub: "battles · workshops · guest appearances",
+    sub: "Judge a battle, or come as a guest",
     c: "#F59E0B",
     to: ["artist_page"],
     fields: [

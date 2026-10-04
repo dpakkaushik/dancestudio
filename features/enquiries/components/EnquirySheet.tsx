@@ -137,11 +137,17 @@ export function EnquirySheet({
   const [vals, setVals] = useState<Record<string, string | number>>({});
   const [eventName, setEventName] = useState("");
   const [where, setWhere] = useState("");
-  const [mobile, setMobile] = useState("");
   const [msg, setMsg] = useState("");
   const [err, setErr] = useState("");
   const [busy, setBusy] = useState(false);
   const [sent, setSent] = useState(false);
+  /* ⚠ BACK STEPS OUT OF A KIND BEFORE IT LEAVES THE SHEET (4 Oct 2026, the user:
+     "when swiping back inside form should take back to the previous section in
+     enquiry"). A chosen kind owns a history entry of its own on top of the
+     sheet's, so the first back returns to "What's it for?" and only the second
+     closes. "‹ All types" spends that same entry, and so does sending (the
+     "Enquiry sent" screen is the sheet's own, and its Done closes the sheet). */
+  useCloseOnBack(() => setType(null), type !== null && !sent);
 
   const setV = (k: string, v: string | number) => {
     setVals((o) => ({ ...o, [k]: v }));
@@ -188,7 +194,6 @@ export function EnquirySheet({
       dates: cleanDates,
       whereText: where.trim() || null,
       message,
-      mobile: mobile.trim() || null,
     });
     setBusy(false);
     if (out.error) return setErr(out.error);
@@ -290,7 +295,7 @@ export function EnquirySheet({
                     <EnqIcon k={x.k} size={16} color={x.c} sw={2} />
                   </span>
                   <div style={{ fontSize: 13, fontWeight: 900, marginTop: 7 }}>{x.label}</div>
-                  <div style={{ fontSize: 10, color: "var(--sub)", marginTop: 1, lineHeight: 1.35 }}>{x.sub}</div>
+                  <div style={{ fontSize: 10.5, fontWeight: 600, color: "var(--sub)", marginTop: 3, lineHeight: 1.35 }}>{x.sub}</div>
                 </div>
               ))}
             </div>
@@ -311,7 +316,11 @@ export function EnquirySheet({
               <EnqIcon k={type.k} size={16} color={type.c} sw={2} />
               <div style={{ fontSize: 17, fontWeight: 900 }}>{type.label}</div>
             </div>
-            <div style={{ fontSize: 11, color: "var(--sub)", marginTop: 1 }}>To {businessName}</div>
+            {/* the kind's own sentence, the same words its tile says (4 Oct 2026) */}
+            <div data-testid="enquiry-kind-sub" style={{ fontSize: 12, color: "var(--text)", fontWeight: 700, marginTop: 3, lineHeight: 1.35 }}>
+              {type.sub}
+            </div>
+            <div style={{ fontSize: 11, color: "var(--sub)", marginTop: 2 }}>To {businessName}</div>
 
             <Lab>{dates.length > 1 ? "Dates" : "Date"}</Lab>
             {dates.map((d, i) => (
@@ -411,9 +420,6 @@ export function EnquirySheet({
 
             <Lab>Where (optional)</Lab>
             <input aria-label="Where" value={where} onChange={(e) => setWhere(e.target.value)} placeholder="Venue, area, city" style={inp} />
-
-            <Lab>Your number (optional)</Lab>
-            <input aria-label="Your number" value={mobile} onChange={(e) => setMobile(e.target.value)} placeholder="+91 …  so they can call you back" inputMode="tel" style={inp} />
 
             <Lab>Anything else (optional)</Lab>
             <textarea

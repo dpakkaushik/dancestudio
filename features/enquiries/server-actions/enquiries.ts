@@ -19,6 +19,7 @@ import {
   sendEnquiryAddition,
   sendEnquiryQuote,
 } from "@/repositories/enquiries";
+import { findProfileById } from "@/repositories/profiles";
 import { sendEnquiryRefunds } from "@/services/refundRail";
 
 /** ⚠ money-adjacent. Step 18's writes. The RPCs decide who may do what — the
@@ -42,7 +43,6 @@ const sendSchema = z.object({
   dates: z.array(z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "not a date")).min(1).max(20),
   whereText: z.string().trim().max(200).nullable(),
   message: z.string().trim().min(1).max(1500),
-  mobile: z.string().trim().max(20).nullable(),
 });
 
 
@@ -76,7 +76,16 @@ export async function sendEnquiryAction(input: z.input<typeof sendSchema>): Prom
     return { error: LIMITS.enquiry.words };
   }
   try {
-    const id = await sendEnquiry(supabase, parsed.data);
+    /* ⚠ THE NUMBER IS THE SENDER'S OWN, NEVER TYPED (4 Oct 2026, the user: "Mobile
+       number field should be removed as auto picked by the user/ artist who is
+       sending the enquiry"). It is read off the caller's own profile row here on
+       the server — the client sends none, so nobody can put somebody else's
+       number on an enquiry. No number on the profile sends none. */
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    const me = user ? await findProfileById(supabase, user.id) : null;
+    const id = await sendEnquiry(supabase, { ...parsed.data, mobile: me?.phone ?? null });
     revalidateInbox();
     return { error: null, enquiryId: id };
   } catch (error: unknown) {

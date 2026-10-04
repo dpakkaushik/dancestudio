@@ -2,6 +2,22 @@
 
 ## LAST SESSION (4 Oct 2026) — replaced on every push (Rule 13)
 
+> ### THE ENQUIRY FORM: KINDS SAID IN SENTENCES, THE SENDER'S OWN NUMBER, AND BACK STEPS OUT OF A KIND (4 Oct 2026, latest) — no migration
+> The user: *"sub heddings under choreographer, performer, Judge/ guest should written properly in first tile and inside the form as well. Mobilenumber field should be removed as auto picked by the user/ artist who is sending the enquiry. when swiping back inside form should take back to the previous section in enquiry."*
+> * **Sentences:** each kind's `sub` is a sentence, and the form prints it under the kind's name (`enquiry-kind-sub`).
+>   * Choreographer: "Choreography for an event, classes or a shoot"
+>   * Performer: "A performance at an event or a shoot"
+>   * Judge / Guest: "Judge a battle, or come as a guest"
+> * **No number field.** `sendEnquiryAction` takes no `mobile`. It reads the caller's OWN `profiles.phone` on the server, so the client cannot put anybody else's number on an enquiry. A sender with no number sends none.
+> * **Back:** a chosen kind owns a history entry on top of the sheet's (`useCloseOnBack(() => setType(null), type !== null && !sent)`).
+>   * The first back returns to "What's it for?"; the second closes the sheet, on the same page.
+>   * "‹ All types" spends that entry, and so does sending.
+> * **Verified:**
+>   * typecheck 0 · lint 0 · build green.
+>   * A browser probe ran **23/23** in both themes on `:3100`: the sentences on the tiles and in the form, no number field, both back steps, "‹ All types", no stale entry, no page error.
+>   * A real enquiry sent as demo.karan carried his profile number (+91 98400 55667) and was taken down again.
+>   * ⚠ The same check sent as demo.zaid passed vacuously, because Zaid has no number. It was re-run with a sender who has one.
+
 > ### THREE KINDS OF ENQUIRY — CHOREOGRAPHER · PERFORMER · JUDGE / GUEST — AND EVERY OLD ENQUIRY TAKEN DOWN (4 Oct 2026, latest) — ⚠ Rule 9 (money recorded by hand leaves the ledgers) · ✅ `20261004150000` APPLIED · ✅ PUSHED AND LIVE (`bcfedac`: Vercel READY, alias confirmed on the sha through the API)
 > The user, over five messages: *"list out all types on enquiries … into 3 broad enquiries — as a Choreographer, Performer, Judge/guest. and limit the options"*, then *"reduce options"*, *"trip options even more and remove dance styles … in choreographer"*, *"trim down even more"*, *"build this one"*, and *"remove all old enquiries entirely so the data doesnt clash and push to live"*.
 > * **The kinds (`types/enquiry.ts`), seven options in all, down from about 50:**

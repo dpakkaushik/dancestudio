@@ -2531,8 +2531,9 @@ test.describe.serial("DanceOS, end to end", () => {
     await learner.getByRole("link", { name: `Choreographer enquiry to ${studioName}` }).click();
     await learner.waitForURL(/\/inbox\/enquiries\/[0-9a-f-]+$/);
     await expect(learner.getByRole("link", { name: `Call ${studioName}` })).toHaveAttribute("href", "tel:+919000011111");
-    // the business's side is unchanged: this enquiry carried no mobile, so it still
-    // says so rather than offering a dead button. ⚠ On the STUDIO's own desk
+    // the business's side: the enquiry carries the SENDER's own number off their
+    // profile (4 Oct 2026 — the sheet no longer asks for one), and this learner
+    // has none, so there is no Call rather than a dead button. ⚠ On the STUDIO's own desk
     // since 2 Oct 2026 — the unscoped desk is the owner's personal profile.
     await owner.goto(`/enquiries?as=${businessId}`);
     /* ⚠ the studio's desk opens on Received, and this enquiry was closed */
