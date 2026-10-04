@@ -3239,16 +3239,29 @@ test.describe.serial("DanceOS, end to end", () => {
     /* ⚠ A FILL BEFORE HYDRATION IS NOT A FILL (4 Oct 2026): straight after a
        `goto`, React can claim the controlled date input AFTER the fill and reset
        it to "", leaving the bar on "Pick a date" and no Continue for the whole
-       test timeout — the page snapshot showed exactly that, with the Starts pick
-       made later intact. The bar only stops naming the date once React owns the
-       form AND holds the value, so the fill is retried until it does. */
+       test timeout — the page snapshot showed exactly that, with the picks made
+       later intact.
+       ⚠⚠ AND THE FIRST GUARD FOR IT COULD NOT FAIL (5 Oct 2026, read off the
+       trace: it "passed" 50 ms after the fill). It waited for "Pick a date" to
+       be ABSENT — but the bar names the FIRST missing answer, and on a fresh
+       form that is the dance STYLE, so "Pick a date" was never on screen to
+       disappear. An absence check proves nothing when the thing was never
+       there. So the style goes first (a press, which only works once React owns
+       the page), the bar is then seen SAYING "Pick a date" — the positive proof
+       — and only then is the date typed, and the input read back. */
+    await expect(async () => {
+      if (!(await owner.getByRole("button", { name: "Salsa", exact: true }).isVisible())) {
+        await owner.getByLabel("Dance style", { exact: true }).click();
+      }
+      await owner.getByRole("button", { name: "Salsa", exact: true }).click({ timeout: 2_000 });
+      await expect(owner.getByRole("button", { name: "Pick a date" })).toBeVisible({ timeout: 2_000 });
+    }).toPass({ timeout: 30_000 });
     await expect(async () => {
       await owner.getByLabel("Class date").fill(when.date);
+      await expect(owner.getByLabel("Class date")).toHaveValue(when.date, { timeout: 2_000 });
       await expect(owner.getByRole("button", { name: "Pick a date" })).toHaveCount(0, { timeout: 2_000 });
     }).toPass({ timeout: 30_000 });
     await pick(owner, "Starts", when.time);
-    await owner.getByLabel("Dance style", { exact: true }).click();
-    await owner.getByRole("button", { name: "Salsa", exact: true }).click();
     await owner.getByRole("button", { name: "Hold it in Studio A" }).click();
     await owner.getByRole("button", { name: "Continue" }).click();
     /* ⚠ THIS ASK GOES TO SOMEBODY OFF THE TEAM, AND THAT IS THE POINT (18 Sep

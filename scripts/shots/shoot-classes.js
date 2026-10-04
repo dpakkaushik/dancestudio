@@ -87,6 +87,20 @@ const signIn = async (ctx, email) => {
 
 const iso = (minutes) => new Date(Date.now() + minutes * 60000).toISOString();
 
+/** minutes from now to `hour`:00 IST, `days` days ahead.
+ *  ⚠ FOUND 5 Oct 2026, AND IT IS THE "1480s DRIFT" OF 4 Oct: a class planted at
+ *  now + N days inherits the clock's time of day, so a run just before midnight
+ *  planted a session from 23:40 to 00:40 the NEXT day. The class form holds one
+ *  date and two times, so it read that as "ends before it starts", never drew a
+ *  Continue button, and the run timed out. A class the FORM must open is planted
+ *  at a fixed evening hour, on the hour, so it never crosses midnight and the
+ *  form's HH:MM never drops seconds off it. */
+const atIst = (days, hour) => {
+  const istNow = new Date(Date.now() + 330 * 60000);
+  const target = Date.UTC(istNow.getUTCFullYear(), istNow.getUTCMonth(), istNow.getUTCDate() + days, hour, 0, 0) - 330 * 60000;
+  return (target - Date.now()) / 60000;
+};
+
 /** a draft class through the one creation door.
  *  ⚠ A CLASS IN THE PAST IS PLANTED THE SEEDER'S WAY (30 Sep 2026): created
  *  AHEAD as the owner, then its session back-dated by the SERVICE ROLE. The
@@ -182,7 +196,7 @@ const BOOK_ON_PAGE = /^Book Now$/;
       await patch(owner.h, `classes?id=eq.${id}`, { status: "published" }, `publish ${id}`);
     }
     /* a draft whose teacher has been ASKED and not answered */
-    const asked = await draftClass(owner.h, studio.id, roomA[0].id, "Bhangra", 60 * 24 * 9, 60 * 24 * 9 + 60);
+    const asked = await draftClass(owner.h, studio.id, roomA[0].id, "Bhangra", atIst(9, 18), atIst(9, 18) + 60);
     await rpc(owner.h, "ask_class_person", { p_class_id: asked, p_user_id: artist.id, p_kind: "artist" });
 
     /* the learner takes a seat on the class that is AHEAD */
