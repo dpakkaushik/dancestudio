@@ -3026,11 +3026,23 @@ test.describe.serial("DanceOS, end to end", () => {
     await expect(owner.getByRole("heading", { name: "Team" })).toBeVisible();
     await expect(owner.getByText(learnerName).first()).toBeVisible();
     await expect(owner.getByText("₹2,500").first()).toBeVisible();
+    /* ⚠ EVERY SECTION IS FOLDED ONTO ITS ENTRIES, CLOSED (4 Oct 2026, the user:
+       "Earnings all section I mentioned should be collapsible with entries for
+       it") — the payment's note is behind PAID TO THEM until it is opened */
+    await expect(owner.getByText("September")).toBeHidden();
+    await expect(owner.getByTestId("team-fold-paid")).not.toHaveAttribute("open", "");
+    await owner.getByTestId("team-fold-paid").locator("summary").click();
+    await expect(owner.getByTestId("team-fold-paid")).toHaveAttribute("open", "");
+    await expect(owner.getByTestId("team-payment")).toHaveCount(1);
     await expect(owner.getByText("September")).toBeVisible();
     /* ⚠ `record_team_payment` writes a payout with NO session lines ON PURPOSE
        (19 Sep 2026, R35) — it is a salary, not a bill for sessions — so the page
        says that rather than drawing an empty list under it. */
-    await expect(owner.getByText("Not against sessions — recorded as an amount.")).toBeVisible();
+    await expect(owner.getByText("Not against sessions.")).toBeVisible();
+    await owner.getByTestId("team-fold-revenue").locator("summary").click();
+    await expect(owner.getByTestId("team-fold-revenue")).toContainText("Membership seats not included");
+    await owner.getByTestId("team-fold-owed").locator("summary").click();
+    await expect(owner.getByTestId("team-fold-owed")).toHaveAttribute("open", "");
     /* ⚠ THE COLUMN IS EARNINGS (4 Oct 2026, the user: "payment section should be
        renamed as Earnings … revenue … what was paid to them … still owed …
        whatever left is the Total earnings") — the ₹2,500 salary is money paid to
@@ -3042,6 +3054,15 @@ test.describe.serial("DanceOS, end to end", () => {
     await expect(owner.getByTestId("team-earnings-breakup")).toContainText("PAID TO THEM");
     await expect(owner.getByTestId("team-earnings-breakup")).toContainText("STILL OWED TO THEM");
     await expect(owner.getByTestId("team-total-line")).toContainText("TOTAL EARNINGS");
+    /* ⚠ EVERY SECTION OF EARNINGS FOLDS (4 Oct 2026, the user: "all sections in
+       earnings should be collapsible") — key stats open, the total shut onto its sum */
+    await expect(owner.getByTestId("team-fold-stats")).toHaveAttribute("open", "");
+    /* ⚠ A PERIOD ABOVE THE BOXES, INSIDE KEY STATS (4 Oct 2026) — All by default */
+    await expect(owner.getByTestId("team-fold-stats").getByTestId("team-period")).toBeVisible();
+    await expect(owner.getByTestId("team-period").getByRole("link", { name: "All", exact: true })).toHaveAttribute("aria-current", "true");
+    await expect(owner.getByTestId("team-total-line")).not.toHaveAttribute("open", "");
+    await owner.getByTestId("team-total-line").locator("summary").click();
+    await expect(owner.getByTestId("team-total-line")).toContainText("Paid to them");
     /* ⚠ NO PROFILE / BACK TO THE TEAM BUTTONS, AND STATS · CLASSES (4 Oct 2026, the
        user: "remove profile and back to team button. stats and performance merged
        into one section called Stats. New section for Classes") */

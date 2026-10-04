@@ -87,6 +87,28 @@ export interface TeamMemberClass {
   owedSessions: number;
 }
 
+/** one payment in, or one refund out, on a session they were credited with */
+export interface TeamRevenueEntry {
+  id: string;
+  kind: "payment" | "refund";
+  classTitle: string;
+  /** when the session ran */
+  sessionAt: string | null;
+  /** when the money moved */
+  at: string;
+  amountInr: number;
+  method: string | null;
+  payerName: string | null;
+}
+
+/** one session taken here at a rate and not paid yet */
+export interface TeamOwedEntry {
+  sessionId: string;
+  classTitle: string;
+  startsAt: string;
+  rateInr: number;
+}
+
 export interface TeamMemberWork {
   taught: number;
   assisted: number;
@@ -114,6 +136,13 @@ export interface TeamMemberWork {
    *  screen says so rather than pricing it. */
   revenueGrossInr: number;
   revenueRefundedInr: number;
+  /** ⚠ THE ENTRIES BEHIND EACH SECTION (4 Oct 2026, the user: "Earnings all
+   *  section I mentioned should be collapsible with entries for it") — every
+   *  payment and refund that makes up REVENUE, and every session that makes up
+   *  STILL OWED, newest first. The same rows the totals are summed from, so a
+   *  section's figure and its list cannot disagree. */
+  revenueEntries: TeamRevenueEntry[];
+  owedEntries: TeamOwedEntry[];
   firstAt: string | null;
   lastAt: string | null;
   months: Array<{ key: string; label: string; n: number }>;
@@ -272,6 +301,8 @@ export async function findTeamMemberWork(
     owedSessions: 0,
     revenueGrossInr: 0,
     revenueRefundedInr: 0,
+    revenueEntries: [],
+    owedEntries: [],
     firstAt: null,
     lastAt: null,
     months: lastSixMonths(now).map((m) => ({ ...m, n: 0 })),
@@ -298,7 +329,7 @@ export async function findTeamMemberWork(
     classIds.length
       ? supabase
           .from("payments")
-          .select("amount_inr, orders!inner (class_id, session_id)")
+          .select("id, amount_inr, method, created_at, user_id, orders!inner (class_id, session_id)")
           .eq("business_id", businessId)
           .in("orders.class_id", classIds)
           .in("status", ["captured", "refunded"])
@@ -308,7 +339,7 @@ export async function findTeamMemberWork(
     classIds.length
       ? supabase
           .from("refunds")
-          .select("amount_inr, orders!inner (class_id, session_id)")
+          .select("id, amount_inr, created_at, updated_at, user_id, orders!inner (class_id, session_id)")
           .eq("business_id", businessId)
           .in("orders.class_id", classIds)
           .eq("status", "processed")
@@ -377,7 +408,7 @@ export async function findTeamMemberWork(
   const byMonth = new Map<string, number>();
   const byStyle = new Map<string, number>();
   const rows = new Map<string, TeamMemberClass & { upBooked: number; upSeats: number }>();
-  const out = { ...empty, months: empty.months };
+  const out = { ...empty, months: empty.months, revenueEntries: [] as TeamRevenueEntry[], owedEntries: [] as TeamOwedEntry[] };
   let firstAt: string | null = null;
   let lastAt: string | null = null;
 
@@ -454,6 +485,7 @@ export async function findTeamMemberWork(
           out.owedSessions += 1;
           row.owedInr += n(c.pay_per_session_inr);
           row.owedSessions += 1;
+          out.owedEntries.push({ sessionId: s.id, classTitle: row.title, startsAt: s.starts_at, rateInr: n(c.pay_per_session_inr) });
         }
         const k = monthKey(s.starts_at);
         byMonth.set(k, (byMonth.get(k) ?? 0) + 1);
@@ -475,24 +507,56 @@ export async function findTeamMemberWork(
 
   /* EARNINGS — only on a session they were CREDITED with (held while they were
      on it), so a class they joined late brings in only what came after */
-  type MoneyRow = { amount_inr: number; orders: One<{ class_id: string; session_id: string | null }> };
-  const moneyOf = (list: MoneyRow[], add: (classId: string, inr: number) => void) => {
+  type MoneyRow = {
+    id: string;
+    amount_inr: number;
+    method?: string | null;
+    created_at: string;
+    updated_at?: string | null;
+    user_id: string | null;
+    orders: One<{ class_id: string; session_id: string | null }>;
+  };
+  const sessionAt = new Map(sessions.map((s) => [s.id, s.starts_at]));
+  const counted: Array<{ row: MoneyRow; kind: "payment" | "refund"; classId: string; sessionId: string }> = [];
+  const moneyOf = (list: MoneyRow[], kind: "payment" | "refund", add: (classId: string, inr: number) => void) => {
     for (const p of list) {
       const o = one(p.orders);
       if (!o?.session_id || !credited.has(o.session_id)) continue;
       add(o.class_id, n(p.amount_inr));
+      counted.push({ row: p, kind, classId: o.class_id, sessionId: o.session_id });
     }
   };
-  moneyOf((paymentsRes.data ?? []) as unknown as MoneyRow[], (classId, inr) => {
+  moneyOf((paymentsRes.data ?? []) as unknown as MoneyRow[], "payment", (classId, inr) => {
     out.revenueGrossInr += inr;
     const row = rows.get(classId);
     if (row) row.revenueInr += inr;
   });
-  moneyOf((refundsRes.data ?? []) as unknown as MoneyRow[], (classId, inr) => {
+  moneyOf((refundsRes.data ?? []) as unknown as MoneyRow[], "refund", (classId, inr) => {
     out.revenueRefundedInr += inr;
     const row = rows.get(classId);
     if (row) row.revenueInr -= inr;
   });
+  /* WHO PAID — one profiles read for the whole list; a name the caller may not
+     read simply stays blank (degrade, never fail) */
+  const payerIds = [...new Set(counted.map((c) => c.row.user_id).filter((v): v is string => Boolean(v)))];
+  const payerNames = new Map<string, string>();
+  if (payerIds.length) {
+    const { data } = await supabase.from("profiles").select("id, full_name").in("id", payerIds.slice(0, 500));
+    for (const p of (data ?? []) as Array<{ id: string; full_name: string | null }>) if (p.full_name) payerNames.set(p.id, p.full_name);
+  }
+  out.revenueEntries = counted
+    .map(({ row, kind, classId, sessionId }) => ({
+      id: `${kind}:${row.id}`,
+      kind,
+      classTitle: rows.get(classId)?.title ?? "A class",
+      sessionAt: sessionAt.get(sessionId) ?? null,
+      at: kind === "refund" ? (row.updated_at ?? row.created_at) : row.created_at,
+      amountInr: n(row.amount_inr),
+      method: row.method ?? null,
+      payerName: row.user_id ? (payerNames.get(row.user_id) ?? null) : null,
+    }))
+    .sort((a, b) => b.at.localeCompare(a.at));
+  out.owedEntries.sort((a, b) => b.startsAt.localeCompare(a.startsAt));
 
   /* their own classes held here — shown, never counted into the team's money */
   for (const cls of ownClasses) {

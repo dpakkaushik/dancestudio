@@ -411,3 +411,16 @@ a:focus-visible:not([data-slot]) {
     opacity: 0;
   }
 }
+
+/* a folded section (Member Detail's Earnings, 4 Oct 2026): no browser marker,
+   and the chevron turns when it opens */
+.dos-fold > summary::-webkit-details-marker {
+  display: none;
+}
+.dos-fold-chev {
+  display: inline-block;
+  transition: transform 0.15s ease;
+}
+.dos-fold[open] .dos-fold-chev {
+  transform: rotate(180deg);
+}

@@ -1,5 +1,5 @@
 import { notFound, redirect } from "next/navigation";
-import { TeamMemberPage, type TeamMemberShow } from "@/features/staff/components/TeamMemberPage";
+import { TeamMemberPage, parseEarnPeriod, type TeamMemberShow } from "@/features/staff/components/TeamMemberPage";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { findPersonPayHistory } from "@/repositories/payouts";
 import { findTeamMemberWork } from "@/repositories/teamMemberWork";
@@ -22,9 +22,9 @@ export default async function TeamMemberRoute({
   searchParams,
 }: {
   params: Promise<{ businessId: string; userId: string }>;
-  searchParams: Promise<{ show?: string }>;
+  searchParams: Promise<{ show?: string; period?: string }>;
 }) {
-  const [{ businessId, userId }, { show: asked }] = await Promise.all([params, searchParams]);
+  const [{ businessId, userId }, { show: asked, period: askedPeriod }] = await Promise.all([params, searchParams]);
   if (!UUID_RE.test(businessId) || !UUID_RE.test(userId)) {
     notFound();
   }
@@ -72,6 +72,7 @@ export default async function TeamMemberRoute({
       history={history}
       work={work}
       show={show}
+      period={parseEarnPeriod(askedPeriod)}
       meUserId={user.id}
       principalOwnerId={principalOwnerId}
     />

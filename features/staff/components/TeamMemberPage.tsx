@@ -1,8 +1,9 @@
 import type { CSSProperties, ReactNode } from "react";
+import Link from "next/link";
 
 import { DOS_TOOLS, DeskHero } from "@/features/businesses/components/biz-kit";
 import { SegmentedPanels } from "@/features/shell/components/SegmentedNav";
-import { ToolBody, ToolCard, ToolChip, ToolFacts, ToolHead, ToolTitle } from "@/components/ui/ToolCard";
+import { ToolBody, ToolCard, ToolChip, ToolFacts, ToolHead } from "@/components/ui/ToolCard";
 import { FigureHead } from "@/components/ui/FigureHead";
 import { PayHistoryExport } from "./PayHistoryExport";
 import { MemberManage } from "./MemberManage";
@@ -10,6 +11,7 @@ import { TeamClassesPanel } from "./TeamClassesPanel";
 import type { BusinessType } from "@/types/business";
 import { DOS_UI, GREEN, INK, LILAC, MUTED, SUB } from "@/lib/design/tokens";
 import { KIND_WORD, kindOf } from "@/types/profile";
+import { PERIODS, bucketKeyOf, bucketLabelOf, bucketStartIso, type Period } from "@/lib/format/month";
 import { MEMBER_LABEL, MEMBER_ROLE_WORD } from "@/types/staff";
 import { PAYOUT_METHOD_LABEL, payoutTone, type PersonPayHistory } from "@/types/payout";
 import type { TeamMember } from "@/repositories/businesses";
@@ -50,12 +52,6 @@ const dayWords = (iso: string): string => {
   const d = new Date(`${iso.slice(0, 10)}T00:00:00+05:30`);
   if (Number.isNaN(d.getTime())) return iso;
   return d.toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric", timeZone: "Asia/Kolkata" });
-};
-const whenWords = (iso: string): string => {
-  if (!iso) return "";
-  const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) return "";
-  return d.toLocaleString("en-IN", { day: "numeric", month: "short", hour: "numeric", minute: "2-digit", timeZone: "Asia/Kolkata" });
 };
 const dateWords = (iso: string) => new Intl.DateTimeFormat("en-IN", { day: "numeric", month: "short", year: "numeric", timeZone: "Asia/Kolkata" }).format(new Date(iso));
 
@@ -118,6 +114,80 @@ function Line({ label, sub, value, strong, tint, testId }: { label: ReactNode; s
 
 const rule: CSSProperties = { borderTop: "1.5px solid var(--el)", margin: "8px 0 2px" };
 
+/** ⚠ ONE SECTION OF THE STATEMENT, FOLDED (4 Oct 2026, the user: "Earnings all
+ *  section I mentioned should be collapsible with entries for it"). Closed by
+ *  default, like every class group on this page; the head carries the section's
+ *  figure and how many entries are behind it, so the statement still reads at a
+ *  glance with every section shut. A native `<details>`, so it needs no state. */
+/* ⚠ AND EVERY OTHER SECTION OF THE EARNINGS COLUMN FOLDS TOO (4 Oct 2026, the
+   user: "all sections in earnings should be collapsible … for team member
+   detail") — the key stats and the total included. `sub` replaces the count
+   line where a section has no entries to count; `open` is for the key stats
+   alone, which are the summary the column opens on. */
+function Fold({
+  title,
+  figure,
+  count,
+  noun,
+  sub,
+  open,
+  figureTint,
+  figureTestId,
+  testId,
+  children,
+}: {
+  title: string;
+  figure?: string;
+  count?: number;
+  noun?: [string, string];
+  sub?: string;
+  open?: boolean;
+  figureTint?: string;
+  figureTestId?: string;
+  testId: string;
+  children: ReactNode;
+}) {
+  const line = sub ?? (count != null && noun ? `${count} ${count === 1 ? noun[0] : noun[1]}` : null);
+  return (
+    <details data-testid={testId} className="dos-fold" open={open}>
+      <summary aria-label={[title, figure, line].filter(Boolean).join(" — ")} style={{ listStyle: "none", cursor: "pointer", display: "flex", alignItems: "center", gap: 8, padding: "8px 0" }}>
+        <span style={{ flex: 1, minWidth: 0 }}>
+          <span style={{ ...head, display: "block" }}>{title}</span>
+          {line ? <span style={{ display: "block", fontSize: 10.5, color: SUB, marginTop: 2 }}>{line}</span> : null}
+        </span>
+        {figure ? (
+          <b data-testid={figureTestId} style={{ fontSize: 13, fontWeight: 900, color: figureTint ?? INK, fontVariantNumeric: "tabular-nums" }}>
+            {figure}
+          </b>
+        ) : null}
+        <span aria-hidden="true" className="dos-fold-chev" style={{ fontSize: 12, color: MUTED, width: 14, textAlign: "center" }}>
+          ▾
+        </span>
+      </summary>
+      <div style={{ paddingBottom: 6 }}>{children}</div>
+    </details>
+  );
+}
+
+/* the short date the folds print — "2 Oct", IST, no year, no hour */
+const sessionWords = (iso: string | null) => (iso ? new Intl.DateTimeFormat("en-IN", { day: "numeric", month: "short", timeZone: "Asia/Kolkata" }).format(new Date(iso)) : "");
+
+/* ── THE PERIOD (4 Oct 2026, the user: "there should be a time period filter
+   above the stats boxes in earnings and a part of that section") ─────────
+   The main Earnings desk's own words (Day · Week · Month · Year = the CURRENT
+   one, IST) plus All, in the URL as `?period=`. A payment and a refund fall in
+   the period they MOVED, a payout on its `paid_on` day, an owed session on the
+   day it ran. ⚠ The clock is read in a module-level helper (react-hooks/purity). */
+export type EarnPeriod = "all" | Period;
+const EARN_PERIODS: ReadonlyArray<readonly [EarnPeriod, string]> = [["all", "All"], ...PERIODS];
+export const parseEarnPeriod = (v: string | undefined): EarnPeriod => (v === "day" || v === "week" || v === "month" || v === "year" ? v : "all");
+function periodWindow(period: EarnPeriod): { startMs: number | null; startDay: string | null; label: string } {
+  if (period === "all") return { startMs: null, startDay: null, label: "All time" };
+  const key = bucketKeyOf(new Date().toISOString(), period);
+  const startIso = bucketStartIso(key, period);
+  return { startMs: new Date(startIso).getTime(), startDay: startIso.slice(0, 10), label: bucketLabelOf(key, period) };
+}
+
 /* ── EARNINGS ─────────────────────────────────────────────────────────── */
 /** ⚠ WHAT THIS PERSON EARNS THE TEAM (4 Oct 2026, the user: "Team member detail
  *  payment section should be renamed as Earnings — should show key stats on top
@@ -130,7 +200,51 @@ const rule: CSSProperties = { borderTop: "1.5px solid var(--el)", margin: "8px 0
  *    = TOTAL EARNINGS  — what is left for the team.
  *  ⚠ "Paid" is every payment to them on this team, including an amount recorded
  *  against no session (R35) — that is money out for them, so it comes off. */
-function EarningsPanel({ history, work, personName, businessName, tint }: { history: PersonPayHistory; work: TeamMemberWork; personName: string; businessName: string; tint: string }) {
+function EarningsPanel({
+  history: allHistory,
+  work: allWork,
+  personName,
+  businessName,
+  tint,
+  period,
+  base,
+}: {
+  history: PersonPayHistory;
+  work: TeamMemberWork;
+  personName: string;
+  businessName: string;
+  tint: string;
+  period: EarnPeriod;
+  base: string;
+}) {
+  /* the statement, narrowed to the period — every figure is summed off the same
+     entries the sections list, so a figure and its list cannot disagree */
+  const win = periodWindow(period);
+  const inWin = (iso: string) => win.startMs == null || new Date(iso).getTime() >= win.startMs;
+  const payoutsIn = win.startDay == null ? allHistory.payouts : allHistory.payouts.filter((p) => p.paidOn.slice(0, 10) >= win.startDay!);
+  const history: PersonPayHistory =
+    period === "all"
+      ? allHistory
+      : {
+          ...allHistory,
+          payouts: payoutsIn,
+          paidInr: payoutsIn.filter((p) => p.status === "done").reduce((a, p) => a + p.amountInr, 0),
+          pendingInr: payoutsIn.filter((p) => p.status !== "done").reduce((a, p) => a + p.amountInr, 0),
+        };
+  const revIn = allWork.revenueEntries.filter((e) => inWin(e.at));
+  const owedIn = allWork.owedEntries.filter((e) => inWin(e.startsAt));
+  const work: TeamMemberWork =
+    period === "all"
+      ? allWork
+      : {
+          ...allWork,
+          revenueEntries: revIn,
+          owedEntries: owedIn,
+          revenueGrossInr: revIn.filter((e) => e.kind === "payment").reduce((a, e) => a + e.amountInr, 0),
+          revenueRefundedInr: revIn.filter((e) => e.kind === "refund").reduce((a, e) => a + e.amountInr, 0),
+          owedInr: owedIn.reduce((a, e) => a + e.rateInr, 0),
+          owedSessions: owedIn.length,
+        };
   const last = history.payouts[0]?.paidOn ?? null;
   const revenue = work.revenueGrossInr - work.revenueRefundedInr;
   const paid = history.paidInr + history.pendingInr;
@@ -138,12 +252,31 @@ function EarningsPanel({ history, work, personName, businessName, tint }: { hist
   const minus = (v: number) => (v > 0 ? `− ${rupees(v)}` : rupees(0));
   const totalWords = total < 0 ? `− ${rupees(-total)}` : rupees(total);
   const totalTint = total > 0 ? GREEN : total < 0 ? "#F87171" : undefined;
-  const earning = work.classes.filter((c) => c.origin === "business" && (c.revenueInr !== 0 || c.held > 0));
-  const owing = work.classes.filter((c) => c.owedSessions > 0);
+  const settledCount = history.payouts.filter((p) => payoutTone(p.status) === "done").length;
   return (
     <>
-      {/* KEY STATS — the four figures of the statement, then the ledger's own */}
-      <div style={panel}>
+      {/* KEY STATS — the four figures of the statement, then the ledger's own;
+          folded like the rest, and the one section that starts OPEN */}
+      <div style={{ ...panel, padding: "5px 14px" }}>
+        <Fold title="KEY STATS" sub={win.label} open testId="team-fold-stats">
+        {/* ALL · DAY · WEEK · MONTH · YEAR — a link, so it is in the URL */}
+        <div role="group" aria-label="Period" data-testid="team-period" style={{ display: "flex", gap: 2, background: "var(--el)", borderRadius: 12, padding: 3, marginBottom: 10 }}>
+          {EARN_PERIODS.map(([p, label]) => {
+            const on = period === p;
+            return (
+              <Link
+                key={p}
+                href={p === "all" ? `${base}?show=earnings` : `${base}?show=earnings&period=${p}`}
+                replace
+                scroll={false}
+                aria-current={on ? "true" : undefined}
+                style={{ flex: 1, textAlign: "center", padding: "7px 2px", borderRadius: 9, fontSize: 11.5, fontWeight: 800, textDecoration: "none", background: on ? "var(--solid)" : "transparent", color: on ? INK : SUB }}
+              >
+                {label}
+              </Link>
+            );
+          })}
+        </div>
         <ToolFacts
           tint={tint}
           items={[
@@ -163,95 +296,104 @@ function EarningsPanel({ history, work, personName, businessName, tint }: { hist
         />
         {/* ⚠ A CAPPED READ SAYS SO (21 Sep 2026) */}
         {!history.complete || !work.complete ? <div style={{ fontSize: 10.5, color: "#F59E0B", marginTop: 8, lineHeight: 1.45 }}>Counting the latest 4,000 rows only — the figures above may be short.</div> : null}
+        </Fold>
       </div>
 
-      {/* THE BREAKUP, in the user's own order */}
+      {/* THE BREAKUP, in the user's own order — each section folded onto its
+          entries (4 Oct 2026), the total folded onto its own sum */}
       <div style={panel} data-testid="team-earnings-breakup">
-        <FigureHead margin="0 0 6px" title={<span style={head}>REVENUE FOR THE TEAM</span>} figure={<span style={{ ...head, fontVariantNumeric: "tabular-nums" }}>{rupees(revenue)}</span>} />
-        {earning.length === 0 ? (
-          <div style={{ fontSize: 11.5, color: SUB }}>Nothing has come in on a session they took here yet.</div>
-        ) : (
-          earning.map((c) => (
-            <Line key={c.classId} label={c.title} sub={`${c.held} ${c.held === 1 ? "session" : "sessions"} taken`} value={rupees(c.revenueInr)} testId="team-revenue-class" />
-          ))
-        )}
-        {work.revenueRefundedInr > 0 ? <Line label="Refunded" sub="handed back on those sessions" value={minus(work.revenueRefundedInr)} /> : null}
-        <div style={{ fontSize: 10.5, color: MUTED, marginTop: 6, lineHeight: 1.45 }}>Seats paid with a membership are not here — that money came in when the pass was sold.</div>
+        <Fold title="REVENUE FOR THE TEAM" figure={rupees(revenue)} count={work.revenueEntries.length} noun={["entry", "entries"]} testId="team-fold-revenue">
+          {work.revenueEntries.length === 0 ? (
+            <div style={{ fontSize: 11.5, color: SUB }}>Nothing yet.</div>
+          ) : (
+            work.revenueEntries.map((e) => (
+              <Line
+                key={e.id}
+                testId={e.kind === "refund" ? "team-revenue-refund" : "team-revenue-entry"}
+                label={e.kind === "refund" ? `Refund · ${e.classTitle}` : e.classTitle}
+                sub={[e.payerName, e.sessionAt ? sessionWords(e.sessionAt) : null, e.method ? e.method.replace(/_/g, " ").toUpperCase() : null].filter(Boolean).join(" · ") || undefined}
+                value={e.kind === "refund" ? minus(e.amountInr) : rupees(e.amountInr)}
+                tint={e.kind === "refund" ? "#F87171" : undefined}
+              />
+            ))
+          )}
+          {work.revenueRefundedInr > 0 ? (
+            <div style={{ ...rule, marginTop: 6 }}>
+              <Line label="In" value={rupees(work.revenueGrossInr)} />
+              <Line label="Refunded" value={minus(work.revenueRefundedInr)} />
+            </div>
+          ) : null}
+          <div style={{ fontSize: 10.5, color: MUTED, marginTop: 6, lineHeight: 1.45 }}>Membership seats not included.</div>
+        </Fold>
 
         <div style={rule} />
-        <FigureHead margin="8px 0 6px" title={<span style={head}>PAID TO THEM</span>} figure={<span style={{ ...head, fontVariantNumeric: "tabular-nums" }}>{minus(paid)}</span>} />
-        <Line label="Settled" sub={`${history.payouts.filter((p) => payoutTone(p.status) === "done").length} of ${history.payouts.length} payments`} value={rupees(history.paidInr)} testId="team-settled" />
-        {history.pendingInr > 0 ? <Line label="In transit or on hold" value={rupees(history.pendingInr)} /> : null}
+        <Fold title="PAID TO THEM" figure={minus(paid)} count={history.payouts.length} noun={["payment", "payments"]} testId="team-fold-paid">
+          {history.payouts.length === 0 ? (
+            <div style={{ fontSize: 11.5, color: SUB, lineHeight: 1.5 }}>
+              Nothing paid yet.
+            </div>
+          ) : (
+            <>
+              <Line label="Settled" sub={`${settledCount} of ${history.payouts.length} ${history.payouts.length === 1 ? "payment" : "payments"}`} value={rupees(history.paidInr)} testId="team-settled" />
+              {history.pendingInr > 0 ? <Line label="In transit" value={rupees(history.pendingInr)} /> : null}
+              {history.payouts.map((p) => {
+                const tone = TONE[payoutTone(p.status)];
+                return (
+                  <div key={p.id} data-testid="team-payment" style={{ borderTop: "1.5px solid var(--el)", marginTop: 6, paddingTop: 8 }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                      <span style={{ flex: 1, minWidth: 0 }}>
+                        <b style={{ display: "block", fontSize: 14, fontWeight: 900, color: INK, fontVariantNumeric: "tabular-nums" }}>{rupees(p.amountInr)}</b>
+                        <span style={{ display: "block", fontSize: 10.5, color: SUB, marginTop: 1 }}>
+                          {dayWords(p.paidOn).replace(/ \d{4}$/, "")} · {PAYOUT_METHOD_LABEL[p.method]}
+                        </span>
+                      </span>
+                      <ToolChip word={tone.word} fg={tone.ink} bg={tone.ground} />
+                    </div>
+                    {p.providerRef ? <div style={{ fontSize: 10.5, color: SUB, marginTop: 3 }}>Reference {p.providerRef}</div> : null}
+                    {p.note ? <div style={{ fontSize: 12, marginTop: 5 }}>{p.note}</div> : null}
+                    {/* WHAT IT COVERED — the half the desk's card only counts */}
+                    {p.sessions.length > 0 ? (
+                      <div style={{ marginTop: 6 }}>
+                        {p.sessions.map((s) => (
+                          <div key={s.sessionId} style={{ display: "flex", gap: 10, padding: "2px 0", fontSize: 11 }}>
+                            <span style={{ flex: 1, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", color: SUB }}>
+                              {s.classTitle}
+                              {s.startsAt ? ` · ${sessionWords(s.startsAt)}` : ""}
+                            </span>
+                            <b style={{ flexShrink: 0, fontVariantNumeric: "tabular-nums" }}>{rupees(s.rateInr)}</b>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      /* ⚠ NOT AN EMPTY LIST — `record_team_payment` writes a payout with
+                         no session lines ON PURPOSE (19 Sep 2026, R35) */
+                      <div style={{ fontSize: 10.5, color: SUB, marginTop: 5 }}>Not against sessions.</div>
+                    )}
+                  </div>
+                );
+              })}
+            </>
+          )}
+        </Fold>
 
         <div style={rule} />
-        <FigureHead margin="8px 0 6px" title={<span style={head}>STILL OWED TO THEM</span>} figure={<span style={{ ...head, fontVariantNumeric: "tabular-nums" }}>{minus(work.owedInr)}</span>} />
-        {owing.length === 0 ? (
-          <div style={{ fontSize: 11.5, color: SUB }}>Every session they have taken here at a rate is paid.</div>
-        ) : (
-          owing.map((c) => (
-            <Line
-              key={c.classId}
-              label={c.title}
-              sub={`${c.owedSessions} ${c.owedSessions === 1 ? "session" : "sessions"} × ${rupees(c.ratePerSessionInr ?? 0)}`}
-              value={rupees(c.owedInr)}
-              testId="team-owed-class"
-            />
-          ))
-        )}
+        <Fold title="STILL OWED TO THEM" figure={minus(work.owedInr)} count={work.owedEntries.length} noun={["session", "sessions"]} testId="team-fold-owed">
+          {work.owedEntries.length === 0 ? (
+            <div style={{ fontSize: 11.5, color: SUB }}>All paid up.</div>
+          ) : (
+            work.owedEntries.map((e) => <Line key={e.sessionId} label={e.classTitle} sub={sessionWords(e.startsAt)} value={rupees(e.rateInr)} testId="team-owed-entry" />)
+          )}
+        </Fold>
 
         <div style={{ ...rule, borderTopWidth: 2 }} />
-        <Line label="TOTAL EARNINGS" sub="Revenue, less what was paid and what is still owed" value={totalWords} strong tint={totalTint} testId="team-total-line" />
+        {/* the total folds onto its own arithmetic */}
+        <Fold title="TOTAL EARNINGS" sub="Revenue − paid − owed" figure={totalWords} figureTint={totalTint} figureTestId="team-total-figure" testId="team-total-line">
+          <Line label="Revenue" value={rupees(revenue)} />
+          <Line label="Paid to them" value={minus(paid)} />
+          <Line label="Still owed" value={minus(work.owedInr)} />
+          <Line label="Total earnings" value={totalWords} strong tint={totalTint} />
+        </Fold>
       </div>
-
-      <FigureHead
-        margin="4px 2px 10px"
-        title={<span style={head}>PAYMENTS</span>}
-        figure={<span style={{ ...head, fontVariantNumeric: "tabular-nums" }}>{history.payouts.length}</span>}
-      />
-
-      {history.payouts.length === 0 ? (
-        <div style={{ ...panel, textAlign: "center", border: "1.5px dashed var(--el)", fontSize: 12, color: SUB, lineHeight: 1.5 }}>
-          Nothing paid to {personName} yet.
-          <br />
-          Record one with Pay on their card on the Team desk.
-        </div>
-      ) : null}
-
-      {history.payouts.map((p) => {
-        const tone = TONE[payoutTone(p.status)];
-        return (
-          <ToolCard key={p.id} testId="team-payment">
-            <ToolBody style={{ borderTop: "none" }}>
-              <ToolTitle kicker={`${dayWords(p.paidOn)} · ${PAYOUT_METHOD_LABEL[p.method]}`} after={<ToolChip word={tone.word} fg={tone.ink} bg={tone.ground} />}>
-                {rupees(p.amountInr)}
-              </ToolTitle>
-              {p.providerRef ? <div style={{ fontSize: 10.5, color: SUB, marginTop: 3 }}>Reference {p.providerRef}</div> : null}
-              {p.note ? <div style={{ fontSize: 12, marginTop: 6 }}>{p.note}</div> : null}
-              {/* WHAT IT COVERED — the half the desk's card only counts */}
-              {p.sessions.length > 0 ? (
-                <div style={{ marginTop: 10, paddingTop: 9, borderTop: "1.5px solid var(--el)" }}>
-                  <div style={{ fontSize: 9.5, fontWeight: 900, letterSpacing: 0.8, color: MUTED, marginBottom: 5 }}>
-                    {p.sessions.length} {p.sessions.length === 1 ? "SESSION" : "SESSIONS"}
-                  </div>
-                  {p.sessions.map((s) => (
-                    <div key={s.sessionId} style={{ display: "flex", gap: 10, padding: "3px 0", fontSize: 11.5 }}>
-                      <span style={{ flex: 1, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                        {s.classTitle}
-                        <span style={{ color: SUB }}>{s.startsAt ? ` · ${whenWords(s.startsAt)}` : ""}</span>
-                      </span>
-                      <b style={{ flexShrink: 0, fontVariantNumeric: "tabular-nums" }}>{rupees(s.rateInr)}</b>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                /* ⚠ NOT AN EMPTY LIST — `record_team_payment` writes a payout with
-                   no session lines ON PURPOSE (19 Sep 2026, R35) */
-                <div style={{ fontSize: 10.5, color: SUB, marginTop: 7 }}>Not against sessions — recorded as an amount.</div>
-              )}
-            </ToolBody>
-          </ToolCard>
-        );
-      })}
 
       {/* one line per SESSION — the only screen that knows which (29 Sep 2026) */}
       <PayHistoryExport personName={personName} businessName={businessName} payouts={history.payouts} />
@@ -335,6 +477,7 @@ export function TeamMemberPage({
   history,
   work,
   show,
+  period = "all",
   meUserId,
   principalOwnerId,
 }: {
@@ -345,6 +488,7 @@ export function TeamMemberPage({
   history: PersonPayHistory;
   work: TeamMemberWork;
   show: TeamMemberShow;
+  period?: EarnPeriod;
   meUserId: string;
   principalOwnerId: string | null;
 }) {
@@ -413,7 +557,7 @@ export function TeamMemberPage({
           { key: "classes", href: `${base}?show=classes`, label: "Classes", aria: `${member.name}'s classes here` },
         ]}
         panels={[
-          { key: "earnings", node: <EarningsPanel history={history} work={work} personName={member.name} businessName={businessName} tint={tint} /> },
+          { key: "earnings", node: <EarningsPanel history={history} work={work} personName={member.name} businessName={businessName} tint={tint} period={period} base={base} /> },
           { key: "stats", node: <StatsPanel work={work} tint={tint} /> },
           {
             key: "classes",
