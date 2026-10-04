@@ -188,24 +188,8 @@ export async function findReceivedEnquiries(supabase: SupabaseClient, businessId
   return ((data ?? []) as unknown as EnquiryRow[]).map(toEnquiry);
 }
 
-/** Enquiries that came IN to the crews I lead (18 Sep 2026) — the crew's Inbox,
- *  and the leader's own. RLS admits the leader; the ids are said out loud anyway. */
-export async function findReceivedEnquiriesForCrews(supabase: SupabaseClient, crewIds: string[]): Promise<Enquiry[]> {
-  if (crewIds.length === 0) {
-    return [];
-  }
-  const { data, error } = await supabase
-    .from("enquiries")
-    .select(ENQUIRY_SELECT)
-    .in("crew_id", crewIds)
-    .is("deleted_at", null)
-    .order("created_at", { ascending: false })
-    .limit(MAX_LIST);
-  if (error) {
-    throw new Error(`enquiries.findReceivedForCrews failed: ${error.message}`);
-  }
-  return ((data ?? []) as unknown as EnquiryRow[]).map(toEnquiry);
-}
+/* ⚠ `findReceivedEnquiriesForCrews` is gone (4 Oct 2026, the user: "remove
+   enquiries for crew") — a crew takes none, and `send_enquiry` refuses one */
 
 /** Enquiries I SENT — the other end of the same desk. */
 export async function findSentEnquiries(supabase: SupabaseClient, userId: string): Promise<Enquiry[]> {
@@ -239,10 +223,9 @@ export async function findEnquiryById(supabase: SupabaseClient, enquiryId: strin
 export async function sendEnquiry(
   supabase: SupabaseClient,
   input: {
-    /** the business asked — or null when the enquiry goes to a crew */
-    businessId: string | null;
-    /** the crew asked (18 Sep 2026) — exactly one of the two is set; the RPC keeps the same rule */
-    crewId?: string | null;
+    /** the business asked — a studio or an artist page. ⚠ Never a crew since
+     *  4 Oct 2026: `send_enquiry` refuses `p_crew_id`, so it is not sent */
+    businessId: string;
     typeKey: EnquiryTypeKey;
     fields: Array<[string, string]>;
     dates: string[];
@@ -259,7 +242,6 @@ export async function sendEnquiry(
     p_where: input.whereText,
     p_message: input.message,
     p_mobile: input.mobile,
-    p_crew_id: input.crewId ?? null,
   });
   if (error) {
     throw new Error(error.message);

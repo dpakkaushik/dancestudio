@@ -1,5 +1,4 @@
 import Link from "next/link";
-import { EnquiryButton } from "@/features/enquiries/components/EnquirySheet";
 import { ActionRow, CallButton, MailButton, MessageButton, whatsappHrefOf } from "@/features/profiles/components/ContactButtons";
 import { EntityBand } from "@/features/profiles/components/profile-band";
 import { TopPanel } from "@/components/ui/TopPanel";
@@ -185,16 +184,15 @@ export function CrewPublicPage({
           </div>
         )}
 
-        {/* ── THE BUTTONS A CREW'S PAGE CARRIES (19 Sep 2026): Enquiry · Mail — the
-            enquiry a celebration, a corporate show or a collaboration, answered by
-            the leader from the crew's Inbox ── */}
+        {/* ── THE BUTTONS A CREW'S PAGE CARRIES: Call · Mail · Message. ⚠ NO
+            ENQUIRY (4 Oct 2026, the user: "remove enquiries for crew") — a crew is
+            asked onto nothing; `send_enquiry` refuses a crew in words ── */}
         {/* ⚠ THE DEFAULT for a visitor, whose row follows the hero directly —
             and the default is −6 since 27 Sep 2026, which lands it 8px under the
             links, the same step the band's own rows take (`ActionRow` carries
             the measurement). 6 for the crew's own people, whose row follows the
             strip above instead, and a strip pads nothing. */}
         <ActionRow marginTop={viewer === "other" ? 12 : 6}>
-          {viewer === "other" ? <EnquiryButton businessId={crew.id} crewId={crew.id} businessName={crew.name} businessType="artist_page" signedIn={signedIn} accent={RC} /> : null}
           {/* CALL IS A SWITCH (push 2): the number reaches this page only while the leader's switch is on — the policy on crew_contacts is the switch */}
           {crew.phone && crew.phonePublic ? <CallButton phone={crew.phone} /> : null}
           {crew.contactEmail ? <MailButton email={crew.contactEmail} /> : null}

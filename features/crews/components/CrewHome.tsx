@@ -18,7 +18,6 @@ import { ActionRow, CallButton, MailButton, MessageButton, whatsappHrefOf } from
 import { ContactEditButton } from "@/features/profiles/components/ContactEditor";
 import { EditDetailsChip, EditModeButton, EditModeProvider } from "@/features/profiles/components/EditMode";
 import { RecordListsProvider } from "@/features/profiles/components/RecordLists";
-import { EnquiryButton } from "@/features/enquiries/components/EnquirySheet";
 import { CrewLinksRow, CrewStylesRow } from "./CrewBand";
 import { DOS_TOOLS } from "@/features/businesses/components/biz-kit";
 import { DOS_UI, INK, LILAC } from "@/lib/design/tokens";
@@ -62,10 +61,8 @@ export function CrewHome({ crew, members, header = [], followers = 0, order = nu
        switch — which read Classes · Events · Practice until 29 Sep 2026. */
     { name: DOS_TOOLS.practice.name, href: `/crews/${crew.id}/manage/practice`, k: "practice", c: DOS_TOOLS.practice.c },
     { name: DOS_TOOLS.calendar.name, href: `/crews/${crew.id}/manage/calendar`, k: "calendar", c: DOS_TOOLS.calendar.c },
-    /* ⚠ EARNINGS (2 Oct 2026, the user: "earnings for crews is missing") — what
-       the crew's enquiries brought in; green clears every other tile on a
-       crew's grid (orange, violet, indigo, cyan) */
-    { name: DOS_TOOLS.earn.name, href: `/crews/${crew.id}/manage/earnings`, k: "earn", c: DOS_TOOLS.earn.c },
+    /* ⚠ NO EARNINGS TILE since 4 Oct 2026 — it counted the crew's enquiry money
+       and nothing else, and a crew takes no enquiries any more */
   ];
   const shots: HeroShot[] = header.filter((h) => h.url).map((h, i) => ({ key: h.id, src: h.url as string, alt: `Header picture ${i + 1} of ${crew.name}`, signed: h.signed }));
   const whatsapp = whatsappHrefOf(crew.socials);
@@ -212,25 +209,13 @@ export function CrewHome({ crew, members, header = [], followers = 0, order = nu
           </EntityBand>
         </IdentityHero>
 
-        {/* ── THE BUTTONS THE CREW'S PAGE CARRIES (21 Sep 2026): Enquiry · Call ·
-            Mail, in that order, from the crew's own fields. A crew has no
-            schedule bar, so they sit where the page puts them — directly under
-            the band. ⚠ Enquiry is drawn and DISABLED: you are in this crew, and
-            `send_enquiry` refuses the leader and every confirmed member in those
-            words (#0u). ⚠ Call is the LEADER'S SWITCH, exactly as on the page —
+        {/* ── THE BUTTONS THE CREW'S PAGE CARRIES: Call · Mail · Message, from the
+            crew's own fields, directly under the band. ⚠ NO ENQUIRY since 4 Oct
+            2026 (the user: "remove enquiries for crew"). ⚠ Call is the LEADER'S SWITCH, exactly as on the page —
             `crew_contacts`' own SELECT policy IS the switch, so a number that
             reaches nobody is not drawn here either. ── */}
         {/* no gap of its own — the hero's own bottom padding is it (21 Sep 2026) */}
         <ActionRow marginTop={12}>
-          <EnquiryButton
-            businessId={crew.id}
-            crewId={crew.id}
-            businessName={crew.name}
-            businessType="artist_page"
-            signedIn
-            accent={CREW_GRAD[1]}
-            cannotAsk="You are in this crew — enquiries come to you here"
-          />
           {crew.phone && crew.phonePublic ? <CallButton phone={crew.phone} /> : null}
           {crew.contactEmail ? <MailButton email={crew.contactEmail} /> : null}
           {whatsapp ? <MessageButton href={whatsapp} /> : null}

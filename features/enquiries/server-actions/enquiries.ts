@@ -32,20 +32,17 @@ export interface EnquiryActionResult {
 
 const TYPE_KEYS = ["celebration", "corporate", "judge", "private", "collab"] as const;
 
-/* an enquiry goes to a BUSINESS or to a CREW (18 Sep 2026) — exactly one, here
-   as in the table's CHECK and the RPC */
-const sendSchema = z
-  .object({
-    businessId: z.string().uuid().nullable(),
-    crewId: z.string().uuid().nullable().optional(),
-    typeKey: z.enum(TYPE_KEYS),
-    fields: z.array(z.tuple([z.string().max(80), z.string().max(200)])).max(20),
-    dates: z.array(z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "not a date")).min(1).max(20),
-    whereText: z.string().trim().max(200).nullable(),
-    message: z.string().trim().min(1).max(1500),
-    mobile: z.string().trim().max(20).nullable(),
-  })
-  .refine((v) => Boolean(v.businessId) !== Boolean(v.crewId), { message: "an enquiry goes to a business or to a crew" });
+/* an enquiry goes to a BUSINESS — ⚠ never a crew since 4 Oct 2026 (the user:
+   "remove enquiries for crew"); `send_enquiry` refuses one in words */
+const sendSchema = z.object({
+  businessId: z.string().uuid(),
+  typeKey: z.enum(TYPE_KEYS),
+  fields: z.array(z.tuple([z.string().max(80), z.string().max(200)])).max(20),
+  dates: z.array(z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "not a date")).min(1).max(20),
+  whereText: z.string().trim().max(200).nullable(),
+  message: z.string().trim().min(1).max(1500),
+  mobile: z.string().trim().max(20).nullable(),
+});
 
 
 async function requireUser() {

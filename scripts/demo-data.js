@@ -551,10 +551,11 @@ async function seed() {
      celebration, corporate, private and collab all list "studio" in `to`), so
      the demo world still shows every kind at every stage. What went is the
      subject, not the coverage. */
-  /* an enquiry names a business OR a crew, never both (18 Sep 2026) */
-  const enquire = (u, businessId, type, fields, days, where, message, crewId = null) => {
-    log(`… ${u.name} asks ${(crewId ?? businessId).slice(0, 8)} (${type}${crewId ? ", crew" : ""})`);
-    return rpc(u.h, "send_enquiry", { p_business_id: crewId ? null : businessId, p_type_key: type, p_fields: fields, p_dates: [dayShift(days)], p_where: where, p_message: message, p_mobile: "98100 12345", p_crew_id: crewId });
+  /* an enquiry names a business — ⚠ never a crew since 4 Oct 2026 (the user:
+     "remove enquiries for crew"; `send_enquiry` refuses one) */
+  const enquire = (u, businessId, type, fields, days, where, message) => {
+    log(`… ${u.name} asks ${businessId.slice(0, 8)} (${type})`);
+    return rpc(u.h, "send_enquiry", { p_business_id: businessId, p_type_key: type, p_fields: fields, p_dates: [dayShift(days)], p_where: where, p_message: message, p_mobile: "98100 12345" });
   };
   /* ⚠ 3 Oct 2026: the business ACCEPTS an enquiry before it prices it, a quote is
      lines or one total with an advance and a valid-until, and the sender ACCEPTS it
@@ -611,11 +612,8 @@ async function seed() {
   await accept(sneha, q8);
   await rpc(meera.h, "record_enquiry_payment", { p_quote_id: q8.id, p_part: "advance" });
   await rpc(sneha.h, "end_enquiry", { p_enquiry_id: e8.id, p_reason: "My arangetram has moved to next year", p_refund_inr: 5000 });
-  /* a CREW asked for a celebration — quoted by its leader, waiting */
-  /* Rohit, an outsider to the crew (Aki has been asked into it) */
-  const e9 = await enquire(rohit, rockers.id, "celebration", [["Occasion", "Sangeet"], ["Guests", "150"], ["Performers", "5"]], 22, "Gurugram", "A crew set at my cousin's sangeet.", rockers.id);
-  await quote(aditya.h, e9, 30000, 30);
-  log("Sector 29: private (advance paid, an addition waiting), private (revision asked → called off) · DLF: celebration (completed), corporate (quoted) · EEE: collab (new) · Bounce: private (new), corporate (new) · Namma: celebration (new) · Karan: judge (on) · Meera: private (withdrawal terms waiting) · Gurugram Rockers: celebration (quoted)");
+  /* ⚠ a CREW was asked for a celebration here until 4 Oct 2026 — a crew takes no enquiries now */
+  log("Sector 29: private (advance paid, an addition waiting), private (revision asked → called off) · DLF: celebration (completed), corporate (quoted) · EEE: collab (new) · Bounce: private (new), corporate (new) · Namma: celebration (new) · Karan: judge (on) · Meera: private (withdrawal terms waiting)");
 
   /* ────────────────────────────────────────────────────────────────────────
      ⚠ EVENTS WERE SEEDED HERE UNTIL 29 Sep 2026, and this is the whole of

@@ -1484,6 +1484,11 @@ test.describe.serial("DanceOS, end to end", () => {
        the crew. Both ends asserted, so the thing it replaced cannot live on. */
     await expect(learner.getByRole("link", { name: "Public view", exact: true })).toHaveAttribute("href", `/crew/${crewId}`);
     await expect(learner.getByRole("link", { name: "Your profile", exact: true })).toHaveCount(0);
+    /* ⚠ A CREW TAKES NO ENQUIRIES (4 Oct 2026, the user: "remove enquiries for
+       crew") — no Enquiry button on its home, and no Earnings tile, which counted
+       its enquiry money and nothing else */
+    await expect(learner.getByRole("button", { name: /Enquiry/ })).toHaveCount(0);
+    await expect(learner.getByRole("link", { name: "Earnings", exact: true })).toHaveCount(0);
     await learner.getByRole("link", { name: "Team", exact: true }).click();
     await learner.waitForURL(/\/crews\/[0-9a-f-]+\/manage\/team$/);
     // ASKED IS NOT JOINED: the desk says the trainer has not answered, and counts one member

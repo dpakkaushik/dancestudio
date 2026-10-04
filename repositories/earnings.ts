@@ -448,45 +448,8 @@ export async function findPersonEarnings(
   );
 }
 
-/** ⚠⚠ WHAT A CREW TOOK (2 Oct 2026, the user: "earnings for crews is missing").
- *
- *  A crew sells no seat and no pass and is paid by no studio — the one money a
- *  crew has in DanceOS is an ENQUIRY: a celebration, a corporate show or a
- *  collaboration, quoted by its leader, with the advance and the balance
- *  RECORDED as received (`record_enquiry_payment`, the same rule a studio's
- *  enquiry money follows — nothing moves through DanceOS). So that is the whole
- *  revenue, bucketed exactly as `findBusinessEarnings` buckets it, and there is
- *  no expense half: a crew employs nobody and buys nothing here, the same fact a
- *  person's ledger states. ⚠ Readable by the LEADER only — the quotes' policy
- *  admits the crew's leader (`20260918160000`), which is who opens this desk. */
-export async function findCrewEarnings(supabase: SupabaseClient, crewId: string, period: Period, nowIso: string): Promise<EarningsReport> {
-  const { keys } = windowFor(nowIso, period);
-  const { data, error } = await supabase
-    .from("enquiry_quotes")
-    .select(ENQUIRY_QUOTE_COLUMNS)
-    .eq("crew_id", crewId)
-    .is("deleted_at", null)
-    .limit(MAX_ROWS);
-  if (error) throw error;
-  const enquiries: Bucketed = new Map();
-  const enquiriesI: Itemed = new Map();
-  const take = (at: string, amountInr: number, label: string) => {
-    const k = bucketKeyOf(at, period);
-    add(enquiries, k, amountInr);
-    addItem(enquiriesI, k, { label, amountInr, at });
-  };
-  /* ⚠ a crew's ledger has no expense half, so a refund it handed back when a
-     project ended is not drawn here — recorded in the parity backlog */
-  for (const q of (data ?? []) as unknown as EnquiryQuoteRow[]) {
-    for (const t of enquiryTakings(q)) take(t.at, t.amountInr, t.label);
-  }
-  return assemble(
-    period,
-    keys,
-    [{ key: "enquiries", label: "Enquiries", by: enquiries, items: enquiriesI, href: `/crews/${crewId}/inbox?show=enquiries` }],
-    [],
-    (data?.length ?? 0) < MAX_ROWS
-  );
-}
+/* ⚠ `findCrewEarnings` IS GONE (4 Oct 2026, the user: "remove enquiries for
+   crew"). A crew's only money in DanceOS was an enquiry, so with enquiries gone
+   its ledger could only ever read ₹0 — the Earnings tile and its desk went too. */
 
 export { EARNING_TINT };

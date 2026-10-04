@@ -6,7 +6,7 @@ import { sendEnquiryAction } from "@/features/enquiries/server-actions/enquiries
 import { CONTACT_BOX, CONTACT_LABEL } from "@/features/profiles/components/ContactButtons";
 import { DOS_UI } from "@/lib/design/tokens";
 import { useCloseOnBack } from "@/lib/hooks/useCloseOnBack";
-import { enquiryTypesFor, enquiryTypesForCrew, type EnquiryField, type EnquiryType } from "@/types/enquiry";
+import { enquiryTypesFor, type EnquiryField, type EnquiryType } from "@/types/enquiry";
 import type { BusinessType } from "@/types/business";
 import { EnqIcon, pressKey } from "@/features/inbox/components/inbox-kit";
 
@@ -45,10 +45,9 @@ export function EnquiryButton({
   signedIn,
   accent,
   enquiryTypes = null,
-  crewId = null,
   cannotAsk = null,
 }: {
-  /** the business asked — ignored when `crewId` is set */
+  /** the business asked — a studio or an artist page (⚠ never a crew since 4 Oct 2026) */
   businessId: string;
   businessName: string;
   businessType: BusinessType;
@@ -56,9 +55,6 @@ export function EnquiryButton({
   accent: string;
   /** the types the business switched on (ENQUIRIES YOU ACCEPT, 9005) — null means every one its kind allows */
   enquiryTypes?: string[] | null;
-  /** A CREW CAN BE ASKED (18 Sep 2026): set on a crew's page, the enquiry goes to
-   *  the crew — its leader answers — and offers the three kinds a crew takes */
-  crewId?: string | null;
   /** ⚠ WHY THE PRESS WOULD BE REFUSED, WHEN IT WOULD (20 Sep 2026, the user:
    *  "Viewing your own profile should show same buttons which you see on
    *  discover it should look the same way"). Your own page used to DROP this
@@ -112,7 +108,7 @@ export function EnquiryButton({
         <span style={CONTACT_LABEL}>Enquiry</span>
       </button>
       {open ? (
-        <EnquirySheet businessId={businessId} businessName={businessName} businessType={businessType} accent={accent} enquiryTypes={enquiryTypes} crewId={crewId} onClose={() => setOpen(false)} />
+        <EnquirySheet businessId={businessId} businessName={businessName} businessType={businessType} accent={accent} enquiryTypes={enquiryTypes} onClose={() => setOpen(false)} />
       ) : null}
     </>
   );
@@ -124,7 +120,6 @@ export function EnquirySheet({
   businessType,
   onClose,
   enquiryTypes = null,
-  crewId = null,
 }: {
   businessId: string;
   businessName: string;
@@ -132,14 +127,11 @@ export function EnquirySheet({
   enquiryTypes?: string[] | null;
   /** the business page's colour — the sheet wears each TYPE's own colour instead (5119), so this is accepted and unused */
   accent?: string;
-  /** the crew asked (18 Sep 2026) — the sheet then goes to the crew, not the business */
-  crewId?: string | null;
   onClose: () => void;
 }) {
   useCloseOnBack(onClose);
-  /* only the types the business switched on appear (9007); a crew takes its own
-     three and keeps no preferences */
-  const allowed = crewId ? enquiryTypesForCrew() : enquiryTypesFor(businessType).filter((t) => !enquiryTypes || enquiryTypes.includes(t.k));
+  /* only the types the business switched on appear (9007) */
+  const allowed = enquiryTypesFor(businessType).filter((t) => !enquiryTypes || enquiryTypes.includes(t.k));
   const [type, setType] = useState<EnquiryType | null>(null);
   const [dates, setDates] = useState<string[]>([""]);
   const [vals, setVals] = useState<Record<string, string | number>>({});
@@ -190,8 +182,7 @@ export function EnquirySheet({
 
     setBusy(true);
     const out = await sendEnquiryAction({
-      businessId: crewId ? null : businessId,
-      crewId,
+      businessId,
       typeKey: type.k,
       fields: rows,
       dates: cleanDates,

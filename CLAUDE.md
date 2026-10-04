@@ -2,6 +2,29 @@
 
 ## LAST SESSION (4 Oct 2026) — replaced on every push (Rule 13)
 
+> ### A CREW TAKES NO ENQUIRIES (4 Oct 2026, latest) — ⚠ Rule 9 (a door removed, one enquiry taken down) · ✅ `20261004140000` APPLIED
+> The user: *"remove enquiries for crew"*. The previous chat built and dry-ran it, put the list in front of the user, got *"push to live"* and died on "Prompt is too long". This session re-verified and pushed it.
+> * **What production held, counted first:** ONE live crew enquiry. It was a Gurugram Rockers celebration from a demo account, quoted ₹30,000, the quote still `sent`. No order, payment or refund stood behind it.
+> * **The migration:**
+>   * `send_enquiry` is edited by two asserted anchors (same signature, still definer, not anon's). A crew is refused in words: "an enquiry goes to a studio or an artist — a crew takes no enquiries".
+>   * The crew enquiry and its quote are soft-deleted.
+>   * A CHECK, `enquiries_no_live_crew`, keeps a live enquiry from ever naming a crew. Deleted rows keep their crew, so history reads as it was.
+>   * Policies are unchanged at 106.
+> * **The app:**
+>   * A crew's home and its public page carry no Enquiry button.
+>   * The crew Inbox is Requests · Invites.
+>   * ⚠ **Crew Earnings is gone too**, because it only ever counted enquiry money. The tile is removed, and `/crews/{id}/manage/earnings` goes to the crew's home. `/crews/{id}/manage/enquiries` goes to the crew's Inbox.
+>   * The enquiry sheet lost its crew mode, and the repository lost its crew reads.
+>   * The seeder sends no crew enquiry.
+>   * The happy path asserts no Enquiry button and no Earnings tile on a crew's home.
+> * **Verified:**
+>   * typecheck 0 · lint 0 · `audit:reads` 0 · build green.
+>   * Dry run **13/13** (re-run this session), rolled back.
+>   * `db-push -DryRun` listed exactly the one file, which applied first try. Live read-back **8/8**; PostgREST reloaded.
+>   * Proofs `enquiries` · `crews` · `notifications` **3/3** on the migrated schema.
+>   * The previous chat's browser probe ran **10/10** on `:3100`.
+>   * ⚠ That chat's happy path never ran (its log is empty). It is re-run on this bundle after the push.
+
 > ### ONLY A STUDIO SELLS A MEMBERSHIP — ARTISTS' MEMBERSHIPS AND THE PASSES BOUGHT FROM THEM REMOVED (4 Oct 2026, latest) — ⚠ Rule 9 (memberships are money) · ✅ `20261004130000` APPLIED · ✅ PUSHED AND LIVE (`225cb8f`: Vercel READY, alias confirmed on the sha through the API)
 > The user: *"remove membership creation from artists and remove the ones previously created or purchased. memberships can only be created by studios."*
 > * **The user's two answers:**
@@ -12935,6 +12958,10 @@ for the database schema. **The UI is not redesigned** — see Rule 2.
 
 ### Progress tracker — update after EVERY push (Rule 11)
 
+- **A CREW TAKES NO ENQUIRIES — 4 Oct 2026, no step number ⚠ (Rule 9) —
+  `20261004140000` APPLIED, PUSHED.** `send_enquiry` refuses a crew and the one
+  live crew enquiry was soft-deleted. The crew Enquiry buttons, the crew Inbox's
+  Enquiries column and crew Earnings are gone. Detail at the top.
 - **A ROUTINE'S CLASSES IN THE TEAM/STUDENT SHAPE, NO STUDIOS COLUMN, AND ONE
   FULL-ROW "CLASS DETAIL ›" ON ALL THREE PAGES — 4 Oct 2026, no step number —
   no migration — PUSHED AND LIVE (`769c816`).** Detail at the top.

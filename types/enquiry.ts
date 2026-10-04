@@ -127,13 +127,9 @@ export const enquiryTypeOf = (k: string): EnquiryType | null => ENQ_TYPES.find((
 /** the types a business of this kind may be sent (dosEnqTypesFor 4935) */
 export const enquiryTypesFor = (kind: BusinessType): EnquiryType[] => ENQ_TYPES.filter((t) => t.to.includes(kind));
 
-/** A CREW CAN BE ASKED (18 Sep 2026, the user: "crews can also get enquiries"):
- *  a crew dances at a celebration, a corporate show or a collaboration. Judging
- *  is a person's job and private sessions are a teacher's — `send_enquiry`
- *  refuses both for a crew, and this is the same list so the sheet never offers
- *  what the database would refuse. */
-export const CREW_ENQUIRY_TYPES: EnquiryTypeKey[] = ["celebration", "corporate", "collab"];
-export const enquiryTypesForCrew = (): EnquiryType[] => ENQ_TYPES.filter((t) => CREW_ENQUIRY_TYPES.includes(t.k));
+/* ⚠ A CREW TAKES NO ENQUIRIES since 4 Oct 2026 (the user: "remove enquiries for
+   crew") — its three-kind list went with it; `send_enquiry` refuses a crew. The
+   `crewId` field on `Enquiry` stays so an old row still reads. */
 
 /** THE STAGES (3 Oct 2026, the user's end-to-end enquiry, agreed point by point).
  *

@@ -183,6 +183,7 @@ export function InboxScreen({
   initialSection,
   deskSub = null,
   receivedOnly = false,
+  noEnquiries = false,
   settings = null,
   requestSettings = null,
   inviteSettings = null,
@@ -196,6 +197,9 @@ export function InboxScreen({
   inviteSettings?: ReactNode;
   /** a studio's or a crew's desk — what it was asked, and no Sent side */
   receivedOnly?: boolean;
+  /** ⚠ NO ENQUIRIES COLUMN (4 Oct 2026, the user: "remove enquiries for crew") —
+   *  a crew's Inbox is Requests · Invites; `send_enquiry` refuses a crew */
+  noEnquiries?: boolean;
   /** the profile-tinted wash the rest of the app opens on (5681) */
   accent: string;
   requestsIn: RequestItem[];
@@ -233,7 +237,7 @@ export function InboxScreen({
      with received and sent in their respective section. enquiry should be
      first. all requests, invites and enquiries should be 3 columns"). An old
      `?show=done` link opens the first column on its Completed side. */
-  const [sect, setSect] = useState<"enq" | "req" | "join">(initialSection === "req" || initialSection === "join" ? initialSection : "enq");
+  const [sect, setSect] = useState<"enq" | "req" | "join">(initialSection === "req" || initialSection === "join" ? initialSection : noEnquiries ? "req" : "enq");
   const [rqSide, setRqSide] = useState<Side3>(initialSection === "done" ? "done" : "in");
   const [enqSide, setEnqSide] = useState<Side3>(initialSection === "done" ? "done" : "in");
   /* ⚠ ONE FILTER PER COLUMN, DISCOVER'S ANATOMY (3 Oct 2026, the user: "filters
@@ -348,7 +352,7 @@ export function InboxScreen({
     }).sort((a, b) => b.createdAt.localeCompare(a.createdAt));
   })();
   const SECT: Array<["enq" | "req" | "join", string, number, string]> = [
-    ["enq", "Enquiries", newIn.length, "#EC4899"],
+    ...(noEnquiries ? [] : ([["enq", "Enquiries", newIn.length, "#EC4899"]] as Array<["enq", string, number, string]>)),
     ["req", "Requests", askIn.filter((r) => r.dir === "in").length, "#DC2626"],
     ["join", "Invites", joinIn.filter((r) => r.dir === "in").length, JOIN_TINT.invite ?? SKY],
   ];

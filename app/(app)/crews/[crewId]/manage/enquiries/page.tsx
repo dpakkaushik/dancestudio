@@ -1,9 +1,9 @@
 import { redirect } from "next/navigation";
 
-/** ⚠ AN ADDRESS, NOT A PAGE (2 Oct 2026): a crew's enquiries are its Inbox's
- *  third desk again (the user: "shift back enquiries to inbox from home tools
- *  for all profiles"). The Inbox re-checks the leader (Rule 14 keeps this alive). */
+/** ⚠ AN ADDRESS, NOT A PAGE (2 Oct 2026) — and since 4 Oct 2026 a crew takes
+ *  no enquiries at all (the user: "remove enquiries for crew"), so an old link
+ *  lands on the crew's Inbox, which is Requests · Invites. Kept for Rule 14. */
 export default async function CrewEnquiriesPage({ params }: { params: Promise<{ crewId: string }> }) {
   const { crewId } = await params;
-  redirect(`/crews/${crewId}/inbox?show=enquiries`);
+  redirect(`/crews/${crewId}/inbox`);
 }
