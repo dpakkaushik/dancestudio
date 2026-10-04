@@ -779,13 +779,9 @@ export function ClassesManager({
                 ) : bucketOf(c) === "published" ? (
                   <>
                     {chipRow}
-                    {/* the Roster pill stays: it is the app's register page (a documented departure) */}
-                    <Link
-                      href={`/business/${businessId}/classes/${c.id}/roster`}
-                      style={{ ...pill(false), textDecoration: "none" }}
-                    >
-                      Roster
-                    </Link>
+                    {/* ⚠ NO ROSTER PILL (4 Oct 2026, the user: "remove roster
+                        button"). The card opens the class page, whose Attendance
+                        tab IS the register; the `/roster` route stays (Rule 14). */}
                     {canEdit ? (
                       <button type="button" onClick={() => setAsk({ kind: "published", c })} style={pill(true)}>
                         Delete

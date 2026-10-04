@@ -196,7 +196,7 @@ const BOOK_ON_PAGE = /^Book (free trial|this class)$/;
 
     const mBody = await text(mPage);
     check(/Only the owner of this studio creates and changes its classes/.test(mBody), "…and reads, once, what is and is not theirs here");
-    check((await mPage.getByRole("link", { name: "Roster", exact: true }).count()) > 0, "…and Roster stays: seeing who booked IS a manager's job");
+    check((await mPage.getByRole("link", { name: "Roster", exact: true }).count()) === 0, "…and there is no Roster pill (4 Oct 2026) — the card opens the class page, whose Attendance tab is the register");
     check((await mPage.getByRole("button", { name: "Delete", exact: true }).count()) === 0, "⚠⚠ no Delete on a published row — the one that reported SUCCESS and deleted nothing");
 
     /* ⚠ THE DRAFT TAB IS WHERE Edit AND Publish LIVE, so asserting their absence
@@ -287,7 +287,8 @@ const BOOK_ON_PAGE = /^Book (free trial|this class)$/;
     await oPage.getByRole("button", { name: /^Draft,/ }).click();
     await oPage.waitForTimeout(400);
     const draftBody = await text(oPage);
-    check(new RegExp(`${artist.name} ASKED`, "i").test(draftBody.replace(/⏳ ?/g, "")), "a draft says who it is waiting on");
+    /* the chip reads "{name} · Asked" since the one word list of 4 Oct 2026 (it was "⏳ {name} asked") */
+    check(new RegExp(`${artist.name}\\s*·\\s*Asked`, "i").test(draftBody), "a draft says who it is waiting on");
     const withdraw = oPage.getByRole("button", { name: "Withdraw ask" });
     check((await withdraw.count()) === 1, "⚠ …and now offers to stop waiting, which only the Inbox could do before");
     await withdraw.click();

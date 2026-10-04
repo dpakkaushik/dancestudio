@@ -2043,13 +2043,13 @@ test.describe.serial("DanceOS, end to end", () => {
        it has another way in. ── */
     await owner.goto(`/business/${businessId}/classes`);
     await expect(owner.locator(`[aria-label="Open ${classTitle}"]`)).toBeVisible();
-    /* ⚠ and its DESK is one press from the row — the **Roster** pill. This read
-       `Manage ${classTitle}` on its first cut, which was S_managed's OWN row
-       name: I asserted the deleted screen's vocabulary against the screen that
-       replaced it. The register has never used that word — a row is the app's
-       one class tile plus the pills its status allows. */
-    await owner.getByRole("link", { name: "Roster", exact: true }).first().click();
-    await owner.waitForURL(/\/business\/[0-9a-f-]+\/classes\/[0-9a-f-]+\/roster$/);
+    /* ⚠ and its DESK is one press from the row — the card itself, which opens
+       the class page and its Attendance tab. The **Roster** pill this pressed
+       went on 4 Oct 2026 (the user: "remove roster button"); the route it
+       opened still answers (Rule 14), but nothing on the card names it. */
+    await expect(owner.getByRole("link", { name: "Roster", exact: true })).toHaveCount(0);
+    await owner.locator(`[aria-label="Open ${classTitle}"]`).first().click();
+    await owner.waitForURL(/\/c\/[a-z0-9-]+$/);
     /* ⚠ the other half of "everything on it has another way in" was the two
        events the story made, found on the organization's own events desk. Both
        the events and that desk went on 29 Sep 2026, so what `/managed` used to
