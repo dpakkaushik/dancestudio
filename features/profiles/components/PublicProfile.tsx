@@ -311,6 +311,7 @@ export function PublicProfile({
             <EnquiryButton
               businessId={business.id}
               businessName={business.name}
+              businessPhoto={face}
               businessType={business.type}
               signedIn={signedIn}
               accent={RC}

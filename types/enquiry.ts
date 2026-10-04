@@ -60,8 +60,8 @@ export const ENQ_TYPES: EnquiryType<SendableEnquiryTypeKey>[] = [
         opts: ["Event", "Classes", "Shoot"],
         points: [
           ["Wedding", "Party", "Show", "Festival"],
-          ["Private", "Corporate", "Any group size"],
-          ["Music video", "Ad", "Content", "Campaign"],
+          ["Private", "Corporate", "Group"],
+          ["Music Video", "Advertisement", "Content", "Campaign"],
         ],
       },
       { k: "sessions", t: "count", label: "How many sessions", min: 1, max: 40, def: 1 },
@@ -81,7 +81,7 @@ export const ENQ_TYPES: EnquiryType<SendableEnquiryTypeKey>[] = [
         opts: ["Event", "Shoot"],
         points: [
           ["Wedding", "Party", "Corporate", "Festival"],
-          ["Music video", "Ad", "Content", "Campaign"],
+          ["Music Video", "Advertisement", "Content", "Campaign"],
         ],
       },
       { k: "perfs", t: "count", label: "Number of performances", min: 1, max: 12, def: 1 },
@@ -93,7 +93,7 @@ export const ENQ_TYPES: EnquiryType<SendableEnquiryTypeKey>[] = [
   {
     k: "judge",
     label: "Judge / Guest",
-    sub: "Battles · Workshops · Guest appearances",
+    sub: "Battles · Workshops · Guest Appearances",
     c: "#F59E0B",
     to: ["artist_page"],
     fields: [
@@ -104,7 +104,7 @@ export const ENQ_TYPES: EnquiryType<SendableEnquiryTypeKey>[] = [
         opts: ["Judge", "Guest"],
         points: [
           ["Battle", "Tournament", "Competition"],
-          ["Workshop", "Chief guest", "Speaker"],
+          ["Workshop", "Chief Guest", "Speaker"],
         ],
       },
       { k: "event", t: "event", label: "Which event" },

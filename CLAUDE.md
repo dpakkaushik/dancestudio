@@ -2,7 +2,32 @@
 
 ## LAST SESSION (4 Oct 2026) — replaced on every push (Rule 13)
 
-> ### THE ENQUIRY FORM IN POINTS, WITH AN ICON PER OPTION, AND NO "‹ ALL TYPES" (4 Oct 2026, latest) — no migration
+> ### THE ENQUIRY SHEET: WHO IT GOES TO IN THE TOP RIGHT, BIG KIND ROWS, BIG OPTION TILES, AND THE WORDS TIDIED (4 Oct 2026, latest) — no migration · COMMITTED, NOT PUSHED
+> The user: *"any Group size to be changed to Group, Ad to Advertisement, second word first letter capital for these subheadings. To person whom the enquiry is being sent to should be adjusted on top right of the form and should have profile pic with name. name a bit bigger"*, then *"Bigger icons for and tiles for what it for. and what for in the form in enquiry form. make the way bigger."*
+> * **Words:**
+>   * "Any group size" → **Group**, "Ad" → **Advertisement**.
+>   * Music Video, Chief Guest and Guest Appearances now capitalise the second word.
+>   * ⚠ "any Group size … to Group" was read as the whole point becoming "Group".
+> * **The recipient** (`Recipient`, `enquiry-recipient`):
+>   * Sits top right on both steps: a "TO" label, the name at **14.5px** (was an 11px "To {name}" line, clamped to two lines) and a 40px squircle picture, with initials when there is none.
+>   * `EnquiryButton` / `EnquirySheet` take `businessPhoto`. Only the two pages where the sheet can open pass it (`PublicProfile`, `PublicPersonPage`); the three own-page callers draw the button disabled.
+> * **The kinds are ONE FULL-WIDTH ROW EACH** (`enquiry-kind-tile`): a 56px tile with a 32px icon, the name at 18px, its line under it, and a ›.
+>   * ⚠ This replaces "three in one row". Three across a phone left each tile under 100px, so a bigger tile had to be a wider one.
+> * **The option tiles stay a grid, bigger:**
+>   * 30px icon, title 15.5px, points 11px, padding 13px.
+>   * Measured with no overflow at 390px and 360px, "Advertisement" included.
+>   * The form's own kind icon is 22px, with the name at 18px.
+> * **Verified:**
+>   * typecheck 0 · lint 0 · build green.
+>   * Probe **69/69** on `:3100`: dark 390, light 390 and dark 360.
+>     * the recipient top right with a 14.5px name and a 40px face (an `<img>` for Deepak, initials for Rhea);
+>     * three full-width rows with 32px icons;
+>     * the four words;
+>     * option tiles with 30px icons and nothing overflowing;
+>     * both back steps.
+>   * Screenshots checked by eye.
+
+> ### THE ENQUIRY FORM IN POINTS, WITH AN ICON PER OPTION, AND NO "‹ ALL TYPES" (4 Oct 2026) — no migration · ✅ PUSHED AND LIVE (`df06974`: Vercel READY, alias confirmed on the sha through the API, the probe **32/32** and `stranger-smoke` all green ON THE LIVE SITE; **the happy path 19/19 in 13.3 min** on `:3100`)
 > Built by the previous chat and left uncommitted; this session verified it and pushed it on *"push to live continue from previous chat"*. The user's words as that chat recorded them: *"icons for these headings in the enquiry form as well"*, *"remove all types back button from the form"*, and points rather than a sentence.
 > * **Each kind's line is a short list**, not a sentence: Choreographer reads "Events · Classes · Shoots", Performer "Events · Shoots", and Judge / Guest "Battles · Workshops · Guest appearances".
 >   * `DotLine` keeps each item whole, so a narrow tile wraps between items and never inside one.

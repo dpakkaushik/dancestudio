@@ -1,14 +1,15 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
 import { useState } from "react";
 import { sendEnquiryAction } from "@/features/enquiries/server-actions/enquiries";
 import { CONTACT_BOX, CONTACT_LABEL } from "@/features/profiles/components/ContactButtons";
-import { DOS_UI } from "@/lib/design/tokens";
+import { DISC_RADIUS, DOS_UI } from "@/lib/design/tokens";
 import { useCloseOnBack } from "@/lib/hooks/useCloseOnBack";
 import { enquiryTypesFor, type EnquiryField, type EnquiryType, type SendableEnquiryTypeKey } from "@/types/enquiry";
 import type { BusinessType } from "@/types/business";
-import { EnqIcon, pressKey } from "@/features/inbox/components/inbox-kit";
+import { EnqIcon, initialsOf, pressKey } from "@/features/inbox/components/inbox-kit";
 
 /** The sender's sheet, lifted from the prototype's EnquirySheet (5051-5193):
  *  pick what it is for — only the kinds that make sense for who it is going TO
@@ -79,7 +80,7 @@ function OptIcon({ o, color }: { o: string; color: string }) {
   const d = OPT_ICON[o];
   if (!d) return null;
   return (
-    <svg width={18} height={18} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" data-testid="enquiry-option-icon" style={{ display: "block", marginBottom: 5 }}>
+    <svg width={30} height={30} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={1.7} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" data-testid="enquiry-option-icon" style={{ display: "block", marginBottom: 8 }}>
       {d}
     </svg>
   );
@@ -104,6 +105,35 @@ function DotLine({ text, style }: { text: string; style?: React.CSSProperties })
   );
 }
 
+/** WHO IT GOES TO, top right of the form (4 Oct 2026, the user: "To person whom
+ *  the enquiry is being sent to should be adjusted on top right of the form and
+ *  should have profile pic with name. name a bit bigger"). It was an 11px
+ *  "To {name}" line under the heading; it is the recipient's own face in the
+ *  app's squircle beside their name, on both steps of the sheet. No picture
+ *  draws initials. */
+function Recipient({ name, photo }: { name: string; photo: string | null }) {
+  const S = 40;
+  return (
+    <div data-testid="enquiry-recipient" style={{ display: "flex", alignItems: "center", gap: 8, flexShrink: 0, maxWidth: "48%", minWidth: 0 }}>
+      <div style={{ minWidth: 0, textAlign: "right" }}>
+        <div style={{ fontSize: 9, fontWeight: 900, letterSpacing: 0.8, color: "var(--muted)" }}>TO</div>
+        <div
+          data-testid="enquiry-recipient-name"
+          title={name}
+          style={{ fontSize: 14.5, fontWeight: 900, lineHeight: 1.2, overflowWrap: "anywhere", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}
+        >
+          {name}
+        </div>
+      </div>
+      <div
+        style={{ width: S, height: S, flexShrink: 0, borderRadius: S * DISC_RADIUS, overflow: "hidden", background: "var(--el)", border: "1.5px solid var(--el)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 13, fontWeight: 900, color: "var(--sub)" }}
+      >
+        {photo ? <Image src={photo} alt="" width={S} height={S} style={{ width: S, height: S, objectFit: "cover" }} /> : initialsOf(name)}
+      </div>
+    </div>
+  );
+}
+
 function Lab({ children }: { children: React.ReactNode }) {
   return <div style={{ fontSize: 9.5, fontWeight: 900, letterSpacing: 0.8, color: "var(--muted)", margin: "12px 0 6px" }}>{children}</div>;
 }
@@ -113,6 +143,7 @@ function Lab({ children }: { children: React.ReactNode }) {
 export function EnquiryButton({
   businessId,
   businessName,
+  businessPhoto = null,
   businessType,
   signedIn,
   accent,
@@ -122,6 +153,8 @@ export function EnquiryButton({
   /** the business asked — a studio or an artist page (⚠ never a crew since 4 Oct 2026) */
   businessId: string;
   businessName: string;
+  /** the recipient's profile picture URL, drawn top right of the sheet (4 Oct 2026) */
+  businessPhoto?: string | null;
   businessType: BusinessType;
   signedIn: boolean;
   accent: string;
@@ -180,7 +213,7 @@ export function EnquiryButton({
         <span style={CONTACT_LABEL}>Enquiry</span>
       </button>
       {open ? (
-        <EnquirySheet businessId={businessId} businessName={businessName} businessType={businessType} accent={accent} enquiryTypes={enquiryTypes} onClose={() => setOpen(false)} />
+        <EnquirySheet businessId={businessId} businessName={businessName} businessPhoto={businessPhoto} businessType={businessType} accent={accent} enquiryTypes={enquiryTypes} onClose={() => setOpen(false)} />
       ) : null}
     </>
   );
@@ -189,12 +222,14 @@ export function EnquiryButton({
 export function EnquirySheet({
   businessId,
   businessName,
+  businessPhoto = null,
   businessType,
   onClose,
   enquiryTypes = null,
 }: {
   businessId: string;
   businessName: string;
+  businessPhoto?: string | null;
   businessType: BusinessType;
   enquiryTypes?: string[] | null;
   /** the business page's colour — the sheet wears each TYPE's own colour instead (5119), so this is accepted and unused */
@@ -352,24 +387,34 @@ export function EnquirySheet({
           </div>
         ) : !type ? (
           <>
-            <div style={{ fontSize: 17, fontWeight: 900, marginBottom: 2 }}>What&apos;s it for?</div>
-            <div style={{ fontSize: 11, color: "var(--sub)", marginBottom: 12 }}>To {businessName}</div>
-            {/* one row: a studio is offered two kinds, an artist three (4 Oct 2026) */}
-            <div style={{ display: "grid", gridTemplateColumns: `repeat(${Math.max(1, Math.min(allowed.length, 3))}, minmax(0, 1fr))`, gap: 8 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 12 }}>
+              <div style={{ flex: 1, minWidth: 0, fontSize: 17, fontWeight: 900 }}>What&apos;s it for?</div>
+              <Recipient name={businessName} photo={businessPhoto} />
+            </div>
+            {/* ⚠ ONE KIND PER ROW, BIG (4 Oct 2026, the user: "Bigger icons for and
+                tiles for what it for … make the way bigger"). Three across a phone
+                left each tile under 100px — "Choreographer" barely fit at 13px —
+                so a bigger tile had to be a full-width one: a 56px icon, the name
+                at 18px, its line beneath. */}
+            <div style={{ display: "grid", gap: 10 }}>
               {allowed.map((x) => (
                 <div
                   key={x.k}
                   role="button"
                   tabIndex={0}
+                  data-testid="enquiry-kind-tile"
                   onKeyDown={pressKey(() => pickType(x))}
                   onClick={() => pickType(x)}
-                  style={{ background: "var(--card)", border: `1.5px solid ${x.c}55`, borderRadius: 14, padding: "12px 12px", cursor: "pointer" }}
+                  style={{ display: "flex", alignItems: "center", gap: 14, background: "var(--card)", border: `1.5px solid ${x.c}66`, borderRadius: 18, padding: "16px 16px", cursor: "pointer" }}
                 >
-                  <span style={{ width: 30, height: 30, borderRadius: 10, display: "inline-flex", alignItems: "center", justifyContent: "center", background: `${x.c}1f` }}>
-                    <EnqIcon k={x.k} size={16} color={x.c} sw={2} />
+                  <span style={{ width: 56, height: 56, flexShrink: 0, borderRadius: 16, display: "inline-flex", alignItems: "center", justifyContent: "center", background: `${x.c}1f` }}>
+                    <EnqIcon k={x.k} size={32} color={x.c} sw={1.8} />
                   </span>
-                  <div style={{ fontSize: 13, fontWeight: 900, marginTop: 7 }}>{x.label}</div>
-                  <DotLine text={x.sub} style={{ fontSize: 10.5, fontWeight: 700, color: "var(--sub)", marginTop: 3, lineHeight: 1.45 }} />
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontSize: 18, fontWeight: 900, lineHeight: 1.2 }}>{x.label}</div>
+                    <DotLine text={x.sub} style={{ fontSize: 12.5, fontWeight: 700, color: "var(--sub)", marginTop: 4, lineHeight: 1.45 }} />
+                  </div>
+                  <span aria-hidden style={{ fontSize: 22, fontWeight: 700, color: "var(--muted)", flexShrink: 0 }}>›</span>
                 </div>
               ))}
             </div>
@@ -377,15 +422,19 @@ export function EnquirySheet({
           </>
         ) : (
           <>
-            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-              <EnqIcon k={type.k} size={16} color={type.c} sw={2} />
-              <div style={{ fontSize: 17, fontWeight: 900 }}>{type.label}</div>
+            <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                  <EnqIcon k={type.k} size={22} color={type.c} sw={1.9} />
+                  <div style={{ fontSize: 18, fontWeight: 900 }}>{type.label}</div>
+                </div>
+                {/* the kind's own line, the same words its tile says (4 Oct 2026) */}
+                <div data-testid="enquiry-kind-sub">
+                  <DotLine text={type.sub} style={{ fontSize: 12, color: "var(--text)", fontWeight: 700, marginTop: 3, lineHeight: 1.45 }} />
+                </div>
+              </div>
+              <Recipient name={businessName} photo={businessPhoto} />
             </div>
-            {/* the kind's own line, the same words its tile says (4 Oct 2026) */}
-            <div data-testid="enquiry-kind-sub">
-              <DotLine text={type.sub} style={{ fontSize: 12, color: "var(--text)", fontWeight: 700, marginTop: 3, lineHeight: 1.45 }} />
-            </div>
-            <div style={{ fontSize: 11, color: "var(--sub)", marginTop: 2 }}>To {businessName}</div>
 
             <Lab>{dates.length > 1 ? "Dates" : "Date"}</Lab>
             {dates.map((d, i) => (
@@ -446,13 +495,13 @@ export function EnquirySheet({
                           /* a <button> centres its content vertically, so a tile with
                              three points sat lower than its four-point neighbours —
                              a column from the top keeps every title on one line */
-                          style={{ display: "flex", flexDirection: "column", alignItems: "stretch", justifyContent: "flex-start", padding: "9px 8px", borderRadius: 12, textAlign: "left", cursor: "pointer", fontFamily: "inherit", background: on ? type.c : "var(--card)", color: on ? "#08060C" : "var(--text)", border: `1.5px solid ${on ? type.c : "var(--el)"}` }}
+                          style={{ display: "flex", flexDirection: "column", alignItems: "stretch", justifyContent: "flex-start", padding: "13px 10px", borderRadius: 16, textAlign: "left", cursor: "pointer", fontFamily: "inherit", background: on ? type.c : "var(--card)", color: on ? "#08060C" : "var(--text)", border: `1.5px solid ${on ? type.c : "var(--el)"}` }}
                         >
                           <OptIcon o={o} color={on ? "#08060C" : type.c} />
-                          <div style={{ fontSize: 12.5, fontWeight: 900 }}>{o}</div>
-                          <ul data-testid="enquiry-option-points" style={{ listStyle: "none", margin: "5px 0 0", padding: 0, display: "grid", gap: 2 }}>
+                          <div style={{ fontSize: 15.5, fontWeight: 900, lineHeight: 1.2 }}>{o}</div>
+                          <ul data-testid="enquiry-option-points" style={{ listStyle: "none", margin: "7px 0 0", padding: 0, display: "grid", gap: 3 }}>
                             {(f.points?.[i] ?? []).map((pt) => (
-                              <li key={pt} style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 10, fontWeight: 650, lineHeight: 1.3, color: on ? "#08060C" : "var(--sub)" }}>
+                              <li key={pt} style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 11, fontWeight: 650, lineHeight: 1.3, color: on ? "#08060C" : "var(--sub)" }}>
                                 <span aria-hidden style={{ width: 4, height: 4, borderRadius: 2, flexShrink: 0, background: on ? "#08060C" : type.c }} />
                                 {pt}
                               </li>

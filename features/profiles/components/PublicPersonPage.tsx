@@ -256,6 +256,7 @@ export function PublicPersonPage({
             <EnquiryButton
               businessId={person.artistPageId as string}
               businessName={profile.fullName}
+              businessPhoto={face}
               businessType="artist_page"
               signedIn={signedIn}
               accent={RC}
