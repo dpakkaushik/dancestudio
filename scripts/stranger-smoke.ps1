@@ -21,6 +21,9 @@
 # stranger (old 11). All three smoked a surface that no longer exists; the four
 # survivors after them are renumbered, so 11/11 becomes 8/8.
 #
+# Check 9 joined on 5 Oct 2026: every removed address still forwards (Rule 14),
+# because once a page is deleted nothing else in the repo opens its old address.
+#
 #   powershell -File scripts/stranger-smoke.ps1
 #   powershell -File scripts/stranger-smoke.ps1 -Site https://dancestudio-orcin.vercel.app
 #
@@ -56,16 +59,18 @@ function Check($n, $label, $ok, $extra = "") {
 function Get-Page($path) {
   try {
     $r = Invoke-WebRequest -Uri "$Site$path" -MaximumRedirection 0 -UseBasicParsing -TimeoutSec 45
-    return [pscustomobject]@{ code = [int]$r.StatusCode; body = [string]$r.Content }
+    return [pscustomobject]@{ code = [int]$r.StatusCode; body = [string]$r.Content; loc = [string]$r.Headers["Location"] }
   } catch {
     $resp = $_.Exception.Response
     if ($resp) {
       $code = [int]$resp.StatusCode
       $body = ""
       try { $s = $resp.GetResponseStream(); $s.Position = 0; $body = (New-Object System.IO.StreamReader($s)).ReadToEnd() } catch {}
-      return [pscustomobject]@{ code = $code; body = $body }
+      $loc = ""
+      try { $loc = [string]$resp.Headers["Location"] } catch {}
+      return [pscustomobject]@{ code = $code; body = $body; loc = $loc }
     }
-    return [pscustomobject]@{ code = -1; body = $_.Exception.Message }
+    return [pscustomobject]@{ code = -1; body = $_.Exception.Message; loc = "" }
   }
 }
 
@@ -186,7 +191,60 @@ foreach ($t in @("business_members", "membership_passes", "payments", "leads", "
 }
 Check 8 "A stranger reads no row of business_members, membership_passes, payments, leads, class_bookings or assets" $shut ($detail -join "; ")
 
-# !! `organization_members` IS DELIBERATELY NOT ON THAT LIST, and was not before
+# ---- 9. every address that was removed still LANDS somewhere ---------------
+# Rule 14: a removed route keeps its address as a 307 to the screen that does its
+# job now (next.config.ts). The pages themselves are gone, so nothing else in the
+# repo would notice if one of these forwards were dropped - the installed TWA, a
+# bookmark or a shared link would simply meet a bare 404. This check asks each
+# old address for its Location, without following it, and compares the PATH (a
+# query string rides along by design). Ids are made up: a forward is decided by
+# the address alone, before any page reads a row. Add a line here in the same
+# commit as any new forward.
+$fake = "00000000-0000-4000-8000-000000000000"
+$fake2 = "00000000-0000-4000-8000-000000000001"
+$forwards = @(
+  # the phone channel (7 Sep 2026)
+  @("/login/phone", "/login/email"),
+  @("/login/verify?via=whatsapp", "/login/email"),
+  # organizations and events (29 Sep 2026)
+  @("/organizations", "/"),
+  @("/org/$fake", "/discover"),
+  @("/org/$fake/stats", "/discover"),
+  @("/gst", "/"),
+  @("/business/team", "/business"),
+  @("/business/earnings", "/business"),
+  @("/business/stats", "/business"),
+  @("/e/some-event-slug", "/discover"),
+  @("/my-events", "/"),
+  @("/business/$fake/events", "/business/$fake"),
+  @("/business/$fake/events/$fake2/edit", "/business/$fake"),
+  @("/business/$fake/gst", "/business/$fake"),
+  @("/business/$fake/team", "/business/$fake/staff"),
+  @("/crews/$fake/manage/events", "/crews/$fake/manage"),
+  # pages nothing in the app opened any more (5 Oct 2026)
+  @("/business/$fake/classes/$fake2/roster", "/business/$fake/classes"),
+  @("/business/$fake/media", "/business/$fake"),
+  @("/business/$fake/classes/new", "/business/$fake/classes"),
+  @("/crews/new", "/crews"),
+  @("/routines/new", "/routines"),
+  @("/memberships/new?business=$fake", "/business/$fake/memberships"),
+  @("/memberships/new", "/memberships"),
+  # a pointer that is not a uuid must NOT be spliced into a path
+  @("/memberships/new?business=not-a-uuid", "/memberships")
+)
+$lost = @()
+foreach ($f in $forwards) {
+  $r = Get-Page $f[0]
+  $to = $r.loc
+  if ($to -match "^https?://[^/]+(/.*)?$") { $to = $Matches[1]; if (-not $to) { $to = "/" } }
+  $toPath = ($to -split "\?", 2)[0]
+  # 307 exactly: a 308 is cached by the browser for ever, which is the one thing
+  # Rule 14 forbids for an address that may come back
+  if ($r.code -ne 307 -or $toPath -ne $f[1]) { $lost += "$($f[0]) -> $($r.code) $to (wanted $($f[1]))" }
+}
+Check 9 "All $($forwards.Count) removed addresses forward (307) to the screen that does their job now" ($lost.Count -eq 0) ($lost -join "; ")
+
+# !! `organization_members` IS DELIBERATELY NOT ON CHECK 8's LIST, and was not before
 # either: its policy admits a stranger to a public organization's PUBLISHED team
 # on purpose, so "it answers nothing" is a pass for the wrong reason now that no
 # organization is public. The old check 11 asserted the half that mattered - that
