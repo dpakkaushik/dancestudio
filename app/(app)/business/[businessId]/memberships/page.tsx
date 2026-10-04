@@ -51,6 +51,11 @@ export default async function StudioMembershipsPage({ params, searchParams }: { 
   if (seat.memberRole !== "owner") {
     redirect(`/business/${businessId}`);
   }
+  /* ⚠ ONLY A STUDIO SELLS A MEMBERSHIP (4 Oct 2026) — an artist page typing its
+     way here lands on the passes it holds instead */
+  if (seat.business.type !== "studio") {
+    redirect("/memberships");
+  }
   /* ⚠⚠ THE ORGANIZATION REFUSAL WENT WITH ORGANIZATIONS (29 Sep 2026). It was
      the user's answer of 22 Sep ("membership not required for organization") and
      it guarded THIS address, which admits the owner of any business they are on

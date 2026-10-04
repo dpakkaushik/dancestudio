@@ -1483,15 +1483,8 @@ export function ClassDetail({
                 spent, so the page cannot promise what the RPC refuses. ── */}
             <Row
               k="Memberships"
-              v={
-                c.allowsStudioMemberships && c.allowsArtistMemberships
-                  ? "A studio's or the artist's pass covers a seat"
-                  : c.allowsStudioMemberships
-                    ? "A studio's pass covers a seat"
-                    : c.allowsArtistMemberships
-                      ? "The artist's pass covers a seat"
-                      : "Not accepted — this one is booked seat by seat"
-              }
+              /* only a studio sells a pass since 4 Oct 2026 */
+              v={c.allowsStudioMemberships ? "A studio's pass covers a seat" : "Not accepted — this one is booked seat by seat"}
             />
           </Sec>
         )}

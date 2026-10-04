@@ -1,32 +1,21 @@
 import { redirect } from "next/navigation";
-import { MembershipForm } from "@/features/memberships/components/MembershipForm";
 import { MembershipsScreen } from "@/features/memberships/components/MembershipsScreen";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { findBusinessCardFacts } from "@/repositories/discovery";
-import { findBusinessMemberships, findMyMemberships, findPassUsesMany } from "@/repositories/memberships";
-import { findMyMemberships as findMyTeams } from "@/repositories/businesses";
-import { findProfileById } from "@/repositories/profiles";
+import { findMyMemberships, findPassUsesMany } from "@/repositories/memberships";
 
-/** /memberships — the Memberships tile (18 Sep 2026's grid), built 19 Sep 2026.
- *  Two sides on one page, because an ARTIST is the account that has both (the
- *  user: "artist should be able to create and track usage of memberships they
- *  have created AND memberships they have purchased"): YOURS, the passes you
- *  hold with their progress bars, and ON SALE, what the business you own sells.
+/** /memberships — the Memberships tile (18 Sep 2026's grid), built 19 Sep 2026:
+ *  the passes you HOLD, with their progress bars.
  *
- *  ⚠⚠ WHICH business sells, RE-CUT 21 Sep 2026 (the user: "fix memberships for
- *  studio"): YOUR ARTIST PAGE, and only that. It used to be "the first business
- *  you own" — `teams.find(owner && (studio || artist_page))` — which is not a
- *  choice anybody made: an organization running two studios reached ONE of them,
- *  whichever came back first, and the second studio's memberships could not be
- *  read or made at all. A STUDIO's memberships live on the studio's own home
- *  now, beside its Classes, Rooms, Team and Earnings, where every other
- *  per-studio desk has always been. So this address means one thing: the passes
- *  you hold, and what you sell as an artist. */
+ *  ⚠⚠ IT SELLS NOTHING ANY MORE (4 Oct 2026, the user: "remove membership
+ *  creation from artists and remove the ones previously created or purchased.
+ *  memberships can only be created by studios"). Until then an artist's page
+ *  sold from here too, on a Manage side; that side, its `?new=1` form and the
+ *  read behind them are gone, and `save_membership` refuses an artist page in
+ *  words. A STUDIO's memberships live on the studio's own home
+ *  (`/business/{id}/memberships`), where they have since 21 Sep. */
 export default async function MembershipsPage({ searchParams }: { searchParams: Promise<Record<string, string | undefined>> }) {
-  const sp = await searchParams;
-  const opening = sp.new === "1";
-  /* `?show=booked` opens on the passes you hold — where a payment lands (2 Oct 2026) */
-  const showBooked = sp.show === "booked";
+  await searchParams;
   const supabase = await createSupabaseServerClient();
   const {
     data: { user },
@@ -34,28 +23,13 @@ export default async function MembershipsPage({ searchParams }: { searchParams: 
   if (!user) {
     redirect("/login");
   }
-  const [passes, teams, me] = await Promise.all([
-    findMyMemberships(supabase).catch(() => []),
-    findMyTeams(supabase).catch(() => []),
-    /* an artist IS their profile (R24), so what their page sells leads with THEIR
-       face and name — the profile each on-sale card is linked to (3 Oct 2026) */
-    findProfileById(supabase, user.id).catch(() => null),
-  ]);
-  /* an organization's hosting row sells nothing — a membership is spent on classes */
-  const owned = teams.find((m) => m.memberRole === "owner" && m.business.type === "artist_page")?.business ?? null;
-  const selling = owned ? await findBusinessMemberships(supabase, owned.id).catch(() => []) : [];
+  const passes = await findMyMemberships(supabase).catch(() => []);
 
   /** ⚠ WHO SOLD YOU THIS PASS, WITH THEIR FACE (28 Sep 2026, the user:
    *  "membership should have studio or artist photo with name"). The NAME has
-   *  ridden on `my_memberships` all along; the photo does not, and widening that
-   *  RETURNS TABLE would be a drop-and-recreate for a picture — so it is ONE
-   *  second query over the businesses the passes name, exactly the shape
-   *  Discover's own shelf uses (`findBusinessCardFacts`), never one read per row.
-   *
-   *  ⚠ It degrades rather than failing: a seller whose row this person may not
-   *  read (an unlisted studio under "anyone reads listed businesses") comes back
-   *  with no photo and the row draws initials — the rule the Faculty list has
-   *  followed since Step 15. A pass is still a pass without a face on it. */
+   *  ridden on `my_memberships` all along; the photo is ONE second query over the
+   *  businesses the passes name (`findBusinessCardFacts`), never one per row, and
+   *  it degrades to initials rather than failing. */
   const sellerIds = [...new Set(passes.map((p) => p.businessId))];
   const [sellerFacts, usesByPass] = await Promise.all([
     sellerIds.length > 0 ? findBusinessCardFacts(supabase, sellerIds).catch(() => new Map()) : Promise.resolve(new Map()),
@@ -66,23 +40,5 @@ export default async function MembershipsPage({ searchParams }: { searchParams: 
   sellerIds.forEach((id) => {
     sellerPhotos[id] = sellerFacts.get(id)?.photoPath ?? null;
   });
-  /* ⚠ `?new=1` opens the form over this desk (22 Sep 2026), and WHOSE membership
-     it is comes from the same `owned` the desk itself is drawn from — so the
-     seller is decided by the server on both paths, and the pointer that
-     `/memberships/new?business=` had to carry is not needed here at all. The
-     gate is re-checked because a query param is a thing anybody can type. */
-  return (
-    <>
-      <MembershipsScreen
-        passes={passes}
-        selling={selling}
-        canSell={Boolean(owned)}
-        sellerPhotos={sellerPhotos}
-        usesByPass={usesByPass}
-        openOnBooked={showBooked}
-        seller={owned ? { name: me?.fullName ?? owned.name, photoPath: me?.avatarPath ?? owned.photoPath ?? null, kind: "artist", href: `/person/${user.id}` } : null}
-      />
-      {opening && owned ? <MembershipForm sellerId={owned.id} sellerName={owned.name} backTo="/memberships" sheet /> : null}
-    </>
-  );
+  return <MembershipsScreen passes={passes} selling={[]} canSell={false} sellerPhotos={sellerPhotos} usesByPass={usesByPass} openOnBooked seller={null} />;
 }

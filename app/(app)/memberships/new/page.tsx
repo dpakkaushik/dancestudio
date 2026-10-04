@@ -26,12 +26,14 @@ export default async function NewMembershipPage({ searchParams }: { searchParams
     redirect("/login");
   }
   const teams = await findMyTeams(supabase).catch(() => []);
-  /* an organization's hosting row sells nothing — a membership is spent on classes */
-  const sellers = teams.filter((m) => m.memberRole === "owner" && (m.business.type === "studio" || m.business.type === "artist_page")).map((m) => m.business);
-  const owned = (business ? sellers.find((t) => t.id === business) : sellers.find((t) => t.type === "artist_page")) ?? null;
+  /* ⚠ ONLY A STUDIO SELLS A MEMBERSHIP (4 Oct 2026, the user: "memberships can
+     only be created by studios") — an artist page is no longer a seller, and
+     `save_membership` refuses one in words */
+  const sellers = teams.filter((m) => m.memberRole === "owner" && m.business.type === "studio").map((m) => m.business);
+  const owned = business ? (sellers.find((t) => t.id === business) ?? null) : null;
   if (!owned) {
     /* back to the desk that sent them, which says why there is nothing to sell from */
     redirect(business ? `/business/${business}/memberships` : "/memberships");
   }
-  return <MembershipForm sellerId={owned.id} sellerName={owned.name} backTo={owned.type === "studio" ? `/business/${owned.id}/memberships` : "/memberships"} />;
+  return <MembershipForm sellerId={owned.id} sellerName={owned.name} backTo={`/business/${owned.id}/memberships`} />;
 }

@@ -704,22 +704,20 @@ async function seed() {
   const s29Trial = await mkMembership(rhythm.h, s29.id, { name: "Trial 3", units: 3, price: 0, total: 30 });
   const dlfHours = await mkMembership(rhythm.h, dlf.id, { name: "20 studio hours", unit: "hours", units: 20, price: 0, total: 15 });
   await mkMembership(eeeCo.h, eee.id, { name: "Kothrud 10", units: 10, price: 2000, total: 20 });
-  const adityaEight = await mkMembership(aditya.h, adityaPage.id, { name: "Aditya · 8 classes", units: 8, price: 0, total: 12 });
-  log("Rhythm sells 10-class pass ₹2,500 (25) and Trial 3 free (30) at Sector 29, 20 studio hours free (15) at DLF · EEE sells Kothrud 10 ₹2,000 (20) · Aditya sells 8 classes free (12)");
+  /* ⚠ only a studio sells a membership (4 Oct 2026) — no artist page sells one */
+  log("Rhythm sells 10-class pass ₹2,500 (25) and Trial 3 free (30) at Sector 29, 20 studio hours free (15) at DLF · EEE sells Kothrud 10 ₹2,000 (20)");
 
   /* who holds one. A free pass is active at once; a priced one waits for money,
      which is what the studio's own page is for. */
   const rohitTrial = await take(rohit, s29Trial);
   const priyaTrial = await take(priya, s29Trial);
   await take(nikhil, dlfHours);
-  const nikhilAditya = await take(nikhil, adityaEight);
-  await take(kabir, adityaEight);
+  await take(kabir, s29Trial);
 
   /* and who has spent one — a seat booked with the pass rather than paid for */
   await spend(rohit, rohitTrial.id, sHiphop);
   await spend(priya, priyaTrial.id, sHiphop);
-  await spend(nikhil, nikhilAditya.id, sAdityaS29);
-  log("Rohit and Priya took Trial 3 and spent one each on Hip-Hop at Sector 29 (1 of 3) · Nikhil took Aditya's 8 and spent one on his Sector 29 class · Nikhil holds 20 DLF hours unspent · Kabir holds Aditya's 8 unspent");
+  log("Rohit and Priya took Trial 3 and spent one each on Hip-Hop at Sector 29 (1 of 3) · Nikhil holds 20 DLF hours unspent · Kabir holds Trial 3 unspent");
 
   /* ────────────────────────────────────────────────────────────────────────
      THE PLATFORM — a support thread, a report

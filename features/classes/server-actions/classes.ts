@@ -170,7 +170,9 @@ const readFields = (formData: FormData) => ({
   lng: (formData.get("lng") as string) || undefined,
   mapsUrl: (formData.get("mapsUrl") as string) || undefined,
   allowsStudioMemberships: (formData.get("allowsStudioMemberships") as string) === "1",
-  allowsArtistMemberships: (formData.get("allowsArtistMemberships") as string) === "1",
+  /* ⚠ always false since 4 Oct 2026 — only a studio sells memberships, and the
+     database's CHECK refuses anything else */
+  allowsArtistMemberships: false,
 });
 
 async function requireUser() {

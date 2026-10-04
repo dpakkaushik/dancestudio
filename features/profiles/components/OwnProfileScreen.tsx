@@ -5,7 +5,7 @@ import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { findNextPublicSessions } from "@/repositories/calendar";
 import { findMyFollowedCrews, findMyFollowedPeople, findMyFollowing, findMyPersonFollowers, findTeamFollows, withTeamFollows } from "@/repositories/follows";
 import { findPersonHeaderPhotos } from "@/repositories/headerPhotos";
-import { findMembershipsOnSale } from "@/repositories/memberships";
+import type { MembershipOnSale } from "@/repositories/memberships";
 import { findPublicStudioTeam } from "@/repositories/publicProfile";
 import { findPublicPerson, type PublicPerson } from "@/repositories/publicPerson";
 import { findMyArtistPlan } from "@/repositories/plans";
@@ -60,12 +60,9 @@ export async function OwnProfileScreen({ userId, loaded }: { userId: string; loa
     findMyFollowedCrews(supabase),
     findMyMemberships(supabase),
     findMyArtistPlan(supabase),
-    /* ⚠ WHAT YOU SELL, ON YOUR OWN TAB TOO (20 Sep 2026). /person/{id} has drawn
-       an artist's live memberships since 19 Sep and this screen drew none, so an
-       artist saw one thing on their public page and another on their own — one
-       of the five ways the two had drifted. A failed read is no block, never a
-       profile that will not open. */
-    person.artistPageId ? findMembershipsOnSale(supabase, person.artistPageId).catch(() => []) : Promise.resolve([]),
+    /* ⚠ AN ARTIST SELLS NO MEMBERSHIP (4 Oct 2026, the user: "memberships can
+       only be created by studios") — the read is gone, the slot stays empty */
+    Promise.resolve([] as MembershipOnSale[]),
     /* ⚠ THE TRAIN READ IS GONE FROM THIS PAGE (27 Sep 2026, the user: "Train
        section to be removed from profiles"). `findStudiosAttended` was this
        screen's only reason to query 300 bookings on every visit, and with the

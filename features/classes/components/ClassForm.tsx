@@ -312,7 +312,6 @@ export function ClassForm({
      defaults are the column's: a business's own memberships work on its classes,
      and the teacher's do not until the class says so. ── */
   const [allowsStudioMem, setAllowsStudioMem] = useState(existing?.allowsStudioMemberships ?? true);
-  const [allowsArtistMem, setAllowsArtistMem] = useState(existing?.allowsArtistMemberships ?? isArtist);
 
   /* ── WHERE, for an artist (18 Sep 2026) ── */
   /* ⚠ THE FORM OPENS ON DANCEOS (20 Sep 2026, the user: "should always be on
@@ -514,7 +513,6 @@ export function ClassForm({
         <input type="hidden" name="priceInr" value={priceInr} />
         <input type="hidden" name="capacity" value={capacity} />
         <input type="hidden" name="allowsStudioMemberships" value={allowsStudioMem ? "1" : ""} />
-        <input type="hidden" name="allowsArtistMemberships" value={allowsArtistMem ? "1" : ""} />
         <input type="hidden" name="people" value={peoplePayload} />
         {/* WHERE, for an artist: the venue, or the pin (18 Sep 2026) */}
         <input type="hidden" name="venueBusinessId" value={atStudio && venue ? venue.id : ""} />
@@ -808,14 +806,9 @@ export function ClassForm({
                 the Policy block on the class's own page says the same thing to
                 whoever is about to book. ── */}
             <div style={labelStyle}>{isArtist ? "7" : "8"} · MEMBERSHIPS</div>
-            {/* the two switch NAMES are the whole answer to "whose pass" — the
-                paragraph over them and the sub-line under each said it twice more */}
-            {(
-              [
-                ["Studio memberships", allowsStudioMem, setAllowsStudioMem],
-                ["Artist memberships", allowsArtistMem, setAllowsArtistMem],
-              ] as const
-            ).map(([word, on, set]) => (
+            {/* ⚠ ONE SWITCH (4 Oct 2026, the user: "memberships can only be created
+                by studios") — "Artist memberships" went with artists selling them */}
+            {([["Studio memberships", allowsStudioMem, setAllowsStudioMem]] as const).map(([word, on, set]) => (
               <button
                 key={word}
                 type="button"

@@ -8,7 +8,7 @@ import { kindOf } from "@/types/profile";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { findPersonHeaderPhotos } from "@/repositories/headerPhotos";
 import { findTeamFollows } from "@/repositories/follows";
-import { findMembershipsOnSale } from "@/repositories/memberships";
+import type { MembershipOnSale } from "@/repositories/memberships";
 import { findNextPublicSessions } from "@/repositories/calendar";
 import { findPublicPerson, isFollowingPerson, personScheduleBusiness } from "@/repositories/publicPerson";
 import { findPublicStudioTeam } from "@/repositories/publicProfile";
@@ -118,9 +118,9 @@ export default async function PersonPage({ params }: { params: Promise<{ userId:
     /* THE HEADER (15 Sep 2026): their own pictures, as many as their KIND shows —
        one for a user, five for an artist (19 Sep 2026) */
     findPersonHeaderPhotos(supabase, userId, headerMaxFor(kindOf(person.isArtist))),
-    /* WHAT THIS ARTIST SELLS (19 Sep 2026): the live memberships of the page
-       behind them — bought from this page, exactly as a studio's are from its */
-    person.artistPageId ? findMembershipsOnSale(supabase, person.artistPageId) : Promise.resolve([]),
+    /* ⚠ AN ARTIST SELLS NO MEMBERSHIP (4 Oct 2026, the user: "memberships can
+       only be created by studios") — the read is gone, the slot stays empty */
+    Promise.resolve([] as MembershipOnSale[]),
     /* AND WHO WORKS WITH THEM (27 Sep 2026) — the other end of a link that ran
        one way: those people's own profiles have named this artist under "Artists
        associated with" since 20 Sep, and this page named nobody back.
