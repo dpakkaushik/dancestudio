@@ -40,7 +40,10 @@ const pctTint = (p: number | null, good = 75, ok = 50) => (p == null ? MUTED : p
 const dateWords = (iso: string): string => {
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return "";
-  return d.toLocaleDateString("en-IN", { weekday: "short", day: "numeric", month: "short", year: "numeric", timeZone: "Asia/Kolkata" });
+  /* short enough for a box: the year only when it is not this one */
+  const year = (x: Date) => x.toLocaleDateString("en-IN", { year: "numeric", timeZone: "Asia/Kolkata" });
+  const sameYear = year(d) === year(new Date());
+  return d.toLocaleDateString("en-IN", { weekday: "short", day: "numeric", month: "short", ...(sameYear ? {} : { year: "numeric" }), timeZone: "Asia/Kolkata" });
 };
 const timeWords = (iso: string): string => {
   const d = new Date(iso);
@@ -241,64 +244,42 @@ export function TeamClassesPanel({
                       <FillBar c={c} />
                     </span>
                   </summary>
-                  {/* ⚠ THE DETAILS ARE A SHORT LIST OF FACTS, EACH SAID ONCE (4 Oct
-                      2026, the user: "remove unnecessary detail, stats, text from this
-                      last collapse … smaller class button, details written properly").
-                      Two tile rows and a sentence repeating them are gone; a row with
-                      nothing true to say is not drawn rather than drawn as "—". */}
+                  {/* ⚠ EVERYTHING UNDER THE BAR IS A BOX WITH A SHORT NAME (4 Oct
+                      2026, the user: "all detail in last collapse below the bar should
+                      be in boxes with shorter names"). Three to a row, the value over
+                      its label; a box with nothing true to say is not drawn.
+                      Held · to come and the pay a session left at the user's word. */}
                   <div data-testid="team-class-details" style={{ padding: "2px 12px 12px" }}>
-                    <dl style={{ margin: 0, borderTop: "1.5px solid var(--el)", paddingTop: 6 }}>
-                      {[
-                        /* the chip above already says TEACHES; the row earns its place only
-                           when it adds WHO they assist */
-                        ["Assists", c.kind === "assistant" && c.artistName ? c.artistName : null],
-                        ["Where", [c.venueName, c.room].filter(Boolean).join(" · ") || null],
-                        /* held · to come and the pay a session left at the user's word
-                           (4 Oct 2026: "held, a session, To come and pay can be removed") */
-                        /* STUDENTS — booked and checked in (4 Oct 2026, the user: "should
-                           show Turn up and Student- Booked and Checked in"). Over the
-                           sessions held; before any is held, the seats booked so far.
-                           ⚠ A class the member made themselves is theirs: this team reads
-                           its seats and never its register, so it claims no check-ins. */
+                    <div style={{ display: "grid", gridTemplateColumns: "repeat(3, minmax(0, 1fr))", gap: 6, borderTop: "1.5px solid var(--el)", paddingTop: 10 }}>
+                      {(
                         [
-                          "Students",
-                          c.held > 0
-                            ? [`${c.booked} booked`, c.dancers != null ? `${c.dancers} checked in` : null].filter(Boolean).join(" · ")
-                            : c.fillBasis === "upcoming"
-                              ? `${c.fillBooked} booked so far`
-                              : "None booked yet",
-                        ],
-                        [
-                          "Turn-up",
-                          c.dancers == null
-                            ? "Not shown — their own class's register is theirs"
-                            : c.held === 0
-                              ? "Once a session is held"
-                              : t == null
-                                ? "Nobody was booked"
-                                : `${t}%`,
-                        ],
-                        /* the next session when there is one, else the last — its date
-                           and its time on two rows, the date saying which it is */
-                        ["Date", (c.nextAt ?? c.lastAt) ? `${dateWords((c.nextAt ?? c.lastAt) as string)} · ${c.nextAt ? "next session" : "last session"}` : null],
-                        ["Time", (c.nextAt ?? c.lastAt) ? timeWords((c.nextAt ?? c.lastAt) as string) : null],
-                        [
-                          "Status",
-                          c.closedWhy === "deleted"
-                            ? "Class deleted — the sessions held still count"
-                            : c.closedWhy === "removed"
-                              ? "No longer on it — the sessions held still count"
-                              : null,
-                        ],
-                      ]
-                        .filter((row): row is [string, string] => Boolean(row[1]))
-                        .map(([label, value]) => (
-                          <div key={label} style={{ display: "flex", gap: 10, padding: "5px 0", fontSize: 11.5, lineHeight: 1.4 }}>
-                            <dt style={{ width: 64, flexShrink: 0, fontSize: 9.5, fontWeight: 900, letterSpacing: 0.6, color: MUTED, textTransform: "uppercase", paddingTop: 1.5 }}>{label}</dt>
-                            <dd style={{ margin: 0, flex: 1, minWidth: 0, fontWeight: 700, color: INK }}>{value}</dd>
+                          /* the chip above already says TEACHES; this box earns its place
+                             only when it adds WHO they assist */
+                          ["With", c.kind === "assistant" && c.artistName ? c.artistName : null],
+                          ["Studio", c.venueName],
+                          ["Room", c.room],
+                          /* over the sessions held; before any, the seats booked so far.
+                             ⚠ A class the member made themselves is theirs: this team
+                             reads its seats and never its register, so no check-ins. */
+                          ["Booked", String(c.held > 0 ? c.booked : c.fillBasis === "upcoming" ? c.fillBooked : 0)],
+                          ["Checked in", c.dancers != null && c.held > 0 ? String(c.dancers) : null],
+                          ["Turn-up", c.dancers != null && t != null && c.held > 0 ? `${t}%` : null, t == null ? undefined : pctTint(t)],
+                          /* the next session when there is one, else the last */
+                          ["Date", (c.nextAt ?? c.lastAt) ? dateWords((c.nextAt ?? c.lastAt) as string) : null],
+                          ["Time", (c.nextAt ?? c.lastAt) ? timeWords((c.nextAt ?? c.lastAt) as string) : null],
+                          ["Status", c.closedWhy === "deleted" ? "Deleted" : c.closedWhy === "removed" ? "Removed" : null, SUB],
+                        ] as Array<[string, string | null, string?]>
+                      )
+                        .filter((b): b is [string, string, string?] => Boolean(b[1]))
+                        .map(([label, value, color]) => (
+                          <div key={label} data-testid={`team-class-box-${label.toLowerCase().replace(/\s+/g, "-")}`} style={{ borderRadius: 12, background: `${tint}0f`, border: "1.5px solid var(--el)", padding: "8px 6px 7px", textAlign: "center", minWidth: 0 }}>
+                            <div title={value} style={{ fontSize: 12.5, fontWeight: 900, lineHeight: 1.2, color: color ?? INK, fontVariantNumeric: "tabular-nums", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden", overflowWrap: "anywhere" }}>
+                              {value}
+                            </div>
+                            <div style={{ fontSize: 8.5, fontWeight: 900, letterSpacing: 0.7, color: MUTED, marginTop: 3, textTransform: "uppercase" }}>{label}</div>
                           </div>
                         ))}
-                    </dl>
+                    </div>
                     <Link
                       href={`/c/${c.shareSlug}`}
                       aria-label={`Open ${c.title}`}
