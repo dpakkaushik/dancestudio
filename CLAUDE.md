@@ -2,7 +2,7 @@
 
 ## LAST SESSION (4 Oct 2026) — replaced on every push (Rule 13)
 
-> ### THE ENQUIRY SHEET: WHO IT GOES TO IN THE TOP RIGHT, BIG KIND ROWS, BIG OPTION TILES, AND THE WORDS TIDIED (4 Oct 2026, latest) — no migration · COMMITTED, NOT PUSHED
+> ### THE ENQUIRY SHEET: WHO IT GOES TO IN THE TOP RIGHT, BIG KIND ROWS, BIG OPTION TILES, AND THE WORDS TIDIED (4 Oct 2026, latest) — no migration · ✅ PUSHED AND LIVE (`ecde5b3`, on the user's *"push to live"*: Vercel READY, alias confirmed on the sha through the API, the probe **69/69** and `stranger-smoke` all green ON THE LIVE SITE; **the happy path 19/19 in 13.0 min** on `:3100` against the pushed bundle)
 > The user: *"any Group size to be changed to Group, Ad to Advertisement, second word first letter capital for these subheadings. To person whom the enquiry is being sent to should be adjusted on top right of the form and should have profile pic with name. name a bit bigger"*, then *"Bigger icons for and tiles for what it for. and what for in the form in enquiry form. make the way bigger."*
 > * **Words:**
 >   * "Any group size" → **Group**, "Ad" → **Advertisement**.
