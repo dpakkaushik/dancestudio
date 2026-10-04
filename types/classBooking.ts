@@ -33,12 +33,3 @@ export interface MyClassBooking {
   /** the studio an artist's class is held at, once accepted — the card's other half */
   venue: ClassOwner | null;
 }
-
-/** One roster row — the studio's view of a booking. */
-export interface RosterEntry {
-  id: string;
-  status: ClassBookingStatus;
-  enrolledAt: string;
-  learnerName: string;
-  learnerCity: string | null;
-}

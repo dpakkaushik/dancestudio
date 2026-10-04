@@ -90,6 +90,22 @@ const nextConfig: NextConfig = {
       { source: "/business/:businessId/team", destination: "/business/:businessId/staff", permanent: false },
       /* the crew's battle record */
       { source: "/crews/:crewId/manage/events", destination: "/crews/:crewId/manage", permanent: false },
+
+      /* ══ PAGES NOTHING IN THE APP OPENED ANY MORE (5 Oct 2026, the user:
+         "remove all pages which arent affecting the app in anyway and are
+         unreachable … do it safely. one by one") ══
+         Each was reachable only by typing its address, so deleting it changes
+         nothing a person can tap — and each address still lands on the screen
+         that does its job now, so a saved link or the installed TWA's last URL
+         is never a bare 404 (Rule 14). One commit per page, so any one of them
+         can be put back with a single `git revert`. `scripts/stranger-smoke.ps1`
+         asserts every forward in this list, so one cannot quietly disappear.
+
+         The old ROSTER: a read-only list of the booked names. The Roster pill
+         that opened it went on 4 Oct 2026; the class page's Attendance tab is
+         the register now (check-in, the scanner, walk-ins), and every card on
+         the Classes desk opens that page. */
+      { source: "/business/:businessId/classes/:classId/roster", destination: "/business/:businessId/classes", permanent: false },
     ];
   },
 };

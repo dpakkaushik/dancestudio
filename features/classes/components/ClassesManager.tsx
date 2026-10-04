@@ -793,7 +793,8 @@ export function ClassesManager({
                     {chipRow}
                     {/* ⚠ NO ROSTER PILL (4 Oct 2026, the user: "remove roster
                         button"). The card opens the class page, whose Attendance
-                        tab IS the register; the `/roster` route stays (Rule 14).
+                        tab IS the register; the old `/roster` address forwards
+                        to this desk since 5 Oct 2026 (next.config.ts, Rule 14).
                         ⚠ AND NO DELETE (4 Oct 2026, later) — it is the chip on the
                         class page's top right now. */}
                   </>

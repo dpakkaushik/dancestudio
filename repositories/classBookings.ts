@@ -1,7 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { dosClassLabel } from "@/lib/constants/styles";
 import { classOwnerOf, type ClassLevel, type ClassStatus } from "@/types/class";
-import type { ClassBookingStatus, MyClassBooking, RosterEntry } from "@/types/classBooking";
+import type { ClassBookingStatus, MyClassBooking } from "@/types/classBooking";
 import type { Business } from "@/types/business";
 import { TENANT_COLUMNS, toBusiness, type BusinessRow } from "./businesses";
 import { findClassArtists } from "./classPeople";
@@ -25,13 +25,6 @@ interface MyClassBookingRow {
     venue: { name: string; type: string | null; profile_photo_path: string | null } | null;
   } | null;
   businesses: { name: string; city: string | null; type: string | null; profile_photo_path: string | null } | null;
-}
-
-interface RosterRow {
-  id: string;
-  status: ClassBookingStatus;
-  created_at: string;
-  profiles: { full_name: string; city: string | null } | null;
 }
 
 /** Book a seat via the atomic RPC. A full class is refused in words — there is
@@ -271,32 +264,6 @@ export async function findMyEnrolledSessionIds(
     map.set(r.session_id, { id: r.id, status: r.status })
   );
   return map;
-}
-
-/** The roster for one class — RLS admits the business's members only. */
-export async function findRosterByClass(
-  supabase: SupabaseClient,
-  classId: string
-): Promise<RosterEntry[]> {
-  const { data, error } = await supabase
-    .from("class_bookings")
-    .select("id, status, created_at, profiles (full_name, city)")
-    .eq("class_id", classId)
-    .eq("status", "enrolled")
-    .is("deleted_at", null)
-    .order("created_at", { ascending: true })
-    .limit(500);
-
-  if (error) {
-    throw new Error(`class_bookings.roster failed: ${error.message}`);
-  }
-  return (data as unknown as RosterRow[]).map((r) => ({
-    id: r.id,
-    status: r.status,
-    enrolledAt: r.created_at,
-    learnerName: r.profiles?.full_name ?? "Learner",
-    learnerCity: r.profiles?.city ?? null,
-  }));
 }
 
 /** Enrolled counts per session — aggregate-only RPC, safe for public listings. */
