@@ -20,7 +20,7 @@ import { SUB } from "@/lib/design/tokens";
  *  ⚠ A CHIP ON THE CARD'S TOP RIGHT, and the question in a centred dialog — the
  *  card's head has no room for a second paragraph, and the confirm is portalled
  *  so no panel can clip it (the 16 Sep stacking lesson). */
-export function MembershipOffSale({ membershipId, name, active }: { membershipId: string; name: string; active: number }) {
+export function MembershipOffSale({ membershipId, name, active, backTo = "/memberships" }: { membershipId: string; name: string; active: number; backTo?: string }) {
   const router = useRouter();
   const [ask, setAsk] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -44,7 +44,7 @@ export function MembershipOffSale({ membershipId, name, active }: { membershipId
        leave this page's live underneath it. */
     setAsk(false);
     setTimeout(() => {
-      router.replace("/memberships");
+      router.replace(backTo);
       router.refresh();
     }, 600);
   };

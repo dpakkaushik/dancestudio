@@ -5,8 +5,9 @@ import { useState, useTransition, type ReactNode } from "react";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { ToolActions, ToolBody, ToolCard, ToolChip, ToolFacts, ToolHead, toolBtn } from "@/components/ui/ToolCard";
 import { cancelSubscriptionAction } from "@/features/payments/server-actions/subscriptions";
-import { SUB } from "@/lib/design/tokens";
 import { priceWords } from "@/repositories/plans";
+import type { PlanKind } from "@/features/settings/planRights";
+import { PlanRightsList } from "./PlanRights";
 import type { Subscription } from "@/repositories/subscriptions";
 import { dateWords } from "./settings-kit";
 
@@ -45,7 +46,10 @@ export function SubscriptionCard({
   standing,
   subscribe,
   cancelledWords,
+  rights,
 }: {
+  /** what the plan buys, listed inside the card (4 Oct 2026) */
+  rights?: PlanKind;
   testId: string;
   tint: string;
   /** whose subscription — the person or the studio */
@@ -91,11 +95,17 @@ export function SubscriptionCard({
       router.refresh();
     });
 
-  /* the button's words when there is nothing left to stop */
-  const notRenewing = !s || !live ? null : s.granted ? "Granted — nothing renews" : s.cancelAtPeriodEnd || s.status === "canceled" ? `Cancelled — ends ${until ?? ""}`.trim() : null;
+  /* ⚠⚠ SHORTER, AND THE DATES APART (4 Oct 2026, the user: "remove line on left
+     for subscription card. details and text below written shorter and in better
+     font … start and end date written separately. cancel button should only have
+     Cancel Subscription"). Two rows of boxes — what it costs, then when it
+     started and when it ends — and one plain sentence; the Attempt counter, the
+     "paid by" line and the provider reference are gone. */
+  const startWords = s?.currentPeriodStart ? dateWords(s.currentPeriodStart) : "—";
+  const endWords = s ? (s.renews ? (s.nextChargeOn ? dateWords(s.nextChargeOn) : until ?? "—") : until ?? "—") : "—";
 
   return (
-    <ToolCard testId={testId} edge={standing.tone}>
+    <ToolCard testId={testId}>
       <ToolHead
         tint={tint}
         name={name}
@@ -112,28 +122,23 @@ export function SubscriptionCard({
             <ToolFacts
               tint={tint}
               items={[
-                { label: "Price", value: s.granted ? "₹0 · granted" : priceWords(s.priceInr, s.period) },
-                { label: "Billing", value: s.period === "yearly" ? "Yearly" : "Monthly" },
-                { label: "Started", value: s.currentPeriodStart ? dateWords(s.currentPeriodStart) : "—" },
+                { label: "Price", value: s.granted ? "Free" : priceWords(s.priceInr, s.period) },
+                { label: "Billing", value: s.granted ? "Granted" : s.period === "yearly" ? "Yearly" : "Monthly" },
               ]}
             />
             <ToolFacts
               tint={tint}
               style={{ marginTop: 6 }}
               items={[
-                { label: "Paid through", value: until ?? "—", testId: "plan-until" },
-                { label: "Next charge", value: s.renews ? (s.nextChargeOn ? dateWords(s.nextChargeOn) : until ?? "—") : "None" },
-                { label: "Attempt", value: s.attempt > 0 ? s.attempt : "—" },
+                { label: "Start date", value: startWords, testId: "plan-start" },
+                { label: s.renews ? "Renews on" : "End date", value: endWords, testId: "plan-until" },
               ]}
             />
-            <div style={{ marginTop: 10, display: "grid", gap: 4, fontSize: 11.5 }}>
-              <Detail label="Paid by">{s.granted ? "Granted by DanceOS — nothing is charged" : "UPI AutoPay or card mandate through Cashfree"}</Detail>
-              {s.cfSubscriptionId || s.providerSubscriptionId ? <Detail label="Reference">{s.cfSubscriptionId ?? s.providerSubscriptionId}</Detail> : null}
-              {s.failureReason ? <Detail label="Last failure">{s.failureReason}</Detail> : null}
-            </div>
+            {s.failureReason ? <div style={{ fontSize: 12, fontWeight: 700, color: "#F87171", marginTop: 8 }}>Last charge failed: {s.failureReason}</div> : null}
           </>
         ) : null}
-        <div style={{ fontSize: 11.5, color: SUB, lineHeight: 1.5, marginTop: s ? 10 : 0 }}>{standing.line}</div>
+        <div style={{ fontSize: 13, fontWeight: 700, color: "var(--text)", lineHeight: 1.45, marginTop: s ? 10 : 0 }}>{standing.line}</div>
+        {rights ? <PlanRightsList kind={rights} /> : null}
       </ToolBody>
       <ToolActions>
         {!live && subscribe ? <span style={{ flex: "1 1 0", minWidth: 0, display: "grid" }}>{subscribe(say)}</span> : null}
@@ -146,10 +151,11 @@ export function SubscriptionCard({
               setErr(null);
               setAsking(true);
             }}
-            aria-label={s.renews ? `Cancel ${name}'s subscription` : notRenewing ?? "Nothing to cancel"}
+            /* the chip on the head already says why it cannot (GRANTED, ENDING) */
+            title={s.renews ? undefined : "Nothing renews, so there is nothing to cancel"}
             style={{ ...toolBtn("danger", tint), opacity: s.renews ? 1 : 0.55, cursor: s.renews ? "pointer" : "default" }}
           >
-            {s.renews ? "Cancel subscription" : notRenewing}
+            Cancel Subscription
           </button>
         ) : null}
       </ToolActions>
@@ -159,7 +165,7 @@ export function SubscriptionCard({
           title="Cancel this subscription?"
           body={`It stays on until ${until ?? "the end of this period"} — that is paid for. Nothing more is charged after it.`}
           keepWord="Keep it"
-          goWord={pending ? "Cancelling…" : "Cancel subscription"}
+          goWord={pending ? "Cancelling…" : "Cancel Subscription"}
           busy={pending}
           err={err}
           onKeep={() => setAsking(false)}
@@ -173,14 +179,5 @@ export function SubscriptionCard({
         </div>
       ) : null}
     </ToolCard>
-  );
-}
-
-function Detail({ label, children }: { label: string; children: ReactNode }) {
-  return (
-    <div style={{ display: "flex", gap: 10, alignItems: "baseline" }}>
-      <span style={{ width: 82, flexShrink: 0, fontSize: 9.5, fontWeight: 900, letterSpacing: 0.7, textTransform: "uppercase", color: "var(--muted)" }}>{label}</span>
-      <span style={{ flex: 1, minWidth: 0, overflowWrap: "anywhere" }}>{children}</span>
-    </div>
   );
 }

@@ -114,6 +114,13 @@ export function StudioHome({
      public page could not even agree with each other */
   const RG = PROFILE_RING.studio;
   const place = [business.area, business.city].filter(Boolean).join(", ");
+  /* the public page's words exactly: the founding year, or the year it joined
+     DanceOS when the owner's read has it */
+  const sinceText = business.foundedYear
+    ? `Since ${business.foundedYear}`
+    : editable?.createdAt
+      ? `On DanceOS since ${new Intl.DateTimeFormat("en-IN", { timeZone: "Asia/Kolkata", year: "numeric" }).format(new Date(editable.createdAt))}`
+      : null;
   const pinHref = editable?.locationSetAt && editable.lat != null && editable.lng != null ? mapsPinHref(editable.lat, editable.lng) : null;
   const roomsWords = `${roomCount} room${roomCount === 1 ? "" : "s"}`;
   /* a photo whose URL could not be signed is not a square the rail can draw —
@@ -167,6 +174,10 @@ export function StudioHome({
           verified={Boolean(business.verifiedAt)}
           meta={
             <>
+              {/* ⚠ "SINCE" WITH ITS CALENDAR, FIRST — the public page's own fact
+                  (4 Oct 2026, the user: "since missing on studio and crew home") */}
+              {sinceText ? <HeroFact icon="calendar" testId="hero-since">{sinceText}</HeroFact> : null}
+              {sinceText && business.city ? <HeroDot /> : null}
               {/* the city alone, in words (3 Oct 2026) — see `HeroPlace` */}
               {/* ⚠ a pin before the city (4 Oct 2026), the same mark on every profile */}
               {business.city ? <HeroFact icon="pin">{business.city}</HeroFact> : null}

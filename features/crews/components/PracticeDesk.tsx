@@ -30,7 +30,9 @@ const TINT = DOS_TOOLS.practice.c;
  *  practices would otherwise cost twenty roster reads on every visit for a panel
  *  most people never open — the same reasoning `loadFollowersAction` is built on,
  *  and it makes the desk cheaper than drawing them all would be. */
-export function PracticeDesk({ crewId, crewName, practices, todayIso }: { crewId: string; crewName: string; practices: CrewPractice[]; todayIso: string }) {
+/* `crewName` is still passed and no longer drawn — the line under the heading
+   went on 4 Oct 2026 */
+export function PracticeDesk({ crewId, practices, todayIso }: { crewId: string; crewName: string; practices: CrewPractice[]; todayIso: string }) {
   const [open, setOpen] = useState<string | null>(null);
   const [people, setPeople] = useState<Record<string, PracticePerson[]>>({});
   const [busy, setBusy] = useState<string | null>(null);
@@ -152,8 +154,8 @@ export function PracticeDesk({ crewId, crewName, practices, todayIso }: { crewId
     <div style={{ background: LILAC, color: INK, maxWidth: 430, margin: "0 auto", fontFamily: DOS_UI, padding: "0 16px", boxSizing: "border-box", paddingBottom: "var(--dos-foot)" }}>
       <DeskTop style={{ paddingBottom: 2 }}>
       {/* ⚠ THE TOP SECTION (3 Oct 2026, C116) — the hero, whose it is, and Arrange */}
-      <DeskHero tool="practice" as="h1" margin="0 0 8px" />
-      <div style={{ fontSize: 11.5, color: "var(--sub)", margin: "0 0 12px" }}>{crewName}</div>
+      {/* ⚠ nothing between the heading and the button (4 Oct 2026, the user) */}
+      <DeskHero tool="practice" as="h1" margin="0 0 12px" />
 
       {/* ＋ ON TOP (20 Sep 2026's rule for every desk), the shared control */}
       <DeskAddButton label="Arrange a practice" href="?new=1" />

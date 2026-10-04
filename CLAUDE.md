@@ -2,6 +2,41 @@
 
 ## LAST SESSION (4 Oct 2026) — replaced on every push (Rule 13)
 
+> ### FOUR ASKS AND ONE MORE: NO LINE UNDER A TOOL'S HEADING, A STUDIO'S MEMBERSHIP DETAILS STAY IN THE STUDIO, ASSISTANTS AND OTHER TEAM, THE CREW'S TEAM DESK IN THE STUDIO'S SHAPE, AN ARTIST-ONLY SUBSCRIPTION PAGE, AND SINCE ON EVERY HOME (4 Oct 2026, latest) — no migration · ⚠ Rule 9 (a person's /subscription stops listing their studios — each studio's card and Cancel Subscription stay on that studio's own Subscription tile)
+> The user: *"1. Membership of studio - remove text between heading and button. remove such headings from all tools in any profile. 2. Membership Details button on Studio membership cards taking to detail but profile shifts to artist or on on switcher. 3. Team - Class assistant counter to be renamed to Assistants, Other Team Memebers rename to Other Team. Crew team not looking the same should be how its for studio and artist. 4. Subscription- Only Artist subscription for User/ artist- remove line on left for subscription card. details and text below written shortter and in beteer font should also show what all you get in the artist subscription , start and end date written seprately. cancel button should only have Cancel Subscription."*, then mid-turn *"since missing on studio and crew home"*.
+> * **Nothing between a tool's heading and its button.** These lines are gone:
+>   * "What {studio} sells" (Memberships).
+>   * The crew name on the Practice desk.
+>   * "{crew} · {style} · {city}" on the crew's Team desk.
+>   * The sub-line under Earnings, on a person's, a studio's and a crew's page.
+> * ⚠⚠ **A studio's membership details have their own address under the studio:** `/business/{studio}/memberships/{id}`.
+>   * The switcher reads the PATHNAME, so `/memberships/{id}` had left the studio and the profile fell back to the person.
+>   * `features/memberships/server/membershipUsageRoute.tsx` serves both routes. On the studio's address the membership must belong to that studio, or the page is not found.
+>   * The page's columns (`basePath`) and Delete (`backTo`) stay on whichever address the page was opened at.
+>   * The student page's pass cards use the studio's address too.
+>   * `/memberships/{id}` still opens (Rule 14).
+> * **Team:**
+>   * The counters now read **Assistants** and **Other Team** (`MEMBER_LABEL.short`).
+>   * **The crew's Team desk is in the studio desk's shape:** a middle section with Total members, Waiting, and a count per role (Leader · Members · Trainees, 0 included). The roster is grouped under the studio's dot-and-count heads, ↑↓ swaps within a group, and the add sheet has nothing under its heading. The `crew-tile-members` test id is kept.
+> * **Subscription (⚠ Rule 9):** `/subscription` is the **Artist plan alone**, with no studios and no middle counts.
+>   * Each studio's card and its Cancel Subscription live on its own `/business/{id}/subscription`. That is now the only Stop renewing for a studio.
+>   * `SubscriptionCard`, shared with the studio's card, changes as follows:
+>     * The coloured left line is gone.
+>     * Two rows of boxes: Price · Billing, then **Start date** · **End date** (or "Renews on") (`plan-start`, `plan-until`).
+>     * Attempt, "Paid by" and the provider reference are gone.
+>     * One short sentence in 13px bold ink, with no dates in it.
+>     * **What you get** (`PlanRightsList`, `plan-rights`) on the artist card, both the live one and the offer.
+>     * The button reads **Cancel Subscription** and nothing else, disabled on a grant or an ending plan, where the chip says why.
+>   * The studio's own "What it buys" card is unchanged.
+> * **"Since" on the studio home and the crew home:** a calendar `HeroFact` (`hero-since`), first on the line, in the public pages' words. A studio shows its founding year, or "On DanceOS since" when the owner's read has `createdAt`.
+> * **Verified:**
+>   * typecheck 0 · lint 0 · build green (the new route is in the manifest).
+>   * `shoot-hero` **188/188** · `shoot-tiles` **135/135** (both re-cut: /subscription carries no studio, and the studio's card is on its own tile).
+>   * A probe ran **78/80** in both themes as two studio owners and a crew leader. The 2 reds were the probe reading the crew home before it rendered; a direct check reads "Since 2026 · Pune". Screenshots were checked by eye.
+>   * e2e re-cut: five reads of a studio's card moved from `/subscription` to the studio's own page, the grant's button reads Cancel Subscription, and the membership details are asserted under the studio with the switcher still on it.
+>   * **The whole e2e suite passed 56/56 in 17.9 min** on one worker on `:3100`, no red at any point.
+>   * ⚠ COMMITTED LOCALLY, NOT PUSHED — waiting on the user's word.
+
 > ### SIX ASKS: AN ASSET TAP THAT ALWAYS ANSWERS, STUDENT COUNTS IN THE MIDDLE, A BIGGER MEMBERSHIP NAME, EVERY TEAM ROLE COUNTED, A TEAM HISTORY OF STATS · CLASSES, SUBSCRIPTION CARDS, AND AN EYE + ICONS ON EVERY HOME (4 Oct 2026, latest) — no migration · ⚠ Rule 9 (Subscription's Stop renewing moved onto a new card, same action) · ✅ PUSHED AND LIVE (`504a66d`: Vercel READY, alias confirmed on the sha through the API, `stranger-smoke` all green ON THE LIVE SITE)
 > The user: *"1. asset picture tap not working. 2. invite student form remove text below heading. Student tab - Total Students count and Total membership students count in a seprate section above cards … membership card- rename your artist page with Membership. remove membership above membership name. make membership name bigger. 3. Team-count for each role should be mentioned even if 0. Team History page- remove text between heading and card, remove profile and back to team button. stats and performance merged into one section called Stats. New section for Classes with classes list dance style wise … 4.Subscription- new page design … Subscription card with full details of every subscription, cancel button for all … 5. home for user and artist - Public page button should be an eye like for studio and crews, icon in front of age … icon for location … for all profiles. remove members count on home next to location in crew home."*
 > * **Assets:** the face is ALWAYS a button. ⚠ The "not working" tap was assets with no picture stored, so the face was not a button at all; without a picture it now opens the edit form, where a picture is added. A refused picture upload stays on screen for 3.2 s instead of vanishing with the sheet.
@@ -12779,6 +12814,10 @@ for the database schema. **The UI is not redesigned** — see Rule 2.
 
 ### Progress tracker — update after EVERY push (Rule 11)
 
+- **NO LINE UNDER A TOOL'S HEADING, STUDIO MEMBERSHIP DETAILS UNDER THE STUDIO,
+  A CREW TEAM DESK LIKE THE STUDIO'S, AN ARTIST-ONLY SUBSCRIPTION PAGE, SINCE ON
+  EVERY HOME — 4 Oct 2026, no step number — no migration ⚠ (Rule 9: studios'
+  subscriptions are listed only on their own tile now).** Detail at the top.
 - **SIX ASKS: ASSETS, STUDENTS, MEMBERSHIPS, TEAM HISTORY, SUBSCRIPTION CARDS AND
   HOME ICONS — 4 Oct 2026, no step number — no migration.** The asset tap always
   answers. Students get counts in a middle section, and the membership name is

@@ -8,6 +8,29 @@ import { PLAN_RIGHTS, PLAN_RIGHTS_NOTE, type PlanKind } from "@/features/setting
  *  is the second copy (`linkChip` declared twice, the figure row written out
  *  three times), and a list of RIGHTS that drifts between two screens is worse
  *  than a style that does — one of them starts promising something. */
+/** THE SAME RIGHTS, INSIDE A CARD (4 Oct 2026, the user: "should also show what
+ *  all you get in the artist subscription") — one line each, icon and title, on
+ *  the subscription card itself, so what you pay and what it buys are read
+ *  together. Same `PLAN_RIGHTS` rows, so the two cannot drift. */
+export function PlanRightsList({ kind }: { kind: PlanKind }) {
+  const rows = PLAN_RIGHTS[kind];
+  return (
+    <div data-testid="plan-rights" style={{ marginTop: 12 }}>
+      <div style={{ fontSize: 9, fontWeight: 900, letterSpacing: 0.9, color: "var(--muted)", marginBottom: 6, textTransform: "uppercase" }}>What you get</div>
+      <div style={{ display: "grid", gap: 7 }}>
+        {rows.map(([ic, t]) => (
+          <div key={t} style={{ display: "flex", alignItems: "center", gap: 9, fontSize: 13, fontWeight: 700, color: "var(--text)" }}>
+            <span aria-hidden="true" style={{ width: 26, height: 26, borderRadius: 8, background: "var(--el)", display: "grid", placeItems: "center", fontSize: 14, flexShrink: 0 }}>
+              {ic}
+            </span>
+            {t}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 export function PlanRights({ kind }: { kind: PlanKind }) {
   const rows = PLAN_RIGHTS[kind];
   return (

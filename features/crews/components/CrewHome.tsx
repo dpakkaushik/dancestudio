@@ -93,6 +93,12 @@ export function CrewHome({ crew, members, header = [], followers = 0, order = nu
               {/* ⚠ THE CITY WITH ITS PIN, AND NO MEMBERS COUNT (4 Oct 2026, the user:
                   "remove members count on home next to location in crew home") —
                   the Team tile is where the roster is counted */}
+              {/* ⚠ "SINCE" WITH ITS CALENDAR, as the crew's public page prints it
+                  (4 Oct 2026, the user: "since missing on studio and crew home") */}
+              <HeroFact icon="calendar" testId="hero-since">
+                Since {new Intl.DateTimeFormat("en-IN", { timeZone: "Asia/Kolkata", year: "numeric" }).format(new Date(crew.createdAt))}
+              </HeroFact>
+              <HeroDot />
               <HeroFact icon="pin">{crew.city}</HeroFact>
               {asked > 0 ? (
                 <>

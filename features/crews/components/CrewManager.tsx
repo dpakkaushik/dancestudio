@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import {
@@ -13,12 +12,18 @@ import {
 } from "@/features/crews/server-actions/crews";
 import { PeoplePicker } from "@/features/people/components/PeoplePicker";
 import { DeskAddButton } from "@/features/settings/components/settings-kit";
-import { DeskHero, SheetHandle, sheetBody, sheetWrap } from "@/features/businesses/components/biz-kit";
+import { DOS_TOOLS, DeskHero, SheetHandle, sheetBody, sheetWrap } from "@/features/businesses/components/biz-kit";
 import { DeskBody, DeskMiddle, DeskTop } from "@/components/ui/DeskSections";
+import { FigureHead } from "@/components/ui/FigureHead";
 import { ToolActions, ToolBody, ToolCard, ToolFacts, ToolHead, toolBtn } from "@/components/ui/ToolCard";
-import { DOS_DISPLAY, DOS_UI, INK, LILAC } from "@/lib/design/tokens";
-import { CREW_ROLE_TINT, CREW_ROLE_WORD, type Crew, type CrewMember } from "@/types/crew";
+import { DOS_DISPLAY, DOS_UI, INK, LILAC, MUTED } from "@/lib/design/tokens";
+import { CREW_ROLE_TINT, CREW_ROLE_WORD, type Crew, type CrewMember, type CrewRole } from "@/types/crew";
 import { Toast, bizCard, sinceWords } from "./crew-kit";
+
+/** the roster's groups, in the crew's own order — the leader first */
+const ROLE_ORDER: ReadonlyArray<CrewRole> = ["leader", "member", "trainee"];
+/** the plural a group and its counter are headed by, as the studio desk's are */
+const CREW_ROLE_PLURAL: Record<CrewRole, string> = { leader: "Leader", member: "Members", trainee: "Trainees" };
 
 /** THE CREW'S TEAM DESK — prototype S_crewmanage (16318-16480), lifted: the
  *  tiles, then a row per person with the role's colour on its edge, the photo
@@ -70,14 +75,12 @@ export function CrewManager({ crew, members }: { crew: Crew; members: CrewMember
 
   return (
     <div style={{ background: LILAC, color: INK, maxWidth: 430, margin: "0 auto", fontFamily: DOS_UI, minHeight: "100vh", padding: "0 16px 40px", boxSizing: "border-box" }}>
-      <DeskTop style={{ paddingBottom: 2 }}>
-      {/* ⚠ THE TOP SECTION (3 Oct 2026, C116) — the hero, whose team it is, and
-          Add (which used to sit under the tiles; it is the desk's primary control) */}
-      {/* the tool's hero, as every desk wears it; the line under it says whose */}
-      <DeskHero tool="team" as="h1" margin="0 0 8px" />
-      <Link href={`/crews/${crew.id}/manage`} aria-label={`Back to ${crew.name}'s home`} style={{ display: "block", fontSize: 11, fontWeight: 800, color: "var(--sub)", textDecoration: "none", margin: "0 2px 12px" }}>
-        {crew.name} · {crew.style} · {crew.city}
-      </Link>
+      <DeskTop style={{ paddingBottom: 4 }}>
+      {/* ⚠ THE TOP SECTION (3 Oct 2026, C116) — the hero and Add.
+          ⚠ NOTHING BETWEEN THE HEADING AND THE BUTTON (4 Oct 2026, the user:
+          "remove such headings from all tools in any profile") — the
+          "{crew} · {style} · {city}" line went, as the studio's did */}
+      <DeskHero tool="team" as="h1" margin="0 0 12px" />
 
             {/* ⚠ THE SHARED ＋, ON TOP, IN THE SAME WORDS AS EVERY OTHER TEAM DESK
                 (21 Sep 2026, the user: "fix Team pages for all kinds of profile
@@ -91,45 +94,67 @@ export function CrewManager({ crew, members }: { crew: Crew; members: CrewMember
             <DeskAddButton label="Add Team Members" onClick={() => setAdd(true)} />
       </DeskTop>
 
-      {/* ⚠ THE MIDDLE SECTION (3 Oct 2026, C116) — the two figures. The card that
-          held them is gone: inside this squircle it would be the same veil twice. */}
+      {/* ⚠ THE MIDDLE SECTION, IN THE STUDIO DESK'S SHAPE (4 Oct 2026, the user:
+          "Crew team not looking the same should be how its for studio and
+          artist") — the same `ToolFacts` boxes the studio's and the artist's Team
+          desks draw: the total first, then a count per role in the role's own
+          colour (0 included), and who has not answered yet. Counted off the
+          roster below, never stored. The test ids are the old tiles' own. */}
       <DeskMiddle>
-        <div style={{ display: "flex", gap: 8 }}>
-          {(
-            [
-              /* ⚠ THE THREE TILES WERE Members · Entered · Upcoming, and the two
-                 that counted EVENTS went on 29 Sep 2026. A one-tile strip reads
-                 as a broken row, so the two facts this desk actually has take
-                 their places — who has said yes, and who has not answered yet,
-                 which is the distinction the roster below is built on
-                 ("ASKED IS NOT JOINED"). Nothing is invented to fill a gap. */
-              [String(confirmed.length), "Members", "#3B82F6"],
-              [String(asked.length), "Waiting", "#F59E0B"],
-            ] as Array<[string, string, string]>
-          ).map(([v, l, col]) => (
-            <div key={l} style={{ flex: 1, textAlign: "center", background: "var(--el)", borderRadius: 12, padding: "9px 3px", borderTop: `3px solid ${col}` }}>
-              <div style={{ fontSize: 13, fontWeight: 900 }} data-testid={`crew-tile-${l.toLowerCase()}`}>
-                {v}
-              </div>
-              <div style={{ fontSize: 8.5, fontWeight: 800, letterSpacing: 0.3, textTransform: "uppercase", color: "var(--sub)", marginTop: 2 }}>{l}</div>
-            </div>
-          ))}
-        </div>
+        <ToolFacts
+          tint={DOS_TOOLS.team.c}
+          items={[
+            { label: confirmed.length === 1 ? "Member" : "Total members", value: confirmed.length, testId: "crew-tile-members" },
+            { label: "Waiting", value: asked.length, testId: "crew-tile-waiting", tint: asked.length > 0 ? "#F59E0B" : undefined },
+          ]}
+        />
+        <ToolFacts
+          tint={DOS_TOOLS.team.c}
+          style={{ marginTop: 6 }}
+          items={ROLE_ORDER.map((r) => {
+            const n = confirmed.filter((m) => m.role === r).length;
+            return { label: CREW_ROLE_PLURAL[r], value: n, testId: `crew-count-${r}`, tint: n > 0 ? CREW_ROLE_TINT[r] : undefined };
+          })}
+        />
       </DeskMiddle>
 
       <DeskBody>
-        {/* ⚠ THE LOWER SECTION (3 Oct 2026, C116) — the roster */}
+        {/* ⚠ THE LOWER SECTION (3 Oct 2026, C116) — the roster, GROUPED BY ROLE
+            under the studio desk's own heads (a dot, the role, the count) since
+            4 Oct 2026 — it was one flat stack */}
         {error ? <div style={{ fontSize: 11.5, color: "#F87171", marginBottom: 10 }}>{error}</div> : null}
-            {members.map((m, i) => {
+        {ROLE_ORDER.map((role) => {
+          const group = members.filter((m) => m.role === role);
+          if (!group.length) return null;
+          const col = CREW_ROLE_TINT[role];
+          return (
+            <div key={role} style={{ marginBottom: 14 }}>
+              <FigureHead
+                align="center"
+                margin="2px 0 7px"
+                title={
+                  <>
+                    <span aria-hidden="true" style={{ width: 8, height: 8, borderRadius: 4, background: col, flexShrink: 0 }} />
+                    <span style={{ fontSize: 10.5, fontWeight: 900, letterSpacing: 1, textTransform: "uppercase", color: INK }}>{CREW_ROLE_PLURAL[role]}</span>
+                  </>
+                }
+                figure={<span style={{ fontSize: 10.5, fontWeight: 800, color: MUTED, fontVariantNumeric: "tabular-nums" }}>{group.length}</span>}
+              />
+            {group.map((m, gi) => {
               const rc = CREW_ROLE_TINT[m.role];
               const pending = m.status === "asked";
-              const canMove = (d: -1 | 1) => (d < 0 ? i > 0 : i < members.length - 1);
+              /* ⚠ they swap with their NEIGHBOUR IN THE SAME GROUP — the studio
+                 desk's rule; the stored order is still one order for the crew */
+              const canMove = (d: -1 | 1) => Boolean(group[gi + d]);
               const move = (d: -1 | 1) => {
-                if (!canMove(d)) return;
-                const nx = members.slice();
-                const j = i + d;
-                [nx[i], nx[j]] = [nx[j], nx[i]];
-                void run(() => reorderCrewMembersAction({ crewId: crew.id, memberIds: nx.map((x) => x.id) }), "Order saved");
+                const partner = group[gi + d];
+                if (!partner) return;
+                const nx = members.map((x) => x.id);
+                const a = nx.indexOf(m.id);
+                const b = nx.indexOf(partner.id);
+                if (a < 0 || b < 0) return;
+                [nx[a], nx[b]] = [nx[b], nx[a]];
+                void run(() => reorderCrewMembersAction({ crewId: crew.id, memberIds: nx }), "Order saved");
               };
               /* ⚠⚠ A CREW MEMBER CARD (3 Oct 2026, the user: *"better and bigger
                  cards for … Team … each has a profile linked to it which should be
@@ -225,6 +250,9 @@ export function CrewManager({ crew, members }: { crew: Crew; members: CrewMember
                 </ToolCard>
               );
             })}
+            </div>
+          );
+        })}
             {/* an empty roster said nothing at all, while the other two desks each
                 said something — so a leader whose asks were all declined read the
                 three tiles and a button and no words */}
@@ -241,9 +269,9 @@ export function CrewManager({ crew, members }: { crew: Crew; members: CrewMember
                   {/* ⚠ 17px AND THE DISPLAY FACE (27 Sep 2026) — the studio's and
                       the organization's add sheets both head themselves that way,
                       and this one was 16px in the UI face. One sheet, one title. */}
-                  <b style={{ fontSize: 17, fontFamily: DOS_DISPLAY }}>Add Team Members</b>
-                  <div style={{ fontSize: 11.5, color: "var(--sub)", margin: "3px 0 12px", lineHeight: 1.5 }}>
-                    They accept before their name is on the crew&rsquo;s page — nobody is put on a roster without saying yes.
+                  {/* ⚠ nothing under the heading, as on the studio's add sheet (4 Oct 2026) */}
+                  <div style={{ marginBottom: 12 }}>
+                    <b style={{ fontSize: 17, fontFamily: DOS_DISPLAY }}>Add Team Members</b>
                   </div>
                   <PeoplePicker
                     exclude={members.map((m) => m.userId)}

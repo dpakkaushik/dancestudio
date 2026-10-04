@@ -274,9 +274,13 @@ async function personOpensAStudio(page, who, acc, stamp) {
   await page.keyboard.press("Escape");
   await page.goto(`${BASE}/business/${studioId}`, { waitUntil: "networkidle" });
   check((await page.getByRole("link", { name: "Subscription", exact: true }).getAttribute("href").catch(() => null)) === `/business/${studioId}/subscription`, `${who} · the studio's home carries a Subscription tile onto its own mandate`);
+  /* ⚠ ONLY THE ARTIST PLAN ON /subscription SINCE 4 Oct 2026 (the user: "Only
+     Artist subscription for User/ artist") — the studio's subscription is on its
+     OWN Subscription tile, which is where its Cancel Subscription lives (Rule 9) */
   await page.goto(`${BASE}/subscription`, { waitUntil: "networkidle" });
   const subTxt = await page.locator("body").innerText().catch(() => "");
-  check(subTxt.includes("YOUR STUDIOS") && subTxt.includes(name), `${who} · /subscription lists the studio under YOUR STUDIOS, beside the person's own plan`);
+  check(!subTxt.includes("YOUR STUDIOS") && (await page.getByTestId("studio-subscription").count()) === 0, `${who} · /subscription is the artist plan alone — no studio on it`);
+  await page.goto(`${BASE}/business/${studioId}/subscription`, { waitUntil: "networkidle" });
   /* ⚠ THIS ASSERTED THE OPPOSITE UNTIL 27 Sep 2026, and it was right then: the
      badge came first and `subscribe` refused an unverified studio. The user
      chose "pay at creation, verify after", `20260927100000` took that refusal

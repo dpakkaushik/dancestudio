@@ -372,7 +372,7 @@ function EarningsPanel({ r, businessName }: { r: StudentRecord; businessName: st
   );
 }
 
-function MembershipPanel({ r, businessName }: { r: StudentRecord; businessName: string }) {
+function MembershipPanel({ r, businessId, businessName }: { r: StudentRecord; businessId: string; businessName: string }) {
   if (r.passes.length === 0) {
     return (
       <div style={{ ...panel, textAlign: "center", border: "1.5px dashed var(--el)", fontSize: 12, color: SUB, lineHeight: 1.55 }}>
@@ -405,8 +405,9 @@ function MembershipPanel({ r, businessName }: { r: StudentRecord; businessName: 
         const live = p.status === "active" && !expired;
         const until = expiryWords(p);
         return (
-          /* the card opens the membership's own details — its holders and classes */
-          <ToolCard key={p.passId} testId="student-pass" href={`/memberships/${p.membershipId}`} hrefLabel={`${p.name} — membership details`}>
+          /* the card opens the membership's own details — its holders and classes —
+             under THIS business's address, so the switcher stays here (4 Oct 2026) */
+          <ToolCard key={p.passId} testId="student-pass" href={`/business/${businessId}/memberships/${p.membershipId}`} hrefLabel={`${p.name} — membership details`}>
             <ToolBody style={{ borderTop: "none" }}>
               <ToolTitle kicker="Membership" after={<ToolChip word={word} fg={live ? "#22C55E" : unpaid ? "#F59E0B" : expired ? "#F87171" : SUB} bg={live ? "#22C55E1c" : unpaid ? "#F59E0B1c" : expired ? "#F871711c" : "var(--el)"} />}>
                 {p.name}
@@ -474,7 +475,7 @@ export function StudentRecordScreen({ businessId, businessName, record, show }: 
         panels={[
           { key: "classes", node: <ClassesPanel r={r} /> },
           { key: "stats", node: <StatsPanel r={r} /> },
-          { key: "membership", node: <MembershipPanel r={r} businessName={businessName} /> },
+          { key: "membership", node: <MembershipPanel r={r} businessId={businessId} businessName={businessName} /> },
           { key: "earnings", node: <EarningsPanel r={r} businessName={businessName} /> },
         ]}
       />

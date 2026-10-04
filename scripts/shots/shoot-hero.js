@@ -222,10 +222,16 @@ const enterEdit = async (page) => {
        now. There is exactly ONE Stop renewing in this app; this check is what
        stops a move from quietly becoming a deletion. */
     check((await owner.getByTestId("studio-subscription").count()) === 0, "studio home: NO subscription strip — it is Settings' Subscription tile now (20 Sep 2026)");
+    /* ⚠ AND MOVED A THIRD TIME (4 Oct 2026, the user: "Only Artist subscription for
+       User/ artist"): `/subscription` is the artist plan alone, and the studio's
+       card — with its Cancel Subscription — is the studio's OWN Subscription tile */
     await owner.goto(`${BASE}/subscription`);
+    await owner.getByRole("heading", { name: "Subscription" }).first().waitFor({ timeout: 15000 }).catch(() => {});
+    check((await owner.getByTestId("studio-subscription").count()) === 0, "subscription: the person's page is the artist plan alone — no studio on it");
+    await owner.goto(`${BASE}/business/${studioId}/subscription`);
     const strip = owner.getByTestId("studio-subscription").first();
     await strip.waitFor({ timeout: 15000 }).catch(() => {});
-    check(await strip.isVisible(), "subscription: the studio's own strip is here, under Settings › Subscription");
+    check(await strip.isVisible(), "subscription: the studio's own card is on its own Subscription tile");
     check(await strip.getByText("EEE Dance Studio", { exact: true }).isVisible(), "subscription: and it NAMES the studio — one person can run several, so the heading is which one");
     /* this studio's plan is a GRANT (₹0, set up above) and a grant does not
        renew — so the strip says so and offers no Stop renewing, which is the
@@ -409,7 +415,8 @@ const enterEdit = async (page) => {
     await owner.goto(`${BASE}/business/${studioId}/memberships`);
     await owner.getByRole("heading", { name: "Memberships" }).waitFor({ timeout: 15000 });
     check((await owner.getByText("Class packs and plans this studio sells").count()) === 0, "studio memberships: not the 'nothing here yet' shrug any more");
-    check((await owner.getByText(/^What .* sells$/).count()) === 1, "studio memberships: the desk says WHOSE it is — an organization runs several");
+    /* ⚠ nothing between the heading and the button since 4 Oct 2026 (the user) */
+    check((await owner.getByText(/^What .* sells$/).count()) === 0, "studio memberships: no line between the heading and the button");
     /* a studio holds no passes (a business is not a person), so one side, no switch */
     check((await owner.getByRole("button", { name: /^Booked/ }).count()) === 0, "studio memberships: no Booked side — a studio holds no pass");
     /* ⚠ STALE SINCE STAGE 2 AND ONLY FOUND TODAY (22 Sep 2026). This asserted

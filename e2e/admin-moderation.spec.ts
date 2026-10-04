@@ -280,8 +280,9 @@ test.describe.serial("the admin panel: businesses and reports", () => {
     const hubCard = owner.getByTestId("studio-card").filter({ hasText: studioName });
     await expect(hubCard.getByLabel("Verified")).toBeVisible();
     await expect(hubCard.getByRole("button", { name: /^Subscribe · ₹1,200\/mo$/ })).toBeVisible();
-    /* the standing is on /subscription since 20 Sep 2026 — Settings' own tile */
-    await owner.goto("/subscription");
+    /* the standing is on the studio's OWN Subscription page since 4 Oct 2026 —
+       the person's /subscription is the artist plan alone */
+    await owner.goto(`/business/${studioId}/subscription`);
     const strip = owner.getByTestId("studio-subscription").filter({ hasText: studioName });
     await expect(strip.getByText("NOT LIVE", { exact: true })).toBeVisible();
     await expect(strip).toContainText("Each studio has its own subscription");
@@ -299,7 +300,7 @@ test.describe.serial("the admin panel: businesses and reports", () => {
     // and the studio is on Discover the moment its subscription is
     await owner.goto("/business");
     await expect(owner.getByTestId("studio-live")).toBeVisible();
-    await owner.goto("/subscription");
+    await owner.goto(`/business/${studioId}/subscription`);
     await expect(owner.getByTestId("studio-subscription").filter({ hasText: studioName })).toContainText("GRANTED");
 
     // the studio is findable the way a dancer finds it, with nothing in between

@@ -131,9 +131,10 @@ export function MembershipsScreen({
       <DeskTop style={side === "selling" ? { paddingBottom: 2 } : undefined}>
       <DeskHero tool="memberships" as="h1" margin="0" />
 
-      {/* a studio's desk says whose it is: an organization runs several, and the
-          tool hero names the TOOL and nothing that names the studio */}
-      {business ? <div style={{ fontSize: 11.5, color: SUB, fontWeight: 800, margin: "4px 0 0" }}>What {business.name} sells</div> : null}
+      {/* ⚠ NOTHING BETWEEN THE HEADING AND THE BUTTON (4 Oct 2026, the user:
+          "remove text between heading and button. remove such headings from all
+          tools in any profile"). "What {studio} sells" went; the switcher and
+          every card's face already say whose desk this is. */}
 
       {canSell && !business ? (
         <div role="group" aria-label="Show" style={{ display: "flex", gap: 2, background: "var(--el)", borderRadius: 12, padding: 3, marginTop: 12 }}>
@@ -250,14 +251,19 @@ export function MembershipsScreen({
         </>
       ) : (
         <>
-          {selling.map((m) => (
+          {selling.map((m) => {
+            /* ⚠ A STUDIO'S DETAILS STAY UNDER THE STUDIO (4 Oct 2026) — the switcher
+               reads the pathname, so `/memberships/{id}` used to shift the profile
+               to the person */
+            const detailHref = business ? `/business/${business.id}/memberships/${m.id}` : `/memberships/${m.id}`;
+            return (
             /* ⚠⚠ A MEMBERSHIP ON SALE (3 Oct 2026): the SELLER leads — the studio
                or the artist whose membership it is, at a profile's size — then the
                membership's own name, the four facts a seller reads it by, the bar
                of what was sold that has been danced, and the door to its usage on a
                bar of its own. The whole card still opens the usage page under the
                name it has always had. */
-            <ToolCard key={m.id} testId="selling-membership" href={`/memberships/${m.id}`} hrefLabel={`Open ${m.name}`}>
+            <ToolCard key={m.id} testId="selling-membership" href={detailHref} hrefLabel={`Open ${m.name}`}>
               <ToolHead
                 tint={TINT}
                 name={seller?.name ?? business?.name ?? "You"}
@@ -307,12 +313,13 @@ export function MembershipsScreen({
                 {/* ⚠ "MEMBERSHIP DETAILS" (3 Oct 2026, the user: "Usage & Holders to
                     be called Membership Details"; the capital D on 4 Oct 2026, "d
                     capital for detail for both membership and student") */}
-                <Link href={`/memberships/${m.id}`} style={toolBtn("tinted", TINT)}>
+                <Link href={detailHref} style={toolBtn("tinted", TINT)}>
                   Membership Details ›
                 </Link>
               </ToolActions>
             </ToolCard>
-          ))}
+            );
+          })}
           {/* ⚠⚠ `&& !open` USED TO BE HERE, AND IT WAS TWO BUGS (found 21 Sep 2026
               by a PAGEERROR on the studio's brand-new desk, which is empty by
               definition). `open` is not a variable in this file — it resolved to

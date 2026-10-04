@@ -187,7 +187,10 @@ export function EarningsScreen({
       ) : (
         <h1 style={{ fontSize: 21, fontWeight: 900, letterSpacing: -0.4, margin: 0 }}>{title}</h1>
       )}
-      {sub ? <div style={{ fontSize: 11.5, color: SUB, fontWeight: 800, marginTop: 6 }}>{sub}</div> : null}
+      {/* ⚠ NO LINE UNDER THE HEADING (4 Oct 2026, the user: "remove such headings
+          from all tools in any profile") — `sub` is still accepted, and drawn
+          only on a screen that is not the Earnings tool itself */}
+      {sub && title !== DOS_TOOLS.earn.name ? <div style={{ fontSize: 11.5, color: SUB, fontWeight: 800, marginTop: 6 }}>{sub}</div> : null}
 
       {/* DAY · WEEK · MONTH · YEAR — the period is a LINK, so it is in the URL */}
       <div role="group" aria-label="Period" style={{ display: "flex", gap: 2, background: "var(--el)", borderRadius: 12, padding: 3, marginTop: 12 }}>

@@ -156,8 +156,11 @@ export const MEMBER_LABEL: Record<MemberRole, MemberLabel> = {
   manager: { short: "Managers", colour: "#BE123C" },
   trainer: { short: "Faculty", colour: "#0D9488", teach: true, assist: true },
   visiting_faculty: { short: "Visiting faculty", colour: "#8B5CF6", teach: true, assist: true },
-  assistant: { short: "Class assistants", colour: "#3B82F6", assist: true },
-  staff: { short: "Other team members", colour: "#64748B" },
+  /* ⚠ "Assistants" and "Other Team" (4 Oct 2026, the user: "Class assistant
+     counter to be renamed to Assistants, Other Team Memebers rename to Other
+     Team") — the counters and the group heads read these */
+  assistant: { short: "Assistants", colour: "#3B82F6", assist: true },
+  staff: { short: "Other Team", colour: "#64748B" },
 };
 
 /** the order the groups are drawn in — the prototype's own `order` (2131-2141):

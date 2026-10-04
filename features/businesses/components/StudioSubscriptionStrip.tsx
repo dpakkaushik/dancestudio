@@ -3,7 +3,6 @@
 import { DOS_TOOLS } from "@/features/businesses/components/biz-kit";
 import { SubscribeButton } from "@/features/payments/components/SubscribeButton";
 import { SubscriptionCard, type Standing } from "@/features/settings/components/SubscriptionCard";
-import { dateWords } from "@/features/settings/components/settings-kit";
 import { toolBtn } from "@/components/ui/ToolCard";
 import { priceWords, type PlanCatalogRow } from "@/repositories/plans";
 import type { StudioSubscriptionState } from "@/repositories/subscriptions";
@@ -41,17 +40,17 @@ export function StudioSubscriptionStrip({
 }) {
   const s = state.subscription;
   const live = Boolean(s?.hasAccess);
-  const until = s?.currentPeriodEnd ? dateWords(s.currentPeriodEnd) : null;
 
   const standing: Standing = !s || !live
     ? { word: "NOT LIVE", tone: "#F59E0B", line: state.whyNotPublic ?? "Not on Discover yet." }
     : s.status === "past_due"
-      ? { word: "PAYMENT PROBLEM", tone: "#EF4444", line: `The renewal did not go through — Cashfree is retrying; you keep Discover for three days past ${until}.` }
+      /* ⚠ short, and no dates — they are the card's own boxes (4 Oct 2026) */
+      ? { word: "PAYMENT PROBLEM", tone: "#EF4444", line: "The renewal failed. Cashfree is retrying — it stays on Discover for three days." }
       : s.cancelAtPeriodEnd || s.status === "canceled"
-        ? { word: "ENDING", tone: "#F59E0B", line: `Stays on Discover until ${until}, then stops. Nothing more will be charged.` }
+        ? { word: "ENDING", tone: "#F59E0B", line: "Cancelled. It stays on Discover until the end date, and nothing more is charged." }
         : s.granted
-          ? { word: "GRANTED", tone: "#22C55E", line: `DanceOS set this up until ${until}. It does not renew on its own.` }
-          : { word: "RENEWS", tone: "#22C55E", line: `Renews ${s.nextChargeOn ? dateWords(s.nextChargeOn) : until ?? ""} at ${priceWords(s.priceInr, s.period)} — you are told a day before each charge.` };
+          ? { word: "GRANTED", tone: "#22C55E", line: "Given by DanceOS. It does not renew." }
+          : { word: "RENEWS", tone: "#22C55E", line: "Renews on its own. You are told a day before each charge." };
 
   return (
     <SubscriptionCard

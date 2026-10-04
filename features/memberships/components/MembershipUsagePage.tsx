@@ -92,9 +92,15 @@ export function MembershipUsagePage({
   seller = null,
   now,
   show = "holders",
+  basePath,
+  backTo = "/memberships",
 }: {
   /** the column the server decided, from `?show=` */
   show?: "holders" | "earnings";
+  /** the address this page lives at — a studio's is under the studio (4 Oct 2026) */
+  basePath?: string;
+  /** the desk a Delete returns to */
+  backTo?: string;
   membership: MembershipWithUsage;
   holders: MembershipHolder[];
   classes: MembershipClassUse[];
@@ -151,7 +157,7 @@ export function MembershipUsagePage({
             right={
               <>
                 {live ? <ToolChip word="LIVE" fg="#22C55E" bg="#22C55E1c" /> : <ToolChip word="DRAFT" fg={SUB} bg="var(--el)" />}
-                {canManage ? <MembershipOffSale membershipId={m.id} name={m.name} active={m.active} /> : null}
+                {canManage ? <MembershipOffSale membershipId={m.id} name={m.name} active={m.active} backTo={backTo} /> : null}
               </>
             }
           />
@@ -312,7 +318,7 @@ export function MembershipUsagePage({
      separate column"*): the card on top, then Holders · Earnings as the app's own
      segments. Holders opens first — it is what the page was opened for, and the
      e2e and `shoot-classes` read its cards without pressing anything. */
-  const base = `/memberships/${m.id}`;
+  const base = basePath ?? `/memberships/${m.id}`;
   return (
     <div style={{ background: LILAC, color: INK, maxWidth: 430, margin: "0 auto", fontFamily: DOS_UI, minHeight: "100vh", padding: "14px 16px 40px", boxSizing: "border-box" }}>
       <SegmentedPanels

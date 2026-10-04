@@ -5,15 +5,13 @@ import { useState, useTransition } from "react";
 import { WelcomeFromUrl } from "@/components/ui/WelcomeBow";
 import { DOS_TOOLS } from "@/features/businesses/components/biz-kit";
 import { SubscribeButton } from "@/features/payments/components/SubscribeButton";
-import { PlanRights } from "@/features/settings/components/PlanRights";
+import { PlanRightsList } from "@/features/settings/components/PlanRights";
 import { activateArtistPlanAction } from "@/features/settings/server-actions/plans";
-import { StudioSubscriptionStrip } from "@/features/businesses/components/StudioSubscriptionStrip";
 import { priceWords, type PlanCatalogRow } from "@/repositories/plans";
-import type { StudioSubscriptionState, Subscription } from "@/repositories/subscriptions";
-import { BizPage, BizToast, dateWords, rupees } from "./settings-kit";
+import type { Subscription } from "@/repositories/subscriptions";
+import { BizPage, BizToast, dateWords } from "./settings-kit";
 import { SubscriptionCard } from "./SubscriptionCard";
-import { FigureHead } from "@/components/ui/FigureHead";
-import { ToolActions, ToolBody, ToolCard, ToolChip, ToolFacts, ToolHead, toolBtn } from "@/components/ui/ToolCard";
+import { ToolActions, ToolBody, ToolCard, ToolChip, ToolHead, toolBtn } from "@/components/ui/ToolCard";
 
 /** S_subscr (16935-16990) — DanceOS Pro · Artist, "one profile, more tools".
  *
@@ -35,39 +33,31 @@ import { ToolActions, ToolBody, ToolCard, ToolChip, ToolFacts, ToolHead, toolBtn
  *  the grid cannot disagree (2 Oct 2026) */
 const ARTIST_TOOLS = ["classes", "routines", "students", "earn"] as const;
 
-const head = { fontSize: 10, fontWeight: 900, letterSpacing: 1, color: "var(--muted)" } as const;
-
 const DOS_MONO = 'ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace';
 
-/** The one-line truth about a subscription's state, in the words a person uses. */
+/** The one-line truth about a subscription's state, in the words a person uses.
+ *  ⚠ SHORT, AND NO DATES (4 Oct 2026, the user: "details and text below written
+ *  shortter") — the start and end dates are boxes of their own on the card now. */
 export function subscriptionWords(s: Subscription): { title: string; tone: string; line: string } {
   const until = s.currentPeriodEnd ? dateWords(s.currentPeriodEnd) : null;
-  if (s.status === "pending_auth") return { title: "Not set up yet", tone: "#F59E0B", line: "The mandate was started but not authorised — finish it below." };
+  if (s.status === "pending_auth") return { title: "Not set up yet", tone: "#F59E0B", line: "Not authorised yet — finish it below." };
   if (!s.hasAccess) return { title: "Ended", tone: "var(--muted)", line: until ? `Ended on ${until}.` : "Ended." };
-  if (s.status === "past_due") return { title: "Payment problem", tone: "#EF4444", line: `The renewal did not go through${s.failureReason ? ` (${s.failureReason})` : ""}. Cashfree is retrying; you keep access for three days past ${until}.` };
-  if (s.cancelAtPeriodEnd || s.status === "canceled") return { title: "Active · ending", tone: "#F59E0B", line: `Stays on until ${until}, then stops. Nothing more will be charged.` };
-  if (s.granted) return { title: "Active · granted", tone: "#22C55E", line: `DanceOS set this up for you until ${until}. It does not renew on its own.` };
-  return { title: "Active · renews", tone: "#22C55E", line: `Renews on ${s.nextChargeOn ? dateWords(s.nextChargeOn) : until} at ₹${s.priceInr.toLocaleString("en-IN")} — you will be notified a day before each charge.` };
+  if (s.status === "past_due") return { title: "Payment problem", tone: "#EF4444", line: "The renewal failed. Cashfree is retrying — you keep access for three days." };
+  if (s.cancelAtPeriodEnd || s.status === "canceled") return { title: "Active · ending", tone: "#F59E0B", line: "Cancelled. It stays on until the end date, and nothing more is charged." };
+  if (s.granted) return { title: "Active · granted", tone: "#22C55E", line: "Given by DanceOS. It does not renew." };
+  return { title: "Active · renews", tone: "#22C55E", line: "Renews on its own. You are told a day before each charge." };
 }
 
 export function SubscriptionScreen({
   person,
   subscription,
   catalog,
-  studioPrice,
-  businesses = [],
 }: {
   /** whose Artist plan — its card leads with them */
   person: { id: string; name: string; photoPath: string | null };
   subscription: Subscription | null;
   /** the artist plans on offer, from the price list */
   catalog: PlanCatalogRow[];
-  /** what one studio costs, or null when none is on offer */
-  studioPrice: PlanCatalogRow | null;
-  /** ⚠ the studios this person OWNS, each with its standing and its control:
-   *  this screen holds the app's one Stop renewing, so it must list everything
-   *  that renews. `orgPrice` and the organizations went on 29 Sep 2026. */
-  businesses?: Array<{ id: string; name: string; photoPath?: string | null; kind: "studio"; verified: boolean; state: StudioSubscriptionState | null }>;
 }) {
   const router = useRouter();
   const offers = catalog.filter((p) => p.kind === "artist" && p.active);
@@ -95,32 +85,15 @@ export function SubscriptionScreen({
     });
 
   const live = subscription && subscription.hasAccess ? subscription : null;
-  const studios = businesses.filter((b) => b.kind === "studio");
   const TINT = DOS_TOOLS.subscription.c;
 
-  /* ⚠ THE MIDDLE SECTION (4 Oct 2026) — counted off the cards below: how many
-     subscriptions are live, how many renew on their own, and what they cost a
-     month together (a yearly plan counted at a twelfth) */
-  const all = [live, ...studios.map((b) => (b.state?.subscription?.hasAccess ? b.state.subscription : null))].filter((x): x is Subscription => Boolean(x));
-  const renewing = all.filter((x) => x.renews);
-  const monthly = renewing.reduce((n, x) => n + (x.period === "yearly" ? x.priceInr / 12 : x.priceInr), 0);
-
+  /* ⚠⚠ ONLY THE ARTIST PLAN (4 Oct 2026, the user: "Only Artist subscription for
+     User/ artist"). The studios this person owns are NOT listed here any more —
+     and their money still has a door (Rule 9): each studio's own Subscription
+     tile, `/business/{id}/subscription`, carries its card and its Cancel
+     Subscription. The middle counts went with them: one plan is one card. */
   return (
-    <BizPage
-      title="Subscription"
-      tool="subscription"
-      middle={
-        <ToolFacts
-          tint={TINT}
-          items={[
-            { label: all.length === 1 ? "Subscription" : "Subscriptions", value: all.length, testId: "subscriptions-live" },
-            { label: "Renewing", value: renewing.length, testId: "subscriptions-renewing" },
-            { label: "A month", value: rupees(monthly), testId: "subscriptions-monthly" },
-          ]}
-        />
-      }
-    >
-      <FigureHead margin="0 2px 8px" title={<span style={head}>ARTIST PLAN</span>} />
+    <BizPage title="Subscription" tool="subscription">
       {live ? (
         (() => {
           const w = subscriptionWords(live);
@@ -137,12 +110,14 @@ export function SubscriptionScreen({
               subscription={live}
               standing={{ word: w.title.toUpperCase(), tone: w.tone, line: w.line }}
               cancelledWords={(u) => (u ? `Cancelled — the tools stay on until ${u}` : "Cancelled")}
+              rights="artist"
             />
           );
         })()
       ) : (
-        /* NOT AN ARTIST YET (or no longer) — the same card, holding the offer */
-        <ToolCard testId="artist-offer" edge="#EC4899">
+        /* NOT AN ARTIST YET (or no longer) — the same card, holding the offer.
+           ⚠ no coloured left line (4 Oct 2026, the user) */
+        <ToolCard testId="artist-offer">
           <ToolHead
             tint={TINT}
             name={person.name}
@@ -167,8 +142,10 @@ export function SubscriptionScreen({
               </div>
             )}
             {subscription && !subscription.hasAccess && subscription.currentPeriodEnd ? (
-              <div style={{ fontSize: 11, color: "#F87171", marginTop: 10 }}>Your last plan ended on {dateWords(subscription.currentPeriodEnd)} — the tools are locked until you subscribe again.</div>
+              <div style={{ fontSize: 12.5, fontWeight: 700, color: "#F87171", marginTop: 10 }}>Your last plan ended on {dateWords(subscription.currentPeriodEnd)}.</div>
             ) : null}
+            {/* what you get, inside the card it is bought from (4 Oct 2026) */}
+            <PlanRightsList kind="artist" />
           </ToolBody>
           {pick ? (
             <ToolActions>
@@ -185,26 +162,6 @@ export function SubscriptionScreen({
           ) : null}
         </ToolCard>
       )}
-      {!live ? <PlanRights kind="artist" /> : null}
-
-      {/* ⚠ A PERSON'S OWN STUDIOS, UNDER THEIR OWN PLAN (26 Sep 2026) — one mandate
-          per studio, each its own card with its own Cancel. Drawn only when there
-          is one. */}
-      {studios.length > 0 ? (
-        <div style={{ marginTop: 14 }}>
-          <FigureHead margin="0 2px 8px" title={<span style={head}>YOUR STUDIOS</span>} />
-          {/* the price is on each card's own Subscribe button; what is left here is
-              the one case where there IS no button */}
-          {studioPrice ? null : (
-            <div style={{ fontSize: 11.5, color: "var(--sub)", lineHeight: 1.55, padding: "0 2px 10px" }}>No studio plan is on offer right now.</div>
-          )}
-          {studios.map((t) =>
-            t.state ? (
-              <StudioSubscriptionStrip key={t.id} businessId={t.id} businessName={t.name} photoPath={t.photoPath ?? null} state={t.state} studioPrice={studioPrice} />
-            ) : null
-          )}
-        </div>
-      ) : null}
       <BizToast msg={toast} />
       {/* the bow `welcomeArtist` opens (2 Oct 2026) — the tools the plan unlocks
           as its pills, in their own tile colours */}

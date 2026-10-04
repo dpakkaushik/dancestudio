@@ -480,6 +480,10 @@ test.describe.serial("DanceOS, end to end", () => {
     await expect(studioBow).toContainText(`Welcome, ${studioName}!`, { timeout: 15_000 });
     await studioBow.getByRole("button", { name: "Continue" }).click();
     await owner.waitForURL(/\/business\/[0-9a-f-]{36}\/subscription$/);
+    /* ⚠ THE STUDIO'S OWN SUBSCRIPTION ADDRESS — since 4 Oct 2026 the person's
+       `/subscription` is the artist plan alone (the user: "Only Artist subscription
+       for User/ artist"), so every later read of this studio's card comes here */
+    const studioSubUrl = new URL(owner.url()).pathname;
     await expect(owner.getByTestId("welcome-bow")).toHaveCount(0);
     await expect(owner.getByText("What it buys")).toBeVisible({ timeout: 15_000 });
     await expect(owner.getByRole("button", { name: /^Subscribe · / })).toBeVisible({ timeout: 15_000 });
@@ -505,10 +509,13 @@ test.describe.serial("DanceOS, end to end", () => {
        and that is asserted where it belongs — the studio is still not listed
        after the badge lands, further down, and `guard_business_visibility` is
        proven by `rls-proof-studio-verification` check 7.
-       Asked on /subscription, which is where a studio's subscription lives
-       since 20 Sep 2026; reading it off the hub, as this line used to, could
-       only ever pass because the strip has never been there. */
+       Asked on the studio's own Subscription page (since 4 Oct 2026; it was
+       /subscription from 20 Sep); reading it off the hub, as this line used to,
+       could only ever pass because the strip has never been there. */
     await owner.goto("/subscription");
+    await expect(owner.getByTestId("subscription-card").or(owner.getByTestId("artist-offer"))).toBeVisible({ timeout: 15_000 });
+    await expect(owner.getByTestId("studio-subscription")).toHaveCount(0);
+    await owner.goto(studioSubUrl);
     await expect(owner.getByTestId("studio-subscription").filter({ hasText: studioName })).toBeVisible();
     await expect(owner.getByTestId("studio-subscription").filter({ hasText: studioName }).getByRole("button", { name: /^Subscribe/ })).toBeVisible();
     await owner.goto("/business");
@@ -600,11 +607,11 @@ test.describe.serial("DanceOS, end to end", () => {
     await expect(hubCard.getByLabel("Verified")).toBeVisible();
     await expect(owner.getByTestId("studio-verification")).toHaveCount(0);
     await expect(hubCard.getByRole("button", { name: /^Subscribe · ₹1,200\/mo$/ })).toBeVisible();
-    // and the sentence between this studio and Discover is on /subscription —
-    // Settings' own Subscription tile, where the cancel door lives since 20 Sep
-    // 2026 (it was the studio's own home from 15 Sep, and the hub before that;
-    // there is exactly ONE Stop renewing in this app and it must have a screen)
-    await owner.goto("/subscription");
+    // and the sentence between this studio and Discover is on the studio's OWN
+    // Subscription page — where its cancel door lives since 4 Oct 2026 (it was
+    // /subscription from 20 Sep; there is exactly ONE Stop renewing per studio
+    // and it must have a screen)
+    await owner.goto(`/business/${studioId}/subscription`);
     const studioStrip = owner.getByTestId("studio-subscription").filter({ hasText: studioName });
     await expect(studioStrip.getByText("NOT LIVE", { exact: true })).toBeVisible();
     /* ⚠ THIS SENTENCE IS THE DATABASE'S, NOT THE PAGE'S, and I broke this
@@ -644,7 +651,7 @@ test.describe.serial("DanceOS, end to end", () => {
     // and the standing behind it is the grant
     await owner.goto("/business");
     await expect(owner.getByTestId("studio-live")).toBeVisible();
-    await owner.goto("/subscription");
+    await owner.goto(`/business/${studioId}/subscription`);
     await expect(owner.getByTestId("studio-subscription").filter({ hasText: studioName })).toContainText("GRANTED");
     // the Accounts desk counts it for the owner (the chip appears with the first studio)
     await admin.goto(`/admin/accounts?q=${encodeURIComponent(ownerEmail)}`);
@@ -2286,9 +2293,14 @@ test.describe.serial("DanceOS, end to end", () => {
        and there is no Cancel to press — the screen says exactly that */
     await expect(trainer.getByText("ACTIVE · GRANTED")).toBeVisible();
     /* ⚠ A CANCEL BUTTON ON EVERY CARD (4 Oct 2026, the user: "cancel button for
-       all") — on a grant it is drawn DISABLED and its words say why */
-    await expect(trainer.getByRole("button", { name: "Granted — nothing renews" })).toBeDisabled();
-    await expect(trainer.getByRole("button", { name: /^Cancel subscription/ })).toHaveCount(0);
+       all"), and it reads "Cancel Subscription" and nothing else (the user: "cancel
+       button should only have Cancel Subscription") — on a grant it is DISABLED,
+       the chip above saying why */
+    await expect(trainer.getByRole("button", { name: "Cancel Subscription", exact: true })).toBeDisabled();
+    // what the plan buys is on the card, and the dates are two boxes of their own
+    await expect(trainer.getByTestId("plan-rights")).toBeVisible();
+    await expect(trainer.getByTestId("plan-start")).toBeVisible();
+    await expect(trainer.getByTestId("plan-until")).toBeVisible();
     // what was paid for stands: the same profile is still an artist
     await trainer.goto("/profile");
     await expect(trainer.getByText(/^Artist(-\d{6})?$/).first()).toBeVisible({ timeout: 15_000 });
@@ -2615,8 +2627,9 @@ test.describe.serial("DanceOS, end to end", () => {
     await owner.getByRole("link", { name: "Memberships", exact: true }).click();
     await owner.waitForURL(new RegExp(`/business/${businessId}/memberships$`));
     await expect(owner.getByRole("heading", { name: "Memberships" })).toBeVisible();
-    // the desk says WHOSE it is — an organization runs several studios
-    await expect(owner.getByText(`What ${studioName} sells`)).toBeVisible();
+    /* ⚠ NOTHING BETWEEN THE HEADING AND THE BUTTON (4 Oct 2026, the user: "remove
+       text between heading and button") — "What {studio} sells" is gone */
+    await expect(owner.getByText(`What ${studioName} sells`)).toHaveCount(0);
     // and it is not the shrug it used to be
     await expect(owner.getByText("Class packs and plans this studio sells")).toHaveCount(0);
 
@@ -2706,7 +2719,11 @@ test.describe.serial("DanceOS, end to end", () => {
     await expect(owner.getByRole("button", { name: /^Booked/ })).toHaveCount(0);
     await expect(owner.getByRole("button", { name: /^Manage/ })).toHaveCount(0);
     await card.click();
-    await owner.waitForURL(/\/memberships\/[0-9a-f-]+$/);
+    /* ⚠ UNDER THE STUDIO'S OWN ADDRESS (4 Oct 2026, the user: "Membership Details
+       button on Studio membership cards taking to detail but profile shifts to
+       artist") — the switcher reads the pathname, so the studio stays HERE */
+    await owner.waitForURL(new RegExp(`/business/${businessId}/memberships/[0-9a-f-]+$`));
+    await expect(owner.getByRole("button", { name: new RegExp(`you are in ${studioName}`) })).toBeVisible({ timeout: 15_000 });
     await expect(owner.getByRole("heading", { name: passName })).toBeVisible();
     await expect(owner.getByTestId("usage-sold")).toHaveText("1/5");
     await expect(owner.getByTestId("usage-active")).toHaveText("1");
