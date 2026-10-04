@@ -222,6 +222,9 @@ const DESKS = [...RUN_DESKS, ...OWNER_DESKS];
        is the SAME human and the SAME studio, and the only thing that moved is
        one word on their seat. That is the strongest form this can take: it
        cannot be explained by anything else about the account. */
+    /* ⚠ MANAGE IS A PILL ON THE MEMBER DETAIL PAGE since 4 Oct 2026 */
+    await oPage.getByRole("link", { name: `Member Detail — ${faculty.name}` }).click();
+    await oPage.waitForURL(/\/staff\/[0-9a-f-]+$/, { timeout: 20000 });
     const manage = oPage.getByRole("button", { name: `Manage ${faculty.name}` });
     await manage.waitFor({ timeout: 20000 });
     await manage.click();

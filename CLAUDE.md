@@ -2,6 +2,17 @@
 
 ## LAST SESSION (4 Oct 2026) — replaced on every push (Rule 13)
 
+> ### A TEAM CARD IS PAY AND MEMBER DETAIL, MANAGE IS A PILL ON THAT PAGE, AND A MEMBER'S CLASSES ARE REHAULED (4 Oct 2026, latest) — no migration · ⚠ COMMITTED LOCALLY, NOT PUSHED (the user did not say push)
+> The user: *"Team cards- remove powers from card. Remove manage button from card and shift inside history page on top right as a pill. history to be renamed as Member Detail. Team History Page- columns should not have counters, stats- top section should not have repeated figures , first class and last class mentioned in top part of stats. Classes section in team- filter to view class - Artist wise, Studio wise, Dance Style Wise with details for class and bar for room full %. detail to view difference between classes created by Studio or artist. difference accordind to role in class for that particular team. give classes a rehaul. should only show classes relevant to that particular team in this section."*
+> * **The team card** (`StaffDesk`): Paid · Payments (no Powers), and the bar is **Pay · Member Detail ›** (`aria-label="Member Detail — {name}"`). No Manage button.
+> * **Manage is a pill on the member's page**, top right of their card (`MemberManage.tsx`, `data-testid="member-manage"`, still answering to `Manage {name}`). It is the same sheet — ROLE, PERMISSIONS, Remove behind a confirm — moved whole and portalled. A role or permission change re-reads the page; a removal closes the sheet and then replaces to the Team desk 600 ms later (the sheet spends its own history entry first). `findPrincipalOwner` moved from the desk's route to the member page's.
+> * **The member page**: the columns carry no counters; the card's figures are **Classes · Dancers in · Paid** (Sessions went — Took + Assisted under Stats add up to it). **Stats' top section** is First class · Last class (boxes, `team-first-class` / `team-last-class`), Took · Assisted · Hours, People · Turn-up · Room full. Gone from it: Dancers in, the class and style counts, Upcoming, Per session, Visits each. ⚠ **Room full is booked ÷ capacity now** (was attended ÷ capacity), so it means the same thing as the Classes bar.
+> * **The Classes rehaul** (`TeamClassesPanel.tsx`, client): two summary rows (By the studio · By {first name}; Takes it · Assists), then **Artist · Studio · Dance style** pills that regroup the list in place. Each class shows its role chip (TAKES IT / ASSISTS / ENDED), **who made it** ("Created by the studio" or "Created by {member}") and a **room-full bar**. Its details hold where it is held and the room, Held / To come / Booked, Dancers in / Turn-up / A session, and Open the class.
+> * ⚠⚠ **"Only classes relevant to that team"**, in `findTeamMemberWork`, comes in two kinds:
+>   * The business's own classes they are confirmed on. These alone feed Stats, the money and what is owed.
+>   * The member's OWN artist-page classes held in this studio's rooms (`artist_page_of`, venue accepted, published). The studio's team can read those classes and their sessions through the 18 Sep venue policies, and cannot read their bookings or attendance. So seats come from `session_seat_counts` (aggregate only) for both kinds, and "Dancers in" reads — on these. The artist on a business class comes from `findClassArtists`; the venue name comes from `businesses`.
+> * **Verified:** typecheck 0 · lint 0 · `audit:reads` 0 · build green · a probe **80/80** in both themes as two studio owners: no Powers, Manage or History on the cards; Member Detail on each; the pill top right; back closing the sheet; no counters; the first/last boxes; three groupings over the same classes; a fill bar, a creator line and a role on every class. demo.rhythm shows both kinds ("Created by Aditya Pillai" beside "Created by the studio"). Also `shoot-founder` 20/20 · `shoot-seats` 21/21 · `shoot-hero` 188/188 · `shoot-tiles` 135/135. The happy path's two team segments, `shoot-founder` and `shoot-seats` were re-cut to go through Member Detail.
+
 > ### FOUR ASKS AND ONE MORE: NO LINE UNDER A TOOL'S HEADING, A STUDIO'S MEMBERSHIP DETAILS STAY IN THE STUDIO, ASSISTANTS AND OTHER TEAM, THE CREW'S TEAM DESK IN THE STUDIO'S SHAPE, AN ARTIST-ONLY SUBSCRIPTION PAGE, AND SINCE ON EVERY HOME (4 Oct 2026, latest) — no migration · ⚠ Rule 9 (a person's /subscription stops listing their studios — each studio's card and Cancel Subscription stay on that studio's own Subscription tile)
 > The user: *"1. Membership of studio - remove text between heading and button. remove such headings from all tools in any profile. 2. Membership Details button on Studio membership cards taking to detail but profile shifts to artist or on on switcher. 3. Team - Class assistant counter to be renamed to Assistants, Other Team Memebers rename to Other Team. Crew team not looking the same should be how its for studio and artist. 4. Subscription- Only Artist subscription for User/ artist- remove line on left for subscription card. details and text below written shortter and in beteer font should also show what all you get in the artist subscription , start and end date written seprately. cancel button should only have Cancel Subscription."*, then mid-turn *"since missing on studio and crew home"*.
 > * **Nothing between a tool's heading and its button.** These lines are gone:
@@ -12815,6 +12826,13 @@ for the database schema. **The UI is not redesigned** — see Rule 2.
 
 ### Progress tracker — update after EVERY push (Rule 11)
 
+- **A TEAM CARD IS PAY AND MEMBER DETAIL; MANAGE IS A PILL ON THAT PAGE; A
+  MEMBER'S CLASSES ARE REHAULED — 4 Oct 2026, no step number — no migration.**
+  No powers on the card, no counters on the member page's columns, first and
+  last class at the top of Stats, and Classes grouped by Artist, Studio or Dance
+  style. Each class shows who made it, the member's role and a room-full bar.
+  Classes are this team's own plus the member's own classes held in its rooms.
+  Detail at the top.
 - **NO LINE UNDER A TOOL'S HEADING, STUDIO MEMBERSHIP DETAILS UNDER THE STUDIO,
   A CREW TEAM DESK LIKE THE STUDIO'S, AN ARTIST-ONLY SUBSCRIPTION PAGE, SINCE ON
   EVERY HOME — 4 Oct 2026, no step number — no migration ⚠ (Rule 9: studios'

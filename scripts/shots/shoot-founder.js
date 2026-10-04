@@ -79,13 +79,20 @@ const signIn = async (ctx, email) => {
   return page;
 };
 
-/** open a member's sheet on the Team desk and hand back what it offers */
+/** open a member's sheet and hand back what their DESK card offered.
+ *  ⚠ Since 4 Oct 2026 the sheet is the Manage pill on the Member Detail page —
+ *  the card carries Pay and Member Detail only — so Pay is counted on the desk
+ *  first, then the card's door is pressed. */
 const openMemberSheet = async (page, memberName) => {
+  const pay = await page.getByRole("button", { name: `Pay ${memberName}` }).count();
+  await page.getByRole("link", { name: `Member Detail — ${memberName}` }).click();
+  await page.waitForURL(/\/staff\/[0-9a-f-]+$/, { timeout: 20000 });
   await page.getByRole("button", { name: `Manage ${memberName}`, exact: true }).click();
   /* the sheet's own heading is the person's name — waiting for it is what makes
      an ABSENT Remove a real absence rather than a sheet that never opened */
   await page.getByRole("button", { name: `Remove ${memberName} from the team` }).or(page.getByRole("button", { name: "Save label" })).first().waitFor({ state: "attached", timeout: 15000 }).catch(() => {});
   await page.waitForTimeout(400);
+  return { pay };
 };
 
 (async () => {
@@ -131,10 +138,10 @@ const openMemberSheet = async (page, memberName) => {
     await fPage.goto(`${BASE}/business/${studio.id}/staff`, { waitUntil: "networkidle" });
     /* ⚠ THE SHEET OPENS ON AN OWNER AT ALL — it did not until today, because
        `manageable` excluded owners, which also hid Pay and History from them */
-    await openMemberSheet(fPage, second.name);
+    const fOpened = await openMemberSheet(fPage, second.name);
     const fRemove = fPage.getByRole("button", { name: `Remove ${second.name} from the team` });
     check((await fRemove.count()) === 1, `the founder's own desk opens the other OWNER's sheet and offers Remove — ${await fRemove.count()}`);
-    check((await fPage.getByRole("button", { name: `Pay ${second.name}` }).count()) === 1, "…and Pay, which the same gate used to close for every owner");
+    check(fOpened.pay === 1, "…and Pay, which the same gate used to close for every owner");
 
     /* ── 2. AND NOT ON THEIR OWN ROW ───────────────────────────────────────── */
     await fPage.goto(`${BASE}/business/${studio.id}/staff`, { waitUntil: "networkidle" });
@@ -151,8 +158,8 @@ const openMemberSheet = async (page, memberName) => {
     sPage.on("pageerror", (e) => errs.push(`PAGEERROR ${e.message}`));
 
     await sPage.goto(`${BASE}/business/${studio.id}/staff`, { waitUntil: "networkidle" });
-    await openMemberSheet(sPage, founder.name);
-    check((await sPage.getByRole("button", { name: `Pay ${founder.name}` }).count()) === 1, "the SECOND owner's desk opens the founder's sheet (so the next check is an absence, not a closed sheet)");
+    const sOpened = await openMemberSheet(sPage, founder.name);
+    check(sOpened.pay === 1 && (await sPage.getByRole("dialog", { name: founder.name }).count()) === 1, "the SECOND owner's desk opens the founder's sheet (so the next check is an absence, not a closed sheet)");
     check(
       (await sPage.getByRole("button", { name: `Remove ${founder.name} from the team` }).count()) === 0,
       "⚠⚠ …and offers NO Remove — an owner who is not the principal cannot unseat the person who started the studio"

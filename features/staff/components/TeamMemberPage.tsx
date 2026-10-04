@@ -1,11 +1,13 @@
-import Link from "next/link";
 import type { CSSProperties, ReactNode } from "react";
 
 import { DeskHero } from "@/features/businesses/components/biz-kit";
 import { SegmentedPanels } from "@/features/shell/components/SegmentedNav";
-import { ToolBody, ToolCard, ToolChip, ToolFacts, ToolHead, ToolTitle, toolBtn } from "@/components/ui/ToolCard";
+import { ToolBody, ToolCard, ToolChip, ToolFacts, ToolHead, ToolTitle } from "@/components/ui/ToolCard";
 import { FigureHead } from "@/components/ui/FigureHead";
 import { PayHistoryExport } from "./PayHistoryExport";
+import { MemberManage } from "./MemberManage";
+import { TeamClassesPanel } from "./TeamClassesPanel";
+import type { BusinessType } from "@/types/business";
 import { DOS_UI, GREEN, INK, LILAC, MUTED, SUB } from "@/lib/design/tokens";
 import { KIND_WORD, kindOf } from "@/types/profile";
 import { MEMBER_LABEL, MEMBER_ROLE_WORD } from "@/types/staff";
@@ -197,16 +199,29 @@ function PaymentsPanel({ history, work, personName, businessName, tint }: { hist
 /* ── STATS ───────────────────────────────────────────────────────────── */
 function StatsPanel({ work, tint }: { work: TeamMemberWork; tint: string }) {
   const styleMax = Math.max(1, ...work.styles.map((s) => s.n));
-  const held = work.taught + work.assisted;
   const turnUp = pct(work.dancers, work.booked);
-  const fill = pct(work.dancers, work.seats);
-  const perSession = held > 0 ? Math.round((work.dancers / held) * 10) / 10 : null;
-  const visits = work.distinctDancers > 0 ? Math.round((work.dancers / work.distinctDancers) * 10) / 10 : null;
+  /* ⚠ ROOM FULL IS BOOKED OVER CAPACITY (4 Oct 2026) — the Classes section's
+     bar measures the same thing, so one word means one figure on this page */
+  const fill = pct(work.booked, work.seats);
+  /* ⚠ THE TOP SECTION SAYS EACH FIGURE ONCE (4 Oct 2026, the user: "stats- top
+     section should not have repeated figures, first class and last class
+     mentioned in top part of stats"). Gone: Dancers in (the card above says
+     it), the class and style counts (the Classes section and the style list
+     below are those), Per session and Visits each (the same dancers, divided).
+     First class and Last class LEAD, as boxes. */
   return (
     <>
       <div style={panel}>
         <ToolFacts
           tint={tint}
+          items={[
+            { label: "First class", value: work.firstAt ? dateWords(work.firstAt) : "—", testId: "team-first-class" },
+            { label: "Last class", value: work.lastAt ? dateWords(work.lastAt) : "—", testId: "team-last-class" },
+          ]}
+        />
+        <ToolFacts
+          tint={tint}
+          style={{ marginTop: 6 }}
           items={[
             { label: "Took", value: work.taught, testId: "team-taught" },
             { label: "Assisted", value: work.assisted, testId: "team-assisted" },
@@ -217,45 +232,11 @@ function StatsPanel({ work, tint }: { work: TeamMemberWork; tint: string }) {
           tint={tint}
           style={{ marginTop: 6 }}
           items={[
-            { label: "Upcoming", value: work.upcoming },
-            { label: work.classes.length === 1 ? "Class" : "Classes", value: work.classes.length },
-            { label: work.styles.length === 1 ? "Style" : "Styles", value: work.styles.length },
-          ]}
-        />
-        {/* ⚠ PERFORMANCE IS PART OF STATS (4 Oct 2026, the user: "stats and
-            performance merged into one section called Stats") */}
-        <ToolFacts
-          tint={tint}
-          style={{ marginTop: 6 }}
-          items={[
-            { label: "Dancers in", value: work.dancers, testId: "team-dancers" },
             { label: "People", value: work.distinctDancers },
-            { label: "Per session", value: perSession ?? "—" },
-          ]}
-        />
-        <ToolFacts
-          tint={tint}
-          style={{ marginTop: 6 }}
-          items={[
             { label: "Turn-up", value: turnUp == null ? "—" : `${turnUp}%`, tint: pctTint(turnUp) },
             { label: "Room full", value: fill == null ? "—" : `${fill}%`, tint: pctTint(fill, 70, 40) },
-            { label: "Visits each", value: visits ?? "—" },
           ]}
         />
-        <div style={{ fontSize: 11, color: SUB, lineHeight: 1.5, marginTop: 10 }}>
-          {work.firstAt ? (
-            <>
-              First session here <b style={{ color: INK }}>{dateWords(work.firstAt)}</b>
-              {work.lastAt && work.lastAt !== work.firstAt ? (
-                <>
-                  {" "}· last <b style={{ color: INK }}>{dateWords(work.lastAt)}</b>
-                </>
-              ) : null}
-            </>
-          ) : (
-            "No session here has ended with them on it yet."
-          )}
-        </div>
       </div>
 
       <Section title="LAST 6 MONTHS" figure={work.months.reduce((s, m) => s + m.n, 0)}>
@@ -281,116 +262,32 @@ function StatsPanel({ work, tint }: { work: TeamMemberWork; tint: string }) {
   );
 }
 
-/* ── CLASSES ─────────────────────────────────────────────────────────── */
-/** ⚠ THEIR CLASSES HERE, DANCE STYLE BY DANCE STYLE (4 Oct 2026, the user: "New
- *  section for Classes with classes list dance style wise for that team and
- *  collapsible details in break up for it"). A head per style with its counts,
- *  then a native <details> per class opening onto its breakup — the figures the
- *  old Performance column printed class by class, plus the door to the class. */
-function ClassesPanel({ work, tint }: { work: TeamMemberWork; tint: string }) {
-  const byStyle = new Map<string, TeamMemberWork["classes"]>();
-  for (const c of work.classes) byStyle.set(c.style, [...(byStyle.get(c.style) ?? []), c]);
-  const groups = [...byStyle.entries()].sort((x, y) => y[1].reduce((n, c) => n + c.held, 0) - x[1].reduce((n, c) => n + c.held, 0) || x[0].localeCompare(y[0]));
-  if (groups.length === 0) {
-    return (
-      <div style={{ ...panel, textAlign: "center", border: "1.5px dashed var(--el)", fontSize: 12, color: SUB, lineHeight: 1.5 }}>
-        Not on a class here yet. Put them on one from the class form or the class page.
-      </div>
-    );
-  }
-  return (
-    <>
-      {groups.map(([style, list]) => {
-        const held = list.reduce((n, c) => n + c.held, 0);
-        const dancers = list.reduce((n, c) => n + c.dancers, 0);
-        return (
-          <div key={style} data-testid="team-class-style" style={panel}>
-            <FigureHead
-              margin="0 0 8px"
-              title={<span style={{ fontSize: 14, fontWeight: 900, letterSpacing: -0.2 }}>{style}</span>}
-              figure={<span style={{ ...head, fontVariantNumeric: "tabular-nums" }}>{list.length} {list.length === 1 ? "CLASS" : "CLASSES"}</span>}
-            />
-            <ToolFacts
-              tint={tint}
-              items={[
-                { label: list.length === 1 ? "Class" : "Classes", value: list.length },
-                { label: held === 1 ? "Session" : "Sessions", value: held },
-                { label: "Dancers in", value: dancers },
-              ]}
-            />
-            {list.map((c) => {
-              const f = pct(c.dancers, c.seats);
-              const t = pct(c.dancers, c.booked);
-              return (
-                <details key={c.classId} data-testid="team-class" style={{ marginTop: 8, borderRadius: 14, border: "1.5px solid var(--el)", background: `${tint}0a`, opacity: c.closed ? 0.7 : 1 }}>
-                  <summary style={{ listStyle: "none", cursor: "pointer", padding: "10px 12px", display: "flex", alignItems: "center", gap: 8 }}>
-                    <b style={{ flex: 1, minWidth: 0, fontSize: 12.5, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{c.title}</b>
-                    <ToolChip word={c.closed ? "ENDED" : c.kind === "artist" ? "TAKES IT" : "ASSISTS"} fg={c.closed ? SUB : tint} bg={c.closed ? "var(--el)" : `${tint}1c`} />
-                    <span aria-hidden="true" style={{ color: MUTED, fontSize: 12 }}>▾</span>
-                  </summary>
-                  <div style={{ padding: "0 12px 12px" }}>
-                    <div style={{ fontSize: 9.5, fontWeight: 900, letterSpacing: 0.8, color: MUTED, margin: "2px 0 6px" }}>BREAKUP</div>
-                    <ToolFacts
-                      tint={tint}
-                      items={[
-                        { label: "Held", value: c.held },
-                        { label: "To come", value: c.upcoming },
-                        { label: "Dancers in", value: c.dancers },
-                      ]}
-                    />
-                    <ToolFacts
-                      tint={tint}
-                      style={{ marginTop: 6 }}
-                      items={[
-                        { label: "Turn-up", value: t == null ? "—" : `${t}%`, tint: pctTint(t) },
-                        { label: "Room full", value: f == null ? "—" : `${f}%`, tint: pctTint(f, 70, 40) },
-                        { label: "A session", value: c.ratePerSessionInr > 0 ? rupees(c.ratePerSessionInr) : "—" },
-                      ]}
-                    />
-                    {c.held > 0 ? (
-                      <div style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 8 }} title={f == null ? "No capacity on record" : `${f}% of the room`}>
-                        <span style={{ width: 66, flexShrink: 0, fontSize: 10, fontWeight: 900, letterSpacing: 0.5, color: MUTED }}>ROOM FULL</span>
-                        <Bar value={c.dancers} max={c.seats} tint={tint} />
-                      </div>
-                    ) : null}
-                    <div style={{ fontSize: 11, color: SUB, marginTop: 8 }}>
-                      {c.nextAt ? <>Next {whenWords(c.nextAt)}</> : c.lastAt ? <>Last {whenWords(c.lastAt)}</> : "No session dated yet"}
-                    </div>
-                    <Link href={`/c/${c.shareSlug}`} aria-label={`Open ${c.title}`} style={{ ...toolBtn("tinted", tint), display: "inline-flex", marginTop: 10, textDecoration: "none" }}>
-                      Open the class ›
-                    </Link>
-                  </div>
-                </details>
-              );
-            })}
-          </div>
-        );
-      })}
-    </>
-  );
-}
-
 export type TeamMemberShow = "payments" | "stats" | "classes";
 
 export function TeamMemberPage({
   businessId,
   businessName,
+  businessType,
   member,
   history,
   work,
   show,
+  meUserId,
+  principalOwnerId,
 }: {
   businessId: string;
   businessName: string;
+  businessType: BusinessType;
   member: TeamMember;
   history: PersonPayHistory;
   work: TeamMemberWork;
   show: TeamMemberShow;
+  meUserId: string;
+  principalOwnerId: string | null;
 }) {
   const L = MEMBER_LABEL[member.role];
   const tint = L.colour;
   const base = `/business/${businessId}/staff/${member.userId}`;
-  const held = work.taught + work.assisted;
   /* THE TEAM MEMBER'S OWN CARD, OPENED — the same three bands as their card on
      the Team desk, so the press and the page read as one object */
   const top = (
@@ -407,13 +304,20 @@ export function TeamMemberPage({
           eyebrow={`${MEMBER_ROLE_WORD[member.role]} · ${KIND_WORD[kindOf(member.isArtist)]}`}
           sub={[member.style, member.city].filter(Boolean).join(" · ") || null}
           size={64}
+          /* ⚠ MANAGE IS A PILL ON THE TOP RIGHT HERE (4 Oct 2026, the user:
+             "Remove manage button from card and shift inside history page on
+             top right as a pill") — their role, their permissions, Remove */
+          right={<MemberManage businessId={businessId} businessType={businessType} member={member} meUserId={meUserId} principalOwnerId={principalOwnerId} tint={tint} />}
         />
         <ToolBody>
+          {/* ⚠ CLASSES, NOT SESSIONS (4 Oct 2026): Took and Assisted under Stats
+              add up to the sessions, so the card says the one thing nothing
+              below repeats */}
           <ToolFacts
             tint={tint}
             items={[
-              { label: held === 1 ? "Session" : "Sessions", value: held },
-              { label: "Dancers in", value: work.dancers },
+              { label: work.classes.length === 1 ? "Class" : "Classes", value: work.classes.length, testId: "team-class-count" },
+              { label: "Dancers in", value: work.dancers, testId: "team-dancers" },
               { label: "Paid", value: rupees(history.paidInr) },
             ]}
           />
@@ -425,6 +329,8 @@ export function TeamMemberPage({
   );
   return (
     <div style={{ background: LILAC, color: INK, maxWidth: 430, margin: "0 auto", fontFamily: DOS_UI, minHeight: "100vh", padding: "14px 16px 40px", boxSizing: "border-box" }}>
+      {/* ⚠ NO COUNTERS ON THE COLUMNS (4 Oct 2026, the user: "columns should not
+          have counters") */}
       <SegmentedPanels
         key={show}
         initial={show}
@@ -432,14 +338,17 @@ export function TeamMemberPage({
         sections
         top={top}
         segments={[
-          { key: "payments", href: `${base}?show=payments`, label: "Payments", n: history.payouts.length, aria: `What ${member.name} has been paid` },
+          { key: "payments", href: `${base}?show=payments`, label: "Payments", aria: `What ${member.name} has been paid` },
           { key: "stats", href: `${base}?show=stats`, label: "Stats", aria: `${member.name}'s stats here` },
-          { key: "classes", href: `${base}?show=classes`, label: "Classes", n: work.classes.length, aria: `${member.name}'s classes here` },
+          { key: "classes", href: `${base}?show=classes`, label: "Classes", aria: `${member.name}'s classes here` },
         ]}
         panels={[
           { key: "payments", node: <PaymentsPanel history={history} work={work} personName={member.name} businessName={businessName} tint={tint} /> },
           { key: "stats", node: <StatsPanel work={work} tint={tint} /> },
-          { key: "classes", node: <ClassesPanel work={work} tint={tint} /> },
+          {
+            key: "classes",
+            node: <TeamClassesPanel classes={work.classes} tint={tint} memberName={member.name} businessName={businessName} isStudio={businessType === "studio"} />,
+          },
         ]}
       />
     </div>

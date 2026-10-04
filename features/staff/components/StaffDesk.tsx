@@ -14,12 +14,8 @@ import {
   invitePersonAction,
   inviteToBusinessAction,
   payTeamMemberAction,
-  removeMemberAction,
-  removeOwnerAction,
   reorderMembersAction,
   revokeInviteAction,
-  setMemberPowersAction,
-  setMemberRoleAction,
 } from "@/features/staff/server-actions/staff";
 import Link from "next/link";
 import { DeskAddButton } from "@/features/settings/components/settings-kit";
@@ -28,8 +24,7 @@ import { ToolActions, ToolBody, ToolCard, ToolChip, ToolFace, ToolFacts, ToolHea
 import { DOS_TOOLS, DeskHero, SheetHandle, sheetBody, sheetWrap } from "@/features/businesses/components/biz-kit";
 import { DOS_DISPLAY, DOS_UI, INK, LILAC, MUTED, SUB } from "@/lib/design/tokens";
 import { useCloseOnBack } from "@/lib/hooks/useCloseOnBack";
-import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
-import type { MemberRole, TeamMember } from "@/repositories/businesses";
+import type { TeamMember } from "@/repositories/businesses";
 import type { PayoutMethod, PayoutRecord, PayoutStatus } from "@/types/payout";
 import type { BusinessType } from "@/types/business";
 import {
@@ -151,7 +146,6 @@ export function StaffDesk({
   payments = [],
   isOwner,
   meUserId,
-  principalOwnerId = null,
 }: {
   businessId: string;
   businessName: string;
@@ -163,10 +157,6 @@ export function StaffDesk({
   payments?: PayoutRecord[];
   isOwner: boolean;
   meUserId: string;
-  /** ⚠ THE OLDEST LIVE OWNER SEAT, READ FROM THE DATABASE (30 Sep 2026) — the
-   *  only person who may remove ANOTHER owner. Null when it could not be read,
-   *  which simply draws no button rather than guessing. */
-  principalOwnerId?: string | null;
 }) {
   /** the invite link is this deployment's own /join/{code} */
   const origin = useSyncExternalStore(subscribeNever, readOrigin, readServerOrigin);
@@ -175,8 +165,6 @@ export function StaffDesk({
      profile since 18 Sep (R24), so the door is the OWNER's person page, taken
      from the roster rather than from `/artist/{id}`, which only redirects there */
   const [addOpen, setAddOpen] = useState(false);
-  const [openMember, setOpenMember] = useState<TeamMember | null>(null);
-  const [removing, setRemoving] = useState(false);
   const [shareInvite, setShareInvite] = useState<BusinessInvite | null>(null);
   /* the add sheet's two ways in: pick somebody on DanceOS, or ask an address */
   /* ⚠ ONE WAY IN SINCE 20 SEP 2026 — the picker. "By email" is gone at the
@@ -203,7 +191,6 @@ export function StaffDesk({
   /* system back closes the sheet that is open, exactly as tapping the scrim does */
   useCloseOnBack(() => setAddOpen(false), addOpen);
   useCloseOnBack(() => setShareInvite(null), Boolean(shareInvite));
-  useCloseOnBack(() => setOpenMember(null), Boolean(openMember));
   useCloseOnBack(() => setPayFor(null), Boolean(payFor));
 
   /** the labels this profile has to give, and the seats already on the team */
@@ -385,7 +372,8 @@ export function StaffDesk({
               const manageable = isOwner;
               const paid = paidTo(m.userId);
               const paidTotal = paid.reduce((n, p) => n + p.amountInr, 0);
-              const powers = m.role === "owner" ? "All" : [m.canAttendance ? "Register" : null, m.canRefunds ? "Refunds" : null].filter(Boolean).join(" · ") || "—";
+              /* ⚠ NO POWERS ON THE CARD (4 Oct 2026, the user: "remove powers from
+                 card") — they are the Manage sheet's, on the Member Detail page */
               /* ⚠⚠ A TEAM CARD (3 Oct 2026, the user: *"better and bigger cards …
                  each has a profile linked to it which should be visible with profile
                  pic and name and big … buttons segregated"*). The PERSON leads —
@@ -452,7 +440,6 @@ export function StaffDesk({
                       items={[
                         { label: "Paid", value: rupees(paidTotal) },
                         { label: paid.length === 1 ? "Payment" : "Payments", value: paid.length },
-                        { label: "Powers", value: powers },
                       ]}
                     />
                     {/* ⚠ NO "Nothing paid yet" LINE (4 Oct 2026, the user) — the Paid
@@ -468,15 +455,13 @@ export function StaffDesk({
                       >
                         Pay
                       </button>
-                      <Link href={`/business/${businessId}/staff/${m.userId}`} aria-label={`History — ${m.name}`} style={toolBtn("secondary", L.colour)}>
-                        History
+                      {/* ⚠ "MEMBER DETAIL", AND NO MANAGE BUTTON (4 Oct 2026, the
+                          user: "Remove manage button from card and shift inside
+                          history page on top right as a pill. history to be renamed
+                          as Member Detail") — the sheet is the pill on that page */}
+                      <Link href={`/business/${businessId}/staff/${m.userId}`} aria-label={`Member Detail — ${m.name}`} style={toolBtn("tinted", L.colour)}>
+                        Member Detail ›
                       </Link>
-                      {/* ⚠ "Manage {name}" is the name the row answered to when the
-                          whole row was the control — kept, so every locator that
-                          opened the sheet still does */}
-                      <button type="button" aria-label={`Manage ${m.name}`} onClick={() => setOpenMember(m)} style={toolBtn("tinted", L.colour)}>
-                        Manage
-                      </button>
                     </ToolActions>
                   ) : null}
                 </ToolCard>
@@ -800,207 +785,6 @@ export function StaffDesk({
           </div>
         </div>
       )}
-
-      {/* ── MANAGE ONE TEAMMATE (3 Oct 2026, the user: *"better designed manage
-          page for team without option to see history and record payment in
-          it"*) — WHO they are, WHAT THEY ARE, WHAT YOU GRANT THEM, and taking
-          them off. Paying and the history are the card's own buttons and the
-          member's page; a sheet about their seat is about their seat. ── */}
-      {openMember && (() => {
-        const L = MEMBER_LABEL[openMember.role];
-        return (
-        <div onClick={() => setOpenMember(null)} style={sheetWrap}>
-          <div
-            role="dialog"
-            aria-modal="true"
-            aria-label={openMember.name}
-            onClick={(e) => e.stopPropagation()}
-            style={sheet}
-          >
-            <SheetHandle />
-            {/* WHO — the card's own head, so the sheet and the card they pressed
-                read as one object. The face and the name are the door to the
-                person (21 Sep 2026: every Team desk has one). */}
-            {/* ⚠ NOT A DOOR ANY MORE (4 Oct 2026, the user: "remove view profile
-                button") — the card's own face is the way to their page */}
-            <div
-              style={{ display: "flex", alignItems: "center", gap: 12, padding: "12px", margin: "0 0 14px", borderRadius: 16, background: `linear-gradient(135deg, ${L.colour}24, ${L.colour}08 62%, transparent)`, border: `1.5px solid ${EL}`, color: INK }}
-            >
-              <ToolFace name={openMember.name} photoPath={openMember.avatarPath} tint={L.colour} size={52} />
-              <span style={{ flex: 1, minWidth: 0 }}>
-                <span style={{ display: "block", fontSize: 9.5, fontWeight: 900, letterSpacing: 0.8, textTransform: "uppercase", color: L.colour }}>
-                  {MEMBER_ROLE_WORD[openMember.role]} · {KIND_WORD[kindOf(openMember.isArtist)]}
-                </span>
-                <b style={{ display: "block", fontSize: 18, fontFamily: DOS_DISPLAY, letterSpacing: -0.4, lineHeight: 1.2, marginTop: 2, overflowWrap: "anywhere" }}>{openMember.name}</b>
-                <span style={{ display: "block", fontSize: 11.5, color: SUB, marginTop: 2 }}>
-                  {openMember.city || "On your team"}
-                </span>
-              </span>
-            </div>
-
-            {/* WHAT THEY ARE — the labels this profile hands out, each in its own
-                colour, and the sentence for what the chosen one carries under them
-                (20 Sep 2026: it moved here from the row) */}
-            <div style={{ fontSize: 10.5, fontWeight: 900, letterSpacing: 1.1, color: "var(--muted)", marginBottom: 7 }}>
-              ROLE
-            </div>
-            <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 8 }}>
-              {labels.map(([k, word]) => {
-                const on = openMember.role === k;
-                const c = MEMBER_LABEL[k as MemberRole]?.colour ?? SUB;
-                return (
-                  <span
-                    role="button"
-                    tabIndex={0}
-                    onKeyDown={dosKey}
-                    key={k}
-                    aria-pressed={on}
-                    aria-label={`Make ${openMember.name} ${word}`}
-                    onClick={async () => {
-                      if (on) return;
-                      const done = await run(
-                        () => setMemberRoleAction({ businessId, userId: openMember.userId, role: k }),
-                        `${openMember.name} → ${word}`
-                      );
-                      if (done) setOpenMember({ ...openMember, role: k as MemberRole });
-                    }}
-                    style={{
-                      display: "inline-flex",
-                      alignItems: "center",
-                      gap: 6,
-                      fontSize: 11.5,
-                      fontWeight: 800,
-                      padding: "7px 12px",
-                      borderRadius: 999,
-                      cursor: "pointer",
-                      background: on ? `${c}26` : CARD,
-                      color: on ? INK : SUB,
-                      border: `1.5px solid ${on ? c : EL}`,
-                    }}
-                  >
-                    <span aria-hidden="true" style={{ width: 7, height: 7, borderRadius: 4, background: c, flexShrink: 0 }} />
-                    {word}
-                  </span>
-                );
-              })}
-            </div>
-            {/* ⚠ no sentence under the roles (4 Oct 2026, the user) */}
-
-            {/* ── WHAT YOU GRANT THEM (20 Sep 2026) — the two powers the database
-                takes standing. An owner holds both by their seat, so the block is
-                not drawn for one: a switch that cannot be turned off is not a
-                switch. ── */}
-            {openMember.role !== "owner" ? (
-              <>
-                <div style={{ fontSize: 10.5, fontWeight: 900, letterSpacing: 1.1, color: "var(--muted)", margin: "14px 0 7px" }}>
-                  PERMISSIONS
-                </div>
-                <div style={{ border: `1.5px solid ${EL}`, borderRadius: 14, padding: "0 12px", background: CARD }}>
-                {(
-                  [
-                    ["attendance", "Run the register", "Check people in on any class here"],
-                    ["refunds", "Settle refunds", "Decide refunds on any class here"],
-                  ] as const
-                ).map(([key, title, why], i) => {
-                  const on = key === "attendance" ? openMember.canAttendance : openMember.canRefunds;
-                  return (
-                    <div key={key} style={{ display: "flex", alignItems: "center", gap: 10, padding: "11px 0", borderTop: i === 0 ? "none" : `1.5px solid ${EL}` }}>
-                      <div style={{ flex: 1, minWidth: 0 }}>
-                        <div style={{ fontSize: 12.5, fontWeight: 800 }}>{title}</div>
-                        <div style={{ fontSize: 11, color: SUB, marginTop: 1 }}>{why}</div>
-                      </div>
-                      <span
-                        role="switch"
-                        tabIndex={0}
-                        onKeyDown={dosKey}
-                        aria-checked={on}
-                        aria-label={`${title} — ${openMember.name}`}
-                        onClick={async () => {
-                          const next = {
-                            canAttendance: key === "attendance" ? !on : openMember.canAttendance,
-                            canRefunds: key === "refunds" ? !on : openMember.canRefunds,
-                          };
-                          const done = await run(
-                            () => setMemberPowersAction({ businessId, userId: openMember.userId, ...next }),
-                            `${openMember.name} · ${title.toLowerCase()} ${!on ? "on" : "off"}`,
-                          );
-                          if (done) setOpenMember({ ...openMember, ...next });
-                        }}
-                        style={{
-                          flexShrink: 0,
-                          width: 42,
-                          height: 24,
-                          borderRadius: 999,
-                          cursor: "pointer",
-                          background: on ? L.colour : EL,
-                          position: "relative",
-                          transition: "background .15s",
-                        }}
-                      >
-                        <span
-                          aria-hidden="true"
-                          style={{ position: "absolute", top: 3, left: on ? 21 : 3, width: 18, height: 18, borderRadius: 999, background: "var(--solid)", transition: "left .15s" }}
-                        />
-                      </span>
-                    </div>
-                  );
-                })}
-                </div>
-              </>
-            ) : null}
-
-            {error ? <div role="alert" style={{ fontSize: 11.5, color: "#F87171", fontWeight: 700, marginTop: 10 }}>{error}</div> : null}
-
-            <div style={{ display: "flex", gap: 8, marginTop: 16 }}>
-              {/* ⚠⚠ AN OWNER IS REMOVED BY THE PRINCIPAL OWNER, THROUGH A
-                  DIFFERENT DOOR (30 Sep 2026). `remove_business_member` still
-                  refuses EVERY owner, so an owner row calls
-                  `remove_business_owner`, which demotes and then calls it. WHO the
-                  principal is comes from the database, so this button and the RPC
-                  cannot disagree; never on your OWN row. */}
-              {openMember.role !== "owner" || (principalOwnerId === meUserId && openMember.userId !== meUserId) ? (
-                <button
-                  type="button"
-                  aria-label={`Remove ${openMember.name} from the team`}
-                  /* ⚠ IT ASKS FIRST (4 Oct 2026, the user: "confirm before removing
-                     team member") */
-                  onClick={() => setRemoving(true)}
-                  style={toolBtn("danger", L.colour)}
-                >
-                  Remove
-                </button>
-              ) : null}
-              <button type="button" onClick={() => setOpenMember(null)} style={toolBtn("primary", "#141414", { flex: "1.4 1 0", background: "var(--text)", color: "var(--solid)", borderColor: "var(--text)" })}>
-                Done
-              </button>
-            </div>
-            {/* ⚠ no line under Remove and Done (4 Oct 2026, the user) — what
-                removing does is said in the confirm */}
-            {removing ? (
-              <ConfirmDialog
-                title={`Remove ${openMember.name} from the team?`}
-                body="Any class they were holding attendance or refunds on ends with it."
-                goWord="Remove"
-                busy={busy}
-                onKeep={() => setRemoving(false)}
-                onGo={async () => {
-                  const owner = openMember.role === "owner";
-                  const done = await run(
-                    () =>
-                      owner
-                        ? removeOwnerAction({ businessId, userId: openMember.userId })
-                        : removeMemberAction({ businessId, userId: openMember.userId }),
-                    `${openMember.name} taken off the team`
-                  );
-                  setRemoving(false);
-                  if (done) setTimeout(() => setOpenMember(null), 400);
-                }}
-              />
-            ) : null}
-          </div>
-        </div>
-        );
-      })()}
 
       {/* ── RECORD A PAYMENT — with the method, which is the user's own ask
           ("payment for team members should also give option for payment

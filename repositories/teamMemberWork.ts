@@ -1,5 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { dosClassLabel } from "@/lib/constants/styles";
+import { findClassArtists } from "@/repositories/classPeople";
 
 /** WHAT ONE PERSON HAS DONE FOR ONE TEAM (3 Oct 2026, the user: *"better designed
  *  team history page according to team member card — should have payment
@@ -18,24 +19,56 @@ import { dosClassLabel } from "@/lib/constants/styles";
  *
  *  ⚠ NOTHING IS STORED. Dancers are attendance rows (Step 25's rule — a seat
  *  nobody marked is not a session danced), and every figure is counted off the
- *  same rows the class list under it prints. */
+ *  same rows the class list under it prints.
+ *
+ *  ⚠⚠ TWO KINDS OF CLASS, SAID APART (4 Oct 2026, the user: *"detail to view
+ *  difference between classes created by Studio or artist … should only show
+ *  classes relevant to that particular team"*):
+ *   · CREATED BY THIS BUSINESS — the classes it owns that they are confirmed on,
+ *     as the person taking it or as an assistant. These are what the team pays
+ *     for, so they alone feed the stats, the money and what is owed.
+ *   · CREATED BY THEM, HELD HERE — their OWN artist page's classes in this
+ *     studio's rooms (the venue accepted). The studio's team reads those classes
+ *     and their sessions (the venue policies, 18 Sep 2026) and NOT their bookings
+ *     or attendance, so the seats come from `session_seat_counts` — aggregate
+ *     only, the same read every public card makes — and "dancers in" is not
+ *     claimed at all. Nothing on them is owed by this business.
+ *  ⚠ ROOM FULL is booked seats over capacity for BOTH kinds, so the one bar
+ *  means one thing whoever made the class. */
+
+export type TeamClassOrigin = "business" | "member";
 
 export interface TeamMemberClass {
   classId: string;
   shareSlug: string;
   title: string;
   style: string;
+  /** their role on it */
   kind: "artist" | "assistant";
-  ratePerSessionInr: number;
-  /** sessions here that have ended while they were on the class */
+  /** who made it: this business, or the member's own artist page */
+  origin: TeamClassOrigin;
+  /** the person taking the class — them, or somebody else when they assist */
+  artistName: string | null;
+  artistPhoto: string | null;
+  artistUserId: string | null;
+  /** the studio it is held at, and the room */
+  venueName: string | null;
+  room: string | null;
+  /** what this business pays them a session; null on a class it did not make */
+  ratePerSessionInr: number | null;
+  /** sessions that have ended while they were on the class */
   held: number;
   upcoming: number;
-  /** attendance rows across those sessions */
-  dancers: number;
-  /** seats booked across those sessions — what `dancers` is measured against */
+  /** attendance rows across held sessions; null where this business cannot read them */
+  dancers: number | null;
+  /** seats booked across held sessions — what `dancers` is measured against */
   booked: number;
-  /** capacity × sessions held — what a full room would have been */
-  seats: number;
+  /** ROOM FULL: booked over capacity, on held sessions, or on the ones to come
+   *  when none has been held */
+  fillBooked: number;
+  fillSeats: number;
+  fillBasis: "held" | "upcoming" | null;
+  capacity: number;
   nextAt: string | null;
   lastAt: string | null;
   closed: boolean;
@@ -88,16 +121,41 @@ function lastSixMonths(now: Date): Array<{ key: string; label: string }> {
 const MAX_CLAIMS = 300;
 const MAX_ROWS = 4000;
 
-export async function findTeamMemberWork(supabase: SupabaseClient, businessId: string, userId: string, now: Date = new Date()): Promise<TeamMemberWork> {
+type ClassCols = {
+  style: string;
+  level: string;
+  share_slug: string;
+  capacity: number;
+  room: string | null;
+  venue_business_id: string | null;
+  venue_status: string | null;
+  deleted_at: string | null;
+};
+const CLASS_COLS = "style, level, share_slug, capacity, room, venue_business_id, venue_status, deleted_at";
+
+type Session = { id: string; class_id: string; starts_at: string; ends_at: string };
+
+export async function findTeamMemberWork(
+  supabase: SupabaseClient,
+  businessId: string,
+  userId: string,
+  now: Date = new Date(),
+  who: { businessName: string; memberName: string; memberPhoto: string | null } = { businessName: "", memberName: "", memberPhoto: null },
+): Promise<TeamMemberWork> {
   const nowIso = now.toISOString();
-  const { data: claimData, error: claimErr } = await supabase
-    .from("class_people")
-    .select("id, class_id, kind, pay_per_session_inr, deleted_at, classes (style, level, share_slug, capacity, deleted_at)")
-    .eq("business_id", businessId)
-    .eq("user_id", userId)
-    .eq("status", "confirmed")
-    .limit(MAX_CLAIMS);
-  if (claimErr) throw new Error(`teamMemberWork.claims failed: ${claimErr.message}`);
+  const [claimRes, pageRes] = await Promise.all([
+    supabase
+      .from("class_people")
+      .select(`id, class_id, kind, pay_per_session_inr, deleted_at, classes (${CLASS_COLS})`)
+      .eq("business_id", businessId)
+      .eq("user_id", userId)
+      .eq("status", "confirmed")
+      .limit(MAX_CLAIMS),
+    /* the member's OWN artist page — a definer read, and a failed one simply
+       means there are no classes of theirs to show here */
+    supabase.rpc("artist_page_of", { p_user_id: userId }),
+  ]);
+  if (claimRes.error) throw new Error(`teamMemberWork.claims failed: ${claimRes.error.message}`);
 
   type ClaimRow = {
     id: string;
@@ -105,10 +163,28 @@ export async function findTeamMemberWork(supabase: SupabaseClient, businessId: s
     kind: "artist" | "assistant";
     pay_per_session_inr: number;
     deleted_at: string | null;
-    classes: One<{ style: string; level: string; share_slug: string; capacity: number; deleted_at: string | null }>;
+    classes: One<ClassCols>;
   };
-  const claims = (claimData ?? []) as unknown as ClaimRow[];
+  const claims = (claimRes.data ?? []) as unknown as ClaimRow[];
   const classIds = [...new Set(claims.map((c) => c.class_id))];
+
+  /* ── THEIR OWN CLASSES, HELD HERE (4 Oct 2026) ── */
+  const memberPage = pageRes.error ? null : ((pageRes.data as string | null) ?? null);
+  type OwnClass = ClassCols & { id: string; status: string };
+  let ownClasses: OwnClass[] = [];
+  if (memberPage && memberPage !== businessId) {
+    const { data } = await supabase
+      .from("classes")
+      .select(`id, status, ${CLASS_COLS}`)
+      .eq("business_id", memberPage)
+      .eq("venue_business_id", businessId)
+      .eq("venue_status", "accepted")
+      .limit(MAX_CLAIMS);
+    /* audit-ok: scoped by the member's page AND this venue */
+    /* published (or run) only — a draft of theirs is not on this studio's floor yet */
+    ownClasses = ((data ?? []) as unknown as OwnClass[]).filter((c) => !classIds.includes(c.id) && c.deleted_at === null && (c.status === "published" || c.status === "completed"));
+  }
+  const ownIds = ownClasses.map((c) => c.id);
 
   const empty: TeamMemberWork = {
     taught: 0,
@@ -128,27 +204,51 @@ export async function findTeamMemberWork(supabase: SupabaseClient, businessId: s
     classes: [],
     complete: true,
   };
-  if (classIds.length === 0) return empty;
+  if (classIds.length === 0 && ownIds.length === 0) return empty;
 
-  const [sessionsRes, attendanceRes, bookingsRes, linesRes] = await Promise.all([
-    supabase.from("class_sessions").select("id, class_id, starts_at, ends_at").eq("business_id", businessId).in("class_id", classIds).is("deleted_at", null).limit(MAX_ROWS),
-    supabase.from("attendance").select("session_id, user_id").eq("business_id", businessId).in("class_id", classIds).is("deleted_at", null).limit(MAX_ROWS),
-    supabase.from("class_bookings").select("session_id").eq("business_id", businessId).in("class_id", classIds).eq("status", "enrolled").is("deleted_at", null).limit(MAX_ROWS),
+  const none = { data: [] as unknown[], error: null };
+  const [sessionsRes, ownSessionsRes, attendanceRes, linesRes, artists] = await Promise.all([
+    classIds.length
+      ? supabase.from("class_sessions").select("id, class_id, starts_at, ends_at").eq("business_id", businessId).in("class_id", classIds).is("deleted_at", null).limit(MAX_ROWS)
+      : Promise.resolve(none),
+    /* audit-ok: the member's own classes at this venue, by id */
+    ownIds.length ? supabase.from("class_sessions").select("id, class_id, starts_at, ends_at").in("class_id", ownIds).is("deleted_at", null).limit(MAX_ROWS) : Promise.resolve(none),
+    classIds.length
+      ? supabase.from("attendance").select("session_id, user_id").eq("business_id", businessId).in("class_id", classIds).is("deleted_at", null).limit(MAX_ROWS)
+      : Promise.resolve(none),
     supabase.from("payout_lines").select("session_id").eq("business_id", businessId).eq("user_id", userId).is("deleted_at", null).limit(MAX_ROWS),
+    findClassArtists(supabase, classIds).catch(() => new Map()),
   ]);
   for (const [what, res] of [
     ["sessions", sessionsRes],
+    ["own sessions", ownSessionsRes],
     ["attendance", attendanceRes],
-    ["bookings", bookingsRes],
     ["lines", linesRes],
   ] as const) {
     if (res.error) throw new Error(`teamMemberWork.${what} failed: ${res.error.message}`);
   }
 
-  const sessions = (sessionsRes.data ?? []) as Array<{ id: string; class_id: string; starts_at: string; ends_at: string }>;
+  const sessions = (sessionsRes.data ?? []) as Session[];
+  const ownSessions = (ownSessionsRes.data ?? []) as Session[];
   const attendance = (attendanceRes.data ?? []) as Array<{ session_id: string; user_id: string | null }>;
-  const bookings = (bookingsRes.data ?? []) as Array<{ session_id: string }>;
   const settled = new Set(((linesRes.data ?? []) as Array<{ session_id: string }>).map((l) => l.session_id));
+
+  /* the seats booked on every session, aggregate only — one read for both kinds */
+  const allSessionIds = [...sessions, ...ownSessions].map((s) => s.id);
+  const bookedBySession = new Map<string, number>();
+  if (allSessionIds.length) {
+    const { data: seatData, error: seatErr } = await supabase.rpc("session_seat_counts", { p_session_ids: allSessionIds });
+    if (seatErr) throw new Error(`teamMemberWork.seats failed: ${seatErr.message}`);
+    for (const r of (seatData ?? []) as Array<{ session_id: string; enrolled: number }>) bookedBySession.set(r.session_id, n(r.enrolled));
+  }
+
+  /* where a class is held: a venue that said yes, else the business itself */
+  const venueIds = [...new Set(claims.map((c) => one(c.classes)?.venue_business_id).filter((v): v is string => Boolean(v)))].filter((v) => v !== businessId);
+  const venueNames = new Map<string, string>([[businessId, who.businessName]]);
+  if (venueIds.length) {
+    const { data } = await supabase.from("businesses").select("id, name").in("id", venueIds);
+    for (const b of (data ?? []) as Array<{ id: string; name: string }>) venueNames.set(b.id, b.name);
+  }
 
   const attBySession = new Map<string, Array<string | null>>();
   for (const a of attendance) {
@@ -156,15 +256,13 @@ export async function findTeamMemberWork(supabase: SupabaseClient, businessId: s
     list.push(a.user_id);
     attBySession.set(a.session_id, list);
   }
-  const bookedBySession = new Map<string, number>();
-  for (const b of bookings) bookedBySession.set(b.session_id, (bookedBySession.get(b.session_id) ?? 0) + 1);
-
-  const sessionsByClass = new Map<string, typeof sessions>();
-  for (const s of sessions) {
-    const list = sessionsByClass.get(s.class_id) ?? [];
-    list.push(s);
-    sessionsByClass.set(s.class_id, list);
-  }
+  const byClass = (list: Session[]) => {
+    const out = new Map<string, Session[]>();
+    for (const s of list) out.set(s.class_id, [...(out.get(s.class_id) ?? []), s]);
+    return out;
+  };
+  const sessionsByClass = byClass(sessions);
+  const ownSessionsByClass = byClass(ownSessions);
 
   /* one row per CLASS — a person re-asked onto a class has two claims for one
      seat, and a session is credited ONCE (the 18 Sep stats rule) */
@@ -172,54 +270,71 @@ export async function findTeamMemberWork(supabase: SupabaseClient, businessId: s
   const people = new Set<string>();
   const byMonth = new Map<string, number>();
   const byStyle = new Map<string, number>();
-  const rows = new Map<string, TeamMemberClass>();
+  const rows = new Map<string, TeamMemberClass & { upBooked: number; upSeats: number }>();
   const out = { ...empty, months: empty.months };
   let firstAt: string | null = null;
   let lastAt: string | null = null;
+
+  const blank = (classId: string, cls: ClassCols, origin: TeamClassOrigin, kind: "artist" | "assistant") => {
+    const artist = origin === "member" || kind === "artist" ? { name: who.memberName || null, avatarPath: who.memberPhoto, userId } : artists.get(classId) ?? null;
+    const venue = origin === "member" ? businessId : cls.venue_status === "accepted" && cls.venue_business_id ? cls.venue_business_id : businessId;
+    return {
+      classId,
+      shareSlug: cls.share_slug,
+      title: dosClassLabel(cls.style, cls.level),
+      style: cls.style,
+      kind,
+      origin,
+      artistName: artist?.name ?? null,
+      artistPhoto: artist?.avatarPath ?? null,
+      artistUserId: artist?.userId ?? null,
+      venueName: venueNames.get(venue) ?? null,
+      room: cls.room || null,
+      ratePerSessionInr: origin === "business" ? 0 : null,
+      held: 0,
+      upcoming: 0,
+      dancers: origin === "business" ? 0 : null,
+      booked: 0,
+      fillBooked: 0,
+      fillSeats: 0,
+      fillBasis: null,
+      capacity: n(cls.capacity),
+      nextAt: null,
+      lastAt: null,
+      closed: true,
+      upBooked: 0,
+      upSeats: 0,
+    } as TeamMemberClass & { upBooked: number; upSeats: number };
+  };
 
   for (const c of claims) {
     const cls = one(c.classes);
     if (!cls) continue;
     const cutoff = c.deleted_at && c.deleted_at < nowIso ? c.deleted_at : nowIso;
-    const row =
-      rows.get(c.class_id) ??
-      ({
-        classId: c.class_id,
-        shareSlug: cls.share_slug,
-        title: dosClassLabel(cls.style, cls.level),
-        style: cls.style,
-        kind: c.kind,
-        ratePerSessionInr: n(c.pay_per_session_inr),
-        held: 0,
-        upcoming: 0,
-        dancers: 0,
-        booked: 0,
-        seats: 0,
-        nextAt: null,
-        lastAt: null,
-        closed: true,
-      } as TeamMemberClass);
+    const row = rows.get(c.class_id) ?? blank(c.class_id, cls, "business", c.kind);
     if (c.deleted_at === null && cls.deleted_at === null) {
       row.closed = false;
       row.kind = c.kind;
       row.ratePerSessionInr = n(c.pay_per_session_inr);
     }
     for (const s of sessionsByClass.get(c.class_id) ?? []) {
+      const booked = bookedBySession.get(s.id) ?? 0;
       if (s.ends_at < cutoff) {
         if (credited.has(s.id)) continue;
         credited.add(s.id);
         const minutes = Math.max(0, Math.round((new Date(s.ends_at).getTime() - new Date(s.starts_at).getTime()) / 60000));
         const att = attBySession.get(s.id) ?? [];
         row.held += 1;
-        row.dancers += att.length;
-        row.booked += bookedBySession.get(s.id) ?? 0;
-        row.seats += n(cls.capacity);
+        row.dancers = (row.dancers ?? 0) + att.length;
+        row.booked += booked;
+        row.fillBooked += booked;
+        row.fillSeats += n(cls.capacity);
         if (!row.lastAt || s.starts_at > row.lastAt) row.lastAt = s.starts_at;
         if (c.kind === "artist") out.taught += 1;
         else out.assisted += 1;
         out.minutes += minutes;
         out.dancers += att.length;
-        out.booked += bookedBySession.get(s.id) ?? 0;
+        out.booked += booked;
         out.seats += n(cls.capacity);
         for (const u of att) if (u) people.add(u);
         if (!settled.has(s.id) && n(c.pay_per_session_inr) > 0) {
@@ -235,12 +350,42 @@ export async function findTeamMemberWork(supabase: SupabaseClient, businessId: s
         if (credited.has(`u:${s.id}`)) continue;
         credited.add(`u:${s.id}`);
         row.upcoming += 1;
+        row.upBooked += booked;
+        row.upSeats += n(cls.capacity);
         out.upcoming += 1;
         if (!row.nextAt || s.starts_at < row.nextAt) row.nextAt = s.starts_at;
       }
     }
     rows.set(c.class_id, row);
   }
+
+  /* their own classes held here — shown, never counted into the team's money */
+  for (const cls of ownClasses) {
+    const row = blank(cls.id, cls, "member", "artist");
+    row.closed = false;
+    for (const s of ownSessionsByClass.get(cls.id) ?? []) {
+      const booked = bookedBySession.get(s.id) ?? 0;
+      if (s.ends_at < nowIso) {
+        row.held += 1;
+        row.booked += booked;
+        row.fillBooked += booked;
+        row.fillSeats += n(cls.capacity);
+        if (!row.lastAt || s.starts_at > row.lastAt) row.lastAt = s.starts_at;
+      } else if (s.starts_at > nowIso) {
+        row.upcoming += 1;
+        row.upBooked += booked;
+        row.upSeats += n(cls.capacity);
+        if (!row.nextAt || s.starts_at < row.nextAt) row.nextAt = s.starts_at;
+      }
+    }
+    rows.set(cls.id, row);
+  }
+
+  const classes: TeamMemberClass[] = [...rows.values()].map(({ upBooked, upSeats, ...r }) => {
+    if (r.held > 0) return { ...r, fillBasis: "held" as const };
+    if (r.upcoming > 0) return { ...r, fillBooked: upBooked, fillSeats: upSeats, fillBasis: "upcoming" as const };
+    return r;
+  });
 
   return {
     ...out,
@@ -249,7 +394,7 @@ export async function findTeamMemberWork(supabase: SupabaseClient, businessId: s
     lastAt,
     months: lastSixMonths(now).map((m) => ({ ...m, n: byMonth.get(m.key) ?? 0 })),
     styles: [...byStyle.entries()].map(([style, count]) => ({ style, n: count })).sort((a, b) => b.n - a.n || a.style.localeCompare(b.style)),
-    classes: [...rows.values()].sort((a, b) => Number(a.closed) - Number(b.closed) || b.held - a.held || a.title.localeCompare(b.title)),
-    complete: claims.length < MAX_CLAIMS && sessions.length < MAX_ROWS && attendance.length < MAX_ROWS && bookings.length < MAX_ROWS,
+    classes: classes.sort((a, b) => Number(a.closed) - Number(b.closed) || b.held - a.held || a.title.localeCompare(b.title)),
+    complete: claims.length < MAX_CLAIMS && sessions.length < MAX_ROWS && attendance.length < MAX_ROWS,
   };
 }

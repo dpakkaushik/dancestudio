@@ -2946,6 +2946,16 @@ test.describe.serial("DanceOS, end to end", () => {
     // them is gone (20 Sep 2026, the user: "remove permission section just for
     // labelling"); the row itself prints what the seat carries.
     await owner.goto(`/business/${businessId}/staff`);
+    /* ⚠⚠ THE CARD CARRIES NO MANAGE AND NO POWERS (4 Oct 2026, the user: "Team
+       cards- remove powers from card. Remove manage button from card and shift
+       inside history page on top right as a pill. history to be renamed as Member
+       Detail") — the card's door is Member Detail, and Manage is a pill there,
+       answering to the same "Manage {name}" the card's button did */
+    await expect(owner.getByRole("button", { name: `Manage ${learnerName}` })).toHaveCount(0);
+    await expect(owner.getByRole("link", { name: `History — ${learnerName}` })).toHaveCount(0);
+    await expect(owner.getByText("Powers", { exact: true })).toHaveCount(0);
+    await owner.getByRole("link", { name: `Member Detail — ${learnerName}` }).click();
+    await owner.waitForURL(new RegExp(`/business/${businessId}/staff/[0-9a-f-]+$`), { timeout: 20_000 });
     const memberRow = owner.getByRole("button", { name: `Manage ${learnerName}` });
     await expect(memberRow).toBeVisible({ timeout: 15_000 });
     await memberRow.click();
@@ -2959,8 +2969,8 @@ test.describe.serial("DanceOS, end to end", () => {
     await memberSheet.getByRole("button", { name: `Make ${learnerName} Faculty` }).click();
     await expect(owner.getByRole("status")).toContainText("Faculty", { timeout: 15_000 });
     /* ⚠ the member sheet closes on its scrim or on system back, NOT on Escape —
-       so a reload is the sure way to get back to the rows underneath it */
-    await owner.reload();
+       so going back to the desk is the sure way to the rows */
+    await owner.goto(`/business/${businessId}/staff`);
 
     /* ── AND PAID, WITH A METHOD — the payment lands in the ledger the Earnings
        desk reads as MONEY OUT, so it is an expense the moment it is written.
@@ -2995,13 +3005,13 @@ test.describe.serial("DanceOS, end to end", () => {
     /* ⚠ AND THE MANAGE SHEET CARRIES NEITHER (3 Oct 2026, the user: *"manage page
        for team without option to see history and record payment in it"*) — the
        history is the card's own History button, paying its Pay button */
+    await owner.getByRole("link", { name: `Member Detail — ${learnerName}` }).click();
+    await owner.waitForURL(new RegExp(`/business/${businessId}/staff/[0-9a-f-]+$`));
     await owner.getByRole("button", { name: `Manage ${learnerName}` }).click();
     await expect(memberSheet.getByText("September")).toHaveCount(0);
-    await expect(memberSheet.getByRole("link", { name: /history/i })).toHaveCount(0);
+    await expect(memberSheet.getByRole("link", { name: /history|member detail/i })).toHaveCount(0);
     await expect(memberSheet.getByRole("button", { name: /record a payment|^Pay /i })).toHaveCount(0);
     await owner.reload();
-    await owner.getByRole("link", { name: `History — ${learnerName}` }).click();
-    await owner.waitForURL(new RegExp(`/business/${businessId}/staff/[0-9a-f-]+$`));
     await expect(owner.getByRole("heading", { name: "Team" })).toBeVisible();
     await expect(owner.getByText(learnerName).first()).toBeVisible();
     await expect(owner.getByText("₹2,500").first()).toBeVisible();
@@ -3016,10 +3026,23 @@ test.describe.serial("DanceOS, end to end", () => {
     await expect(owner.getByRole("link", { name: "Back to the team" })).toHaveCount(0);
     await expect(owner.getByRole("link", { name: "Profile", exact: true })).toHaveCount(0);
     await expect(owner.getByRole("link", { name: /how .* classes went/i })).toHaveCount(0);
-    await owner.getByRole("link", { name: new RegExp(`^${learnerName}'s classes here \\(\\d+\\)$`) }).click();
+    /* ⚠ NO COUNTERS ON THE COLUMNS (4 Oct 2026, the user) — the accessible name
+       is the sentence alone now */
+    await owner.getByRole("link", { name: `${learnerName}'s classes here`, exact: true }).click();
     await expect(owner).toHaveURL(/\?show=classes$/, { timeout: 15_000 });
-    await owner.getByRole("link", { name: `${learnerName}'s stats here` }).click();
+    /* THE CLASSES REHAUL: three ways in, the one pressed solid — or, for somebody
+       on no class here yet, the sentence that says so */
+    await expect(owner.getByTestId("team-class-by-artist").or(owner.getByText("Not on a class here yet.", { exact: false }))).toBeVisible({ timeout: 15_000 });
+    if (await owner.getByTestId("team-class-by-artist").count()) {
+      await expect(owner.getByTestId("team-class-by-artist")).toHaveAttribute("aria-pressed", "true");
+      await owner.getByTestId("team-class-by-style").click();
+      await expect(owner.getByTestId("team-class-by-style")).toHaveAttribute("aria-pressed", "true");
+    }
+    await owner.getByRole("link", { name: `${learnerName}'s stats here`, exact: true }).click();
     await expect(owner.getByTestId("team-dancers")).toBeVisible({ timeout: 15_000 });
+    /* first class and last class lead the stats' top section, as boxes */
+    await expect(owner.getByTestId("team-first-class")).toBeVisible();
+    await expect(owner.getByTestId("team-last-class")).toBeVisible();
     await owner.goto(`/business/${businessId}/staff`);
 
     await owner.goto(`/business/${businessId}/earnings`);
@@ -3350,7 +3373,12 @@ test.describe.serial("DanceOS, end to end", () => {
     // ── 1. THE TWO STANDING POWERS are the studio's to grant, and only those two.
     // Everything else a seat carries is decided by the seat; these two are the ones
     // an owner hands out per person, because the database keeps them per person.
+    /* ⚠ MANAGE IS A PILL ON THEIR MEMBER DETAIL PAGE since 4 Oct 2026 — the card
+       carries only Pay and Member Detail */
     await owner.goto(`/business/${businessId}/staff`);
+    await owner.getByRole("link", { name: `Member Detail — ${learnerName}` }).click();
+    await owner.waitForURL(new RegExp(`/business/${businessId}/staff/[0-9a-f-]+$`), { timeout: 20_000 });
+    const memberUrl = owner.url();
     await owner.getByRole("button", { name: `Manage ${learnerName}` }).click();
     const teamSheet = owner.getByRole("dialog", { name: learnerName });
     await expect(teamSheet.getByText("PERMISSIONS", { exact: true })).toBeVisible();
@@ -3361,8 +3389,8 @@ test.describe.serial("DanceOS, end to end", () => {
     await expect(owner.getByRole("status")).toContainText("run the register on", { timeout: 15_000 });
     await expect(register).toHaveAttribute("aria-checked", "true");
     await expect(refunds).toHaveAttribute("aria-checked", "false");
-    /* the grant is on the ROW, not in this sheet's head: a reload is the sure way
-       back to the rows (the member sheet closes on its scrim, never on Escape) */
+    /* the grant is stored, not just drawn: a reload re-reads the page (the member
+       sheet closes on its scrim, never on Escape) */
     await owner.reload();
     await owner.getByRole("button", { name: `Manage ${learnerName}` }).click();
     await expect(register).toHaveAttribute("aria-checked", "true", { timeout: 15_000 });
@@ -3377,10 +3405,7 @@ test.describe.serial("DanceOS, end to end", () => {
        rather than left as switches that cannot be turned off */
     await expect(teamSheet.getByText("PERMISSIONS", { exact: true })).toHaveCount(0);
     await expect(teamSheet.getByRole("button", { name: `Make ${learnerName} Owner` })).toHaveAttribute("aria-pressed", "true");
-    /* ⚠ AND BACK TO FACULTY WITHOUT CLOSING THE SHEET. An OWNER's row carries no
-       "Manage …" control at all (a studio's owner is not somebody the desk
-       manages), so reloading here would shut the only door back — the sheet that
-       is already open is the way out of the state it just created. */
+    /* and back to Faculty from the same open sheet */
     await teamSheet.getByRole("button", { name: `Make ${learnerName} Faculty` }).click();
     await expect(owner.getByRole("status")).toContainText("Faculty", { timeout: 15_000 });
     await owner.reload();
@@ -3422,7 +3447,7 @@ test.describe.serial("DanceOS, end to end", () => {
 
     /* …and made an Owner again, both come back — so the gate is the SEAT and not
        something that merely happened to this account once */
-    await owner.goto(`/business/${businessId}/staff`);
+    await owner.goto(memberUrl);
     await owner.getByRole("button", { name: `Manage ${learnerName}` }).click();
     await owner.getByRole("dialog", { name: learnerName }).getByRole("button", { name: `Make ${learnerName} Owner` }).click();
     await expect(owner.getByRole("status")).toContainText("Owner", { timeout: 15_000 });

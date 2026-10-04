@@ -4,6 +4,7 @@ import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { findPersonPayHistory } from "@/repositories/payouts";
 import { findTeamMemberWork } from "@/repositories/teamMemberWork";
 import { findMyMemberships, findBusinessTeam, runsTheBusiness } from "@/repositories/businesses";
+import { findPrincipalOwner } from "@/repositories/invites";
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -40,20 +41,38 @@ export default async function TeamMemberRoute({
     redirect(`/business/${businessId}/staff`);
   }
 
-  const [team, history, work] = await Promise.all([
-    findBusinessTeam(supabase, businessId),
-    findPersonPayHistory(supabase, businessId, userId),
-    findTeamMemberWork(supabase, businessId, userId),
-  ]);
-
   /* ⚠ THE PERSON COMES OFF THE TEAM, NOT OFF THE PAYMENTS — somebody paid
      nothing yet has no payout row to read a name from */
+  const [team, history, principalOwnerId] = await Promise.all([
+    findBusinessTeam(supabase, businessId),
+    findPersonPayHistory(supabase, businessId, userId),
+    /* the Manage pill's Remove on an owner (30 Sep 2026's rule, moved here with
+       the sheet on 4 Oct 2026); fails soft — a null simply draws no Remove */
+    findPrincipalOwner(supabase, businessId).catch(() => null),
+  ]);
   const member = team.find((m) => m.userId === userId);
   if (!member) {
     notFound();
   }
+  const work = await findTeamMemberWork(supabase, businessId, userId, new Date(), {
+    businessName: seat.business.name,
+    memberName: member.name,
+    memberPhoto: member.avatarPath,
+  });
 
   /* ⚠ an old `?show=performance` lands on Stats, which holds it now (4 Oct 2026) */
   const show: TeamMemberShow = asked === "stats" || asked === "performance" ? "stats" : asked === "classes" ? "classes" : "payments";
-  return <TeamMemberPage businessId={businessId} businessName={seat.business.name} member={member} history={history} work={work} show={show} />;
+  return (
+    <TeamMemberPage
+      businessId={businessId}
+      businessName={seat.business.name}
+      businessType={seat.business.type}
+      member={member}
+      history={history}
+      work={work}
+      show={show}
+      meUserId={user.id}
+      principalOwnerId={principalOwnerId}
+    />
+  );
 }
