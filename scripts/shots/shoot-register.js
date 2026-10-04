@@ -448,7 +448,14 @@ const valueOf = (page, label) => page.getByLabel(label).inputValue();
        save & ask button in add class form to be changed to send request … fix
        both what a session pays them and price fields while typing 0 becomes
        stagnant." All three are drivable here, on the real form. */
-    await page.goto(`${BASE}/business/${studio.id}/classes/new`, { waitUntil: "networkidle" });
+    /* through the register's own Add Class button (5 Oct 2026): the full-page
+       `/classes/new` went and its address forwards to the register, so the form
+       opens as the sheet over it — and saving steps back to the register, which
+       is the URL this section waits for after the send */
+    await page.goto(`${BASE}/business/${studio.id}/classes`, { waitUntil: "networkidle" });
+    await page.getByRole("link", { name: "Add Class", exact: true }).click();
+    await page.waitForURL(/\/classes\?(.*&)?new=1/, { timeout: 20000 });
+    await page.getByLabel("Class date").waitFor({ timeout: 20000 });
 
     /* the picker's own floor — today in IST, so yesterday cannot be chosen at all */
     check((await page.getByLabel("Class date").getAttribute("min")) === istDay(0), `the date picker's floor is today in IST (${istDay(0)})`);

@@ -552,8 +552,8 @@ export function ClassesManager({
           /* ⚠ the href KEEPS the query it is standing in: this same component is
              embedded in `/my-classes?show=manage`, where a bare `?new=1` would
              drop the segment and switch the list back to Booked underneath the
-             sheet it just opened. `/business/{id}/classes/new` is still the page
-             behind it (Rule 14). */
+             sheet it just opened. The old `/business/{id}/classes/new` page went
+             on 5 Oct 2026; its address forwards to this register (Rule 14). */
           /* "Add Class", not "Create class" (4 Oct 2026, the user: "Create Class
              button to be renamed as Add Class") — the Add Routine / Add Membership
              grammar every other desk's pill already speaks */

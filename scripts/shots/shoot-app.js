@@ -170,7 +170,10 @@ async function signUp(page, email) {
       ["support", "/support"],
       ["person", `/person/${userId}`],
       ["studio-public", `/studio/${tenantId}`],
-      ["class-form", `/business/${tenantId}/classes/new`],
+      /* the form as the sheet over the register — the full-page `/classes/new`
+         went on 5 Oct 2026 and its address forwards to the register itself, so
+         shooting it would photograph the register, not the form */
+      ["class-form", `/business/${tenantId}/classes?new=1`],
       /* ⚠ the events desk and the event form were shot here until 29 Sep 2026.
          Both routes are gone and redirect to the studio's own home, so shooting
          them would photograph a redirect — which is worse than a gap, because

@@ -228,8 +228,9 @@ export function ClassForm({
    *  may publish straight away, exactly as a place of their own may */
   ownedStudioIds?: string[];
   /** open over the register that offered it rather than as a page of its own
-   *  (22 Sep 2026). The form is unchanged either way — only its shell differs,
-   *  and `/business/{id}/classes/new` still renders the page (Rule 14). */
+   *  (22 Sep 2026). The form is unchanged either way — only its shell differs.
+   *  The page shell is the EDIT page's alone since 5 Oct 2026: the old
+   *  `/business/{id}/classes/new` address forwards to the register (Rule 14). */
   sheet?: boolean;
   /** a studio's form or an artist page's — decides WHERE and WHO (18 Sep 2026) */
   businessType: BusinessType;

@@ -91,7 +91,8 @@ export default async function BusinessClassesPage({
      The ROOMS the form offers are read only when the form is asked for — `?new=1`
      — so the register costs exactly what it did before on every other visit, and
      the owner-only rule is re-checked here because a query param is a thing
-     anybody can type. `/business/{id}/classes/new` still renders it full-page. */
+     anybody can type. The old full-page `/business/{id}/classes/new` forwards
+     here since 5 Oct 2026 (next.config.ts). */
   const rooms = opening && myRole === "owner" && !whyNoClass ? await findRoomsByBusiness(supabase, businessId).catch(() => []) : [];
   return (
     <>

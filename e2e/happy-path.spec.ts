@@ -3235,7 +3235,14 @@ test.describe.serial("DanceOS, end to end", () => {
        saved as a draft now and a draft holds no room, so there is nothing to clash
        with until somebody presses Publish on the register — which is where the
        question is asked and the sheet answers it. */
-    await owner.goto(`/business/${businessId}/classes/new`);
+    /* ⚠ THROUGH THE REGISTER'S OWN BUTTON (5 Oct 2026): the full-page
+       `/business/{id}/classes/new` went, and its address forwards to the register
+       — so the form is opened the way a person opens it, as the sheet over the
+       register (`?new=1`). Saving steps back to the register, which is the URL
+       this segment waits for after the send. */
+    await owner.goto(`/business/${businessId}/classes`);
+    await owner.getByRole("link", { name: "Add Class", exact: true }).click();
+    await owner.waitForURL(/\/classes\?(.*&)?new=1/);
     /* ⚠ A FILL BEFORE HYDRATION IS NOT A FILL (4 Oct 2026): straight after a
        `goto`, React can claim the controlled date input AFTER the fill and reset
        it to "", leaving the bar on "Pick a date" and no Continue for the whole

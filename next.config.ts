@@ -110,6 +110,14 @@ const nextConfig: NextConfig = {
          every grid on 21 Sep 2026; the pencil on the studio's own home shows the
          disc's ⊕ and the posters' ⊕, which are the same editors. */
       { source: "/business/:businessId/media", destination: "/business/:businessId", permanent: false },
+      /* The four ADD forms as pages of their own. Since 22 Sep 2026 every Add
+         button opens the SAME form as a sheet over its desk (`?new=1`), so the
+         pages were a second shell around one component. ⚠ Each forwards to the
+         DESK, deliberately not to `?new=1`: a sheet closes and saves by stepping
+         BACK to the desk under it, and somebody arriving cold from an old link
+         has no desk under them — so they land one press from the form instead.
+         An artist page's desk forwards on to `/my-classes?show=manage` itself. */
+      { source: "/business/:businessId/classes/new", destination: "/business/:businessId/classes", permanent: false },
     ];
   },
 };
