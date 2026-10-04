@@ -47,7 +47,7 @@ export function PassDeck({ items }: { items: DeckItem[] }) {
       href={p.href}
       /* every card in this rail is today, so the date block says so (8290-8293) */
       isToday
-      roleLabel={p.roleLabel}
+      relation={p.roleLabel}
       /* done · live · upcoming — red, green, amber (2 Oct 2026); `live` rides on it */
       deckState={p.state}
       checkedIn={Boolean(p.checkedIn)}

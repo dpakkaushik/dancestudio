@@ -1,12 +1,13 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { dosClassLabel } from "@/lib/constants/styles";
-import type {
-  ClassLevel,
-  ClassStatus,
-  DanceClass,
-  PosterChoice,
-  PublicClassListing,
-  VenueStatus,
+import {
+  classOwnerOf,
+  type ClassLevel,
+  type ClassStatus,
+  type DanceClass,
+  type PosterChoice,
+  type PublicClassListing,
+  type VenueStatus,
 } from "@/types/class";
 
 interface SessionRow {
@@ -37,10 +38,26 @@ interface ClassRow {
   allows_studio_memberships: boolean | null;
   allows_artist_memberships: boolean | null;
   class_sessions: SessionRow[] | null;
+  /** WHO MADE IT (4 Oct 2026) — the owner business, read through `OWNER_EMBED`
+   *  where no other embed of that key is in the select */
+  owner?: OwnerEmbed | OwnerEmbed[] | null;
 }
 
+type OwnerEmbed = { name: string; type?: string | null; profile_photo_path?: string | null };
+
+/** ⚠ ALIASED, because a read that also filters on the owner (the public
+ *  shelves) carries its own unaliased `businesses!classes_business_id_fkey`
+ *  embed — those reads take the owner off that embed instead and never add
+ *  this one, so one select never names the same key twice. */
+const OWNER_EMBED = "owner:businesses!classes_business_id_fkey (name, type, profile_photo_path)";
+
+const ownerOfRow = (row: ClassRow & { businesses?: OwnerEmbed | null }) => {
+  const o = Array.isArray(row.owner) ? row.owner[0] : row.owner;
+  return classOwnerOf(o ?? row.businesses ?? null);
+};
+
 interface PublicClassRow extends ClassRow {
-  businesses: { name: string; area: string | null; city: string | null; type?: "studio" | "artist_page" } | null;
+  businesses: { name: string; area: string | null; city: string | null; type?: "studio" | "artist_page"; profile_photo_path?: string | null } | null;
   /** the VENUE studio, through the second key (19 Sep 2026) — null at the owner's
    *  own place, and null to a reader the venue's row is not readable by */
   venue?: { name: string; area: string | null; city: string | null } | null;
@@ -49,7 +66,7 @@ interface PublicClassRow extends ClassRow {
 /** the two embeds a public class read carries: the OWNER through the first key,
  *  the VENUE through the second — both named, because two keys make an
  *  unqualified embed a 300 (the 18 Sep lesson) */
-const OWNER_AND_VENUE = (inner: boolean) => `businesses!classes_business_id_fkey${inner ? "!inner" : ""} (name, area, city, type), venue:businesses!classes_venue_business_id_fkey (name, area, city)`;
+const OWNER_AND_VENUE = (inner: boolean) => `businesses!classes_business_id_fkey${inner ? "!inner" : ""} (name, area, city, type, profile_photo_path), venue:businesses!classes_venue_business_id_fkey (name, area, city)`;
 
 const venueOf = (row: PublicClassRow) => ({
   venueName: row.venue?.name ?? null,
@@ -74,6 +91,7 @@ const firstSession = (rows: SessionRow[] | null) => {
 const toClass = (row: ClassRow): DanceClass => ({
   id: row.id,
   businessId: row.business_id,
+  owner: ownerOfRow(row),
   title: dosClassLabel(row.style, row.level),
   shareSlug: row.share_slug,
   style: row.style,
@@ -186,7 +204,7 @@ export async function findClassesByBusiness(
 ): Promise<DanceClass[]> {
   const { data, error } = await supabase
     .from("classes")
-    .select(CLASS_COLUMNS)
+    .select(`${CLASS_COLUMNS}, ${OWNER_EMBED}`)
     .eq("business_id", businessId)
     .is("deleted_at", null)
     .order("created_at", { ascending: false })
@@ -213,7 +231,7 @@ export async function findClassesHostedByBusiness(
 ): Promise<Array<{ danceClass: DanceClass; hostName: string }>> {
   const { data, error } = await supabase
     .from("classes")
-    .select(`${CLASS_COLUMNS}, host:businesses!classes_business_id_fkey (name)`)
+    .select(`${CLASS_COLUMNS}, ${OWNER_EMBED}`)
     .eq("venue_business_id", businessId)
     .eq("venue_status", "accepted")
     .neq("business_id", businessId)
@@ -222,9 +240,9 @@ export async function findClassesHostedByBusiness(
     .order("created_at", { ascending: false })
     .limit(100);
   if (error || !data) return [];
-  return (data as unknown as Array<ClassRow & { host: { name: string } | { name: string }[] | null }>).map((r) => {
-    const h = Array.isArray(r.host) ? r.host[0] : r.host;
-    return { danceClass: toClass(r), hostName: h?.name ?? "An artist" };
+  return (data as unknown as ClassRow[]).map((r) => {
+    const danceClass = toClass(r);
+    return { danceClass, hostName: danceClass.owner?.name ?? "An artist" };
   });
 }
 
@@ -743,7 +761,7 @@ const toVenueRequests = async (supabase: SupabaseClient, rows: VenueRow[]): Prom
  *  real `DanceClass` and `ClassTile` draws it exactly as Discover does.
  *  ⚠ `created_at` and the venue's own columns ride ON TOP of it — they are the
  *  ASK's facts rather than the class's. */
-const VENUE_SELECT = `${CLASS_COLUMNS}, created_at`;
+const VENUE_SELECT = `${CLASS_COLUMNS}, ${OWNER_EMBED}, created_at`;
 
 /** The asks waiting on a set of STUDIOS for their rooms — the Requests desk's
  *  Received side for whoever runs them. Says which studios out loud. */

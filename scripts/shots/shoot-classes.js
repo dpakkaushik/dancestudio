@@ -325,11 +325,13 @@ const BOOK_ON_PAGE = /^Book (free trial|this class)$/;
 
     /* ══ 6 · A LEARNER'S SEAT IS NOT THE OWNER'S ══════════════════════════════ */
     await lPage.goto(`${BASE}/classes`, { waitUntil: "networkidle" });
-    check(/Enrolled ✓/.test(await text(lPage)), "the learner who booked reads Enrolled ✓ on their own seat");
+    /* the card's relation chip, in the shared word since 4 Oct 2026 (it read "Enrolled ✓") */
+    const bookedChips = async (pg) => pg.getByTestId("relation-chip").filter({ hasText: /^Booked$/ }).count();
+    check((await bookedChips(lPage)) >= 1, "the learner who booked reads Booked on their own seat's card");
 
     await oPage.goto(`${BASE}/classes`, { waitUntil: "networkidle" });
     check(await onShelf(oPage, aheadSlug), "the owner sees their own studio's class on the shelf");
-    check(!/Enrolled ✓/.test(await text(oPage)), "⚠⚠ …and is NOT told they are enrolled on it — a learner's seat, read through the roster policy, was being drawn as the viewer's own");
+    check((await bookedChips(oPage)) === 0, "⚠⚠ …and is NOT told they are enrolled on it — a learner's seat, read through the roster policy, was being drawn as the viewer's own");
     check((await oPage.getByRole("button", { name: "Cancel booking" }).count()) === 0, "…and is offered no Cancel aimed at somebody else's booking");
 
     /* ══ 7 · THE PERSON ASKED ANSWERS IT WHERE THE CLASS IS ═══════════════════ */

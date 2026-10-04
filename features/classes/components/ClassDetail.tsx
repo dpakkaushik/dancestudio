@@ -3,14 +3,12 @@
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useActionState, useRef, useState, useSyncExternalStore, type CSSProperties, type ReactNode } from "react";
+import { useRef, useState, useSyncExternalStore, type CSSProperties, type ReactNode } from "react";
 import { AmenityChip } from "@/components/ui/AmenityIcon";
 import {
   addWalkInAction,
   bookAtTheDoorAction,
   checkInAction,
-  giveSpotAction,
-  removeFromWaitlistAction,
   removeWalkInAction,
   setDoorPaidAction,
   undoCheckInAction,
@@ -18,11 +16,6 @@ import {
 import { respondToClassAskAction } from "@/features/classPeople/server-actions/classPeople";
 import { setClassPosterAction } from "@/features/classes/server-actions/classes";
 import { PhotoPicker } from "@/features/media/components/PhotoPicker";
-import {
-  cancelClassBookingAction,
-  enrollAction,
-  type EnrollActionState,
-} from "@/features/classBookings/server-actions/classBookings";
 import { ClassEarnings } from "@/features/payments/components/ClassEarnings";
 import { InvoiceSheet, bookingCodeOf } from "@/features/payments/components/InvoiceSheet";
 import { PayFlow } from "@/features/payments/components/PayFlow";
@@ -139,7 +132,6 @@ function Sec({ icon, label, col, children }: { icon: ReactNode; label: string; c
   );
 }
 
-const initialState: EnrollActionState = { error: null, outcome: null };
 
 export interface ClassDetailProps {
   danceClass: PublicClassListing;
@@ -158,7 +150,7 @@ export interface ClassDetailProps {
   /** Where the clock stands on the session — the strip only SAYS which moment
    *  you are in (prototype 12050-12063); the check-in window is enforced server-side. */
   sessionPhase: "upcoming" | "live" | "ended";
-  /** The live register + waitlist queue — fetched only for owner/trainer viewers. */
+  /** The live register — fetched only for viewers who may run it. */
   register: ClassRegister | null;
   /** Who is on this class. The public sees confirmed classPeople only (RLS). */
   classPeople: ClassPerson[];
@@ -290,9 +282,9 @@ export function ClassDetail({
   const scannedIn = useRef<Set<string>>(new Set());
   const origin = useSyncExternalStore(subscribeNever, readOrigin, readServerOrigin);
 
-  const [enrollState, enrollForm, enrollPending] = useActionState(enrollAction, initialState);
-  const [cancelState, cancelForm, cancelPending] = useActionState(cancelClassBookingAction, initialState);
-  const actionError = enrollState.error || cancelState.error;
+  /* ⚠ the two form states that drove "Join the waitlist" / "Leave the waitlist"
+     went with the waitlist (4 Oct 2026) — booking here is the pay sheet's, and a
+     seat's cancel is the refund sheet's, each with its own error line */
 
   /* SPEND A PASS ON THIS SEAT — one RPC books the seat and takes the units under
      the class's own lock, so two presses cannot spend the same unit twice. */
@@ -376,7 +368,6 @@ export function ClassDetail({
   const pct = c.capacity > 0 ? Math.min(100, Math.round((100 * filled) / c.capacity)) : 0;
   const soldOut = filled >= c.capacity && c.capacity > 0;
   const booked = mine?.status === "enrolled";
-  const waitlisted = mine?.status === "waitlisted";
 
   const when = c.session ? dateParts(c.session.startsAt) : null;
   const time = c.session ? timeRangeOf(c.session.startsAt, c.session.endsAt) : null;
@@ -400,7 +391,7 @@ export function ClassDetail({
      ⚠ A trainer or a manager NOT on this class is a dancer here like anybody
      else, which is the whole point of the change. */
   const runsThisClass = isOwner || myClassPerson?.status === "confirmed";
-  const showBar = !runsThisClass && !done && c.session !== null && !waitlisted;
+  const showBar = !runsThisClass && !done && c.session !== null;
 
   const ground = `linear-gradient(150deg, ${col}47 0%, ${col}24 55%, ${col}17 100%)`;
   const weave = `repeating-linear-gradient(45deg, ${col}1a 0 6px, transparent 6px 12px)`;
@@ -480,10 +471,9 @@ export function ClassDetail({
    *  says so and leaves them in — the row's button is how somebody is checked
    *  OUT. A door that scans the same code twice must not undo the first scan.
    *
-   *  ⚠ AND IT TELLS THE THREE "NO"s APART, because they need three different
-   *  answers at a door: on the waitlist (give them a spot first — a decision,
-   *  not something a scan should take), booked for a DIFFERENT class, or not
-   *  booked at all.
+   *  ⚠ AND IT TELLS THE "NO"s APART, because they need different answers at a
+   *  door: booked for a DIFFERENT class, or not booked at all. (A third, "on the
+   *  waitlist", went with the waitlist on 4 Oct 2026.)
    *
    *  ⚠⚠ AND THE LAST ONE IS A DOOR NOW (29 Sep 2026). It used to end the errand
    *  — "a class has no walk-in yet" — which is the one thing a person standing
@@ -500,10 +490,6 @@ export function ClassDetail({
     if (!register) return { ok: false, message: "This register is not open." };
     const row = register.rows.find((r) => r.userId === personId);
     if (!row) {
-      const waiting = register.waitlist.find((w) => w.userId === personId);
-      if (waiting) {
-        return { ok: false, message: `${waiting.learnerName} is on the waitlist — give them a spot first, then scan again.` };
-      }
       if (!c.session) {
         return { ok: false, message: "This class has no session to book against." };
       }
@@ -1077,7 +1063,7 @@ export function ClassDetail({
         {/* ── a booking you hold (prototype BookingActions 6408-6448): neutral card,
             the confirmed dot, and the two money actions MERGED into one segmented
             pill — the invoice and the cancel-and-refund are two halves of one
-            subject. Waitlist rows keep their simple leave button. ── */}
+            subject. ── */}
         {/* ⚠ `runsThisClass`, not `isMember` (30 Sep 2026): a member who books is
             offered the bar now, so gating their own booked card on membership
             would have taken the seat AND hidden it — no code, no invoice and no
@@ -1160,41 +1146,7 @@ export function ClassDetail({
             </div>
           </div>
         )}
-        {mine && !runsThisClass && !done && !booked && (
-          <div style={{ background: "var(--card)", border: "1.5px solid var(--el)", borderRadius: 16, padding: "12px", marginBottom: 10 }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 6, minWidth: 0 }}>
-              <span style={{ width: 8, height: 8, borderRadius: 4, background: GOLD, flexShrink: 0 }} />
-              <span style={{ fontSize: 12.5, fontWeight: 900, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                You’re on the waitlist
-              </span>
-            </div>
-            <div style={{ fontSize: 9.5, color: "var(--muted)", marginTop: 3 }}>You get the next freed spot.</div>
-            <form action={cancelForm} style={{ display: "flex", marginTop: 10 }}>
-              <input type="hidden" name="classBookingId" value={mine.id} />
-              <button
-                type="submit"
-                disabled={cancelPending}
-                style={{
-                  flex: 1,
-                  display: "inline-flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  gap: 6,
-                  padding: "10px 6px",
-                  fontSize: 11.5,
-                  fontWeight: 800,
-                  cursor: "pointer",
-                  color: "#F87171",
-                  background: "var(--solid)",
-                  border: "1.5px solid var(--el)",
-                  borderRadius: 999,
-                }}
-              >
-                {cancelPending ? "Cancelling…" : "Leave waitlist"}
-              </button>
-            </form>
-          </div>
-        )}
+        {/* ⚠ the "You're on the waitlist" card went with the waitlist (4 Oct 2026) */}
 
         {showDetails && (
           <>
@@ -1676,88 +1628,6 @@ export function ClassDetail({
               </div>
             ) : null}
 
-            {/* the waitlist is a queue of real people — the owner hands a freed
-                spot to the next one (12080-12099) */}
-            {register.waitlist.length > 0 && (
-              <Sec
-                col={col}
-                label={`WAITLIST · ${register.waitlist.length} WAITING`}
-                icon={
-                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke={col} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-                    <circle cx="12" cy="12" r="8.5" />
-                    <path d="M12 7.5V12l3 2" />
-                  </svg>
-                }
-              >
-                <div style={{ fontSize: 10.5, color: "var(--sub)", marginBottom: 8 }}>
-                  {soldOut
-                    ? "The class is full — offer the next spot the moment one frees."
-                    : `${spotsLeft} spot${spotsLeft === 1 ? "" : "s"} open — offer them now.`}
-                </div>
-                {register.waitlist.map((w, i) => (
-                  <div
-                    key={w.classBookingId}
-                    style={{ display: "flex", alignItems: "center", gap: 10, padding: "8px 0", borderBottom: "1.5px solid var(--el)" }}
-                  >
-                    <span style={{ width: 22, fontSize: 11, fontWeight: 900, color: "var(--muted)", fontFamily: DOS_MONO }}>
-                      #{i + 1}
-                    </span>
-                    <span
-                      style={{
-                        flex: 1,
-                        minWidth: 0,
-                        fontSize: 12.5,
-                        fontWeight: 700,
-                        overflow: "hidden",
-                        textOverflow: "ellipsis",
-                        whiteSpace: "nowrap",
-                      }}
-                    >
-                      {w.learnerName}
-                    </span>
-                    <span
-                      role="button"
-                      tabIndex={0}
-                      onKeyDown={dosKey}
-                      aria-label={`Give the spot to ${w.learnerName}`}
-                      onClick={() => {
-                        if (soldOut) {
-                          fire("Free a spot first — the class is full");
-                          return;
-                        }
-                        void runRegisterOp(w.classBookingId, giveSpotAction, `✅ ${w.learnerName} moved off the waitlist`);
-                      }}
-                      style={{
-                        fontSize: 10.5,
-                        fontWeight: 800,
-                        color: soldOut ? "var(--muted)" : "#22C55E",
-                        cursor: "pointer",
-                        flexShrink: 0,
-                        border: `1.5px solid ${soldOut ? "var(--el)" : "#22C55E55"}`,
-                        borderRadius: 999,
-                        padding: "4px 10px",
-                        opacity: opPending === w.classBookingId ? 0.5 : 1,
-                      }}
-                    >
-                      Give spot
-                    </span>
-                    <span
-                      role="button"
-                      tabIndex={0}
-                      onKeyDown={dosKey}
-                      aria-label={`Remove ${w.learnerName} from the waitlist`}
-                      onClick={() =>
-                        void runRegisterOp(w.classBookingId, removeFromWaitlistAction, `${w.learnerName} removed from the waitlist`)
-                      }
-                      style={{ fontSize: 13, color: "var(--muted)", cursor: "pointer", flexShrink: 0, padding: "0 2px" }}
-                    >
-                      ✕
-                    </span>
-                  </div>
-                ))}
-              </Sec>
-            )}
-
             {/* the register itself (12117-12137) */}
             <Sec
               col={col}
@@ -2049,29 +1919,13 @@ export function ClassDetail({
                 <path d="m8.5 8.5 7 7M15.5 8.5l-7 7" />
               </svg>
               <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ fontSize: 13, fontWeight: 900, color: "#F87171" }}>Sold out</div>
+                {/* ⚠ NO WAITLIST (4 Oct 2026, the user: "remove waitlist
+                    mechanism") — a full class is full, and the bar offers nothing */}
+                <div style={{ fontSize: 13, fontWeight: 900, color: "#F87171" }}>Class full</div>
                 <div style={{ fontSize: 10.5, color: "var(--sub)", marginTop: 1 }}>
-                  All {c.capacity} spots are taken — join the waitlist and we&rsquo;ll tell you if one opens.
+                  All {c.capacity} spots are taken.
                 </div>
               </div>
-              <form action={enrollForm} style={{ flexShrink: 0, display: "flex" }}>
-                <input type="hidden" name="sessionId" value={c.session!.id} />
-                <button
-                  type="submit"
-                  disabled={enrollPending}
-                  style={{
-                    fontSize: 10.5,
-                    fontWeight: 800,
-                    color: "#F87171",
-                    cursor: "pointer",
-                    background: "transparent",
-                    border: "none",
-                    padding: 0,
-                  }}
-                >
-                  {enrollPending ? "Joining…" : "Waitlist"}
-                </button>
-              </form>
             </div>
           ) : (
             <>
@@ -2171,16 +2025,6 @@ export function ClassDetail({
               )}
             </div>
             </>
-          )}
-          {enrollState.outcome === "waitlisted" && (
-            <div style={{ fontSize: 10.5, color: GOLD, fontWeight: 800, marginTop: 8, textAlign: "center" }}>
-              📋 On the waitlist — you get the next freed spot.
-            </div>
-          )}
-          {actionError && (
-            <div style={{ fontSize: 10.5, color: "#EF4444", fontWeight: 700, marginTop: 8, textAlign: "center" }}>
-              {actionError}
-            </div>
           )}
         </div>
       )}

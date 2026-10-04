@@ -20,6 +20,7 @@ import type { MyClassBooking } from "@/types/classBooking";
 const toTileClass = (e: MyClassBooking): DanceClass => ({
   id: e.classId,
   businessId: "",
+  owner: e.owner,
   title: e.title,
   shareSlug: e.shareSlug,
   style: e.style,
@@ -202,8 +203,6 @@ export default async function MyClassesPage({ searchParams }: { searchParams: Pr
     danceClass: askToTileClass(c),
     artist: bookedArtists.get(c.classId) ?? null,
     city: c.businessCity,
-    studio: c.businessName,
-    when: when(c.startsAt),
   }));
 
   return (
@@ -289,6 +288,7 @@ export default async function MyClassesPage({ searchParams }: { searchParams: Pr
                               danceClass={askToTileClass(c)}
                               city={c.businessCity}
                               href={`/c/${c.classShareSlug}`}
+                              relation="askedToTeach"
                               actions={
                                 <AnswerAsk
                                   classPersonId={c.id}
@@ -340,6 +340,7 @@ export default async function MyClassesPage({ searchParams }: { searchParams: Pr
                     artist={bookedArtists.get(e.classId) ?? null}
                     city={e.businessCity}
                     href={`/c/${e.shareSlug}`}
+                    relation="booked"
                     actions={<EnrollButton sessionId={e.sessionId} isFull={false} isSignedIn mine={{ id: e.id, status: e.status }} priceInr={e.priceInr} shareSlug={e.shareSlug} />}
                   />
                 ))}
@@ -375,6 +376,7 @@ export default async function MyClassesPage({ searchParams }: { searchParams: Pr
                         danceClass={askToTileClass(c)}
                         city={c.businessCity}
                         href={`/c/${c.classShareSlug}`}
+                        relation="askedToAssist"
                         actions={
                           <AnswerAsk
                             classPersonId={c.id}
@@ -392,14 +394,10 @@ export default async function MyClassesPage({ searchParams }: { searchParams: Pr
                     artist={bookedArtists.get(c.classId) ?? null}
                     city={c.businessCity}
                     href={`/c/${c.classShareSlug}`}
-                    actions={
-                      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
-                        <span style={{ fontSize: 10.5, color: SUB }}>
-                          {c.businessName} · {when(c.startsAt)}
-                        </span>
-                        <span style={{ flexShrink: 0, fontSize: 9.5, fontWeight: 900, letterSpacing: 0.6, textTransform: "uppercase", color: "#8B5CF6" }}>Assisting</span>
-                      </div>
-                    }
+                    /* the job is the card's own chip now, in the shared word and
+                       colour (4 Oct 2026); the studio and the date were already on
+                       the card, so the action row that repeated them is gone */
+                    relation="assisting"
                   />
                 ))}
                 {assisting.length === 0 && askedToAssist.length === 0 && (

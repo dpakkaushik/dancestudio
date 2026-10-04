@@ -4,7 +4,7 @@ import { dosClassLabel } from "@/lib/constants/styles";
    events (29 Sep 2026) — a class session is one day by construction */
 import { dayKeyOf, hourOf, monthStartIso, monthsWindow, shiftMonthKey } from "@/lib/format/month";
 import type { CalendarEntry, CalendarSide } from "@/types/calendar";
-import type { ClassLevel, ClassStatus } from "@/types/class";
+import { classOwnerOf, type ClassLevel, type ClassStatus } from "@/types/class";
 import type { ClassBookingStatus } from "@/types/classBooking";
 import { findClassArtists } from "./classPeople";
 import { countEnrolledBySession } from "./classBookings";
@@ -29,6 +29,9 @@ interface ClassBits {
   status: ClassStatus;
   /** the uploaded poster, which the card now draws (3 Oct 2026) */
   poster_path: string | null;
+  /** WHO MADE IT (4 Oct 2026) — the owner business, through the named key; null
+   *  to a reader that business's row is not readable by */
+  owner?: (BusinessBits & { type: string | null; profile_photo_path: string | null }) | null;
 }
 
 interface SessionBits {
@@ -56,7 +59,7 @@ interface MyBookingRow {
 interface MyClassPersonRow {
   kind: "artist" | "assistant";
   class_id: string;
-  classes: (ClassBits & { businesses: BusinessBits | null; class_sessions: SessionBits[] | null }) | null;
+  classes: (ClassBits & { class_sessions: SessionBits[] | null }) | null;
 }
 
 interface BusinessSessionRow {
@@ -68,7 +71,9 @@ interface BusinessSessionRow {
 }
 
 /* no `title`: a class's label is "{style} · {level}", derived (types/class.ts) */
-const CLASS_BITS = "share_slug, style, level, room, price_inr, capacity, status, poster_path";
+/* the owner rides inside the class through the NAMED key — `classes` has two
+   keys into `businesses` since 18 Sep 2026, and an unqualified embed is a 300 */
+const CLASS_BITS = "share_slug, style, level, room, price_inr, capacity, status, poster_path, owner:businesses!classes_business_id_fkey (name, city, type, profile_photo_path)";
 
 const entryOf = (
   session: SessionBits,
@@ -95,6 +100,7 @@ const entryOf = (
   hour: hourOf(session.starts_at),
   businessName: business?.name ?? "",
   businessCity: business?.city ?? null,
+  owner: classOwnerOf(c.owner),
   side,
   classBooking,
   filled: 0,
@@ -136,7 +142,7 @@ export async function findMyCalendar(
         `id, status, session_id, class_id, class_sessions!inner (id, starts_at, ends_at), classes!inner (${CLASS_BITS}), businesses (name, city)`
       )
       .eq("user_id", userId)
-      .in("status", ["enrolled", "waitlisted"])
+      .eq("status", "enrolled")
       .is("deleted_at", null)
       .is("classes.deleted_at", null)
       .gte("class_sessions.starts_at", fromIso)
@@ -146,7 +152,7 @@ export async function findMyCalendar(
       .from("class_people")
       .select(
         /* the key is named: classes has two into businesses since 18 Sep 2026 (the venue) */
-        `kind, class_id, classes!inner (${CLASS_BITS}, businesses!classes_business_id_fkey (name, city), class_sessions (id, starts_at, ends_at, deleted_at))`
+        `kind, class_id, classes!inner (${CLASS_BITS}, class_sessions (id, starts_at, ends_at, deleted_at))`
       )
       .eq("user_id", userId)
       .eq("status", "confirmed")
@@ -172,7 +178,7 @@ export async function findMyCalendar(
       const existing = bySession.get(s.id);
       // teaching outranks assisting on the same session
       if (existing && existing.side === "hosting") continue;
-      bySession.set(s.id, entryOf(s, row.class_id, row.classes, row.classes.businesses, side, null));
+      bySession.set(s.id, entryOf(s, row.class_id, row.classes, row.classes.owner ?? null, side, null));
     }
   }
 

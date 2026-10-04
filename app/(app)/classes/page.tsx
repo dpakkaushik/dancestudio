@@ -84,6 +84,8 @@ export default async function ClassesPage({
             artist={artists.get(c.id) ?? null}
             city={c.businessCity}
             href={`/c/${c.shareSlug}`}
+            /* a class you hold a seat on says so in the shared word (4 Oct 2026) */
+            relation={c.session && mine.get(c.session.id)?.status === "enrolled" ? "booked" : null}
             actions={
               c.session ? (
                 <EnrollButton

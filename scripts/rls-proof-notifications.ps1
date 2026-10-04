@@ -130,14 +130,17 @@ try {
     ($asked.Count -eq 1) -and ($asked[0].title -like "*wants you as the artist taking*") -and ($asked[0].href -eq "/inbox") -and
     ($answered.Count -eq 1) -and ($answered[0].title -like "*confirmed Notif Class*"))
 
-  # 5. THE WAITLIST IS TOLD, OR IT IS NOT A WAITLIST (13647): the promoted learner hears it
+  # 5. NO WAITLIST since 4 Oct 2026 (20261004160000): the full class refuses L2
+  #    outright, a freed seat promotes nobody and so tells nobody, and L2 then
+  #    books it themselves - which the studio hears as an ordinary booking
   $l2 = New-EmailUser "ntf-l2-$stamp@example.com" "Learner Two $stamp" "user"
-  $wait = Rpc (Api $l2.token) "book_class_session" @{ p_session_id = $sess.id }
+  $fullMsg = Fails { Rpc (Api $l2.token) "book_class_session" @{ p_session_id = $sess.id } }
   $firstSeat = (Get-Rows (Api $owner.token) "class_bookings?session_id=eq.$($sess.id)&user_id=eq.$($learner.id)&select=id")[0]
   Rpc (Api $learner.token) "cancel_class_booking" @{ p_class_booking_id = $firstSeat.id } | Out-Null
   $offered = Mine $l2 "class"
-  Check 5 "L2 was $($wait.status), then the freed seat told them: $(Titles $offered)" (
-    ($wait.status -eq "waitlisted") -and ($offered.Count -eq 1) -and ($offered[0].title -like "A place opened in Notif Class*"))
+  $seat2 = Rpc (Api $l2.token) "book_class_session" @{ p_session_id = $sess.id }
+  Check 5 "L2 refused while full ($fullMsg), told nothing by the freed seat ($($offered.Count)), then booked it: $($seat2.status)" (
+    ($fullMsg -match "this class is full") -and ($offered.Count -eq 0) -and ($seat2.status -eq "enrolled"))
 
   # 6. MONEY, BOTH WAYS A REFUND IS FILED. A paid seat cancelled INSIDE the 48-hour
   #    window is 'requested' — the studio decides, so the studio is told and the

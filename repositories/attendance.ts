@@ -1,8 +1,11 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 /** The class page's live register (prototype attend tab, 12043-12138): who holds
- *  a seat and whether they are in the room, plus the waitlist queue in join
- *  order. RLS admits the business's members; writes go through the RPCs only. */
+ *  a seat and whether they are in the room. RLS admits the business's members;
+ *  writes go through the RPCs only.
+ *  ⚠ THE WAITLIST QUEUE WENT ON 4 Oct 2026 (the user: "remove waitlist
+ *  mechanism") — `WaitlistRow`, `giveSpot` and `removeFromWaitlist` with it, and
+ *  `20261004160000` drops the two RPCs they called. */
 
 export interface RegisterRow {
   classBookingId: string;
@@ -22,22 +25,8 @@ export interface RegisterRow {
   doorPaidAt: string | null;
 }
 
-export interface WaitlistRow {
-  classBookingId: string;
-  learnerName: string;
-  /** ⚠ WHO THIS IS (28 Sep 2026). The register's scanner has to tell "waiting for
-   *  a spot" from "not booked at all" — two different sentences to say at a door,
-   *  and without the id they are the same silence. The column was already in the
-   *  query; only the row shape had dropped it.
-   *  ⚠ NULL for a walk-in — though a walk-in is never waitlisted (both doors
-   *  refuse a full class outright), so this is the type being honest rather
-   *  than a case that can arise. */
-  userId: string | null;
-}
-
 export interface ClassRegister {
   rows: RegisterRow[];
-  waitlist: WaitlistRow[];
   checkedInCount: number;
 }
 
@@ -46,7 +35,7 @@ interface RegisterQueryRow {
   /** ⚠ NULL for a walk-in recorded by name (29 Sep 2026, shape 2) */
   user_id: string | null;
   attendee_name: string | null;
-  status: "enrolled" | "waitlisted";
+  status: "enrolled";
   created_by?: string | null;
   door_paid_at?: string | null;
   profiles: { full_name: string; profile_photo_path?: string | null } | null;
@@ -72,7 +61,7 @@ export async function findClassRegister(
       .from("class_bookings")
       .select(cols)
       .eq("class_id", classId)
-      .in("status", ["enrolled", "waitlisted"])
+      .eq("status", "enrolled")
       .is("deleted_at", null)
       .order("created_at", { ascending: true })
       .limit(500);
@@ -89,7 +78,6 @@ export async function findClassRegister(
   }
   const all = data as unknown as RegisterQueryRow[];
   const rows = all
-    .filter((r) => r.status === "enrolled")
     .map((r) => ({
       classBookingId: r.id,
       learnerName: nameOf(r),
@@ -101,16 +89,8 @@ export async function findClassRegister(
       atDoor: r.user_id === null || (r.created_by != null && r.created_by !== r.user_id),
       doorPaidAt: r.door_paid_at ?? null,
     }));
-  const waitlist = all
-    .filter((r) => r.status === "waitlisted")
-    .map((r) => ({
-      classBookingId: r.id,
-      learnerName: nameOf(r),
-      userId: r.user_id,
-    }));
   return {
     rows,
-    waitlist,
     checkedInCount: rows.filter((r) => r.checkedIn).length,
   };
 }
@@ -136,23 +116,6 @@ export async function checkIn(supabase: SupabaseClient, classBookingId: string):
 
 export async function undoCheckIn(supabase: SupabaseClient, classBookingId: string): Promise<void> {
   const { error } = await supabase.rpc("undo_check_in", { p_class_booking_id: classBookingId });
-  if (error) {
-    throw new Error(error.message);
-  }
-}
-
-export async function giveSpot(supabase: SupabaseClient, classBookingId: string): Promise<void> {
-  const { error } = await supabase.rpc("give_spot", { p_class_booking_id: classBookingId });
-  if (error) {
-    throw new Error(error.message);
-  }
-}
-
-export async function removeFromWaitlist(
-  supabase: SupabaseClient,
-  classBookingId: string
-): Promise<void> {
-  const { error } = await supabase.rpc("remove_from_waitlist", { p_class_booking_id: classBookingId });
   if (error) {
     throw new Error(error.message);
   }

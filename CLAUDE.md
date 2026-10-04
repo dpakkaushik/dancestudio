@@ -2,7 +2,34 @@
 
 ## LAST SESSION (4 Oct 2026) — replaced on every push (Rule 13)
 
-> ### THE ENQUIRY SHEET: WHO IT GOES TO IN THE TOP RIGHT, BIG KIND ROWS, BIG OPTION TILES, AND THE WORDS TIDIED (4 Oct 2026, latest) — no migration · ✅ PUSHED AND LIVE (`ecde5b3`, on the user's *"push to live"*: Vercel READY, alias confirmed on the sha through the API, the probe **69/69** and `stranger-smoke` all green ON THE LIVE SITE; **the happy path 19/19 in 13.0 min** on `:3100` against the pushed bundle)
+> ### ONE SET OF WORDS ON EVERY CLASS CARD, THE CREATOR ON EVERY CARD, AND NO WAITLIST (4 Oct 2026, latest) — app BUILT, NOT PUSHED · ⚠⚠ Rule 9 · ONE MIGRATION WRITTEN, DRY-RUN **30/30** AND HELD (NEXT TO DO #0be)
+> The user asked where the class card is used and what differs on each page. Then: *"try giving a solution which doesnt affect functionality … solves the naumenclature problem"*, and *"fix this problem , remove waitlist meachnism , make sure the person who created the class artist or studios is somehow visible on the card"*. The four word decisions were not answered, so the recommendations went in.
+> * **The words** (`lib/format/classLabels.ts`, deviation row C120):
+>   * One relation chip on the card's own `relation` prop (the old `roleLabel`): **Booked · Teaching · Assisting · At your studio · Asked to teach · Asked to assist · Room request**, each with one colour.
+>   * Ask states read **Asked · Confirmed · Declined · Withdrawn**. The register's chips said "⏳ asked", "said no" and "Waiting on" for the same three states.
+>   * The calendar's sides are **Booked · Teaching · Assisting** (they were Train · Teach · Assist), from the same list, so a side pill and its card's chip read one word.
+>   * Discover and Upcoming classes chip a class you've booked; My classes chips every card. A studio's register says **At your studio** where it said "Hosted".
+>   * The action row's "Enrolled ✓" is gone. The card's chip already says Booked, and the row keeps only the way out of the seat.
+> * **The creator on every card**: a "By {studio or artist}" line with its picture (or a glyph) under the style.
+>   * `DanceClass.owner` / `ClassOwner`, filled at every source: the class reads, the calendar, bookings, the asks, the Home deck and the register's hosted rows.
+>   * The owner embed is aliased `owner:` on the named key. A reader who may not see the business gets null, and the card draws nothing.
+> * **No waitlist in the app**:
+>   * A full class says **Class full** and offers no button, on the card and on the class page.
+>   * The register's WAITLIST queue, Give spot, Remove, `giveSpot`/`removeFromWaitlist` and their actions are gone, as are the roster's waitlist list (its head reads BOOKED) and the toasts.
+>   * The terms page says there is no waitlist.
+>   * ⚠ `book_class_session` still files a waitlist place for a full FREE class until the migration lands. The button cannot be pressed on a full class, and the action answers "This class is full" if one slips through.
+> * **Verified:**
+>   * typecheck 0 · lint 0 · `audit:reads` 0 · build green.
+>   * Dry run **30/30** rolled back.
+>   * A browser probe ran **40/40** in both themes on `:3100` as demo.kabir, demo.aditya and demo.rhythm:
+>     * every card on Discover, My classes, Manage and the register names its creator;
+>     * Booked chips and Asked to assist appear where they should;
+>     * the calendar's three pills;
+>     * no "waitlist", "Enrolled ✓" or Train/Teach anywhere;
+>     * no page error.
+>   * ⚠ The e2e suite and the proofs have NOT been run. The four proofs (`enrollments`, `attendance`, `payments`, `notifications`), `shoot-classes`, `demo-data.js` and `seed.sql` are re-cut to "no waitlist" and need the migrated schema. The happy path's calendar and register lines were re-cut too.
+
+> ### THE ENQUIRY SHEET: WHO IT GOES TO IN THE TOP RIGHT, BIG KIND ROWS, BIG OPTION TILES, AND THE WORDS TIDIED (4 Oct 2026) — no migration · ✅ PUSHED AND LIVE (`ecde5b3`, on the user's *"push to live"*: Vercel READY, alias confirmed on the sha through the API, the probe **69/69** and `stranger-smoke` all green ON THE LIVE SITE; **the happy path 19/19 in 13.0 min** on `:3100` against the pushed bundle)
 > The user: *"any Group size to be changed to Group, Ad to Advertisement, second word first letter capital for these subheadings. To person whom the enquiry is being sent to should be adjusted on top right of the form and should have profile pic with name. name a bit bigger"*, then *"Bigger icons for and tiles for what it for. and what for in the form in enquiry form. make the way bigger."*
 > * **Words:**
 >   * "Any group size" → **Group**, "Ad" → **Advertisement**.
@@ -10544,6 +10571,26 @@ summary; the report has the evidence.
 
 ## NEXT TO DO — replaced on every push (Rule 13)
 
+0be. **⚠⚠ ONE MIGRATION WRITTEN, DRY-RUN 30/30 AND HELD — `20261004160000_no_waitlist`.** Rule 9 (bookings, two money doors). The whole of it:
+   1. The **2 live `waitlisted` rows become `cancelled`**. Both are demo accounts (demo.sneha, demo.kabir) on one free Breaking class, with no order, payment or membership use. Counted first; there are no deleted ones.
+   2. `book_class_session` refuses a full class ("this class is full") and inserts `enrolled` only. ⚠ It now refuses a PRICED class whether or not it is full; a priced FULL class used to fall through onto the waitlist for free.
+   3. `_cancel_one_class_booking` loses its promotion block. The refund and the 48-hour rule are untouched.
+   4. `book_with_membership` and `create_payment_order` say "this class is full" instead of "join the waitlist instead".
+   5. `book_class_session_for_person` loses its "they are on the waitlist" branch.
+   6. `notify_class_booking` says "booked" and loses the "a place opened" branch.
+   7. `give_spot(uuid)` and `remove_from_waitlist(uuid)` are **dropped**.
+   8. `class_bookings_status_check` narrows to `('enrolled','cancelled')`.
+   Every body is edited from the catalog by asserted anchor, `create or replace`, so no grant moves. Anon stays at 40 and policies at 106 (both asserted). Seven functions still read `in ('enrolled','waitlisted')`; that half matches nothing once the CHECK refuses the word, so the money applier is not opened.
+   **Order: push the app first** (it no longer calls the two dropped functions), then apply:
+```
+   $env:NODE_PATH="<scratchpad with pg>\node_modules"
+   node scripts/dry-run-migration.js supabase/migrations/20261004160000_no_waitlist.sql scripts/dry-run-checks/20261004160000.js   # 30/30
+   powershell -NoProfile -ExecutionPolicy Bypass -File scripts/db-push.ps1 -DryRun   # exactly this one file
+   powershell -NoProfile -ExecutionPolicy Bypass -File scripts/db-push.ps1 2>&1 | Select-String -NotMatch 'Skipping migration|Warning: failed to cache|prerequisite for local'
+   powershell -NoProfile -ExecutionPolicy Bypass -File scripts/run-proofs.ps1 enrollments attendance payments notifications
+```
+   Then `shoot-classes` and the happy path on `:3100`.
+
 0bd. **~~THE ASSETS SLICE AND THE ROOM GUARD, BOTH HELD~~ — ✅ APPLIED AND PUSHED 4 Oct 2026**
    (`b3a305a`) on the user's *"apply and push to live"*. Nothing is pending in the
    database. What they leave: the asset price is the price of the WHOLE LOT (a per-item
@@ -13055,6 +13102,8 @@ pan-India. The prototype's `__DOS*` localStorage shapes are the source material
 for the database schema. **The UI is not redesigned** — see Rule 2.
 
 ### Progress tracker — update after EVERY push (Rule 11)
+
+- **ONE SET OF CARD WORDS, THE CREATOR ON EVERY CARD, NO WAITLIST — 4 Oct 2026, no step number ⚠ (Rule 9) — app BUILT, not pushed; `20261004160000` dry-run 30/30 and HELD (#0be).** Row C120. Detail at the top.
 
 - **THREE KINDS OF ENQUIRY, EVERY OLD ONE TAKEN DOWN — 4 Oct 2026, no step
   number ⚠ (Rule 9) — `20261004150000` APPLIED, PUSHED AND LIVE (`bcfedac`).**
@@ -18335,6 +18384,7 @@ Home. **Do not "restore parity" on these.**
 | C118 | C90 (30 Sep 2026): Crews is Yours · You are in, Studios is Yours · Where you learned (taught-at riding inside the second) | **Crews: Manage · Member** and no Dances tile on a crew card. **Studios: Manage · Team · Student** — three columns, the studios whose team you are on (`?show=team`) apart from the ones you learn at | 3 Oct 2026, the user: *"can remove dances from crew cards, crew columns name- Manage and Member. Studio column name- Manage, Team and Student."* ⚠ The pills' arias are the old sentences, so every locator still finds them |
 | C119 | The students desk is one list with Profile and WhatsApp on each card, and a paragraph under the search saying what the list is | **A student has a page of their own** — `/business/{id}/students/{userId}`, **Stats · Membership**, opened by two buttons beside Profile; this business's rows only. The paragraph under the search is gone | 3 Oct 2026, the user: *"Students should also have a stats Button next to profile … another button called membership which shows membership details and usage of that particular student"* and *"remove the extra detail below search bar in students"* |
 | R63 | R30 (19 Sep 2026): a membership is a name, **classes or hours**, a price and a count, and never expires | **HOURS ONLY, AND A 30 · 60 · 90-DAY VALIDITY FROM PURCHASE** (`20261003160000`): the form and the action refuse classes; a pass is stamped `expires_at` when paid, is offered only for a class that starts before it, and the hours left at expiry lapse with no refund. Old memberships and class-based passes keep working as bought. ⚠ The database still accepts `classes` | 3 Oct 2026, the user: *"membership only according to hours not classes"*, *"membership should have a validity date in no. of days … 30days, 60 days, 90 days"*, and *"your decisions are correct"* on from-purchase, lapse-no-refund and the database still taking classes |
+| C120 | Each screen labels its class cards its own way: Home's role chip ("Booked", "Teaching", "At your studio"), the calendar's Train · Teach · Assist, My classes' "Assisting" text in the action row, the register's "Hosted" and "⏳ asked / said no", the shelf's "Enrolled ✓"; the card names no creator; a full class offers a waitlist (12420-12423) | **One word list for every class card** (`lib/format/classLabels.ts`): a single relation chip on the card (Booked · Teaching · Assisting · At your studio · Asked to teach · Asked to assist · Room request), the ask states Asked · Confirmed · Declined · Withdrawn, and the calendar's sides from the same list. **A "By {studio or artist}" line with a picture on every card.** **No waitlist**: a full class says Class full and offers nothing; the register's queue and both doors are gone, and the database half is held (#0be) | 4 Oct 2026, the user: *"solves the naumenclature problem for these tiles when viewing from different pages"*, then *"remove waitlist meachnism , make sure the person who created the class artist or studios is somehow visible on the card"*. ⚠ The four word choices (Booked/Teaching/Assisting on the calendar, "At your studio", Booked on Discover, the colours) were recommendations; the user did not answer them |
 | C113 | C108: the Inbox is two shapes — the top squircle (heading, columns, settings) over one inverted panel holding the sides, the figures, the always-open "Pipeline breakup", the filters and the cards | **THREE SHAPES**: Received · Sent · Completed join the top squircle; the figures and the **Breakup** (renamed, total first, by stage as one split bar with chips) are a middle squircle of their own; the panel is the search to the end of the page. The settings cards lose their second line | 3 Oct 2026, the user: *"Received, sent, completed part of upper half. everything below this and above search enquiries is the middle half and should have seprate segragation. search enquiries to till end of page third half. pipeline breakup name change to Breakup by stage and total written better"* |
 | C112 | The figures row wraps (`flexWrap: wrap`), and with four 44px chips it wrapped on every width, the app's own 430 included (125 + 200 + 44 = 369 in 368) | **ONE LINE, ALWAYS**: the figures are one block that never shrinks (`FIGURE_GROUP`), the chips start at 44px and shrink round into what is left, down to 24px — flexbox's arithmetic, not a pixel guess | 3 Oct 2026, the user: *"public view follow following in line with stats, qr code button row. always"* |
 | C104 | Tool tiles are solid gradients of the tool's colour (BizSection 2497-2583) | **A quiet tile**: `--card` with a 1.5px `--el` border, the name in ink, and the colour only on a small tinted glyph | 3 Oct 2026, the user: *"better design for tool tiles"* → *"Same layout, polished"* → *"should have border and not that colorfull"* |

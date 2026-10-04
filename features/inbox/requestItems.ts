@@ -27,6 +27,9 @@ export const CLAIM_WORDS = {
   artist: { what: "the artist taking it", verb: "list you as the artist on" },
   assistant: { what: "a class assistant", verb: "add you as an assistant on" },
 } as const;
+/* the card's chip for an ask — the shared word list (4 Oct 2026), so the Inbox
+   says "Asked to teach" where it used to print "THE ARTIST TAKING IT" */
+const CLAIM_RELATION = { artist: "askedToTeach", assistant: "askedToAssist" } as const;
 export const TEAM_WORDS = { what: "on the team", verb: "add you to the team at" } as const;
 /* Step 22: the crew ask (DOS_LINK_WHAT.member). ⚠ `PARTNER_WORDS` — the duet
    partner, DOS_LINK_WHAT.partner — went with events on 29 Sep 2026. */
@@ -111,6 +114,7 @@ export function buildRequests(s: RequestSources): { requestsIn: RequestItem[]; r
       classId: v.classId,
       status: askStatus(v.venueStatus),
       danceClass: v.danceClass,
+      relation: "roomRequest",
     })),
     ...(s.classPeopleIn ?? []).map((c): RequestItem => ({
       kind: "classPerson",
@@ -128,6 +132,7 @@ export function buildRequests(s: RequestSources): { requestsIn: RequestItem[]; r
       classPersonId: c.id,
       status: statusOf(c.status, c.withdrawn),
       danceClass: askToTileClass(c),
+      relation: CLAIM_RELATION[c.kind],
     })),
     ...(s.invitesIn ?? []).map((i): RequestItem => ({
       kind: "invite",
@@ -223,6 +228,7 @@ export function buildRequests(s: RequestSources): { requestsIn: RequestItem[]; r
       classId: v.classId,
       status: askStatus(v.venueStatus),
       danceClass: v.danceClass,
+      relation: "roomRequest",
     })),
     ...(s.classPeopleOut ?? []).map((c): RequestItem => ({
       kind: "classPerson",
@@ -240,6 +246,7 @@ export function buildRequests(s: RequestSources): { requestsIn: RequestItem[]; r
       classPersonId: c.id,
       status: statusOf(c.status, c.withdrawn),
       danceClass: askToTileClass(c),
+      relation: CLAIM_RELATION[c.kind],
     })),
     ...(s.invitesOut ?? []).map((i): RequestItem => ({
       kind: "invite",

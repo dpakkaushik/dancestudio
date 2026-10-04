@@ -67,7 +67,7 @@ $b = Sign-In "+918888888888"   # learner
 $pass = $true
 $stamp = Get-Date -Format "HHmmss"
 # 9 Sep 2026 (R11): the test-number owner is an ORGANIZATION, and an organization is not a person -
-# it cannot take a seat or place an order (guard_person_only). The second buyer of the one seat, and the waitlisted dancer, is a third PERSON, made for
+# it cannot take a seat or place an order (guard_person_only). The second buyer of the one seat, and the dancer refused a full class, is a third PERSON, made for
 # this run through the admin API and deleted after.
 $cEmail = "proof-c-$stamp@example.com"
 $cUser = Invoke-RestMethod -Method Post -Uri "$base/auth/v1/admin/users" -Headers $svcH -Body (@{ email = $cEmail; password = "Proof-passw0rd!"; email_confirm = $true } | ConvertTo-Json)
@@ -156,14 +156,16 @@ try {
   $out11 = Rpc (Api $b.access_token) "cancel_class_booking_with_reason" @{ p_class_booking_id = $enr3[0].id; p_reason = "Changed my mind" }
   Check 11 "Cancel inside 48h files a request, not a refund ($($out11.refund.status))" ($out11.refund.status -eq "requested")
 
-  # 12. a free class still promotes its waitlist on cancel
+  # 12. NO WAITLIST since 4 Oct 2026: a full free class refuses the next person,
+  #     and a cancel puts the seat back on sale rather than promoting anybody
   $c4 = New-Class (Api $a.access_token) $ta.id "Free Cypher $stamp" 0 1 7 $b.user.id
   $s4 = Session-Of $c4.id
   $e4b = Rpc (Api $b.access_token) "book_class_session" @{ p_session_id = $s4 }
-  Rpc (Api $c.access_token) "book_class_session" @{ p_session_id = $s4 } | Out-Null
+  $fullRefused = $false
+  try { Rpc (Api $c.access_token) "book_class_session" @{ p_session_id = $s4 } | Out-Null } catch { $fullRefused = $true }
   Rpc (Api $b.access_token) "cancel_class_booking" @{ p_class_booking_id = $e4b.id } | Out-Null
-  $e4a = Get-Rows (Api $a.access_token) "class_bookings?session_id=eq.$s4&user_id=eq.$($c.user.id)&select=status"
-  Check 12 "Free-class cancel still promotes the waitlist (now $($e4a[0].status))" ($e4a[0].status -eq "enrolled")
+  $e4c = Rpc (Api $c.access_token) "book_class_session" @{ p_session_id = $s4 }
+  Check 12 "Full class refused, then the freed seat is booked by the next person (now $($e4c.status))" ($fullRefused -and $e4c.status -eq "enrolled")
 }
 finally {
   # the proof cleans up after itself - service role removes the studio, children cascade

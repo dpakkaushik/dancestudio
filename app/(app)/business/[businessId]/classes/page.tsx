@@ -11,10 +11,6 @@ import { findMyMemberships, runsTheBusiness } from "@/repositories/businesses";
 /* the clock lives outside the component (react-hooks/purity) — the register's
    LIVE filter is arithmetic over the moment the page was served */
 const stampNowIso = (): string => new Date().toISOString();
-const hostedWhen = (iso: string | null): string =>
-  iso
-    ? new Intl.DateTimeFormat("en-IN", { timeZone: "Asia/Kolkata", weekday: "short", day: "numeric", month: "short", hour: "numeric", minute: "2-digit" }).format(new Date(iso))
-    : "no date yet";
 
 /** A STUDIO's classes register. Since 18 Sep 2026 every row wears the request
  *  it waits on — the teacher asked and their answer — and Publish is offered
@@ -119,11 +115,11 @@ export default async function BusinessClassesPage({
           danceClass: h.danceClass,
           artist: artists.get(h.danceClass.id) ?? null,
           city: business.city ?? null,
-          studio: h.hostName,
-          when: hostedWhen(h.danceClass.session?.startsAt ?? null),
         }))}
         elsewhereHead="ARTISTS IN YOUR ROOMS"
-        elsewhereChip="Hosted"
+        /* the studio's word for an artist's class in its room — "At your
+           studio", as its Home deck says (it read "Hosted" here) */
+        elsewhereRelation="atYourStudio"
         nowIso={stampNowIso()}
       />
       {opening && myRole === "owner" && !whyNoClass ? (

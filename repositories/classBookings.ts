@@ -1,6 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { dosClassLabel } from "@/lib/constants/styles";
-import type { ClassLevel, ClassStatus } from "@/types/class";
+import { classOwnerOf, type ClassLevel, type ClassStatus } from "@/types/class";
 import type { ClassBookingStatus, MyClassBooking, RosterEntry } from "@/types/classBooking";
 import type { Business } from "@/types/business";
 import { TENANT_COLUMNS, toBusiness, type BusinessRow } from "./businesses";
@@ -22,7 +22,7 @@ interface MyClassBookingRow {
     status: ClassStatus;
     poster_path: string | null;
   } | null;
-  businesses: { name: string; city: string | null } | null;
+  businesses: { name: string; city: string | null; type: string | null; profile_photo_path: string | null } | null;
 }
 
 interface RosterRow {
@@ -32,7 +32,8 @@ interface RosterRow {
   profiles: { full_name: string; city: string | null } | null;
 }
 
-/** Enroll (or waitlist, when full) via the atomic RPC. Returns the resulting status. */
+/** Book a seat via the atomic RPC. A full class is refused in words — there is
+ *  no waitlist since 4 Oct 2026. Returns the resulting status. */
 export async function bookClassSession(
   supabase: SupabaseClient,
   sessionId: string
@@ -46,7 +47,7 @@ export async function bookClassSession(
   return (data as { status: ClassBookingStatus }).status;
 }
 
-/** Cancel your own booking via the RPC — a freed spot promotes the first waitlisted. */
+/** Cancel your own booking via the RPC — the freed seat goes back on sale. */
 export async function cancelClassBooking(
   supabase: SupabaseClient,
   classBookingId: string
@@ -73,10 +74,10 @@ export async function findMyClassBookings(supabase: SupabaseClient): Promise<MyC
   const { data, error } = await supabase
     .from("class_bookings")
     .select(
-      "id, status, session_id, class_id, class_sessions (starts_at, ends_at), classes (share_slug, style, level, room, price_inr, capacity, status, poster_path), businesses (name, city)"
+      "id, status, session_id, class_id, class_sessions (starts_at, ends_at), classes (share_slug, style, level, room, price_inr, capacity, status, poster_path), businesses (name, city, type, profile_photo_path)"
     )
     .eq("user_id", user.id)
-    .in("status", ["enrolled", "waitlisted"])
+    .eq("status", "enrolled")
     .is("deleted_at", null)
     .order("created_at", { ascending: false })
     .limit(100);
@@ -104,6 +105,7 @@ export async function findMyClassBookings(supabase: SupabaseClient): Promise<MyC
       endsAt: r.class_sessions!.ends_at,
       businessName: r.businesses?.name ?? "",
       businessCity: r.businesses?.city ?? null,
+      owner: classOwnerOf(r.businesses),
     }))
     .sort((a, b) => a.startsAt.localeCompare(b.startsAt));
 }
@@ -230,7 +232,7 @@ export async function findMyEnrolledSessionIds(
     .from("class_bookings")
     .select("id, status, session_id")
     .eq("user_id", user.id)
-    .in("status", ["enrolled", "waitlisted"])
+    .eq("status", "enrolled")
     .is("deleted_at", null)
     .limit(200);
 
@@ -253,7 +255,7 @@ export async function findRosterByClass(
     .from("class_bookings")
     .select("id, status, created_at, profiles (full_name, city)")
     .eq("class_id", classId)
-    .in("status", ["enrolled", "waitlisted"])
+    .eq("status", "enrolled")
     .is("deleted_at", null)
     .order("created_at", { ascending: true })
     .limit(500);

@@ -1,6 +1,7 @@
 import type { ClassArtist } from "@/types/classPerson";
 import type { DanceClass } from "@/types/class";
 import type { ClassBookingStatus } from "@/types/classBooking";
+import type { ClassRelation } from "@/lib/format/classLabels";
 
 /** Parity slice H10 — Home's PassDeck (prototype 6863-7204). Nothing new is
  *  stored: a deck row is a class session seen on ONE day from the side you are
@@ -15,10 +16,11 @@ import type { ClassBookingStatus } from "@/types/classBooking";
  *  rewrite. */
 
 /** What this session is to you — the chip the card wears (prototype roleOf 7003-7008,
- *  and "At your studio" 7056). Home shows the whole day in one list, so the card
- *  has to say it; every other surface passes none and the chip is absent.
- *  ⚠ `Spectator`, `Competing` and `Running` went with events (29 Sep 2026). */
-export type DeckRole = "Booked" | "Waitlisted" | "Assisting" | "Teaching" | "At your studio";
+ *  and "At your studio" 7056). Since 4 Oct 2026 the WORDS are the shared list in
+ *  `lib/format/classLabels.ts`, so Home says what every other page says.
+ *  ⚠ `Spectator`, `Competing` and `Running` went with events (29 Sep 2026), and
+ *  `Waitlisted` with the waitlist (4 Oct 2026). */
+export type DeckRole = Extract<ClassRelation, "booked" | "teaching" | "assisting" | "atYourStudio">;
 
 /** Where a card stands in today (2 Oct 2026, the user: "once class completed for
  *  today it should move on the left … completed status same as live with red
@@ -49,8 +51,8 @@ export interface DeckClassItem extends DeckBase {
   danceClass: DanceClass;
   /** seats taken, for the tile's "N spots left" */
   filled: number;
-  /** ⚠ carried, no longer PRINTED on the card (18 Sep 2026) — a studio's name is
-   *  the booking page's to say. Kept because the deck's own words read from it */
+  /** the owner's name; the card prints it as "By …" from `danceClass.owner`
+   *  since 4 Oct 2026 */
   businessName: string;
   businessCity: string | null;
   /** the confirmed teacher, whose face the card's centre wears */

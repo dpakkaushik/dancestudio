@@ -77,7 +77,6 @@ export default async function RosterPage({
 
   const roster = await findRosterByClass(supabase, classId);
   const enrolled = roster.filter((r) => r.status === "enrolled");
-  const waitlisted = roster.filter((r) => r.status === "waitlisted");
 
   return (
     <div
@@ -100,8 +99,9 @@ export default async function RosterPage({
         {danceClass.title}
       </h1>
 
+      {/* "Booked", the card's word for a held seat (4 Oct 2026) */}
       <div style={{ fontSize: 9.5, fontWeight: 900, letterSpacing: 1, color: "#707070", margin: "18px 0 4px" }}>
-        ENROLLED · {enrolled.length}/{danceClass.capacity}
+        BOOKED · {enrolled.length}/{danceClass.capacity}
       </div>
       {enrolled.map((r) => (
         <Row key={r.id} r={r} />
@@ -110,16 +110,6 @@ export default async function RosterPage({
         <div style={{ fontSize: 11.5, color: SUB, padding: "6px 0" }}>Nobody has booked yet.</div>
       )}
 
-      {waitlisted.length > 0 && (
-        <>
-          <div style={{ fontSize: 9.5, fontWeight: 900, letterSpacing: 1, color: "#707070", margin: "18px 0 4px" }}>
-            WAITLIST · {waitlisted.length}
-          </div>
-          {waitlisted.map((r) => (
-            <Row key={r.id} r={r} />
-          ))}
-        </>
-      )}
     </div>
   );
 }

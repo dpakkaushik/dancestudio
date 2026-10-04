@@ -1,8 +1,7 @@
-﻿# Proof for Step 10 (attendance + waitlist management): only the studio's
-# owner/trainer runs the register, the clock owns the check-in window, checking
-# in is idempotent and reversible, a paid class's freed seat waits for the owner
-# (no auto-promote), give_spot respects capacity, and nobody writes attendance
-# directly.
+﻿# Proof for Step 10 (attendance): only the studio's owner/trainer runs the
+# register, the clock owns the check-in window, checking in is idempotent and
+# reversible, a full class takes no more bookings and a freed seat promotes
+# nobody (no waitlist since 4 Oct 2026), and nobody writes attendance directly.
 # Reads keys from .env.local - run from the repo root: powershell -File scripts/rls-proof-attendance.ps1
 $ErrorActionPreference = "Stop"
 # Supabase refuses a secret (sb_secret_...) key from anything that looks like a
@@ -64,7 +63,7 @@ $b = Sign-In "+918888888888"   # learner
 $pass = $true
 $stamp = Get-Date -Format "HHmmss"
 # 9 Sep 2026 (R11): the test-number owner is an ORGANIZATION, and an organization is not a person -
-# it cannot take a seat (guard_person_only). The waitlisted seat below is a third PERSON's, made
+# it cannot take a seat (guard_person_only). The refused booking below is a third PERSON's, made
 # for this run through the admin API and deleted after.
 $cEmail = "att-c-$stamp@example.com"
 $cUser = Invoke-RestMethod -Method Post -Uri "$base/auth/v1/admin/users" -Headers $svcH -Body (@{ email = $cEmail; password = "Proof-passw0rd!"; email_confirm = $true } | ConvertTo-Json)
@@ -118,28 +117,23 @@ try {
   $oB = Rpc (Api $b.access_token) "create_payment_order" @{ p_session_id = $sP }
   Rpc (Api $b.access_token) "attach_provider_order" @{ p_order_id = $oB.id; p_provider_order_id = "order_ATT$stamp" } | Out-Null
   Rpc $svcH "apply_captured_payment" @{ p_provider_order_id = "order_ATT$stamp"; p_provider_payment_id = "pay_ATT$stamp"; p_amount_paise = 30000; p_method = "upi" } | Out-Null
-  $eA = Rpc (Api $c.access_token) "book_class_session" @{ p_session_id = $sP }   # full -> waitlisted (a person; the owner is an organization)
+  # ---- NO WAITLIST since 4 Oct 2026 (20261004160000): a full class is full ----
+  # 6. a third person booking the full class is refused, and no row is written
+  $fullBlocked = Expect-Fail { Rpc (Api $c.access_token) "book_class_session" @{ p_session_id = $sP } }
+  $cRows = Get-Rows $svcH "class_bookings?session_id=eq.$sP&user_id=eq.$($cUser.id)&select=id"
+  Check 6 "Booking a full class is refused with no row written ($($cRows.Count))" ($fullBlocked -and $cRows.Count -eq 0)
 
-  # 6. give_spot respects capacity
-  $fullBlocked = Expect-Fail { Rpc (Api $a.access_token) "give_spot" @{ p_class_booking_id = $eA.id } }
-  Check 6 "Give spot while full is rejected" $fullBlocked
-
-  # 7. a paid class's freed seat waits for the owner (Step 9 rule, seen here)
+  # 7. a freed seat promotes nobody - it goes back on sale
   $ebP = Get-Rows (Api $b.access_token) "class_bookings?session_id=eq.$sP&status=eq.enrolled&select=id"
   Rpc (Api $b.access_token) "cancel_class_booking_with_reason" @{ p_class_booking_id = $ebP[0].id; p_reason = "Schedule clash" } | Out-Null
-  $eAafter = Get-Rows (Api $a.access_token) "class_bookings?id=eq.$($eA.id)&select=status"
-  Check 7 "Freed paid seat does NOT auto-promote (still $($eAafter[0].status))" ($eAafter[0].status -eq "waitlisted")
+  $liveP = Get-Rows $svcH "class_bookings?session_id=eq.$sP&status=eq.enrolled&deleted_at=is.null&select=id"
+  Check 7 "A freed seat promotes nobody ($($liveP.Count) seated)" ($liveP.Count -eq 0)
 
-  # 8. the owner hands the seat out
-  Rpc (Api $a.access_token) "give_spot" @{ p_class_booking_id = $eA.id } | Out-Null
-  $eAgiven = Get-Rows (Api $a.access_token) "class_bookings?id=eq.$($eA.id)&select=status"
-  Check 8 "Give spot promotes the waitlisted learner (now $($eAgiven[0].status))" ($eAgiven[0].status -eq "enrolled")
-
-  # 9. the owner clears a queue entry
-  $eB2 = Rpc (Api $b.access_token) "book_class_session" @{ p_session_id = $sP }   # full again -> waitlisted
-  Rpc (Api $a.access_token) "remove_from_waitlist" @{ p_class_booking_id = $eB2.id } | Out-Null
-  $eB2after = Get-Rows (Api $b.access_token) "class_bookings?id=eq.$($eB2.id)&select=status"
-  Check 9 "Remove from waitlist (now $($eB2after[0].status))" ($eB2after[0].status -eq "cancelled")
+  # 8 + 9. the two waitlist doors are gone from the database
+  $giveGone = Expect-Fail { Rpc (Api $a.access_token) "give_spot" @{ p_class_booking_id = $ebP[0].id } }
+  Check 8 "give_spot no longer exists" $giveGone
+  $removeGone = Expect-Fail { Rpc (Api $a.access_token) "remove_from_waitlist" @{ p_class_booking_id = $ebP[0].id } }
+  Check 9 "remove_from_waitlist no longer exists" $removeGone
 
   # 10. nobody writes attendance directly
   $directBlocked = Expect-Fail {

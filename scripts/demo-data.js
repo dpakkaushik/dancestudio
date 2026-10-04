@@ -23,8 +23,9 @@
  * `send_enquiry_quote` / `answer_enquiry_quote` / `record_enquiry_payment`,
  * `set_follow` / `set_person_follow` / `set_crew_follow`,
  * `record_payout`. So the demo world obeys every rule
- * the real one does: consent is real, capacity is real, a waitlist is a real
- * waitlist, a venue's yes is a real yes. The service role is used for exactly
+ * the real one does: consent is real, capacity is real (a full class refuses
+ * the next booking — there is no waitlist since 4 Oct 2026), a venue's yes is a
+ * real yes. The service role is used for exactly
  * the things a user cannot legally do: creating the accounts, back-dating a
  * session so a PAST one exists, writing the attendance rows of a
  * register that ran in the past, standing in for the payment webhook
@@ -47,8 +48,8 @@
  * THE WORLD (19 Sep 2026, the user: "create 15 dummy accounts for all kinds
  * of user … mostly in Gurugram, Pune, Delhi, Bengaluru … so I can view all
  * kinds of records"): 4 studio OWNERS, 4 artists, 7 users; 5 studios (two in
- * Gurugram), 4 artist pages; classes of every state — free, paid, full with a
- * waitlist, a draft, an artist's class in a studio's room (accepted, pending,
+ * Gurugram), 4 artist pages; classes of every state — free, paid, full (a third
+ * booking refused), a draft, an artist's class in a studio's room (accepted, pending,
  * declined), an artist's class at their own pin, and PAST classes with
  * registers that ran; money in (UPI, card, netbanking), a refund waiting and
  * one settled, payouts; enquiries of all five kinds at every stage; three
@@ -396,7 +397,7 @@ async function seed() {
   log("Aditya assisted Meera's past Contemporary class (attendance job, ₹600) · Kabir has an assistant ask waiting on Hip-Hop");
 
   /* ────────────────────────────────────────────────────────────────────────
-     BOOKINGS, WAITLISTS, PAST REGISTERS
+     BOOKINGS, A FULL CLASS, PAST REGISTERS
      ──────────────────────────────────────────────────────────────────────── */
   console.log("\nBookings and registers");
   const sHiphop = await sessionOf(rhythm.h, hiphop.id);
@@ -416,8 +417,9 @@ async function seed() {
   await book(sneha, sHiphop);
   await book(aki, sBreaking);
   await book(zaid, sBreaking);
-  const w1 = await book(sneha, sBreaking);
-  const w2 = await book(kabir, sBreaking);
+  /* the Breaking class is now FULL, and a full class takes no more bookings —
+     there is no waitlist since 4 Oct 2026, so Sneha's try is refused in words */
+  const fullWhy = await book(sneha, sBreaking).then(() => "BOOKED (wrong — it was full)", (e) => String(e.message || e));
   await book(priya, sSalsa);
   await book(zaid, sSalsa);
   await book(rohit, sBounceBolly);
@@ -428,7 +430,7 @@ async function seed() {
   await book(sneha, sMeeraOwn);
   await book(priya, sRheaOwn);
   await book(zaid, sAdityaS29);
-  log(`Hip-Hop 3 booked · Breaking full (2) with Sneha ${w1.status} and Kabir ${w2.status} · Salsa 2 · Bounce Bollywood 2 · Namma Breaking 2 · Meera's own 2 · Rhea's own 1 · Aditya at Sector 29 1`);
+  log(`Hip-Hop 3 booked · Breaking full (2), a third try refused: ${fullWhy} · Salsa 2 · Bounce Bollywood 2 · Namma Breaking 2 · Meera's own 2 · Rhea's own 1 · Aditya at Sector 29 1`);
 
   /* the past classes: booked, registers run, completed — what Stats and the rankings count */
   const sPastContemp = await runPast(rhythm, s29, pastContemp, 3, "19:00", 60, [kabir, aki, sneha], [kabir, aki]);

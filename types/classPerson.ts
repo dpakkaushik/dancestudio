@@ -1,4 +1,4 @@
-import type { DanceClass } from "@/types/class";
+import type { ClassOwner, DanceClass } from "@/types/class";
 
 /** Who is on a class. An assistant is not a bare name in a list: they are a
  *  person with a job (prototype dosTeamOne, DanceOSApp.jsx:89-90), and a class
@@ -61,6 +61,9 @@ export interface MyClassPersonAsk extends ClassPerson {
   sessionId: string | null;
   endsAt: string | null;
   businessCity: string | null;
+  /** who made the class — the card names them (4 Oct 2026); optional so a
+   *  hand-built ask needs no change */
+  owner?: ClassOwner | null;
 }
 
 /** THE CLASS BEHIND AN ASK, AS A CARD DRAWS IT — written ONCE (27 Sep 2026).
@@ -79,6 +82,7 @@ export interface MyClassPersonAsk extends ClassPerson {
 export const askToTileClass = (c: MyClassPersonAsk): DanceClass => ({
   id: c.classId,
   businessId: "",
+  owner: c.owner ?? null,
   title: c.classTitle,
   shareSlug: c.classShareSlug,
   style: c.classStyle,

@@ -1,4 +1,4 @@
-﻿# RLS proof for Step 4 (class_bookings): capacity + waitlist + isolation.
+﻿# RLS proof for Step 4 (class_bookings): capacity + isolation (no waitlist since 4 Oct 2026).
 # Reads keys from .env.local — run from the repo root: powershell -File scripts/rls-proof-class_bookings.ps1
 $ErrorActionPreference = "Stop"
 # Supabase refuses a secret (sb_secret_...) key from anything that looks like a
@@ -40,7 +40,7 @@ $cUser = Invoke-RestMethod -Method Post -Uri "$base/auth/v1/admin/users" -Header
 Invoke-RestMethod -Method Post -Uri "$base/rest/v1/profiles" -Headers $svcH -Body (@{ id = $cUser.id; full_name = "Waitlisted $stamp"; role = "user"; city = "Pune"; created_by = $cUser.id; updated_by = $cUser.id } | ConvertTo-Json) | Out-Null
 $c = Invoke-RestMethod -Method Post -Uri "$base/auth/v1/token?grant_type=password" -Headers @{ apikey = $anon; "Content-Type" = "application/json" } -Body (@{ email = $cEmail; password = "Proof-passw0rd!" } | ConvertTo-Json)
 
-# A: studio + published class with capacity 1 (so the SECOND booking waitlists)
+# A: studio + published class with capacity 1 (so the SECOND booking is refused)
 $ta = New-Studio $a.access_token "Enroll Studio $stamp" "Kothrud" "Pune"
 Subscribe-Studio ([string]$ta.id)
 # FREE, and that is the point: Step 9 made book_class_session refuse a priced
@@ -66,10 +66,19 @@ try {
   "2. B books twice: SUCCEEDED -- !!! FAILED !!!"; $pass = $false
 } catch { "2. B books twice: REJECTED -- OK" }
 
-# 3. C, a third person (the owner is an organization and cannot take a seat), books the full class -> waitlisted
-$e2 = Invoke-RestMethod -Method Post -Uri "$base/rest/v1/rpc/book_class_session" -Headers (Api $c.access_token) -Body (@{ p_session_id = $sid } | ConvertTo-Json)
-"3. C books the FULL class: status=$($e2.status) $(if ($e2.status -eq 'waitlisted') {'-- WAITLISTED, OK'} else {'-- !!! FAILED !!!'})"
-if ($e2.status -ne "waitlisted") { $pass = $false }
+# 3. C, a third person, books the FULL class -> REFUSED in words. There is no
+#    waitlist since 4 Oct 2026 (20261004160000): a full class takes no more bookings.
+$fullMsg = ""
+try {
+  Invoke-RestMethod -Method Post -Uri "$base/rest/v1/rpc/book_class_session" -Headers (Api $c.access_token) -Body (@{ p_session_id = $sid } | ConvertTo-Json) | Out-Null
+} catch {
+  $body = $_.ErrorDetails.Message
+  if (-not $body) { try { $st = $_.Exception.Response.GetResponseStream(); $st.Position = 0; $body = (New-Object System.IO.StreamReader($st)).ReadToEnd() } catch {} }
+  try { if ($body) { $fullMsg = ($body | ConvertFrom-Json).message } } catch { $fullMsg = $body }
+}
+$cRows = (Invoke-WebRequest -UseBasicParsing -Uri "$base/rest/v1/class_bookings?session_id=eq.$sid&user_id=eq.$($cUser.id)&select=id" -Headers $svcH).Content
+"3. C books the FULL class: $fullMsg $(if ($fullMsg -match 'this class is full' -and $cRows -eq '[]') {'-- REFUSED, NO ROW, OK'} else {'-- !!! FAILED !!!'})"
+if ($fullMsg -notmatch "this class is full" -or $cRows -ne "[]") { $pass = $false }
 
 # 4. anonymous cannot enroll (no execute grant)
 try {
@@ -83,12 +92,13 @@ try {
   "5. B inserts an enrollment directly: SUCCEEDED -- !!! FAILED !!!"; $pass = $false
 } catch { "5. B inserts an enrollment directly: REJECTED -- RLS OK" }
 
-# 6. B cancels -> C is promoted off the waitlist
+# 6. B cancels -> the seat goes back on sale, nobody is promoted, and C books it
 Invoke-RestMethod -Method Post -Uri "$base/rest/v1/rpc/cancel_class_booking" -Headers (Api $b.access_token) -Body (@{ p_class_booking_id = $e1.id } | ConvertTo-Json) | Out-Null
-$aRow = Invoke-RestMethod -Uri "$base/rest/v1/class_bookings?id=eq.$($e2.id)&select=status" -Headers (Api $a.access_token)
-$promoted = ($aRow[0].status -eq "enrolled")
-"6. B cancels; C's waitlist row is now: $($aRow[0].status) $(if ($promoted) {'-- PROMOTED, OK'} else {'-- !!! FAILED !!!'})"
-if (-not $promoted) { $pass = $false }
+$liveAfter = (Invoke-WebRequest -UseBasicParsing -Uri "$base/rest/v1/class_bookings?session_id=eq.$sid&status=eq.enrolled&deleted_at=is.null&select=id" -Headers $svcH).Content
+$e2 = Invoke-RestMethod -Method Post -Uri "$base/rest/v1/rpc/book_class_session" -Headers (Api $c.access_token) -Body (@{ p_session_id = $sid } | ConvertTo-Json)
+$freed = ($liveAfter -eq "[]") -and ($e2.status -eq "enrolled")
+"6. B cancels; nobody promoted ($liveAfter), then C books the freed seat: $($e2.status) $(if ($freed) {'-- OK'} else {'-- !!! FAILED !!!'})"
+if (-not $freed) { $pass = $false }
 
 # 7. B cannot cancel C's booking
 try {

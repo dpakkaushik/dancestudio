@@ -11,6 +11,7 @@ import { acceptInviteAction, declineInviteAction, revokeInviteAction } from "@/f
 import { ClassTile } from "@/features/classes/components/ClassTile";
 import { DOS_DISPLAY, DOS_UI, LILAC, SKY, TAB_SUB, TAB_TITLE } from "@/lib/design/tokens";
 import type { DanceClass } from "@/types/class";
+import type { ClassRelation } from "@/lib/format/classLabels";
 import type { ClassArtist } from "@/types/classPerson";
 import { InvertedPanel } from "@/components/ui/InvertedPanel";
 import { TopPanel } from "@/components/ui/TopPanel";
@@ -98,6 +99,9 @@ export interface RequestItem {
    *  be read, and then the card falls back to the plain row.
    *  ⚠ `event` was its twin, for a duet ask, and went on 29 Sep 2026. */
   danceClass?: DanceClass | null;
+  /** the card's chip — the shared word list (4 Oct 2026): Asked to teach, Asked
+   *  to assist, Room request */
+  relation?: ClassRelation;
   /** the SEAT an invitation offers, in the app's word and its label colour
    *  (2 Oct 2026, "better cards for invites") — absent for a crew ask */
   role?: { word: string; colour: string };
@@ -501,7 +505,7 @@ export function InboxScreen({
       return (
         <div key={`${r.kind}-${r.dir}-${r.id}`} data-testid="request-row" style={{ marginBottom: 12 }}>
           {askWho(r)}
-          <ClassTile danceClass={r.danceClass} artist={artists[r.danceClass.id] ?? null} href={r.href ?? undefined} roleLabel={r.what.toUpperCase()} actions={askActions(r)} />
+          <ClassTile danceClass={r.danceClass} artist={artists[r.danceClass.id] ?? null} href={r.href ?? undefined} relation={r.relation ?? null} actions={askActions(r)} />
           {r.note ? <div style={{ fontSize: 10.5, color: "var(--muted)", margin: "2px 2px 0", lineHeight: 1.45 }}>{r.note}</div> : null}
         </div>
       );

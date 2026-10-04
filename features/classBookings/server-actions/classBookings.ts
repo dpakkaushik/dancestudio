@@ -8,8 +8,9 @@ import { cancelClassBooking, bookClassSession } from "@/repositories/classBookin
 
 export interface EnrollActionState {
   error: string | null;
-  /** Set after a successful enroll: "enrolled" or "waitlisted". */
-  outcome: "enrolled" | "waitlisted" | "cancelled" | null;
+  /** Set after a successful booking or cancel. ⚠ No "waitlisted" since 4 Oct
+   *  2026 — a full class is refused, so a booking either lands or says why. */
+  outcome: "enrolled" | "cancelled" | null;
 }
 
 const enrollSchema = z.object({ sessionId: z.string().uuid() });
@@ -43,7 +44,12 @@ export async function enrollAction(
     revalidatePath("/discover");
     revalidatePath("/");
     revalidatePath("/c/[slug]", "page");
-    return { error: null, outcome: status === "waitlisted" ? "waitlisted" : "enrolled" };
+    /* the database refuses a full class since `20261004160000`; until that is
+       applied it could still answer anything but a seat, and that is not one */
+    if (status !== "enrolled") {
+      return { error: "This class is full", outcome: null };
+    }
+    return { error: null, outcome: "enrolled" };
   } catch (error: unknown) {
     return {
       error: error instanceof Error ? error.message : "Could not book the spot",

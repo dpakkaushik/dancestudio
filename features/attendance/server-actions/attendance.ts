@@ -8,8 +8,6 @@ import {
   addWalkIn,
   bookForPerson,
   checkIn,
-  giveSpot,
-  removeFromWaitlist,
   removeWalkIn,
   setDoorPaid,
   undoCheckIn,
@@ -69,16 +67,6 @@ export async function checkInAction(input: { classBookingId: string }): Promise<
 
 export async function undoCheckInAction(input: { classBookingId: string }): Promise<RegisterActionResult> {
   return runRegisterOp(undoCheckIn, input);
-}
-
-export async function giveSpotAction(input: { classBookingId: string }): Promise<RegisterActionResult> {
-  return runRegisterOp(giveSpot, input);
-}
-
-export async function removeFromWaitlistAction(input: {
-  classBookingId: string;
-}): Promise<RegisterActionResult> {
-  return runRegisterOp(removeFromWaitlist, input);
 }
 
 /** THE DOOR: book somebody in, then check them in, as ONE act (29 Sep 2026).

@@ -1,6 +1,6 @@
 import type { ClassArtist } from "@/types/classPerson";
 import type { PracticeStanding } from "@/types/crewPractice";
-import type { ClassLevel, ClassStatus, DanceClass } from "@/types/class";
+import type { ClassLevel, ClassOwner, ClassStatus, DanceClass } from "@/types/class";
 import type { ClassBookingStatus } from "@/types/classBooking";
 
 /** Step 14 — the calendar. Nothing new is stored: a calendar entry is a class
@@ -33,6 +33,8 @@ export interface CalendarEntry {
   hour: number;
   businessName: string;
   businessCity: string | null;
+  /** who made the class — the card names them (4 Oct 2026) */
+  owner: ClassOwner | null;
   side: CalendarSide;
   /** the viewer's own booking, when the side is Train */
   classBooking: { id: string; status: ClassBookingStatus } | null;
@@ -62,6 +64,7 @@ export interface CalendarEntry {
 export const tileClassOf = (e: CalendarEntry): DanceClass => ({
   id: e.classId,
   businessId: "",
+  owner: e.owner,
   title: e.title,
   shareSlug: e.shareSlug,
   style: e.style,

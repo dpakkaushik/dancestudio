@@ -8,6 +8,7 @@ import { DOS_DISPLAY, INK, LINE, SUB } from "@/lib/design/tokens";
 import { dosStyleInk, initialsOf, personGrad } from "@/lib/format/styleInk";
 import { dateParts, timeRangeOf } from "@/lib/format/session";
 import { photoUrl } from "@/lib/media/photo";
+import { CLASS_RELATION, type ClassRelation } from "@/lib/format/classLabels";
 import type { DanceClass } from "@/types/class";
 import { useDosDark } from "./poster";
 
@@ -33,12 +34,9 @@ export interface ClassTileProps {
   danceClass: DanceClass;
   /** ClassBooking count — 0 until Step 4 wires bookings. */
   filled?: number;
-  /** ⚠ ACCEPTED AND NEVER PRINTED (18 Sep 2026, the user: "remove studio names
-   *  from class cards, should only be visible inside the booking page"). It used
-   *  to caption the WHO column whenever the class had no artist, which is how a
-   *  studio's name ended up on the card at all. The prop stays so seven callers
-   *  did not have to change in the same breath as the layout; `/c/{slug}` is
-   *  where the studio is named, under AT THE STUDIO with its address and rooms. */
+  /** ⚠ ACCEPTED AND NEVER PRINTED (18 Sep 2026). The card names who made the
+   *  class from `danceClass.owner` since 4 Oct 2026 — the "By …" line — which
+   *  carries the kind and the picture this string never could. */
   businessName?: string | null;
   /** Accepted for the callers that already pass it; the card does not print it
    *  (8443-8449) — the class page carries the venue. */
@@ -55,10 +53,12 @@ export interface ClassTileProps {
   actions?: ReactNode;
   /** When set, the sleeve opens the class detail page (actions stay outside the link). */
   href?: string;
-  /** WHAT THIS SESSION IS TO YOU — Booked, Assisting, Teaching… Only Home's deck
-   *  sets it (prototype 8430-8432); every other surface passes none and the chip
-   *  is absent, which is why the calendar and Discover are unchanged. */
-  roleLabel?: string | null;
+  /** WHAT THIS CLASS IS TO YOU — Booked, Teaching, Assisting, At your studio, or
+   *  an ask (prototype 8430-8432). ⚠ ONE WORD LIST SINCE 4 Oct 2026
+   *  (`lib/format/classLabels.ts`): it was a free string, so every page wrote its
+   *  own word for the same fact. Each relation has one word and one colour, and
+   *  it is always this chip — never a tag in the button row under the card. */
+  relation?: ClassRelation | null;
   /** the ONE running session — a LIST decides which of its rows wears the badge
    *  (8148-8153); nobody else sets it */
   live?: boolean;
@@ -91,7 +91,10 @@ const DECK_FRAME = {
  * width of the card, go the two facts that belong to none of them: how full, and
  * what it costs.
  */
-export function ClassTile({ danceClass: c, filled = 0, artist, isToday = false, actions, href, roleLabel = null, live: liveProp = false, checkedIn = false, deckState }: ClassTileProps) {
+export function ClassTile({ danceClass: c, filled = 0, artist, isToday = false, actions, href, relation = null, live: liveProp = false, checkedIn = false, deckState }: ClassTileProps) {
+  const rel = relation ? CLASS_RELATION[relation] : null;
+  const owner = c.owner ?? null;
+  const ownerFace = owner ? photoUrl(owner.photoPath) : null;
   const live = deckState ? deckState === "live" : liveProp;
   const frame = deckState === "done" || deckState === "upcoming" ? DECK_FRAME[deckState] : null;
   const bc = dosStyleColor(c.style);
@@ -388,7 +391,7 @@ export function ClassTile({ danceClass: c, filled = 0, artist, isToday = false, 
             Wraps rather than truncates: with the role chip added, three things share this
             line on an 88%-width card, and losing the level to make room for the role is
             trading one fact for another. */}
-        {(underLine || roleLabel || checkedIn) && (
+        {(underLine || rel || checkedIn) && (
           <div style={{ display: "flex", alignItems: "center", gap: 7, marginTop: 2, minWidth: 0, flexWrap: "wrap", rowGap: 3 }}>
             {underLine ? (
               <span
@@ -430,8 +433,10 @@ export function ClassTile({ danceClass: c, filled = 0, artist, isToday = false, 
               >
                 ✓ Checked in
               </span>
-            ) : roleLabel ? (
+            ) : rel ? (
               <span
+                data-testid="relation-chip"
+                data-relation={relation ?? undefined}
                 style={{
                   flexShrink: 0,
                   fontSize: 8.5,
@@ -440,11 +445,12 @@ export function ClassTile({ danceClass: c, filled = 0, artist, isToday = false, 
                   textTransform: "uppercase",
                   padding: "2px 7px",
                   borderRadius: 999,
-                  background: "var(--el)",
-                  color: "var(--sub)",
+                  /* the relation's own colour, the register's chip paint */
+                  background: `${rel.tint}1f`,
+                  color: rel.tint,
                 }}
               >
-                {roleLabel}
+                {rel.word}
               </span>
             ) : null}
             {/* ⚠ LIVE LEFT THIS LINE (2 Oct 2026, the user: "live on class cards
@@ -452,6 +458,56 @@ export function ClassTile({ danceClass: c, filled = 0, artist, isToday = false, 
                 with a live button on top left") — see the card's own frame below */}
           </div>
         )}
+        {/* ⚠ WHO MADE THE CLASS (4 Oct 2026, the user: "make sure the person who
+            created the class artist or studios is somehow visible on the card").
+            This reverses 18 Sep's "no studio name on the card", at the same
+            person's word. It is the OWNER — a studio, or the artist whose own
+            class it is — never the venue, and never the teacher (the centre is
+            the teacher). Its own small line, so the style keeps its full size;
+            nothing at all when the reader may not see that business. */}
+        {owner ? (
+          <div
+            data-testid="class-owner"
+            data-owner-kind={owner.kind}
+            title={`Created by ${owner.name} — ${owner.kind === "artist" ? "an artist" : "a studio"}`}
+            style={{ display: "flex", alignItems: "center", gap: 5, marginTop: 5, minWidth: 0 }}
+          >
+            <span
+              aria-hidden="true"
+              style={{
+                width: 16,
+                height: 16,
+                borderRadius: 5,
+                overflow: "hidden",
+                flexShrink: 0,
+                display: "inline-flex",
+                alignItems: "center",
+                justifyContent: "center",
+                background: ownerFace ? "transparent" : `${bc}33`,
+                color: ink,
+              }}
+            >
+              {ownerFace ? (
+                <Image src={ownerFace} alt="" width={16} height={16} style={{ width: 16, height: 16, objectFit: "cover", display: "block" }} />
+              ) : owner.kind === "artist" ? (
+                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                  <circle cx="12" cy="8.5" r="3.6" />
+                  <path d="M5 20c.9-4 3.7-6 7-6s6.1 2 7 6" />
+                </svg>
+              ) : (
+                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M4 20V9l8-5 8 5v11" />
+                  <path d="M9.5 20v-6h5v6" />
+                </svg>
+              )}
+            </span>
+            <span
+              style={{ minWidth: 0, fontSize: 10.5, fontWeight: 700, color: SUB, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}
+            >
+              By <b style={{ fontWeight: 800, color: INK }}>{owner.name}</b>
+            </span>
+          </div>
+        ) : null}
       </div>
     </div>
   );

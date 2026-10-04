@@ -1,6 +1,11 @@
-import type { ClassLevel, ClassStatus } from "@/types/class";
+import type { ClassLevel, ClassOwner, ClassStatus } from "@/types/class";
 
-export type ClassBookingStatus = "enrolled" | "waitlisted" | "cancelled";
+/** ⚠ NO WAITLIST (4 Oct 2026, the user: "remove waitlist mechanism"). A seat
+ *  is booked or it is not; a full class refuses the press. The database stored
+ *  `waitlisted` until `20261004160000` cancelled the last two such rows and
+ *  narrowed the CHECK, so a read never meets the word again. `enrolled` stays
+ *  the STORED value for a booked seat — the screen says "Booked". */
+export type ClassBookingStatus = "enrolled" | "cancelled";
 
 /** A learner's booking with everything the "My classes" tile needs. */
 export interface MyClassBooking {
@@ -23,6 +28,8 @@ export interface MyClassBooking {
   endsAt: string;
   businessName: string;
   businessCity: string | null;
+  /** who made the class — drawn on the card */
+  owner: ClassOwner | null;
 }
 
 /** One roster row — the studio's view of a booking. */

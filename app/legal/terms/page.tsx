@@ -33,7 +33,7 @@ export default function TermsPage() {
         <li>A seat in a class or at an event is yours once the booking is confirmed and, for a priced one, once the payment has landed. A booking that waits for payment holds no seat.</li>
         <li>Payments are processed by Cashfree Payments India Pvt. Ltd. DanceOS never sees or stores your card number or UPI credentials.</li>
         <li>Cancelling a class booking or an event ticket more than 48 hours before it starts refunds you automatically. Inside 48 hours the studio or organiser decides, and tells you through the app. Refunds go back the way you paid, on the payment provider&apos;s timeline.</li>
-        <li>A waitlist is a promise to be told, not a seat. If a seat frees up you are told, and for a priced class the seat goes back on sale.</li>
+        <li>There is no waitlist. A class that is full takes no more bookings; if somebody cancels, the seat goes back on sale for anybody to book.</li>
         <li>Prices are set by the studio, artist or organiser and are shown before you pay.</li>
       </ul>
 

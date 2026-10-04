@@ -21,9 +21,31 @@ export type PosterChoice = "bold" | "split" | "quiet" | "none";
  *  class has no venue request (a studio's own class, or an artist's map link). */
 export type VenueStatus = "requested" | "accepted" | "declined";
 
+/** WHO MADE THE CLASS — the studio or the artist whose class it is (4 Oct
+ *  2026, the user: "make sure the person who created the class artist or
+ *  studios is somehow visible on the card"). It is the OWNER business, never
+ *  the venue an artist's class is held at and never the teacher (the card's
+ *  centre is the teacher). Null when the reader may not see that business, and
+ *  the card then draws nothing rather than a guess. */
+export interface ClassOwner {
+  name: string;
+  kind: "studio" | "artist";
+  photoPath: string | null;
+}
+
+/** One reading of a `businesses` embed, for every read that carries one. */
+export const classOwnerOf = (
+  b: { name?: string | null; type?: string | null; profile_photo_path?: string | null } | null | undefined
+): ClassOwner | null =>
+  b && b.name
+    ? { name: b.name, kind: b.type === "artist_page" ? "artist" : "studio", photoPath: b.profile_photo_path ?? null }
+    : null;
+
 export interface DanceClass {
   id: string;
   businessId: string;
+  /** who made it — see `ClassOwner`; optional so a hand-built class needs no change */
+  owner?: ClassOwner | null;
   /** What the class IS, not a name: "{style} · {level}" (the prototype's own
    *  dosClassLabel, 176-183). A class has had no typed name since 17 Sep 2026 —
    *  the form has no field for one, and every repository DERIVES this from

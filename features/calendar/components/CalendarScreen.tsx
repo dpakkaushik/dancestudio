@@ -17,6 +17,7 @@ import {
   monthShortOf,
 } from "@/lib/format/month";
 import { timeOf } from "@/lib/format/session";
+import { CLASS_RELATION, SIDE_RELATION } from "@/lib/format/classLabels";
 import { useCloseOnBack } from "@/lib/hooks/useCloseOnBack";
 import { tileClassOf, type CalendarEntry, type CalendarMonth, type CalendarPracticeEntry, type CalendarSide } from "@/types/calendar";
 import { PRACTICE_TINT, PRACTICE_WORD, practiceWhen } from "@/types/crewPractice";
@@ -49,12 +50,14 @@ import { PRACTICE_TINT, PRACTICE_WORD, practiceWhen } from "@/types/crewPractice
 const TOOL_COLOUR = DOS_TOOLS.calendar.c;
 const toolPaint = dosToolPaint;
 
-/* TRAIN · TEACH · ASSIST — what the person is doing on the floor (DOS_SIDES 6666) */
-const SIDES: Record<CalendarSide, { name: string; tint: string }> = {
-  attending: { name: "Train", tint: "#3B82F6" },
-  assisting: { name: "Assist", tint: "#0D9488" },
-  hosting: { name: "Teach", tint: SKY },
-};
+/* BOOKED · TEACHING · ASSISTING — what the person is to the class (4 Oct 2026).
+   ⚠ The prototype's words were Train · Teach · Assist (DOS_SIDES 6666); they are
+   the ONE shared class vocabulary now (`lib/format/classLabels`), so the side a
+   pill filters by and the chip on the card it shows read the same word in the
+   same colour — the calendar and Home's deck can no longer disagree */
+const SIDES: Record<CalendarSide, { name: string; tint: string }> = Object.fromEntries(
+  (Object.keys(SIDE_RELATION) as CalendarSide[]).map((k) => [k, { name: CLASS_RELATION[SIDE_RELATION[k]].word, tint: CLASS_RELATION[SIDE_RELATION[k]].tint }])
+) as Record<CalendarSide, { name: string; tint: string }>;
 const SIDE_KEYS: CalendarSide[] = ["attending", "assisting", "hosting"];
 /* ⚠ `EVENTS_TINT` went with events (29 Sep 2026) — the amber half of the switch.
    The practices half wears the Practice tool's own green, so the switch says

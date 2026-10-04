@@ -22,6 +22,7 @@ import { DOS_DISPLAY, DOS_UI, INK, LILAC, SUB } from "@/lib/design/tokens";
 import type { ClassPublishState, VenueRequest } from "@/repositories/classes";
 import type { ClassArtist } from "@/types/classPerson";
 import { classPhaseAt, type DanceClass } from "@/types/class";
+import { ASK_STATUS_WORD, type ClassRelation } from "@/lib/format/classLabels";
 
 /* the IST date and clock of a session, in the shape the clash check takes */
 const istParts = (iso: string) => {
@@ -31,27 +32,20 @@ const istParts = (iso: string) => {
 };
 
 /* the request chips a row wears (18 Sep 2026): who was asked to teach and what
-   they said; which studio was asked for its room and what it said */
+   they said; which studio was asked for its room and what it said.
+   ⚠ IN THE SHARED ASK WORDS SINCE 4 Oct 2026 — "{who} · Asked / Confirmed /
+   Declined", the four words the Inbox's stamps use. These chips said "asked",
+   "said no", "declined" and "Waiting on" for the same three states. */
+const ASK_TINT = { asked: "#F59E0B", confirmed: "#22C55E", rejected: "#F87171" } as const;
 const stateChips = (st: ClassPublishState | undefined): Array<[string, string]> => {
   const out: Array<[string, string]> = [];
   if (!st) return out;
   if (st.teacherName && st.teacherStatus) {
-    out.push(
-      st.teacherStatus === "confirmed"
-        ? [`✓ ${st.teacherName}`, "#22C55E"]
-        : st.teacherStatus === "rejected"
-          ? [`✕ ${st.teacherName} said no`, "#F87171"]
-          : [`⏳ ${st.teacherName} asked`, "#F59E0B"]
-    );
+    out.push([`${st.teacherName} · ${ASK_STATUS_WORD[st.teacherStatus]}`, ASK_TINT[st.teacherStatus]]);
   }
   if (st.venueName && st.venueStatus) {
-    out.push(
-      st.venueStatus === "accepted"
-        ? [`✓ Room at ${st.venueName}`, "#22C55E"]
-        : st.venueStatus === "declined"
-          ? [`✕ ${st.venueName} declined`, "#F87171"]
-          : [`⏳ Waiting on ${st.venueName}`, "#F59E0B"]
-    );
+    const s = st.venueStatus === "accepted" ? "confirmed" : st.venueStatus === "declined" ? "rejected" : "asked";
+    out.push([`Room at ${st.venueName} · ${ASK_STATUS_WORD[s]}`, ASK_TINT[s]]);
   }
   return out;
 };
@@ -311,7 +305,7 @@ export function ClassesManager({
   askedTeachers = {},
   elsewhere = [],
   elsewhereHead = "AT OTHER STUDIOS",
-  elsewhereChip = "Teaching",
+  elsewhereRelation = "teaching",
   offerCreate = true,
   sections = true,
 }: {
@@ -377,7 +371,7 @@ export function ClassesManager({
    *  SAME `bucketOf` as the register's own rows, are counted in each pill, obey
    *  the live filter, and are drawn read-only (another business owns them: you
    *  run the door, you do not publish, price or delete) with the studio named. */
-  elsewhere?: Array<{ id: string; danceClass: DanceClass; artist: ClassArtist | null; city: string | null; studio: string; when: string }>;
+  elsewhere?: Array<{ id: string; danceClass: DanceClass; artist: ClassArtist | null; city: string | null }>;
   /** false for somebody with NO register of their own — a plain user a studio
    *  put in front of a class. They get the same three columns over their
    *  `elsewhere` rows and no Create control at all: there is nowhere for them to
@@ -387,9 +381,14 @@ export function ClassesManager({
    *  register lists the classes they teach AT OTHER STUDIOS; a STUDIO's lists the
    *  artists' classes held IN ITS ROOMS (2 Oct 2026, the user: "artist taking
    *  class in studio not showing up in studios classes section") — the same
-   *  read-only rows, seen from the other side of the venue request. */
+   *  read-only rows, seen from the other side of the venue request.
+   *  ⚠ The chip is a RELATION from the shared word list since 4 Oct 2026 — it
+   *  was a free string ("Teaching", "Hosted") printed as a tag under the card,
+   *  where every other page puts the same fact in the card's own chip. The
+   *  studio-and-date line beside it went too: the card says both now (the date
+   *  block, and "By …"). */
   elsewhereHead?: string;
-  elsewhereChip?: string;
+  elsewhereRelation?: ClassRelation;
 }) {
   const router = useRouter();
   const search = useSearchParams();
@@ -642,6 +641,7 @@ export function ClassesManager({
                 danceClass={v.danceClass}
                 artist={null}
                 href={`/c/${v.shareSlug}`}
+                relation="roomRequest"
                 actions={
                   <>
                     <span style={{ flexBasis: "100%", fontSize: 10.5, color: SUB, lineHeight: 1.45 }}>
@@ -824,14 +824,7 @@ export function ClassesManager({
                 city={e.city}
                 href={`/c/${e.danceClass.shareSlug}`}
                 live={isLiveAt(e.danceClass, nowMs)}
-                actions={
-                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, flexBasis: "100%" }}>
-                    <span style={{ fontSize: 10.5, color: SUB }}>
-                      {e.studio} · {e.when}
-                    </span>
-                    <span style={{ flexShrink: 0, fontSize: 9.5, fontWeight: 900, letterSpacing: 0.6, textTransform: "uppercase", color: "#F59E0B" }}>{elsewhereChip}</span>
-                  </div>
-                }
+                relation={elsewhereRelation}
               />
             ))}
           </div>

@@ -938,7 +938,8 @@ test.describe.serial("DanceOS, end to end", () => {
     await expect(registerTile).toBeVisible();
     // the row wears the request it waits on, and Publish says why it cannot yet
     // (the chip is drawn uppercase by CSS; the DOM text is the sentence itself)
-    await expect(owner.getByText(`⏳ ${trainerName} asked`, { exact: true })).toBeVisible();
+    // ⚠ in the shared ask words since 4 Oct 2026 — "{who} · Asked" (was "⏳ {who} asked")
+    await expect(owner.getByText(`${trainerName} · Asked`, { exact: true })).toBeVisible();
     await owner.getByRole("button", { name: /^Publish — Publish waits for the teacher/ }).click();
     await expect(owner.getByText("Publish waits for the teacher — nobody has accepted this class yet")).toBeVisible();
 
@@ -1164,11 +1165,13 @@ test.describe.serial("DanceOS, end to end", () => {
     // own on Home, so the chip was a second door to it; the route is untouched.
     await expect(learner.getByRole("link", { name: "Calendar ›" })).toHaveCount(0);
 
-    // ---- and on their calendar (Step 14): a booking is what they TRAIN in ----
+    // ---- and on their calendar (Step 14): a booking is filed under BOOKED ----
+    // (the sides read the shared class words since 4 Oct 2026 — Booked ·
+    // Teaching · Assisting, where they read Train · Teach · Assist)
     await learner.goto("/calendar");
     await expect(learner.locator(`[aria-label="Open ${classTitle}"]`)).toBeVisible();
-    await expect(learner.getByRole("button", { name: "Train: 1" })).toBeVisible();
-    await expect(learner.getByRole("button", { name: "Teach: 0" })).toBeVisible();
+    await expect(learner.getByRole("button", { name: "Booked: 1" })).toBeVisible();
+    await expect(learner.getByRole("button", { name: "Teaching: 0" })).toBeVisible();
 
     /* ⚠ THE CALENDAR DRAWS PILLS (28 Sep 2026, the user: "calendar should only
        have pills with infor instead of cards"). The accessible name is the SAME

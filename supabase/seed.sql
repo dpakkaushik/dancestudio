@@ -82,8 +82,8 @@ values
 on conflict (id) do nothing;
 
 -- ------------------------------------------------------------------- classes --
--- capacity 2 on the Bollywood class on purpose: with 2 enrolled + 1 waitlisted
--- below, the seed demos "Class full" and the waitlist UI out of the box.
+-- capacity 2 on the Bollywood class on purpose: with 2 enrolled below, the seed
+-- demos "Class full" out of the box.
 insert into public.classes (id, business_id, title, style, level, room, price_inr, capacity, status, created_by, updated_by)
 values
   ('00000000-0000-4000-8000-000000000201', '00000000-0000-4000-8000-000000000101',
@@ -120,8 +120,8 @@ on conflict (id) do nothing;
 
 -- --------------------------------------------------------------- class_bookings --
 -- Statuses respect the same invariants the book_class_session RPC enforces:
--- Bollywood (capacity 2) holds exactly 2 enrolled, so Ishaan is waitlisted.
--- Staggered created_at keeps the waitlist promotion order deterministic.
+-- Bollywood (capacity 2) holds exactly 2 enrolled, so it is FULL — and there is
+-- no waitlist since 4 Oct 2026 (20261004160000), so nobody else holds a row on it.
 insert into public.class_bookings (id, session_id, class_id, business_id, user_id, status, created_at, created_by, updated_by)
 values
   ('00000000-0000-4000-8000-000000000401', '00000000-0000-4000-8000-000000000301',
@@ -132,10 +132,6 @@ values
    '00000000-0000-4000-8000-000000000201', '00000000-0000-4000-8000-000000000101',
    '00000000-0000-4000-8000-000000000012', 'enrolled',   now() - interval '2 hours',
    '00000000-0000-4000-8000-000000000012', '00000000-0000-4000-8000-000000000012'),
-  ('00000000-0000-4000-8000-000000000403', '00000000-0000-4000-8000-000000000301',
-   '00000000-0000-4000-8000-000000000201', '00000000-0000-4000-8000-000000000101',
-   '00000000-0000-4000-8000-000000000013', 'waitlisted', now() - interval '1 hour',
-   '00000000-0000-4000-8000-000000000013', '00000000-0000-4000-8000-000000000013'),
   ('00000000-0000-4000-8000-000000000404', '00000000-0000-4000-8000-000000000303',
    '00000000-0000-4000-8000-000000000203', '00000000-0000-4000-8000-000000000102',
    '00000000-0000-4000-8000-000000000013', 'enrolled',   now() - interval '1 hour',

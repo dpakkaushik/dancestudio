@@ -481,6 +481,8 @@ export default async function DiscoverPage({
               /* the city it is HELD in — a studio's room beats its owner's home */
               city={c.venueStatus === "accepted" && c.venueCity ? c.venueCity : c.businessCity}
               href={withAs(`/c/${c.shareSlug}`, asRaw)}
+              /* a class you hold a seat on says so in the shared word (4 Oct 2026) */
+              relation={c.session && mine.get(c.session.id)?.status === "enrolled" ? "booked" : null}
               actions={
                 c.session ? (
                   <EnrollButton

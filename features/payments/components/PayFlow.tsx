@@ -67,7 +67,7 @@ export interface PayFlowProps {
   businessName: string;
   classLabel: string;
   onClose: () => void;
-  /** booked/waitlisted/refund outcome — parent fires the toast */
+  /** booked/refund outcome — parent fires the toast */
   onDone: (message: string) => void;
 }
 
@@ -112,11 +112,7 @@ export function PayFlow({
       setError(out.error);
       return;
     }
-    onDone(
-      out.outcome === "waitlisted"
-        ? "📋 On the waitlist — you get the next freed spot."
-        : "🎉 Booked — your free trial is confirmed"
-    );
+    onDone("🎉 Booked — your free trial is confirmed");
     router.refresh();
   };
 

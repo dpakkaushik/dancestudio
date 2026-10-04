@@ -1,7 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { addDays, dayKeyOf } from "@/lib/format/month";
-import type { CalendarEntry } from "@/types/calendar";
-import type { DanceClass } from "@/types/class";
+import { tileClassOf, type CalendarEntry } from "@/types/calendar";
+import { SIDE_RELATION } from "@/lib/format/classLabels";
 import type { DeckClassItem, DeckItem, DeckRole, DeckState } from "@/types/home";
 import type { Business } from "@/types/business";
 import { findMyCalendar, findBusinessCalendar } from "./calendar";
@@ -29,35 +29,11 @@ const todayWindow = (nowIso: string) => {
   return { today, from: dayStartIso(today), to: dayStartIso(addDays(today, 1)) };
 };
 
-/* the calendar entry as the one class card draws it — the same mapping the
-   calendar screen and /my-classes make (the tile draws its own poster from the
-   title; the entry carries neither poster nor room id) */
-const classOf = (e: CalendarEntry): DanceClass => ({
-  id: e.classId,
-  businessId: "",
-  title: e.title,
-  shareSlug: e.shareSlug,
-  style: e.style,
-  level: e.level,
-  room: e.room,
-  roomId: null,
-  poster: null,
-  posterPath: e.posterPath,
-  priceInr: e.priceInr,
-  capacity: e.capacity,
-  status: e.classStatus,
-  session: { id: e.sessionId, startsAt: e.startsAt, endsAt: e.endsAt },
-  /* the calendar entry does not carry the venue; the deck's card does not draw it */
-  venueBusinessId: null,
-  venueStatus: null,
-  lat: null,
-  lng: null,
-  mapsUrl: null,
-  /* a card stands in for the class; whose pass pays is the class’s own answer,
-     read on its page — these carry the column defaults so the shape matches */
-  allowsStudioMemberships: true,
-  allowsArtistMemberships: false,
-});
+/* the calendar entry as the one class card draws it — ⚠ the SAME conversion the
+   calendar and the profile pages use (`tileClassOf`, 4 Oct 2026). This was a
+   second copy of it, and the second copy is what would have left the deck's
+   cards without the "By …" line the others gained. */
+const classOf = tileClassOf;
 
 /** Which of these seats of YOURS the door has let in — one live attendance row
  *  each (Step 10: checking out soft-deletes). Says `user_id` out loud: a studio's
@@ -141,8 +117,7 @@ export async function findMyDeck(supabase: SupabaseClient, userId: string, nowIs
   );
 
   const rows: DeckItem[] = live.map((e) => {
-    const role: DeckRole =
-      e.side === "hosting" ? "Teaching" : e.side === "assisting" ? "Assisting" : e.classBooking?.status === "waitlisted" ? "Waitlisted" : "Booked";
+    const role: DeckRole = SIDE_RELATION[e.side];
     return classItem(e, role, e.side === "hosting", Boolean(e.classBooking && checkedIn.has(e.classBooking.id)));
   });
 
@@ -155,6 +130,6 @@ export async function findMyDeck(supabase: SupabaseClient, userId: string, nowIs
 export async function findStudioDeck(supabase: SupabaseClient, business: Business, nowIso: string): Promise<DeckItem[]> {
   const { from, to } = todayWindow(nowIso);
   const entries = await findBusinessCalendar(supabase, business.id, { name: business.name, city: business.city }, from, to);
-  const rows: DeckItem[] = entries.filter((e) => e.classStatus !== "draft").map((e) => classItem(e, "At your studio", true, false));
+  const rows: DeckItem[] = entries.filter((e) => e.classStatus !== "draft").map((e) => classItem(e, "atYourStudio", true, false));
   return settle(rows, new Date(nowIso).getTime());
 }

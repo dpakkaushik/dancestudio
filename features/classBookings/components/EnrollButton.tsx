@@ -7,20 +7,11 @@ import {
   enrollAction,
   type EnrollActionState,
 } from "@/features/classBookings/server-actions/classBookings";
-import { GOLD, GREEN, INK, SOLID } from "@/lib/design/tokens";
+import { INK, SOLID } from "@/lib/design/tokens";
 import type { ClassBookingStatus } from "@/types/classBooking";
 
 const EL = "var(--el)";
 const initialState: EnrollActionState = { error: null, outcome: null };
-
-const chip = (color: string): React.CSSProperties => ({
-  fontSize: 10.5,
-  fontWeight: 900,
-  padding: "6px 11px",
-  borderRadius: 999,
-  background: `${color}1c`,
-  color,
-});
 
 /** ⚠⚠ THE INK BUTTON'S TEXT IS `--solid`, NEVER `--bg` (27 Sep 2026) — and that
  *  one token is why the primary control on every class card on Discover was
@@ -57,11 +48,11 @@ const btn = (solid: boolean): React.CSSProperties => ({
   textAlign: "center",
 });
 
-/** The booking control on a class card. Full class → the waitlist takes over
- *  (prototype: "join the waitlist and we'll tell you if one opens", 12420-12423).
- *  Step 9: money lives on the class page — a priced class's book button and a
- *  paid booking's cancel both open /c/{slug}, where the pay sheets and the
- *  refund sheet are. Free bookings and waitlist moves stay one tap. */
+/** The booking control on a class card. A full class says "Class full" and
+ *  offers nothing — the waitlist the prototype had (12420-12423) went on
+ *  4 Oct 2026 at the user's word. Step 9: money lives on the class page — a
+ *  priced class's book button and a paid booking's cancel both open /c/{slug},
+ *  where the pay sheets and the refund sheet are. A free booking stays one tap. */
 export function EnrollButton({
   sessionId,
   isFull,
@@ -114,10 +105,12 @@ export function EnrollButton({
       <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
         {mine ? (
           <>
-            <span style={chip(mine.status === "enrolled" ? GREEN : GOLD)}>
-              {mine.status === "enrolled" ? "Enrolled ✓" : "📋 On the waitlist"}
-            </span>
-            {mine.status === "enrolled" && isPaid ? (
+            {/* ⚠ NO CHIP HERE (4 Oct 2026). It read "Enrolled ✓" — the stored
+                value's own word — and every caller now hands the CARD its
+                "Booked" relation chip, so a second one in the action row would
+                print the same word twice on one card. What is left is the one
+                thing this row is for: the way out of the seat. */}
+            {isPaid ? (
               <Link href={`/c/${shareSlug}`} style={{ ...btn(false), textDecoration: "none" }}>
                 Cancel / refund ›
               </Link>
@@ -125,12 +118,19 @@ export function EnrollButton({
               <form action={cancelForm} style={{ flex: 1, display: "flex" }}>
                 <input type="hidden" name="classBookingId" value={mine.id} />
                 <button type="submit" disabled={cancelPending} style={btn(false)}>
-                  {cancelPending ? "Cancelling…" : mine.status === "enrolled" ? "Cancel booking" : "Leave waitlist"}
+                  {cancelPending ? "Cancelling…" : "Cancel booking"}
                 </button>
               </form>
             )}
           </>
-        ) : isPaid && !isFull ? (
+        ) : isFull ? (
+          /* ⚠ NO WAITLIST (4 Oct 2026, the user: "remove waitlist mechanism").
+             A full class is full: said on the button, which offers nothing,
+             rather than a press the database now refuses. */
+          <button type="button" disabled aria-disabled="true" data-testid="class-full" style={{ ...btn(true), opacity: 0.45, cursor: "not-allowed" }}>
+            Class full
+          </button>
+        ) : isPaid ? (
           <Link href={`/c/${shareSlug}`} style={{ ...btn(true), textDecoration: "none" }}>
             Book this class
           </Link>
@@ -138,16 +138,11 @@ export function EnrollButton({
           <form action={enrollForm} style={{ flex: 1, display: "flex" }}>
             <input type="hidden" name="sessionId" value={sessionId} />
             <button type="submit" disabled={enrollPending} style={btn(true)}>
-              {enrollPending ? "Booking…" : isFull ? "Join waitlist" : "Book a spot"}
+              {enrollPending ? "Booking…" : "Book a spot"}
             </button>
           </form>
         )}
       </div>
-      {enrollState.outcome === "waitlisted" && (
-        <div style={{ fontSize: 10.5, color: GOLD, fontWeight: 800, marginTop: 6 }}>
-          📋 On the waitlist — you get the next freed spot.
-        </div>
-      )}
       {error && (
         <div style={{ fontSize: 10.5, color: "#EF4444", fontWeight: 700, marginTop: 6 }}>{error}</div>
       )}

@@ -141,8 +141,8 @@ export default async function ClassSharePage({
   /* ONE ROUND TRIP FOR THE FIVE INDEPENDENT READS (19 Sep 2026, the user: "make
      app snappier") — they used to run one after another, four serial waits on
      the most-linked page in the app. The receipt (the paid side of the viewer's
-     booking — the invoice and refund sheets); the live register and waitlist
-     queue, only for people who can run it, and on a priced class who has paid
+     booking — the invoice and refund sheets); the live register
+     (no waitlist since 4 Oct 2026), only for people who can run it, and on a priced class who has paid
      for their seat; who is on the class and what the room has in it (RLS
      decides what the viewer may see: the public gets confirmed classPeople on
      published classes only); and, for an artist's class, WHOSE profile the
