@@ -105,7 +105,7 @@ const SDK_STUB = `window.Cashfree = function () {
     /* the enquiry through the real doors: sent, accepted, quoted ₹1,000 with a 50%
        advance, and the quote accepted by the person quoted */
     const [enq] = await call("POST", "/rest/v1/enquiries", svc, {
-      business_id: studio.id, from_user_id: sender.id, type_key: "private", fields: [["Session format", "One-on-one"]],
+      business_id: studio.id, from_user_id: sender.id, type_key: "choreographer", fields: [["What for", "Classes"]],
       dates: ["2026-11-20"], message: "Money probe", status: "new", created_by: sender.id, updated_by: sender.id,
     });
     await call("POST", "/rest/v1/rpc/respond_to_enquiry", owner.h, { p_enquiry_id: enq.id, p_accept: true, p_reason: null });
@@ -197,11 +197,11 @@ const SDK_STUB = `window.Cashfree = function () {
     check(orderAfter.status === "paid" && payAfter.status === "captured", `₹300 of ₹500 back: the order stays paid and the payment captured (${orderAfter.status} / ${payAfter.status})`);
     /* and the sender's own receipt says so, filed under Paid */
     await sp.goto(`${BASE}/invoices`, { waitUntil: "networkidle" });
-    const card = sp.getByRole("link", { name: /^Open INV-/ }).filter({ hasText: "Private Sessions" }).first();
+    const card = sp.getByRole("link", { name: /^Open INV-/ }).filter({ hasText: "Choreographer" }).first();
     const cardText = (await card.innerText().catch(() => "")).replace(/\s+/g, " ");
     check(/Part refunded/i.test(cardText) && /₹300 refunded/.test(cardText) && /₹500/.test(cardText), `the sender's invoice reads ₹500 · Part refunded · ₹300 refunded (${cardText.slice(0, 120)})`);
     await sp.getByRole("button", { name: "Refunded", exact: true }).click();
-    check((await sp.getByRole("link", { name: /^Open INV-/ }).filter({ hasText: "Private Sessions" }).count()) === 0, "and it is NOT filed under Refunded");
+    check((await sp.getByRole("link", { name: /^Open INV-/ }).filter({ hasText: "Choreographer" }).count()) === 0, "and it is NOT filed under Refunded");
   } catch (e) {
     check(false, `aborted: ${e.message}`);
   } finally {

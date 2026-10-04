@@ -76,7 +76,7 @@ function Add-Member($tenantId, $userId, $memberRole, $byUser) {
 $in10 = (Get-Date).AddDays(10).ToString("yyyy-MM-dd")
 function Send-Enq($user, $tenantId, $type) {
   return Rpc (Api $user.token) "send_enquiry" @{ p_business_id = $tenantId; p_type_key = $type
-    p_fields = @(@("Enquiry", "Proof"), @("Type of event", "Sangeet"), @("Number of performances", "3"))
+    p_fields = @(@("Enquiry", "Proof"), @("What for", "Event"), @("Number of performances", "3"))
     p_dates = @($in10); p_where = "Kothrud, Pune"; p_message = "Proof enquiry"; p_mobile = "+91 98765 43210" }
 }
 # the repository's read, verbatim in shape (repositories/enquiries.ts)
@@ -112,20 +112,22 @@ Invoke-RestMethod -Method Patch -Uri "$base/rest/v1/businesses?id=eq.$($tc.id)" 
 Add-Member $ta.id $staffA.id "staff" $ownerA.id
 
 try {
-  # 1. a person sends a celebration enquiry to the studio: filed New, with its fields
-  $e1 = Send-Enq $l1 $ta.id "celebration"
-  Check 1 "L1 sends to the studio: status $($e1.status), $(@($e1.fields).Count) fields, $(@($e1.dates).Count) date" (
-    ($e1.status -eq "new") -and (@($e1.fields).Count -eq 3) -and (@($e1.dates).Count -eq 1))
+  # 1. a person sends a Performer enquiry to the studio: filed New, with its fields.
+  #    4 Oct 2026: three kinds can be sent (choreographer, performer, judge); an old kind is refused.
+  $e1 = Send-Enq $l1 $ta.id "performer"
+  $oldKind = Fails { Send-Enq $l1 $ta.id "celebration" }
+  Check 1 "L1 sends to the studio: status $($e1.status), $(@($e1.fields).Count) fields, $(@($e1.dates).Count) date; an old kind refused ($oldKind)" (
+    ($e1.status -eq "new") -and (@($e1.fields).Count -eq 3) -and (@($e1.dates).Count -eq 1) -and ($oldKind -match "unknown enquiry type"))
 
-  # 2. judging is a person's job: refused for a studio, accepted for an artist business
+  # 2. Judge / Guest is a person's job: refused for a studio, accepted for an artist business
   $judgeStudio = Fails { Send-Enq $l1 $ta.id "judge" }
   $e2 = Send-Enq $l1 $tb.id "judge"
-  Check 2 "Invite as Judge: studio refused ($judgeStudio); artist business accepted ($($e2.type_key))" (
+  Check 2 "Judge / Guest: studio refused ($judgeStudio); artist business accepted ($($e2.type_key))" (
     ($judgeStudio -match "artist") -and ($e2.type_key -eq "judge"))
 
   # 3. you do not enquire of yourself, and a private business takes no enquiries
-  $selfEnq = Fails { Send-Enq $ownerA $ta.id "corporate" }
-  $privEnq = Fails { Send-Enq $l1 $tc.id "corporate" }
+  $selfEnq = Fails { Send-Enq $ownerA $ta.id "choreographer" }
+  $privEnq = Fails { Send-Enq $l1 $tc.id "choreographer" }
   Check 3 "Own business refused ($selfEnq); private business refused ($privEnq)" (
     ($selfEnq -match "belong") -and ($privEnq -match "not open"))
 
@@ -141,7 +143,7 @@ try {
     ($l1Rows.Count -eq 2) -and ($ownerRows.Count -eq 1) -and ($staffRows.Count -eq 1) -and ($artistRows.Count -eq 1) -and ($l2Rows.Count -eq 0) -and ($anonRows.Count -eq 0))
 
   # 5. no direct writes
-  $direct = Fails { Invoke-RestMethod -Method Post -Uri "$base/rest/v1/enquiries" -Headers (Api $l2.token) -Body (@{ business_id = $ta.id; from_user_id = $l2.id; type_key = "corporate"; message = "x" } | ConvertTo-Json) }
+  $direct = Fails { Invoke-RestMethod -Method Post -Uri "$base/rest/v1/enquiries" -Headers (Api $l2.token) -Body (@{ business_id = $ta.id; from_user_id = $l2.id; type_key = "choreographer"; message = "x" } | ConvertTo-Json) }
   Check 5 "A direct insert into enquiries is refused ($direct)" ($direct -ne "")
 
   # 6. (3 Oct 2026) ONLY OWNERS AND MANAGERS WORK AN ENQUIRY: staff read it and are
@@ -214,7 +216,7 @@ try {
   Check 11 "Quotes: sender reads $($l1Q.Count), bystander $($l2Q.Count), public $($anonQ.Count)" (($l1Q.Count -eq 2) -and ($l2Q.Count -eq 0) -and ($anonQ.Count -eq 0))
 
   # 12. the public cannot send an enquiry at all
-  $anonSend = Fails { Rpc $anonH "send_enquiry" @{ p_business_id = $ta.id; p_type_key = "corporate"; p_fields = @(); p_dates = @($in10); p_where = "x"; p_message = "x" } }
+  $anonSend = Fails { Rpc $anonH "send_enquiry" @{ p_business_id = $ta.id; p_type_key = "choreographer"; p_fields = @(); p_dates = @($in10); p_where = "x"; p_message = "x" } }
   Check 12 "The public cannot call send_enquiry ($anonSend)" ($anonSend -ne "")
 }
 finally {

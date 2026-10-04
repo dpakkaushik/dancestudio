@@ -27,11 +27,10 @@ import type { Business } from "@/types/business";
  *  phone and the email are threaded through here untouched: omitting one would
  *  EMPTY a column the RPC then refuses (a studio may not end up with no style).
  *
- *  ⚠ A CREW HAS NO SETTINGS HERE AND THAT IS A FACT, NOT A GAP: `send_enquiry`
- *  fixes a crew's three kinds — celebration, corporate, collaboration — and
- *  `crews` carries no `enquiry_types` column at all. The desk says so in one
- *  line rather than drawing an empty block, which is this file's own rule about
- *  a heading with nothing under it. */
+ *  ⚠ A CREW TAKES NO ENQUIRIES since 4 Oct 2026, so it has no settings here.
+ *  A studio switches two kinds on or off (Choreographer · Performer) and an
+ *  artist three (+ Judge / Guest) — `enquiryTypesFor` decides, never a list
+ *  typed here. */
 export function EnquirySettings({ businesses }: { businesses: Business[] }) {
   if (businesses.length === 0) return null;
   return (

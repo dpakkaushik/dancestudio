@@ -6,7 +6,7 @@ import { sendEnquiryAction } from "@/features/enquiries/server-actions/enquiries
 import { CONTACT_BOX, CONTACT_LABEL } from "@/features/profiles/components/ContactButtons";
 import { DOS_UI } from "@/lib/design/tokens";
 import { useCloseOnBack } from "@/lib/hooks/useCloseOnBack";
-import { enquiryTypesFor, type EnquiryField, type EnquiryType } from "@/types/enquiry";
+import { enquiryTypesFor, type EnquiryField, type EnquiryType, type SendableEnquiryTypeKey } from "@/types/enquiry";
 import type { BusinessType } from "@/types/business";
 import { EnqIcon, pressKey } from "@/features/inbox/components/inbox-kit";
 
@@ -132,7 +132,7 @@ export function EnquirySheet({
   useCloseOnBack(onClose);
   /* only the types the business switched on appear (9007) */
   const allowed = enquiryTypesFor(businessType).filter((t) => !enquiryTypes || enquiryTypes.includes(t.k));
-  const [type, setType] = useState<EnquiryType | null>(null);
+  const [type, setType] = useState<EnquiryType<SendableEnquiryTypeKey> | null>(null);
   const [dates, setDates] = useState<string[]>([""]);
   const [vals, setVals] = useState<Record<string, string | number>>({});
   const [eventName, setEventName] = useState("");
@@ -147,7 +147,7 @@ export function EnquirySheet({
     setVals((o) => ({ ...o, [k]: v }));
     setErr("");
   };
-  const pickType = (t: EnquiryType) => {
+  const pickType = (t: EnquiryType<SendableEnquiryTypeKey>) => {
     setType(t);
     setDates([""]);
     setVals({});
@@ -275,7 +275,8 @@ export function EnquirySheet({
           <>
             <div style={{ fontSize: 17, fontWeight: 900, marginBottom: 2 }}>What&apos;s it for?</div>
             <div style={{ fontSize: 11, color: "var(--sub)", marginBottom: 12 }}>To {businessName}</div>
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+            {/* one row: a studio is offered two kinds, an artist three (4 Oct 2026) */}
+            <div style={{ display: "grid", gridTemplateColumns: `repeat(${Math.max(1, Math.min(allowed.length, 3))}, minmax(0, 1fr))`, gap: 8 }}>
               {allowed.map((x) => (
                 <div
                   key={x.k}
@@ -351,7 +352,30 @@ export function EnquirySheet({
             {type.fields.map((f) => (
               <div key={f.k}>
                 <Lab>{f.label}</Lab>
-                {f.t === "select" ? (
+                {f.t === "select" && f.notes ? (
+                  /* ⚠ AN OPTION THAT CLUBS SEVERAL TOGETHER SAYS WHAT IT COVERS (4 Oct
+                     2026) — "Event" alone does not tell somebody whether their sangeet
+                     is one. One tile per option, its note under it; the accessible
+                     name stays the option's own word so a locator finds "Event". */
+                  <div role="group" aria-label={f.label} style={{ display: "grid", gridTemplateColumns: `repeat(${f.opts.length}, minmax(0, 1fr))`, gap: 6 }}>
+                    {f.opts.map((o, i) => {
+                      const on = vals[f.k] === o;
+                      return (
+                        <button
+                          key={o}
+                          type="button"
+                          aria-pressed={on}
+                          aria-label={o}
+                          onClick={() => setV(f.k, o)}
+                          style={{ padding: "9px 8px", borderRadius: 12, textAlign: "left", cursor: "pointer", fontFamily: "inherit", background: on ? type.c : "var(--card)", color: on ? "#08060C" : "var(--text)", border: `1.5px solid ${on ? type.c : "var(--el)"}` }}
+                        >
+                          <div style={{ fontSize: 12.5, fontWeight: 900 }}>{o}</div>
+                          <div style={{ fontSize: 9.5, fontWeight: 600, lineHeight: 1.35, marginTop: 2, color: on ? "#08060C" : "var(--sub)" }}>{f.notes?.[i]}</div>
+                        </button>
+                      );
+                    })}
+                  </div>
+                ) : f.t === "select" ? (
                   <div role="group" aria-label={f.label} style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
                     {f.opts.map((o) => {
                       const on = vals[f.k] === o;

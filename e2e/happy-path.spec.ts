@@ -1249,15 +1249,19 @@ test.describe.serial("DanceOS, end to end", () => {
     await learner.goto(studioUrl);
     await learner.getByRole("button", { name: "Enquiry", exact: true }).click();
     const enqSheet = learner.getByRole("dialog", { name: `Enquiry to ${studioName}` });
-    await enqSheet.getByText("Private Sessions", { exact: true }).click();
+    /* ⚠ THREE KINDS SINCE 4 Oct 2026 (Choreographer · Performer · Judge / Guest) —
+       a studio is offered the first two; private sessions are a Choreographer's
+       "Classes" now, and the style goes in the message */
+    await expect(enqSheet.getByText("Judge / Guest", { exact: true })).toHaveCount(0);
+    await enqSheet.getByText("Choreographer", { exact: true }).click();
     const inTenDays = new Date(Date.now() + 10 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
     await enqSheet.getByLabel("Date of event").fill(inTenDays);
     /* ⚠ THE SHORTER FORM (2 Oct 2026, the user: "shorter forms for every kind of
        enquiry"): a type's choices are one-tap chips in a labelled group, not
        dropdowns; Level and Where-they-train are gone; Where is one optional
        line, and the message is optional too. */
-    await enqSheet.getByRole("group", { name: "Session format" }).getByRole("button", { name: "One-on-one" }).click();
-    await enqSheet.getByRole("group", { name: "Dance style" }).getByRole("button", { name: "Bollywood", exact: true }).click();
+    await enqSheet.getByRole("group", { name: "What for" }).getByRole("button", { name: "Classes", exact: true }).click();
+    await expect(enqSheet.getByRole("group", { name: "Dance style" })).toHaveCount(0);
     await enqSheet.getByLabel("Where", { exact: true }).fill("Pune");
     await enqSheet.getByLabel("Message").fill("Eight evening sessions before a wedding.");
     await enqSheet.getByRole("button", { name: "Send enquiry" }).click();
@@ -1282,10 +1286,10 @@ test.describe.serial("DanceOS, end to end", () => {
     await owner.goto("/enquiries");
     await owner.waitForURL(/\/inbox\?show=enquiries$/);
     await expect(owner.getByRole("heading", { level: 1, name: "Inbox" })).toBeVisible();
-    await expect(owner.getByRole("link", { name: `Private Sessions enquiry from ${learnerName}` })).toHaveCount(0);
+    await expect(owner.getByRole("link", { name: `Choreographer enquiry from ${learnerName}` })).toHaveCount(0);
     await owner.goto(`/enquiries?as=${businessId}`);
     await owner.waitForURL(new RegExp(`/business/${businessId}/inbox\\?show=enquiries$`));
-    await expect(owner.getByRole("link", { name: `Private Sessions enquiry from ${learnerName}` })).toBeVisible({ timeout: 15_000 });
+    await expect(owner.getByRole("link", { name: `Choreographer enquiry from ${learnerName}` })).toBeVisible({ timeout: 15_000 });
     await owner.goto("/inbox?show=enquiries");
     /* ⚠⚠ AND THE SETTINGS ARE ON IT (the user: "with its setting as well manged
        from there") — the kinds left the contact ⊕ for the desk the same evening.
@@ -1316,7 +1320,7 @@ test.describe.serial("DanceOS, end to end", () => {
        the closed card is its title alone, so the count is read once it is open */
     await owner.getByRole("button", { name: /^Enquiry settings/ }).first().click();
     await expect(owner.getByText(/^\d+ of \d+ kinds$/).first()).toBeVisible();
-    await owner.getByRole("link", { name: `Private Sessions enquiry from ${learnerName}` }).click();
+    await owner.getByRole("link", { name: `Choreographer enquiry from ${learnerName}` }).click();
     await owner.waitForURL(/\/inbox\/enquiries\/[0-9a-f-]+$/);
     await expect(owner.getByText("WHAT THEY ASKED FOR")).toBeVisible();
     /* ⚠⚠ RE-CUT 3 Oct 2026 — the user's own process, agreed point by point
@@ -1336,7 +1340,7 @@ test.describe.serial("DanceOS, end to end", () => {
 
     await learner.goto("/enquiries");
     await learner.getByRole("button", { name: "Sent enquiries" }).click();
-    await learner.getByRole("link", { name: `Private Sessions enquiry to ${studioName}` }).click();
+    await learner.getByRole("link", { name: `Choreographer enquiry to ${studioName}` }).click();
     await learner.waitForURL(/\/inbox\/enquiries\/[0-9a-f-]+$/);
     await expect(learner.getByTestId("quote-1-state")).toHaveText("Waiting on an answer");
     /* a revision needs a reason — the sheet will not send without one */
@@ -2524,7 +2528,7 @@ test.describe.serial("DanceOS, end to end", () => {
        the business marking this enquiry Completed, and a closed enquiry lives
        under Completed (C96) — the Sent side holds only what is still open */
     await learner.getByRole("button", { name: "Completed enquiries" }).click();
-    await learner.getByRole("link", { name: `Private Sessions enquiry to ${studioName}` }).click();
+    await learner.getByRole("link", { name: `Choreographer enquiry to ${studioName}` }).click();
     await learner.waitForURL(/\/inbox\/enquiries\/[0-9a-f-]+$/);
     await expect(learner.getByRole("link", { name: `Call ${studioName}` })).toHaveAttribute("href", "tel:+919000011111");
     // the business's side is unchanged: this enquiry carried no mobile, so it still
@@ -2533,7 +2537,7 @@ test.describe.serial("DanceOS, end to end", () => {
     await owner.goto(`/enquiries?as=${businessId}`);
     /* ⚠ the studio's desk opens on Received, and this enquiry was closed */
     await owner.getByRole("button", { name: "Completed enquiries" }).click();
-    await owner.getByRole("link", { name: `Private Sessions enquiry from ${learnerName}` }).click();
+    await owner.getByRole("link", { name: `Choreographer enquiry from ${learnerName}` }).click();
     await owner.waitForURL(/\/inbox\/enquiries\/[0-9a-f-]+$/);
     /* ⚠ 3 Oct 2026: the rebuilt detail page draws NO Call at all when the
        enquiry carries no number, rather than a dashed sentence telling a

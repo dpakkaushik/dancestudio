@@ -7,7 +7,7 @@ import {
   type Period,
 } from "@/lib/format/month";
 import { dosClassLabel } from "@/lib/constants/styles";
-import { ENQ_TYPES } from "@/types/enquiry";
+import { enquiryTypeOf } from "@/types/enquiry";
 import { EARNING_TINT, type EarningsReport, type MoneyItem, type MoneyLine } from "@/types/earnings";
 
 /** EARNINGS, COUNTED THE SAME WAY FOR EVERY KIND OF PROFILE (21 Sep 2026, the
@@ -64,7 +64,7 @@ const lineOf = (key: string, label: string, amountInr: number, href?: string, no
 const classWords = (c: { style: string; level: string } | null | undefined) => (c ? dosClassLabel(c.style, c.level) : null);
 /** PostgREST types a to-one embed as an array though it returns an object */
 const single = <T,>(x: T | T[] | null | undefined): T | null => (Array.isArray(x) ? (x[0] ?? null) : (x ?? null));
-const enquiryWords = (typeKey: string | null | undefined) => ENQ_TYPES.find((t) => t.k === typeKey)?.label ?? "Enquiry";
+const enquiryWords = (typeKey: string | null | undefined) => enquiryTypeOf(typeKey ?? "")?.label ?? "Enquiry";
 
 /** ⚠ a DATE column (`paid_on`) is a day key already — bucketing it through
  *  `bucketKeyOf` needs an instant, and IST midnight is the honest one: a payment

@@ -545,6 +545,9 @@ async function seed() {
      ENQUIRIES — all five kinds, at every stage, to a studio, an artist and a crew
      ──────────────────────────────────────────────────────────────────────── */
   console.log("\nEnquiries");
+  /* ⚠ THREE KINDS SINCE 4 Oct 2026 — choreographer · performer · judge (Judge / Guest).
+     Private sessions and collaborations are a choreographer's; celebrations and
+     corporate shows a performer's. The old kinds can no longer be SENT. */
   /* ⚠ 29 Sep 2026: four of these landed on an ORGANIZATION — the celebration,
      two corporate shows and the collaboration. They are asked of the STUDIOS
      instead, because those four kinds go to a `studio` as well (types/enquiry.ts:
@@ -567,23 +570,23 @@ async function seed() {
   const accept = (u, q) => rpc(u.h, "answer_enquiry_quote", { p_quote_id: q.id, p_answer: "accept", p_reason: null });
   /* private sessions at Sector 29 — quoted in lines, accepted, advance recorded, and
      an ADDITION waiting on Kabir */
-  const e1 = await enquire(kabir, s29.id, "private", [["How many people", "2"], ["Where they train", "At the studio"], ["Style", "Hip-Hop"]], 9, "Gurugram", "Eight evening sessions before a wedding — my sister and me.");
+  const e1 = await enquire(kabir, s29.id, "choreographer", [["What for", "Classes"], ["How many sessions", "8"]], 9, "Gurugram", "Eight evening sessions before a wedding — my sister and me.");
   const q1 = await quote(rhythm.h, e1, 24000, 30, [{ name: "Evening session", qty: 8, unit_inr: 2500 }, { name: "Music edit", qty: 1, unit_inr: 4000 }]);
   await accept(kabir, q1);
   await rpc(rhythm.h, "record_enquiry_payment", { p_quote_id: q1.id, p_part: "advance" });
   await rpc(rhythm.h, "send_enquiry_addition", { p_enquiry_id: e1.id, p_items: [{ name: "Extra rehearsal", qty: 2, unit_inr: 2500 }], p_lump_inr: null, p_note: "The two you asked about on Tuesday", p_revises: null });
   /* private sessions — quoted, a revision ASKED, then DECLINED by the business */
   /* Aki, not Sneha — Sneha is on Sector 29's team, and a member cannot ask their own studio */
-  const e2 = await enquire(aki, s29.id, "private", [["How many people", "1"], ["Where they train", "At home"], ["Style", "Salsa"]], 12, "Gurugram", "Salsa at home, weekends.");
+  const e2 = await enquire(aki, s29.id, "choreographer", [["What for", "Classes"], ["How many sessions", "6"]], 12, "Gurugram", "Salsa at home, weekends.");
   const q2 = await quote(rhythm.h, e2, 18000, 50);
   await rpc(aki.h, "answer_enquiry_quote", { p_quote_id: q2.id, p_answer: "revise", p_reason: "Could it be twelve thousand for six sessions?" });
   await rpc(rhythm.h, "end_enquiry", { p_enquiry_id: e2.id, p_reason: "We cannot go that low for home sessions", p_refund_inr: null });
   /* private sessions at Bounce — new, nobody has answered */
   /* Zaid, not Rohit — Rohit is on Bounce's team */
-  await enquire(zaid, bounce.id, "private", [["How many people", "4"], ["Where they train", "At the studio"], ["Style", "Bollywood"]], 15, "New Delhi", "A sangeet routine for four cousins.");
+  await enquire(zaid, bounce.id, "choreographer", [["What for", "Event"], ["How many sessions", "4"]], 15, "New Delhi", "A sangeet routine for four cousins.");
   /* a CELEBRATION asked of the STUDIO — quoted, accepted, advance and balance, then
      COMPLETED from both ends */
-  const e4 = await enquire(kabir, dlf.id, "celebration", [["Occasion", "Wedding"], ["Guests", "300"], ["Performers", "6"]], 30, "Gurugram", "A twenty-minute opening act at the reception.");
+  const e4 = await enquire(kabir, dlf.id, "performer", [["What for", "Event"], ["Number of performances", "1"]], 30, "Gurugram", "A twenty-minute opening act at the reception.");
   const q4 = await quote(rhythm.h, e4, 80000, 40);
   await accept(kabir, q4);
   await rpc(rhythm.h, "record_enquiry_payment", { p_quote_id: q4.id, p_part: "advance" });
@@ -591,29 +594,29 @@ async function seed() {
   await rpc(rhythm.h, "mark_enquiry_complete", { p_enquiry_id: e4.id });
   await rpc(kabir.h, "mark_enquiry_complete", { p_enquiry_id: e4.id });
   /* a CORPORATE show — quoted, waiting on an answer */
-  const e5 = await enquire(zaid, dlf.id, "corporate", [["Kind", "Annual day"], ["Audience", "500"]], 40, "Gurugram", "Twelve minutes, three styles, HDFC annual day.");
+  const e5 = await enquire(zaid, dlf.id, "performer", [["What for", "Event"], ["Number of performances", "1"]], 40, "Gurugram", "Twelve minutes, three styles, HDFC annual day.");
   await quote(rhythm.h, e5, 120000, 30);
   /* a COLLABORATION asked of EEE — new */
-  await enquire(priya, eee.id, "collab", [["Kind", "Video"], ["Format", "Two crews"]], 20, "Pune", "A joint video with EEE Crew for the monsoon.");
+  await enquire(priya, eee.id, "choreographer", [["What for", "Shoot"], ["How many sessions", "3"]], 20, "Pune", "A joint video with EEE Crew for the monsoon.");
   /* a corporate show asked of Bounce and Namma — new, so every studio's desk has something */
-  await enquire(kabir, bounce.id, "corporate", [["Kind", "Product launch"], ["Audience", "200"]], 25, "New Delhi", "Ten minutes at a launch in Aerocity.");
-  await enquire(nikhil, nammaStudio.id, "celebration", [["Occasion", "Birthday"], ["Guests", "60"], ["Performers", "2"]], 18, "Bengaluru", "A duet at a 50th birthday.");
+  await enquire(kabir, bounce.id, "performer", [["What for", "Event"], ["Number of performances", "2"]], 25, "New Delhi", "Ten minutes at a launch in Aerocity.");
+  await enquire(nikhil, nammaStudio.id, "performer", [["What for", "Event"], ["Number of performances", "1"]], 18, "Bengaluru", "A duet at a 50th birthday.");
   /* an artist asked to JUDGE — through their page; quoted and accepted */
   /* ⚠ the event is FREE TEXT and names one out in the world, which is exactly why
      the judge type survived organizations (types/enquiry.ts): DanceOS never hosted
      it. It used to name a seeded event; it names somebody else's now. */
-  const e7 = await enquire(nikhil, karanPage.id, "judge", [["Event", "Karnataka B-Boy Championship"], ["Rounds", "3"]], 25, "Bengaluru", "Would you judge the finals? Travel covered.");
+  const e7 = await enquire(nikhil, karanPage.id, "judge", [["As", "Judge"], ["Event", "Karnataka B-Boy Championship"]], 25, "Bengaluru", "Would you judge the finals? Travel covered.");
   const q7 = await quote(karan.h, e7, 15000, 0);
   await accept(nikhil, q7);
   /* an artist asked for private sessions — quoted, accepted, advance paid, then the
      sender proposes to WITHDRAW with part of the advance back: terms waiting on Meera */
-  const e8 = await enquire(sneha, meeraPage.id, "private", [["How many people", "1"], ["Where they train", "At the studio"], ["Style", "Kathak"]], 10, "Gurugram", "Twelve sessions towards my arangetram.");
+  const e8 = await enquire(sneha, meeraPage.id, "choreographer", [["What for", "Classes"], ["How many sessions", "12"]], 10, "Gurugram", "Twelve sessions towards my arangetram.");
   const q8 = await quote(meera.h, e8, 30000, 25);
   await accept(sneha, q8);
   await rpc(meera.h, "record_enquiry_payment", { p_quote_id: q8.id, p_part: "advance" });
   await rpc(sneha.h, "end_enquiry", { p_enquiry_id: e8.id, p_reason: "My arangetram has moved to next year", p_refund_inr: 5000 });
   /* ⚠ a CREW was asked for a celebration here until 4 Oct 2026 — a crew takes no enquiries now */
-  log("Sector 29: private (advance paid, an addition waiting), private (revision asked → called off) · DLF: celebration (completed), corporate (quoted) · EEE: collab (new) · Bounce: private (new), corporate (new) · Namma: celebration (new) · Karan: judge (on) · Meera: private (withdrawal terms waiting)");
+  log("Sector 29: choreographer (advance paid, an addition waiting), choreographer (revision asked → called off) · DLF: performer (completed), performer (quoted) · EEE: choreographer (new) · Bounce: choreographer (new), performer (new) · Namma: performer (new) · Karan: judge (on) · Meera: choreographer (withdrawal terms waiting)");
 
   /* ────────────────────────────────────────────────────────────────────────
      ⚠ EVENTS WERE SEEDED HERE UNTIL 29 Sep 2026, and this is the whole of

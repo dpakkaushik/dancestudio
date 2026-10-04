@@ -30,7 +30,8 @@ export interface EnquiryActionResult {
   enquiryId?: string;
 }
 
-const TYPE_KEYS = ["celebration", "corporate", "judge", "private", "collab"] as const;
+/* the three kinds that can be SENT since 4 Oct 2026 — the legacy four are read, never written */
+const TYPE_KEYS = ["choreographer", "performer", "judge"] as const;
 
 /* an enquiry goes to a BUSINESS — ⚠ never a crew since 4 Oct 2026 (the user:
    "remove enquiries for crew"); `send_enquiry` refuses one in words */

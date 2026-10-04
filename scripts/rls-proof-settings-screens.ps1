@@ -149,11 +149,11 @@ try {
 
   # 7. the owner's door saves everything and the PUBLIC reads it on a listed business
   $links = @(@{ platform = "Instagram"; url = "https://instagram.com/proofstudio" }, @{ platform = "WhatsApp"; url = "https://wa.me/919876543210" })
-  Rpc (Api $owner.token) "update_business_profile" (TenantBody $tenantId 2016 "+91 98765 43210" $links @("celebration", "private") $true $true $false $true) | Out-Null
+  Rpc (Api $owner.token) "update_business_profile" (TenantBody $tenantId 2016 "+91 98765 43210" $links @("choreographer", "performer") $true $true $false $true) | Out-Null
   $pubRow = Rows $anonH "businesses?$TSEL&id=eq.$tenantId"
   Check 7 "the owner's words are saved and the public reads them (Since $($pubRow[0].founded_year), phone, $(@($pubRow[0].socials).Count) links, $(@($pubRow[0].enquiry_types).Count) enquiry types, cash off / bank on)" (
     $pubRow.Count -eq 1 -and $pubRow[0].founded_year -eq 2016 -and $pubRow[0].phone -eq "+91 98765 43210" -and
-    @($pubRow[0].socials).Count -eq 2 -and (@($pubRow[0].enquiry_types) -join ",") -eq "celebration,private" -and
+    @($pubRow[0].socials).Count -eq 2 -and (@($pubRow[0].enquiry_types) -join ",") -eq "choreographer,performer" -and
     $pubRow[0].accepts_cash -eq $false -and $pubRow[0].accepts_bank -eq $true -and $pubRow[0].accepts_upi -eq $true)
 
   # 8. a stranger is refused with the door's sentence, and their PATCH changes nothing

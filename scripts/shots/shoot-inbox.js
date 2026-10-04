@@ -90,9 +90,9 @@ const pressed = async (loc) => (await loc.getAttribute("aria-pressed").catch(() 
     /* two enquiries from the sender, planted with the service role (the studio is
        born unlisted, so `send_enquiry` would rightly refuse) — one open, one
        DECLINED (3 Oct 2026: the business declines with a reason; "lost" is gone) */
-    const base = { business_id: studio.id, from_user_id: sender.id, type_key: "private", fields: [["Session format", "One-on-one"]], dates: ["2026-11-01"], message: "Probe enquiry", created_by: sender.id, updated_by: sender.id };
+    const base = { business_id: studio.id, from_user_id: sender.id, type_key: "choreographer", fields: [["What for", "Classes"]], dates: ["2026-11-01"], message: "Probe enquiry", created_by: sender.id, updated_by: sender.id };
     const [open] = await call("POST", "/rest/v1/enquiries", svc, { ...base, status: "new" });
-    const [lost] = await call("POST", "/rest/v1/enquiries", svc, { ...base, fields: [["Session format", "Couple"]], status: "declined", close_reason: "Booked that weekend", closed_at: new Date().toISOString(), closed_by: owner.id });
+    const [lost] = await call("POST", "/rest/v1/enquiries", svc, { ...base, fields: [["What for", "Event"]], status: "declined", close_reason: "Booked that weekend", closed_at: new Date().toISOString(), closed_by: owner.id });
     made.enquiries.push(open.id, lost.id);
 
     /* a team invite for the sender, through the owner's own door */
@@ -144,20 +144,20 @@ const pressed = async (loc) => (await loc.getAttribute("aria-pressed").catch(() 
     await sp.goto(`${BASE}/inbox?show=enquiries`, { waitUntil: "networkidle" });
     check(await pressed(pill(sp, /^Enquiries — /)), "?show=enquiries opens on the Enquiries desk");
     await sp.getByRole("button", { name: "Sent enquiries" }).click();
-    const sentCard = sp.getByRole("link", { name: `Private Sessions enquiry to Kappa Hall ${stamp}` });
+    const sentCard = sp.getByRole("link", { name: `Choreographer enquiry to Kappa Hall ${stamp}` });
     check((await sentCard.count()) === 1, "sender: the OPEN enquiry is on the Sent side, and only it (the declined one is not on the live desk)");
     const sentText = await sentCard.first().innerText().catch(() => "");
     check(/\bKH\b/.test(sentText) && !/\bZQ\b/.test(sentText), `enquiry card: the studio's face, not your own (${/\bKH\b/.test(sentText) ? "KH" : "-"} / ${/\bZQ\b/.test(sentText) ? "ZQ shown" : "no ZQ"})`);
 
     await sp.getByRole("button", { name: "Completed enquiries", exact: true }).click();
-    check((await sp.getByRole("link", { name: `Private Sessions enquiry to Kappa Hall ${stamp}` }).count()) === 1, "Enquiries › Completed: the DECLINED enquiry is here");
+    check((await sp.getByRole("link", { name: `Choreographer enquiry to Kappa Hall ${stamp}` }).count()) === 1, "Enquiries › Completed: the DECLINED enquiry is here");
 
     /* ── THE STUDIO'S INBOX ── */
     const op = await (await browser.newContext({ viewport: { width: 430, height: 932 } })).newPage();
     await signIn(op, owner);
     await op.goto(`${BASE}/enquiries?as=${studio.id}`, { waitUntil: "networkidle" });
     check(new RegExp(`/business/${studio.id}/inbox\\?show=enquiries$`).test(op.url()), `the old ?as= address lands on the studio's Inbox (${op.url().replace(BASE, "")})`);
-    const recvCard = op.getByRole("link", { name: `Private Sessions enquiry from Zed Quill ${stamp}` });
+    const recvCard = op.getByRole("link", { name: `Choreographer enquiry from Zed Quill ${stamp}` });
     check((await recvCard.count()) === 1, "studio inbox: the open enquiry is on its Enquiries desk");
     const recvText = await recvCard.first().innerText().catch(() => "");
     check(/\bZQ\b/.test(recvText) && !/\bKH\b/.test(recvText), "studio's card: the sender's face, not the studio's own");
@@ -174,7 +174,7 @@ const pressed = async (loc) => (await loc.getAttribute("aria-pressed").catch(() 
     await op.screenshot({ path: path.join(__dirname, "shots", "inbox-studio-received.png"), fullPage: true });
     await op.getByRole("button", { name: "Completed enquiries", exact: true }).click();
     await op.screenshot({ path: path.join(__dirname, "shots", "inbox-studio-completed.png"), fullPage: true });
-    check((await op.getByRole("link", { name: `Private Sessions enquiry from Zed Quill ${stamp}` }).count()) === 1, "studio › Enquiries › Completed: the DECLINED enquiry is here");
+    check((await op.getByRole("link", { name: `Choreographer enquiry from Zed Quill ${stamp}` }).count()) === 1, "studio › Enquiries › Completed: the DECLINED enquiry is here");
 
     /* ── THE OWNER'S OWN INBOX: what they sent, answered or withdrawn ── */
     await op.goto(`${BASE}/inbox`, { waitUntil: "networkidle" });

@@ -129,18 +129,20 @@ export function DosHero({
 
 /* one icon per enquiry type — same line language as the event icons (5195) */
 const ENQ_ICON: Record<EnquiryTypeKey, ReactNode> = {
-  celebration: (
+  /* the dance being MADE — two notes on a staff line */
+  choreographer: (
     <>
-      <path d="M12 3.5v3M9 5l.9 1.6M15 5l-.9 1.6" />
-      <path d="M5.5 20.5 8 11h8l2.5 9.5z" />
-      <path d="M8.6 15h6.8" />
+      <path d="M9 17.5V6l10-2v11.5" />
+      <circle cx="6.8" cy="17.5" r="2.3" />
+      <circle cx="16.8" cy="15.5" r="2.3" />
+      <path d="M9 9.5l10-2" />
     </>
   ),
-  corporate: (
+  /* the dance being DANCED — a star on stage */
+  performer: (
     <>
-      <rect x="4" y="7.5" width="16" height="12.5" rx="2" />
-      <path d="M9 7.5V6a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v1.5" />
-      <path d="M4 13h16" />
+      <path d="m12 3.5 2.3 4.8 5.2.7-3.8 3.6.9 5.2-4.6-2.5-4.6 2.5.9-5.2L4.5 9l5.2-.7z" />
+      <path d="M6 20.5h12" />
     </>
   ),
   judge: (
@@ -150,26 +152,12 @@ const ENQ_ICON: Record<EnquiryTypeKey, ReactNode> = {
       <path d="M9.5 20h5M12 13.5V20" />
     </>
   ),
-  private: (
-    <>
-      <circle cx="12" cy="8" r="3.4" />
-      <path d="M5.5 20c.7-3.4 3.4-5.2 6.5-5.2s5.8 1.8 6.5 5.2" />
-    </>
-  ),
-  collab: (
-    <>
-      <circle cx="8.5" cy="8" r="2.8" />
-      <circle cx="16" cy="9.5" r="2.3" />
-      <path d="M3.5 19c.6-3 2.6-4.6 5-4.6s4.4 1.6 5 4.6" />
-      <path d="M14 19c.4-2 1.6-3.2 3.2-3.2S20 17 20.4 19" />
-    </>
-  ),
 };
 
 export function EnqIcon({ k, size = 14, color = "currentColor", sw = 1.8 }: { k: EnquiryTypeKey; size?: number; color?: string; sw?: number }) {
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={sw} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-      {ENQ_ICON[k] ?? ENQ_ICON.celebration}
+      {ENQ_ICON[k] ?? ENQ_ICON.choreographer}
     </svg>
   );
 }

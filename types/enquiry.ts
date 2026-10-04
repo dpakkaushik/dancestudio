@@ -5,15 +5,25 @@ import type { BusinessType } from "@/types/business";
  *  deciding its own audience ("asking the TYPES rather than hardcoding a list
  *  means adding a type decides its own audience", 4934). */
 
-export type EnquiryTypeKey = "celebration" | "corporate" | "judge" | "private" | "collab";
+/** ⚠⚠ THREE KINDS SINCE 4 Oct 2026 (the user: "3 broad enquiries — as a
+ *  Choreographer, Performer, Judge/guest … limit the options or list will be
+ *  huge"). They are the only kinds there are: every enquiry sent before was
+ *  taken down ("remove all old enquiries entirely so the data doesnt clash"),
+ *  and `enquiries_type_key_check` keeps a LIVE row to these three. The old four
+ *  words (celebration · corporate · private · collab) survive only on
+ *  soft-deleted rows, which no screen reads. */
+export type EnquiryTypeKey = "choreographer" | "performer" | "judge";
+/** the same three — kept as its own name because the sheet and the action say "sendable" */
+export type SendableEnquiryTypeKey = EnquiryTypeKey;
 
 export type EnquiryField =
-  | { k: string; t: "select"; label: string; opts: string[] }
+  /** `notes` sit under each option, in the same order — a few words saying what the option covers */
+  | { k: string; t: "select"; label: string; opts: string[]; notes?: string[] }
   | { k: string; t: "count"; label: string; min: number; max: number; def: number }
   | { k: string; t: "event"; label: string };
 
-export interface EnquiryType {
-  k: EnquiryTypeKey;
+export interface EnquiryType<K extends EnquiryTypeKey = EnquiryTypeKey> {
+  k: K;
   label: string;
   sub: string;
   /** the type's tint (ENQ_TINT 5208) */
@@ -30,102 +40,78 @@ export interface EnquiryType {
    train, a collaboration's "what's needed". Old enquiries keep every field they
    were sent with, because `fields` stores [label, value] pairs and is read back
    whole; nothing about them changes. */
-export const ENQ_TYPES: EnquiryType[] = [
-  /* ⚠ AN ORGANIZATION COULD BE ASKED THREE OF THESE (19 Sep 2026) and cannot be
-     asked anything now, because there is no organization (29 Sep 2026). What is
-     left is a studio, an artist page and a crew — a crew's three kinds are fixed
-     inside `send_enquiry` and never read from here.
-     ⚠⚠ THE JUDGE TYPE STAYS, and that is a decision rather than an oversight:
-     its "Which event" is a FREE-TEXT field naming an event out in the world (the
-     prototype's own "Pick from DanceOS" picker was never built, 18 Sep), so
-     being invited to judge somebody else's battle is a job an artist can still
-     be asked to do. It never depended on this app hosting events. */
+export const ENQ_TYPES: EnquiryType<SendableEnquiryTypeKey>[] = [
+  /* ⚠⚠ THE OPTIONS WERE CUT FROM ~50 TO 7 (4 Oct 2026, the user, three rounds
+     of "trim down even more"). Celebrations, corporate, private sessions and
+     collaboration are CLUBBED into what the person is asked to DO — make the
+     dance, or dance it — and the occasion is one short choice. Group size,
+     dance style and the rest go in the message every enquiry already carries. */
   {
-    k: "celebration",
-    label: "Celebrations",
-    sub: "weddings · birthdays · anniversaries",
-    c: "#EC4899",
-    to: ["studio", "artist_page"],
-    fields: [
-      {
-        k: "occasion",
-        t: "select",
-        label: "Type of event",
-        opts: ["Wedding", "Sangeet", "Reception", "Anniversary", "Birthday", "Baby shower", "House party", "Festival", "Other"],
-      },
-      { k: "perfs", t: "count", label: "Number of performances", min: 1, max: 12, def: 1 },
-    ],
-  },
-  {
-    k: "corporate",
-    label: "Corporate",
-    sub: "brand shoots · offsites · employee classes",
-    c: "#0EA5E9",
-    to: ["studio", "artist_page"],
-    fields: [
-      {
-        k: "kind",
-        t: "select",
-        label: "Type of enquiry",
-        opts: ["Advertisement", "Corporate Event", "Dance Class for Employees", "Product launch", "Conference", "Team offsite"],
-      },
-    ],
-  },
-  {
-    k: "judge",
-    label: "Invite as Judge",
-    sub: "battles · tournaments",
-    c: "#F59E0B",
-    /* judging is a person's job — offered to artists only (4934) */
-    to: ["artist_page"],
-    fields: [{ k: "event", t: "event", label: "Which event" }],
-  },
-  {
-    k: "private",
-    label: "Private Sessions",
-    sub: "one-on-one or small group",
-    c: "#22C55E",
-    to: ["studio", "artist_page"],
-    fields: [
-      { k: "format", t: "select", label: "Session format", opts: ["One-on-one", "Couple", "Small group (3–6)", "Group (7+)"] },
-      {
-        k: "style",
-        t: "select",
-        label: "Dance style",
-        opts: ["Hip-Hop", "Breaking", "Contemporary", "Bollywood", "Kathak", "Bharatanatyam", "Salsa", "Popping", "Freestyle"],
-      },
-      { k: "sessions", t: "count", label: "How many sessions", min: 1, max: 40, def: 8 },
-    ],
-  },
-  {
-    k: "collab",
-    label: "Collaboration",
-    sub: "content · workshops · campaigns",
+    k: "choreographer",
+    label: "Choreographer",
+    sub: "events · classes · shoots",
     c: "#8B5CF6",
     to: ["studio", "artist_page"],
     fields: [
       {
-        k: "kind",
+        k: "for",
         t: "select",
-        label: "Type of collaboration",
-        opts: ["Content shoot", "Guest workshop", "Co-choreography", "Brand campaign", "Music video", "Festival showcase"],
+        label: "What for",
+        opts: ["Event", "Classes", "Shoot"],
+        notes: ["wedding, party, show or festival", "private or corporate, any size", "music video, ad, content or campaign"],
       },
+      { k: "sessions", t: "count", label: "How many sessions", min: 1, max: 40, def: 1 },
+    ],
+  },
+  {
+    k: "performer",
+    label: "Performer",
+    sub: "events · shoots",
+    c: "#EC4899",
+    to: ["studio", "artist_page"],
+    fields: [
+      {
+        k: "for",
+        t: "select",
+        label: "What for",
+        opts: ["Event", "Shoot"],
+        notes: ["wedding, party, corporate or festival", "music video, ad, content or campaign"],
+      },
+      { k: "perfs", t: "count", label: "Number of performances", min: 1, max: 12, def: 1 },
+    ],
+  },
+  /* ⚠ JUDGE / GUEST keeps the key `judge` (the old "Invite as Judge"). Its "Which event" is free text — an event out in the world, never
+     one hosted here (there are none since 29 Sep). A person's job, so an
+     artist's alone (`send_enquiry` refuses a studio). */
+  {
+    k: "judge",
+    label: "Judge / Guest",
+    sub: "battles · workshops · guest appearances",
+    c: "#F59E0B",
+    to: ["artist_page"],
+    fields: [
+      {
+        k: "as",
+        t: "select",
+        label: "As",
+        opts: ["Judge", "Guest"],
+        notes: ["battle, tournament or competition", "workshop, chief guest or speaker"],
+      },
+      { k: "event", t: "event", label: "Which event" },
     ],
   },
 ];
 
 export const ENQ_TINT: Record<EnquiryTypeKey, string> = {
-  celebration: "#EC4899",
-  corporate: "#0EA5E9",
+  choreographer: "#8B5CF6",
+  performer: "#EC4899",
   judge: "#F59E0B",
-  private: "#22C55E",
-  collab: "#8B5CF6",
 };
 
 export const enquiryTypeOf = (k: string): EnquiryType | null => ENQ_TYPES.find((t) => t.k === k) ?? null;
 
 /** the types a business of this kind may be sent (dosEnqTypesFor 4935) */
-export const enquiryTypesFor = (kind: BusinessType): EnquiryType[] => ENQ_TYPES.filter((t) => t.to.includes(kind));
+export const enquiryTypesFor = (kind: BusinessType): EnquiryType<SendableEnquiryTypeKey>[] => ENQ_TYPES.filter((t) => t.to.includes(kind));
 
 /* ⚠ A CREW TAKES NO ENQUIRIES since 4 Oct 2026 (the user: "remove enquiries for
    crew") — its three-kind list went with it; `send_enquiry` refuses a crew. The
