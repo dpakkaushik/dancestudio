@@ -2,6 +2,13 @@
 
 ## LAST SESSION (4 Oct 2026) — replaced on every push (Rule 13)
 
+> ### MEMBER DETAIL'S CLASSES START CLOSED, AND A CLASS'S DETAILS ARE A SHORT LIST (4 Oct 2026, latest) — no migration · ✅ PUSHED AND LIVE (`1ad3bd6`: Vercel READY, alias confirmed on the sha through the API, `stranger-smoke` all green and a probe **17/17** in both themes ON THE LIVE SITE)
+> The user: *"relevant things inside the last collapse … remove unnecessary detail, stats, text from this last collapse … smaller class button … details written properly. class section should always have collapses completely closed in Artist, studio and dance style"*, then *"held, a session, To come and pay can be removed from this section"*.
+> * **Every group under Artist · Studio · Dance style starts CLOSED** (the open set is empty by default and cleared on every grouping switch).
+> * **A class's details** (`team-class-details`) are a `<dl>` of rows drawn only when they have something to say: **Assists** (who — only when they assist; the TEACHES chip already says the other), **Where** (studio · room), **Turn-up** (once a session is held), **Next / Last**, **Status** (class deleted / no longer on it). Gone: the two tile rows (Held · To come · Booked, Dancers in · Turn-up · A session), the sentence repeating them, "room for N", Sessions and Pay.
+> * **Open class ›** is a small pill (29px, `team-class-open`).
+> * **Verified:** typecheck 0 · lint 0 · build green · a probe as `demo.rhythm` on `:3100` and on the live site, both themes: every group closed under all three groupings, a group opening onto its classes, the details holding Where and Last and none of the removed rows, the small button, no sideways scroll, no page error.
+
 > ### MEMBER DETAIL'S CLASSES: GROUPS FOLD, THE STUDIO'S PICTURE, "TEACHES" NOT "TAKES IT", AND WHY A CLASS IS OFF (4 Oct 2026, latest) — no migration · ✅ PUSHED AND LIVE (`83c870a`: Vercel READY, alias confirmed on the sha through the API, `stranger-smoke` all green and a classes probe **21/21** in both themes ON THE LIVE SITE)
 > The user, looking at Deepak Kaushik's artist page: *"shows by deepak kaushik and by Deepak above artist, studio, dance style filter. why?"*, then *"make sure also able to collapse overall classes in artist, studio, dance style tabs, studio photo missing in studio filter. what does takes it signify and why is ended there"*.
 > * **On an artist page the "By … / By …" row and the "Created by" line are not drawn.** The split exists only at a studio (a member's own artist-page classes held in its rooms). On an artist page every class is the page's own, and the page carries the artist's name, so it read the same person twice.
