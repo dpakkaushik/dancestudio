@@ -53,20 +53,36 @@ export interface StudentClassRoutine {
   videoUrl: string | null;
 }
 
-/** one class they danced here — every session of it they were checked in to */
+/** ONE CLASS OF THEIRS HERE — every class they BOOKED a seat on, not only the ones
+ *  they were checked in to (4 Oct 2026, the user: "Student detail page classes
+ *  section should be handled similarly to how we did for team members but … should
+ *  be relevant according to the student"). What is relevant to a student is their
+ *  OWN seats on it: booked, checked in, missed, still to come. */
 export interface StudentClass {
   classId: string;
   shareSlug: string;
   style: string;
   level: string;
+  /** sessions of it they were checked in to */
   sessions: number;
+  /** the time those sessions ran */
   minutes: number;
-  lastAt: string;
+  /** seats they booked on it — live, not cancelled, not a waitlist place */
+  booked: number;
+  /** booked, over, and nobody checked them in */
+  missed: number;
+  /** booked and not started yet */
+  upcoming: number;
+  /** their last session of it that has started, and their next one */
+  lastAt: string | null;
+  nextAt: string | null;
   /** who took the class — its confirmed artist (4 Oct 2026); null when none */
   artist: { userId: string; name: string; photoPath: string | null } | null;
-  /** every session of it they were checked in to, newest first — the breakup */
-  sessionList: Array<{ startsAt: string; minutes: number }>;
-  /** the routines this class teaches — the breakup's links */
+  /** where it is held — the venue that said yes, else this business — and the room */
+  venueName: string | null;
+  venuePhoto: string | null;
+  room: string | null;
+  /** the routines this class teaches */
   routines: StudentClassRoutine[];
 }
 
@@ -160,6 +176,11 @@ function lastSixMonths(now: Date): Array<{ key: string; label: string }> {
 
 const n = (v: unknown) => Number(v ?? 0);
 
+/** what a class row carries for the Classes column — its name, its room, and
+ *  where it is held (the venue that said yes) */
+const CLASS_COLS = "style, level, share_slug, room, venue_business_id, venue_status";
+type ClassCols = { style: string; level: string; share_slug: string; room: string | null; venue_business_id: string | null; venue_status: string | null };
+
 export async function findStudentRecord(
   supabase: SupabaseClient,
   businessId: string,
@@ -170,14 +191,14 @@ export async function findStudentRecord(
     supabase.from("profiles").select("id, full_name, profile_photo_path, city").eq("id", userId).is("deleted_at", null).maybeSingle(),
     supabase
       .from("attendance")
-      .select("class_booking_id, class_id, class_sessions (starts_at, ends_at), classes (style, level, share_slug)")
+      .select(`class_booking_id, class_id, class_sessions (starts_at, ends_at), classes (${CLASS_COLS})`)
       .eq("business_id", businessId)
       .eq("user_id", userId)
       .is("deleted_at", null)
       .limit(2000),
     supabase
       .from("class_bookings")
-      .select("id, status, class_sessions (starts_at, ends_at)")
+      .select(`id, status, class_id, class_sessions (starts_at, ends_at), classes (${CLASS_COLS})`)
       .eq("business_id", businessId)
       .eq("user_id", userId)
       .is("deleted_at", null)
@@ -214,14 +235,18 @@ export async function findStudentRecord(
     class_booking_id: string;
     class_id: string;
     class_sessions: One<{ starts_at: string; ends_at: string }>;
-    classes: One<{ style: string; level: string; share_slug: string }>;
+    classes: One<ClassCols>;
   };
+  /* every class row met on the way, for the Classes column — a booked class
+     they have not danced yet is one of theirs too (4 Oct 2026) */
+  const classCols = new Map<string, ClassCols>();
   const sessions: StudentSession[] = [];
   const checkedBookings = new Set<string>();
   for (const r of (attendance.data ?? []) as unknown as AttRow[]) {
     checkedBookings.add(r.class_booking_id);
     const s = one(r.class_sessions);
     const c = one(r.classes);
+    if (c) classCols.set(r.class_id, c);
     if (!s || !c) continue;
     const minutes = Math.max(0, Math.round((new Date(s.ends_at).getTime() - new Date(s.starts_at).getTime()) / 60000));
     sessions.push({ classId: r.class_id, shareSlug: c.share_slug, style: c.style, level: c.level, startsAt: s.starts_at, minutes });
@@ -234,17 +259,34 @@ export async function findStudentRecord(
   let missed = 0;
   let cancelled = 0;
   const nowMs = now.getTime();
-  for (const b of (bookings.data ?? []) as unknown as Array<{ id: string; status: string; class_sessions: One<{ starts_at: string; ends_at: string }> }>) {
+  /* per class, their own seats — what the Classes column counts */
+  type Seats = { booked: number; missed: number; upcoming: number; lastAt: string | null; nextAt: string | null };
+  const seatsByClass = new Map<string, Seats>();
+  for (const b of (bookings.data ?? []) as unknown as Array<{ id: string; status: string; class_id: string; class_sessions: One<{ starts_at: string; ends_at: string }>; classes: One<ClassCols> }>) {
     if (b.status === "cancelled") {
       cancelled += 1;
       continue;
     }
     if (b.status !== "enrolled") continue; // a waitlist place is not a seat
     booked += 1;
+    const c = one(b.classes);
+    if (c) classCols.set(b.class_id, c);
+    const seat = seatsByClass.get(b.class_id) ?? { booked: 0, missed: 0, upcoming: 0, lastAt: null, nextAt: null };
+    seat.booked += 1;
+    seatsByClass.set(b.class_id, seat);
     const s = one(b.class_sessions);
     if (!s) continue;
-    if (new Date(s.starts_at).getTime() > nowMs) upcoming += 1;
-    else if (new Date(s.ends_at).getTime() <= nowMs && !checkedBookings.has(b.id)) missed += 1;
+    if (new Date(s.starts_at).getTime() > nowMs) {
+      upcoming += 1;
+      seat.upcoming += 1;
+      if (!seat.nextAt || s.starts_at < seat.nextAt) seat.nextAt = s.starts_at;
+    } else {
+      if (!seat.lastAt || s.starts_at > seat.lastAt) seat.lastAt = s.starts_at;
+      if (new Date(s.ends_at).getTime() <= nowMs && !checkedBookings.has(b.id)) {
+        missed += 1;
+        seat.missed += 1;
+      }
+    }
   }
 
   /* ── the six months ── */
@@ -261,7 +303,17 @@ export async function findStudentRecord(
   const styles = [...byStyle.entries()].map(([style, count]) => ({ style, n: count })).sort((a, b) => b.n - a.n || a.style.localeCompare(b.style));
 
   /* ── who taught them here — the class's confirmed artist, one read for all ── */
-  const artists = await findClassArtists(supabase, sessions.map((s) => s.classId)).catch(() => new Map());
+  const allClassIds = [...classCols.keys()];
+  /* where each class is held — the venue that said yes, else this business —
+     with its name and picture, read once for the column; degrade, never fail */
+  const venueOf = (c: ClassCols) => (c.venue_status === "accepted" && c.venue_business_id ? c.venue_business_id : businessId);
+  const venueIds = [...new Set([...classCols.values()].map(venueOf))];
+  const [artists, venueRes] = await Promise.all([
+    findClassArtists(supabase, allClassIds).catch(() => new Map()),
+    venueIds.length ? supabase.from("businesses").select("id, name, profile_photo_path").in("id", venueIds) : Promise.resolve({ data: [] as unknown[] }),
+  ]);
+  const venues = new Map<string, { name: string; photo: string | null }>();
+  for (const b of (venueRes.data ?? []) as Array<{ id: string; name: string; profile_photo_path: string | null }>) venues.set(b.id, { name: b.name, photo: b.profile_photo_path });
   const byTeacher = new Map<string, { userId: string; name: string; photoPath: string | null; n: number }>();
   for (const s of sessions) {
     const a = artists.get(s.classId);
@@ -272,31 +324,46 @@ export async function findStudentRecord(
   }
   const teachers = [...byTeacher.values()].sort((a, b) => b.n - a.n || a.name.localeCompare(b.name));
 
-  /* ── the classes, one row each — counted off the same sessions (4 Oct 2026) ── */
+  /* ── THE CLASSES, ONE ROW EACH (4 Oct 2026) — every class they hold or held a
+     seat on here, with their OWN seats on it, and the check-ins counted off the
+     same attendance rows the Stats column counts ── */
   const byClass = new Map<string, StudentClass>();
+  for (const [classId, cols] of classCols) {
+    const a = artists.get(classId);
+    const seat = seatsByClass.get(classId);
+    const v = venues.get(venueOf(cols));
+    byClass.set(classId, {
+      classId,
+      shareSlug: cols.share_slug,
+      style: cols.style,
+      level: cols.level,
+      sessions: 0,
+      minutes: 0,
+      booked: seat?.booked ?? 0,
+      missed: seat?.missed ?? 0,
+      upcoming: seat?.upcoming ?? 0,
+      lastAt: seat?.lastAt ?? null,
+      nextAt: seat?.nextAt ?? null,
+      artist: a ? { userId: a.userId, name: a.name, photoPath: a.avatarPath ?? null } : null,
+      venueName: v?.name ?? null,
+      venuePhoto: v?.photo ?? null,
+      room: cols.room || null,
+      routines: [],
+    });
+  }
   for (const s of sessions) {
-    const a = artists.get(s.classId);
-    const c: StudentClass =
-      byClass.get(s.classId) ??
-      {
-        classId: s.classId,
-        shareSlug: s.shareSlug,
-        style: s.style,
-        level: s.level,
-        sessions: 0,
-        minutes: 0,
-        lastAt: s.startsAt,
-        artist: a ? { userId: a.userId, name: a.name, photoPath: a.avatarPath ?? null } : null,
-        sessionList: [],
-        routines: [],
-      };
+    const c = byClass.get(s.classId);
+    if (!c) continue;
     c.sessions += 1;
     c.minutes += s.minutes;
-    c.sessionList.push({ startsAt: s.startsAt, minutes: s.minutes });
-    if (s.startsAt > c.lastAt) c.lastAt = s.startsAt;
-    byClass.set(s.classId, c);
+    if (!c.lastAt || s.startsAt > c.lastAt) c.lastAt = s.startsAt;
   }
-  const classes = [...byClass.values()].sort((a, b) => b.lastAt.localeCompare(a.lastAt));
+  /* what is coming first (soonest), then what is over (most recent) */
+  const classes = [...byClass.values()].sort(
+    (a, b) =>
+      Number(Boolean(b.nextAt)) - Number(Boolean(a.nextAt)) ||
+      (a.nextAt && b.nextAt ? a.nextAt.localeCompare(b.nextAt) : (b.lastAt ?? "").localeCompare(a.lastAt ?? "")),
+  );
 
   /* ── the routines those classes taught. `class_routines` is readable by
      whoever can read the class (20260919160000), and a business's runners read

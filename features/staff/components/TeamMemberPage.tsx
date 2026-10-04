@@ -1,6 +1,6 @@
 import type { CSSProperties, ReactNode } from "react";
 
-import { DeskHero } from "@/features/businesses/components/biz-kit";
+import { DOS_TOOLS, DeskHero } from "@/features/businesses/components/biz-kit";
 import { SegmentedPanels } from "@/features/shell/components/SegmentedNav";
 import { ToolBody, ToolCard, ToolChip, ToolFacts, ToolHead, ToolTitle } from "@/components/ui/ToolCard";
 import { FigureHead } from "@/components/ui/FigureHead";
@@ -286,7 +286,10 @@ export function TeamMemberPage({
   principalOwnerId: string | null;
 }) {
   const L = MEMBER_LABEL[member.role];
-  const tint = L.colour;
+  /* ⚠ THE PAGE WEARS THE TEAM TOOL'S COLOUR (4 Oct 2026, the user: "all team
+     member cards and member detail pages should have Team member color theme
+     cards and buttons") — the role keeps its own colour on the eyebrow alone */
+  const tint = DOS_TOOLS.team.c;
   const base = `/business/${businessId}/staff/${member.userId}`;
   /* THE TEAM MEMBER'S OWN CARD, OPENED — the same three bands as their card on
      the Team desk, so the press and the page read as one object */
@@ -294,9 +297,11 @@ export function TeamMemberPage({
     <>
       {/* ⚠ NOTHING BETWEEN THE HEADING AND THE CARD (4 Oct 2026, the user) */}
       <DeskHero tool="team" as="h1" margin="0 0 12px" />
-      <ToolCard edge={tint} testId="team-member">
+      {/* no bold line on the left (4 Oct 2026) */}
+      <ToolCard testId="team-member">
         <ToolHead
           tint={tint}
+          eyebrowTint={L.colour}
           name={member.name}
           photoPath={member.avatarPath}
           href={`/person/${member.userId}`}

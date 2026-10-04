@@ -4,13 +4,11 @@ import { DOS_TOOLS } from "@/features/businesses/components/biz-kit";
 import { SegmentedPanels } from "@/features/shell/components/SegmentedNav";
 import { ProgressBar, SpentOn, expiryWords, unitWord } from "@/features/memberships/components/usage-kit";
 import { money as rupees } from "@/features/payouts/components/earnings-kit";
-import { RoutineMediaButton } from "@/features/routines/components/routine-kit";
-import { ToolBody, ToolCard, ToolChip, ToolFace, ToolFacts, ToolHead, ToolTitle, inkOn, toolBtn } from "@/components/ui/ToolCard";
-import { photoUrl } from "@/lib/media/photo";
+import { ToolBody, ToolCard, ToolChip, ToolFace, ToolFacts, ToolTitle } from "@/components/ui/ToolCard";
 import { FigureHead } from "@/components/ui/FigureHead";
-import { DOS_LEVEL_LABEL, dosStyleColor } from "@/lib/constants/styles";
 import { DOS_DISPLAY, DOS_UI, INK, LILAC, MUTED, SUB } from "@/lib/design/tokens";
 import type { StudentRecord } from "@/repositories/studentRecord";
+import { StudentClassesPanel } from "./StudentClassesPanel";
 
 /** ONE STUDENT, FROM THIS STUDIO'S OR THIS ARTIST'S SIDE (3 Oct 2026, the user:
  *  *"Students should also have a stats Button next to profile which should give
@@ -34,7 +32,6 @@ const head: CSSProperties = { fontSize: 10, fontWeight: 900, letterSpacing: 1, c
 const panel: CSSProperties = { background: "var(--card)", border: "1.5px solid var(--el)", borderRadius: 18, padding: "13px 14px", marginBottom: 12 };
 
 const dateWords = (iso: string) => new Intl.DateTimeFormat("en-IN", { day: "numeric", month: "short", year: "numeric", timeZone: "Asia/Kolkata" }).format(new Date(iso));
-const dayWords = (iso: string) => new Intl.DateTimeFormat("en-IN", { weekday: "short", day: "numeric", month: "short", timeZone: "Asia/Kolkata" }).format(new Date(iso));
 const hoursWords = (min: number) => {
   const h = min / 60;
   return h === 0 ? "0" : h < 10 ? (Math.round(h * 10) / 10).toString() : String(Math.round(h));
@@ -150,151 +147,7 @@ function StatsPanel({ r }: { r: StudentRecord }) {
   );
 }
 
-/** a session's length in words — "1 h", "1.5 h", "45 min" */
-const lengthWords = (min: number) => (min < 60 ? `${min} min` : `${Math.round((min / 60) * 10) / 10} h`);
-
 const empty: CSSProperties = { ...panel, textAlign: "center", border: "1.5px dashed var(--el)", fontSize: 12, color: SUB, lineHeight: 1.55 };
-
-/** CLASSES — the first column (4 Oct 2026, the user: "classes- should have artist
- *  name and pic with totals for session and hours and dance styles count,
- *  routines count- on collapse should show break up of classes and routine links
- *  in collapsible tile for a class figures in every section").
- *
- *  THE COLUMN'S FIGURES FIRST — sessions, hours, styles, routines, counted off the
- *  same rows the tiles under them print.
- *
- *  ⚠ THEN THE ARTIST IS THE UPPER LAYER AND THE STYLE THE INNER ONE (4 Oct 2026,
- *  the user, the same day: "artist should be the upper layer and dance style
- *  being the inner with break up inside"). One card per artist who taught them
- *  here — the face and name a door to that artist's page, and that artist's own
- *  figures — and inside it one tile per class they took with that artist, which
- *  opens (a native `<details>`) onto the BREAKUP: every session they were checked
- *  in to, each routine the class teaches with its song and video, and the way to
- *  the class itself. A class with no confirmed artist sits under its own card
- *  that says so, rather than vanishing. */
-type ArtistGroup = { key: string; userId: string | null; name: string; photoPath: string | null; classes: StudentRecord["classes"] };
-
-function groupByArtist(classes: StudentRecord["classes"]): ArtistGroup[] {
-  const map = new Map<string, ArtistGroup>();
-  for (const c of classes) {
-    const key = c.artist?.userId ?? "none";
-    const g = map.get(key) ?? { key, userId: c.artist?.userId ?? null, name: c.artist?.name ?? "No artist on record", photoPath: c.artist?.photoPath ?? null, classes: [] };
-    g.classes.push(c);
-    map.set(key, g);
-  }
-  const sessionsOf = (g: ArtistGroup) => g.classes.reduce((s, c) => s + c.sessions, 0);
-  /* most danced first; the no-artist card always last */
-  return [...map.values()].sort((a, b) => (a.userId ? 0 : 1) - (b.userId ? 0 : 1) || sessionsOf(b) - sessionsOf(a) || a.name.localeCompare(b.name));
-}
-
-function ClassesPanel({ r }: { r: StudentRecord }) {
-  const groups = groupByArtist(r.classes);
-  return (
-    <>
-      <div style={panel}>
-        <ToolFacts
-          tint={TINT}
-          items={[
-            { label: "Sessions", value: r.attended, testId: "student-classes-sessions" },
-            { label: "Hours", value: hoursWords(r.minutes) },
-            { label: "Styles", value: r.styles.length, testId: "student-classes-styles" },
-            { label: "Routines", value: r.routines.length, testId: "student-classes-routines" },
-          ]}
-        />
-      </div>
-      {r.classes.length === 0 ? <div style={empty}>A class appears here once {r.name} is checked in to it.</div> : null}
-      {groups.map((g) => {
-        const sessions = g.classes.reduce((s, c) => s + c.sessions, 0);
-        const minutes = g.classes.reduce((s, c) => s + c.minutes, 0);
-        const styles = new Set(g.classes.map((c) => c.style)).size;
-        const routines = new Set(g.classes.flatMap((c) => c.routines.map((x) => x.routineId))).size;
-        return (
-          <ToolCard key={g.key} testId="student-artist">
-            <ToolHead
-              tint={TINT}
-              name={g.name}
-              photoPath={g.photoPath}
-              href={g.userId ? `/person/${g.userId}` : undefined}
-              hrefLabel={`Open ${g.name}'s profile`}
-              eyebrow={g.userId ? "Artist" : "Artist · none confirmed"}
-              icon={g.userId ? undefined : "—"}
-            />
-            <ToolBody>
-              <ToolFacts
-                tint={TINT}
-                items={[
-                  { label: "Sessions", value: sessions },
-                  { label: "Hours", value: hoursWords(minutes) },
-                  { label: "Styles", value: styles },
-                  { label: "Routines", value: routines },
-                ]}
-              />
-              {g.classes.map((c) => (
-                <ClassTile key={c.classId} c={c} />
-              ))}
-            </ToolBody>
-          </ToolCard>
-        );
-      })}
-    </>
-  );
-}
-
-/** the INNER layer — one class, by its dance style, opening onto its breakup */
-function ClassTile({ c }: { c: StudentRecord["classes"][number] }) {
-  const level = DOS_LEVEL_LABEL[c.level] ?? c.level;
-  const col = dosStyleColor(c.style);
-  return (
-                <details data-testid="student-class" style={{ marginTop: 8, border: "1.5px solid var(--el)", borderLeft: `4px solid ${col}`, borderRadius: 14, padding: "10px 12px", background: `${col}0a` }}>
-                  <summary style={{ cursor: "pointer", display: "flex", alignItems: "center", gap: 8, color: INK }}>
-                    <span style={{ flex: 1, minWidth: 0 }}>
-                      <span style={{ display: "flex", alignItems: "center", gap: 6, minWidth: 0 }}>
-                        <span style={{ flexShrink: 0, padding: "2px 8px", borderRadius: 999, background: col, color: inkOn(col), fontSize: 10, fontWeight: 900 }}>{c.style}</span>
-                        <span style={{ fontSize: 12.5, fontWeight: 900, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{level}</span>
-                      </span>
-                      <span style={{ display: "block", fontSize: 11, color: SUB, marginTop: 4, fontVariantNumeric: "tabular-nums" }}>
-                        {c.sessions} {c.sessions === 1 ? "session" : "sessions"} · {hoursWords(c.minutes)} h · {c.routines.length} {c.routines.length === 1 ? "routine" : "routines"}
-                      </span>
-                    </span>
-                    <span style={{ flexShrink: 0, textAlign: "right", fontSize: 10.5, color: SUB, fontWeight: 700 }}>
-                      {dayWords(c.lastAt)}
-                      <span style={{ display: "block", fontSize: 10, fontWeight: 900, color: INK, marginTop: 3 }}>Breakup ▾</span>
-                    </span>
-                  </summary>
-                  <div style={{ ...head, margin: "10px 0 4px" }}>SESSIONS</div>
-                  {c.sessionList.map((s) => (
-                    <div key={s.startsAt} style={{ display: "flex", justifyContent: "space-between", gap: 8, padding: "4px 0", fontSize: 11.5, borderTop: "1px dashed var(--el)" }}>
-                      <span>{dayWords(s.startsAt)}</span>
-                      <span style={{ color: SUB, fontVariantNumeric: "tabular-nums" }}>{lengthWords(s.minutes)}</span>
-                    </div>
-                  ))}
-                  <div style={{ ...head, margin: "10px 0 4px" }}>ROUTINES</div>
-                  {c.routines.length === 0 ? (
-                    <div style={{ fontSize: 11.5, color: SUB }}>This class teaches no routine yet.</div>
-                  ) : (
-                    c.routines.map((rt) => {
-                      const rcol = dosStyleColor(rt.style);
-                      const songHref = rt.songUrl ? (rt.songIsFile ? photoUrl(rt.songUrl) : rt.songUrl) : null;
-                      return (
-                        <div key={rt.routineId} data-testid="student-class-routine" style={{ padding: "7px 0", borderTop: "1px dashed var(--el)" }}>
-                          <div style={{ display: "flex", alignItems: "center", gap: 7, minWidth: 0 }}>
-                            <span style={{ flex: 1, minWidth: 0, fontSize: 12.5, fontWeight: 900, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{rt.title}</span>
-                            <span style={{ flexShrink: 0, padding: "2px 8px", borderRadius: 999, background: rcol, color: inkOn(rcol), fontSize: 9.5, fontWeight: 900 }}>{rt.style}</span>
-                          </div>
-                          <div style={{ display: "flex", gap: 6, marginTop: 6 }}>
-                            <RoutineMediaButton kind="song" href={songHref} word={rt.songIsFile && !rt.songTitle ? "MP3" : "Song"} title={rt.title} extra={{ padding: "7px 10px", fontSize: 11 }} />
-                            <RoutineMediaButton kind="video" href={rt.videoUrl} word="Video" title={rt.title} extra={{ padding: "7px 10px", fontSize: 11 }} />
-                          </div>
-                        </div>
-                      );
-                    })
-                  )}
-                  <Link href={`/c/${c.shareSlug}`} aria-label={`Open ${c.style} · ${level}`} style={{ ...toolBtn("secondary", col), marginTop: 10, width: "100%", boxSizing: "border-box" }}>
-                    Open the class ›
-                  </Link>
-                </details>
-  );
-}
 
 /** EARNINGS — the fourth column (4 Oct 2026, the user: "remove routines from
  *  column and replace with earnings from this student"). What this business took
@@ -467,13 +320,15 @@ export function StudentRecordScreen({ businessId, businessName, record, show }: 
            replace with earnings from this student"); each class tile carries its
            own routines in its breakup now, and the Classes figures count them. */
         segments={[
-          { key: "classes", href: `${base}?show=classes`, label: "Classes", n: r.classes.length, aria: `${r.name}'s classes here` },
+          /* ⚠ NO COUNTERS ON THE COLUMNS (4 Oct 2026, the user: "no column
+             counter for student detail page") — the Team page's rule */
+          { key: "classes", href: `${base}?show=classes`, label: "Classes", aria: `${r.name}'s classes here` },
           { key: "stats", href: `${base}?show=stats`, label: "Stats", aria: `${r.name}'s stats here` },
-          { key: "membership", href: `${base}?show=membership`, label: "Membership", n: r.passes.length, aria: `${r.name}'s memberships here` },
+          { key: "membership", href: `${base}?show=membership`, label: "Membership", aria: `${r.name}'s memberships here` },
           { key: "earnings", href: `${base}?show=earnings`, label: "Earnings", aria: `Earnings from ${r.name}` },
         ]}
         panels={[
-          { key: "classes", node: <ClassesPanel r={r} /> },
+          { key: "classes", node: <StudentClassesPanel classes={r.classes} tint={TINT} studentName={r.name} /> },
           { key: "stats", node: <StatsPanel r={r} /> },
           { key: "membership", node: <MembershipPanel r={r} businessId={businessId} businessName={businessName} /> },
           { key: "earnings", node: <EarningsPanel r={r} businessName={businessName} /> },

@@ -74,6 +74,8 @@ import {
  *
  *  The waiting rows wear the prototype's own "⏳ Invited" treatment (18578). */
 
+/** a team member's card wears the Team tool's colour; the role keeps its own on the eyebrow */
+const TEAM_TINT = DOS_TOOLS.team.c;
 const CARD = "var(--card)";
 const EL = "var(--el)";
 const DOS_MONO = 'ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace';
@@ -384,10 +386,17 @@ export function StaffDesk({
                  then the three figures a team row is read by; then the buttons on a
                  bar of their own — Pay, History, Manage — so arranging, paying and
                  opening the sheet are three presses that cannot be confused. */
+              /* ⚠ THE CARD WEARS THE TEAM TOOL'S COLOUR (4 Oct 2026, the user: "all
+                 team member cards … should have Team member color theme cards and
+                 buttons. remove bold line from left of the card. only role mentioned
+                 above name and artist/user to retain color from their roles color")
+                 — no edge; the wash, the face, the tiles and the buttons are Team's,
+                 and only the eyebrow (FACULTY · ARTIST) keeps the role's colour */
               return (
-                <ToolCard key={m.userId} edge={L.colour}>
+                <ToolCard key={m.userId}>
                   <ToolHead
-                    tint={L.colour}
+                    tint={TEAM_TINT}
+                    eyebrowTint={L.colour}
                     name={m.name}
                     photoPath={m.avatarPath}
                     href={`/person/${m.userId}`}
@@ -398,7 +407,7 @@ export function StaffDesk({
                     right={
                       <>
                       {/* ⚠ "You", capital Y, as a pill on the top right (4 Oct 2026) */}
-                      {mine ? <ToolChip word="You" fg={L.colour} bg={`${L.colour}1c`} testId="team-you" /> : null}
+                      {mine ? <ToolChip word="You" fg={TEAM_TINT} bg={`${TEAM_TINT}1c`} testId="team-you" /> : null}
                       {/* ── THE ORDER, WITHIN THE GROUP (20 Sep 2026) ── they swap with
                          their NEIGHBOUR IN THE SAME GROUP; the stored `sort` is still
                          one global order. Drawn even for a group of one, disabled —
@@ -436,7 +445,7 @@ export function StaffDesk({
                   />
                   <ToolBody>
                     <ToolFacts
-                      tint={L.colour}
+                      tint={TEAM_TINT}
                       items={[
                         { label: "Paid", value: rupees(paidTotal) },
                         { label: paid.length === 1 ? "Payment" : "Payments", value: paid.length },
@@ -451,7 +460,7 @@ export function StaffDesk({
                         type="button"
                         aria-label={`Pay ${m.name}`}
                         onClick={() => { setPay({ amount: "", method: "upi", status: "done", note: "" }); setError(null); setPayFor(m); }}
-                        style={toolBtn("primary", L.colour)}
+                        style={toolBtn("primary", TEAM_TINT)}
                       >
                         Pay
                       </button>
@@ -459,7 +468,7 @@ export function StaffDesk({
                           user: "Remove manage button from card and shift inside
                           history page on top right as a pill. history to be renamed
                           as Member Detail") — the sheet is the pill on that page */}
-                      <Link href={`/business/${businessId}/staff/${m.userId}`} aria-label={`Member Detail — ${m.name}`} style={toolBtn("tinted", L.colour)}>
+                      <Link href={`/business/${businessId}/staff/${m.userId}`} aria-label={`Member Detail — ${m.name}`} style={toolBtn("tinted", TEAM_TINT)}>
                         Member Detail ›
                       </Link>
                     </ToolActions>
@@ -473,9 +482,10 @@ export function StaffDesk({
             {waiting.map((inv) => {
               const declined = inv.status === "declined";
               return (
-                <ToolCard key={inv.id} edge={L.colour} dim={declined}>
+                <ToolCard key={inv.id} dim={declined}>
                   <ToolHead
-                    tint={L.colour}
+                    tint={TEAM_TINT}
+                    eyebrowTint={L.colour}
                     name={inv.name}
                     photoPath={null}
                     eyebrow={`${MEMBER_ROLE_WORD[inv.memberRole]} · asked`}
@@ -489,14 +499,14 @@ export function StaffDesk({
                   </ToolBody>
                   {isOwner && (
                     <ToolActions>
-                      <button type="button" aria-label={`Show the invite for ${inv.name}`} onClick={() => setShareInvite(inv)} style={toolBtn("secondary", L.colour)}>
+                      <button type="button" aria-label={`Show the invite for ${inv.name}`} onClick={() => setShareInvite(inv)} style={toolBtn("secondary", TEAM_TINT)}>
                         Show QR &amp; link
                       </button>
                       <button
                         type="button"
                         aria-label={`Withdraw the invite for ${inv.name}`}
                         onClick={() => run(() => revokeInviteAction({ businessId, inviteId: inv.id }), `${inv.name} — invite withdrawn`)}
-                        style={toolBtn("danger", L.colour)}
+                        style={toolBtn("danger", TEAM_TINT)}
                       >
                         Withdraw
                       </button>

@@ -57,7 +57,7 @@ const timeWords = (iso: string): string => {
  *  icon badge color in place of profile pic") — the style's own badge (the coin,
  *  DosStyleCoin 3400: its colour, its initials) in the profile picture's squircle,
  *  so the three groupings wear one shape of face. */
-function StyleBadge({ style, size }: { style: string; size: number }) {
+export function StyleBadge({ style, size }: { style: string; size: number }) {
   const c = dosStyleColor(style) || "#5AC8FA";
   const initials =
     style

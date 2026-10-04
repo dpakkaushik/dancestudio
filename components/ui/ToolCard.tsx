@@ -148,7 +148,11 @@ export function ToolHead({
   size = 58,
   onFace,
   faceLabel,
+  eyebrowTint,
 }: {
+  /** the eyebrow's own colour, when it differs from the card's — a team member's
+   *  card wears the Team tool's colour and their ROLE keeps its own (4 Oct 2026) */
+  eyebrowTint?: string;
   /** the FACE alone is a button — an asset's picture opens itself (4 Oct 2026).
    *  Not used with `href`, which already makes the face a door. */
   onFace?: () => void;
@@ -180,7 +184,7 @@ export function ToolHead({
         face
       )}
       <span style={{ flex: 1, minWidth: 0, display: "block" }}>
-        <span style={{ display: "block", fontSize: 9.5, fontWeight: 900, letterSpacing: 0.8, textTransform: "uppercase", color: tint, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{eyebrow}</span>
+        <span style={{ display: "block", fontSize: 9.5, fontWeight: 900, letterSpacing: 0.8, textTransform: "uppercase", color: eyebrowTint ?? tint, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{eyebrow}</span>
         <span style={{ display: "flex", alignItems: "center", gap: 5, minWidth: 0, marginTop: 2 }}>
           <span style={{ minWidth: 0, fontFamily: DOS_DISPLAY, fontSize: 18, fontWeight: 800, letterSpacing: -0.4, lineHeight: 1.18, color: INK, display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden", overflowWrap: "anywhere" }}>{name}</span>
           {afterName}

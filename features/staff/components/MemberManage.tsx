@@ -103,9 +103,10 @@ export function MemberManage({
             <div role="dialog" aria-modal="true" aria-label={m.name} onClick={(e) => e.stopPropagation()} style={sheetBody}>
               <SheetHandle />
               <div
-                style={{ display: "flex", alignItems: "center", gap: 12, padding: "12px", margin: "0 0 14px", borderRadius: 16, background: `linear-gradient(135deg, ${L.colour}24, ${L.colour}08 62%, transparent)`, border: `1.5px solid ${EL}`, color: INK }}
+                style={{ display: "flex", alignItems: "center", gap: 12, padding: "12px", margin: "0 0 14px", borderRadius: 16, background: `linear-gradient(135deg, ${tint}24, ${tint}08 62%, transparent)`, border: `1.5px solid ${EL}`, color: INK }}
               >
-                <ToolFace name={m.name} photoPath={m.avatarPath} tint={L.colour} size={52} />
+                {/* the Team colour, like the card that opened this; the role keeps its own on the eyebrow */}
+                <ToolFace name={m.name} photoPath={m.avatarPath} tint={tint} size={52} />
                 <span style={{ flex: 1, minWidth: 0 }}>
                   <span style={{ display: "block", fontSize: 9.5, fontWeight: 900, letterSpacing: 0.8, textTransform: "uppercase", color: L.colour }}>
                     {MEMBER_ROLE_WORD[m.role]} · {KIND_WORD[kindOf(m.isArtist)]}

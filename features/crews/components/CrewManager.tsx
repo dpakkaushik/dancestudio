@@ -20,6 +20,9 @@ import { DOS_DISPLAY, DOS_UI, INK, LILAC, MUTED } from "@/lib/design/tokens";
 import { CREW_ROLE_TINT, CREW_ROLE_WORD, type Crew, type CrewMember, type CrewRole } from "@/types/crew";
 import { Toast, bizCard, sinceWords } from "./crew-kit";
 
+/** a crew member's card wears the Team tool's colour; the role keeps its own on the eyebrow */
+const TEAM_TINT = DOS_TOOLS.team.c;
+
 /** the roster's groups, in the crew's own order — the leader first */
 const ROLE_ORDER: ReadonlyArray<CrewRole> = ["leader", "member", "trainee"];
 /** the plural a group and its counter are headed by, as the studio desk's are */
@@ -165,9 +168,14 @@ export function CrewManager({ crew, members }: { crew: Crew; members: CrewMember
                  arrows stay beside the person they move; and Promote / Make leader /
                  Remove sit on their own bar — a card only offers what it can change. */
               return (
-                <ToolCard key={m.id} edge={rc} dim={pending}>
+                /* ⚠ THE TEAM TOOL'S COLOUR, NO EDGE (4 Oct 2026, the user: "all team
+                   member cards … Team member color theme cards and buttons. remove
+                   bold line from left of the card") — the role keeps its colour on
+                   the eyebrow alone */
+                <ToolCard key={m.id} dim={pending}>
                   <ToolHead
-                    tint={rc}
+                    tint={TEAM_TINT}
+                    eyebrowTint={rc}
                     name={m.name}
                     photoPath={m.avatarPath ?? null}
                     href={`/person/${m.userId}`}
@@ -203,7 +211,7 @@ export function CrewManager({ crew, members }: { crew: Crew; members: CrewMember
                   />
                   <ToolBody>
                     <ToolFacts
-                      tint={rc}
+                      tint={TEAM_TINT}
                       items={[
                         { label: pending ? "Asked" : "On the crew since", value: sinceWords(m.createdAt) },
                         { label: "Status", value: pending ? "Waiting" : "Confirmed", tint: pending ? "#F59E0B" : "#22C55E" },
@@ -226,7 +234,7 @@ export function CrewManager({ crew, members }: { crew: Crew; members: CrewMember
                               `${m.name} → ${m.role === "trainee" ? "Member" : "Leader"}`
                             )
                           }
-                          style={toolBtn("tinted", rc)}
+                          style={toolBtn("tinted", TEAM_TINT)}
                         >
                           {m.role === "trainee" ? "Promote" : "Make leader"}
                         </button>
@@ -241,7 +249,7 @@ export function CrewManager({ crew, members }: { crew: Crew; members: CrewMember
                             pending ? `Withdrawn — ${m.name} is no longer being asked` : `${m.name} removed from the crew`
                           )
                         }
-                        style={toolBtn("danger", rc)}
+                        style={toolBtn("danger", TEAM_TINT)}
                       >
                         {pending ? "Withdraw" : "Remove"}
                       </button>
