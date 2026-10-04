@@ -2,6 +2,27 @@
 
 ## LAST SESSION (4 Oct 2026) — replaced on every push (Rule 13)
 
+> ### EARNINGS FOLDS ONTO ITS ENTRIES, WITH A PERIOD ON THE KEY STATS (4 Oct 2026, latest) — no migration · ✅ PUSHED AND LIVE (`02fbd01`: Vercel READY, alias confirmed on the sha through the API, `stranger-smoke` all green ON THE LIVE SITE; **the happy path 19/19 in 13.4 min** on `:3100` first)
+> The user: *"Earnings all section I mentioned should be collapsible with entries for it"*, *"concise text in these section with payments"*, *"all sections in earnings should be collapsible … for team member detail"*, *"there should be a time period filter above the stats boxes in earnings and a part of that section"*. Their "cancel" withdrew the Stats-column folds; only Earnings changed.
+> * **Every Earnings section is a `<details>` fold** (`Fold`):
+>   * Key stats starts open. Revenue, Paid to them, Still owed and Total earnings start closed.
+>   * Each head carries its figure and the entry count.
+> * **What each fold opens onto:**
+>   * **Revenue**: every payment and refund, with who paid, the class date and the method.
+>   * **Paid to them**: every payout. The separate card list is gone.
+>   * **Still owed**: every unpaid session.
+>   * **Total earnings**: its own sum.
+>   * Test ids: `team-fold-{stats,revenue,paid,owed}` and `team-total-line` / `team-total-figure`.
+> * `findTeamMemberWork` gained `revenueEntries` and `owedEntries`. These are the same rows the totals are summed from, and payer names come from one profiles read.
+> * **The period**:
+>   * **All · Day · Week · Month · Year** sit inside Key stats, above the boxes (`team-period`, `?period=`). They use the main Earnings desk's IST buckets: the current day, week, month or year.
+>   * Every figure, list and the total are re-summed from the entries in the period.
+> * **Concise words** throughout. ⚠ The e2e now reads "Not against sessions." and "Membership seats not included".
+> * **Verified:**
+>   * typecheck 0 · lint 0 · `audit:reads` 0 · build green.
+>   * The real-money entries add up to each figure: 9/9 for Alisha, Jishnu and Deepak on the user's studio.
+>   * A browser probe ran **69/69** in both themes: every fold opens and closes, the entries add up, the period narrows every figure (Day hides the 3 Oct ₹1,500 payment), there is no sideways scroll and no page error.
+
 > ### MEMBER DETAIL'S PAYMENTS IS EARNINGS, AND THE CREW FORM SAYS CITY ONCE (4 Oct 2026, latest) — no migration · ✅ PUSHED AND LIVE (`1008618`: Vercel READY, alias confirmed on the sha through the API, `stranger-smoke` all green ON THE LIVE SITE)
 > The user: *"create crew form city repeated twice remove the small one. Team member detail payment section should be renamed as Earnings- should show key stats on top and give break up first revenue for the team then break up of what was paid to them and what is still owed by them - whatever left is the Total earnings"*. The previous chat built and checked this and died on "Prompt is too long" while the e2e was still running. This session re-verified it and pushed it on *"push to live"*.
 > * **The column is Earnings** (`?show=earnings`; an old `?show=payments` lands there).
