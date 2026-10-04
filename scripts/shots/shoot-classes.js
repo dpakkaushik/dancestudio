@@ -590,7 +590,11 @@ const BOOK_ON_PAGE = /^Book Now$/;
     check(/Bharatanatyam/.test(await myPass.innerText()), "…naming the class the unit went on");
     check((await myPass.getByTestId("pass-progress").getAttribute("aria-label")) === "1 of 2 used", "…and the bar agrees with the list — one number (Step 25)");
 
+    /* through the OLD address on purpose (5 Oct 2026): `/memberships/{id}` was a
+       second copy of the studio's own details page and only forwards there now,
+       looking the seller up — so this proves the forward lands on THIS studio */
     await oPage.goto(`${BASE}/memberships/${mem.id}`, { waitUntil: "networkidle" });
+    check(new URL(oPage.url()).pathname === `/business/${studio.id}/memberships/${mem.id}`, `the old /memberships/{id} address forwards to the studio's own details page (${new URL(oPage.url()).pathname})`);
     const holder = oPage.getByTestId("membership-holder");
     check((await holder.count()) === 1 && (await holder.getByTestId("spent-on").count()) === 1, "⚠ the seller's usage page says which class THIS holder spent theirs on — the cross of its two lists");
     check(/1 class still owed to the people holding one/.test(await text(oPage)), "…and says what is still OWED: one class sold and not yet danced");

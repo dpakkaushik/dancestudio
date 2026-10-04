@@ -7,32 +7,33 @@ import { findProfileById } from "@/repositories/profiles";
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
-/** ONE MEMBERSHIP'S DETAILS, FOR BOTH ADDRESSES (4 Oct 2026).
+/** ONE MEMBERSHIP'S DETAILS, AT THE SELLER'S OWN ADDRESS —
+ *  `/business/{studio}/memberships/{id}` (4 Oct 2026).
  *
- *  `/memberships/{id}` is the PERSON's (an artist's own page sells it) and
- *  `/business/{studio}/memberships/{id}` is the STUDIO's. ⚠ The second exists
- *  because the switcher reads the PATHNAME: a studio's card that opened
- *  `/memberships/{id}` left the studio, so the profile switcher fell back to the
- *  person (the user: "Membership Details button on Studio membership cards taking
- *  to detail but profile shifts to artist"). Under the studio's own address the
- *  switcher, the chrome and the Settings sheet all stay the studio's.
+ *  ⚠ It exists because the switcher reads the PATHNAME: a studio's card that
+ *  opened `/memberships/{id}` left the studio, so the profile switcher fell back
+ *  to the person (the user: "Membership Details button on Studio membership
+ *  cards taking to detail but profile shifts to artist"). Under the studio's own
+ *  address the switcher, the chrome and the Settings sheet all stay the studio's.
+ *  `/memberships/{id}` drew this same page until 5 Oct 2026 and now only
+ *  forwards here, so this is the one caller and `businessId` is required.
  *
  *  The membership is found in the caller's OWN business's list rather than read
- *  by id, so "not found" is the honest answer for somebody else's — and with a
- *  `businessId` it must be THAT business's, so a studio's address cannot show
- *  another seller's membership. */
+ *  by id, so "not found" is the honest answer for somebody else's — and it must
+ *  be THAT business's, so a studio's address cannot show another seller's
+ *  membership. */
 export async function MembershipUsageRoute({
   membershipId,
   showParam,
-  businessId = null,
+  businessId,
 }: {
   membershipId: string;
   showParam?: string;
-  /** set on the studio's own address — the membership must be this business's */
-  businessId?: string | null;
+  /** the address's own business — the membership must be this business's */
+  businessId: string;
 }) {
   const show = showParam === "earnings" ? "earnings" : "holders";
-  if (!UUID_RE.test(membershipId) || (businessId && !UUID_RE.test(businessId))) {
+  if (!UUID_RE.test(membershipId) || !UUID_RE.test(businessId)) {
     notFound();
   }
   const supabase = await createSupabaseServerClient();
@@ -45,7 +46,7 @@ export async function MembershipUsageRoute({
   const teams = await findMyTeams(supabase).catch(() => []);
   const owned = teams
     .filter((m) => m.business.type === "studio" || m.business.type === "artist_page")
-    .filter((m) => !businessId || m.business.id === businessId)
+    .filter((m) => m.business.id === businessId)
     .map((m) => m.business);
   const lists = await Promise.all(owned.map((t) => findBusinessMemberships(supabase, t.id).catch(() => [])));
   /* ⚠ WHICH list it was in is the membership's seller — `MembershipWithUsage`
@@ -81,7 +82,7 @@ export async function MembershipUsageRoute({
     href: isArtist ? (isOwner ? `/person/${user.id}` : `/artist/${sellerBiz.id}`) : `/studio/${sellerBiz.id}`,
   };
   /* the address this page lives at, so its columns and Delete stay on it */
-  const desk = businessId ? `/business/${businessId}/memberships` : "/memberships";
+  const desk = `/business/${businessId}/memberships`;
   return (
     <MembershipUsagePage
       membership={membership}

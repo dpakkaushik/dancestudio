@@ -451,7 +451,10 @@ export async function findStudentRecord(
       refundedInr: back,
       paidAt: r.created_at,
       method: r.method,
-      href: cls ? `/c/${cls.share_slug}` : o?.membership_id ? `/memberships/${o.membership_id}` : null,
+      /* a membership's details live under the studio that sold it (5 Oct 2026):
+         every payment here is this business's (`business_id` above), so the
+         seller is this studio and the switcher stays on it */
+      href: cls ? `/c/${cls.share_slug}` : o?.membership_id ? `/business/${businessId}/memberships/${o.membership_id}` : null,
     };
   });
   const cameIn = payList.reduce((s, x) => s + x.amountInr, 0);
