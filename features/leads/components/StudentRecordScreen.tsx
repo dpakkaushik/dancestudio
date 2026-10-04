@@ -75,8 +75,20 @@ function StatsPanel({ r }: { r: StudentRecord }) {
   return (
     <>
       <div style={panel}>
+        {/* ⚠ FIRST AND LAST CLASS IN BOXES (4 Oct 2026, the user: "first class
+            and last class with dates in boxes"), and ON TOP since later the same
+            day ("first class last class on top in stats in student detail") — the
+            Team page's Stats opens the same way. A "—" says there is none yet. */}
         <ToolFacts
           tint={TINT}
+          items={[
+            { label: "First class", value: r.firstAt ? dateWords(r.firstAt) : "—", testId: "student-first-class" },
+            { label: "Last class", value: r.lastAt ? dateWords(r.lastAt) : "—", testId: "student-last-class" },
+          ]}
+        />
+        <ToolFacts
+          tint={TINT}
+          style={{ marginTop: 6 }}
           items={[
             { label: "Attended", value: r.attended, testId: "student-attended" },
             { label: "Hours", value: hoursWords(r.minutes) },
@@ -90,17 +102,6 @@ function StatsPanel({ r }: { r: StudentRecord }) {
             { label: "Upcoming", value: r.upcoming },
             { label: "Missed", value: r.missed },
             { label: "Cancelled", value: r.cancelled },
-          ]}
-        />
-        {/* ⚠ FIRST AND LAST CLASS IN BOXES (4 Oct 2026, the user: "first class
-            and last class with dates in boxes") — they were a sentence under the
-            figures. A "—" says there is none yet rather than hiding the box. */}
-        <ToolFacts
-          tint={TINT}
-          style={{ marginTop: 6 }}
-          items={[
-            { label: "First class", value: r.firstAt ? dateWords(r.firstAt) : "—", testId: "student-first-class" },
-            { label: "Last class", value: r.lastAt ? dateWords(r.lastAt) : "—", testId: "student-last-class" },
           ]}
         />
       </div>

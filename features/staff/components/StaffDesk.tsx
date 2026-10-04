@@ -146,9 +146,12 @@ export function StaffDesk({
   team,
   invites,
   payments = [],
+  classCounts = null,
   isOwner,
   meUserId,
 }: {
+  /** each member's classes here, by user id — null when the read failed */
+  classCounts?: Record<string, number> | null;
   businessId: string;
   businessName: string;
   /** which labels this profile has to give (19 Sep 2026) */
@@ -446,9 +449,15 @@ export function StaffDesk({
                   <ToolBody>
                     <ToolFacts
                       tint={TEAM_TINT}
+                      /* Paid · Payments · Classes (4 Oct 2026, the user: "Paid
+                         Payments and Classes for - Team Member Cards") — Classes is
+                         the Member Detail page's own count */
                       items={[
                         { label: "Paid", value: rupees(paidTotal) },
                         { label: paid.length === 1 ? "Payment" : "Payments", value: paid.length },
+                        ...(classCounts
+                          ? [{ label: (classCounts[m.userId] ?? 0) === 1 ? "Class" : "Classes", value: classCounts[m.userId] ?? 0, testId: "team-card-classes" }]
+                          : []),
                       ]}
                     />
                     {/* ⚠ NO "Nothing paid yet" LINE (4 Oct 2026, the user) — the Paid

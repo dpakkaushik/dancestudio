@@ -62,6 +62,8 @@ export function StudioSubscriptionStrip({
       href={`/studio/${businessId}`}
       hrefLabel={`${businessName} — open the studio's page`}
       plan="Studio plan"
+      /* what the plan buys, inside the card — the artist card's own list (4 Oct 2026) */
+      rights="studio"
       subscription={s}
       standing={standing}
       cancelledWords={(u) => (u ? `${businessName} stays on Discover until ${u}, then stops` : "Cancelled")}

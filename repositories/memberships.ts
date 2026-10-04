@@ -104,9 +104,17 @@ const n = (v: unknown): number => Number(v ?? 0);
 /** HOW LONG A MEMBERSHIP LASTS (3 Oct 2026, the user: "membership should have a
  *  validity date in no. of days to use it from 30days, 60 days, 90 days"). Days
  *  from PURCHASE; null on a membership made before validity existed, which never
- *  expires. */
-export type ValidityDays = 30 | 60 | 90;
-export const VALIDITY_CHOICES: ValidityDays[] = [30, 60, 90];
+ *  expires.
+ *
+ *  ⚠ 120 AND 150, AND UNLIMITED (4 Oct 2026, the user: "Valid for should have 120
+ *  days, 150 days and Unlimited. in unlimited subscription active till full
+ *  consumed"). Unlimited is NULL — the same "never expires" an old membership
+ *  has always meant: the pass spends until its hours run out
+ *  (20261004110000 admits the two new numbers). */
+export type ValidityDays = 30 | 60 | 90 | 120 | 150;
+export const VALIDITY_CHOICES: ValidityDays[] = [30, 60, 90, 120, 150];
+/** what a membership with no validity is called on every screen */
+export const UNLIMITED_WORD = "Unlimited";
 
 /** a pass's expiry as every screen reads it — the date, and whether it has passed.
  *  "Expired" is DERIVED from the date; there is no status for it and no job. */
@@ -347,7 +355,8 @@ export interface MembershipInput {
   totalCount: number;
   status: "live" | "draft";
   /** 30 · 60 · 90 days from purchase (3 Oct 2026) */
-  validityDays: ValidityDays;
+  /** null = unlimited (until the hours are used up) on a new membership */
+  validityDays: ValidityDays | null;
 }
 
 export async function saveMembership(supabase: SupabaseClient, input: MembershipInput): Promise<string> {

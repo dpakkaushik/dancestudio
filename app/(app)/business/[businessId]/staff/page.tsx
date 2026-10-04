@@ -4,6 +4,7 @@ import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { findPendingInvites } from "@/repositories/invites";
 import { findBusinessPayLedger } from "@/repositories/payouts";
 import { findMyMemberships, findBusinessTeam, runsTheBusiness } from "@/repositories/businesses";
+import { findTeamClassCounts } from "@/repositories/teamMemberWork";
 
 /* the clock, stamped once outside render (react-hooks/purity) */
 const stampNowIso = (): string => new Date().toISOString();
@@ -47,6 +48,10 @@ export default async function BusinessStaffPage({
        over a money read. */
     findBusinessPayLedger(supabase, businessId, stampNowIso()).catch(() => null),
   ]);
+  /* each member's Classes figure (4 Oct 2026, the user: "Paid Payments and Classes
+     for - Team Member Cards") — the Member Detail page's own rule, one batch for
+     the desk; a failed read draws no figure rather than a wrong one */
+  const classCounts = await findTeamClassCounts(supabase, businessId, team.map((m) => m.userId)).catch(() => null);
 
   return (
     <StaffDesk
@@ -56,6 +61,7 @@ export default async function BusinessStaffPage({
       team={team}
       invites={invites}
       payments={ledger?.payouts ?? []}
+      classCounts={classCounts ? Object.fromEntries(classCounts) : null}
       // asking and removing are the owner's alone (§10.9); everyone else reads
       isOwner={myRole === "owner"}
       meUserId={user.id}

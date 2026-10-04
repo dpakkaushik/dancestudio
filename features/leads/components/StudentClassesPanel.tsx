@@ -6,7 +6,7 @@ import { ClassDetailButton } from "@/components/ui/ClassDetailButton";
 import { FigureHead } from "@/components/ui/FigureHead";
 import { ToolChip, ToolFace, ToolFacts } from "@/components/ui/ToolCard";
 import { RoutineMediaButton } from "@/features/routines/components/routine-kit";
-import { StyleBadge } from "@/features/staff/components/TeamClassesPanel";
+import { FIRST_FOUR_EMPTY, StyleBadge } from "@/features/staff/components/TeamClassesPanel";
 import { DOS_LEVEL_LABEL } from "@/lib/constants/styles";
 import { INK, MUTED, SUB } from "@/lib/design/tokens";
 import { photoUrl } from "@/lib/media/photo";
@@ -193,16 +193,18 @@ export function StudentClassesPanel({ classes, tint, studentName }: { classes: S
                 const statusTint = status === "MISSED" ? "#F87171" : tint;
                 const when = c.nextAt ?? c.lastAt;
                 const boxes: Array<[string, string | null, string?]> = [
-                  /* the artist's name only where the grouping does not already say it */
-                  ["Artist", by === "artist" ? null : c.artist?.name ?? null],
-                  ["Studio", by === "studio" ? null : c.venueName],
+                  /* ⚠ DATE · TIME · STUDIO · ARTIST, ALWAYS THE FIRST FOUR (4 Oct 2026,
+                     the user: "Date Time Studio Artist always first 4 in last collapse"),
+                     drawn whatever the grouping and with "—" when there is nothing */
+                  ["Date", when ? dateWords(when) : FIRST_FOUR_EMPTY],
+                  ["Time", when ? timeWords(when) : FIRST_FOUR_EMPTY],
+                  ["Studio", c.venueName ?? FIRST_FOUR_EMPTY],
+                  ["Artist", c.artist?.name ?? FIRST_FOUR_EMPTY],
                   ["Room", c.room],
                   ["Booked", String(c.booked)],
                   ["Checked in", String(c.sessions)],
                   ["Missed", c.missed > 0 ? String(c.missed) : null, "#F87171"],
                   ["Hours", c.sessions > 0 ? hoursWords(c.minutes) : null],
-                  ["Date", when ? dateWords(when) : null],
-                  ["Time", when ? timeWords(when) : null],
                 ];
                 return (
                   <details key={c.classId} data-testid="student-class" style={{ marginTop: 8, borderRadius: 14, border: "1.5px solid var(--el)", background: `${tint}0a` }}>
@@ -226,7 +228,7 @@ export function StudentClassesPanel({ classes, tint, studentName }: { classes: S
                           .filter((b): b is [string, string, string?] => Boolean(b[1]))
                           .map(([label, value, color]) => (
                             <div key={label} data-testid={`student-class-box-${label.toLowerCase().replace(/\s+/g, "-")}`} style={{ borderRadius: 12, background: `${tint}0f`, border: "1.5px solid var(--el)", padding: "8px 6px 7px", textAlign: "center", minWidth: 0 }}>
-                              <div title={value} style={{ fontSize: 12.5, fontWeight: 900, lineHeight: 1.2, color: color ?? INK, fontVariantNumeric: "tabular-nums", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden", overflowWrap: "anywhere" }}>
+                              <div title={value} style={{ fontSize: 12.5, fontWeight: 900, lineHeight: 1.2, color: value === FIRST_FOUR_EMPTY ? MUTED : color ?? INK, fontVariantNumeric: "tabular-nums", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden", overflowWrap: "anywhere" }}>
                                 {value}
                               </div>
                               <div style={{ fontSize: 8.5, fontWeight: 900, letterSpacing: 0.7, color: MUTED, marginTop: 3, textTransform: "uppercase" }}>{label}</div>

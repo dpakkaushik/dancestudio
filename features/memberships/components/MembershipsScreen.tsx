@@ -11,7 +11,7 @@ import { DeskBody, DeskTop } from "@/components/ui/DeskSections";
 import { ToolActions, ToolBody, ToolCard, ToolChip, ToolFacts, ToolHead, ToolTitle, toolBtn } from "@/components/ui/ToolCard";
 import { DOS_UI, INK, LILAC, SUB } from "@/lib/design/tokens";
 import { money as rupees } from "@/features/payouts/components/earnings-kit";
-import type { MembershipWithUsage, MyPass, PassUse } from "@/repositories/memberships";
+import { UNLIMITED_WORD, type MembershipWithUsage, type MyPass, type PassUse } from "@/repositories/memberships";
 import { ProgressBar, SpentOn, expiryWords, unitWord } from "./usage-kit";
 
 /** MEMBERSHIPS (19 Sep 2026, the user: "Users should be able to buy from Studio
@@ -161,7 +161,9 @@ export function MembershipsScreen({
               ⚠ AND IT OPENS OVER THIS DESK (22 Sep 2026) — `?new=1` on the page
               you are already on, so the phone's back gesture closes it; the
               studio's own desk takes the id from the route, not the link. */}
-          <DeskAddButton label="New membership" href="?new=1" />
+          {/* "Add Membership" (4 Oct 2026, the user: "New Membership button to be
+              renamed to Add Membership") */}
+          <DeskAddButton label="Add Membership" href="?new=1" />
         </div>
       ) : null}
       </DeskTop>
@@ -295,7 +297,7 @@ export function MembershipsScreen({
                   items={[
                     { label: "Price", value: m.priceInr === 0 ? "Free" : rupees(m.priceInr), testId: "membership-price" },
                     { label: m.unit === "hours" ? "Hours" : "Classes", value: m.units, testId: "membership-units" },
-                    { label: "Validity", value: m.validityDays ? `${m.validityDays} days` : "No end", testId: "membership-validity" },
+                    { label: "Validity", value: m.validityDays ? `${m.validityDays} days` : UNLIMITED_WORD, testId: "membership-validity" },
                   ]}
                 />
                 <ToolFacts

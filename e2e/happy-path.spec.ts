@@ -485,7 +485,10 @@ test.describe.serial("DanceOS, end to end", () => {
        for User/ artist"), so every later read of this studio's card comes here */
     const studioSubUrl = new URL(owner.url()).pathname;
     await expect(owner.getByTestId("welcome-bow")).toHaveCount(0);
-    await expect(owner.getByText("What it buys")).toBeVisible({ timeout: 15_000 });
+    /* what the plan buys is INSIDE the studio's card since 4 Oct 2026 — the
+       artist card's own pointers, with the same icons */
+    await expect(owner.getByTestId("studio-subscription").getByTestId("plan-rights")).toBeVisible({ timeout: 15_000 });
+    await expect(owner.getByTestId("plan-right-discover")).toBeVisible();
     await expect(owner.getByRole("button", { name: /^Subscribe · / })).toBeVisible({ timeout: 15_000 });
     await owner.goto("/business");
 
@@ -2641,18 +2644,26 @@ test.describe.serial("DanceOS, end to end", () => {
        `?new=1` on the desk that offered it, so the studio it sells for is the
        desk's own and `?business=` is not needed at all from here (it stays for
        `/memberships/new`, which is still a page — Rule 14). */
-    await owner.getByRole("link", { name: "New membership" }).click();
+    /* "Add Membership", the button and the form's heading (4 Oct 2026) */
+    await owner.getByRole("link", { name: "Add Membership" }).click();
     await owner.waitForURL(new RegExp(`/business/${businessId}/memberships\\?new=1$`));
-    await expect(owner.getByRole("dialog", { name: "Add membership" })).toBeVisible();
+    await expect(owner.getByRole("dialog", { name: "Add Membership" })).toBeVisible();
     await expect(owner.getByRole("button", { name: "Name the membership first" })).toBeVisible();
+    /* no checklist box under the fields (4 Oct 2026) — the price is still empty,
+       and only that box ever said so; the bar names the FIRST missing answer */
+    await expect(owner.getByRole("dialog", { name: "Add Membership" }).getByText("Put a price on it — ₹0 is allowed")).toHaveCount(0);
     await owner.getByLabel("Membership name").fill(passName);
     /* hours only since 3 Oct 2026 — there is no Classes / Hours switch any more */
     await owner.getByLabel("How many hours").fill("2");
     // ⚠ no Continue: four fields, one page (22 Sep 2026)
     await owner.getByLabel("Price", { exact: true }).fill("0");
-    await owner.getByLabel("Total memberships").fill("5");
-    /* VALID FOR (3 Oct 2026): 30 · 60 · 90 days, 30 picked until another is */
+    /* "Quantity", and nothing under it (4 Oct 2026, the user: "how many may be
+       sold to be renamed to Quantity … remove lower section below") */
+    await owner.getByLabel("Quantity", { exact: true }).fill("5");
+    /* VALID FOR: 30 · 60 · 90 · 120 · 150 days or Unlimited (4 Oct 2026), 30
+       picked until another is */
     await expect(owner.getByRole("button", { name: "30 days", exact: true })).toHaveAttribute("aria-pressed", "true");
+    for (const d of ["120 days", "150 days", "Unlimited"]) await expect(owner.getByRole("button", { name: d, exact: true })).toBeVisible();
     await owner.getByRole("button", { name: "60 days", exact: true }).click();
     await expect(owner.getByRole("button", { name: "60 days", exact: true })).toHaveAttribute("aria-pressed", "true");
     await owner.getByRole("button", { name: "Put it on sale" }).click();
@@ -3089,8 +3100,13 @@ test.describe.serial("DanceOS, end to end", () => {
        Hours, Turn Up, Routines, dance styles … d capital for detail") */
     await expect(learnerCard.getByRole("link", { name: `Student Detail — ${learnerName}` })).toHaveAttribute("href", `/business/${businessId}/students/${learnerId}`);
     await expect(learnerCard.getByRole("link", { name: /^(Profile|Stats|Membership) — / })).toHaveCount(0);
-    for (const box of ["attended", "booked", "hours", "turnup", "routines", "styles"]) {
+    /* ⚠ THREE SINCE LATER ON 4 Oct 2026 (the user: "Student card- Remove
+       Routines, Dance styles and booked") — Attended · Hours · Turn Up */
+    for (const box of ["attended", "hours", "turnup"]) {
       await expect(learnerCard.getByTestId(`student-card-${box}`)).toHaveCount(1);
+    }
+    for (const box of ["booked", "routines", "styles"]) {
+      await expect(learnerCard.getByTestId(`student-card-${box}`)).toHaveCount(0);
     }
 
     /* ── THE INVITE IS A HAND-OFF, and the link it hands off carries this
@@ -3500,10 +3516,13 @@ test.describe.serial("DanceOS, end to end", () => {
        Add class anatomy it took on 21 Sep, opened from the desk's own address
        with `?new=1` rather than a page away. `/routines/new` still renders the
        page (Rule 14), which `shoot-tiles.js` drives by URL. */
-    await trainer.getByRole("link", { name: "New routine" }).click();
+    /* "Add Routine", the button and the heading (4 Oct 2026); nothing under the
+       video link — the bar's button is the only thing naming what is missing */
+    await trainer.getByRole("link", { name: "Add Routine" }).click();
     await trainer.waitForURL(/\/routines\?new=1$/);
-    await expect(trainer.getByRole("dialog", { name: "Add routine" })).toBeVisible();
+    await expect(trainer.getByRole("dialog", { name: "Add Routine" })).toBeVisible();
     await expect(trainer.getByRole("button", { name: "Name the routine first" })).toBeVisible();
+    await expect(trainer.getByRole("dialog", { name: "Add Routine" }).getByText("Paste the video link", { exact: true })).toHaveCount(0);
     await trainer.getByLabel("Routine name").fill(routineName);
     // ⚠ no Continue: five fields, one page (22 Sep 2026)
     // ⚠ NO SONG NAME FIELD since 19 Sep 2026 (the user: "just remove song name

@@ -142,6 +142,55 @@ const CLASS_COLS = "style, level, share_slug, capacity, room, venue_business_id,
 
 type Session = { id: string; class_id: string; starts_at: string; ends_at: string };
 
+/** HOW MANY CLASSES EACH MEMBER HAS HERE — the team card's Classes figure (4 Oct
+ *  2026, the user: "Paid Payments and Classes for - Team Member Cards"). The SAME
+ *  rule `findTeamMemberWork` lists by, so the card and the Member Detail page say
+ *  one number: this business's classes they are confirmed on (a closed claim
+ *  included — it still happened), plus their own artist page's published classes
+ *  held in this studio's rooms. One claims read and one classes read for the
+ *  whole team; the artist-page lookups run in parallel. Degrades to the claims
+ *  half, never fails a desk. */
+export async function findTeamClassCounts(supabase: SupabaseClient, businessId: string, userIds: string[]): Promise<Map<string, number>> {
+  const out = new Map<string, number>();
+  if (userIds.length === 0) return out;
+  const ids = userIds.slice(0, 200);
+  const [claimRes, pages] = await Promise.all([
+    supabase.from("class_people").select("user_id, class_id").eq("business_id", businessId).in("user_id", ids).eq("status", "confirmed").limit(MAX_ROWS),
+    Promise.all(
+      ids.map(async (uid) => {
+        const { data, error } = await supabase.rpc("artist_page_of", { p_user_id: uid });
+        return [uid, error ? null : ((data as string | null) ?? null)] as const;
+      }),
+    ),
+  ]);
+  const byUser = new Map<string, Set<string>>();
+  for (const r of (claimRes.data ?? []) as Array<{ user_id: string; class_id: string }>) {
+    if (!byUser.has(r.user_id)) byUser.set(r.user_id, new Set());
+    byUser.get(r.user_id)!.add(r.class_id);
+  }
+  const pageOwner = new Map<string, string>();
+  for (const [uid, page] of pages) if (page && page !== businessId) pageOwner.set(page, uid);
+  if (pageOwner.size) {
+    /* audit-ok: scoped by the members' own pages AND this venue */
+    const { data } = await supabase
+      .from("classes")
+      .select("id, business_id, status, deleted_at")
+      .in("business_id", [...pageOwner.keys()])
+      .eq("venue_business_id", businessId)
+      .eq("venue_status", "accepted")
+      .limit(MAX_ROWS);
+    for (const c of (data ?? []) as Array<{ id: string; business_id: string; status: string; deleted_at: string | null }>) {
+      if (c.deleted_at !== null || (c.status !== "published" && c.status !== "completed")) continue;
+      const uid = pageOwner.get(c.business_id);
+      if (!uid) continue;
+      if (!byUser.has(uid)) byUser.set(uid, new Set());
+      byUser.get(uid)!.add(c.id);
+    }
+  }
+  for (const uid of ids) out.set(uid, byUser.get(uid)?.size ?? 0);
+  return out;
+}
+
 export async function findTeamMemberWork(
   supabase: SupabaseClient,
   businessId: string,

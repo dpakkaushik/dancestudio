@@ -138,7 +138,7 @@ export function SubscriptionCard({
           </>
         ) : null}
         <div style={{ fontSize: 13, fontWeight: 700, color: "var(--text)", lineHeight: 1.45, marginTop: s ? 10 : 0 }}>{standing.line}</div>
-        {rights ? <PlanRightsList kind={rights} /> : null}
+        {rights ? <PlanRightsList kind={rights} tint={tint} /> : null}
       </ToolBody>
       <ToolActions>
         {!live && subscribe ? <span style={{ flex: "1 1 0", minWidth: 0, display: "grid" }}>{subscribe(say)}</span> : null}

@@ -145,7 +145,7 @@ export function SubscriptionScreen({
               <div style={{ fontSize: 12.5, fontWeight: 700, color: "#F87171", marginTop: 10 }}>Your last plan ended on {dateWords(subscription.currentPeriodEnd)}.</div>
             ) : null}
             {/* what you get, inside the card it is bought from (4 Oct 2026) */}
-            <PlanRightsList kind="artist" />
+            <PlanRightsList kind="artist" tint={TINT} />
           </ToolBody>
           {pick ? (
             <ToolActions>

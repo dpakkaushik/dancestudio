@@ -93,7 +93,9 @@ export function RoutinesDesk({
           ⚠ `?new=1` is PUSHED, exactly as the gear pushes `?settings=1`: the
           param IS the history entry, so the phone's back gesture closes the
           sheet instead of leaving the desk. */}
-      <DeskAddButton label="New routine" href="?new=1" />
+      {/* "Add Routine" (4 Oct 2026, the user: "New routine button should be
+          rename to Add Routine") */}
+      <DeskAddButton label="Add Routine" href="?new=1" />
 
       <div style={{ display: "flex", alignItems: "center", gap: 8, background: "var(--card)", border: "1.5px solid var(--el)", borderRadius: 12, padding: "9px 11px", marginBottom: 0 }}>
         <span aria-hidden="true" style={{ color: "var(--muted)", fontSize: 13 }}>
@@ -261,10 +263,9 @@ function LearnedRow({ r }: { r: LearnedRoutine }) {
       song={{ href: songHref, word: r.songIsFile ? "MP3" : "Song" }}
       video={r.videoUrl}
       maker={{ name: r.ownerName ?? "The artist", photoPath: r.ownerPhotoPath, eyebrow: "Routine by" }}
-      facts={[
-        { label: r.sessions === 1 ? "Session" : "Sessions", value: r.sessions },
-        { label: "Last danced", value: when ?? "—" },
-      ]}
+      /* no Sessions on a routine card (4 Oct 2026, the user: "Remove sessions
+         from routine cards") */
+      facts={[{ label: "Last danced", value: when ?? "—" }]}
     />
   );
 }
@@ -286,8 +287,9 @@ function RoutineRow({ r, me }: { r: RoutineWithUsage; me: Maker }) {
       detail={`/routines/${r.id}`}
       maker={{ name: me.name, photoPath: me.photoPath, eyebrow: "Routine" }}
       facts={[
+        /* no Sessions on a routine card (4 Oct 2026, the user: "Remove sessions
+           from routine cards") */
         { label: r.classes === 1 ? "Class" : "Classes", value: r.classes, testId: "routine-classes" },
-        { label: r.sessions === 1 ? "Session" : "Sessions", value: r.sessions },
         { label: r.students === 1 ? "Student" : "Students", value: r.students },
       ]}
     />

@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { WelcomeFromUrl } from "@/components/ui/WelcomeBow";
-import { PlanRights } from "@/features/settings/components/PlanRights";
 import { BizPage } from "@/features/settings/components/settings-kit";
 import { StudioSubscriptionStrip } from "@/features/businesses/components/StudioSubscriptionStrip";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
@@ -69,12 +68,10 @@ export default async function BusinessSubscriptionPage({ params }: { params: Pro
           You can subscribe now. It goes on Discover once DanceOS has verified it — Settings › Verification — and it is listed the moment that lands.
         </div>
       ) : null}
-      {/* ⚠ WHAT THE MONEY BUYS, on the screen that asks for it (27 Sep 2026, the
-          user: "correct descriptions and rights you get once you subscribe for
-          any of the following — artist, studio, organization"). This page had a
-          price and nothing beside it; the artist's had a list that promised a
-          0.9% fee nobody charges and events an artist cannot host. */}
-      <PlanRights kind="studio" />
+      {/* ⚠ WHAT THE MONEY BUYS is inside the studio's card now (4 Oct 2026, the
+          user: "similar looking … for both studio and artist subscriptions") —
+          the same pointers and icons the artist's card carries, so the separate
+          "What it buys" box that stood here is gone. */}
       {/* THE BOW ON CREATION (2 Oct 2026, the user: "on creation similar welcome
           message for studio and crew profiles as we get on sign up for users").
           Opened by `?welcome=studio`, which the New-studio sheet adds and

@@ -9,7 +9,6 @@ import {
   FORM_INPUT,
   FormBar,
   FormConfirm,
-  FormNote,
   FormPage,
   FormSummary,
   FormToast,
@@ -124,7 +123,7 @@ export function RoutineForm({ userId, sheet = false }: { userId: string; sheet?:
   };
 
   return (
-    <FormPage title="Add routine" sheet={sheet} onClose={() => router.back()} onBack={() => router.back()}>
+    <FormPage title="Add Routine" sheet={sheet} onClose={() => router.back()} onBack={() => router.back()}>
       <>
           <div style={FORM_LABEL}>ROUTINE NAME</div>
           <input aria-label="Routine name" value={f.title} onChange={(e) => setF((x) => ({ ...x, title: e.target.value.slice(0, 120) }))} placeholder="e.g. Saturday set" style={FORM_INPUT} />
@@ -185,8 +184,9 @@ export function RoutineForm({ userId, sheet = false }: { userId: string; sheet?:
 
           <div style={FORM_LABEL}>VIDEO · required</div>
           <input aria-label="Video link" value={f.videoUrl} onChange={(e) => setF((x) => ({ ...x, videoUrl: e.target.value }))} placeholder="YouTube / Drive / Instagram link" style={FORM_INPUT} />
-
-          <FormNote blockers={blockers.length ? blockers : undefined} />
+          {/* ⚠ NOTHING UNDER THE VIDEO LINK (4 Oct 2026, the user: "change heading
+              and lower part below video link text field") — the checklist box that
+              stood here repeated what the bar's button already names. */}
       </>
 
       <FormBar>

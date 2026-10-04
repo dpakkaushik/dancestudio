@@ -7,7 +7,7 @@ import { DOS_TOOLS } from "@/features/businesses/components/biz-kit";
 import { ToolBody, ToolCard, ToolChip, ToolFacts, ToolHead } from "@/components/ui/ToolCard";
 import { FigureHead } from "@/components/ui/FigureHead";
 import { SegmentedPanels } from "@/features/shell/components/SegmentedNav";
-import type { MembershipClassUse, MembershipHolder, MembershipWithUsage, PassUse } from "@/repositories/memberships";
+import { UNLIMITED_WORD, type MembershipClassUse, type MembershipHolder, type MembershipWithUsage, type PassUse } from "@/repositories/memberships";
 import { ProgressBar, SpentOn, expiryWords, unitWord } from "./usage-kit";
 import { MembershipOffSale } from "./MembershipOffSale";
 
@@ -173,7 +173,7 @@ export function MembershipUsagePage({
               items={[
                 { label: "Price", value: m.priceInr === 0 ? "Free" : rupees(m.priceInr) },
                 { label: m.unit === "hours" ? "Hours" : "Classes", value: m.units },
-                { label: "Validity", value: m.validityDays ? `${m.validityDays} days` : "No end" },
+                { label: "Validity", value: m.validityDays ? `${m.validityDays} days` : UNLIMITED_WORD },
               ]}
             />
             <ToolFacts

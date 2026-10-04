@@ -21,8 +21,9 @@ export const unitWord = (unit: MembershipUnit, n: number) => {
 const numWord = (n: number) => (Number.isInteger(n) ? String(n) : n.toFixed(1));
 
 /** HOW LONG IT LASTS, in one phrase (3 Oct 2026) — "valid 30 days" on a
- *  membership; null when it never expires, so nothing is printed */
-export const validityWords = (days: number | null | undefined) => (days ? `valid ${days} days` : null);
+ *  membership, and since 4 Oct 2026 "until used up" when it never expires (the
+ *  user's Unlimited: "active till full consumed") rather than nothing */
+export const validityWords = (days: number | null | undefined) => (days ? `valid ${days} days` : "until used up");
 
 const shortDate = (iso: string) => new Intl.DateTimeFormat("en-IN", { day: "numeric", month: "short", year: "numeric", timeZone: "Asia/Kolkata" }).format(new Date(iso));
 
@@ -32,7 +33,8 @@ const shortDate = (iso: string) => new Intl.DateTimeFormat("en-IN", { day: "nume
 export function expiryWords(p: { validityDays: number | null; expiresAt: string | null; expired: boolean }): string | null {
   if (p.expiresAt) return p.expired ? `expired ${shortDate(p.expiresAt)}` : `valid till ${shortDate(p.expiresAt)}`;
   if (p.validityDays) return `valid ${p.validityDays} days from payment`;
-  return null;
+  /* unlimited (4 Oct 2026): it never expires — said, rather than left blank */
+  return "valid until used up";
 }
 
 const dayWords = (iso: string) => new Intl.DateTimeFormat("en-IN", { day: "numeric", month: "short", timeZone: "Asia/Kolkata" }).format(new Date(iso));

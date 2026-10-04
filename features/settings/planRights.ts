@@ -38,32 +38,36 @@
  *  which is a fact about the database rather than a promise to a customer. */
 export type PlanKind = "artist" | "studio";
 
-export const PLAN_RIGHTS: Record<PlanKind, Array<[icon: string, title: string, sub: string]>> = {
+/** the drawn icon each pointer wears (`PlanIcon`, 4 Oct 2026, the user: "new
+ *  similar looking icons") — one line-icon family, never emoji */
+export type PlanIconKey = "profile" | "classes" | "discover" | "tools" | "enquiries" | "page" | "booking" | "payments";
+
+/* ⚠ SHORT POINTERS (4 Oct 2026, the user: "explaining all parts in pointers with
+   short details") — a title and one short line each, the same shape for a studio
+   and an artist. The RULE behind each line is unchanged and still named. */
+export const PLAN_RIGHTS: Record<PlanKind, Array<[icon: PlanIconKey, title: string, sub: string]>> = {
   artist: [
     /* `ensureArtistPage` + `public_artist` (R22, R24): the page is provisioned and
-       a stranger can read it — without the plan there is no page to read */
-    /* ⚠ SAID AS THE PROFILE, NOT A "PAGE" (1 Oct 2026, the user: "are artist
-       profile and artist page 2 seprate things?" — they are not, R24). What the
-       plan buys is that YOUR profile goes public; the business row behind it is
-       plumbing nobody should be told about. */
-    ["👤", "Your profile goes public", "strangers can open it, with your styles, links and posters"],
+       a stranger can read it — without the plan there is no page to read.
+       ⚠ SAID AS THE PROFILE, NOT A "PAGE" (1 Oct 2026, R24). */
+    ["profile", "Public profile", "Anyone can open it — your styles, links and posters."],
     /* `why_no_class` refuses a class on an artist page whose plan has lapsed */
-    ["🗓", "Teach your own classes", "run them at a studio's room, or at a place of your own"],
+    ["classes", "Your own classes", "Teach in a studio's room or at your own place."],
     /* `discover_artists` lists the people with a live plan */
-    ["🔍", "On Discover", "found under Artists in your city"],
+    ["discover", "On Discover", "Listed under Artists in your city."],
     /* R18's artist grid + R30 (an artist sells memberships from their own page) */
-    ["🧰", "Artist tools", "team, students, routines, memberships, assets and earnings"],
+    ["tools", "Artist tools", "Team, students, routines, memberships, assets, earnings."],
     /* `artist_page_of` — an enquiry on a person's profile lands on their page */
-    ["📩", "Take enquiries", "quotes and advances for shows, judging and private sessions, in your Inbox"],
+    ["enquiries", "Enquiries", "Quotes and advances for shows, judging and private sessions."],
   ],
   studio: [
     /* `guard_business_visibility` refuses `listed` without a live plan — this IS
        the subscription, and everything under it follows from the row being public */
-    ["🔍", "On Discover", "the studio is listed in its city and measured by distance"],
-    ["🌐", "A public page", "anybody can open it — your rooms, your team and your styles"],
+    ["discover", "On Discover", "Listed in its city and found by distance."],
+    ["page", "Public page", "Your rooms, team and styles, open to everybody."],
     /* a class is public only through a LISTED business (Step 3's public policy) */
-    ["🎟", "Bookable classes", "your published classes are open to everybody, not just your own people"],
-    ["💳", "Take payments for seats", "through Cashfree, into your own account"],
+    ["booking", "Bookable classes", "Anybody can book your published classes."],
+    ["payments", "Seat payments", "Paid through Cashfree into your own account."],
   ],
 };
 

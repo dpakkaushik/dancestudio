@@ -427,7 +427,7 @@ const enterEdit = async (page) => {
        pass. The page still exists and still takes `?business=` (Rule 14), which
        `shoot-tiles` drives. The lesson is this file's own: shoot-hero had not
        been run since stage 1, and a proof is only true the last time it ran. */
-    check((await owner.getByRole("link", { name: "New membership" }).getAttribute("href")) === "?new=1", "studio memberships: the form opens over THIS studio's desk, so the studio is the address (22 Sep 2026)");
+    check((await owner.getByRole("link", { name: "Add Membership" }).getAttribute("href")) === "?new=1", "studio memberships: the form opens over THIS studio's desk, so the studio is the address (22 Sep 2026)");
     await owner.goto(`${BASE}/business/${studioId}`);
 
     /* ⚠ AND IT IS OFF THE DESKS TOO NOW (18 Sep 2026, the user: "remove the blue

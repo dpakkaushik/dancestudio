@@ -188,27 +188,21 @@ export function StudentsDesk({
                 Attended, Booked, Hours, Turn Up, Routines, dance styles. in
                 boxes"). All six come off the same attendance and booking rows the
                 student's own page counts, so a box and the page agree. */}
+            {/* ⚠ THREE BOXES, ONE ROW (4 Oct 2026, later, the user: "Student card-
+                Remove Routines, Dance styles and booked"): Attended · Hours · Turn
+                Up. The rest is on the student's own page, one press away. */}
             <ToolBody>
               <ToolFacts
                 tint={TINT}
                 items={[
                   { label: "Attended", value: s.attended, testId: "student-card-attended" },
-                  { label: "Booked", value: s.booked, testId: "student-card-booked" },
                   { label: "Hours", value: hoursWords(s.minutes), testId: "student-card-hours" },
-                ]}
-              />
-              <ToolFacts
-                tint={TINT}
-                style={{ marginTop: 6 }}
-                items={[
                   {
                     label: "Turn Up",
                     value: s.turnUp == null ? "—" : `${s.turnUp}%`,
                     tint: s.turnUp == null ? undefined : s.turnUp >= 75 ? "#22C55E" : s.turnUp >= 50 ? "#F59E0B" : "#F87171",
                     testId: "student-card-turnup",
                   },
-                  { label: "Routines", value: s.routines, testId: "student-card-routines" },
-                  { label: "Dance styles", value: s.styles, testId: "student-card-styles" },
                 ]}
               />
             </ToolBody>

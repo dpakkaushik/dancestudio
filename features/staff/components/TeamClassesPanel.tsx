@@ -35,6 +35,10 @@ const GROUPS: ReadonlyArray<readonly [GroupBy, string]> = [
 
 const panel: CSSProperties = { background: "var(--card)", border: "1.5px solid var(--el)", borderRadius: 18, padding: "13px 14px", marginBottom: 12 };
 const head: CSSProperties = { fontSize: 10, fontWeight: 900, letterSpacing: 1, color: MUTED };
+/** what one of the first four boxes (Date · Time · Studio · Artist) says when it
+ *  has nothing to say — those four are always drawn, on all three class panels */
+export const FIRST_FOUR_EMPTY = "—";
+
 const pct = (a: number, b: number): number | null => (b > 0 ? Math.round((a / b) * 100) : null);
 const pctTint = (p: number | null, good = 75, ok = 50) => (p == null ? MUTED : p >= good ? "#22C55E" : p >= ok ? "#F59E0B" : "#F87171");
 /* a session's DATE and TIME as two answers (4 Oct 2026, the user: "next/ last
@@ -301,10 +305,16 @@ export function TeamClassesPanel({
                     <div style={{ display: "grid", gridTemplateColumns: "repeat(3, minmax(0, 1fr))", gap: 6, borderTop: "1.5px solid var(--el)", paddingTop: 10 }}>
                       {(
                         [
-                          /* the chip above already says TEACHES; this box earns its place
-                             only when it adds WHO they assist */
-                          ["With", c.kind === "assistant" && c.artistName ? c.artistName : null],
-                          ["Studio", c.venueName],
+                          /* ⚠ DATE · TIME · STUDIO · ARTIST, ALWAYS THE FIRST FOUR (4 Oct
+                             2026, the user: "Date Time Studio Artist always first 4 in last
+                             collapse"), drawn even with nothing to say ("—"), so every class
+                             opens onto the same four slots. Date and time are the next
+                             session when there is one, else the last. Artist replaces the
+                             old "With" box: it names the class's artist whatever the role. */
+                          ["Date", (c.nextAt ?? c.lastAt) ? dateWords((c.nextAt ?? c.lastAt) as string) : FIRST_FOUR_EMPTY],
+                          ["Time", (c.nextAt ?? c.lastAt) ? timeWords((c.nextAt ?? c.lastAt) as string) : FIRST_FOUR_EMPTY],
+                          ["Studio", c.venueName ?? "Their own place"],
+                          ["Artist", c.artistName ?? FIRST_FOUR_EMPTY],
                           ["Room", c.room],
                           /* over the sessions held; before any, the seats booked so far.
                              ⚠ A class the member made themselves is theirs: this team
@@ -312,16 +322,13 @@ export function TeamClassesPanel({
                           ["Booked", String(c.held > 0 ? c.booked : c.fillBasis === "upcoming" ? c.fillBooked : 0)],
                           ["Checked in", c.dancers != null && c.held > 0 ? String(c.dancers) : null],
                           ["Turn-up", c.dancers != null && t != null && c.held > 0 ? `${t}%` : null, t == null ? undefined : pctTint(t)],
-                          /* the next session when there is one, else the last */
-                          ["Date", (c.nextAt ?? c.lastAt) ? dateWords((c.nextAt ?? c.lastAt) as string) : null],
-                          ["Time", (c.nextAt ?? c.lastAt) ? timeWords((c.nextAt ?? c.lastAt) as string) : null],
                           ["Status", c.closedWhy === "deleted" ? "Deleted" : c.closedWhy === "removed" ? "Removed" : null, SUB],
                         ] as Array<[string, string | null, string?]>
                       )
                         .filter((b): b is [string, string, string?] => Boolean(b[1]))
                         .map(([label, value, color]) => (
                           <div key={label} data-testid={`team-class-box-${label.toLowerCase().replace(/\s+/g, "-")}`} style={{ borderRadius: 12, background: `${tint}0f`, border: "1.5px solid var(--el)", padding: "8px 6px 7px", textAlign: "center", minWidth: 0 }}>
-                            <div title={value} style={{ fontSize: 12.5, fontWeight: 900, lineHeight: 1.2, color: color ?? INK, fontVariantNumeric: "tabular-nums", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden", overflowWrap: "anywhere" }}>
+                            <div title={value} style={{ fontSize: 12.5, fontWeight: 900, lineHeight: 1.2, color: value === FIRST_FOUR_EMPTY ? MUTED : color ?? INK, fontVariantNumeric: "tabular-nums", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden", overflowWrap: "anywhere" }}>
                               {value}
                             </div>
                             <div style={{ fontSize: 8.5, fontWeight: 900, letterSpacing: 0.7, color: MUTED, marginTop: 3, textTransform: "uppercase" }}>{label}</div>

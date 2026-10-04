@@ -234,7 +234,8 @@ async function personOpensAStudio(page, who, acc, stamp) {
   /* ⚠ WAITS, NOT ONE-SHOT COUNTS — the page streams behind a loading boundary,
      so the URL changes before its content arrives; a bare `.count()` here read
      zero three times and looked like a missing feature (19 Sep's own lesson) */
-  const buys = page.getByText("What it buys");
+  /* inside the studio's card since 4 Oct 2026 — "What you get", the artist's own list */
+  const buys = page.getByTestId("plan-rights");
   await buys.first().waitFor({ timeout: 15_000 }).catch(() => {});
   check(await buys.first().isVisible().catch(() => false), `${who} · with what the money buys beside the price`);
   /* ⚠ AND SUBSCRIBE IS LIVE WHILE IT IS STILL UNVERIFIED, which is the whole of
@@ -386,10 +387,10 @@ async function personOpensAStudio(page, who, acc, stamp) {
        for the link somebody was handed (Rule 14). */
     await p2.goto(`${BASE}/routines`, { waitUntil: "networkidle" });
     const deskH1 = await p2.locator("h1").first().innerText().catch(() => "");
-    await p2.getByRole("link", { name: "New routine" }).click();
-    const addRoutine = p2.getByRole("dialog", { name: "Add routine" });
+    await p2.getByRole("link", { name: "Add Routine" }).click();
+    const addRoutine = p2.getByRole("dialog", { name: "Add Routine" });
     await addRoutine.waitFor({ timeout: 15_000 }).catch(() => {});
-    check(await addRoutine.isVisible().catch(() => false), "artist · New routine opens a sheet over the desk");
+    check(await addRoutine.isVisible().catch(() => false), "artist · Add Routine opens a sheet over the desk");
     check(new URL(p2.url()).search === "?new=1", `artist · the sheet is the URL, so back closes it (${new URL(p2.url()).search})`);
     check((await p2.locator("h1").first().innerText().catch(() => "")) === deskH1, "artist · the desk is still underneath it");
     await p2.goBack();
@@ -397,7 +398,7 @@ async function personOpensAStudio(page, who, acc, stamp) {
     check(!(await addRoutine.isVisible().catch(() => false)), "artist · back closes the sheet and leaves the desk");
     /* and the address still renders the whole form, for the link handed out */
     await p2.goto(`${BASE}/routines/new`, { waitUntil: "networkidle" });
-    check((await p2.locator("h1").first().innerText().catch(() => "")) === "Add routine", "artist · /routines/new is still a page of its own (Rule 14)");
+    check((await p2.locator("h1").first().innerText().catch(() => "")) === "Add Routine", "artist · /routines/new is still a page of its own (Rule 14)");
     check((await p2.getByRole("dialog").count()) === 0, "artist · and that page is not a sheet");
 
     /* ⚠ AND THE TWO NOBODY LINKS TO ANY MORE (22 Sep 2026, found by auditing
@@ -409,7 +410,7 @@ async function personOpensAStudio(page, who, acc, stamp) {
        session found `shoot-hero` red for four days for the same reason.
        An unlinked route needs a check MORE than a linked one, not less. */
     await p2.goto(`${BASE}/memberships/new`, { waitUntil: "networkidle" });
-    check((await p2.locator("h1").first().innerText().catch(() => "")) === "Add membership", "artist · /memberships/new is still a page, though nothing links to it (Rule 14)");
+    check((await p2.locator("h1").first().innerText().catch(() => "")) === "Add Membership", "artist · /memberships/new is still a page, though nothing links to it (Rule 14)");
     check((await p2.getByRole("dialog").count()) === 0, "artist · and that page is not a sheet");
     await p2.goto(`${BASE}/crews/new`, { waitUntil: "networkidle" });
     check((await p2.locator("h1").first().innerText().catch(() => "")) === "Create crew", "artist · /crews/new is still a page, though nothing links to it (Rule 14)");

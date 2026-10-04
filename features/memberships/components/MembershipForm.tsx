@@ -7,14 +7,13 @@ import {
   FORM_INPUT,
   FormBar,
   FormConfirm,
-  FormNote,
   FormPage,
   FormSummary,
   FormToast,
   formPrimary,
 } from "@/components/ui/FormPage";
 import { saveMembershipAction } from "@/features/memberships/server-actions/memberships";
-import { VALIDITY_CHOICES, type ValidityDays } from "@/repositories/memberships";
+import { UNLIMITED_WORD, VALIDITY_CHOICES, type ValidityDays } from "@/repositories/memberships";
 import { DOS_TOOLS } from "@/features/businesses/components/biz-kit";
 import { INK, SUB } from "@/lib/design/tokens";
 
@@ -59,7 +58,7 @@ export function MembershipForm({
      what they are worth. The Classes / Hours switch is gone; `unit` is always
      "hours". ⚠ Passes already sold in classes keep working exactly as bought —
      a pass snapshots its unit (`membership_passes.unit`) and nothing rewrites it. */
-  const [f, setF] = useState({ name: "", unit: "hours" as const, units: "10", price: "", total: "20", validity: 30 as ValidityDays });
+  const [f, setF] = useState({ name: "", unit: "hours" as const, units: "10", price: "", total: "20", validity: 30 as ValidityDays | null });
 
   const fire = (m: string) => {
     setToast(m);
@@ -78,7 +77,7 @@ export function MembershipForm({
   if (!Number.isFinite(units) || units <= 0) blockers.push("Say how many hours it is worth");
   else if (Math.round(units * 2) !== units * 2) blockers.push("Hours go in halves — 1, 1.5, 2…");
   if (!Number.isFinite(price) || price < 0) blockers.push("Put a price on it — ₹0 is allowed");
-  if (!Number.isFinite(total) || total < 1) blockers.push("Say how many of these may be sold");
+  if (!Number.isFinite(total) || total < 1) blockers.push("Set the quantity");
   const ready = blockers.length === 0;
 
   const save = () => {
@@ -113,7 +112,7 @@ export function MembershipForm({
   const unitWord = units === 1 ? "hour" : "hours";
 
   return (
-    <FormPage title="Add membership" sheet={sheet} onClose={() => router.back()} onBack={() => router.back()}>
+    <FormPage title="Add Membership" sheet={sheet} onClose={() => router.back()} onBack={() => router.back()}>
       <>
           <div style={FORM_LABEL}>NAME</div>
           <input aria-label="Membership name" value={f.name} onChange={(e) => setF((x) => ({ ...x, name: e.target.value.slice(0, 80) }))} placeholder="e.g. 10 hours" style={FORM_INPUT} />
@@ -123,18 +122,22 @@ export function MembershipForm({
 
           {/* ⚠ VALID FOR (3 Oct 2026, the user: "membership should have a validity
               date in no. of days to use it from 30days, 60 days, 90 days") —
-              counted from the day it is bought; hours left after it lapse */}
+              counted from the day it is bought; hours left after it lapse.
+              ⚠ 120 · 150 · UNLIMITED (4 Oct 2026, the user: "in unlimited
+              subscription active till full consumed") — Unlimited sends no
+              validity, so the pass never expires and lasts until its hours are
+              used. Six choices, three to a row. */}
           <div style={FORM_LABEL}>VALID FOR</div>
-          <div role="group" aria-label="Valid for" style={{ display: "flex", gap: 7, marginBottom: 10 }}>
-            {VALIDITY_CHOICES.map((d) => (
+          <div role="group" aria-label="Valid for" style={{ display: "grid", gridTemplateColumns: "repeat(3, minmax(0, 1fr))", gap: 7, marginBottom: 10 }}>
+            {[...VALIDITY_CHOICES, null].map((d) => (
               <button
-                key={d}
+                key={d ?? "unlimited"}
                 type="button"
                 onClick={() => setF((x) => ({ ...x, validity: d }))}
                 aria-pressed={f.validity === d}
-                style={{ flex: 1, padding: "10px 4px", borderRadius: 10, cursor: "pointer", fontSize: 12, fontWeight: 800, fontFamily: "inherit", border: "none", background: f.validity === d ? INK : "var(--el)", color: f.validity === d ? "var(--solid)" : SUB }}
+                style={{ padding: "10px 4px", borderRadius: 10, cursor: "pointer", fontSize: 12, fontWeight: 800, fontFamily: "inherit", border: "none", background: f.validity === d ? INK : "var(--el)", color: f.validity === d ? "var(--solid)" : SUB }}
               >
-                {d} days
+                {d == null ? UNLIMITED_WORD : `${d} days`}
               </button>
             ))}
           </div>
@@ -142,15 +145,12 @@ export function MembershipForm({
           <div style={FORM_LABEL}>PRICE</div>
           <input aria-label="Price" inputMode="numeric" value={f.price} onChange={(e) => setF((x) => ({ ...x, price: e.target.value }))} placeholder="₹ — 0 for a free one" style={FORM_INPUT} />
 
-          <div style={FORM_LABEL}>HOW MANY MAY BE SOLD</div>
-          <input aria-label="Total memberships" inputMode="numeric" value={f.total} onChange={(e) => setF((x) => ({ ...x, total: e.target.value }))} placeholder="e.g. 20" style={FORM_INPUT} />
-
-          {/* ⚠ THE ONE RULE WORTH KEEPING is that a pass SNAPSHOTS its price, so
-              changing this later never rewrites what somebody already holds —
-              and it is the database's (`membership_passes` copies price, unit
-              and units at purchase), not something the seller has to be told
-              before they can name a price. Blockers only. */}
-          <FormNote blockers={blockers.length ? blockers : undefined} />
+          {/* QUANTITY (4 Oct 2026, the user: "how many may be sold to be renamed to
+              Quantity") — how many of these passes may be sold. ⚠ Nothing under it:
+              the checklist box that stood here is gone ("remove lower section
+              below how many may be sold"); the bar's button names what is missing. */}
+          <div style={FORM_LABEL}>QUANTITY</div>
+          <input aria-label="Quantity" inputMode="numeric" value={f.total} onChange={(e) => setF((x) => ({ ...x, total: e.target.value }))} placeholder="e.g. 20" style={FORM_INPUT} />
       </>
 
       <FormBar>
@@ -170,7 +170,7 @@ export function MembershipForm({
         >
           <FormSummary
             tint={DOS_TOOLS.memberships.c}
-            head={<span style={{ fontSize: 11.5, fontWeight: 800 }}>🎟 {units} {unitWord} · valid {f.validity} days · {total} on sale</span>}
+            head={<span style={{ fontSize: 11.5, fontWeight: 800 }}>🎟 {units} {unitWord} · {f.validity == null ? "until used up" : `valid ${f.validity} days`} · {total} on sale</span>}
           >
             <b style={{ fontSize: 15 }}>{f.name.trim()}</b>
             <div style={{ fontSize: 12, marginTop: 4, fontWeight: 800, color: price === 0 ? "#22C55E" : INK }}>{price === 0 ? "FREE" : rupees(price)}</div>

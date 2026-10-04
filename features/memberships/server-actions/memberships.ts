@@ -38,10 +38,13 @@ const saveSchema = z.object({
   unit: z.literal("hours", { message: "A membership is sold in hours" }),
   units: z.number().positive("Say how many hours").max(999).refine((n) => Number.isInteger(n * 2), "Hours go in halves"),
   priceInr: z.number().int().min(0).max(1000000),
-  totalCount: z.number().int().min(1, "Say how many of these may be sold").max(10000),
+  totalCount: z.number().int().min(1, "Set the quantity").max(10000),
   status: z.enum(["live", "draft"]),
-  /* 30 · 60 · 90 days from purchase (3 Oct 2026); the RPC refuses anything else too */
-  validityDays: z.union([z.literal(30), z.literal(60), z.literal(90)], { message: "Pick how long it lasts — 30, 60 or 90 days" }),
+  /* 30 · 60 · 90 · 120 · 150 days from purchase, or null = unlimited, until the
+     hours are used up (4 Oct 2026); the RPC refuses anything else too */
+  validityDays: z.union([z.literal(30), z.literal(60), z.literal(90), z.literal(120), z.literal(150), z.null()], {
+    message: "Pick how long it lasts — 30, 60, 90, 120 or 150 days, or unlimited",
+  }),
 });
 
 function revalidateMembershipSurfaces(businessId?: string) {

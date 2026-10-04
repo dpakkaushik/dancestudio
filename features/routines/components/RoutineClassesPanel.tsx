@@ -5,7 +5,7 @@ import { useState, type CSSProperties } from "react";
 import { ClassDetailButton } from "@/components/ui/ClassDetailButton";
 import { FigureHead } from "@/components/ui/FigureHead";
 import { ToolChip, ToolFace } from "@/components/ui/ToolCard";
-import { StyleBadge } from "@/features/staff/components/TeamClassesPanel";
+import { FIRST_FOUR_EMPTY, StyleBadge } from "@/features/staff/components/TeamClassesPanel";
 import { DOS_LEVEL_LABEL } from "@/lib/constants/styles";
 import { INK, MUTED, SUB } from "@/lib/design/tokens";
 import type { RoutineClass, RoutineClassFacts, RoutineStudio } from "@/repositories/routines";
@@ -172,15 +172,17 @@ export function RoutineClassesPanel({ classes, tint }: { classes: RoutineClassAt
                 const statusTint = status === "DRAFT" ? SUB : status === "COMPLETED" ? "#F87171" : "#22C55E";
                 const when = f?.nextAt ?? f?.lastAt ?? null;
                 const boxes: Array<[string, string | null]> = [
-                  /* the grouping's own word is left out of the boxes */
-                  ["Artist", by === "artist" ? null : c.artist?.name ?? null],
-                  ["Studio", by === "studio" ? null : where(c)],
+                  /* ⚠ DATE · TIME · STUDIO · ARTIST, ALWAYS THE FIRST FOUR (4 Oct 2026,
+                     the user: "Date Time Studio Artist always first 4 in last collapse"),
+                     drawn whatever the grouping and with "—" when there is nothing */
+                  ["Date", when ? dateWords(when) : FIRST_FOUR_EMPTY],
+                  ["Time", when ? timeWords(when) : FIRST_FOUR_EMPTY],
+                  ["Studio", where(c) || FIRST_FOUR_EMPTY],
+                  ["Artist", c.artist?.name ?? FIRST_FOUR_EMPTY],
                   ["Room", f?.room ?? null],
                   ["Taught", String(c.sessions)],
                   ["Students", String(c.students)],
                   ["To come", f?.upcoming ? String(f.upcoming) : null],
-                  ["Date", when ? dateWords(when) : null],
-                  ["Time", when ? timeWords(when) : null],
                 ];
                 return (
                   <details key={c.classId} data-testid="routine-class" style={{ marginTop: 8, borderRadius: 14, border: "1.5px solid var(--el)", background: `${tint}0a`, opacity: c.status === "draft" ? 0.8 : 1 }}>
@@ -202,7 +204,7 @@ export function RoutineClassesPanel({ classes, tint }: { classes: RoutineClassAt
                           .filter((b): b is [string, string] => Boolean(b[1]))
                           .map(([label, value]) => (
                             <div key={label} data-testid={`routine-class-box-${label.toLowerCase().replace(/\s+/g, "-")}`} style={{ borderRadius: 12, background: `${tint}0f`, border: "1.5px solid var(--el)", padding: "8px 6px 7px", textAlign: "center", minWidth: 0 }}>
-                              <div title={value} style={{ fontSize: 12.5, fontWeight: 900, lineHeight: 1.2, color: INK, fontVariantNumeric: "tabular-nums", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden", overflowWrap: "anywhere" }}>
+                              <div title={value} style={{ fontSize: 12.5, fontWeight: 900, lineHeight: 1.2, color: value === FIRST_FOUR_EMPTY ? MUTED : INK, fontVariantNumeric: "tabular-nums", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden", overflowWrap: "anywhere" }}>
                                 {value}
                               </div>
                               <div style={{ fontSize: 8.5, fontWeight: 900, letterSpacing: 0.7, color: MUTED, marginTop: 3, textTransform: "uppercase" }}>{label}</div>
