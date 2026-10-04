@@ -143,12 +143,13 @@ Subscribe-Studio ([string]$tb.id)
 Add-Member $ta.id $trainer.id "trainer" $owner.id
 
 try {
-  $tmr = (Get-Date).AddDays(1)
+  # 4 Oct 2026: the refund window is 12 hours, so "inside it" is a few hours from NOW
+  $tmr = (Get-Date).AddHours(4)
   # a PAID class tomorrow: every cancellation lands inside the 48 h window where
   # the studio decides, which is how each refund state is produced on purpose
   $cls = Rpc (Api $owner.token) "create_class_with_session" @{ p_business_id = $ta.id; p_title = "Income Class $stamp";
     p_style = "Hip-Hop"; p_level = "all"; p_room = $null; p_price_inr = 300; p_capacity = 10;
-    p_status = "draft"; p_starts_at = $tmr.ToString("yyyy-MM-ddT19:00:00zzz"); p_ends_at = $tmr.ToString("yyyy-MM-ddT20:00:00zzz") }
+    p_status = "draft"; p_starts_at = $tmr.ToString("yyyy-MM-ddTHH:mm:00zzz"); p_ends_at = $tmr.AddHours(1).ToString("yyyy-MM-ddTHH:mm:00zzz") }
   # 18 Sep 2026: published once its teacher has accepted
   Publish-Class ([string]$cls.id) ([string]$trainer.id) (Api $owner.token)
   $sid = (Get-Rows $svcH "class_sessions?class_id=eq.$($cls.id)&select=id")[0].id
@@ -243,7 +244,7 @@ try {
   #     their screen counts only theirs
   $rcls = Rpc (Api $rival.token) "create_class_with_session" @{ p_business_id = $tb.id; p_title = "Rival Class $stamp";
     p_style = "Bollywood"; p_level = "all"; p_room = $null; p_price_inr = 300; p_capacity = 10;
-    p_status = "draft"; p_starts_at = $tmr.ToString("yyyy-MM-ddT19:00:00zzz"); p_ends_at = $tmr.ToString("yyyy-MM-ddT20:00:00zzz") }
+    p_status = "draft"; p_starts_at = $tmr.ToString("yyyy-MM-ddTHH:mm:00zzz"); p_ends_at = $tmr.AddHours(1).ToString("yyyy-MM-ddTHH:mm:00zzz") }
   Publish-Class ([string]$rcls.id) ([string]$trainer.id) (Api $rival.token)
   $rsid = (Get-Rows $svcH "class_sessions?class_id=eq.$($rcls.id)&select=id")[0].id
   Buy-Seat $learners[5] $rsid "RIV$stamp" "upi" | Out-Null

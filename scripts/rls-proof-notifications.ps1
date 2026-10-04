@@ -156,7 +156,8 @@ try {
     return $o
   }
   # (a) inside the window - the session is tomorrow
-  $soon = (Get-Date).AddHours(20)
+  # 4 Oct 2026: the refund window is 12 hours (was 48), so "inside it" is a few hours out
+  $soon = (Get-Date).AddHours(4)
   $paidSoon = Rpc (Api $owner.token) "create_class_with_session" @{ p_business_id = $ta.id; p_title = "Soon Class $stamp";
     p_style = "Salsa"; p_level = "all"; p_room = $null; p_price_inr = 300; p_capacity = 5; p_status = "draft";
     p_starts_at = $soon.ToString("yyyy-MM-ddTHH:00:00zzz"); p_ends_at = $soon.AddHours(1).ToString("yyyy-MM-ddTHH:00:00zzz") }

@@ -461,8 +461,12 @@ async function seed() {
   await pay(priya, sBhangra, 250, "upi");
   await pay(sneha, sDlfContemp, 250, "upi");
   await pay(aki, sDlfContemp, 250, "card");
-  /* Aki cancels inside the 48-hour window → a refund the studio decides; the owner
-     approves it and marks it refunded at the desk. Zaid cancels too → still waiting. */
+  /* Aki and Zaid cancel. ⚠ The window is 12 HOURS since 4 Oct 2026 (it was 48),
+     and the Bollywood class is a day or more out, so both refunds are now
+     AUTOMATIC ('pending', the rail's) rather than ones the studio decides — the
+     `requested` lookup below finds none and skips the approve-and-settle, which
+     is the honest outcome. A demo of a studio-decided refund needs a priced class
+     inside 12 hours, and a seeded world cannot hold one for long. */
   const akiBolly = (await rows(aki.h, `class_bookings?session_id=eq.${sBolly.id}&user_id=eq.${aki.id}&deleted_at=is.null&select=id`))[0];
   await rpc(aki.h, "cancel_class_booking_with_reason", { p_class_booking_id: akiBolly.id, p_reason: "Injury — cannot make this one" });
   const akiRefund = (await rows(H_SERVICE, `refunds?user_id=eq.${aki.id}&status=eq.requested&select=id&order=created_at.desc`))[0];
@@ -472,7 +476,7 @@ async function seed() {
   }
   const zaidBolly = (await rows(zaid.h, `class_bookings?session_id=eq.${sBolly.id}&user_id=eq.${zaid.id}&deleted_at=is.null&select=id`))[0];
   await rpc(zaid.h, "cancel_class_booking_with_reason", { p_class_booking_id: zaidBolly.id, p_reason: "Travelling that week" });
-  log("Bollywood ₹300 × 3 (UPI, card, netbanking); Aki's refund approved and settled at the desk, Zaid's still on the queue · Bhangra ₹250 (UPI) · DLF Contemporary ₹250 × 2");
+  log(`Bollywood ₹300 × 3 (UPI, card, netbanking); Aki and Zaid cancelled — ${akiRefund ? "Aki's refund approved and settled at the desk" : "both refunds automatic (outside the 12-hour window)"} · Bhangra ₹250 (UPI) · DLF Contemporary ₹250 × 2`);
   /* the studio settles what it owes the people who taught */
   await rpc(rhythm.h, "record_payout", { p_business_id: s29.id, p_user_id: meera.id, p_session_ids: [sPastContemp.id], p_method: "upi", p_status: "done", p_note: "Contemporary · All levels" });
   await rpc(rhythm.h, "record_payout", { p_business_id: s29.id, p_user_id: aditya.id, p_session_ids: [sPastContemp.id, sPastPopping.id], p_method: "bank_transfer", p_status: "in_transit", p_note: "Assisting + Popping" });

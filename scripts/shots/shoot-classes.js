@@ -527,7 +527,7 @@ const BOOK_ON_PAGE = /^Book Now$/;
     const after = await rows(H_SERVICE, `refunds?order_id=eq.${order[0].id}&select=status,amount_inr,user_id,created_by`);
     check(after.length === 1, "⚠⚠ ONE REFUND ROW EXISTS — the thing the sheet has promised since 29 Aug and never delivered");
     check(after[0]?.amount_inr === 300, "…for the full ₹300 that was actually captured");
-    check(after[0]?.status === "pending", "…AUTOMATIC, not 'requested': the 48-hour rule is about a learner cancelling late, not a class the studio called off");
+    check(after[0]?.status === "pending", "…AUTOMATIC, not 'requested': the refund window (12 hours since 4 Oct 2026) is about a learner cancelling late, not a class the studio called off");
     check(after[0]?.user_id === learner.id, "⚠⚠ …filed against the LEARNER whose money it is, not the owner who pressed the button");
     check(after[0]?.created_by === owner.id, "…while the owner is the actor on it — the two identities stayed apart");
 

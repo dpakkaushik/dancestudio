@@ -18,7 +18,8 @@ import { saveRoutineAction } from "@/features/routines/server-actions/routines";
 import { DOS_LEVELS, DOS_LEVEL_LABEL, dosStyleColor } from "@/lib/constants/styles";
 import { INK, LILAC, SUB } from "@/lib/design/tokens";
 import { AUDIO_MAX_WORDS, MEDIA_BUCKET, routineAudioPath, whyNotATrack } from "@/lib/media/photo";
-import { createSupabaseBrowserClient } from "@/lib/supabase/client";
+/* loaded on the press, not with the page (5 Oct 2026 — see lazyClient.ts) */
+import { browserSupabase } from "@/lib/supabase/lazyClient";
 import type { ClassLevel } from "@/types/class";
 
 /** NEW ROUTINE — a page now, wearing the ADD CLASS anatomy (21 Sep 2026, the
@@ -70,7 +71,7 @@ export function RoutineForm({ userId, sheet = false }: { userId: string; sheet?:
     setBusy(true);
     try {
       const path = routineAudioPath(userId, file);
-      const supabase = createSupabaseBrowserClient();
+      const supabase = await browserSupabase();
       const { error } = await supabase.storage.from(MEDIA_BUCKET).upload(path, file, { contentType: file.type, upsert: false });
       if (error) {
         fire(error.message);

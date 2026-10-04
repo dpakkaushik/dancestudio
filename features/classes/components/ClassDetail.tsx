@@ -6,7 +6,6 @@ import { useRouter } from "next/navigation";
 import { useRef, useState, useSyncExternalStore, type CSSProperties, type ReactNode } from "react";
 import { AmenityChip } from "@/components/ui/AmenityIcon";
 import {
-  addWalkInAction,
   bookAtTheDoorAction,
   checkInAction,
   removeWalkInAction,
@@ -25,7 +24,7 @@ import { dosStyleColor, DOS_LEVEL_LABEL } from "@/lib/constants/styles";
 import { DOS_DISPLAY, DOS_UI, GOLD, GREEN } from "@/lib/design/tokens";
 import { dateParts, durText, timeRangeOf } from "@/lib/format/session";
 import { splitAddress } from "@/lib/format/address";
-import { inkOn } from "@/components/ui/ToolCard";
+import { toolBtn, ToolFace } from "@/components/ui/ToolCard";
 import { useCloseOnBack } from "@/lib/hooks/useCloseOnBack";
 import { photoUrl } from "@/lib/media/photo";
 import type { ClassRegister } from "@/repositories/attendance";
@@ -55,9 +54,6 @@ import { dosKey } from "./ShareSheet";
  *  (BookingActions 6429-6448) backed by real orders/payments/refunds. Still to come:
  *  attendance/waitlist tools + the pass sheet behind the poster (10), rooms/artists/
  *  team/posters/routine (11), owner earnings/refunds tabs (13) — see the backlog. */
-
-/* the studio's metal ring — prototype DOS_RINGS.studio (line 1462) */
-const STUDIO_RING = ["#F9E27D", "#B8860B"];
 
 const DOS_MONO = 'ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace';
 
@@ -363,8 +359,6 @@ export function ClassDetail({
   const paidSet = new Set(paidUserIds);
   const [posterOpen, setPosterOpen] = useState(false);
   /* the walk-in name field on the register (29 Sep 2026, shape 2) */
-  const [walkName, setWalkName] = useState("");
-  const [walkBusy, setWalkBusy] = useState(false);
   const [posterBusy, setPosterBusy] = useState(false);
   useCloseOnBack(() => setPosterOpen(false), posterOpen);
   const initialsOf = (name: string) => name.split(" ").filter(Boolean).map((x) => x[0]).slice(0, 2).join("").toUpperCase();
@@ -429,6 +423,11 @@ export function ClassDetail({
   const placeIsStudio = atVenue || c.businessType === "studio";
   const placeHref = atVenue ? `/studio/${c.venueBusinessId}` : c.businessType === "studio" ? `/studio/${c.businessId}` : (ownerHref ?? `/artist/${c.businessId}`);
   const mapsQuery = [placeName, placeArea, placeCity].filter(Boolean).join(", ");
+  /* the place's OWN picture (4 Oct 2026, the user: "redesign at the studio") —
+     the venue's when an artist's class is held in a studio's room, else the
+     maker's; initials only when there is none or the reader may not see it */
+  const placePhoto = (atVenue ? c.venue?.photoPath : c.owner?.photoPath) ?? null;
+  const placeSub = [placeArea, placeCity].filter(Boolean).join(", ");
   /* the way there: the exact pin when there is one, the artist's own map link for
      their own place, a name search last (4 Oct 2026) */
   const mapsLink = placePin
@@ -569,24 +568,9 @@ export function ClassDetail({
     return { ok: true, message: `✓ ${row.learnerName} checked in` };
   };
 
-  /** ⚠ THE OTHER HALF OF THE DOOR (29 Sep 2026, shape 2): somebody with no
-   *  DanceOS account at all. The scanner cannot help them — there is no code to
-   *  scan — so the register asks for a name instead, and recording them checks
-   *  them in in the same press, exactly as a scan does. */
-  const addWalkIn = async () => {
-    const name = walkName.trim();
-    if (!name || walkBusy || !c.session) return;
-    setWalkBusy(true);
-    const out = await addWalkInAction({ sessionId: c.session.id, name });
-    setWalkBusy(false);
-    if (out.error) {
-      fire(out.error);
-      return;
-    }
-    setWalkName("");
-    fire(`✓ ${name} is in`);
-    router.refresh();
-  };
+  /* ⚠ NO WALK-IN BY NAME ON THE REGISTER (4 Oct 2026, the user: "remove
+     somebody at the door and name first bar from attendance"). The scanner is the
+     door; a walk-in already on a register keeps its row and its Remove below. */
 
   const removeWalkIn = async (classBookingId: string, name: string) => {
     if (opPending) return;
@@ -1161,43 +1145,52 @@ export function ClassDetail({
               and amenities"). The room is the headline — it is the one thing a
               dancer looks for on arriving — then the studio as a door, then the
               address in words, the amenities, and a real Maps button at the foot. */}
-          {c.room ? (
-            <div style={{ marginBottom: 11 }}>
-              <div style={{ fontSize: 9, fontWeight: 900, letterSpacing: 0.9, color: "var(--muted)" }}>ROOM</div>
-              <div data-testid="class-room" style={{ fontFamily: DOS_DISPLAY, fontSize: 23, fontWeight: 800, letterSpacing: -0.6, lineHeight: 1.1, color: ink, marginTop: 2, overflowWrap: "anywhere" }}>
-                {c.room}
-              </div>
-            </div>
-          ) : null}
-          <Link href={placeHref} aria-label={`Open ${placeName}`} style={{ display: "flex", alignItems: "center", gap: 10, color: "var(--text)", textDecoration: "none" }}>
-            <div
-              style={{
-                width: 36,
-                height: 36,
-                borderRadius: 11,
-                flexShrink: 0,
-                background: `linear-gradient(135deg,${STUDIO_RING[0]},${STUDIO_RING[1]})`,
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                color: "#fff",
-                fontSize: 12,
-                fontWeight: 900,
-              }}
-            >
-              {placeName.split(" ").map((x) => x[0]).join("").slice(0, 2).toUpperCase()}
-            </div>
-            <div style={{ flex: 1, minWidth: 0 }}>
-              <div style={{ fontSize: 9, fontWeight: 900, letterSpacing: 0.8, color: "var(--muted)" }}>{placeIsStudio ? "STUDIO" : "HELD BY"}</div>
-              <div style={{ fontSize: 14, fontWeight: 800, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{placeName}</div>
-            </div>
-            <span aria-hidden="true" style={{ color: "var(--muted)", fontSize: 15, fontWeight: 800 }}>
+          {/* ⚠ REDESIGNED ON THE CARD'S ANATOMY (4 Oct 2026, the user: "redesign at
+              the studio"): BAND 1 is the place itself, big — its own picture and
+              its name in the display face, one door to its page; then the ROOM in
+              a tile of its own holding what the room has; then the address; then
+              Maps on a bar of its own. Nothing is said twice: the seats are the
+              card's bar above, so the room tile carries no capacity. */}
+          <Link href={placeHref} aria-label={`Open ${placeName}`} data-testid="class-place" style={{ display: "flex", alignItems: "center", gap: 12, color: "var(--text)", textDecoration: "none" }}>
+            <ToolFace name={placeName} photoPath={placePhoto} tint={col} size={56} />
+            <span style={{ flex: 1, minWidth: 0, display: "block" }}>
+              <span style={{ display: "block", fontSize: 9.5, fontWeight: 900, letterSpacing: 0.8, color: ink }}>{placeIsStudio ? "STUDIO" : "HELD BY"}</span>
+              <span style={{ display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden", overflowWrap: "anywhere", fontFamily: DOS_DISPLAY, fontSize: 18, fontWeight: 800, letterSpacing: -0.4, lineHeight: 1.18, marginTop: 2 }}>{placeName}</span>
+              {placeSub ? <span style={{ display: "block", fontSize: 11.5, color: "var(--sub)", marginTop: 3, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{placeSub}</span> : null}
+            </span>
+            <span aria-hidden="true" style={{ color: "var(--muted)", fontSize: 18, fontWeight: 800, flexShrink: 0 }}>
               ›
             </span>
           </Link>
+          {/* the ROOM, and what it HAS (12278-12354) — one tile, because the
+              amenities belong to the room and not to the studio */}
+          {/* an artist's class at a place of their own has no room to name and no
+              amenities to list, so the tile is not drawn at all there */}
+          {c.room || placeIsStudio ? (
+          <div data-testid="class-room-tile" style={{ marginTop: 13, padding: "11px 12px 12px", borderRadius: 15, background: `${col}0f`, border: "1.5px solid var(--el)" }}>
+            {c.room ? (
+              <>
+                <div style={{ fontSize: 9, fontWeight: 900, letterSpacing: 0.9, color: "var(--muted)" }}>ROOM</div>
+                <div data-testid="class-room" style={{ fontFamily: DOS_DISPLAY, fontSize: 23, fontWeight: 800, letterSpacing: -0.6, lineHeight: 1.1, color: ink, marginTop: 2, marginBottom: 11, overflowWrap: "anywhere" }}>
+                  {c.room}
+                </div>
+              </>
+            ) : null}
+            <div style={{ fontSize: 9, fontWeight: 900, letterSpacing: 0.9, color: "var(--muted)", marginBottom: 6 }}>AMENITIES</div>
+            <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 6 }}>
+              {roomAmenities.length > 0 ? (
+                /* the app's one amenity chip — the drawn icon in the style's colour
+                   (4 Oct 2026, "revamp icon for amenities everywhere") */
+                roomAmenities.map((a) => <AmenityChip key={a} value={a} tint={col} />)
+              ) : (
+                <span style={{ fontSize: 11, color: "var(--muted)" }}>Nothing listed for {c.room ?? "this venue"} yet.</span>
+              )}
+            </div>
+          </div>
+          ) : null}
           {/* the address in words — the pin resolved, or the area and city when
               there is no pin or the geocoder did not answer in time */}
-          <div data-testid="class-address" style={{ display: "flex", alignItems: "flex-start", gap: 9, marginTop: 11, padding: "10px 11px", borderRadius: 13, background: "var(--el)" }}>
+          <div data-testid="class-address" style={{ display: "flex", alignItems: "flex-start", gap: 9, marginTop: 10, padding: "10px 11px", borderRadius: 13, background: "var(--el)" }}>
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke={col} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" style={{ flexShrink: 0, marginTop: 1 }}>
               <path d="M12 21s-6.5-5.6-6.5-11a6.5 6.5 0 0 1 13 0c0 5.4-6.5 11-6.5 11z" />
               <circle cx="12" cy="10" r="2.3" />
@@ -1207,46 +1200,16 @@ export function ClassDetail({
               {addressLines.locality ? <div style={{ fontSize: 11, color: "var(--muted)", marginTop: 2, lineHeight: 1.4 }}>{addressLines.locality}</div> : null}
             </div>
           </div>
-          {/* what the room HAS — the amenities the studio set on it (12278-12354) */}
-          <div style={{ fontSize: 9, fontWeight: 900, letterSpacing: 0.9, color: "var(--muted)", margin: "12px 0 6px" }}>AMENITIES</div>
-          <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 6 }}>
-            {roomAmenities.length > 0 ? (
-              /* the app's one amenity chip — the drawn icon in the style's colour
-                 (4 Oct 2026, "revamp icon for amenities everywhere") */
-              roomAmenities.map((a) => <AmenityChip key={a} value={a} tint={col} />)
-            ) : (
-              <span style={{ fontSize: 11, color: "var(--muted)" }}>
-                Nothing listed for {c.room ?? "this venue"} yet.
-              </span>
-            )}
+          {/* BAND 3 — the way there, on a bar of its own like every card's buttons */}
+          <div style={{ display: "flex", marginTop: 12, paddingTop: 12, borderTop: "1.5px solid var(--el)" }}>
+            <a href={mapsLink} target="_blank" rel="noopener noreferrer" aria-label="Open this venue in Maps" data-testid="class-maps" style={toolBtn("primary", col, { padding: "12px 14px", fontSize: 13 })}>
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                <path d="M12 21s-6.5-5.6-6.5-11a6.5 6.5 0 0 1 13 0c0 5.4-6.5 11-6.5 11z" />
+                <circle cx="12" cy="10" r="2.3" />
+              </svg>
+              Open in Maps
+            </a>
           </div>
-          <a
-            href={mapsLink}
-            target="_blank"
-            rel="noopener noreferrer"
-            aria-label="Open this venue in Maps"
-            data-testid="class-maps"
-            style={{
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              gap: 7,
-              marginTop: 13,
-              padding: "11px 14px",
-              borderRadius: 14,
-              background: col,
-              color: inkOn(col),
-              fontSize: 13,
-              fontWeight: 800,
-              textDecoration: "none",
-            }}
-          >
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-              <path d="M12 21s-6.5-5.6-6.5-11a6.5 6.5 0 0 1 13 0c0 5.4-6.5 11-6.5 11z" />
-              <circle cx="12" cy="10" r="2.3" />
-            </svg>
-            Open in Maps
-          </a>
         </Sec>
 
         {/* ── WHAT THIS CLASS IS TAUGHT FROM (19 Sep 2026, the user: "Artist
@@ -1289,41 +1252,66 @@ export function ClassDetail({
               </svg>
             }
           >
+            {/* ⚠ A PERSON IS A CARD (4 Oct 2026, the user: "redesign … class
+                assistant"): the face and the name big, one door to their page, what
+                they HOLD as pills under the name, and the controls on a bar of their
+                own under a hairline — they used to be squeezed beside the name,
+                where two job toggles and Remove wrapped onto three lines on a phone. */}
             {[...assistants, ...pendingAssistants].map((cl) => {
               /* every row here is an assistant now — the artist's own ask is
                  drawn in the WHO column above, where it belongs */
-              const job = [cl.canAttendance ? "Attendance" : null, cl.canRefunds ? "Refunds" : null].filter(Boolean).join(" · ") || "Assisting";
-              const face = photoUrl(cl.avatarPath);
+              const asked = cl.status !== "confirmed";
+              const holds = [cl.canAttendance ? "Attendance" : null, cl.canRefunds ? "Refunds" : null].filter((w): w is string => w !== null);
+              const controls = cl.kind === "assistant" && (isOwner || canAddAssistant);
+              /* the owner's toggles ARE the jobs, so the static pills are for
+                 everybody else — one statement of what they hold, never two */
+              const showHolds = !(controls && isOwner && !asked);
               return (
-                <div key={cl.id} style={{ display: "flex", alignItems: "center", gap: 10, padding: "7px 0" }}>
-                  <Link href={`/person/${cl.userId}`} aria-label={`Open ${cl.personName}`} style={{ display: "flex", alignItems: "center", gap: 10, flex: 1, minWidth: 0, color: "var(--text)", textDecoration: "none" }}>
-                    <div style={{ width: 34, height: 34, borderRadius: 11, overflow: "hidden", background: `linear-gradient(135deg,${col},#7C3AED)`, display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontSize: 12, fontWeight: 900, flexShrink: 0 }}>
-                      {face ? <Image src={face} alt="" width={34} height={34} style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} /> : initialsOf(cl.personName)}
-                    </div>
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ fontSize: 12.5, fontWeight: 800, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                        {cl.personName}
-                        {myClassPerson && cl.id === myClassPerson.id ? <span style={{ color: "var(--muted)", fontWeight: 700 }}>{"  you"}</span> : null}
-                      </div>
-                      <div style={{ fontSize: 9.5, fontWeight: 800, letterSpacing: 0.5, color: cl.status === "confirmed" ? "var(--muted)" : GOLD, textTransform: "uppercase" }}>
-                        {cl.status === "confirmed" ? job : "⏳ Asked"}
-                      </div>
-                    </div>
-                  </Link>
+                <div key={cl.id} data-testid="class-assistant" style={{ border: "1.5px solid var(--el)", borderRadius: 16, overflow: "hidden", marginBottom: 9, background: `linear-gradient(135deg, ${col}14, transparent 70%)` }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 11, padding: "11px 12px" }}>
+                    <Link href={`/person/${cl.userId}`} aria-label={`Open ${cl.personName}`} style={{ display: "flex", alignItems: "center", gap: 11, flex: 1, minWidth: 0, color: "var(--text)", textDecoration: "none" }}>
+                      <ToolFace name={cl.personName} photoPath={cl.avatarPath} tint={col} size={46} />
+                      <span style={{ flex: 1, minWidth: 0, display: "block" }}>
+                        <span style={{ display: "block", fontSize: 9, fontWeight: 900, letterSpacing: 0.8, color: asked ? GOLD : ink }}>{asked ? "ASKED TO ASSIST" : "ASSISTANT"}</span>
+                        <span style={{ display: "block", fontFamily: DOS_DISPLAY, fontSize: 15.5, fontWeight: 800, letterSpacing: -0.3, lineHeight: 1.2, marginTop: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                          {cl.personName}
+                          {myClassPerson && cl.id === myClassPerson.id ? <span style={{ color: "var(--muted)", fontWeight: 700, fontFamily: DOS_UI, fontSize: 12 }}>{"  you"}</span> : null}
+                        </span>
+                        {showHolds ? (
+                          <span style={{ display: "flex", flexWrap: "wrap", gap: 5, marginTop: 5 }}>
+                            {asked ? (
+                              <span style={{ fontSize: 9.5, fontWeight: 900, letterSpacing: 0.4, padding: "3px 8px", borderRadius: 999, background: `${GOLD}24`, color: GOLD, border: `1.5px solid ${GOLD}55` }}>⏳ Waiting on them</span>
+                            ) : holds.length > 0 ? (
+                              holds.map((w) => (
+                                <span key={w} style={{ fontSize: 9.5, fontWeight: 900, letterSpacing: 0.4, padding: "3px 8px", borderRadius: 999, background: `${GREEN}1f`, color: "var(--text)", border: `1.5px solid ${GREEN}66` }}>
+                                  ✓ {w}
+                                </span>
+                              ))
+                            ) : (
+                              <span style={{ fontSize: 9.5, fontWeight: 900, letterSpacing: 0.4, padding: "3px 8px", borderRadius: 999, background: "var(--el)", color: "var(--sub)" }}>On the floor</span>
+                            )}
+                          </span>
+                        ) : null}
+                      </span>
+                    </Link>
+                    {!controls ? (
+                      <Link href={`/person/${cl.userId}`} aria-label={`View ${cl.personName}`} style={{ fontSize: 11, fontWeight: 800, color: "var(--sub)", flexShrink: 0, textDecoration: "none" }}>
+                        View ›
+                      </Link>
+                    ) : null}
+                  </div>
                   {/* the jobs and Remove, for whoever may (18 Sep 2026): the owner on
                       any assistant, the teacher on the assistants they asked; the
                       teacher's own row is changed from the form, not here */}
-                  {cl.kind === "assistant" && (isOwner || canAddAssistant) ? (
-                    <AssistantControls classPerson={cl} isOwner={isOwner} col={col} />
-                  ) : (
-                    <Link href={`/person/${cl.userId}`} aria-label={`View ${cl.personName}`} style={{ fontSize: 10.5, fontWeight: 800, color: col, flexShrink: 0, textDecoration: "none" }}>
-                      View ›
-                    </Link>
-                  )}
+                  {controls ? (
+                    <div style={{ padding: "9px 12px 10px", borderTop: "1.5px solid var(--el)" }}>
+                      <AssistantControls classPerson={cl} isOwner={isOwner} col={col} bar />
+                    </div>
+                  ) : null}
                 </div>
               );
             })}
-            {assistants.length === 0 && pendingAssistants.length === 0 && !canAddAssistant ? <div style={{ fontSize: 11, color: "var(--muted)", padding: "6px 0" }}>No assistants on this class.</div> : null}
+            {assistants.length === 0 && pendingAssistants.length === 0 && !canAddAssistant ? <div style={{ fontSize: 11.5, color: "var(--muted)", padding: "10px 12px", borderRadius: 14, border: "1.5px dashed var(--el)", textAlign: "center" }}>No assistants on this class.</div> : null}
             {/* the owner, or the person taking the class, asks somebody — from here,
                 not from the form (18 Sep 2026) */}
             {canAddAssistant ? <AddAssistant classId={c.id} col={col} exclude={classPeople.filter((cl) => cl.status !== "rejected").map((cl) => cl.userId)} pool={assistantPool} /> : null}
@@ -1348,7 +1336,7 @@ export function ClassDetail({
               </svg>
             }
           >
-            <Row k="Refund" v={isFree ? "Not applicable — free" : "Full refund until 48 h before"} />
+            <Row k="Refund" v={isFree ? "Not applicable — free" : "Full refund until 12 h before"} />
             {/* ── MEMBERSHIPS (19 Sep 2026, the user: "Memberships should be
                 allowed … in Class form and Policy section in Class Detail as
                 well"). The class's own two switches, said to the person about to
@@ -1416,7 +1404,11 @@ export function ClassDetail({
             `add_event_walk_in` and classes have no equivalent at all). ── */}
         {ownerTabs && ownerSeg === "att" && register && (
           <>
-            {/* the clock starts the session, not a button (12050-12063) */}
+            {/* the clock starts the session, not a button (12050-12063).
+                ⚠ NO "NOT STARTED YET" BOX (4 Oct 2026, the user: "remove not started
+                yet box"): before the class there is nothing to say, so the strip is
+                drawn only once the session is live or over. */}
+            {sessionPhase === "live" || sessionPhase === "ended" ? (
             <div
               style={{
                 display: "flex",
@@ -1460,6 +1452,7 @@ export function ClassDetail({
                 </span>
               )}
             </div>
+            ) : null}
 
             {/* ⚠ SCAN TO CHECK IN — the door's own control (28 Sep 2026). Only
                 while check-in is OPEN: `check_in` refuses a session that has
@@ -1511,43 +1504,6 @@ export function ClassDetail({
                 Scan to check in
               </button>
             )}
-
-            {/* ⚠⚠ AND THE PERSON WITH NO CODE TO SCAN (29 Sep 2026, shape 2).
-                The scanner resolves a DanceOS profile, so it can do nothing at
-                all for somebody who walks in off the street — the commonest
-                thing at a door. A name is what there is, so a name is what it
-                asks for, and recording them checks them in in the same press.
-                ⚠ The button NAMES the missing answer while the field is empty,
-                which is this app's own form grammar (`ClassForm`, 21 Sep). */}
-            {sessionPhase !== "ended" && c.session ? (
-              <div style={{ display: "flex", gap: 6, marginBottom: 10 }}>
-                <input
-                  value={walkName}
-                  onChange={(e) => setWalkName(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter") {
-                      e.preventDefault();
-                      void addWalkIn();
-                    }
-                  }}
-                  maxLength={80}
-                  placeholder="Somebody at the door…"
-                  aria-label="The name of somebody walking in"
-                  data-testid="walk-in-name"
-                  style={{ flex: 1, minWidth: 0, padding: "11px 13px", borderRadius: 999, border: "1.5px solid var(--el)", background: "var(--card)", color: "var(--text)", fontFamily: "inherit", fontSize: 12.5, textTransform: "none" }}
-                />
-                <button
-                  type="button"
-                  onClick={() => void addWalkIn()}
-                  disabled={walkName.trim().length === 0 || walkBusy}
-                  aria-label={walkName.trim().length === 0 ? "Type a name first" : `Add ${walkName.trim()} at the door`}
-                  data-testid="walk-in-add"
-                  style={{ flexShrink: 0, padding: "11px 15px", borderRadius: 999, border: "none", background: walkName.trim().length === 0 ? "var(--el)" : "var(--text)", color: walkName.trim().length === 0 ? "var(--sub)" : "var(--solid)", fontWeight: 900, fontSize: 12.5, fontFamily: "inherit", cursor: walkName.trim().length === 0 ? "default" : "pointer", opacity: walkBusy ? 0.5 : 1 }}
-                >
-                  {walkName.trim().length === 0 ? "Name first" : walkBusy ? "Adding…" : "Add"}
-                </button>
-              </div>
-            ) : null}
 
             {/* the register itself (12117-12137) */}
             <Sec

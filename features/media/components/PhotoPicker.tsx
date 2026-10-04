@@ -6,7 +6,7 @@ import { addMyGalleryPhotoAction, setAssetPhotoAction, setCrewPhotoAction, setMy
 import { addStudioProofPhotoAction } from "@/features/businesses/server-actions/studioVerification";
 import { PHOTO_TYPES, photoPath, whyNotAPhoto, type PhotoOwner, MEDIA_BUCKET } from "@/lib/media/photo";
 import { PROOF_BUCKET } from "@/lib/media/proof";
-import { createSupabaseBrowserClient } from "@/lib/supabase/client";
+import { browserSupabase } from "@/lib/supabase/lazyClient";
 import { DOS_UI, INK, LINE, SUB } from "@/lib/design/tokens";
 import { PhotoCropper, frameForOwnerKind } from "./PhotoCropper";
 
@@ -64,7 +64,8 @@ const setter = (owner: PhotoOwner, path: string | null): Promise<PhotoActionResu
  *  two steps the picker takes, for a caller that STAGED the file first
  *  (onboarding, 2 Oct 2026). An orphan file is taken back out if the row refuses. */
 export async function uploadPhotoFile(owner: PhotoOwner, file: File): Promise<{ path: string | null; error: string | null }> {
-  const supabase = createSupabaseBrowserClient();
+  /* loaded on the press, not with the page (5 Oct 2026 — see lazyClient.ts) */
+  const supabase = await browserSupabase();
   const bucket = bucketFor(owner);
   const path = photoPath(owner, file);
   const up = await supabase.storage.from(bucket).upload(path, file, { contentType: file.type, upsert: false });

@@ -6,8 +6,9 @@ import { signUpAction, type AuthActionState } from "@/features/auth/server-actio
 import { AuthShell } from "@/features/auth/components/AuthShell";
 import { AuthBackLink } from "@/features/auth/components/AuthBackLink";
 import { PasswordField } from "@/features/auth/components/PasswordField";
-import { emailProblem, isEmailUsable } from "@/features/auth/types/email";
-import { PASSWORD_MIN, isPasswordUsable, passwordProblem } from "@/features/auth/types/password";
+/* the plain rules, not the Zod schemas — the browser does not load Zod to grey
+   a button (5 Oct 2026, see rules.ts); the action re-parses the schema */
+import { PASSWORD_MIN, emailProblem, isEmailUsable, isPasswordUsable, passwordProblem } from "@/features/auth/types/rules";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";

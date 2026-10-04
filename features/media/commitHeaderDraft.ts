@@ -4,7 +4,7 @@ import { addCrewHeaderPhotoAction, addMyGalleryPhotoAction, removeCrewHeaderPhot
 import { addStudioProofPhotoAction, removeStudioProofPhotoAction } from "@/features/businesses/server-actions/studioVerification";
 import { HEADER_MAX_CREW, MEDIA_BUCKET, photoPath, photoUrl } from "@/lib/media/photo";
 import { PROOF_BUCKET, PROOF_MAX, proofPath } from "@/lib/media/proof";
-import { createSupabaseBrowserClient } from "@/lib/supabase/client";
+import { browserSupabase } from "@/lib/supabase/lazyClient";
 import type { DraftItem, StoredPicture } from "./headerDraft";
 
 /** WHAT SAVE ACTUALLY DOES — and why the ORDER is the whole design (16 Sep 2026).
@@ -67,7 +67,8 @@ export interface CommitResult {
 }
 
 export async function commitHeaderDraft(items: DraftItem[], ports: CommitPorts): Promise<CommitResult> {
-  const supabase = createSupabaseBrowserClient();
+  /* loaded with the Save, not with the page (5 Oct 2026 — see lazyClient.ts) */
+  const supabase = await browserSupabase();
   const removals = items.filter((i): i is Extract<DraftItem, { kind: "stored" }> => i.kind === "stored" && i.removed);
   const additions = items.filter((i): i is Extract<DraftItem, { kind: "new" }> => i.kind === "new");
   const out: CommitResult = { added: [], removed: [], failures: [] };

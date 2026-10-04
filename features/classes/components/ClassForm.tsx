@@ -472,9 +472,6 @@ export function ClassForm({
     if (!(capacity > 0)) blockers.push("Say how many people can book");
     if (Number.isNaN(Number(priceInr))) blockers.push("Set a price — put 0 if it is free");
   }
-  /* a place of their own, OR a room in a studio they own (26 Sep 2026) — both
-     have nobody to wait for, and `create_class_with_session` lets both publish */
-  const canPublishHere = (atPlace || ownVenue) && ok && blockers.length === 0;
 
   /* the rate only travels when an OWNER is saving — the RPCs reject it from anybody else */
   const peoplePayload = isArtist ? "" : JSON.stringify({ artistUserId: teacher?.id ?? null, ...(isOwner ? { artistPayInr } : {}) });
@@ -897,7 +894,7 @@ export function ClassForm({
                       setSubmitStatus("draft");
                       setConfirm("draft");
                     }}
-                    style={{ flex: canPublishHere ? 1 : 1.6, padding: "14px", borderRadius: 999, border: "none", background: canPublishHere ? CARD : INK, color: !ok ? "var(--muted)" : canPublishHere ? INK : LILAC, fontWeight: 700, fontSize: 14, cursor: ok ? "pointer" : "default", fontFamily: "inherit" }}
+                    style={{ flex: 1.6, padding: "14px", borderRadius: 999, border: "none", background: INK, color: !ok ? "var(--muted)" : LILAC, fontWeight: 700, fontSize: 14, cursor: ok ? "pointer" : "default", fontFamily: "inherit" }}
                   >
                     {/* ⚠ "SEND REQUEST", NOT "SAVE & ASK" (28 Sep 2026, the user's own
                         word). The old label named the two things the press does in
@@ -909,19 +906,12 @@ export function ClassForm({
                         else has to say yes. */}
                     {isPending ? (asksSomebody ? "Sending…" : "Saving…") : asksSomebody ? "Send request" : "Save draft"}
                   </button>
-                  {canPublishHere ? (
-                    <button
-                      type="button"
-                      disabled={isPending}
-                      onClick={() => {
-                        setSubmitStatus("published");
-                        setConfirm("publish");
-                      }}
-                      style={{ flex: 1.4, padding: "14px", borderRadius: 999, border: "none", background: INK, color: LILAC, fontWeight: 700, fontSize: 15, cursor: "pointer", fontFamily: "inherit" }}
-                    >
-                      {isPending ? "Working…" : "Publish class"}
-                    </button>
-                  ) : null}
+                  {/* ⚠ NO "PUBLISH CLASS" HERE (4 Oct 2026, the user: "after creating
+                      class always gets saved in drafts first"). An artist's class at
+                      their own place, or in a studio they own, could publish straight
+                      from this bar; every new class is a draft now, and the register's
+                      Publish — the one big button on the Draft card — is the next step.
+                      The server forces the draft too. */}
                 </>
               )}
             </>
@@ -982,7 +972,7 @@ export function ClassForm({
                     <div style={{ fontSize: 12, color: SUB, marginTop: 4 }}>● {whereWords} · cap {capacity}</div>
                     {!isArtist && studioPlace ? <div style={{ fontSize: 12, color: SUB, marginTop: 4 }}>📍 {studioPlace}</div> : null}
                     <div style={{ fontSize: 12, marginTop: 4, fontWeight: 800, color: priceInr === 0 ? "#22C55E" : INK }}>{priceInr === 0 ? "FREE" : `₹${priceInr}/session`}</div>
-                    {priceInr > 0 ? <div style={{ fontSize: 11.5, marginTop: 4, color: "#22C55E", fontWeight: 700 }}>↩️ Refund until 48 h before start</div> : null}
+                    {priceInr > 0 ? <div style={{ fontSize: 11.5, marginTop: 4, color: "#22C55E", fontWeight: 700 }}>↩️ Refund until 12 h before start</div> : null}
                   </div>
                 </div>
               );

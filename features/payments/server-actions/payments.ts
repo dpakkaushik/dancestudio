@@ -344,7 +344,7 @@ export interface CancelBookingResult {
   error: string | null;
 }
 
-/** RefundSheet's cancel: seat back now, money by the 48 h window. */
+/** RefundSheet's cancel: seat back now, money by the 12 h window (48 h until 4 Oct 2026). */
 export async function cancelBookingAction(input: {
   classBookingId: string;
   reason: string;
@@ -362,7 +362,7 @@ export async function cancelBookingAction(input: {
     }
     if (refund.status === "requested") {
       return {
-        message: "Cancelled — inside 48 h the studio decides the refund, and they've been asked",
+        message: "Cancelled — inside 12 h the studio decides the refund, and they've been asked",
         error: null,
       };
     }

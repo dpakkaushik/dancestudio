@@ -3,7 +3,7 @@ import { dosClassLabel } from "@/lib/constants/styles";
 /* ⚠ `addDays` walked a multi-day event into one row per day and went with
    events (29 Sep 2026) — a class session is one day by construction */
 import { dayKeyOf, hourOf, monthStartIso, monthsWindow, shiftMonthKey } from "@/lib/format/month";
-import type { CalendarEntry, CalendarSide } from "@/types/calendar";
+import { nextSessionsOf, type CalendarEntry, type CalendarSide } from "@/types/calendar";
 import { classOwnerOf, type ClassLevel, type ClassStatus } from "@/types/class";
 import type { ClassBookingStatus } from "@/types/classBooking";
 import { findClassArtists } from "./classPeople";
@@ -337,7 +337,10 @@ export async function findPublicBusinessSchedule(
   businessId: string,
   business: BusinessBits,
   nowIso: string,
-  toIso: string
+  toIso: string,
+  /** ⚠ an ARTIST page's schedule also offers every class its owner TEACHES —
+   *  see `findTaughtEntries` (5 Oct 2026). Null for a studio. */
+  teacherId: string | null = null
 ): Promise<CalendarEntry[]> {
   const { data, error } = await supabase
     .from("class_sessions")
@@ -371,8 +374,66 @@ export async function findPublicBusinessSchedule(
       )
     );
   /* the artists' published classes it holds are on offer here too (18 Sep 2026) */
-  const hosted = await findVenueEntries(supabase, businessId, business, nowIso, toIso, true);
-  return withSeatCounts(supabase, [...entries, ...hosted]);
+  const [hosted, taught] = await Promise.all([
+    findVenueEntries(supabase, businessId, business, nowIso, toIso, true),
+    teacherId ? findTaughtEntries(supabase, teacherId, nowIso, toIso) : Promise.resolve([] as CalendarEntry[]),
+  ]);
+  /* one row per session: a class on the page's own books that its owner also
+     teaches is the same session, and is drawn once */
+  const seen = new Set<string>();
+  const all = [...entries, ...hosted, ...taught].filter((e) => (seen.has(e.sessionId) ? false : (seen.add(e.sessionId), true)));
+  return withSeatCounts(supabase, all);
+}
+
+/** ⚠⚠ THE CLASSES A PERSON TEACHES, WHEREVER THEY ARE (5 Oct 2026, the user: "fix
+ *  calender page and schedule for all profiles").
+ *
+ *  An artist's public schedule was their ARTIST PAGE's classes and nothing else
+ *  — so somebody who teaches five evenings a week, four of them on a studio's
+ *  books, had a schedule showing one class. Since R24 an artist's public face is
+ *  their PROFILE, and the question a stranger brings to it is "when can I dance
+ *  with them", not "which classes does their business own". So the schedule
+ *  behind their Schedule bar (and the NEXT SESSIONS rail under it) is every
+ *  PUBLISHED class they are the CONFIRMED artist on, at any studio, plus their
+ *  own page's.
+ *
+ *  ⚠ NO MIGRATION, and nothing widened: Step 11's policy has let anybody read a
+ *  CONFIRMED artist row on a published class of a listed business since
+ *  25 Aug 2026 — it is how a class page names its teacher to a stranger — and the
+ *  class and its sessions are public on the same terms. An unanswered ask, a
+ *  draft and an unlisted studio's class stay invisible exactly as before.
+ *  ⚠ Assisting is NOT teaching, and is left off: an assistant's name is not what
+ *  a class is sold on. */
+async function findTaughtEntries(
+  supabase: SupabaseClient,
+  teacherId: string,
+  nowIso: string,
+  toIso: string
+): Promise<CalendarEntry[]> {
+  const { data, error } = await supabase
+    .from("class_people")
+    .select(`kind, class_id, classes!inner (${CLASS_BITS}, class_sessions (id, starts_at, ends_at, deleted_at))`)
+    .eq("user_id", teacherId)
+    .eq("kind", "artist")
+    .eq("status", "confirmed")
+    .is("deleted_at", null)
+    .eq("classes.status", "published")
+    .is("classes.deleted_at", null)
+    .limit(MAX_ROWS);
+  if (error) {
+    throw new Error(`calendar.findTaughtEntries failed: ${error.message}`);
+  }
+  const out: CalendarEntry[] = [];
+  for (const row of (data ?? []) as unknown as MyClassPersonRow[]) {
+    if (!row.classes) continue;
+    for (const s of row.classes.class_sessions ?? []) {
+      if (s.deleted_at) continue;
+      /* not over, and inside the window — the public read's own rule */
+      if (!(Date.parse(s.ends_at) > Date.parse(nowIso) && Date.parse(s.starts_at) < Date.parse(toIso))) continue;
+      out.push(entryOf(s, row.class_id, row.classes, row.classes.owner ?? null, "hosting", null));
+    }
+  }
+  return out;
 }
 
 /** THE FIRST FEW CLASSES BEHIND A PROFILE'S SCHEDULE BAR (30 Sep 2026, #0aj).
@@ -390,8 +451,16 @@ export async function findPublicBusinessSchedule(
 export async function findNextPublicSessions(
   supabase: SupabaseClient,
   businessId: string,
-  business: BusinessBits
+  business: BusinessBits,
+  /** the artist page's owner, so the rail offers what the schedule offers */
+  teacherId: string | null = null
 ): Promise<CalendarEntry[]> {
   const now = new Date().toISOString();
-  return findPublicBusinessSchedule(supabase, businessId, business, now, publicScheduleToIso(now)).catch(() => []);
+  /* ⚠ TRIMMED HERE, NOT IN THE RAIL (5 Oct 2026): the rail is a client component
+     now, and handing it the whole three-month window would ship every class in
+     it in the page's payload to draw five. Same read, same window — only the
+     soonest five leave the server. */
+  return findPublicBusinessSchedule(supabase, businessId, business, now, publicScheduleToIso(now), teacherId)
+    .then(nextSessionsOf)
+    .catch(() => []);
 }

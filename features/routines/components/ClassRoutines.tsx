@@ -1,14 +1,15 @@
 "use client";
 
-import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState, useTransition, type CSSProperties } from "react";
+import { inkOn, ToolFace } from "@/components/ui/ToolCard";
 import { DOS_LEVEL_LABEL } from "@/lib/constants/styles";
-import { INK, SUB } from "@/lib/design/tokens";
+import { DOS_DISPLAY, INK, SUB } from "@/lib/design/tokens";
 import { photoUrl } from "@/lib/media/photo";
 import { addClassRoutineAction, removeClassRoutineAction } from "@/features/routines/server-actions/routines";
 import type { Routine } from "@/repositories/routines";
+import { RoutineMediaButton } from "./routine-kit";
 
 /** THE ROUTINES ON A CLASS (19 Sep 2026, the user: "Artist should be able to add
  *  Routines from the class detail page and should be visible").
@@ -20,8 +21,7 @@ import type { Routine } from "@/repositories/routines";
  *  this is the class's confirmed artist or the business's owner; everybody who
  *  can read the class reads the song and the video. */
 
-const box: CSSProperties = { display: "flex", alignItems: "center", gap: 10, padding: "8px 0", borderBottom: "1.5px solid var(--el)" };
-const chipLink = (tint: string): CSSProperties => ({ display: "inline-flex", alignItems: "center", gap: 4, padding: "3px 8px", borderRadius: 999, background: `${tint}1c`, border: `1.5px solid ${tint}44`, color: tint, fontSize: 9.5, fontWeight: 800, textDecoration: "none", whiteSpace: "nowrap" });
+const card: CSSProperties = { border: "1.5px solid var(--el)", borderRadius: 16, overflow: "hidden", marginBottom: 9 };
 
 export function ClassRoutines({
   classId,
@@ -68,57 +68,59 @@ export function ClassRoutines({
 
   return (
     <>
+      {/* ⚠ A ROUTINE IS A CARD (4 Oct 2026, the user: "redesign … routines"),
+          the Routines desk's own anatomy: the routine's name big with its style
+          and level, WHOSE WORK IT IS with their face, and the song and the video
+          as the desk's filled buttons on a bar of their own — the same pair, in
+          the Routines tool's one hue, wherever a routine is pressed. */}
       {routines.map((r) => {
         const songHref = r.songUrl ? (r.songIsFile ? photoUrl(r.songUrl) : r.songUrl) : null;
         return (
-          <div key={r.id} style={box}>
-            <span aria-hidden="true" style={{ width: 30, height: 30, flexShrink: 0, borderRadius: 10, background: `${col}22`, color: col, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 14 }}>
-              ▶
-            </span>
-            <span style={{ flex: 1, minWidth: 0 }}>
-              <span style={{ display: "block", fontSize: 12.5, fontWeight: 800, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{r.title}</span>
-              {/* ⚠ WHOSE WORK IT IS (28 Sep 2026, the user: "routines to have
-                  artist name who created it with photo"). A routine belongs to a
-                  PERSON and travels with them between studios, so the class it is
-                  taught from credits them. ⚠ Drawn only when there IS a name:
-                  `profiles` is signed-in-only, so a signed-out visitor to a
-                  public class gets null and no half-credit is printed — the same
-                  rule the class card already follows for its teacher. */}
-              {r.ownerName ? (
-                <span style={{ display: "flex", alignItems: "center", gap: 5, marginTop: 3 }}>
-                  <span aria-hidden="true" style={{ width: 16, height: 16, borderRadius: 5, overflow: "hidden", flexShrink: 0, background: `linear-gradient(135deg,${col},#7C3AED)`, color: "#fff", fontSize: 7.5, fontWeight: 900, display: "flex", alignItems: "center", justifyContent: "center" }}>
-                    {photoUrl(r.ownerPhotoPath) ? (
-                      <Image src={photoUrl(r.ownerPhotoPath) as string} alt="" width={16} height={16} style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
-                    ) : (
-                      r.ownerName.split(" ").filter(Boolean).map((w) => w[0]).slice(0, 2).join("").toUpperCase()
-                    )}
-                  </span>
-                  <span style={{ fontSize: 10, fontWeight: 700, color: SUB, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{r.ownerName}</span>
+          <div key={r.id} data-testid="class-routine" style={card}>
+            <div style={{ display: "flex", alignItems: "flex-start", gap: 11, padding: "11px 12px", background: `linear-gradient(135deg, ${col}1a, transparent 72%)` }}>
+              <span aria-hidden="true" style={{ width: 44, height: 44, flexShrink: 0, borderRadius: 13, background: `linear-gradient(135deg, ${col}, ${col}99)`, color: inkOn(col), display: "flex", alignItems: "center", justifyContent: "center" }}>
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M9 18V5l11-2v13" />
+                  <circle cx="6" cy="18" r="3" />
+                  <circle cx="17" cy="16" r="3" />
+                </svg>
+              </span>
+              <span style={{ flex: 1, minWidth: 0, display: "block" }}>
+                <span style={{ display: "block", fontSize: 9, fontWeight: 900, letterSpacing: 0.8, color: "var(--muted)", textTransform: "uppercase" }}>
+                  Routine · {DOS_LEVEL_LABEL[r.level]}
                 </span>
-              ) : null}
-              <span style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 3, flexWrap: "wrap" }}>
-                {songHref ? (
-                  <a href={songHref} target="_blank" rel="noreferrer" aria-label={`Open the song for ${r.title}`} style={chipLink("#22C55E")}>
-                    ♪ {r.songTitle ?? (r.songIsFile ? "MP3" : "Song")}
-                  </a>
-                ) : null}
-                {r.videoUrl ? (
-                  <a href={r.videoUrl} target="_blank" rel="noreferrer" aria-label={`Open the video for ${r.title}`} style={chipLink("#8B5CF6")}>
-                    ▶ Video
-                  </a>
+                <span style={{ display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden", overflowWrap: "anywhere", fontFamily: DOS_DISPLAY, fontSize: 16, fontWeight: 800, letterSpacing: -0.3, lineHeight: 1.2, marginTop: 1 }}>{r.title}</span>
+                {/* ⚠ WHOSE WORK IT IS (28 Sep 2026, the user: "routines to have
+                    artist name who created it with photo"). A routine belongs to a
+                    PERSON and travels with them between studios, so the class it is
+                    taught from credits them. ⚠ Drawn only when there IS a name:
+                    `profiles` is signed-in-only, so a signed-out visitor to a
+                    public class gets null and no half-credit is printed — the same
+                    rule the class card already follows for its teacher. */}
+                {r.ownerName ? (
+                  <span style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 6 }}>
+                    <ToolFace name={r.ownerName} photoPath={r.ownerPhotoPath} tint={col} size={20} />
+                    <span style={{ fontSize: 11, fontWeight: 700, color: SUB, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>by {r.ownerName}</span>
+                  </span>
                 ) : null}
               </span>
-            </span>
-            {canEdit ? (
-              <button type="button" disabled={pending} aria-label={`Take ${r.title} off this class`} onClick={() => run(() => removeClassRoutineAction({ classId, routineId: r.id, shareSlug }))} style={{ flexShrink: 0, fontSize: 10.5, fontWeight: 800, color: SUB, background: "none", border: "none", cursor: "pointer", fontFamily: "inherit" }}>
-                Remove
-              </button>
+              {canEdit ? (
+                <button type="button" disabled={pending} aria-label={`Take ${r.title} off this class`} onClick={() => run(() => removeClassRoutineAction({ classId, routineId: r.id, shareSlug }))} style={{ flexShrink: 0, fontSize: 10.5, fontWeight: 800, color: "#F87171", background: "transparent", border: "1.5px solid var(--el)", borderRadius: 999, padding: "5px 10px", cursor: "pointer", fontFamily: "inherit" }}>
+                  Remove
+                </button>
+              ) : null}
+            </div>
+            {songHref || r.videoUrl ? (
+              <div style={{ display: "flex", gap: 8, padding: "9px 12px 11px", borderTop: "1.5px solid var(--el)" }}>
+                {songHref ? <RoutineMediaButton kind="song" href={songHref} word={r.songTitle ?? (r.songIsFile ? "MP3" : "Song")} title={r.title} /> : null}
+                {r.videoUrl ? <RoutineMediaButton kind="video" href={r.videoUrl} word="Video" title={r.title} /> : null}
+              </div>
             ) : null}
           </div>
         );
       })}
 
-      {routines.length === 0 && !canEdit ? <div style={{ fontSize: 11, color: "var(--muted)", padding: "6px 0" }}>No routine on this class.</div> : null}
+      {routines.length === 0 && !canEdit ? <div style={{ fontSize: 11.5, color: "var(--muted)", padding: "10px 12px", borderRadius: 14, border: "1.5px dashed var(--el)", textAlign: "center" }}>No routine on this class.</div> : null}
 
       {canEdit ? (
         pick ? (
@@ -151,7 +153,7 @@ export function ClassRoutines({
             </button>
           </div>
         ) : (
-          <button type="button" onClick={() => setPick(true)} aria-label="Add a routine to this class" style={{ display: "block", width: "100%", marginTop: 8, padding: "10px", borderRadius: 12, border: "1.5px dashed var(--el)", background: "none", color: col, fontSize: 11.5, fontWeight: 800, cursor: "pointer", fontFamily: "inherit" }}>
+          <button type="button" onClick={() => setPick(true)} aria-label="Add a routine to this class" style={{ display: "block", width: "100%", marginTop: routines.length > 0 ? 0 : 2, padding: "12px", borderRadius: 16, border: "1.5px dashed var(--el)", background: `${col}0d`, color: "var(--text)", fontSize: 12, fontWeight: 800, cursor: "pointer", fontFamily: "inherit" }}>
             ＋ Add a routine
           </button>
         )

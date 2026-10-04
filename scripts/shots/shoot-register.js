@@ -278,19 +278,21 @@ const valueOf = (page, label) => page.getByLabel(label).inputValue();
     check(strangerAtt.length === 1, `and they are on the register in the same press (found ${strangerAtt.length})`);
 
     /* ── 3b. THE WALK-IN WITH NO ACCOUNT AT ALL (29 Sep 2026, shape 2) ───────
-       The scanner can do nothing for somebody off the street — there is no code
-       to scan — so the register asks for a name. */
+       ⚠ THE NAME ROW IS GONE FROM THE REGISTER (4 Oct 2026, the user: "remove
+       somebody at the door and name first bar from attendance in class detail").
+       The DOOR stays — `add_class_walk_in` is untouched, and a walk-in already
+       on a register is drawn, paid and removed exactly as before — so this
+       section asserts the row's absence and then plants its walk-in through the
+       database's own door, as the owner, to keep driving what the register
+       still does with one. */
     const walkName = `Walk In ${stamp}`;
-    const nameField = page.getByTestId("walk-in-name");
-    await nameField.waitFor({ timeout: 20000 });
     check(
-      (await page.getByTestId("walk-in-add").getAttribute("aria-label")) === "Type a name first",
-      "⚠ the Add button NAMES the missing answer while the field is empty — this app's own form grammar"
+      (await page.getByTestId("walk-in-name").count()) === 0 && (await page.getByTestId("walk-in-add").count()) === 0,
+      "⚠ the register carries no 'somebody at the door' name row any more"
     );
-    await nameField.fill(walkName);
-    await page.getByTestId("walk-in-add").click();
-    await page.getByText(`${walkName} is in`, { exact: false }).waitFor({ timeout: 20000 });
-    check(true, "⚠⚠ somebody with NO DanceOS account is recorded at the door by name");
+    const walkSeat = await rpc(owner.h, "add_class_walk_in", { p_session_id: session.id, p_name: walkName });
+    await rpc(owner.h, "check_in", { p_class_booking_id: walkSeat.id });
+    check(Boolean(walkSeat && walkSeat.id), "⚠⚠ somebody with NO DanceOS account is recorded at the door by name — through the database's door");
 
     /* the database's own answer, not the screen's */
     const wRow = await rows(
@@ -368,13 +370,14 @@ const valueOf = (page, label) => page.getByLabel(label).inputValue();
     }, "plant a self-booked seat");
     const paidSlug = (await rows(owner.h, `classes?id=eq.${paidCls.id}&select=share_slug`))[0].share_slug;
 
+    /* the walk-in planted through the database's door (the register's name row
+       is gone since 4 Oct 2026 — see 3b) */
+    const payName = `Cash Walk ${stamp}`;
+    const paySeat = await rpc(owner.h, "add_class_walk_in", { p_session_id: paidSession.id, p_name: payName });
+    await rpc(owner.h, "check_in", { p_class_booking_id: paySeat.id });
     await page.goto(`${BASE}/c/${paidSlug}`, { waitUntil: "networkidle" });
     await page.getByRole("button", { name: "Attendance", exact: true }).click();
-    const payName = `Cash Walk ${stamp}`;
-    await page.getByTestId("walk-in-name").waitFor({ timeout: 20000 });
-    await page.getByTestId("walk-in-name").fill(payName);
-    await page.getByTestId("walk-in-add").click();
-    await page.getByText(`${payName} is in`, { exact: false }).waitFor({ timeout: 20000 });
+    await page.getByText(payName, { exact: false }).first().waitFor({ timeout: 20000 });
 
     const markPaid = page.getByRole("button", { name: `Mark ${payName} paid`, exact: true });
     await markPaid.waitFor({ timeout: 20000 });

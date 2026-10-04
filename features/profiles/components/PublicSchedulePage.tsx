@@ -4,7 +4,7 @@ import { dayKeyOf, monthsWindow } from "@/lib/format/month";
 import { publicProfilePath, publicSchedulePath } from "@/lib/routes/publicProfile";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { PUBLIC_SCHEDULE_MONTHS, findPublicBusinessSchedule, publicScheduleToIso } from "@/repositories/calendar";
-import { findPublicBusiness } from "@/repositories/publicProfile";
+import { findPublicBusiness, findPublicStudioTeam } from "@/repositories/publicProfile";
 import type { BusinessType } from "@/types/business";
 
 const stampNowIso = (): string => new Date().toISOString();
@@ -30,12 +30,22 @@ export async function PublicSchedulePage({ businessId, expect }: { businessId: s
 
   const now = stampNowIso();
   const months = monthsWindow(now, 0, PUBLIC_SCHEDULE_MONTHS);
+  /* ⚠⚠ AN ARTIST'S SCHEDULE IS EVERY CLASS THEY TEACH (5 Oct 2026) — not only
+     the ones their page owns. Its owner comes off `public_studio_team`, the
+     definer read that already names an artist page's people to a stranger
+     (anon cannot call `business_owner`); a studio's schedule is its own and
+     passes nobody. */
+  const teacherId =
+    business.type === "artist_page"
+      ? ((await findPublicStudioTeam(supabase, businessId).catch(() => [])).find((m) => m.role === "owner")?.userId ?? null)
+      : null;
   const entries = await findPublicBusinessSchedule(
     supabase,
     businessId,
     { name: business.name, city: business.city },
     now,
-    publicScheduleToIso(now)
+    publicScheduleToIso(now),
+    teacherId
   );
 
   return (

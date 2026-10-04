@@ -34,6 +34,12 @@ $anonH = @{ apikey = $anon; "Content-Type" = "application/json" }
 function New-Class($headers, $tenantId, $title, $price, $cap, $daysOut, $teacherId) {
   $starts = (Get-Date).AddDays($daysOut).ToString("yyyy-MM-ddT19:00:00+05:30")
   $ends = (Get-Date).AddDays($daysOut).ToString("yyyy-MM-ddT20:00:00+05:30")
+  if ($daysOut -eq 0) {
+    # 4 Oct 2026: the refund window is 12 hours, so "inside it" is a few hours from NOW
+    $t = (Get-Date).AddHours(4)
+    $starts = $t.ToString("yyyy-MM-ddTHH:mm:00zzz")
+    $ends = $t.AddHours(1).ToString("yyyy-MM-ddTHH:mm:00zzz")
+  }
   $body = @{ p_business_id = $tenantId; p_title = $title; p_style = "Hip-Hop"; p_level = "beginner";
              p_room = "Studio A"; p_price_inr = $price; p_capacity = $cap; p_status = "draft";
              p_starts_at = $starts; p_ends_at = $ends } | ConvertTo-Json
@@ -138,7 +144,7 @@ try {
   $out9 = Rpc (Api $b.access_token) "cancel_class_booking_with_reason" @{ p_class_booking_id = $enr[0].id; p_reason = "Travelling" }
   $counts = Rpc $anonH "session_seat_counts" @{ p_session_ids = @($s1) }
   $seatFreed = (@($counts | Where-Object { $_.session_id -eq $s1 }).Count -eq 0)
-  Check 9 "Cancel outside 48h frees the seat and files a pending refund ($($out9.refund.status))" (($out9.refund.status -eq "pending") -and ($out9.refund.amount_inr -eq 300) -and $seatFreed)
+  Check 9 "Cancel outside 12h frees the seat and files a pending refund ($($out9.refund.status))" (($out9.refund.status -eq "pending") -and ($out9.refund.amount_inr -eq 300) -and $seatFreed)
 
   # 10. refund.processed closes the loop
   Rpc $svcH "apply_refund_update" @{ p_provider_payment_id = "pay_PROOF$stamp"; p_provider_refund_id = "rfnd_PROOF$stamp"; p_amount_paise = 30000; p_succeeded = $true } | Out-Null
@@ -146,15 +152,15 @@ try {
   $ord10 = Get-Rows (Api $b.access_token) "orders?id=eq.$($o1.id)&select=status"
   Check 10 "Refund processed (refund $($ref10[0].status), order $($ord10[0].status))" (($ref10[0].status -eq "processed") -and ($ord10[0].status -eq "refunded"))
 
-  # 11. cancelling inside 48h: the studio decides (requested, no auto refund)
-  $c3 = New-Class (Api $a.access_token) $ta.id "Tomorrow $stamp" 300 10 1 $b.user.id
+  # 11. cancelling inside 12h: the studio decides (requested, no auto refund)
+  $c3 = New-Class (Api $a.access_token) $ta.id "Soon $stamp" 300 10 0 $b.user.id
   $s3 = Session-Of $c3.id
   $o3 = Rpc (Api $b.access_token) "create_payment_order" @{ p_session_id = $s3 }
   Rpc (Api $b.access_token) "attach_provider_order" @{ p_order_id = $o3.id; p_provider_order_id = "order_C3$stamp" } | Out-Null
   Rpc $svcH "apply_captured_payment" @{ p_provider_order_id = "order_C3$stamp"; p_provider_payment_id = "pay_C3$stamp"; p_amount_paise = 30000; p_method = "upi" } | Out-Null
   $enr3 = Get-Rows (Api $b.access_token) "class_bookings?session_id=eq.$s3&status=eq.enrolled&select=id"
   $out11 = Rpc (Api $b.access_token) "cancel_class_booking_with_reason" @{ p_class_booking_id = $enr3[0].id; p_reason = "Changed my mind" }
-  Check 11 "Cancel inside 48h files a request, not a refund ($($out11.refund.status))" ($out11.refund.status -eq "requested")
+  Check 11 "Cancel inside 12h files a request, not a refund ($($out11.refund.status))" ($out11.refund.status -eq "requested")
 
   # 12. NO WAITLIST since 4 Oct 2026: a full free class refuses the next person,
   #     and a cancel puts the seat back on sale rather than promoting anybody

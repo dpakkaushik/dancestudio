@@ -212,7 +212,11 @@ export async function createClassAction(
       poster: d.poster ?? null,
       priceInr: d.priceInr,
       capacity: d.capacity,
-      status: d.status,
+      /* ⚠ A NEW CLASS IS ALWAYS A DRAFT (4 Oct 2026, the user: "after creating
+         class always gets saved in drafts first"). The form no longer offers
+         Publish, and whatever a forged form says, the row is born a draft —
+         publishing is the register's Publish button, behind its own question. */
+      status: "draft",
       startsAt: toIst(d.date, d.startTime),
       endsAt: toIst(d.date, d.endTime),
       venueBusinessId: d.venueBusinessId ?? null,

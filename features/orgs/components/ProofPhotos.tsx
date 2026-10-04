@@ -8,7 +8,8 @@ import { addStudioProofPhotoAction, removeStudioProofPhotoAction } from "@/featu
 import { GOLD, GREEN, INK, MUTED, SUB } from "@/lib/design/tokens";
 import { whyNotAPhoto } from "@/lib/media/photo";
 import { PROOF_BUCKET, PROOF_MAX, PROOF_MIN, proofPath, type ProofPhoto } from "@/lib/media/proof";
-import { createSupabaseBrowserClient } from "@/lib/supabase/client";
+/* loaded on the press, not with the page (5 Oct 2026 — see lazyClient.ts) */
+import { browserSupabase } from "@/lib/supabase/lazyClient";
 
 /** R16 (9 Sep 2026) — the five to ten photos of its space a studio shows
  *  DanceOS, on the one strip the verification form and the Media desk draw.
@@ -111,7 +112,7 @@ export function ProofPhotos({
     setBusy(true);
     const added: ProofPhoto[] = [];
     try {
-      const supabase = createSupabaseBrowserClient();
+      const supabase = await browserSupabase();
       for (const file of take) {
         const bad = whyNotAPhoto(file);
         if (bad) {
@@ -154,7 +155,7 @@ export function ProofPhotos({
         return;
       }
       /* the object goes too — the row was the only thing pointing at it */
-      await createSupabaseBrowserClient().storage.from(PROOF_BUCKET).remove([photo.path]);
+      await (await browserSupabase()).storage.from(PROOF_BUCKET).remove([photo.path]);
       settle(list.filter((p) => p.path !== photo.path));
     });
 

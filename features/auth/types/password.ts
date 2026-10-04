@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { emailSchema } from "@/features/auth/types/email";
+import { PASSWORD_MAX, PASSWORD_MIN, PASSWORD_TOO_LONG, PASSWORD_TOO_SHORT } from "@/features/auth/types/rules";
 
 /** Password rules, shared by the forms and the server actions behind them.
  *
@@ -13,13 +14,11 @@ import { emailSchema } from "@/features/auth/types/email";
  *  than a recommendation. MAX IS 72 because bcrypt silently truncates beyond 72
  *  bytes — a longer password would appear to be accepted and then match on only
  *  its first 72 bytes, which is worse than refusing it. */
-export const PASSWORD_MIN = 8;
-export const PASSWORD_MAX = 72;
+export { PASSWORD_MAX, PASSWORD_MIN };
 
-export const passwordSchema = z
-  .string()
-  .min(PASSWORD_MIN, `Use at least ${PASSWORD_MIN} characters`)
-  .max(PASSWORD_MAX, `Keep it under ${PASSWORD_MAX} characters`);
+/* ⚠ built FROM `rules.ts` (5 Oct 2026), which is what the forms read — so the
+   browser no longer loads Zod, and the two still cannot disagree */
+export const passwordSchema = z.string().min(PASSWORD_MIN, PASSWORD_TOO_SHORT).max(PASSWORD_MAX, PASSWORD_TOO_LONG);
 
 /** Sign-up: both fields, and they have to agree.
  *
@@ -61,12 +60,6 @@ export const resetPasswordSchema = z
     path: ["confirm"],
   });
 
-/** Cheap enough for every keystroke; returns the message to show, or null. */
-export const passwordProblem = (value: string): string | null => {
-  if (!value) return null; // an empty field is not yet an error
-  const parsed = passwordSchema.safeParse(value);
-  return parsed.success ? null : (parsed.error.issues[0]?.message ?? "That password won't do");
-};
-
-export const isPasswordUsable = (value: string): boolean =>
-  passwordSchema.safeParse(value).success;
+/* the keystroke checks are the plain ones (5 Oct 2026) — re-exported so a server
+   caller that imports them from here keeps working */
+export { isPasswordUsable, passwordProblem } from "@/features/auth/types/rules";

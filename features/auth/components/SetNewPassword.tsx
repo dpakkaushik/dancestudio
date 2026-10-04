@@ -7,7 +7,7 @@ import {
 } from "@/features/auth/server-actions/auth";
 import { AuthShell } from "@/features/auth/components/AuthShell";
 import { PasswordField } from "@/features/auth/components/PasswordField";
-import { PASSWORD_MIN, isPasswordUsable, passwordProblem } from "@/features/auth/types/password";
+import { PASSWORD_MIN, isPasswordUsable, passwordProblem } from "@/features/auth/types/rules";
 import { Button } from "@/components/ui/button";
 
 const initialState: AuthActionState = { error: null };

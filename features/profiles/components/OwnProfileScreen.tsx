@@ -118,8 +118,11 @@ export async function OwnProfileScreen({ userId, loaded }: { userId: string; loa
      header it costs no wall clock. */
   const [header, nextSessions] = await Promise.all([
     findPersonHeaderPhotos(supabase, userId, headerMax),
+    /* ⚠ YOUR OWN artist page's rail also offers the classes you teach at studios
+       (5 Oct 2026) — the same `teacherId` the schedule page passes; anybody
+       else's page is that page's alone */
     schedBiz
-      ? findNextPublicSessions(supabase, schedBiz.id, { name: schedBiz.name, city: schedBiz.city })
+      ? findNextPublicSessions(supabase, schedBiz.id, { name: schedBiz.name, city: schedBiz.city }, schedBiz.id === person.artistPageId ? userId : null)
       : Promise.resolve([]),
   ]);
 

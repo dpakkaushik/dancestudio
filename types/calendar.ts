@@ -89,6 +89,19 @@ export const tileClassOf = (e: CalendarEntry): DanceClass => ({
   session: { id: e.sessionId, startsAt: e.startsAt, endsAt: e.endsAt },
 });
 
+/** HOW MANY CLASSES A PROFILE'S NEXT SESSIONS RAIL CARRIES (5 Oct 2026, the user:
+ *  "upto 5 classes only on a profile"). Here, in a plain module, because the
+ *  SERVER trims to it and the rail itself is a client component — a constant
+ *  exported from a "use client" file is a client reference on the server, not a
+ *  number (21 Sep 2026). */
+export const NEXT_SESSIONS_MAX = 5;
+
+/** the soonest `NEXT_SESSIONS_MAX` of a schedule — sorted, because the schedule
+ *  read hands back a studio's own classes and THEN the artists' classes it
+ *  holds, two lists concatenated */
+export const nextSessionsOf = (entries: CalendarEntry[]): CalendarEntry[] =>
+  [...entries].sort((a, b) => a.startsAt.localeCompare(b.startsAt)).slice(0, NEXT_SESSIONS_MAX);
+
 /** ⚠⚠ `CalendarEventEntry` WAS HERE AND WENT WITH EVENTS (29 Sep 2026, the
  *  user: *"Remove Organization and Events completely from the system"*). It was
  *  added on 18 Sep because the calendar had drawn classes only while Home's deck

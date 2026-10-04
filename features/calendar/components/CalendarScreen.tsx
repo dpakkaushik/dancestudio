@@ -5,7 +5,7 @@ import { useEffect, useRef, useState } from "react";
 import { DeskBody, DeskTop } from "@/components/ui/DeskSections";
 import { ClassTile } from "@/features/classes/components/ClassTile";
 import { DOS_TOOLS, dosToolPaint } from "@/features/businesses/components/biz-kit";
-import { dosStyleColor } from "@/lib/constants/styles";
+import { DOS_LEVEL_LABEL, dosStyleColor } from "@/lib/constants/styles";
 import { CARD, DOS_DISPLAY, DOS_UI, INK, LILAC, LINE, MUTED, SKY, SUB } from "@/lib/design/tokens";
 import {
   addDays,
@@ -60,9 +60,14 @@ const SIDES: Record<CalendarSide, { name: string; tint: string }> = Object.fromE
 ) as Record<CalendarSide, { name: string; tint: string }>;
 const SIDE_KEYS: CalendarSide[] = ["attending", "assisting", "hosting"];
 /* ⚠ `EVENTS_TINT` went with events (29 Sep 2026) — the amber half of the switch.
-   The practices half wears the Practice tool's own green, so the switch says
-   which half you are in before you read the words */
-const PRACTICE_C = "#15803D";
+   The practices half wears the Practice tool's own colour, so the switch says
+   which half you are in before you read the words.
+   ⚠ READ FROM `DOS_TOOLS` since 5 Oct 2026: it was the literal `#15803D`, the
+   green the Practice tile wore until 30 Sep, when that tile was repainted indigo
+   because its green sat on Earnings' hue (C90). The tile moved and this copy did
+   not, so the calendar's Practice half was the one place still wearing the old
+   paint — the drift a typed copy of a token always ends in. */
+const PRACTICE_C = DOS_TOOLS.practice.c;
 
 /** ⚠⚠ TODAY IS INK, AND IT IS SAID ONCE (28 Sep 2026, the user: *"should not
  *  repeat today teice it appears in blue which it should not on all profile
@@ -212,33 +217,62 @@ const practiceRow = (e: CalendarPracticeEntry): Row => ({
  *  ⚠ ONE CLOCK for all three kinds (`timeOf`), where the practice card had its
  *  own (`practiceClock`) — two grammars for one fact on one screen is what this
  *  file has had to undo before. */
+/* ⚠⚠ TWO LINES, NOT ONE (5 Oct 2026, the user: "fix calender page and schedule
+   for all profiles"). The pill was ONE line — time, "{style} · {level}", chip —
+   and on a 390px phone, inside the section's padding and beside the day gutter,
+   the name had about a hundred pixels: every class on every calendar read
+   "Bollywood · All l…", "Contemporary · I…", "Hip-Hop · Begi…", which is the
+   one thing a calendar row exists to say. So the STYLE has a line of its own and
+   the level and where it is held sit under it, smaller; the time is a column of
+   its own with the am/pm under the figure. Still a pill (the user's 28 Sep word,
+   and the e2e asserts the radius), still under 60px tall, and nothing on it is
+   cut at 360px. */
 const PILL: React.CSSProperties = {
   display: "flex",
   alignItems: "center",
-  gap: 9,
+  gap: 10,
   minWidth: 0,
   background: CARD,
   border: `1.5px solid ${LINE}`,
   borderRadius: 999,
-  padding: "8px 13px",
+  padding: "7px 12px 7px 14px",
   marginBottom: 7,
   textDecoration: "none",
   color: INK,
 };
-const PILL_TIME: React.CSSProperties = { flexShrink: 0, fontSize: 11, fontWeight: 900, color: SUB };
-const PILL_NAME: React.CSSProperties = { flex: 1, minWidth: 0, fontSize: 12.5, fontWeight: 800, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" };
+const PILL_TIME_COL: React.CSSProperties = { flexShrink: 0, width: 36, display: "flex", flexDirection: "column", alignItems: "center", lineHeight: 1.05 };
+const PILL_TIME: React.CSSProperties = { fontSize: 12.5, fontWeight: 900, color: INK, fontVariantNumeric: "tabular-nums" };
+const PILL_AMPM: React.CSSProperties = { fontSize: 8.5, fontWeight: 900, letterSpacing: 0.6, color: MUTED, textTransform: "uppercase", marginTop: 2 };
+const PILL_TEXT: React.CSSProperties = { flex: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: 2 };
+const PILL_NAME: React.CSSProperties = { fontSize: 13.5, fontWeight: 900, letterSpacing: -0.2, lineHeight: 1.15, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" };
+const PILL_SUB: React.CSSProperties = { fontSize: 10.5, fontWeight: 700, color: SUB, lineHeight: 1.2, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" };
+/** "6:30 pm" → the figure and the half of the day, for the pill's time column.
+ *  ⚠ `\s`, not a space: ICU separates the two with a NARROW no-break space
+ *  (U+202F) on some runtimes, and a split on " " would leave the clock whole. */
+const clockParts = (iso: string): [string, string] => {
+  const t = timeOf(iso);
+  const m = /^(.*?)\s*([ap]\.?\s*m\.?)$/i.exec(t);
+  return m ? [m[1], m[2].replace(/[.\s]/g, "")] : [t, ""];
+};
 const pillDot = (tint: string): React.CSSProperties => ({ flexShrink: 0, width: 8, height: 8, borderRadius: 4, background: tint });
+/* ⚠ THE CHIP RIDES THE SECOND LINE (5 Oct 2026). On the right of the pill it
+   took ~75px from the one line that has to be whole, and at 360px "Contemporary"
+   still lost its last letters beside ASSISTING — so the style has the pill's
+   whole width and the chip leads the line under it, where the level and the
+   place are allowed to ellipsise. */
 const pillChip = (tint: string): React.CSSProperties => ({
   flexShrink: 0,
-  fontSize: 9,
+  fontSize: 8.5,
   fontWeight: 900,
   letterSpacing: 0.5,
+  lineHeight: 1.25,
   textTransform: "uppercase",
-  padding: "3px 8px",
+  padding: "1px 6px",
   borderRadius: 999,
   background: `${tint}1f`,
   color: tint,
 });
+const PILL_LINE2: React.CSSProperties = { display: "flex", alignItems: "center", gap: 6, minWidth: 0 };
 
 export interface CalendarScreenProps {
   /** personal: a person's own classes and practices; studio: the venue's
@@ -284,11 +318,16 @@ export function CalendarScreen({ mode, months, todayKey, entries, practices = []
   const [panelOpen, setPanelOpen] = useState(false);
   useCloseOnBack(() => setPanelOpen(false), panelOpen);
   /* ONE ROOM AT A TIME (8655): a studio with more than one room opens on its
-     first room, and "All rooms" is a deliberate act rather than the landing state */
+     first room, and "All rooms" is a deliberate act rather than the landing state.
+     ⚠⚠ BUT NOT ON A PUBLIC SCHEDULE (5 Oct 2026). The profile page's NEXT
+     SESSIONS rail lists the soonest classes in EVERY room, and the Schedule bar
+     directly above it opened this page on the first room alone — so a class the
+     rail had just shown was missing from the page it links to, which is the
+     number-and-list disagreement `publicScheduleToIso` exists to prevent. A
+     stranger came to see when they can dance, not to operate a room filter;
+     the filter stays, one tap away. */
   const rooms = [...new Set(entries.map((e) => e.room).filter((r): r is string => !!r))].sort();
-  const [room, setRoom] = useState<string | null>(
-    (mode === "studio" || isPublic) && rooms.length > 1 ? rooms[0] : null
-  );
+  const [room, setRoom] = useState<string | null>(mode === "studio" && rooms.length > 1 ? rooms[0] : null);
   const [ddOpen, setDdOpen] = useState(false);
   /* ⚠ `fabOpen` went with the compose FAB (29 Sep 2026): it opened the sheet
      that offered Add class / Add event, and a calendar composes nothing now */
@@ -400,6 +439,17 @@ export function CalendarScreen({ mode, months, todayKey, entries, practices = []
     const n = todayRef.current ?? rows[rows.length - 1];
     if (!n) return;
     jumped.current = jumpKey;
+    /* ⚠⚠ NOT WHEN TODAY IS ALREADY ON SCREEN (5 Oct 2026). On a short calendar
+       the jump could not reach its target — the list ends before today's row can
+       sit under the controls — so it scrolled as far as the page went and
+       stopped half way: the Calendar heading slid behind the top bar and a
+       sliver of its card was left peeking under it, on every person's calendar
+       with a week of classes. A row the reader can already see does not need
+       bringing to them; only a today that is BELOW the fold is scrolled to. */
+    const r = n.getBoundingClientRect();
+    const pinned = document.querySelector<HTMLElement>("[data-dos-sticky]");
+    const floor = pinned ? pinned.getBoundingClientRect().bottom : 0;
+    if (r.top >= floor && r.bottom <= window.innerHeight - 24) return;
     const id = window.requestAnimationFrame(() => dosScrollTo(n, false));
     return () => window.cancelAnimationFrame(id);
   }, [jumpKey, view]);
@@ -482,6 +532,7 @@ export function CalendarScreen({ mode, months, todayKey, entries, practices = []
       /* a called-off practice keeps its row and says so — the 27 Sep rule that
          cancelling is a STATUS and never a delete, said on the calendar too */
       const tint = e.cancelled ? MUTED : PRACTICE_TINT[e.standing];
+      const [clock, half] = clockParts(e.startsAt);
       return (
         <Link
           key={r.id}
@@ -491,15 +542,40 @@ export function CalendarScreen({ mode, months, todayKey, entries, practices = []
           style={{ ...PILL, opacity: e.cancelled ? 0.65 : 1 }}
         >
           <span aria-hidden="true" style={pillDot(e.cancelled ? LINE : PRACTICE_C)} />
-          <span style={PILL_TIME}>{timeOf(e.startsAt)}</span>
-          <span style={PILL_NAME}>
-            {e.crewName} · {e.place}
+          <span style={PILL_TIME_COL}>
+            <span style={PILL_TIME}>{clock}</span>
+            {half ? <span style={PILL_AMPM}>{half}</span> : null}
           </span>
-          <span style={pillChip(tint)}>{e.cancelled ? "Called off" : PRACTICE_WORD[e.standing]}</span>
+          <span style={PILL_TEXT}>
+            <span style={PILL_NAME}>{e.crewName}</span>
+            <span style={PILL_LINE2}>
+              <span style={pillChip(tint)}>{e.cancelled ? "Called off" : PRACTICE_WORD[e.standing]}</span>
+              <span style={PILL_SUB}>{e.place}</span>
+            </span>
+          </span>
         </Link>
       );
     }
     const e = r.e;
+    const [clock, half] = clockParts(e.startsAt);
+    /* where it is held: the studio that said yes for an artist's class, else the
+       business that owns it — the place a person actually goes */
+    const place = e.venue?.name ?? e.businessName;
+    const level = DOS_LEVEL_LABEL[e.level] ?? e.level;
+    /* ⚠ THE SECOND LINE SAYS WHAT THE FIRST CANNOT, AND NOTHING THE CHIP SAYS:
+       on your own calendar the level and where to go; on a studio's the level,
+       and the room only while every room is on screen — with one room picked
+       every row would print the same room, which is the 28 Sep "said twice"
+       complaint again */
+    const sub =
+      mode === "personal"
+        ? [level, place].filter(Boolean).join(" · ")
+        : [level, room === null ? e.room : null].filter(Boolean).join(" · ");
+    /* ⚠ A DRAFT SAYS SO on a studio's calendar (5 Oct 2026): the studio's read
+       includes drafts and the pill drew them exactly like a published class, so
+       a class nobody can book looked bookable on the screen the rooms are
+       planned from */
+    const draft = mode !== "personal" && e.classStatus === "draft";
     /* ⚠ `Open {title}` — the SAME accessible name `ClassTile` gives the same
        class on the public schedule and on Discover. One control name for one
        act, so a screen reader and a locator both find the class by the name the
@@ -507,15 +583,23 @@ export function CalendarScreen({ mode, months, todayKey, entries, practices = []
     return (
       <Link key={r.id} data-testid="cal-pill" href={`/c/${e.shareSlug}`} aria-label={`Open ${e.title}`} style={PILL}>
         <span aria-hidden="true" style={pillDot(dosStyleColor(e.style))} />
-        <span style={PILL_TIME}>{timeOf(e.startsAt)}</span>
-        <span style={PILL_NAME}>{e.title}</span>
-        {/* what this class is to YOU on your own calendar; which ROOM it is in on
-            a studio's, which is the one fact that calendar is read for */}
-        {mode === "personal" ? (
-          <span style={pillChip(SIDES[e.side].tint)}>{SIDES[e.side].name}</span>
-        ) : e.room ? (
-          <span style={pillChip(TOOL_COLOUR)}>{e.room}</span>
-        ) : null}
+        <span style={PILL_TIME_COL}>
+          <span style={PILL_TIME}>{clock}</span>
+          {half ? <span style={PILL_AMPM}>{half}</span> : null}
+        </span>
+        <span style={PILL_TEXT}>
+          <span style={PILL_NAME}>{e.style}</span>
+          <span style={PILL_LINE2}>
+            {/* what this class is to YOU on your own calendar; on a studio's,
+                only a draft is chipped — a published class needs no word */}
+            {mode === "personal" ? (
+              <span style={pillChip(SIDES[e.side].tint)}>{SIDES[e.side].name}</span>
+            ) : draft ? (
+              <span style={pillChip("#F59E0B")}>Draft</span>
+            ) : null}
+            {sub ? <span style={PILL_SUB}>{sub}</span> : null}
+          </span>
+        </span>
       </Link>
     );
   };
@@ -542,8 +626,10 @@ export function CalendarScreen({ mode, months, todayKey, entries, practices = []
   ) : (
     /* the empty state names the half you are looking at, and its door goes where
        that half comes from */
+    /* ⚠ a crew's read "Nothing arranged on arrange one →" until 5 Oct 2026 — a
+       sentence missing its middle, on the one calendar that opens empty most */
     <div style={emptyCard}>
-      {showPractices ? (isCrew ? "Nothing arranged on " : "No practice on — ") : mode === "personal" ? "Nothing booked — " : "Nothing scheduled — "}
+      {showPractices ? (isCrew ? "Nothing arranged yet — " : "No practice on — ") : mode === "personal" ? "Nothing booked — " : "Nothing scheduled — "}
       <Link href={emptyHref} style={{ color: SKY, fontWeight: 800, textDecoration: "none" }}>
         {showPractices ? (isCrew ? "arrange one →" : "open your crew →") : mode === "personal" ? "find a class →" : "add a class →"}
       </Link>
@@ -854,11 +940,20 @@ export function CalendarScreen({ mode, months, todayKey, entries, practices = []
                 );
               })}
             </div>
-            <div style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 9, color: MUTED, fontWeight: 700, marginBottom: 7 }}>
-              <span style={{ flex: 1, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                {side === "all" ? `All three · ${scopeLabel}` : `${SIDES[side].name} only · ${scopeLabel} · tap again for all`}
-              </span>
-            </div>
+            {/* ⚠ ONLY WHILE ONE SIDE IS PICKED (5 Oct 2026). With nothing picked
+                the line read "All three · everything" under every person's
+                calendar — a caption describing the default, in words nobody
+                uses. It earns its line when it says something the pills do
+                not: that the list below is narrowed, and how to undo it. */}
+            {side === "all" ? (
+              <div style={{ height: 3 }} />
+            ) : (
+              <div style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 9.5, color: MUTED, fontWeight: 700, marginBottom: 7 }}>
+                <span style={{ flex: 1, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                  {`${SIDES[side].name} only · ${scopeLabel} · tap again for all`}
+                </span>
+              </div>
+            )}
           </>
         ) : null}
 

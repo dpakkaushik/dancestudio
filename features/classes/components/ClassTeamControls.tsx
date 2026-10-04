@@ -46,9 +46,9 @@ export function AddAssistant({ classId, col, exclude, pool }: { classId: string;
         aria-label="Add someone to the team"
         aria-expanded={open}
         onClick={() => setOpen((v) => !v)}
-        style={{ display: "flex", alignItems: "center", gap: 10, width: "100%", background: "transparent", border: "none", padding: 0, cursor: "pointer", color: col, fontFamily: "inherit", textAlign: "left" }}
+        style={{ display: "flex", alignItems: "center", gap: 11, width: "100%", background: "transparent", border: "1.5px dashed var(--el)", borderRadius: 16, padding: "10px 12px", cursor: "pointer", color: "var(--text)", fontFamily: "inherit", textAlign: "left" }}
       >
-        <span style={{ width: 34, height: 34, borderRadius: 11, border: "1.5px dashed var(--el)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+        <span style={{ width: 40, height: 40, borderRadius: 13, background: `${col}1f`, border: `1.5px solid ${col}55`, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={col} strokeWidth="2.2" strokeLinecap="round" aria-hidden="true">
             <path d="M12 5.5v13M5.5 12h13" />
           </svg>
@@ -103,7 +103,21 @@ export function AddAssistant({ classId, col, exclude, pool }: { classId: string;
  *  ⚠ `remove` IS OFF THERE, on purpose: the artist column already carries
  *  **Change**, which is the owner's door to swapping who takes the class, and two
  *  buttons for one job is what this repo keeps paying for. */
-export function AssistantControls({ classPerson, isOwner, col, remove = true }: { classPerson: ClassPerson; isOwner: boolean; col: string; remove?: boolean }) {
+export function AssistantControls({
+  classPerson,
+  isOwner,
+  col,
+  remove = true,
+  bar = false,
+}: {
+  classPerson: ClassPerson;
+  isOwner: boolean;
+  col: string;
+  remove?: boolean;
+  /** drawn on a card's own button bar (4 Oct 2026) — left-aligned, and Remove
+   *  pushed to the far end so it is never the next thing after a job toggle */
+  bar?: boolean;
+}) {
   const router = useRouter();
   const [pending, start] = useTransition();
   const [err, setErr] = useState<string | null>(null);
@@ -115,7 +129,7 @@ export function AssistantControls({ classPerson, isOwner, col, remove = true }: 
       else router.refresh();
     });
   return (
-    <div style={{ display: "flex", alignItems: "center", gap: 6, flexShrink: 0, flexWrap: "wrap", justifyContent: "flex-end" }}>
+    <div style={{ display: "flex", alignItems: "center", gap: 6, flexShrink: 0, flexWrap: "wrap", justifyContent: bar ? "flex-start" : "flex-end" }}>
       {isOwner && classPerson.status === "confirmed"
         ? (
             [
@@ -149,7 +163,7 @@ export function AssistantControls({ classPerson, isOwner, col, remove = true }: 
           })
         : null}
       {remove ? (
-        <button type="button" disabled={pending} aria-label={`Remove ${classPerson.personName} from this class`} onClick={() => run(() => withdrawClassAskAction({ classPersonId: classPerson.id }))} style={{ ...pill(false, col), color: "#F87171" }}>
+        <button type="button" disabled={pending} aria-label={`Remove ${classPerson.personName} from this class`} onClick={() => run(() => withdrawClassAskAction({ classPersonId: classPerson.id }))} style={{ ...pill(false, col), color: "#F87171", ...(bar ? { marginLeft: "auto" } : null) }}>
           Remove
         </button>
       ) : null}

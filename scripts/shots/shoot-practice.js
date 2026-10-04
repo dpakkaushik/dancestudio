@@ -237,7 +237,10 @@ const tomorrowIst = () => {
        `{crew} · {place}` on one line where the card read `{crew}` over
        `Practice · {place}`. Better information, not less: the crew's NAME is the
        fact a person on three crews needs and "Practice" was a word the Practice
-       half of the switch had already said. */
+       half of the switch had already said.
+       ⚠ TWO LINES since 5 Oct 2026 — the crew's name on the first, the standing
+       chip and the place on the second — because one line cut every name at
+       390px. These checks match the words, so they read either shape. */
     check(await leader.getByText(/Studio 4, Baner/).first().isVisible().catch(() => false), "the CREW's calendar carries it");
     check((await leader.getByRole("button", { name: /^Classes:/ }).count()) === 0, "…and is never offered the Classes · Practice switch — a crew's calendar IS its practices");
     await member.goto(`${BASE}/calendar`, { waitUntil: "networkidle" });

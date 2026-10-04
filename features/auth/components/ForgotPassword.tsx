@@ -8,7 +8,7 @@ import {
 } from "@/features/auth/server-actions/auth";
 import { AuthShell } from "@/features/auth/components/AuthShell";
 import { AuthBackLink } from "@/features/auth/components/AuthBackLink";
-import { emailProblem, isEmailUsable } from "@/features/auth/types/email";
+import { emailProblem, isEmailUsable } from "@/features/auth/types/rules";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";

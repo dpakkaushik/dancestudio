@@ -131,8 +131,12 @@ export default async function PersonPage({ params }: { params: Promise<{ userId:
     person.artistPageId ? findPublicStudioTeam(supabase, person.artistPageId).catch(() => []) : Promise.resolve([]),
     /* the first few classes behind the Schedule bar — nothing at all when there
        is no business to have a schedule (a plain user) */
+    /* ⚠ an artist's rail offers every class they TEACH, at any studio, not only
+       their page's own (5 Oct 2026) — `schedule` is their own page whenever it
+       is an artist page (`personScheduleBusiness` reads their seats, then
+       `artistPageId`), so they are its teacher */
     schedule
-      ? findNextPublicSessions(supabase, schedule.id, { name: schedule.name, city: schedule.city })
+      ? findNextPublicSessions(supabase, schedule.id, { name: schedule.name, city: schedule.city }, schedule.type === "artist_page" ? userId : null)
       : Promise.resolve([]),
     /* ⚠⚠ THEIR FOLLOWING COUNTS THEIR TEAMS (2 Oct 2026, the user: "reflect in
        user/ artist profile when seeing following"). A member follows the crews

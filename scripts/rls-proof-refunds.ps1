@@ -84,10 +84,11 @@ Add-Member $ta.id $trainer.id "trainer" $owner.id
 try {
   # a paid class TOMORROW, so cancelling lands inside the 48 h window where the
   # studio decides (Step 9's policy line, S_class 12400)
-  $tmr = (Get-Date).AddDays(1)
+  # 4 Oct 2026: the refund window is 12 hours, so "inside it" is a few hours from NOW
+  $tmr = (Get-Date).AddHours(4)
   $cls = Rpc (Api $owner.token) "create_class_with_session" @{ p_business_id = $ta.id; p_title = "Refund Class $stamp";
     p_style = "Hip-Hop"; p_level = "all"; p_room = $null; p_price_inr = 300; p_capacity = 10;
-    p_status = "draft"; p_starts_at = $tmr.ToString("yyyy-MM-ddT19:00:00zzz"); p_ends_at = $tmr.ToString("yyyy-MM-ddT20:00:00zzz") }
+    p_status = "draft"; p_starts_at = $tmr.ToString("yyyy-MM-ddTHH:mm:00zzz"); p_ends_at = $tmr.AddHours(1).ToString("yyyy-MM-ddTHH:mm:00zzz") }
   # 18 Sep 2026: published once its teacher has accepted. The TRAINER takes it and
   # holds no refunds job - which is exactly what check 3 is about.
   Publish-Class ([string]$cls.id) ([string]$trainer.id) (Api $owner.token)

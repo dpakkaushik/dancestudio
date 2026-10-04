@@ -8,8 +8,9 @@ import { useCloseOnBack } from "@/lib/hooks/useCloseOnBack";
 
 /** Cancelling is two things, and only one of them is about money — lifted from
  *  prototype DanceOSApp.jsx:6269-6327. The seat goes back the instant you
- *  confirm; the money follows the policy window the page printed (48 h — the
- *  POLICY section's number, S_class 12400): in full outside it, the studio
+ *  confirm; the money follows the policy window the page printed (12 h since
+ *  4 Oct 2026, 48 h before — the POLICY section's number, S_class 12400): in
+ *  full outside it, the studio
  *  decides inside it. The four common reasons are shortcuts, not a cage. */
 
 const DOS_MONO = 'ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace';
@@ -75,7 +76,7 @@ export function RefundSheet({ classBookingId, title, timeText, amountInr, onClos
           {(
             [
               ["Your place", "goes back on sale straight away"],
-              ["Your money", "in full more than 48 h ahead; inside 48 h the studio decides"],
+              ["Your money", "in full more than 12 h ahead; inside 12 h the studio decides"],
             ] as Array<[string, string]>
           ).map(([k, v]) => (
             <div key={k} style={{ display: "flex", gap: 10, padding: "4px 0" }}>

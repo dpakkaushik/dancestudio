@@ -39,11 +39,15 @@ const ASK_TINT = { asked: "#F59E0B", confirmed: "#22C55E", rejected: "#F87171" }
 const stateChips = (st: ClassPublishState | undefined): Array<[string, string]> => {
   const out: Array<[string, string]> = [];
   if (!st) return out;
-  if (st.teacherName && st.teacherStatus) {
+  /* ⚠ NO "CONFIRMED" CHIP (4 Oct 2026, the user: "remove confirmed from studio
+     and artist in class cards in published and draft classes"). A yes waits on
+     nobody, and the card's own halves already name the artist and the studio;
+     what is left is what still needs somebody — an ask unanswered, or a no. */
+  if (st.teacherName && st.teacherStatus && st.teacherStatus !== "confirmed") {
     out.push([`${st.teacherName} · ${ASK_STATUS_WORD[st.teacherStatus]}`, ASK_TINT[st.teacherStatus]]);
   }
-  if (st.venueName && st.venueStatus) {
-    const s = st.venueStatus === "accepted" ? "confirmed" : st.venueStatus === "declined" ? "rejected" : "asked";
+  if (st.venueName && st.venueStatus && st.venueStatus !== "accepted") {
+    const s = st.venueStatus === "declined" ? "rejected" : "asked";
     out.push([`Room at ${st.venueName} · ${ASK_STATUS_WORD[s]}`, ASK_TINT[s]]);
   }
   return out;
@@ -104,6 +108,25 @@ const pill = (danger: boolean): React.CSSProperties => ({
   border: "none",
   background: danger ? "rgba(239,68,68,.14)" : EL,
   color: danger ? "#F87171" : INK,
+});
+
+/* ⚠ THE DRAFT ROW'S ACTS ARE BIG (4 Oct 2026, the user: "bigger edit and publish
+   buttons"): equal buttons across the card, Publish the filled one. `--text` on
+   `--solid`, never `--bg`, because a card can sit inside an inverted panel (C62). */
+const bigBtn = (primary: boolean, danger = false): React.CSSProperties => ({
+  flex: "1 1 0",
+  minWidth: 0,
+  textAlign: "center",
+  padding: "12px 14px",
+  borderRadius: 999,
+  fontSize: 13.5,
+  fontWeight: 900,
+  fontFamily: "inherit",
+  cursor: "pointer",
+  textDecoration: "none",
+  border: primary ? "none" : "1.5px solid var(--el)",
+  background: primary ? "var(--text)" : danger ? "rgba(239,68,68,.14)" : "var(--card)",
+  color: primary ? "var(--solid)" : danger ? "#F87171" : "var(--text)",
 });
 
 const sheetWrap: React.CSSProperties = {
@@ -696,7 +719,7 @@ export function ClassesManager({
                     {canEdit ? (
                       <>
                     {st?.venueStatus === "declined" ? (
-                      <Link href={`/business/${businessId}/classes/${c.id}/edit`} style={{ ...pill(true), textDecoration: "none" }}>
+                      <Link href={`/business/${businessId}/classes/${c.id}/edit`} style={bigBtn(false, true)}>
                         Pick another studio ›
                       </Link>
                     ) : st?.teacherStatus === "rejected" ? (
@@ -705,11 +728,11 @@ export function ClassesManager({
                          row offered nothing but Edit — the same dead end a declined
                          room used to be. Who takes the class is named in the form,
                          so the form is where it is changed, and the pill says so. */
-                      <Link href={`/business/${businessId}/classes/${c.id}/edit`} style={{ ...pill(true), textDecoration: "none" }}>
+                      <Link href={`/business/${businessId}/classes/${c.id}/edit`} style={bigBtn(false, true)}>
                         Ask somebody else ›
                       </Link>
                     ) : (
-                      <Link href={`/business/${businessId}/classes/${c.id}/edit`} style={{ ...pill(false), textDecoration: "none" }}>
+                      <Link href={`/business/${businessId}/classes/${c.id}/edit`} style={bigBtn(false)}>
                         Edit
                       </Link>
                     )}
@@ -722,7 +745,7 @@ export function ClassesManager({
                         type="button"
                         disabled={busy === c.id}
                         onClick={() => run(c.id, () => withdrawClassAskAction({ classPersonId: askedTeachers[c.id] }))}
-                        style={pill(false)}
+                        style={bigBtn(false)}
                       >
                         {busy === c.id ? "…" : "Withdraw ask"}
                       </button>
@@ -754,7 +777,7 @@ export function ClassesManager({
                         }
                         setAsk({ kind: "publish", c, clash });
                       }}
-                      style={{ ...pill(false), opacity: st?.why ? 0.55 : 1 }}
+                      style={{ ...bigBtn(true), opacity: st?.why ? 0.55 : 1 }}
                     >
                       Publish
                     </button>

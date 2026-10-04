@@ -598,14 +598,36 @@ export function AppChrome({
               place, and the switcher is the photo chip at the far right of the
               bar. What the 21 Sep note above got right and this keeps is that the
               switcher is CONSTANT — the chip is on every screen. */}
-          <span style={{ flexShrink: 0, display: "inline-flex", marginLeft: -2, lineHeight: 0 }}>
-            <DosMark size={33} />
-          </span>
-          {/* THE WORDMARK, ON EVERY SCREEN — no longer swapped for the page's
-              name. It ellipsises rather than wrapping, so the two chips on the
-              right keep their room on a 360px phone. */}
-          <span style={{ fontSize: 23, fontWeight: 900, letterSpacing: -0.3, color: INK, fontFamily: DOS_UI, minWidth: 0, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
-            Dance<span style={{ color: "#EC4899" }}>OS</span>
+          {/* ⚠⚠ THE WORDMARK IS WHOLE OR ABSENT, NEVER "Dan…" (5 Oct 2026).
+              It used to ellipsise, and on a drill page at 390px — back chip,
+              mark, four chips on the right — that left "Dan…" in the top left of
+              every screen behind a tab, which reads as a broken logo rather than
+              a short one. The mark and the word now stand in one row that WRAPS
+              inside a fixed 42px height with `overflow: hidden`: when the word
+              does not fit beside the mark it falls onto a second line nobody
+              can see, so what is drawn is the mark alone. No measuring, no
+              effect, nothing to go stale on rotate — the browser's own line
+              breaking decides. The mark IS the logo, so it is still constant. */}
+          <span
+            data-testid="brand"
+            style={{
+              display: "flex",
+              flexWrap: "wrap",
+              alignItems: "center",
+              alignContent: "flex-start",
+              columnGap: 9,
+              height: 42,
+              overflow: "hidden",
+              minWidth: 0,
+              flex: 1,
+            }}
+          >
+            <span style={{ flexShrink: 0, display: "inline-flex", alignItems: "center", height: 42, marginLeft: -2, lineHeight: 0 }}>
+              <DosMark size={33} />
+            </span>
+            <span data-testid="wordmark" style={{ flexShrink: 0, fontSize: 23, lineHeight: "42px", fontWeight: 900, letterSpacing: -0.3, color: INK, fontFamily: DOS_UI, whiteSpace: "nowrap" }}>
+              Dance<span style={{ color: "#EC4899" }}>OS</span>
+            </span>
           </span>
         </span>
         <span style={{ display: "flex", gap: 7, flexShrink: 0 }}>

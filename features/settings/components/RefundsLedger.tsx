@@ -210,7 +210,7 @@ export function RefundsLedger({ rows, side, canSettle = false, focusClassId = nu
       {list.length === 0 ? (
         <div style={{ ...bizCard, textAlign: "center", border: "1.5px dashed var(--el)", padding: "22px 16px" }}>
           <div style={{ fontSize: 13, fontWeight: 900, marginBottom: 5 }}>{rows.length === 0 ? "No refunds yet" : "Nothing in that state"}</div>
-          <div style={{ fontSize: 11.5, color: "var(--sub)", lineHeight: 1.5 }}>{side === "mine" ? "Cancel a paid booking from its class page and the request lands here." : "A cancellation inside the 48-hour window lands here for you to decide; outside it the rail refunds by itself."}</div>
+          <div style={{ fontSize: 11.5, color: "var(--sub)", lineHeight: 1.5 }}>{side === "mine" ? "Cancel a paid booking from its class page and the request lands here." : "A cancellation inside the 12-hour window lands here for you to decide; outside it the rail refunds by itself."}</div>
         </div>
       ) : null}
       <BizToast msg={toast} />
