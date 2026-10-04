@@ -2,7 +2,38 @@
 
 ## LAST SESSION (4 Oct 2026) — replaced on every push (Rule 13)
 
-> ### EARNINGS FOLDS ONTO ITS ENTRIES, WITH A PERIOD ON THE KEY STATS (4 Oct 2026, latest) — no migration · ✅ PUSHED AND LIVE (`02fbd01`: Vercel READY, alias confirmed on the sha through the API, `stranger-smoke` all green ON THE LIVE SITE; **the happy path 19/19 in 13.4 min** on `:3100` first)
+> ### ONLY A STUDIO SELLS A MEMBERSHIP — ARTISTS' MEMBERSHIPS AND THE PASSES BOUGHT FROM THEM REMOVED (4 Oct 2026, latest) — ⚠ Rule 9 (memberships are money) · ✅ `20261004130000` APPLIED · ✅ PUSHED AND LIVE (`225cb8f`: Vercel READY, alias confirmed on the sha through the API)
+> The user: *"remove membership creation from artists and remove the ones previously created or purchased. memberships can only be created by studios."*
+> * **The user's two answers:**
+>   * The one PAID artist pass is removed with **no refund**. It was Alisha Maini's ₹20,000, paid on Cashfree **sandbox** for Deepak's artist page, on a demo account. Its payment row stays as history.
+>   * The one seat booked with an artist pass (Nikhil Rao's) is **kept**.
+> * **What production held, counted first:**
+>   * 2 live artist memberships: Deepak's "Test 1" (₹25,000) and demo Aditya's "Aditya · 8 classes" (₹0).
+>   * 3 live passes on them: Kabir ₹0, Nikhil ₹0 with 1 class booked, Alisha ₹20,000.
+>   * 7 classes with the artist switch on.
+> * **The migration:**
+>   * `save_membership` is edited by two asserted anchors. Anything but a studio is refused: "only a studio sells memberships".
+>   * Those memberships and passes are soft-deleted, with no money moved.
+>   * `allows_artist_memberships` is set false everywhere, and the CHECK `classes_no_artist_memberships` keeps it false.
+>   * The column stays, so the class RPCs keep their signatures.
+> * **The app:**
+>   * The class form lost its "Artist memberships" switch, and the action always sends false.
+>   * The class page's policy line names studio passes only.
+>   * `/memberships` shows only the passes you hold: no Manage side and no form.
+>   * `/memberships/new` and an artist page's `/business/{id}/memberships` send an artist back to `/memberships`.
+>   * Artist profiles no longer read memberships on sale.
+>   * The demo seeder sells from studios only.
+>   * ⚠ The app went live BEFORE the apply: the old bundle could still send "artist switch on", which the CHECK refuses.
+> * **Verified:**
+>   * Dry run **14/14**, rolled back.
+>   * `db-push -DryRun` listed exactly the one file, applied first try, live read-back **12/12**, PostgREST reloaded.
+>   * Proofs `memberships` + `classes` **2/2**.
+>   * typecheck 0 · lint 0 · `audit:reads` 0 · build green.
+>   * An artist/studio probe **7/7** on `:3100` and **7/7 ON THE LIVE SITE**.
+>   * `stranger-smoke` all green.
+>   * **The happy path 19/19 in 13.2 min** on `:3100` against the pushed bundle, on the migrated database.
+
+> ### EARNINGS FOLDS ONTO ITS ENTRIES, WITH A PERIOD ON THE KEY STATS (4 Oct 2026) — no migration · ✅ PUSHED AND LIVE (`02fbd01`: Vercel READY, alias confirmed on the sha through the API, `stranger-smoke` all green ON THE LIVE SITE; **the happy path 19/19 in 13.4 min** on `:3100` first)
 > The user: *"Earnings all section I mentioned should be collapsible with entries for it"*, *"concise text in these section with payments"*, *"all sections in earnings should be collapsible … for team member detail"*, *"there should be a time period filter above the stats boxes in earnings and a part of that section"*. Their "cancel" withdrew the Stats-column folds; only Earnings changed.
 > * **Every Earnings section is a `<details>` fold** (`Fold`):
 >   * Key stats starts open. Revenue, Paid to them, Still owed and Total earnings start closed.
