@@ -1470,7 +1470,8 @@ test.describe.serial("DanceOS, end to end", () => {
        reads "Create crew", because pressing it is the act of creating */
     await learner.getByRole("link", { name: "Add Crew", exact: true }).click();
     /* ⚠ AND IT OPENS AS A SHEET OVER THE HUB (22 Sep 2026, ask 6) — `?new=1` on
-       `/crews` rather than a page away. `/crews/new` is still the page. */
+       `/crews` rather than a page away. The old `/crews/new` page went on 5 Oct
+       2026; its address forwards to this hub. */
     await learner.waitForURL(/\/crews\?new=1$/);
     await expect(learner.getByRole("dialog", { name: "Create crew" })).toBeVisible();
     /* ⚠ THE FORM WEARS THE ADD CLASS ANATOMY (21 Sep 2026, the user: "Create

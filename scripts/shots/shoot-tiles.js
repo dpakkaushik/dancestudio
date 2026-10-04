@@ -412,9 +412,12 @@ async function personOpensAStudio(page, who, acc, stamp) {
     await p2.goto(`${BASE}/memberships/new`, { waitUntil: "networkidle" });
     check((await p2.locator("h1").first().innerText().catch(() => "")) === "Add Membership", "artist · /memberships/new is still a page, though nothing links to it (Rule 14)");
     check((await p2.getByRole("dialog").count()) === 0, "artist · and that page is not a sheet");
+    /* ⚠ `/crews/new` WENT ON 5 Oct 2026 and its address forwards to the hub,
+       one press from Add Crew (Rule 14: an old link lands somewhere a person
+       can act, never on a 404) */
     await p2.goto(`${BASE}/crews/new`, { waitUntil: "networkidle" });
-    check((await p2.locator("h1").first().innerText().catch(() => "")) === "Create crew", "artist · /crews/new is still a page, though nothing links to it (Rule 14)");
-    check((await p2.getByRole("dialog").count()) === 0, "artist · and that page is not a sheet");
+    check(new URL(p2.url()).pathname === "/crews", `artist · the old /crews/new address forwards to the Crews hub (${new URL(p2.url()).pathname})`);
+    check(await p2.getByRole("link", { name: "Add Crew", exact: true }).isVisible().catch(() => false), "artist · …one press from Add Crew");
 
     /* ⚠ ADD CLASS IS THE ONE THE USER NAMED, and it opens from the section that
        owns it — an artist's register is the Manage segment of Your classes, so

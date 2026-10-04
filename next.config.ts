@@ -118,6 +118,7 @@ const nextConfig: NextConfig = {
          has no desk under them — so they land one press from the form instead.
          An artist page's desk forwards on to `/my-classes?show=manage` itself. */
       { source: "/business/:businessId/classes/new", destination: "/business/:businessId/classes", permanent: false },
+      { source: "/crews/new", destination: "/crews", permanent: false },
     ];
   },
 };

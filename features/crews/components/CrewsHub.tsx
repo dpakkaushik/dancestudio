@@ -90,7 +90,8 @@ function LedColumn({ led }: { led: CrewSummary[] }) {
       {/* ＋ AT THE TOP, LIKE CLASSES AND EVENTS (20 Sep 2026) — it was a dashed
           row under the list, so somebody who leads several scrolled past them
           all to start one */}
-      {/* opens over this hub (22 Sep 2026); `/crews/new` is still the page */}
+      {/* opens over this hub (22 Sep 2026); the old `/crews/new` page went on
+          5 Oct 2026 and its address forwards here (next.config.ts) */}
       {/* "Add Crew", not "Create crew" (4 Oct 2026, the user). The form's own
           submit still reads "Create crew": pressing it IS the act of creating. */}
       <DeskAddButton label="Add Crew" href="?new=1" />
