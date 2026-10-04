@@ -53,6 +53,8 @@ export interface TeamMemberClass {
   artistUserId: string | null;
   /** the studio it is held at, and the room */
   venueName: string | null;
+  /** the studio's profile picture, drawn on the Studio grouping's head */
+  venuePhoto: string | null;
   room: string | null;
   /** what this business pays them a session; null on a class it did not make */
   ratePerSessionInr: number | null;
@@ -71,7 +73,12 @@ export interface TeamMemberClass {
   capacity: number;
   nextAt: string | null;
   lastAt: string | null;
+  /** they are no longer on this class — kept, because the sessions they took
+   *  still happened and still count */
   closed: boolean;
+  /** WHY it is closed, so the screen says it in words rather than a bare
+   *  "ENDED": the class was deleted, or they were taken off it */
+  closedWhy: "deleted" | "removed" | null;
 }
 
 export interface TeamMemberWork {
@@ -243,11 +250,18 @@ export async function findTeamMemberWork(
   }
 
   /* where a class is held: a venue that said yes, else the business itself */
-  const venueIds = [...new Set(claims.map((c) => one(c.classes)?.venue_business_id).filter((v): v is string => Boolean(v)))].filter((v) => v !== businessId);
+  /* ⚠ this business is read too, for its PICTURE (the Studio grouping draws it);
+     a venue the caller may not read simply keeps the name it already has and no
+     picture — degrade, never fail */
+  const venueIds = [...new Set([businessId, ...claims.map((c) => one(c.classes)?.venue_business_id).filter((v): v is string => Boolean(v))])];
   const venueNames = new Map<string, string>([[businessId, who.businessName]]);
-  if (venueIds.length) {
-    const { data } = await supabase.from("businesses").select("id, name").in("id", venueIds);
-    for (const b of (data ?? []) as Array<{ id: string; name: string }>) venueNames.set(b.id, b.name);
+  const venuePhotos = new Map<string, string | null>();
+  {
+    const { data } = await supabase.from("businesses").select("id, name, profile_photo_path").in("id", venueIds);
+    for (const b of (data ?? []) as Array<{ id: string; name: string; profile_photo_path: string | null }>) {
+      venueNames.set(b.id, b.name);
+      venuePhotos.set(b.id, b.profile_photo_path);
+    }
   }
 
   const attBySession = new Map<string, Array<string | null>>();
@@ -289,6 +303,7 @@ export async function findTeamMemberWork(
       artistPhoto: artist?.avatarPath ?? null,
       artistUserId: artist?.userId ?? null,
       venueName: venueNames.get(venue) ?? null,
+      venuePhoto: venuePhotos.get(venue) ?? null,
       room: cls.room || null,
       ratePerSessionInr: origin === "business" ? 0 : null,
       held: 0,
@@ -302,6 +317,7 @@ export async function findTeamMemberWork(
       nextAt: null,
       lastAt: null,
       closed: true,
+      closedWhy: cls.deleted_at ? "deleted" : "removed",
       upBooked: 0,
       upSeats: 0,
     } as TeamMemberClass & { upBooked: number; upSeats: number };
@@ -314,6 +330,7 @@ export async function findTeamMemberWork(
     const row = rows.get(c.class_id) ?? blank(c.class_id, cls, "business", c.kind);
     if (c.deleted_at === null && cls.deleted_at === null) {
       row.closed = false;
+      row.closedWhy = null;
       row.kind = c.kind;
       row.ratePerSessionInr = n(c.pay_per_session_inr);
     }
@@ -363,6 +380,7 @@ export async function findTeamMemberWork(
   for (const cls of ownClasses) {
     const row = blank(cls.id, cls, "member", "artist");
     row.closed = false;
+    row.closedWhy = null;
     for (const s of ownSessionsByClass.get(cls.id) ?? []) {
       const booked = bookedBySession.get(s.id) ?? 0;
       if (s.ends_at < nowIso) {

@@ -18,7 +18,7 @@ import type { TeamMemberClass } from "@/repositories/teamMemberWork";
  *  ONE LIST, THREE WAYS TO GROUP IT — by who takes the class, by the studio it is
  *  held at, by its dance style. Every class says the three things that tell it
  *  apart at a glance: WHO MADE IT (this business, or the member's own artist
- *  page holding it here), THEIR ROLE ON IT (takes it / assists), and HOW FULL
+ *  page holding it here), THEIR ROLE ON IT (teaches / assists), and HOW FULL
  *  THE ROOM IS, as a bar. Everything else is behind its <details>.
  *
  *  ⚠ The grouping is a state, not the URL: it narrows rows already on the page
@@ -73,6 +73,15 @@ export function TeamClassesPanel({
   isStudio: boolean;
 }) {
   const [by, setBy] = useState<GroupBy>("artist");
+  /* the groups folded shut — keyed per grouping, so it is cleared when the way in changes */
+  const [collapsed, setCollapsed] = useState<Set<string>>(() => new Set());
+  const toggle = (key: string) =>
+    setCollapsed((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      return next;
+    });
 
   if (classes.length === 0) {
     return (
@@ -98,19 +107,25 @@ export function TeamClassesPanel({
   return (
     <>
       {/* WHAT KIND OF CLASSES THESE ARE, counted once — by who made them and by their role */}
+      {/* ⚠ The "who made it" split is a STUDIO's alone (4 Oct 2026): a member's own
+          artist-page classes can only be held in a studio's rooms. On an artist page
+          every class is the page's own, and the page usually carries the artist's
+          name — so the row read "By Deepak Kaushik · By Deepak", one person twice. */}
       <div style={panel}>
+        {isStudio ? (
+          <ToolFacts
+            tint={tint}
+            style={{ marginBottom: 6 }}
+            items={[
+              { label: "By the studio", value: madeHere, testId: "team-classes-business" },
+              { label: `By ${first}`, value: theirs, testId: "team-classes-member" },
+            ]}
+          />
+        ) : null}
         <ToolFacts
           tint={tint}
           items={[
-            { label: isStudio ? "By the studio" : `By ${businessName}`, value: madeHere, testId: "team-classes-business" },
-            { label: `By ${first}`, value: theirs, testId: "team-classes-member" },
-          ]}
-        />
-        <ToolFacts
-          tint={tint}
-          style={{ marginTop: 6 }}
-          items={[
-            { label: "Takes it", value: takes, testId: "team-classes-takes" },
+            { label: "Teaches", value: takes, testId: "team-classes-takes" },
             { label: "Assists", value: assists, testId: "team-classes-assists" },
           ]}
         />
@@ -126,7 +141,10 @@ export function TeamClassesPanel({
               type="button"
               aria-pressed={on}
               data-testid={`team-class-by-${k}`}
-              onClick={() => setBy(k)}
+              onClick={() => {
+                setBy(k);
+                setCollapsed(new Set());
+              }}
               style={{ flex: 1, padding: "9px 10px", borderRadius: 999, fontSize: 12, fontWeight: 900, fontFamily: "inherit", cursor: "pointer", background: on ? "var(--text)" : "var(--card)", color: on ? "var(--solid)" : SUB, border: `1.5px solid ${on ? "var(--text)" : "var(--el)"}` }}
             >
               {word}
@@ -142,47 +160,87 @@ export function TeamClassesPanel({
         const booked = list.reduce((n, c) => n + c.fillBooked, 0);
         const seats = list.reduce((n, c) => n + c.fillSeats, 0);
         const fill = pct(booked, seats);
+        const open = !collapsed.has(key);
+        /* the group's face: a person under Artist, the studio's own picture under
+           Studio (it was missing — 4 Oct 2026), nothing under a dance style, whose
+           name is the whole of it */
+        const face =
+          by === "artist" ? (
+            <ToolFace name={title} photoPath={lead.artistPhoto} tint={tint} size={30} />
+          ) : by === "studio" ? (
+            <ToolFace name={title} photoPath={lead.venuePhoto} tint={tint} size={30} />
+          ) : null;
         return (
           <div key={key} data-testid="team-class-group" style={panel}>
-            <FigureHead
-              align="center"
-              margin="0 0 8px"
-              title={
-                <>
-                  {by === "artist" ? <ToolFace name={title} photoPath={lead.artistPhoto} tint={tint} size={30} /> : null}
-                  <span style={{ fontSize: 14, fontWeight: 900, letterSpacing: -0.2, color: INK, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{title}</span>
-                </>
-              }
-              figure={
-                <span style={{ ...head, fontVariantNumeric: "tabular-nums" }}>
-                  {list.length} {list.length === 1 ? "CLASS" : "CLASSES"}
-                  {fill == null ? "" : ` · ${fill}% FULL`}
-                </span>
-              }
-            />
-            {list.map((c) => {
+            {/* ⚠ THE WHOLE GROUP COLLAPSES (4 Oct 2026, the user: "make sure also
+                able to collapse overall classes in artist, studio, dance style
+                tabs") — the head is the control, open by default */}
+            <button
+              type="button"
+              aria-expanded={open}
+              aria-label={`${title} — ${list.length} ${list.length === 1 ? "class" : "classes"}, ${open ? "collapse" : "expand"}`}
+              data-testid="team-class-group-toggle"
+              onClick={() => toggle(key)}
+              style={{ display: "block", width: "100%", padding: 0, margin: 0, background: "none", border: "none", textAlign: "left", cursor: "pointer", fontFamily: "inherit", color: "inherit" }}
+            >
+              <FigureHead
+                align="center"
+                margin={open ? "0 0 8px" : "0"}
+                title={
+                  <>
+                    {face}
+                    <span style={{ fontSize: 14, fontWeight: 900, letterSpacing: -0.2, color: INK, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{title}</span>
+                  </>
+                }
+                figure={
+                  <span style={{ ...head, fontVariantNumeric: "tabular-nums" }}>
+                    {list.length} {list.length === 1 ? "CLASS" : "CLASSES"}
+                    {fill == null ? "" : ` · ${fill}% FULL`}
+                  </span>
+                }
+                after={
+                  <span aria-hidden="true" style={{ color: MUTED, fontSize: 12, display: "inline-block", transform: open ? "rotate(180deg)" : "none", transition: "transform .15s" }}>
+                    ▾
+                  </span>
+                }
+              />
+            </button>
+            {open && list.map((c) => {
               const t = c.dancers == null ? null : pct(c.dancers, c.booked);
-              const role = c.closed ? "ENDED" : c.kind === "artist" ? "TAKES IT" : "ASSISTS";
+              /* ⚠ THE ROLE IS ALWAYS SAID, and a class they are no longer on says
+                 WHY beside it — a bare "ENDED" read as "the class is over", which
+                 it never meant */
+              const role = c.kind === "artist" ? "TEACHES" : "ASSISTS";
+              const gone = c.closedWhy === "deleted" ? "CLASS DELETED" : c.closedWhy === "removed" ? "TAKEN OFF IT" : null;
               return (
                 <details key={c.classId} data-testid="team-class" data-origin={c.origin} style={{ marginTop: 8, borderRadius: 14, border: "1.5px solid var(--el)", background: `${tint}0a`, opacity: c.closed ? 0.7 : 1 }}>
                   <summary style={{ listStyle: "none", cursor: "pointer", padding: "10px 12px", display: "block" }}>
                     <span style={{ display: "flex", alignItems: "center", gap: 8 }}>
                       <b style={{ flex: 1, minWidth: 0, fontSize: 12.5, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{c.title}</b>
                       <ToolChip word={role} fg={c.closed ? SUB : tint} bg={c.closed ? "var(--el)" : `${tint}1c`} testId="team-class-role" />
+                      {gone ? <ToolChip word={gone} fg={SUB} bg="var(--el)" testId="team-class-gone" /> : null}
                       <span aria-hidden="true" style={{ color: MUTED, fontSize: 12 }}>▾</span>
                     </span>
-                    {/* WHO MADE IT — the one line that tells the two kinds apart */}
-                    <span data-testid="team-class-origin" style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 5, fontSize: 10.5, fontWeight: 800, color: SUB }}>
-                      <span aria-hidden="true" style={{ width: 7, height: 7, borderRadius: 4, background: c.origin === "member" ? "#A855F7" : tint, flexShrink: 0 }} />
-                      {madeByWords(c)}
-                    </span>
+                    {/* WHO MADE IT — the one line that tells the two kinds apart; a
+                        studio's only, for the reason the summary row gives */}
+                    {isStudio ? (
+                      <span data-testid="team-class-origin" style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 5, fontSize: 10.5, fontWeight: 800, color: SUB }}>
+                        <span aria-hidden="true" style={{ width: 7, height: 7, borderRadius: 4, background: c.origin === "member" ? "#A855F7" : tint, flexShrink: 0 }} />
+                        {madeByWords(c)}
+                      </span>
+                    ) : null}
                     <span style={{ display: "block", marginTop: 8 }}>
                       <FillBar c={c} />
                     </span>
                   </summary>
                   <div style={{ padding: "0 12px 12px" }}>
                     <div style={{ fontSize: 11, color: SUB, lineHeight: 1.55, margin: "2px 0 8px" }}>
-                      {c.kind === "artist" ? `${first} takes it` : `${first} assists${c.artistName ? ` ${c.artistName}` : ""}`}
+                      {c.kind === "artist" ? `${first} teaches this class` : `${first} assists${c.artistName ? ` ${c.artistName}` : ""}`}
+                      {c.closedWhy === "deleted"
+                        ? " · the class was deleted, and the sessions already held still count"
+                        : c.closedWhy === "removed"
+                          ? " · no longer on it, and the sessions already held still count"
+                          : ""}
                       {c.venueName ? ` · at ${c.venueName}` : ""}
                       {c.room ? ` · ${c.room}` : ""}
                     </div>
