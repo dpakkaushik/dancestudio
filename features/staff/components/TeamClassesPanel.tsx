@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useState, type CSSProperties } from "react";
 
 import { FigureHead } from "@/components/ui/FigureHead";
-import { ToolChip, ToolFace, ToolFacts, toolBtn } from "@/components/ui/ToolCard";
+import { ToolChip, ToolFace, ToolFacts } from "@/components/ui/ToolCard";
 import { INK, MUTED, SUB } from "@/lib/design/tokens";
 import type { TeamMemberClass } from "@/repositories/teamMemberWork";
 
@@ -33,7 +33,6 @@ const GROUPS: ReadonlyArray<readonly [GroupBy, string]> = [
 
 const panel: CSSProperties = { background: "var(--card)", border: "1.5px solid var(--el)", borderRadius: 18, padding: "13px 14px", marginBottom: 12 };
 const head: CSSProperties = { fontSize: 10, fontWeight: 900, letterSpacing: 1, color: MUTED };
-const rupees = (n: number) => `₹${n.toLocaleString("en-IN")}`;
 const pct = (a: number, b: number): number | null => (b > 0 ? Math.round((a / b) * 100) : null);
 const pctTint = (p: number | null, good = 75, ok = 50) => (p == null ? MUTED : p >= good ? "#22C55E" : p >= ok ? "#F59E0B" : "#F87171");
 const whenWords = (iso: string): string => {
@@ -73,10 +72,11 @@ export function TeamClassesPanel({
   isStudio: boolean;
 }) {
   const [by, setBy] = useState<GroupBy>("artist");
-  /* the groups folded shut — keyed per grouping, so it is cleared when the way in changes */
-  const [collapsed, setCollapsed] = useState<Set<string>>(() => new Set());
+  /* the groups OPENED — every group starts closed, and the set is cleared when
+     the way in changes, so a new grouping is closed too */
+  const [opened, setOpened] = useState<Set<string>>(() => new Set());
   const toggle = (key: string) =>
-    setCollapsed((prev) => {
+    setOpened((prev) => {
       const next = new Set(prev);
       if (next.has(key)) next.delete(key);
       else next.add(key);
@@ -143,7 +143,7 @@ export function TeamClassesPanel({
               data-testid={`team-class-by-${k}`}
               onClick={() => {
                 setBy(k);
-                setCollapsed(new Set());
+                setOpened(new Set());
               }}
               style={{ flex: 1, padding: "9px 10px", borderRadius: 999, fontSize: 12, fontWeight: 900, fontFamily: "inherit", cursor: "pointer", background: on ? "var(--text)" : "var(--card)", color: on ? "var(--solid)" : SUB, border: `1.5px solid ${on ? "var(--text)" : "var(--el)"}` }}
             >
@@ -160,7 +160,7 @@ export function TeamClassesPanel({
         const booked = list.reduce((n, c) => n + c.fillBooked, 0);
         const seats = list.reduce((n, c) => n + c.fillSeats, 0);
         const fill = pct(booked, seats);
-        const open = !collapsed.has(key);
+        const open = opened.has(key);
         /* the group's face: a person under Artist, the studio's own picture under
            Studio (it was missing — 4 Oct 2026), nothing under a dance style, whose
            name is the whole of it */
@@ -174,7 +174,8 @@ export function TeamClassesPanel({
           <div key={key} data-testid="team-class-group" style={panel}>
             {/* ⚠ THE WHOLE GROUP COLLAPSES (4 Oct 2026, the user: "make sure also
                 able to collapse overall classes in artist, studio, dance style
-                tabs") — the head is the control, open by default */}
+                tabs") — the head is the control, and every group starts CLOSED
+                ("class section should always have collapses completely closed") */}
             <button
               type="button"
               aria-expanded={open}
@@ -233,42 +234,46 @@ export function TeamClassesPanel({
                       <FillBar c={c} />
                     </span>
                   </summary>
-                  <div style={{ padding: "0 12px 12px" }}>
-                    <div style={{ fontSize: 11, color: SUB, lineHeight: 1.55, margin: "2px 0 8px" }}>
-                      {c.kind === "artist" ? `${first} teaches this class` : `${first} assists${c.artistName ? ` ${c.artistName}` : ""}`}
-                      {c.closedWhy === "deleted"
-                        ? " · the class was deleted, and the sessions already held still count"
-                        : c.closedWhy === "removed"
-                          ? " · no longer on it, and the sessions already held still count"
-                          : ""}
-                      {c.venueName ? ` · at ${c.venueName}` : ""}
-                      {c.room ? ` · ${c.room}` : ""}
-                    </div>
-                    <ToolFacts
-                      tint={tint}
-                      items={[
-                        { label: "Held", value: c.held },
-                        { label: "To come", value: c.upcoming },
-                        { label: "Booked", value: c.booked },
-                      ]}
-                    />
-                    <ToolFacts
-                      tint={tint}
-                      style={{ marginTop: 6 }}
-                      items={[
-                        /* ⚠ a class the member made is theirs — this team reads its
-                           seats and not its register, so it claims no dancers */
-                        { label: "Dancers in", value: c.dancers ?? "—" },
-                        { label: "Turn-up", value: t == null ? "—" : `${t}%`, tint: t == null ? undefined : pctTint(t) },
-                        { label: "A session", value: c.ratePerSessionInr ? rupees(c.ratePerSessionInr) : "—" },
-                      ]}
-                    />
-                    <div style={{ fontSize: 11, color: SUB, marginTop: 8 }}>
-                      {c.nextAt ? <>Next {whenWords(c.nextAt)}</> : c.lastAt ? <>Last {whenWords(c.lastAt)}</> : "No session dated yet"}
-                      {c.capacity ? ` · room for ${c.capacity}` : ""}
-                    </div>
-                    <Link href={`/c/${c.shareSlug}`} aria-label={`Open ${c.title}`} style={{ ...toolBtn("tinted", tint), display: "inline-flex", marginTop: 10, textDecoration: "none" }}>
-                      Open the class ›
+                  {/* ⚠ THE DETAILS ARE A SHORT LIST OF FACTS, EACH SAID ONCE (4 Oct
+                      2026, the user: "remove unnecessary detail, stats, text from this
+                      last collapse … smaller class button, details written properly").
+                      Two tile rows and a sentence repeating them are gone; a row with
+                      nothing true to say is not drawn rather than drawn as "—". */}
+                  <div data-testid="team-class-details" style={{ padding: "2px 12px 12px" }}>
+                    <dl style={{ margin: 0, borderTop: "1.5px solid var(--el)", paddingTop: 6 }}>
+                      {[
+                        /* the chip above already says TEACHES; the row earns its place only
+                           when it adds WHO they assist */
+                        ["Assists", c.kind === "assistant" && c.artistName ? c.artistName : null],
+                        ["Where", [c.venueName, c.room].filter(Boolean).join(" · ") || null],
+                        /* held · to come and the pay a session left at the user's word
+                           (4 Oct 2026: "held, a session, To come and pay can be removed") */
+                        ["Turn-up", t != null && c.held > 0 ? `${t}% of booked seats came` : null],
+                        [c.nextAt ? "Next" : "Last", c.nextAt ? whenWords(c.nextAt) : c.lastAt ? whenWords(c.lastAt) : null],
+                        [
+                          "Status",
+                          c.closedWhy === "deleted"
+                            ? "Class deleted — the sessions held still count"
+                            : c.closedWhy === "removed"
+                              ? "No longer on it — the sessions held still count"
+                              : null,
+                        ],
+                      ]
+                        .filter((row): row is [string, string] => Boolean(row[1]))
+                        .map(([label, value]) => (
+                          <div key={label} style={{ display: "flex", gap: 10, padding: "5px 0", fontSize: 11.5, lineHeight: 1.4 }}>
+                            <dt style={{ width: 64, flexShrink: 0, fontSize: 9.5, fontWeight: 900, letterSpacing: 0.6, color: MUTED, textTransform: "uppercase", paddingTop: 1.5 }}>{label}</dt>
+                            <dd style={{ margin: 0, flex: 1, minWidth: 0, fontWeight: 700, color: INK }}>{value}</dd>
+                          </div>
+                        ))}
+                    </dl>
+                    <Link
+                      href={`/c/${c.shareSlug}`}
+                      aria-label={`Open ${c.title}`}
+                      data-testid="team-class-open"
+                      style={{ display: "inline-flex", alignItems: "center", marginTop: 8, padding: "5px 11px", borderRadius: 999, fontSize: 11, fontWeight: 800, textDecoration: "none", color: tint, background: `${tint}14`, border: `1.5px solid ${tint}40` }}
+                    >
+                      Open class ›
                     </Link>
                   </div>
                 </details>
