@@ -87,9 +87,9 @@ export function RoutinesDesk({
           add buttons anywhere in home tab should open form like how setting page
           or edit profile page open from the same screen"). It is the SAME form
           wearing the SAME `FormPage` anatomy it has worn since 21 Sep — only its
-          shell differs — and `/routines/new` still renders it full-page, because
-          a link handed out is a promise (Rule 14) and the installed TWA reopens
-          on the last URL it showed.
+          shell differs. The full-page `/routines/new` went on 5 Oct 2026; its
+          address forwards to this desk, because a link handed out is a promise
+          (Rule 14) and the installed TWA reopens on the last URL it showed.
           ⚠ `?new=1` is PUSHED, exactly as the gear pushes `?settings=1`: the
           param IS the history entry, so the phone's back gesture closes the
           sheet instead of leaving the desk. */}

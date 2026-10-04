@@ -396,10 +396,11 @@ async function personOpensAStudio(page, who, acc, stamp) {
     await p2.goBack();
     await p2.waitForTimeout(600);
     check(!(await addRoutine.isVisible().catch(() => false)), "artist · back closes the sheet and leaves the desk");
-    /* and the address still renders the whole form, for the link handed out */
+    /* and the old full-page address — gone on 5 Oct 2026 — forwards to the desk,
+       one press from Add Routine, for the link somebody was handed (Rule 14) */
     await p2.goto(`${BASE}/routines/new`, { waitUntil: "networkidle" });
-    check((await p2.locator("h1").first().innerText().catch(() => "")) === "Add Routine", "artist · /routines/new is still a page of its own (Rule 14)");
-    check((await p2.getByRole("dialog").count()) === 0, "artist · and that page is not a sheet");
+    check(new URL(p2.url()).pathname === "/routines", `artist · the old /routines/new address forwards to Routines (${new URL(p2.url()).pathname})`);
+    check(await p2.getByRole("link", { name: "Add Routine" }).isVisible().catch(() => false), "artist · …one press from Add Routine");
 
     /* ⚠ AND THE TWO NOBODY LINKS TO ANY MORE (22 Sep 2026, found by auditing
        what still points at each route). `/memberships/new` and `/crews/new`

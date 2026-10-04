@@ -3610,8 +3610,9 @@ test.describe.serial("DanceOS, end to end", () => {
     await expect(trainer.getByRole("heading", { name: "Routines" })).toBeVisible();
     /* ⚠ THE FORM IS A SHEET OVER THE DESK NOW (22 Sep 2026, ask 6): the same
        Add class anatomy it took on 21 Sep, opened from the desk's own address
-       with `?new=1` rather than a page away. `/routines/new` still renders the
-       page (Rule 14), which `shoot-tiles.js` drives by URL. */
+       with `?new=1` rather than a page away. The old `/routines/new` page went
+       on 5 Oct 2026; its address forwards to this desk, which `shoot-tiles.js`
+       asserts. */
     /* "Add Routine", the button and the heading (4 Oct 2026); nothing under the
        video link — the bar's button is the only thing naming what is missing */
     await trainer.getByRole("link", { name: "Add Routine" }).click();
