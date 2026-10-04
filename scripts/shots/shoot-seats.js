@@ -102,8 +102,11 @@ const switcherRows = async (page) => {
  *  owner, not a widening, and every CONTROL on them is still `role === "owner"`.
  *  ⚠ `/events` left this list on 29 Sep 2026 with events themselves, so the
  *  seventeen addresses this script drove are sixteen. The gate is unchanged —
- *  `runsTheBusiness` is still asked at every one of them. */
-const RUN_DESKS = ["", "/classes", "/calendar", "/rooms", "/staff", "/students", "/invoices", "/payments", "/refunds", "/media", "/inbox"];
+ *  `runsTheBusiness` is still asked at every one of them.
+ *  ⚠ And `/media` left on 5 Oct 2026 with the Media desk: its address forwards
+ *  to the studio's home (""), which is already on the list, so sixteen are
+ *  fifteen. */
+const RUN_DESKS = ["", "/classes", "/calendar", "/rooms", "/staff", "/students", "/invoices", "/payments", "/refunds", "/inbox"];
 
 /** ⚠ …and the ones that stay the OWNER's, which a manager is bounced off — back
  *  to the business's own home rather than out to the hub, because they DO run the

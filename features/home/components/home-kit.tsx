@@ -171,7 +171,8 @@ export const tilesFor = (kind: HomeKind, pageId: string | null): Tile[] => {
        edited there — and since 20-21 Sep the disc's ⊕ and the posters' ⊕ ARE
        that editor, on the Profile tab and on Home alike. So the tile was a
        third door to a job that already has two controls sitting on the picture
-       itself. `StudioMediaDesk` and its route stay (Rule 14). */
+       itself. The desk itself went on 5 Oct 2026; its address forwards to the
+       studio's own home (next.config.ts, Rule 14). */
     subscription,
   ];
 };

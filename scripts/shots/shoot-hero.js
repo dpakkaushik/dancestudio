@@ -578,17 +578,14 @@ const enterEdit = async (page) => {
       await waitRailImgs(owner, 1);
       check((await studioRows()) === 1, "studio posters: and Save is what removes one, too");
 
-      /* the Media desk: the same two pictures as a desk.
-         ⚠ ITS TILE IS OFF THE GRID SINCE 21 Sep 2026 and the ROUTE STAYS
-         (Rule 14: a link handed out is a promise, and the installed TWA reopens
-         on the last URL it showed) — which is why it is still reached by URL
-         here and still has to work. */
+      /* the Media desk's ADDRESS: the desk itself went on 5 Oct 2026 (its tile
+         left every grid on 21 Sep, and the pencil on this home shows the same two
+         editors). The address forwards here, so a link somebody was handed — or
+         the installed TWA's last URL — lands on the studio's own home rather than
+         a 404 (Rule 14). */
       await owner.goto(`${BASE}/business/${studioId}/media`);
-      await owner.getByRole("heading", { name: "Media", exact: true }).waitFor();
-      check((await owner.getByTestId("media-disc").locator("img").count()) === 1, "media desk: the disc with its picture");
-      check(await owner.getByText("1 / 5–10").isVisible(), "media desk: the header count");
-      check((await owner.getByLabel(/is the only one/).count()) === 1, "media desk: the only picture's ✕ is disabled and says why");
-      await shot("studio-media");
+      await owner.waitForURL((u) => u.pathname === `/business/${studioId}`, { timeout: 15000 }).catch(() => {});
+      check(new URL(owner.url()).pathname === `/business/${studioId}`, `the old media address forwards to the studio's own home (${new URL(owner.url()).pathname})`);
 
       /* the public page reads the header through business_header_photos, which
          arrives with migration 20260915090000 — say so on the line when it is

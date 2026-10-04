@@ -26,7 +26,6 @@ const refresh = () => {
   revalidatePath("/");
   revalidatePath("/business");
   revalidatePath("/business/[businessId]", "page");
-  revalidatePath("/business/[businessId]/media", "page");
   revalidatePath("/studio/[businessId]", "page");
   revalidatePath("/admin/verifications");
 };

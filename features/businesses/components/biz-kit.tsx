@@ -60,9 +60,8 @@ export const DOS_TOOLS = {
   team: { name: "Team", c: "#EA580C" },
   /* was #3498DB — a blue eight degrees off Studios' */
   rooms: { name: "Rooms", c: "#4F46E5" },
-  /* MEDIA (15 Sep 2026): a studio's two pictures — the disc and the header —
-     as a desk of their own; a fuchsia nobody else on the grid wears */
-  media: { name: "Media", c: "#C026D3" },
+  /* ⚠ `media` (fuchsia #C026D3) went with the Media desk on 5 Oct 2026 — its
+     tile left every grid on 21 Sep, and the desk was the last thing reading it */
   /* STATS (15 Sep 2026, the user: "remove stats from the navigation menu, keep
      it as a tab on the home page along with calendar, classes") — the violet
      the Charts hero opens on, and now the ONLY violet. ⚠ Not a tile since 18 Sep

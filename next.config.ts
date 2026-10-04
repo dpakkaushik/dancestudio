@@ -106,6 +106,10 @@ const nextConfig: NextConfig = {
          the register now (check-in, the scanner, walk-ins), and every card on
          the Classes desk opens that page. */
       { source: "/business/:businessId/classes/:classId/roster", destination: "/business/:businessId/classes", permanent: false },
+      /* The MEDIA desk: a studio's two pictures as a separate page. Its tile left
+         every grid on 21 Sep 2026; the pencil on the studio's own home shows the
+         disc's ⊕ and the posters' ⊕, which are the same editors. */
+      { source: "/business/:businessId/media", destination: "/business/:businessId", permanent: false },
     ];
   },
 };
