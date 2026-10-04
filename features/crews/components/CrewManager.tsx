@@ -88,7 +88,7 @@ export function CrewManager({ crew, members }: { crew: Crew; members: CrewMember
                 third desk of three and the last one still doing it its own way —
                 the organization's was corrected on 21 Sep and this one was
                 missed, which is exactly the shape of C36. */}
-            <DeskAddButton label="Add a team member" onClick={() => setAdd(true)} />
+            <DeskAddButton label="Add Team Members" onClick={() => setAdd(true)} />
       </DeskTop>
 
       {/* ⚠ THE MIDDLE SECTION (3 Oct 2026, C116) — the two figures. The card that
@@ -236,12 +236,12 @@ export function CrewManager({ crew, members }: { crew: Crew; members: CrewMember
             {/* SEARCH DANCEOS, THEN ASK THEM — nobody is added by this; a crew roster is a public page */}
             {add ? (
               <div onClick={() => setAdd(false)} style={sheetWrap}>
-                <div role="dialog" aria-modal="true" aria-label="Add a team member" onClick={(e) => e.stopPropagation()} style={sheetBody}>
+                <div role="dialog" aria-modal="true" aria-label="Add Team Members" onClick={(e) => e.stopPropagation()} style={sheetBody}>
                   <SheetHandle />
                   {/* ⚠ 17px AND THE DISPLAY FACE (27 Sep 2026) — the studio's and
                       the organization's add sheets both head themselves that way,
                       and this one was 16px in the UI face. One sheet, one title. */}
-                  <b style={{ fontSize: 17, fontFamily: DOS_DISPLAY }}>Add a team member</b>
+                  <b style={{ fontSize: 17, fontFamily: DOS_DISPLAY }}>Add Team Members</b>
                   <div style={{ fontSize: 11.5, color: "var(--sub)", margin: "3px 0 12px", lineHeight: 1.5 }}>
                     They accept before their name is on the crew&rsquo;s page — nobody is put on a roster without saying yes.
                   </div>

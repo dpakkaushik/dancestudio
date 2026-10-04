@@ -11,6 +11,7 @@ import { DOS_LEVEL_LABEL, dosStyleColor } from "@/lib/constants/styles";
 import { DOS_UI, INK, LILAC, MUTED, SUB } from "@/lib/design/tokens";
 import { photoUrl } from "@/lib/media/photo";
 import { deleteRoutineAction } from "@/features/routines/server-actions/routines";
+import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import type { Routine, RoutineClass, RoutineStudent, RoutineStudio } from "@/repositories/routines";
 import { RoutineMediaButton } from "./routine-kit";
 
@@ -187,7 +188,7 @@ export function RoutinePage({
           photoPath={maker.photoPath}
           href={`/person/${maker.userId}`}
           hrefLabel={`${maker.name} — profile`}
-          eyebrow="Your routine"
+          eyebrow="Routine"
           size={46}
           right={
             <>
@@ -222,42 +223,37 @@ export function RoutinePage({
           />
         </ToolBody>
         <ToolActions>
-          <RoutineMediaButton kind="song" href={songHref} word={routine.songIsFile && !routine.songTitle ? "MP3" : "Song"} title={routine.title} col={col} />
-          <RoutineMediaButton kind="video" href={routine.videoUrl} word="Video" title={routine.title} col={col} />
+          <RoutineMediaButton kind="song" href={songHref} word={routine.songIsFile && !routine.songTitle ? "MP3" : "Song"} title={routine.title} />
+          <RoutineMediaButton kind="video" href={routine.videoUrl} word="Video" title={routine.title} />
         </ToolActions>
       </ToolCard>
 
       {err ? <div role="alert" style={{ fontSize: 12, color: "#F87171", margin: "0 2px 8px" }}>{err}</div> : null}
+      {/* ⚠ A CENTRED QUESTION (4 Oct 2026, the user: "should confirm before
+          deleting a routine") — it was an inline panel under the card, which on a
+          phone sat below the fold, so pressing Delete seemed to do nothing */}
       {confirm ? (
-        <div role="alertdialog" aria-label="Delete this routine?" style={{ ...panel, borderColor: "rgba(239,68,68,.35)", marginBottom: 0 }}>
-          <b style={{ fontSize: 15 }}>Delete this routine?</b>
-          <div style={{ fontSize: 11.5, color: SUB, margin: "5px 0 12px", lineHeight: 1.5 }}>
-            {routine.title} · on {classes.length} {classes.length === 1 ? "class" : "classes"}. The classes keep running; the routine comes off them.
-          </div>
-          <div style={{ display: "flex", gap: 8 }}>
-            <button type="button" onClick={() => setConfirm(false)} style={toolBtn("secondary", col)}>
-              Keep it
-            </button>
-            <button
-              type="button"
-              disabled={pending}
-              onClick={() =>
-                start(async () => {
-                  const out = await deleteRoutineAction({ routineId: routine.id });
-                  if (out.error) {
-                    setErr(out.error);
-                    setConfirm(false);
-                    return;
-                  }
-                  router.push("/routines");
-                })
+        <ConfirmDialog
+          title="Delete this routine?"
+          body={`${routine.title} · on ${classes.length} ${classes.length === 1 ? "class" : "classes"}. The classes keep running; the routine comes off them.`}
+          goWord="Delete"
+          busy={pending}
+          onKeep={() => setConfirm(false)}
+          onGo={() =>
+            start(async () => {
+              const out = await deleteRoutineAction({ routineId: routine.id });
+              if (out.error) {
+                setErr(out.error);
+                setConfirm(false);
+                return;
               }
-              style={toolBtn("primary", "#DC2626", { flex: "1.3 1 0" })}
-            >
-              {pending ? "Deleting…" : "Delete"}
-            </button>
-          </div>
-        </div>
+              /* the dialog spends its own history entry as it closes; the move to
+                 the desk is a beat behind it (the 600 ms every sheet here uses) */
+              setConfirm(false);
+              setTimeout(() => router.replace("/routines"), 600);
+            })
+          }
+        />
       ) : null}
     </>
   );

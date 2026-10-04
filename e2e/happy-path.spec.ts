@@ -836,8 +836,8 @@ test.describe.serial("DanceOS, end to end", () => {
     await onboard(trainer, trainerName, "Pune");
 
     await owner.goto(`/business/${businessId}/staff`);
-    await owner.getByRole("button", { name: "Add a team member" }).click();
-    const inviteSheet = owner.getByRole("dialog", { name: "Add a team member" });
+    await owner.getByRole("button", { name: "Add Team Members" }).click();
+    const inviteSheet = owner.getByRole("dialog", { name: "Add Team Members" });
     /* ── ONE WAY IN (20 Sep 2026): the picker. The labels a studio has to give
        are its own (`rolesFor`); the PERMISSIONS table beside them is gone at
        the user's word — a member's own row prints what their seat carries. ── */
@@ -1488,8 +1488,8 @@ test.describe.serial("DanceOS, end to end", () => {
        because a check that only looks for what was added lets it live on. */
     await expect(learner.getByRole("heading", { level: 1, name: "Team" })).toBeVisible();
     await expect(learner.getByRole("button", { name: "Add member", exact: true })).toHaveCount(0);
-    await learner.getByRole("button", { name: "Add a team member" }).click();
-    const crewAdd = learner.getByRole("dialog", { name: "Add a team member" });
+    await learner.getByRole("button", { name: "Add Team Members" }).click();
+    const crewAdd = learner.getByRole("dialog", { name: "Add Team Members" });
     await expect(crewAdd).toBeVisible();
     // the app's one people search, with its own clothes on — as on the other two desks
     await expect(crewAdd.getByRole("textbox", { name: "Search DanceOS for a dancer" })).toBeVisible();
@@ -2818,7 +2818,7 @@ test.describe.serial("DanceOS, end to end", () => {
     const legacyName = `E2E Mirrors ${stamp}`;
     await addAsset(legacyName, "Other assets", "0");
     const legacy = owner.getByTestId("asset-row").filter({ hasText: legacyName });
-    await expect(legacy.getByTestId("asset-value")).toHaveText("₹0 (legacy)", { timeout: 15_000 });
+    await expect(legacy.getByTestId("asset-value")).toHaveText("₹0 (Old)", { timeout: 15_000 });
     // and it does not move the total, which is the point of counting it as zero — it moves the COUNT
     await expect(owner.getByTestId("assets-total")).toHaveText("₹28,000");
     await expect(owner.getByTestId("assets-count")).toHaveText("2");
@@ -2883,11 +2883,15 @@ test.describe.serial("DanceOS, end to end", () => {
        could never be made. In a serial story, where a segment sits is part of
        its set-up. ---- */
     await owner.goto(`/business/${businessId}/staff`);
+    /* ⚠ THE MIDDLE SECTION (4 Oct 2026): the total, then a count per role */
+    await expect(owner.getByTestId("team-total")).toBeVisible({ timeout: 15_000 });
+    await expect(owner.getByTestId("team-count-owner")).toBeVisible();
+    await expect(owner.getByText(/who it names/)).toHaveCount(0);
 
     // ── ASKED BY NAME. The learner is on DanceOS and not on this team, so the
     // picker finds them — a name, and the row wears their picture.
-    await owner.getByRole("button", { name: "Add a team member" }).click();
-    const sheet = owner.getByRole("dialog", { name: "Add a team member" });
+    await owner.getByRole("button", { name: "Add Team Members" }).click();
+    const sheet = owner.getByRole("dialog", { name: "Add Team Members" });
     await sheet.getByRole("button", { name: "Visiting faculty" }).click();
     await sheet.getByLabel("Search for somebody to add").fill(learnerName);
     await sheet.getByRole("button", { name: `Ask ${learnerName}` }).click({ timeout: 20_000 });
@@ -2924,7 +2928,11 @@ test.describe.serial("DanceOS, end to end", () => {
     await expect(memberRow).toBeVisible({ timeout: 15_000 });
     await memberRow.click();
     const memberSheet = owner.getByRole("dialog", { name: learnerName });
-    await expect(memberSheet.getByText("PERMISSIONS")).toHaveCount(0);
+    /* ⚠ SINCE 4 Oct 2026 "PERMISSIONS" IS A HEADING AGAIN — the user's own word
+       for what was "WHAT YOU GRANT THEM" (the two switches), not the 20 Sep
+       five-line table this line used to assert gone — and "ROLE" heads the labels */
+    await expect(memberSheet.getByText("ROLE", { exact: true })).toBeVisible();
+    await expect(memberSheet.getByText("PERMISSIONS", { exact: true })).toBeVisible();
     await expect(memberSheet.getByRole("button", { name: `Make ${learnerName} Visiting faculty` })).toBeVisible();
     await memberSheet.getByRole("button", { name: `Make ${learnerName} Faculty` }).click();
     await expect(owner.getByRole("status")).toContainText("Faculty", { timeout: 15_000 });
@@ -2938,7 +2946,10 @@ test.describe.serial("DanceOS, end to end", () => {
        which opens only for a NON-owner, so an owner whose team is just
        themselves could never reach it — the user asked whether paying had been
        built at all, and from where they sat it had not. */
-    await expect(owner.getByText("Nothing paid yet").first()).toBeVisible({ timeout: 15_000 });
+    /* ⚠ NO "Nothing paid yet" LINE since 4 Oct 2026 (the user) — the card's Paid
+       and Payments tiles say it */
+    await expect(owner.getByRole("button", { name: `Pay ${learnerName}` })).toBeVisible({ timeout: 15_000 });
+    await expect(owner.getByText("Nothing paid yet")).toHaveCount(0);
     await owner.getByRole("button", { name: `Pay ${learnerName}` }).click();
     const paySheet = owner.getByRole("dialog", { name: `Pay ${learnerName}` });
     await paySheet.getByLabel("Amount in rupees").fill("2500");
@@ -2949,7 +2960,8 @@ test.describe.serial("DanceOS, end to end", () => {
     /* the history reads on their OWN ROW now — the total beside the Pay button,
        so what has been paid is visible without opening anything (20 Sep 2026) */
     await owner.reload();
-    await expect(owner.getByText(/₹2,500 paid · 1 payment/).first()).toBeVisible({ timeout: 15_000 });
+    /* ⚠ the one-line summary is gone (4 Oct 2026); the Paid tile on their card carries it */
+    await expect(owner.getByText("₹2,500", { exact: true }).first()).toBeVisible({ timeout: 15_000 });
 
     /* ⚠⚠ AND THE HISTORY IS A PAGE (29 Sep 2026, the user: "Team payment history
        to be a button called History which should show all transactions with that
@@ -3031,8 +3043,8 @@ test.describe.serial("DanceOS, end to end", () => {
        studio's own page. There is no SMS provider and Resend reaches nobody but
        the account owner, so a "Send" button would be a door that does not open;
        what this asserts is the thing that DOES work from a phone. */
-    await owner.getByRole("button", { name: "Invite a student" }).click();
-    const inviteSheet = owner.getByRole("dialog", { name: "Invite a student" });
+    await owner.getByRole("button", { name: "Invite Student" }).click();
+    const inviteSheet = owner.getByRole("dialog", { name: "Invite Student" });
     await expect(inviteSheet).toBeVisible();
     await inviteSheet.getByLabel("Mobile number").fill("+91 98765 43210");
     const wa = inviteSheet.getByRole("link", { name: "WhatsApp" });
@@ -3310,7 +3322,7 @@ test.describe.serial("DanceOS, end to end", () => {
     await owner.goto(`/business/${businessId}/staff`);
     await owner.getByRole("button", { name: `Manage ${learnerName}` }).click();
     const teamSheet = owner.getByRole("dialog", { name: learnerName });
-    await expect(teamSheet.getByText("WHAT YOU GRANT THEM")).toBeVisible();
+    await expect(teamSheet.getByText("PERMISSIONS", { exact: true })).toBeVisible();
     const register = teamSheet.getByRole("switch", { name: `Run the register — ${learnerName}` });
     const refunds = teamSheet.getByRole("switch", { name: `Settle refunds — ${learnerName}` });
     await expect(register).toHaveAttribute("aria-checked", "false");
@@ -3332,7 +3344,7 @@ test.describe.serial("DanceOS, end to end", () => {
     await expect(owner.getByRole("status")).toContainText("Owner", { timeout: 15_000 });
     /* an owner holds both powers by their seat, so the grants beside them are gone
        rather than left as switches that cannot be turned off */
-    await expect(teamSheet.getByText("WHAT YOU GRANT THEM")).toHaveCount(0);
+    await expect(teamSheet.getByText("PERMISSIONS", { exact: true })).toHaveCount(0);
     await expect(teamSheet.getByRole("button", { name: `Make ${learnerName} Owner` })).toHaveAttribute("aria-pressed", "true");
     /* ⚠ AND BACK TO FACULTY WITHOUT CLOSING THE SHEET. An OWNER's row carries no
        "Manage …" control at all (a studio's owner is not somebody the desk
@@ -3455,6 +3467,9 @@ test.describe.serial("DanceOS, end to end", () => {
     await expect(row.getByTestId("routine-classes")).toHaveText("0");
     await expect(row.getByRole("link", { name: `Open the song for ${routineName}` })).toHaveAttribute("href", "https://youtu.be/ilahi-instrumental");
     await expect(row.getByRole("link", { name: `Open the video for ${routineName}` })).toHaveAttribute("href", "https://youtu.be/breath-release");
+    /* ⚠ ROUTINE DETAIL beside them, and the head says just "Routine" (4 Oct 2026) */
+    await expect(row.getByRole("link", { name: "Routine Detail", exact: true })).toHaveAttribute("href", /\/routines\/[0-9a-f-]+$/);
+    await expect(row.getByText("Your routine", { exact: true })).toHaveCount(0);
 
     // ── the class page: the class's CONFIRMED ARTIST puts it on, and it shows
     await trainer.goto(`/c/${shareSlug}`);

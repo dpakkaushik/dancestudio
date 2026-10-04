@@ -162,6 +162,8 @@ const openMemberSheet = async (page, memberName) => {
     await fPage.goto(`${BASE}/business/${studio.id}/staff`, { waitUntil: "networkidle" });
     await openMemberSheet(fPage, second.name);
     await fPage.getByRole("button", { name: `Remove ${second.name} from the team` }).click();
+    /* ⚠ IT ASKS FIRST since 4 Oct 2026 */
+    await fPage.getByRole("alertdialog", { name: `Remove ${second.name} from the team?` }).getByRole("button", { name: "Remove", exact: true }).click();
     await fPage.getByText(`${second.name} taken off the team`).waitFor({ timeout: 20000 });
 
     const after = await rows(founder.h, `business_members?business_id=eq.${studio.id}&deleted_at=is.null&select=user_id,member_role`);

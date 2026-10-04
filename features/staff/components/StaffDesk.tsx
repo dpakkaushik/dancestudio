@@ -23,16 +23,16 @@ import {
 } from "@/features/staff/server-actions/staff";
 import Link from "next/link";
 import { DeskAddButton } from "@/features/settings/components/settings-kit";
-import { DeskBody, DeskTop } from "@/components/ui/DeskSections";
+import { DeskBody, DeskMiddle, DeskTop } from "@/components/ui/DeskSections";
 import { ToolActions, ToolBody, ToolCard, ToolChip, ToolFace, ToolFacts, ToolHead, toolBtn } from "@/components/ui/ToolCard";
-import { DeskHero, SheetHandle, sheetBody, sheetWrap } from "@/features/businesses/components/biz-kit";
+import { DOS_TOOLS, DeskHero, SheetHandle, sheetBody, sheetWrap } from "@/features/businesses/components/biz-kit";
 import { DOS_DISPLAY, DOS_UI, INK, LILAC, MUTED, SUB } from "@/lib/design/tokens";
 import { useCloseOnBack } from "@/lib/hooks/useCloseOnBack";
+import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import type { MemberRole, TeamMember } from "@/repositories/businesses";
 import type { PayoutMethod, PayoutRecord, PayoutStatus } from "@/types/payout";
 import type { BusinessType } from "@/types/business";
 import {
-  MEMBER_GRANTS,
   MEMBER_LABEL,
   MEMBER_LABEL_ORDER,
   MEMBER_ROLE_WORD,
@@ -145,7 +145,6 @@ const PAY_STATES: ReadonlyArray<readonly [PayoutStatus, string]> = [
 
 export function StaffDesk({
   businessId,
-  businessName,
   businessType,
   team,
   invites,
@@ -175,10 +174,9 @@ export function StaffDesk({
      studio has a page of its own; an ARTIST PAGE does not — an artist IS their
      profile since 18 Sep (R24), so the door is the OWNER's person page, taken
      from the roster rather than from `/artist/{id}`, which only redirects there */
-  const ownerUserId = team.find((m) => m.role === "owner")?.userId ?? null;
-  const publicHref = businessType === "artist_page" ? (ownerUserId ? `/person/${ownerUserId}` : "/business") : `/studio/${businessId}`;
   const [addOpen, setAddOpen] = useState(false);
   const [openMember, setOpenMember] = useState<TeamMember | null>(null);
+  const [removing, setRemoving] = useState(false);
   const [shareInvite, setShareInvite] = useState<BusinessInvite | null>(null);
   /* the add sheet's two ways in: pick somebody on DanceOS, or ask an address */
   /* ⚠ ONE WAY IN SINCE 20 SEP 2026 — the picker. "By email" is gone at the
@@ -214,6 +212,10 @@ export function StaffDesk({
   const labels = labelsFor(businessType);
   const onTeam = team.map((m) => m.userId);
   const paidTo = (userId: string) => payments.filter((p) => p.userId === userId);
+  /** how many hold each label, in the roster's own order — only the labels somebody holds */
+  const roleCounts = MEMBER_LABEL_ORDER.map((r) => ({ r, n: team.filter((m) => m.role === r).length }))
+    .filter((x) => x.n > 0)
+    .map((x) => ({ label: MEMBER_LABEL[x.r].short, value: x.n, testId: `team-count-${x.r}`, tint: MEMBER_LABEL[x.r].colour }));
 
   const fire = (m: string) => {
     setToast(m);
@@ -262,10 +264,8 @@ export function StaffDesk({
           organization runs several studios, and the tool hero names the tool. */}
       <DeskTop style={{ paddingBottom: 4 }}>
       {/* ⚠ THE TOP SECTION (3 Oct 2026, C116) — the hero, whose team it is, and Add */}
-      <DeskHero tool="team" as="h1" margin="0 0 8px" />
-      <Link href={publicHref} style={{ display: "block", fontSize: 11.5, color: SUB, fontWeight: 800, margin: "0 0 12px", textDecoration: "none" }}>
-        {businessName} · who it names ›
-      </Link>
+      {/* ⚠ NOTHING BETWEEN THE HEADING AND THE BUTTON (4 Oct 2026, the user) */}
+      <DeskHero tool="team" as="h1" margin="0 0 12px" />
 
       {/* ＋ ADD, AT THE TOP, THE WAY CLASSES AND EVENTS OPEN (20 Sep 2026, the
           user: "Add button for team, room, crew to be similar to add class and
@@ -280,7 +280,7 @@ export function StaffDesk({
           sheet behind it asks somebody by NAME, not by post. */}
       {isOwner ? (
         <DeskAddButton
-          label="Add a team member"
+          label="Add Team Members"
           onClick={() => {
             setForm({ name: "", email: "", role: "trainer" });
             setError(null);
@@ -289,6 +289,14 @@ export function StaffDesk({
         />
       ) : null}
       </DeskTop>
+
+      {/* ⚠ THE MIDDLE SECTION (4 Oct 2026, the user: "section in between with
+          total members count below count member role wise") — counted off the
+          roster below, never stored */}
+      <DeskMiddle>
+        <ToolFacts tint={DOS_TOOLS.team.c} items={[{ label: team.length === 1 ? "Member" : "Total members", value: team.length, testId: "team-total" }]} />
+        {roleCounts.length ? <ToolFacts tint={DOS_TOOLS.team.c} style={{ marginTop: 6 }} items={roleCounts} /> : null}
+      </DeskMiddle>
 
       <DeskBody style={{ paddingBottom: 4 }}>
       {/* ⚠ THE LOWER SECTION (3 Oct 2026, C116) — the roster and what it says */}
@@ -387,15 +395,18 @@ export function StaffDesk({
                     photoPath={m.avatarPath}
                     href={`/person/${m.userId}`}
                     hrefLabel={`${m.name} — their profile`}
-                    afterName={mine ? <span style={{ flexShrink: 0, fontSize: 10.5, color: SUB, fontWeight: 700 }}>· you</span> : null}
                     eyebrow={`${MEMBER_ROLE_WORD[m.role]} · ${KIND_WORD[kindOf(m.isArtist)]}`}
-                    sub={[m.style, m.city].filter(Boolean).join(" · ") || null}
+                    /* ⚠ NO DANCE STYLES ON A TEAM CARD (4 Oct 2026, the user) — the city alone */
+                    sub={m.city || null}
                     right={
-                      /* ── THE ORDER, WITHIN THE GROUP (20 Sep 2026) ── they swap with
+                      <>
+                      {/* ⚠ "You", capital Y, as a pill on the top right (4 Oct 2026) */}
+                      {mine ? <ToolChip word="You" fg={L.colour} bg={`${L.colour}1c`} testId="team-you" /> : null}
+                      {/* ── THE ORDER, WITHIN THE GROUP (20 Sep 2026) ── they swap with
                          their NEIGHBOUR IN THE SAME GROUP; the stored `sort` is still
                          one global order. Drawn even for a group of one, disabled —
-                         a control that comes and goes is harder to find. */
-                      isOwner ? (
+                         a control that comes and goes is harder to find. */}
+                      {isOwner ? (
                         <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
                           {([-1, 1] as const).map((dir) => {
                             const partner = members[i + dir];
@@ -422,7 +433,8 @@ export function StaffDesk({
                             );
                           })}
                         </div>
-                      ) : null
+                      ) : null}
+                      </>
                     }
                   />
                   <ToolBody>
@@ -434,12 +446,8 @@ export function StaffDesk({
                         { label: "Powers", value: powers },
                       ]}
                     />
-                    {/* the history in one line, as the row has said it since 20 Sep */}
-                    {manageable ? (
-                      <div style={{ fontSize: 10.5, color: paid.length ? SUB : MUTED, fontWeight: 700, marginTop: 8 }}>
-                        {paid.length ? `${rupees(paidTotal)} paid · ${paid.length} ${paid.length === 1 ? "payment" : "payments"}` : "Nothing paid yet"}
-                      </div>
-                    ) : null}
+                    {/* ⚠ NO "Nothing paid yet" LINE (4 Oct 2026, the user) — the Paid
+                        and Payments tiles above already say it */}
                   </ToolBody>
                   {manageable ? (
                     <ToolActions>
@@ -554,19 +562,17 @@ export function StaffDesk({
             aria-modal="true"
             /* the sheet answers to the same words as the button that opens it
                (20 Sep 2026) — the prototype's own `aria-label` at 18788 */
-            aria-label="Add a team member"
+            aria-label="Add Team Members"
             onClick={(e) => e.stopPropagation()}
             style={sheet}
           >
             <SheetHandle />
-            <b style={{ fontSize: 17, fontFamily: DOS_DISPLAY }}>Add a team member</b>
-            <div style={{ fontSize: 11.5, color: SUB, margin: "3px 0 14px", lineHeight: 1.5 }}>
-              They accept before anything is theirs to run — nobody is added to a business without saying yes.
-            </div>
+            {/* ⚠ NOTHING UNDER THE HEADING (4 Oct 2026, the user) */}
+            <b style={{ display: "block", fontSize: 17, fontFamily: DOS_DISPLAY, marginBottom: 14 }}>Add Team Members</b>
 
             {/* THE LABEL IS CHOSEN FIRST, because it is what they are being
                 asked to be — and the picker below asks them in one press */}
-            <div style={{ fontSize: 12, color: SUB, margin: "0 0 4px" }}>What they may do</div>
+            <div style={{ fontSize: 12, color: SUB, margin: "0 0 4px" }}>Role</div>
             <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
               {roles.map(([k, word]) => {
                 const on = form.role === k;
@@ -806,10 +812,10 @@ export function StaffDesk({
             {/* WHO — the card's own head, so the sheet and the card they pressed
                 read as one object. The face and the name are the door to the
                 person (21 Sep 2026: every Team desk has one). */}
-            <Link
-              href={`/person/${openMember.userId}`}
-              aria-label={`Open ${openMember.name}'s profile`}
-              style={{ display: "flex", alignItems: "center", gap: 12, padding: "12px", margin: "0 0 14px", borderRadius: 16, background: `linear-gradient(135deg, ${L.colour}24, ${L.colour}08 62%, transparent)`, border: `1.5px solid ${EL}`, color: INK, textDecoration: "none" }}
+            {/* ⚠ NOT A DOOR ANY MORE (4 Oct 2026, the user: "remove view profile
+                button") — the card's own face is the way to their page */}
+            <div
+              style={{ display: "flex", alignItems: "center", gap: 12, padding: "12px", margin: "0 0 14px", borderRadius: 16, background: `linear-gradient(135deg, ${L.colour}24, ${L.colour}08 62%, transparent)`, border: `1.5px solid ${EL}`, color: INK }}
             >
               <ToolFace name={openMember.name} photoPath={openMember.avatarPath} tint={L.colour} size={52} />
               <span style={{ flex: 1, minWidth: 0 }}>
@@ -818,16 +824,16 @@ export function StaffDesk({
                 </span>
                 <b style={{ display: "block", fontSize: 18, fontFamily: DOS_DISPLAY, letterSpacing: -0.4, lineHeight: 1.2, marginTop: 2, overflowWrap: "anywhere" }}>{openMember.name}</b>
                 <span style={{ display: "block", fontSize: 11.5, color: SUB, marginTop: 2 }}>
-                  {[openMember.style, openMember.city].filter(Boolean).join(" · ") || "On your team"} · <b style={{ color: INK }}>Profile ›</b>
+                  {openMember.city || "On your team"}
                 </span>
               </span>
-            </Link>
+            </div>
 
             {/* WHAT THEY ARE — the labels this profile hands out, each in its own
                 colour, and the sentence for what the chosen one carries under them
                 (20 Sep 2026: it moved here from the row) */}
             <div style={{ fontSize: 10.5, fontWeight: 900, letterSpacing: 1.1, color: "var(--muted)", marginBottom: 7 }}>
-              WHAT THEY MAY DO
+              ROLE
             </div>
             <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 8 }}>
               {labels.map(([k, word]) => {
@@ -869,9 +875,7 @@ export function StaffDesk({
                 );
               })}
             </div>
-            <div style={{ fontSize: 11.5, color: MUTED, marginBottom: 6, lineHeight: 1.5 }}>
-              {MEMBER_GRANTS[openMember.role]}
-            </div>
+            {/* ⚠ no sentence under the roles (4 Oct 2026, the user) */}
 
             {/* ── WHAT YOU GRANT THEM (20 Sep 2026) — the two powers the database
                 takes standing. An owner holds both by their seat, so the block is
@@ -880,7 +884,7 @@ export function StaffDesk({
             {openMember.role !== "owner" ? (
               <>
                 <div style={{ fontSize: 10.5, fontWeight: 900, letterSpacing: 1.1, color: "var(--muted)", margin: "14px 0 7px" }}>
-                  WHAT YOU GRANT THEM
+                  PERMISSIONS
                 </div>
                 <div style={{ border: `1.5px solid ${EL}`, borderRadius: 14, padding: "0 12px", background: CARD }}>
                 {(
@@ -949,17 +953,9 @@ export function StaffDesk({
                 <button
                   type="button"
                   aria-label={`Remove ${openMember.name} from the team`}
-                  onClick={async () => {
-                    const owner = openMember.role === "owner";
-                    const done = await run(
-                      () =>
-                        owner
-                          ? removeOwnerAction({ businessId, userId: openMember.userId })
-                          : removeMemberAction({ businessId, userId: openMember.userId }),
-                      `${openMember.name} taken off the team`
-                    );
-                    if (done) setOpenMember(null);
-                  }}
+                  /* ⚠ IT ASKS FIRST (4 Oct 2026, the user: "confirm before removing
+                     team member") */
+                  onClick={() => setRemoving(true)}
                   style={toolBtn("danger", L.colour)}
                 >
                   Remove
@@ -969,10 +965,28 @@ export function StaffDesk({
                 Done
               </button>
             </div>
-            {openMember.role !== "owner" || principalOwnerId === meUserId ? (
-              <div style={{ fontSize: 10.5, color: "var(--muted)", marginTop: 10, lineHeight: 1.5 }}>
-                Taking somebody off also ends any class they were holding attendance or refunds on.
-              </div>
+            {/* ⚠ no line under Remove and Done (4 Oct 2026, the user) — what
+                removing does is said in the confirm */}
+            {removing ? (
+              <ConfirmDialog
+                title={`Remove ${openMember.name} from the team?`}
+                body="Any class they were holding attendance or refunds on ends with it."
+                goWord="Remove"
+                busy={busy}
+                onKeep={() => setRemoving(false)}
+                onGo={async () => {
+                  const owner = openMember.role === "owner";
+                  const done = await run(
+                    () =>
+                      owner
+                        ? removeOwnerAction({ businessId, userId: openMember.userId })
+                        : removeMemberAction({ businessId, userId: openMember.userId }),
+                    `${openMember.name} taken off the team`
+                  );
+                  setRemoving(false);
+                  if (done) setTimeout(() => setOpenMember(null), 400);
+                }}
+              />
             ) : null}
           </div>
         </div>

@@ -80,7 +80,7 @@ export default async function MembershipsPage({ searchParams }: { searchParams: 
         sellerPhotos={sellerPhotos}
         usesByPass={usesByPass}
         openOnBooked={showBooked}
-        seller={owned ? { name: me?.fullName ?? owned.name, photoPath: me?.avatarPath ?? owned.photoPath ?? null, kind: "artist" } : null}
+        seller={owned ? { name: me?.fullName ?? owned.name, photoPath: me?.avatarPath ?? owned.photoPath ?? null, kind: "artist", href: `/person/${user.id}` } : null}
       />
       {opening && owned ? <MembershipForm sellerId={owned.id} sellerName={owned.name} backTo="/memberships" sheet /> : null}
     </>

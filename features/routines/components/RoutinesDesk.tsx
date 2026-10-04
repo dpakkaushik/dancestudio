@@ -1,7 +1,8 @@
 "use client";
 
+import Link from "next/link";
 import { useState, type CSSProperties } from "react";
-import { ToolActions, ToolBody, ToolCard, ToolChip, ToolFacts, ToolHead, inkOn, type ToolFact } from "@/components/ui/ToolCard";
+import { ToolActions, ToolBody, ToolCard, ToolChip, ToolFacts, ToolHead, inkOn, toolBtn, type ToolFact } from "@/components/ui/ToolCard";
 import { RoutineMediaButton } from "./routine-kit";
 import { DOS_LEVEL_LABEL, dosStyleColor } from "@/lib/constants/styles";
 import { DOS_UI, INK, LILAC, SUB } from "@/lib/design/tokens";
@@ -172,6 +173,7 @@ function RoutineCard({
   video,
   maker,
   facts,
+  detail,
 }: {
   href: string;
   label: string;
@@ -188,6 +190,8 @@ function RoutineCard({
   /** WHO MADE IT — the profile the card is linked to */
   maker: { name: string; photoPath: string | null; eyebrow: string };
   facts: ToolFact[];
+  /** the routine's own page, as a button beside its song and video (4 Oct 2026) */
+  detail?: string;
 }) {
   const col = dosStyleColor(style);
 
@@ -220,8 +224,15 @@ function RoutineCard({
         <ToolFacts tint={col} items={facts} style={{ marginTop: 9 }} />
       </ToolBody>
       <ToolActions>
-        <RoutineMediaButton kind="song" href={song.href} word={song.word} title={title} col={col} extra={{ padding: "8px 10px" }} />
-        <RoutineMediaButton kind="video" href={video} word="Video" title={title} col={col} extra={{ padding: "8px 10px" }} />
+        <RoutineMediaButton kind="song" href={song.href} word={song.word} title={title} extra={{ padding: "8px 10px" }} />
+        <RoutineMediaButton kind="video" href={video} word="Video" title={title} extra={{ padding: "8px 10px" }} />
+        {/* ⚠ ROUTINE DETAIL BESIDE SONG AND VIDEO (4 Oct 2026, the user: "Another
+            Routine Detail Button with song and video") — the card still opens it too */}
+        {detail ? (
+          <Link href={detail} style={toolBtn("tinted", DOS_TOOLS.routines.c, { padding: "8px 10px" })}>
+            Routine Detail
+          </Link>
+        ) : null}
       </ToolActions>
     </ToolCard>
   );
@@ -272,7 +283,8 @@ function RoutineRow({ r, me }: { r: RoutineWithUsage; me: Maker }) {
       status={r.status === "draft" ? { word: "DRAFT", strong: false } : { word: "LIVE", strong: true }}
       song={{ href: songHref, word: r.songTitle ?? (r.songIsFile ? "MP3" : "Song") }}
       video={r.videoUrl}
-      maker={{ name: me.name, photoPath: me.photoPath, eyebrow: "Your routine" }}
+      detail={`/routines/${r.id}`}
+      maker={{ name: me.name, photoPath: me.photoPath, eyebrow: "Routine" }}
       facts={[
         { label: r.classes === 1 ? "Class" : "Classes", value: r.classes, testId: "routine-classes" },
         { label: r.sessions === 1 ? "Session" : "Sessions", value: r.sessions },

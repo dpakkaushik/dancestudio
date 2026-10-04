@@ -2,6 +2,13 @@
 
 import type { CSSProperties } from "react";
 import { toolBtn } from "@/components/ui/ToolCard";
+import { DOS_TOOLS } from "@/features/businesses/components/biz-kit";
+
+/** ⚠ ONE HUE FOR EVERY ROUTINE'S MEDIA (4 Oct 2026, the user: "song and video
+ *  buttons in routines color hue not according to dance styles") — the Routines
+ *  tool's own colour, so the buttons read the same on every card whatever it
+ *  dances; the style's colour stays on the style pill. */
+const MEDIA_TINT = DOS_TOOLS.routines.c;
 
 /** THE SONG AND THE VIDEO AS REAL BUTTONS — one pair for the routine card on the
  *  desk and the routine's own page (3 Oct 2026), so a routine's media look and
@@ -19,7 +26,6 @@ export function RoutineMediaButton({
   href,
   word,
   title,
-  col,
   extra,
 }: {
   kind: "song" | "video";
@@ -27,7 +33,6 @@ export function RoutineMediaButton({
   word: string;
   /** the routine's name — the link's accessible name says which routine */
   title: string;
-  col: string;
   extra?: CSSProperties;
 }) {
   const icon =
@@ -43,8 +48,8 @@ export function RoutineMediaButton({
       </svg>
     );
   const box: CSSProperties = href
-    ? toolBtn("primary", col, extra)
-    : toolBtn("secondary", col, { color: "var(--muted)", cursor: "default", ...extra });
+    ? toolBtn("primary", MEDIA_TINT, extra)
+    : toolBtn("secondary", MEDIA_TINT, { color: "var(--muted)", cursor: "default", ...extra });
   return href ? (
     <a href={href} target="_blank" rel="noreferrer" onClick={(e) => e.stopPropagation()} aria-label={`Open the ${kind} for ${title}`} style={box}>
       {icon}

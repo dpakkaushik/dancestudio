@@ -118,7 +118,7 @@ export function StudentsDesk({
       {/* ⚠ THE TOP SECTION (3 Oct 2026, C116) — the hero, Invite, the search and what the list is */}
       <DeskHero tool="students" as="h1" margin="0 0 12px" />
 
-      <DeskAddButton label="Invite a student" onClick={() => setInvite(true)} />
+      <DeskAddButton label="Invite Student" onClick={() => setInvite(true)} />
 
       <div style={{ display: "flex", alignItems: "center", gap: 8, background: CARD, border: `1.5px solid ${EL}`, borderRadius: 12, padding: "9px 11px", margin: "11px 0 10px" }}>
         <span aria-hidden="true" style={{ color: "var(--muted)", fontSize: 13 }}>⌕</span>
@@ -288,12 +288,12 @@ function InviteSheet({
       <div
         role="dialog"
         aria-modal="true"
-        aria-label="Invite a student"
+        aria-label="Invite Student"
         onClick={(e) => e.stopPropagation()}
         style={{ background: "var(--solid)", color: INK, borderRadius: "24px 24px 0 0", padding: "18px 16px 28px", width: "100%", maxWidth: 430, boxSizing: "border-box", animation: "dosSheetUp .28s cubic-bezier(.22,.9,.34,1)" }}
       >
         <div style={{ width: 40, height: 4, borderRadius: 2, background: EL, margin: "0 auto 14px" }} />
-        <b style={{ fontSize: 17 }}>Invite a student</b>
+        <b style={{ fontSize: 17 }}>Invite Student</b>
         <div style={{ fontSize: 12, color: SUB, margin: "3px 0 14px", lineHeight: 1.5 }}>
           Send them the link from your own WhatsApp, messages or mail. They join DanceOS, and appear here by themselves the first time they dance with you.
         </div>

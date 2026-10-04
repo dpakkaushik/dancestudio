@@ -80,7 +80,7 @@ export function MembershipsScreen({
   usesByPass?: Record<string, PassUse[]>;
   /** WHO SELLS what is on the Manage side — the studio, or the artist the page
    *  belongs to — the profile every on-sale card leads with (3 Oct 2026) */
-  seller?: { name: string; photoPath: string | null; kind: "studio" | "artist" } | null;
+  seller?: { name: string; photoPath: string | null; kind: "studio" | "artist"; href?: string } | null;
   /* ⚠ NO `sellerId` / `sellerName` ANY MORE (21 Sep 2026): the form left this
      desk for `/memberships/new`, which resolves whose membership it is on the
      server rather than taking it from a prop. A dead prop is a lie. */
@@ -261,6 +261,11 @@ export function MembershipsScreen({
                 tint={TINT}
                 name={seller?.name ?? business?.name ?? "You"}
                 photoPath={seller?.photoPath ?? null}
+                /* ⚠ THE FACE AND THE NAME OPEN THE SELLER'S PROFILE (4 Oct 2026, the
+                   user: "membership card clicking on profile pic and name should take
+                   to profile page") — the rest of the card still opens its details */
+                href={seller?.href}
+                hrefLabel={seller?.href ? `${seller.name} — view its profile page` : undefined}
                 eyebrow={seller?.kind === "artist" ? "Your artist page" : "Your studio"}
                 /* ⚠ "LIVE", AND ONLY HERE (4 Oct 2026, the user: "on sale to become
                    live only on top right of card as chip") — the eyebrow no longer

@@ -4,7 +4,7 @@ import { DOS_LEVEL_LABEL } from "@/lib/constants/styles";
 import { DOS_UI, INK, LILAC, MUTED, SUB } from "@/lib/design/tokens";
 import { money as rupees } from "@/features/payouts/components/earnings-kit";
 import { DOS_TOOLS } from "@/features/businesses/components/biz-kit";
-import { ToolActions, ToolBody, ToolCard, ToolChip, ToolFacts, ToolHead, toolBtn } from "@/components/ui/ToolCard";
+import { ToolBody, ToolCard, ToolChip, ToolFacts, ToolHead } from "@/components/ui/ToolCard";
 import { FigureHead } from "@/components/ui/FigureHead";
 import { SegmentedPanels } from "@/features/shell/components/SegmentedNav";
 import type { MembershipClassUse, MembershipHolder, MembershipWithUsage, PassUse } from "@/repositories/memberships";
@@ -188,16 +188,9 @@ export function MembershipUsagePage({
               </>
             ) : null}
           </ToolBody>
-          {seller ? (
-            <ToolActions>
-              <Link href={seller.href} style={toolBtn("tinted", TINT)}>
-                {seller.kind === "artist" ? "Your page" : "Studio page"}
-              </Link>
-              <Link href="/memberships" style={toolBtn("secondary", TINT)}>
-                All memberships
-              </Link>
-            </ToolActions>
-          ) : null}
+          {/* ⚠ NO "Your page" / "All memberships" (4 Oct 2026, the user) — the
+              seller's face and name above ARE the door to the page, and back is
+              the way to the list */}
         </ToolCard>
   );
 

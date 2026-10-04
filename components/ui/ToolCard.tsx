@@ -146,7 +146,13 @@ export function ToolHead({
   hrefLabel,
   icon,
   size = 58,
+  onFace,
+  faceLabel,
 }: {
+  /** the FACE alone is a button — an asset's picture opens itself (4 Oct 2026).
+   *  Not used with `href`, which already makes the face a door. */
+  onFace?: () => void;
+  faceLabel?: string;
   tint: string;
   /** the linked profile's name — the head's title */
   name: string;
@@ -163,9 +169,16 @@ export function ToolHead({
   icon?: ReactNode;
   size?: number;
 }) {
+  const face = <ToolFace name={name} photoPath={photoPath} tint={tint} size={size} icon={icon} />;
   const who = (
     <>
-      <ToolFace name={name} photoPath={photoPath} tint={tint} size={size} icon={icon} />
+      {onFace && !href ? (
+        <button type="button" onClick={onFace} aria-label={faceLabel ?? name} style={{ padding: 0, margin: 0, border: "none", background: "none", cursor: "zoom-in", lineHeight: 0, flexShrink: 0, borderRadius: size * DISC_RADIUS, pointerEvents: "auto" }}>
+          {face}
+        </button>
+      ) : (
+        face
+      )}
       <span style={{ flex: 1, minWidth: 0, display: "block" }}>
         <span style={{ display: "block", fontSize: 9.5, fontWeight: 900, letterSpacing: 0.8, textTransform: "uppercase", color: tint, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{eyebrow}</span>
         <span style={{ display: "flex", alignItems: "center", gap: 5, minWidth: 0, marginTop: 2 }}>

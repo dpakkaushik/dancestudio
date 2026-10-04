@@ -5,6 +5,8 @@ import { useRouter } from "next/navigation";
 import { useState, useTransition, type CSSProperties } from "react";
 import { FigureHead } from "@/components/ui/FigureHead";
 import { FormConfirm, FormSummary } from "@/components/ui/FormPage";
+import { PhotoLightbox } from "@/features/media/components/PhotoLightbox";
+import { photoUrl } from "@/lib/media/photo";
 import { DeskBody, DeskMiddle, DeskTop } from "@/components/ui/DeskSections";
 import { ToolActions, ToolBody, ToolCard, ToolFacts, ToolHead, toolBtn } from "@/components/ui/ToolCard";
 import { removeAssetAction } from "@/features/assets/server-actions/assets";
@@ -43,7 +45,7 @@ const card: CSSProperties = { background: "var(--card)", border: "1.5px solid va
 
 /** the prototype's own money grammar for this screen: a real value, or the words
  *  that say it is one the business already had (16812) */
-const valueWords = (n: number) => (n > 0 ? rupees(n) : "₹0 (legacy)");
+const valueWords = (n: number) => (n > 0 ? rupees(n) : "₹0 (Old)");
 
 /** the Assets tool's own colour — the card's face, wash and figures */
 const TINT = DOS_TOOLS.assets.c;
@@ -66,6 +68,8 @@ export function AssetsDesk({ businessId, assets }: { businessId: string; busines
   /* ⚠ REMOVING ASKS FIRST (4 Oct 2026, the user: "should confirm before removing
      asset") — one press used to soft-delete the row */
   const [asking, setAsking] = useState<Asset | null>(null);
+  const [viewing, setViewing] = useState<Asset | null>(null);
+  const viewSrc = viewing ? photoUrl(viewing.photoPath) : null;
 
   const drop = (a: Asset) =>
     start(async () => {
@@ -107,14 +111,26 @@ export function AssetsDesk({ businessId, assets }: { businessId: string; busines
              profile's size, its type over it; how many and what it is worth as
              figures; Edit and Remove on a bar of their own */
           <ToolCard key={a.id} testId="asset-row">
-            <ToolHead tint={TINT} name={a.name} photoPath={a.photoPath} eyebrow={assetCategoryWords(a.category)} icon={<span aria-hidden="true" style={{ fontSize: 24 }}>📦</span>} />
+            <ToolHead
+              tint={TINT}
+              name={a.name}
+              photoPath={a.photoPath}
+              eyebrow={assetCategoryWords(a.category)}
+              icon={<span aria-hidden="true" style={{ fontSize: 24 }}>📦</span>}
+              /* ⚠ THE PICTURE OPENS ITSELF (4 Oct 2026, the user: "clicking on asset
+                 photo on asset card should open asset photo") — only when there is one */
+              onFace={a.photoPath ? () => setViewing(a) : undefined}
+              faceLabel={`View the picture of ${a.name}`}
+            />
             <ToolBody>
               <ToolFacts
                 tint={TINT}
                 items={[
                   /* ⚠ QUANTITY ON THE CARD (4 Oct 2026, the user: "should also be visible on card") */
                   { label: "Quantity", value: a.quantity, testId: "asset-quantity" },
-                  { label: a.valueInr > 0 ? "Worth" : "Already had", value: valueWords(a.valueInr), testId: "asset-value", tint: a.valueInr > 0 ? undefined : SUB },
+                  /* ⚠ "Amount", the form's word since 4 Oct 2026, and "₹0 (Old)" for
+                     one already had (the user: "should say Old in place of (Legacy)") */
+                  { label: "Amount", value: valueWords(a.valueInr), testId: "asset-value", tint: a.valueInr > 0 ? undefined : SUB },
                 ]}
               />
             </ToolBody>
@@ -135,6 +151,11 @@ export function AssetsDesk({ businessId, assets }: { businessId: string; busines
           </div>
         ) : null}
       </DeskBody>
+
+      {/* the asset's picture, in the disc crop it was cut in */}
+      {viewing && viewSrc ? (
+        <PhotoLightbox shots={[{ key: viewing.id, src: viewSrc, alt: viewing.name, signed: false }]} frame="disc" index={0} onIndex={() => {}} onClose={() => setViewing(null)} label={viewing.name} />
+      ) : null}
 
       {asking ? (
         <FormConfirm

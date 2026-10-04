@@ -282,8 +282,8 @@ function ClassTile({ c }: { c: StudentRecord["classes"][number] }) {
                             <span style={{ flexShrink: 0, padding: "2px 8px", borderRadius: 999, background: rcol, color: inkOn(rcol), fontSize: 9.5, fontWeight: 900 }}>{rt.style}</span>
                           </div>
                           <div style={{ display: "flex", gap: 6, marginTop: 6 }}>
-                            <RoutineMediaButton kind="song" href={songHref} word={rt.songIsFile && !rt.songTitle ? "MP3" : "Song"} title={rt.title} col={rcol} extra={{ padding: "7px 10px", fontSize: 11 }} />
-                            <RoutineMediaButton kind="video" href={rt.videoUrl} word="Video" title={rt.title} col={rcol} extra={{ padding: "7px 10px", fontSize: 11 }} />
+                            <RoutineMediaButton kind="song" href={songHref} word={rt.songIsFile && !rt.songTitle ? "MP3" : "Song"} title={rt.title} extra={{ padding: "7px 10px", fontSize: 11 }} />
+                            <RoutineMediaButton kind="video" href={rt.videoUrl} word="Video" title={rt.title} extra={{ padding: "7px 10px", fontSize: 11 }} />
                           </div>
                         </div>
                       );

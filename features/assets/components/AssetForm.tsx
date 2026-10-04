@@ -243,7 +243,7 @@ export function AssetForm({ businessId, asset }: { businessId: string; businessN
               {name.trim()}
               {qty > 1 ? ` × ${qty}` : ""}
             </b>
-            <div style={{ fontSize: 12, marginTop: 4, fontWeight: 800, color: worth > 0 ? INK : SUB }}>{worth > 0 ? rupees(worth) : "₹0 (legacy)"}</div>
+            <div style={{ fontSize: 12, marginTop: 4, fontWeight: 800, color: worth > 0 ? INK : SUB }}>{worth > 0 ? rupees(worth) : "₹0 (Old)"}</div>
           </FormSummary>
         </FormConfirm>
       ) : null}
