@@ -30,6 +30,8 @@ export interface MyClassBooking {
   businessCity: string | null;
   /** who made the class — drawn on the card */
   owner: ClassOwner | null;
+  /** the studio an artist's class is held at, once accepted — the card's other half */
+  venue: ClassOwner | null;
 }
 
 /** One roster row — the studio's view of a booking. */

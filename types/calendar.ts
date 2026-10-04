@@ -35,6 +35,8 @@ export interface CalendarEntry {
   businessCity: string | null;
   /** who made the class — the card names them (4 Oct 2026) */
   owner: ClassOwner | null;
+  /** the studio an artist's class is held at, once accepted — the card's other half */
+  venue: ClassOwner | null;
   side: CalendarSide;
   /** the viewer's own booking, when the side is Train */
   classBooking: { id: string; status: ClassBookingStatus } | null;
@@ -65,6 +67,7 @@ export const tileClassOf = (e: CalendarEntry): DanceClass => ({
   id: e.classId,
   businessId: "",
   owner: e.owner,
+  venue: e.venue,
   title: e.title,
   shareSlug: e.shareSlug,
   style: e.style,

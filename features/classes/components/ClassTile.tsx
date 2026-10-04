@@ -1,26 +1,25 @@
 "use client";
 
-import Image from "next/image";
 import Link from "next/link";
-import type { ReactNode } from "react";
-import { ToolActions, ToolBody, ToolFacts, ToolHead, type ToolFact } from "@/components/ui/ToolCard";
+import type { CSSProperties, ReactNode } from "react";
+import { ToolActions, ToolBody, ToolFace, ToolFacts, type ToolFact } from "@/components/ui/ToolCard";
 import { dosStyleColor, DOS_LEVEL_LABEL } from "@/lib/constants/styles";
 import { DOS_DISPLAY, INK, LINE, MUTED, SUB } from "@/lib/design/tokens";
 import { dosStyleInk } from "@/lib/format/styleInk";
 import { dateParts, timeOf } from "@/lib/format/session";
 import { photoUrl } from "@/lib/media/photo";
 import { CLASS_RELATION, type ClassRelation } from "@/lib/format/classLabels";
-import type { DanceClass } from "@/types/class";
+import type { ClassOwner, DanceClass } from "@/types/class";
 import { useDosDark } from "./poster";
 
 /** Seats read as a decision, not a fraction — what is LEFT is what you act on
- *  (prototype 8073-8079); the bar beside the words says how full before you read them. */
+ *  (prototype 8073-8079); the bar above the words says how full before you read them. */
 const seatsOf = (taken: number, cap: number) => {
   const left = cap - taken;
   const pct = cap > 0 ? Math.min(100, Math.round((100 * taken) / cap)) : 0;
-  if (left <= 0) return { txt: "Full", tone: "#F87171", pct: 100 };
-  if (left <= 3) return { txt: `${left} left`, tone: "#F59E0B", pct };
-  return { txt: `${left} left`, tone: INK, pct };
+  if (left <= 0) return { txt: "Class full", tone: "#F87171", pct: 100 };
+  if (left <= 3) return { txt: `${left} spot${left === 1 ? "" : "s"} left`, tone: "#F59E0B", pct };
+  return { txt: `${left} spots left`, tone: SUB, pct };
 };
 
 export interface ClassTileArtist {
@@ -33,17 +32,16 @@ export interface ClassTileProps {
   danceClass: DanceClass;
   /** ClassBooking count — 0 until Step 4 wires bookings. */
   filled?: number;
-  /** ⚠ ACCEPTED AND NEVER PRINTED (18 Sep 2026). The card names who made the
-   *  class from `danceClass.owner` since 4 Oct 2026 — the "By …" line — which
+  /** ⚠ ACCEPTED AND NEVER PRINTED (18 Sep 2026). The card draws who made the
+   *  class from `danceClass.owner` — the shaded half of the head — which
    *  carries the kind and the picture this string never could. */
   businessName?: string | null;
   /** Accepted for the callers that already pass it; the card does not print it
-   *  (8443-8449) — the class page carries the venue. */
+   *  (8443-8449) — the class page carries the venue's address. */
   city?: string | null;
-  /** THE TEACHER TAKING IT — the profile band wears their face and name. Without
-   *  one (a draft nobody has accepted yet, or a signed-out reader who may not
-   *  read `profiles`) the band falls back to the class's maker, then to the
-   *  style itself. */
+  /** THE TEACHER TAKING IT — the artist half of the head wears their face and
+   *  name. Without one (a draft nobody has accepted yet, or a signed-out reader
+   *  who may not read `profiles`) that half says so. */
   artist?: ClassTileArtist | null;
   /** A card on your own day says "Today" in the date tile rather than the date
    *  (8322-8325). */
@@ -76,10 +74,9 @@ const DECK_FRAME = {
   upcoming: { c: "#F59E0B", ink: "#1a1406", glow: "rgba(245,158,11,.16)", word: "Upcoming", testId: "upcoming-badge" },
 } as const;
 
-/* the dancer mark for a class with nobody to draw — a draft whose ask is
-   unanswered, or a reader who may read neither the teacher nor the maker */
+/* the dancer mark for a half with nobody to draw */
 const DancerIcon = (
-  <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
     <circle cx="13" cy="4.5" r="2" />
     <path d="M12 7.5 8 11l3 2-1 7" />
     <path d="M12 7.5 16.5 9l3 3.5" />
@@ -87,28 +84,70 @@ const DancerIcon = (
   </svg>
 );
 
+const CHIP: CSSProperties = { flexShrink: 0, fontSize: 9, fontWeight: 900, letterSpacing: 0.7, textTransform: "uppercase", padding: "4px 9px", borderRadius: 999 };
+
+/** ONE HALF OF THE HEAD — the artist on the left, the studio on the right, the
+ *  same face and the same type on both. The right half is MIRRORED (face on the
+ *  outer edge, words toward the centre), so the two read as a pair rather than
+ *  as a list of two. The maker's half wears the darker shade. */
+function Half({ side, tint, name, photoPath, eyebrow, icon, made, mirrored, title }: { side: "artist" | "studio"; tint: string; name: string; photoPath: string | null; eyebrow: ReactNode; icon?: ReactNode; made: boolean; mirrored: boolean; title?: string }) {
+  return (
+    <div
+      data-testid={made ? "class-owner" : undefined}
+      data-owner-kind={made ? side : undefined}
+      data-half={side}
+      title={title}
+      style={{
+        flex: "1 1 0",
+        minWidth: 0,
+        display: "flex",
+        flexDirection: mirrored ? "row-reverse" : "row",
+        alignItems: "center",
+        gap: 10,
+        padding: "13px 12px 12px",
+        /* ⚠ THE SHADE IS THE WORD "created by" (4 Oct 2026, the user: "highlighted
+           with left or right side between artist and studio in a darker shade to
+           represent that") — the maker's half is deeper, the other quiet */
+        background: made ? `linear-gradient(135deg, ${tint}5c, ${tint}38)` : `linear-gradient(135deg, ${tint}16, ${tint}08)`,
+        borderLeft: mirrored ? `1.5px solid ${tint}33` : undefined,
+      }}
+    >
+      <ToolFace name={name} photoPath={photoPath} tint={tint} size={46} icon={icon} />
+      <span style={{ flex: 1, minWidth: 0, display: "block", textAlign: mirrored ? "right" : "left" }}>
+        <span style={{ display: "block", fontSize: 9, fontWeight: 900, letterSpacing: 0.8, textTransform: "uppercase", color: tint, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{eyebrow}</span>
+        <span style={{ display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden", overflowWrap: "anywhere", marginTop: 2, fontFamily: DOS_DISPLAY, fontSize: 14.5, fontWeight: 800, letterSpacing: -0.3, lineHeight: 1.18, color: INK }}>{name}</span>
+      </span>
+    </div>
+  );
+}
+
 /**
  * The one class card, app-wide — ON THE TOOL CARD'S ANATOMY since 4 Oct 2026
  * (the user: "redesign the class cards according to how we have done for other
- * tool cards everywhere"). It was the prototype's BookingCard (7969-8500), the
- * WHEN · WHO · WHAT sleeve; it is the three bands every other tool card wears:
+ * tool cards everywhere"). Three bands:
  *
- *   1. THE PROFILE — the teacher taking it, big, over a wash of the style's own
- *      colour; what the class is to you as the chip on the right; who MADE it
- *      as the line under the name.
- *   2. THE CLASS — the style's name in its own ink with the level beside it,
- *      then Date · Time · Spots · Price as figure tiles, and the fill bar.
+ *   1. THE TWO PROFILES — the ARTIST taking it on the left and the STUDIO on
+ *      the right, same face, same type, over the style's own colour; the one
+ *      who MADE the class wears the darker shade (the user: "class created by
+ *      artist or studio to be removed and should be highlighted with left or
+ *      right side"). A studio's class: the studio is the maker. An artist's:
+ *      the artist is, and the right half is the studio whose room said yes —
+ *      or nothing, at the artist's own place.
+ *   2. THE CLASS — the style's name in its own ink with the level, and what the
+ *      class is to you as the chip on that line; then Date · Time as figure
+ *      tiles; then the fill bar with the spots left under it and the price
+ *      beside them.
  *   3. THE BUTTONS — whatever the page offers, on a bar of their own.
  *
  * ⚠ A card that opens is ONE stretched link under everything (`href`), the
  * bands with pointer events off, and the button bar switched back on — the
  * studio card's pattern, so a button is never inside an anchor. The frame
- * keeps its own paint rules (a live class green, the deck's red and amber), so
- * it is the ToolCard's frame drawn here rather than imported.
+ * keeps its own paint rules (a live class green, the deck's red and amber).
  */
 export function ClassTile({ danceClass: c, filled = 0, artist, isToday = false, actions, href, relation = null, live: liveProp = false, checkedIn = false, deckState }: ClassTileProps) {
   const rel = relation ? CLASS_RELATION[relation] : null;
-  const owner = c.owner ?? null;
+  const owner: ClassOwner | null = c.owner ?? null;
+  const venue: ClassOwner | null = c.venue ?? null;
   const live = deckState ? deckState === "live" : liveProp;
   const frame = deckState === "done" || deckState === "upcoming" ? DECK_FRAME[deckState] : null;
   const bc = dosStyleColor(c.style);
@@ -121,62 +160,19 @@ export function ClassTile({ danceClass: c, filled = 0, artist, isToday = false, 
   const isPast = c.status === "completed";
   /* A CLASS IS ITS STYLE (8032-8036): the heading is the dance style, always. */
   const headText = c.style || c.title || "Class";
-  /* what a status says, as a note beside the fill bar — not a fourth band */
+  /* what a status says, beside the spots — not a fourth band */
   const note = c.status === "draft" ? "Draft" : c.status === "completed" ? "Completed" : null;
-  const ownerFace = owner ? photoUrl(owner.photoPath) : null;
-  const ownerKindWord = owner ? (owner.kind === "artist" ? "Artist" : "Studio") : null;
 
   /* ⚠ THE UPLOADED POSTER, ON THE CARD (3 Oct 2026). Cropped 3:2, shown as a
      2:1 strip over the head; a class with no picture draws nothing here. */
   const posterSrc = photoUrl(c.posterPath ?? null);
 
-  /* ⚠ WHO MADE THE CLASS (4 Oct 2026, the user: "make sure the person who
-     created the class artist or studios is somehow visible on the card"). The
-     OWNER — a studio, or the artist whose own class it is — never the venue,
-     and never the teacher (the head is the teacher). Nothing at all when the
-     reader may not see that business. */
-  const byLine = owner ? (
-    <span data-testid="class-owner" data-owner-kind={owner.kind} title={`Created by ${owner.name} — ${owner.kind === "artist" ? "an artist" : "a studio"}`} style={{ display: "inline-flex", alignItems: "center", gap: 5, minWidth: 0, maxWidth: "100%" }}>
-      <span aria-hidden="true" style={{ width: 15, height: 15, borderRadius: 5, overflow: "hidden", flexShrink: 0, display: "inline-flex", alignItems: "center", justifyContent: "center", background: ownerFace ? "transparent" : `${bc}33`, color: ink }}>
-        {ownerFace ? (
-          <Image src={ownerFace} alt="" width={15} height={15} style={{ width: 15, height: 15, objectFit: "cover", display: "block" }} />
-        ) : owner.kind === "artist" ? (
-          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-            <circle cx="12" cy="8.5" r="3.6" />
-            <path d="M5 20c.9-4 3.7-6 7-6s6.1 2 7 6" />
-          </svg>
-        ) : (
-          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M4 20V9l8-5 8 5v11" />
-            <path d="M9.5 20v-6h5v6" />
-          </svg>
-        )}
-      </span>
-      <span style={{ minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-        By <b style={{ fontWeight: 800, color: INK }}>{owner.name}</b>
-      </span>
-    </span>
-  ) : null;
-
-  /* the status chip on the head's right: CHECKED IN outranks the relation
-     (2 Oct 2026) — once the door has let you in, "Booked" is yesterday's news */
-  const headRight = checkedIn ? (
-    <span data-testid="checked-in-chip" style={{ flexShrink: 0, alignSelf: "flex-start", fontSize: 9, fontWeight: 900, letterSpacing: 0.7, textTransform: "uppercase", padding: "4px 9px", borderRadius: 999, background: "#22C55E", color: "#fff", animation: "dosPopIn .45s cubic-bezier(.22,1.4,.36,1)" }}>
-      ✓ Checked in
-    </span>
-  ) : rel ? (
-    /* `ToolChip`'s clothes, with the WORD kept in its own case in the DOM
-       (uppercased by CSS) so a locator reads "Booked", not "BOOKED" */
-    <span data-testid="relation-chip" data-relation={relation ?? undefined} style={{ flexShrink: 0, alignSelf: "flex-start", fontSize: 9, fontWeight: 900, letterSpacing: 0.7, textTransform: "uppercase", padding: "4px 9px", borderRadius: 999, background: `${rel.tint}1f`, color: rel.tint, border: `1.5px solid ${rel.tint}33` }}>
-      {rel.word}
-    </span>
-  ) : null;
-
   /* WHERE THE CLASS STANDS IN TIME — Live, or the deck's Completed / Upcoming —
-     leads the eyebrow as a solid pill, so it covers nothing (it used to sit top
-     left over the date block; on this anatomy that corner is the face) */
+     a solid pill on the title line beside the relation chip, where every other
+     tool card wears its status. ⚠ Not in a half's eyebrow: a 163px half holds
+     a face and a name, and the pill squeezed "ARTIST" into an ellipsis (seen). */
   const timeBadge = live ? (
-    <span data-testid="live-badge" style={{ display: "inline-flex", alignItems: "center", gap: 4, verticalAlign: "middle", marginRight: 7, fontSize: 8.5, fontWeight: 900, letterSpacing: 0.6, padding: "2px 7px 2px 6px", borderRadius: 999, background: "#22C55E", color: "#fff" }}>
+    <span data-testid="live-badge" style={{ ...CHIP, display: "inline-flex", alignItems: "center", gap: 4, padding: "4px 8px 4px 7px", background: "#22C55E", color: "#fff" }}>
       <span style={{ position: "relative", width: 5, height: 5 }}>
         <span style={{ position: "absolute", inset: 0, borderRadius: 3, background: "#fff" }} />
         <span style={{ position: "absolute", inset: -3, borderRadius: 6, border: "1.5px solid #fff", opacity: 0.5, animation: "dosPulseH 1.4s ease-out infinite" }} />
@@ -184,33 +180,42 @@ export function ClassTile({ danceClass: c, filled = 0, artist, isToday = false, 
       Live
     </span>
   ) : frame ? (
-    <span data-testid={frame.testId} style={{ display: "inline-block", verticalAlign: "middle", marginRight: 7, fontSize: 8.5, fontWeight: 900, letterSpacing: 0.6, padding: "2px 7px", borderRadius: 999, background: frame.c, color: frame.ink }}>
+    <span data-testid={frame.testId} style={{ ...CHIP, background: frame.c, color: frame.ink }}>
       {frame.word}
     </span>
   ) : null;
-  const eyebrowOf = (word: string) => (
-    <>
-      {timeBadge}
-      {word}
-    </>
-  );
 
-  /* ⚠ THE PROFILE BAND IS THE TEACHER. It falls back to the MAKER when nobody
-     has said yes yet (or the reader may not read `profiles`), and to the style
-     itself when the reader may not see the business either — never an empty
-     face. The eyebrow says which of the three it is. */
-  const head = artist ? (
-    <ToolHead tint={bc} name={artist.name} photoPath={artist.avatarPath} eyebrow={eyebrowOf("Teacher")} sub={byLine} right={headRight} />
-  ) : owner ? (
-    <ToolHead tint={bc} name={owner.name} photoPath={owner.photoPath} eyebrow={eyebrowOf(`${ownerKindWord} · no teacher yet`)} right={headRight} />
-  ) : (
-    <ToolHead tint={bc} name={headText} photoPath={null} icon={DancerIcon} eyebrow={eyebrowOf("Class")} right={headRight} />
-  );
+  /* THE TWO HALVES. The artist half is the confirmed teacher; with none it is
+     the maker when the maker IS an artist (their own class, nobody else to
+     name), and otherwise says so. The studio half is the maker when the maker
+     is a studio, else the venue that said yes, else nothing — and then the
+     artist half spans the card. */
+  const artistMade = owner?.kind === "artist";
+  const studioMade = owner?.kind === "studio";
+  const studioSide: ClassOwner | null = studioMade ? owner : venue;
+  const artistSide = artist
+    ? { name: artist.name, photoPath: artist.avatarPath, icon: undefined as ReactNode }
+    : artistMade && owner
+      ? { name: owner.name, photoPath: owner.photoPath, icon: undefined as ReactNode }
+      : { name: "No teacher yet", photoPath: null, icon: DancerIcon };
+  const madeBy = owner ? `Created by ${owner.name} — ${owner.kind === "artist" ? "an artist" : "a studio"}` : undefined;
 
-  /* Date · Time · Spots — figures as tiles, read across without parsing.
-     ⚠ THREE, NOT FOUR: on Discover the card is 328px wide and a fourth tile
-     left "6:00 pm" reading "6:00 …" (measured). The price closes the title
-     line instead, which is where the old card kept it (8127). */
+  /* the chip on the title line: CHECKED IN outranks the relation (2 Oct 2026) —
+     once the door has let you in, "Booked" is yesterday's news */
+  const titleChip = checkedIn ? (
+    <span data-testid="checked-in-chip" style={{ ...CHIP, background: "#22C55E", color: "#fff", animation: "dosPopIn .45s cubic-bezier(.22,1.4,.36,1)" }}>
+      ✓ Checked in
+    </span>
+  ) : rel ? (
+    /* the word kept in its own case in the DOM (uppercased by CSS) so a locator reads "Booked" */
+    <span data-testid="relation-chip" data-relation={relation ?? undefined} style={{ ...CHIP, background: `${rel.tint}1f`, color: rel.tint, border: `1.5px solid ${rel.tint}33` }}>
+      {rel.word}
+    </span>
+  ) : null;
+
+  /* Date · Time — figures as tiles, read across without parsing; the spots and
+     the price went under the bar (the user: "bar should have spots left below
+     and price with it") */
   const facts: ToolFact[] = [
     {
       label: when ? when.weekday : "Date",
@@ -218,7 +223,6 @@ export function ClassTile({ danceClass: c, filled = 0, artist, isToday = false, 
       testId: "class-fact-date",
     },
     { label: "Time", value: c.session ? timeOf(c.session.startsAt) : "—", testId: "class-fact-time" },
-    { label: "Spots", value: seats.txt, tint: seats.tone === INK ? undefined : seats.tone, testId: "class-fact-spots" },
   ];
 
   return (
@@ -258,29 +262,54 @@ export function ClassTile({ danceClass: c, filled = 0, artist, isToday = false, 
           </div>
         ) : null}
 
-        {/* BAND 1 — the profile */}
-        {head}
+        {/* BAND 1 — the two profiles, the maker's shaded */}
+        <div data-testid="class-head" style={{ display: "flex", alignItems: "stretch" }}>
+          <Half
+            side="artist"
+            tint={bc}
+            name={artistSide.name}
+            photoPath={artistSide.photoPath}
+            icon={artistSide.icon}
+            eyebrow="Artist"
+            made={artistMade}
+            mirrored={false}
+            title={artistMade ? madeBy : undefined}
+          />
+          {studioSide ? <Half side="studio" tint={bc} name={studioSide.name} photoPath={studioSide.photoPath} eyebrow="Studio" made={studioMade} mirrored title={studioMade ? madeBy : undefined} /> : null}
+        </div>
 
-        {/* BAND 2 — the class: the style in its own ink, the level, the figures */}
+        {/* BAND 2 — the class: the style in its own ink, the level, what it is to you */}
         <ToolBody>
-          <div style={{ display: "flex", alignItems: "baseline", gap: 8, minWidth: 0 }}>
-            <span style={{ minWidth: 0, fontFamily: DOS_DISPLAY, fontSize: 19, fontWeight: 900, letterSpacing: -0.6, lineHeight: 1.12, color: ink, overflowWrap: "anywhere" }}>{headText}</span>
+          {/* the style and its level, then the chips pushed to the right edge —
+              the row WRAPS rather than the style breaking mid-word
+              ("Contemporar / y", seen when a chip shared its line) */}
+          <div data-testid="class-title-row" style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: "4px 8px", minWidth: 0 }}>
+            <span data-testid="class-title" style={{ minWidth: 0, fontFamily: DOS_DISPLAY, fontSize: 19, fontWeight: 900, letterSpacing: -0.6, lineHeight: 1.12, color: ink, overflowWrap: "normal", wordBreak: "normal" }}>{headText}</span>
             <span style={{ flexShrink: 0, fontSize: 9.5, fontWeight: 900, letterSpacing: 0.6, textTransform: "uppercase", color: MUTED }}>{levelWord}</span>
-            {/* ₹300 is the number you compare; "per session" belongs on the
-                page's booking bar, not beside every figure (8127-8132) */}
-            <span data-testid="class-fact-price" style={{ marginLeft: "auto", flexShrink: 0, fontSize: 15, fontWeight: 900, letterSpacing: -0.3, color: INK, fontVariantNumeric: "tabular-nums" }}>{priceAmt}</span>
-            {href ? <span aria-hidden="true" style={{ flexShrink: 0, color: LINE, fontSize: 15, fontWeight: 600, lineHeight: 1 }}>›</span> : null}
+            <span style={{ marginLeft: "auto", flexShrink: 0, display: "inline-flex", alignItems: "center", gap: 6 }}>
+              {timeBadge}
+              {titleChip}
+              {href ? <span aria-hidden="true" style={{ color: LINE, fontSize: 15, fontWeight: 600, lineHeight: 1 }}>›</span> : null}
+            </span>
           </div>
           <ToolFacts items={facts} tint={bc} style={{ marginTop: 10 }} />
-          {/* how full, said before the words are read (8491-8526) — and what the
-              status is, on the same line, when it has one */}
-          <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 9 }}>
-            <span style={{ flex: 1, height: 5, borderRadius: 3, background: "var(--el)", overflow: "hidden", minWidth: 0 }}>
+          {/* THE BAR, THEN THE SPOTS LEFT UNDER IT WITH THE PRICE BESIDE THEM
+              (8491-8526, re-cut 4 Oct 2026 at the user's word): how full before
+              the words are read, what is left as the decision, what it costs
+              closing the line. A status rides with the spots when it has one. */}
+          <div style={{ marginTop: 10 }}>
+            <span style={{ display: "block", height: 5, borderRadius: 3, background: "var(--el)", overflow: "hidden" }}>
               <span style={{ display: "block", height: 5, borderRadius: 3, width: `${seats.pct}%`, background: seats.pct >= 100 ? "#F87171" : seats.pct >= 85 ? "#F59E0B" : bc, transition: "width .3s" }} />
             </span>
-            <span style={{ flexShrink: 0, fontSize: 9.5, fontWeight: 900, letterSpacing: 0.6, textTransform: "uppercase", color: SUB, fontVariantNumeric: "tabular-nums" }}>
-              {filled}/{c.capacity}{note ? ` · ${note}` : ""}
-            </span>
+            <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 10, marginTop: 6, minWidth: 0 }}>
+              <span data-testid="class-fact-spots" style={{ minWidth: 0, fontSize: 11, fontWeight: 800, color: seats.tone, fontVariantNumeric: "tabular-nums", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                {seats.txt}
+                {note ? <span style={{ color: MUTED, fontWeight: 700 }}> · {note}</span> : null}
+              </span>
+              {/* ₹300 is the number you compare; "per session" belongs on the
+                  page's booking bar, not beside every figure (8127-8132) */}
+              <span data-testid="class-fact-price" style={{ flexShrink: 0, fontSize: 15, fontWeight: 900, letterSpacing: -0.3, color: INK, fontVariantNumeric: "tabular-nums" }}>{priceAmt}</span>
+            </div>
           </div>
         </ToolBody>
 

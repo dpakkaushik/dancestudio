@@ -41,32 +41,48 @@ interface ClassRow {
   /** WHO MADE IT (4 Oct 2026) — the owner business, read through `OWNER_EMBED`
    *  where no other embed of that key is in the select */
   owner?: OwnerEmbed | OwnerEmbed[] | null;
+  /** the VENUE studio through the second key (4 Oct 2026) — the card's other
+   *  half once the studio has accepted; null to a reader its row is not readable by */
+  venue?: VenueEmbed | VenueEmbed[] | null;
 }
 
 type OwnerEmbed = { name: string; type?: string | null; profile_photo_path?: string | null };
+type VenueEmbed = OwnerEmbed & { area?: string | null; city?: string | null };
+
+/** the venue's embed, named on its key (two keys into `businesses` make an
+ *  unqualified embed a 300 — the 18 Sep lesson) */
+const VENUE_EMBED = "venue:businesses!classes_venue_business_id_fkey (name, type, profile_photo_path)";
 
 /** ⚠ ALIASED, because a read that also filters on the owner (the public
  *  shelves) carries its own unaliased `businesses!classes_business_id_fkey`
  *  embed — those reads take the owner off that embed instead and never add
  *  this one, so one select never names the same key twice. */
-const OWNER_EMBED = "owner:businesses!classes_business_id_fkey (name, type, profile_photo_path)";
+const OWNER_EMBED = `owner:businesses!classes_business_id_fkey (name, type, profile_photo_path), ${VENUE_EMBED}`;
 
 const ownerOfRow = (row: ClassRow & { businesses?: OwnerEmbed | null }) => {
   const o = Array.isArray(row.owner) ? row.owner[0] : row.owner;
   return classOwnerOf(o ?? row.businesses ?? null);
 };
 
+/** the studio an artist's class is held at — only once it has SAID YES; a room
+ *  still asked for is nobody's to show on the card */
+const venueOfRow = (row: ClassRow) => {
+  if (row.venue_status !== "accepted") return null;
+  const v = Array.isArray(row.venue) ? row.venue[0] : row.venue;
+  return classOwnerOf(v ?? null);
+};
+
 interface PublicClassRow extends ClassRow {
   businesses: { name: string; area: string | null; city: string | null; type?: "studio" | "artist_page"; profile_photo_path?: string | null } | null;
   /** the VENUE studio, through the second key (19 Sep 2026) — null at the owner's
    *  own place, and null to a reader the venue's row is not readable by */
-  venue?: { name: string; area: string | null; city: string | null } | null;
+  venue?: { name: string; area: string | null; city: string | null; type?: string | null; profile_photo_path?: string | null } | null;
 }
 
 /** the two embeds a public class read carries: the OWNER through the first key,
  *  the VENUE through the second — both named, because two keys make an
  *  unqualified embed a 300 (the 18 Sep lesson) */
-const OWNER_AND_VENUE = (inner: boolean) => `businesses!classes_business_id_fkey${inner ? "!inner" : ""} (name, area, city, type, profile_photo_path), venue:businesses!classes_venue_business_id_fkey (name, area, city)`;
+const OWNER_AND_VENUE = (inner: boolean) => `businesses!classes_business_id_fkey${inner ? "!inner" : ""} (name, area, city, type, profile_photo_path), venue:businesses!classes_venue_business_id_fkey (name, area, city, type, profile_photo_path)`;
 
 const venueOf = (row: PublicClassRow) => ({
   venueName: row.venue?.name ?? null,
@@ -92,6 +108,7 @@ const toClass = (row: ClassRow): DanceClass => ({
   id: row.id,
   businessId: row.business_id,
   owner: ownerOfRow(row),
+  venue: venueOfRow(row),
   title: dosClassLabel(row.style, row.level),
   shareSlug: row.share_slug,
   style: row.style,
@@ -322,7 +339,7 @@ export async function findPublishedClasses(
   const reads = city
     ? [
         base(OWNER_AND_VENUE(true)).eq("businesses.city", city),
-        base(`businesses!classes_business_id_fkey (name, area, city, type), venue:businesses!classes_venue_business_id_fkey!inner (name, area, city)`)
+        base(`businesses!classes_business_id_fkey (name, area, city, type, profile_photo_path), venue:businesses!classes_venue_business_id_fkey!inner (name, area, city, type, profile_photo_path)`)
           .eq("venue_status", "accepted")
           .eq("venue.city", city),
       ]

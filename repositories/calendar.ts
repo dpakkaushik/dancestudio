@@ -32,6 +32,10 @@ interface ClassBits {
   /** WHO MADE IT (4 Oct 2026) — the owner business, through the named key; null
    *  to a reader that business's row is not readable by */
   owner?: (BusinessBits & { type: string | null; profile_photo_path: string | null }) | null;
+  /** the studio an artist's class is held at, and its answer (4 Oct 2026) —
+   *  the card's other half once the answer is yes */
+  venue_status?: "requested" | "accepted" | "declined" | null;
+  venue?: { name: string; type: string | null; profile_photo_path: string | null } | null;
 }
 
 interface SessionBits {
@@ -73,7 +77,7 @@ interface BusinessSessionRow {
 /* no `title`: a class's label is "{style} · {level}", derived (types/class.ts) */
 /* the owner rides inside the class through the NAMED key — `classes` has two
    keys into `businesses` since 18 Sep 2026, and an unqualified embed is a 300 */
-const CLASS_BITS = "share_slug, style, level, room, price_inr, capacity, status, poster_path, owner:businesses!classes_business_id_fkey (name, city, type, profile_photo_path)";
+const CLASS_BITS = "share_slug, style, level, room, price_inr, capacity, status, poster_path, venue_status, owner:businesses!classes_business_id_fkey (name, city, type, profile_photo_path), venue:businesses!classes_venue_business_id_fkey (name, type, profile_photo_path)";
 
 const entryOf = (
   session: SessionBits,
@@ -101,6 +105,7 @@ const entryOf = (
   businessName: business?.name ?? "",
   businessCity: business?.city ?? null,
   owner: classOwnerOf(c.owner),
+  venue: c.venue_status === "accepted" ? classOwnerOf(c.venue) : null,
   side,
   classBooking,
   filled: 0,

@@ -64,6 +64,8 @@ export interface MyClassPersonAsk extends ClassPerson {
   /** who made the class — the card names them (4 Oct 2026); optional so a
    *  hand-built ask needs no change */
   owner?: ClassOwner | null;
+  /** the studio an artist's class is held at, once accepted — the card's other half */
+  venue?: ClassOwner | null;
 }
 
 /** THE CLASS BEHIND AN ASK, AS A CARD DRAWS IT — written ONCE (27 Sep 2026).
@@ -83,6 +85,7 @@ export const askToTileClass = (c: MyClassPersonAsk): DanceClass => ({
   id: c.classId,
   businessId: "",
   owner: c.owner ?? null,
+  venue: c.venue ?? null,
   title: c.classTitle,
   shareSlug: c.classShareSlug,
   style: c.classStyle,

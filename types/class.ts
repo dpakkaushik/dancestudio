@@ -46,6 +46,12 @@ export interface DanceClass {
   businessId: string;
   /** who made it — see `ClassOwner`; optional so a hand-built class needs no change */
   owner?: ClassOwner | null;
+  /** THE STUDIO AN ARTIST'S CLASS IS HELD AT, once that studio has said yes
+   *  (4 Oct 2026, the card's two halves: the artist on one side, the studio on
+   *  the other, the maker's side shaded). Null for a studio's own class (the
+   *  owner IS the studio), at an artist's own place, while the room is still
+   *  only asked for, or when the reader may not see that studio's row. */
+  venue?: ClassOwner | null;
   /** What the class IS, not a name: "{style} · {level}" (the prototype's own
    *  dosClassLabel, 176-183). A class has had no typed name since 17 Sep 2026 —
    *  the form has no field for one, and every repository DERIVES this from

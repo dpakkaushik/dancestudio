@@ -21,6 +21,7 @@ const toTileClass = (e: MyClassBooking): DanceClass => ({
   id: e.classId,
   businessId: "",
   owner: e.owner,
+  venue: e.venue,
   title: e.title,
   shareSlug: e.shareSlug,
   style: e.style,

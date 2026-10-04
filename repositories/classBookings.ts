@@ -21,6 +21,8 @@ interface MyClassBookingRow {
     capacity: number;
     status: ClassStatus;
     poster_path: string | null;
+    venue_status: "requested" | "accepted" | "declined" | null;
+    venue: { name: string; type: string | null; profile_photo_path: string | null } | null;
   } | null;
   businesses: { name: string; city: string | null; type: string | null; profile_photo_path: string | null } | null;
 }
@@ -74,7 +76,7 @@ export async function findMyClassBookings(supabase: SupabaseClient): Promise<MyC
   const { data, error } = await supabase
     .from("class_bookings")
     .select(
-      "id, status, session_id, class_id, class_sessions (starts_at, ends_at), classes (share_slug, style, level, room, price_inr, capacity, status, poster_path), businesses (name, city, type, profile_photo_path)"
+      "id, status, session_id, class_id, class_sessions (starts_at, ends_at), classes (share_slug, style, level, room, price_inr, capacity, status, poster_path, venue_status, venue:businesses!classes_venue_business_id_fkey (name, type, profile_photo_path)), businesses (name, city, type, profile_photo_path)"
     )
     .eq("user_id", user.id)
     .eq("status", "enrolled")
@@ -106,6 +108,7 @@ export async function findMyClassBookings(supabase: SupabaseClient): Promise<MyC
       businessName: r.businesses?.name ?? "",
       businessCity: r.businesses?.city ?? null,
       owner: classOwnerOf(r.businesses),
+      venue: r.classes!.venue_status === "accepted" ? classOwnerOf(r.classes!.venue) : null,
     }))
     .sort((a, b) => a.startsAt.localeCompare(b.startsAt));
 }
