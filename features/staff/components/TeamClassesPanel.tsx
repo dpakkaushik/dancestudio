@@ -1,8 +1,8 @@
 "use client";
 
-import Link from "next/link";
 import { useState, type CSSProperties } from "react";
 
+import { ClassDetailButton } from "@/components/ui/ClassDetailButton";
 import { FigureHead } from "@/components/ui/FigureHead";
 import { ToolChip, ToolFace, ToolFacts, inkOn } from "@/components/ui/ToolCard";
 import { dosStyleColor } from "@/lib/constants/styles";
@@ -328,14 +328,7 @@ export function TeamClassesPanel({
                           </div>
                         ))}
                     </div>
-                    <Link
-                      href={`/c/${c.shareSlug}`}
-                      aria-label={`Open ${c.title}`}
-                      data-testid="team-class-open"
-                      style={{ display: "inline-flex", alignItems: "center", marginTop: 8, padding: "5px 11px", borderRadius: 999, fontSize: 11, fontWeight: 800, textDecoration: "none", color: tint, background: `${tint}14`, border: `1.5px solid ${tint}40` }}
-                    >
-                      Open class ›
-                    </Link>
+                    <ClassDetailButton href={`/c/${c.shareSlug}`} label={c.title} tint={tint} testId="team-class-open" />
                   </div>
                 </details>
               );

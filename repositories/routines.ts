@@ -168,6 +168,45 @@ export async function findRoutineClassStudios(supabase: SupabaseClient, classIds
   return out;
 }
 
+/** WHAT A ROUTINE'S CLASS IS, FOR ITS CLASSES COLUMN (4 Oct 2026, the user:
+ *  "Classes section to be managed how we did for student detail and team member
+ *  detail … according to details relevant for a routine") — its room, how many
+ *  sessions it has in all and still to come, and its next and last session.
+ *  ⚠ The caller's own client and the class's own rows; a class this person
+ *  teaches a routine on is one they can read. Degrades to nothing, never a throw. */
+export interface RoutineClassFacts {
+  room: string | null;
+  total: number;
+  upcoming: number;
+  nextAt: string | null;
+  lastAt: string | null;
+}
+
+export async function findRoutineClassFacts(supabase: SupabaseClient, classIds: string[], now: Date = new Date()): Promise<Map<string, RoutineClassFacts>> {
+  const out = new Map<string, RoutineClassFacts>();
+  const ids = [...new Set(classIds)];
+  if (ids.length === 0) return out;
+  const nowIso = now.toISOString();
+  const [cls, ses] = await Promise.all([
+    supabase.from("classes").select("id, room").in("id", ids).limit(ids.length),
+    /* audit-ok: by class id — the routine's own classes */
+    supabase.from("class_sessions").select("class_id, starts_at").in("class_id", ids).is("deleted_at", null).limit(4000),
+  ]);
+  for (const c of (cls.data ?? []) as Array<{ id: string; room: string | null }>) out.set(c.id, { room: c.room || null, total: 0, upcoming: 0, nextAt: null, lastAt: null });
+  for (const s of (ses.data ?? []) as Array<{ class_id: string; starts_at: string }>) {
+    const f = out.get(s.class_id) ?? { room: null, total: 0, upcoming: 0, nextAt: null, lastAt: null };
+    f.total += 1;
+    if (s.starts_at > nowIso) {
+      f.upcoming += 1;
+      if (!f.nextAt || s.starts_at < f.nextAt) f.nextAt = s.starts_at;
+    } else if (!f.lastAt || s.starts_at > f.lastAt) {
+      f.lastAt = s.starts_at;
+    }
+    out.set(s.class_id, f);
+  }
+  return out;
+}
+
 /** Who has danced it, and how many of its sessions each turned up to. */
 export async function findRoutineStudents(supabase: SupabaseClient, routineId: string): Promise<RoutineStudent[]> {
   const { data, error } = await supabase.rpc("routine_students", { p_routine_id: routineId });

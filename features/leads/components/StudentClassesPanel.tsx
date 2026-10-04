@@ -1,8 +1,8 @@
 "use client";
 
-import Link from "next/link";
 import { useState, type CSSProperties } from "react";
 
+import { ClassDetailButton } from "@/components/ui/ClassDetailButton";
 import { FigureHead } from "@/components/ui/FigureHead";
 import { ToolChip, ToolFace, ToolFacts } from "@/components/ui/ToolCard";
 import { RoutineMediaButton } from "@/features/routines/components/routine-kit";
@@ -249,14 +249,7 @@ export function StudentClassesPanel({ classes, tint, studentName }: { classes: S
                           })}
                         </div>
                       ) : null}
-                      <Link
-                        href={`/c/${c.shareSlug}`}
-                        aria-label={`Open ${c.style} · ${level}`}
-                        data-testid="student-class-open"
-                        style={{ display: "inline-flex", alignItems: "center", marginTop: 8, padding: "5px 11px", borderRadius: 999, fontSize: 11, fontWeight: 800, textDecoration: "none", color: tint, background: `${tint}14`, border: `1.5px solid ${tint}40` }}
-                      >
-                        Open class ›
-                      </Link>
+                      <ClassDetailButton href={`/c/${c.shareSlug}`} label={`${c.style} · ${level}`} tint={tint} testId="student-class-open" />
                     </div>
                   </details>
                 );

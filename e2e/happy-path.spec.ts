@@ -3552,18 +3552,23 @@ test.describe.serial("DanceOS, end to end", () => {
     await expect(trainer.getByTestId("routine-classes")).toHaveText("1");
     await expect(trainer.getByTestId("routine-sessions")).toHaveText("0");
     await expect(trainer.getByTestId("routine-dancers")).toHaveText("0");
-    /* ⚠ THREE COLUMNS SINCE 4 Oct 2026 — Classes · Studios · Students. Classes
-       opens first (the user: "routine details 1st column classes with class
-       list"): the one class it is on, a card that opens the class. */
+    /* ⚠ TWO COLUMNS SINCE 4 Oct 2026 (later) — Classes · Students; the Studios
+       column is gone (the user: "Routine detail - remove studio section") and is
+       the Studio grouping inside Classes now, in the team and student pages'
+       shape: every group starts CLOSED, a class opens onto its boxes, and the
+       foot is one full-row "Class Detail ›". */
+    await expect(trainer.getByRole("link", { name: `Where ${routineName} is danced` })).toHaveCount(0);
+    await expect(trainer.getByTestId("routine-class-group")).toHaveCount(1);
+    await expect(trainer.getByTestId("routine-class")).toHaveCount(0);
+    await trainer.getByTestId("routine-class-group-toggle").click();
     await expect(trainer.getByTestId("routine-class")).toHaveCount(1);
-    await expect(trainer.getByTestId("routine-class").getByRole("link", { name: /^Open / })).toHaveCount(1);
-    /* then Studios: the studio the class is danced at, its row open, the class
-       inside it. And Delete is one word on the card's top right, behind a confirm. */
-    await trainer.getByRole("link", { name: `Where ${routineName} is danced` }).click();
-    await expect(trainer).toHaveURL(/show=studios/);
-    await expect(trainer.getByTestId("routine-studio")).toHaveCount(1);
-    await expect(trainer.getByTestId("routine-studio").getByRole("button", { expanded: true })).toBeVisible();
-    await expect(trainer.getByTestId("routine-studio").getByRole("link", { name: /^Open / }).first()).toBeVisible();
+    await trainer.getByTestId("routine-class").locator("summary").click();
+    await expect(trainer.getByTestId("routine-class-open")).toHaveText("Class Detail ›");
+    /* the Studio grouping is the old column: one studio, closed again on the switch */
+    await trainer.getByTestId("routine-class-by-studio").click();
+    await expect(trainer.getByTestId("routine-class-group")).toHaveCount(1);
+    await expect(trainer.getByTestId("routine-class")).toHaveCount(0);
+    /* And Delete is one word on the card's top right, behind a confirm. */
     await expect(trainer.getByRole("button", { name: `Delete ${routineName}` })).toBeVisible();
     await expect(trainer.getByRole("link", { name: `Open the video for ${routineName}` })).toHaveText("Video");
     /* the Students column, pressed in place — and the rule in the page's own words:

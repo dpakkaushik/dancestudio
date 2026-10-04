@@ -1,7 +1,8 @@
 import { notFound, redirect } from "next/navigation";
 import { RoutinePage } from "@/features/routines/components/RoutinePage";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
-import { findMyRoutines, findRoutineClassStudios, findRoutineClasses, findRoutineStudents } from "@/repositories/routines";
+import { findClassArtists } from "@/repositories/classPeople";
+import { findMyRoutines, findRoutineClassFacts, findRoutineClassStudios, findRoutineClasses, findRoutineStudents } from "@/repositories/routines";
 import { findProfileById } from "@/repositories/profiles";
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -12,9 +13,12 @@ const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/
  *  nobody but the owner either, so there is nothing to leak by guessing an id. */
 export default async function OneRoutinePage({ params, searchParams }: { params: Promise<{ routineId: string }>; searchParams: Promise<{ show?: string }> }) {
   const { routineId } = await params;
-  /* the column the server opens on — Classes, the first, unless the address names another (4 Oct 2026) */
+  /* the column the server opens on — Classes, the first, unless the address names
+     Students. ⚠ The Studios column is gone (4 Oct 2026, the user: "Routine detail -
+     remove studio section"), so an old `?show=studios` lands on Classes, whose
+     Studio grouping is where it went (Rule 14: a link handed out still opens) */
   const asked = (await searchParams).show;
-  const show = asked === "students" || asked === "studios" ? asked : "classes";
+  const show = asked === "students" ? asked : "classes";
   if (!UUID_RE.test(routineId)) {
     notFound();
   }
@@ -36,12 +40,26 @@ export default async function OneRoutinePage({ params, searchParams }: { params:
   if (!routine) {
     notFound();
   }
-  /* where each class is danced — the Studios column's faces (4 Oct 2026) */
-  const studios = await findRoutineClassStudios(supabase, classes.map((c) => c.classId)).catch(() => new Map());
+  /* where each class is danced, who teaches it, its room and its sessions — the
+     Classes column's groupings and boxes (4 Oct 2026); each degrades to nothing */
+  const ids = classes.map((c) => c.classId);
+  const [studios, artists, facts] = await Promise.all([
+    findRoutineClassStudios(supabase, ids).catch(() => new Map()),
+    findClassArtists(supabase, ids).catch(() => new Map()),
+    findRoutineClassFacts(supabase, ids).catch(() => new Map()),
+  ]);
   return (
     <RoutinePage
       routine={routine}
-      classes={classes.map((c) => ({ ...c, studio: studios.get(c.classId) ?? null }))}
+      classes={classes.map((c) => {
+        const a = artists.get(c.classId);
+        return {
+          ...c,
+          studio: studios.get(c.classId) ?? null,
+          artist: a ? { userId: a.userId, name: a.name, photoPath: a.avatarPath ?? null } : null,
+          facts: facts.get(c.classId) ?? null,
+        };
+      })}
       students={students}
       maker={{ userId: user.id, name: me?.fullName ?? "You", photoPath: me?.avatarPath ?? null }}
       show={show}
