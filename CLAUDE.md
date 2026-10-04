@@ -2,6 +2,32 @@
 
 ## LAST SESSION (4 Oct 2026) — replaced on every push (Rule 13)
 
+> ### THE ENQUIRY FORM IN POINTS, WITH AN ICON PER OPTION, AND NO "‹ ALL TYPES" (4 Oct 2026, latest) — no migration
+> Built by the previous chat and left uncommitted; this session verified it and pushed it on *"push to live continue from previous chat"*. The user's words as that chat recorded them: *"icons for these headings in the enquiry form as well"*, *"remove all types back button from the form"*, and points rather than a sentence.
+> * **Each kind's line is a short list**, not a sentence: Choreographer reads "Events · Classes · Shoots", Performer "Events · Shoots", and Judge / Guest "Battles · Workshops · Guest appearances".
+>   * `DotLine` keeps each item whole, so a narrow tile wraps between items and never inside one.
+>   * It is drawn on the tile and under the kind's name in the form.
+> * **Each option tile has an icon and a list of points**: `OPT_ICON` (Event, Classes, Shoot, Judge, Guest) and `enquiry-option-points`.
+>   * `EnquiryField.notes` (a sentence) became `points` (`string[][]`).
+>   * The tile is a column from the top, so every title sits on one line.
+>   * The accessible name is still the option's own word.
+> * **New kind icons** (`inbox-kit.tsx`):
+>   * Choreographer is a dancer mid-move. Music notes read as "music", and they were refused once already for Routines.
+>   * Performer is a figure under a spotlight.
+>   * Judge is a score paddle reading 10.
+> * **"‹ All types" is gone.** Back is the way out of a kind: the first back returns to the kinds, the second closes the sheet.
+> * **Verified:**
+>   * typecheck 0 · lint 0 · `audit:reads` 0 · build green.
+>   * A browser probe ran **32/32** in both themes on `:3100`, as a throwaway sender on Rhea Kapoor's page:
+>     * the three dot lines, no item broken inside itself, and the old sentence gone;
+>     * no All types button;
+>     * three option icons and their points, with the titles level;
+>     * an option still pressed by its word;
+>     * both back steps, still on the page;
+>     * no sideways scroll and no page error.
+>   * ⚠ The probe's first run had 2 reds, and both were the CHECK: `getClientRects` counts a nested inline span as a second rect on one line. It now measures distinct line tops.
+>   * A stale `next start` from 15:44 was holding `:3100` and was stopped first.
+
 > ### THE ENQUIRY FORM: KINDS SAID IN SENTENCES, THE SENDER'S OWN NUMBER, AND BACK STEPS OUT OF A KIND (4 Oct 2026, latest) — no migration
 > The user: *"sub heddings under choreographer, performer, Judge/ guest should written properly in first tile and inside the form as well. Mobilenumber field should be removed as auto picked by the user/ artist who is sending the enquiry. when swiping back inside form should take back to the previous section in enquiry."*
 > * **Sentences:** each kind's `sub` is a sentence, and the form prints it under the kind's name (`enquiry-kind-sub`).

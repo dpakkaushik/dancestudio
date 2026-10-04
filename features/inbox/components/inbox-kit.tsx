@@ -129,27 +129,34 @@ export function DosHero({
 
 /* one icon per enquiry type — same line language as the event icons (5195) */
 const ENQ_ICON: Record<EnquiryTypeKey, ReactNode> = {
-  /* the dance being MADE — two notes on a staff line */
+  /* the dance being MADE — a dancer mid-move, and the path of the move drawn
+     beside them (4 Oct 2026: music notes read as "music" — and were already
+     refused once for Routines, tool-grid.tsx) */
   choreographer: (
     <>
-      <path d="M9 17.5V6l10-2v11.5" />
-      <circle cx="6.8" cy="17.5" r="2.3" />
-      <circle cx="16.8" cy="15.5" r="2.3" />
-      <path d="M9 9.5l10-2" />
+      <circle cx="7" cy="4.6" r="1.8" />
+      <path d="M7 7.2 8 13M7.4 8.6 4 5.8M7.6 9 11 9.6M8 13l-2.6 6.5M8 13l3 3.6-1 3.4" />
+      <path d="M14 19.5c5.5-1.5 7-9 2.4-13" strokeDasharray="2 2.2" />
+      <path d="m16.4 6.5 2.6.1M16.4 6.5l.8 2.4" />
     </>
   ),
-  /* the dance being DANCED — a star on stage */
+  /* the dance being DANCED — somebody under a spotlight on a stage */
   performer: (
     <>
-      <path d="m12 3.5 2.3 4.8 5.2.7-3.8 3.6.9 5.2-4.6-2.5-4.6 2.5.9-5.2L4.5 9l5.2-.7z" />
-      <path d="M6 20.5h12" />
+      <path d="M9.6 2.5h4.8l-1 2.6h-2.8z" />
+      <path d="M10.6 5.6 5.8 17.6M13.4 5.6l4.8 12" strokeDasharray="2 2" />
+      <circle cx="12" cy="11.4" r="1.5" />
+      <path d="M9.8 18.4 12 13.4l2.2 5" />
+      <ellipse cx="12" cy="19.4" rx="7" ry="1.6" />
     </>
   ),
+  /* judging — the score paddle a judge holds up, reading 10 */
   judge: (
     <>
-      <path d="M7 4h10v4.5a5 5 0 0 1-10 0z" />
-      <path d="M7 5.5H4.5V8A2.5 2.5 0 0 0 7 10.5M17 5.5h2.5V8A2.5 2.5 0 0 1 17 10.5" />
-      <path d="M9.5 20h5M12 13.5V20" />
+      <rect x="5" y="3" width="14" height="11.5" rx="2.6" />
+      <path d="M9 7.1l1.4-1v5.6" />
+      <ellipse cx="14.4" cy="8.9" rx="1.8" ry="2.8" />
+      <path d="M12 14.5V21M9.6 21h4.8" />
     </>
   ),
 };

@@ -17,8 +17,8 @@ export type EnquiryTypeKey = "choreographer" | "performer" | "judge";
 export type SendableEnquiryTypeKey = EnquiryTypeKey;
 
 export type EnquiryField =
-  /** `notes` sit under each option, in the same order — a few words saying what the option covers */
-  | { k: string; t: "select"; label: string; opts: string[]; notes?: string[] }
+  /** `points` sit under each option, in the same order — the short things the option covers, one per line */
+  | { k: string; t: "select"; label: string; opts: string[]; points?: string[][] }
   | { k: string; t: "count"; label: string; min: number; max: number; def: number }
   | { k: string; t: "event"; label: string };
 
@@ -49,7 +49,7 @@ export const ENQ_TYPES: EnquiryType<SendableEnquiryTypeKey>[] = [
   {
     k: "choreographer",
     label: "Choreographer",
-    sub: "Choreography for an event, classes or a shoot",
+    sub: "Events · Classes · Shoots",
     c: "#8B5CF6",
     to: ["studio", "artist_page"],
     fields: [
@@ -58,7 +58,11 @@ export const ENQ_TYPES: EnquiryType<SendableEnquiryTypeKey>[] = [
         t: "select",
         label: "What for",
         opts: ["Event", "Classes", "Shoot"],
-        notes: ["wedding, party, show or festival", "private or corporate, any size", "music video, ad, content or campaign"],
+        points: [
+          ["Wedding", "Party", "Show", "Festival"],
+          ["Private", "Corporate", "Any group size"],
+          ["Music video", "Ad", "Content", "Campaign"],
+        ],
       },
       { k: "sessions", t: "count", label: "How many sessions", min: 1, max: 40, def: 1 },
     ],
@@ -66,7 +70,7 @@ export const ENQ_TYPES: EnquiryType<SendableEnquiryTypeKey>[] = [
   {
     k: "performer",
     label: "Performer",
-    sub: "A performance at an event or a shoot",
+    sub: "Events · Shoots",
     c: "#EC4899",
     to: ["studio", "artist_page"],
     fields: [
@@ -75,7 +79,10 @@ export const ENQ_TYPES: EnquiryType<SendableEnquiryTypeKey>[] = [
         t: "select",
         label: "What for",
         opts: ["Event", "Shoot"],
-        notes: ["wedding, party, corporate or festival", "music video, ad, content or campaign"],
+        points: [
+          ["Wedding", "Party", "Corporate", "Festival"],
+          ["Music video", "Ad", "Content", "Campaign"],
+        ],
       },
       { k: "perfs", t: "count", label: "Number of performances", min: 1, max: 12, def: 1 },
     ],
@@ -86,7 +93,7 @@ export const ENQ_TYPES: EnquiryType<SendableEnquiryTypeKey>[] = [
   {
     k: "judge",
     label: "Judge / Guest",
-    sub: "Judge a battle, or come as a guest",
+    sub: "Battles · Workshops · Guest appearances",
     c: "#F59E0B",
     to: ["artist_page"],
     fields: [
@@ -95,7 +102,10 @@ export const ENQ_TYPES: EnquiryType<SendableEnquiryTypeKey>[] = [
         t: "select",
         label: "As",
         opts: ["Judge", "Guest"],
-        notes: ["battle, tournament or competition", "workshop, chief guest or speaker"],
+        points: [
+          ["Battle", "Tournament", "Competition"],
+          ["Workshop", "Chief guest", "Speaker"],
+        ],
       },
       { k: "event", t: "event", label: "Which event" },
     ],

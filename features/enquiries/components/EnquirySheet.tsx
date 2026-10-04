@@ -32,6 +32,78 @@ const inp: React.CSSProperties = {
   fontFamily: "inherit",
 };
 
+/** One mark per option on a kind's tiles (4 Oct 2026, the user: "icons for these
+ *  headings in the enquiry form as well"), drawn in the same line language as
+ *  the kinds' own icons. An option with no mark draws none. */
+const OPT_ICON: Record<string, React.ReactNode> = {
+  /* a ticket — an occasion somebody goes to */
+  Event: (
+    <>
+      <path d="M3 7h18v3a2 2 0 0 0 0 4v3H3v-3a2 2 0 0 0 0-4z" />
+      <path d="M15 7.5v9" strokeDasharray="1.6 1.8" />
+    </>
+  ),
+  /* a board on its easel — something taught */
+  Classes: (
+    <>
+      <rect x="3.5" y="3.5" width="17" height="11" rx="1.6" />
+      <path d="M7 8h6M7 11h9M12 14.5v2M8 21l4-4.5 4 4.5" />
+    </>
+  ),
+  /* a camera — something filmed */
+  Shoot: (
+    <>
+      <rect x="3" y="7" width="12" height="10" rx="2" />
+      <path d="m15 10.5 6-3v9l-6-3z" />
+    </>
+  ),
+  /* the score paddle, reading 10 */
+  Judge: (
+    <>
+      <rect x="5" y="3" width="14" height="11.5" rx="2.6" />
+      <path d="M9 7.1l1.4-1v5.6" />
+      <ellipse cx="14.4" cy="8.9" rx="1.8" ry="2.8" />
+      <path d="M12 14.5V21M9.6 21h4.8" />
+    </>
+  ),
+  /* a microphone — a guest who appears, speaks, presents */
+  Guest: (
+    <>
+      <rect x="9.5" y="3" width="5" height="10" rx="2.5" />
+      <path d="M6.5 10.5a5.5 5.5 0 0 0 11 0M12 16v5M9 21h6" />
+    </>
+  ),
+};
+
+function OptIcon({ o, color }: { o: string; color: string }) {
+  const d = OPT_ICON[o];
+  if (!d) return null;
+  return (
+    <svg width={18} height={18} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" data-testid="enquiry-option-icon" style={{ display: "block", marginBottom: 5 }}>
+      {d}
+    </svg>
+  );
+}
+
+/** "Events · Classes · Shoots" — each item kept whole on its line, so a narrow
+ *  tile wraps BETWEEN items and never inside one ("Guest / appearances"). */
+function DotLine({ text, style }: { text: string; style?: React.CSSProperties }) {
+  const items = text.split(" · ");
+  return (
+    <div style={style}>
+      {items.map((it, i) => (
+        <span key={it}>
+          <span style={{ whiteSpace: "nowrap" }}>
+            {it}
+            {i < items.length - 1 ? <span style={{ opacity: 0.55 }}>{" ·"}</span> : null}
+          </span>
+          {i < items.length - 1 ? " " : null}
+        </span>
+      ))}
+    </div>
+  );
+}
+
 function Lab({ children }: { children: React.ReactNode }) {
   return <div style={{ fontSize: 9.5, fontWeight: 900, letterSpacing: 0.8, color: "var(--muted)", margin: "12px 0 6px" }}>{children}</div>;
 }
@@ -145,8 +217,10 @@ export function EnquirySheet({
      "when swiping back inside form should take back to the previous section in
      enquiry"). A chosen kind owns a history entry of its own on top of the
      sheet's, so the first back returns to "What's it for?" and only the second
-     closes. "‹ All types" spends that same entry, and so does sending (the
-     "Enquiry sent" screen is the sheet's own, and its Done closes the sheet). */
+     closes. Sending spends that entry (the "Enquiry sent" screen is the
+     sheet's own, and its Done closes the sheet). ⚠ There is no "‹ All types"
+     button any more (the user: "remove all types back button from the form") —
+     back is the way out of a kind. */
   useCloseOnBack(() => setType(null), type !== null && !sent);
 
   const setV = (k: string, v: string | number) => {
@@ -295,7 +369,7 @@ export function EnquirySheet({
                     <EnqIcon k={x.k} size={16} color={x.c} sw={2} />
                   </span>
                   <div style={{ fontSize: 13, fontWeight: 900, marginTop: 7 }}>{x.label}</div>
-                  <div style={{ fontSize: 10.5, fontWeight: 600, color: "var(--sub)", marginTop: 3, lineHeight: 1.35 }}>{x.sub}</div>
+                  <DotLine text={x.sub} style={{ fontSize: 10.5, fontWeight: 700, color: "var(--sub)", marginTop: 3, lineHeight: 1.45 }} />
                 </div>
               ))}
             </div>
@@ -303,22 +377,13 @@ export function EnquirySheet({
           </>
         ) : (
           <>
-            <div
-              role="button"
-              tabIndex={0}
-              onKeyDown={pressKey(() => setType(null))}
-              onClick={() => setType(null)}
-              style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 11, fontWeight: 800, color: "var(--sub)", cursor: "pointer", marginBottom: 6 }}
-            >
-              ‹ All types
-            </div>
             <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
               <EnqIcon k={type.k} size={16} color={type.c} sw={2} />
               <div style={{ fontSize: 17, fontWeight: 900 }}>{type.label}</div>
             </div>
-            {/* the kind's own sentence, the same words its tile says (4 Oct 2026) */}
-            <div data-testid="enquiry-kind-sub" style={{ fontSize: 12, color: "var(--text)", fontWeight: 700, marginTop: 3, lineHeight: 1.35 }}>
-              {type.sub}
+            {/* the kind's own line, the same words its tile says (4 Oct 2026) */}
+            <div data-testid="enquiry-kind-sub">
+              <DotLine text={type.sub} style={{ fontSize: 12, color: "var(--text)", fontWeight: 700, marginTop: 3, lineHeight: 1.45 }} />
             </div>
             <div style={{ fontSize: 11, color: "var(--sub)", marginTop: 2 }}>To {businessName}</div>
 
@@ -361,11 +426,13 @@ export function EnquirySheet({
             {type.fields.map((f) => (
               <div key={f.k}>
                 <Lab>{f.label}</Lab>
-                {f.t === "select" && f.notes ? (
+                {f.t === "select" && f.points ? (
                   /* ⚠ AN OPTION THAT CLUBS SEVERAL TOGETHER SAYS WHAT IT COVERS (4 Oct
                      2026) — "Event" alone does not tell somebody whether their sangeet
-                     is one. One tile per option, its note under it; the accessible
-                     name stays the option's own word so a locator finds "Event". */
+                     is one. One tile per option, what it covers as a short list of
+                     points under it (one per line, a dot before each — the user asked
+                     for points, not a sentence); the accessible name stays the
+                     option's own word so a locator finds "Event". */
                   <div role="group" aria-label={f.label} style={{ display: "grid", gridTemplateColumns: `repeat(${f.opts.length}, minmax(0, 1fr))`, gap: 6 }}>
                     {f.opts.map((o, i) => {
                       const on = vals[f.k] === o;
@@ -376,10 +443,21 @@ export function EnquirySheet({
                           aria-pressed={on}
                           aria-label={o}
                           onClick={() => setV(f.k, o)}
-                          style={{ padding: "9px 8px", borderRadius: 12, textAlign: "left", cursor: "pointer", fontFamily: "inherit", background: on ? type.c : "var(--card)", color: on ? "#08060C" : "var(--text)", border: `1.5px solid ${on ? type.c : "var(--el)"}` }}
+                          /* a <button> centres its content vertically, so a tile with
+                             three points sat lower than its four-point neighbours —
+                             a column from the top keeps every title on one line */
+                          style={{ display: "flex", flexDirection: "column", alignItems: "stretch", justifyContent: "flex-start", padding: "9px 8px", borderRadius: 12, textAlign: "left", cursor: "pointer", fontFamily: "inherit", background: on ? type.c : "var(--card)", color: on ? "#08060C" : "var(--text)", border: `1.5px solid ${on ? type.c : "var(--el)"}` }}
                         >
+                          <OptIcon o={o} color={on ? "#08060C" : type.c} />
                           <div style={{ fontSize: 12.5, fontWeight: 900 }}>{o}</div>
-                          <div style={{ fontSize: 9.5, fontWeight: 600, lineHeight: 1.35, marginTop: 2, color: on ? "#08060C" : "var(--sub)" }}>{f.notes?.[i]}</div>
+                          <ul data-testid="enquiry-option-points" style={{ listStyle: "none", margin: "5px 0 0", padding: 0, display: "grid", gap: 2 }}>
+                            {(f.points?.[i] ?? []).map((pt) => (
+                              <li key={pt} style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 10, fontWeight: 650, lineHeight: 1.3, color: on ? "#08060C" : "var(--sub)" }}>
+                                <span aria-hidden style={{ width: 4, height: 4, borderRadius: 2, flexShrink: 0, background: on ? "#08060C" : type.c }} />
+                                {pt}
+                              </li>
+                            ))}
+                          </ul>
                         </button>
                       );
                     })}
