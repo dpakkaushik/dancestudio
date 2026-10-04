@@ -160,7 +160,10 @@ export function MembershipsScreen({
               it is on the server, the same way this desk does.
               ⚠ AND IT OPENS OVER THIS DESK (22 Sep 2026) — `?new=1` on the page
               you are already on, so the phone's back gesture closes it; the
-              studio's own desk takes the id from the route, not the link. */}
+              studio's own desk takes the id from the route, not the link.
+              ⚠ The `/memberships/new` PAGE went on 5 Oct 2026: its address
+              forwards to this desk (next.config.ts), so the sheet is the form's
+              only shell for an Add. */}
           {/* "Add Membership" (4 Oct 2026, the user: "New Membership button to be
               renamed to Add Membership") */}
           <DeskAddButton label="Add Membership" href="?new=1" />

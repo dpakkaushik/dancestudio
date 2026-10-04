@@ -2686,8 +2686,9 @@ test.describe.serial("DanceOS, end to end", () => {
     /* ⚠ THE FORM IS A SHEET OVER THIS DESK NOW (22 Sep 2026, ask 6) — it wore
        the Add class anatomy from 21 Sep and wears its own address no longer:
        `?new=1` on the desk that offered it, so the studio it sells for is the
-       desk's own and `?business=` is not needed at all from here (it stays for
-       `/memberships/new`, which is still a page — Rule 14). */
+       desk's own and `?business=` is not needed at all from here (the old
+       `/memberships/new` page went on 5 Oct 2026; its address forwards to this
+       desk). */
     /* "Add Membership", the button and the form's heading (4 Oct 2026) */
     await owner.getByRole("link", { name: "Add Membership" }).click();
     await owner.waitForURL(new RegExp(`/business/${businessId}/memberships\\?new=1$`));

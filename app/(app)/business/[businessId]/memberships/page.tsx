@@ -65,8 +65,10 @@ export default async function StudioMembershipsPage({ params, searchParams }: { 
      admits a studio or an artist page and nothing else. */
   const selling = await findBusinessMemberships(supabase, businessId).catch(() => []);
   /* the form opens over THIS studio's desk (22 Sep 2026), so the seller is the
-     route's own business — the `?business=` pointer `/memberships/new` needs is
-     one the URL here already carries, and one this page has already authorized */
+     route's own business — the `?business=` pointer the old `/memberships/new`
+     page needed is one the URL here already carries, and one this page has
+     already authorized. That page went on 5 Oct 2026; `?business={id}` on its
+     address forwards here (next.config.ts). */
   return (
     <>
       <MembershipsScreen passes={[]} selling={selling} canSell business={{ id: businessId, name: seat.business.name }} seller={{ name: seat.business.name, photoPath: seat.business.photoPath ?? null, kind: "studio", href: `/studio/${businessId}` }} />

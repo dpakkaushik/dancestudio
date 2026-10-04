@@ -120,6 +120,19 @@ const nextConfig: NextConfig = {
       { source: "/business/:businessId/classes/new", destination: "/business/:businessId/classes", permanent: false },
       { source: "/crews/new", destination: "/crews", permanent: false },
       { source: "/routines/new", destination: "/routines", permanent: false },
+      /* `/memberships/new?business={studio}` went where its own refusal used to
+         send people: that studio's memberships desk, which re-checks the seat
+         (a studio that is not yours is "not found", exactly as before). The id
+         must be a uuid to match, so nothing else can be spliced into the path.
+         Without one it goes to `/memberships`, as the old page did. ⚠ Order
+         matters: the narrower rule must come first. */
+      {
+        source: "/memberships/new",
+        has: [{ type: "query", key: "business", value: "(?<business>[0-9a-fA-F-]{36})" }],
+        destination: "/business/:business/memberships",
+        permanent: false,
+      },
+      { source: "/memberships/new", destination: "/memberships", permanent: false },
     ];
   },
 };

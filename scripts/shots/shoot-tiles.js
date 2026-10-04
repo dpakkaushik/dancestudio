@@ -410,9 +410,13 @@ async function personOpensAStudio(page, who, acc, stamp) {
        one, which is exactly how a kept promise rots unnoticed: the previous
        session found `shoot-hero` red for four days for the same reason.
        An unlinked route needs a check MORE than a linked one, not less. */
+    /* ⚠ `/memberships/new` WENT ON 5 Oct 2026. (Since 4 Oct only a studio sells,
+       so it had already been sending an artist straight back to /memberships —
+       the check that stood here asserted a form an artist could no longer
+       reach.) Its address forwards to /memberships; with `?business={studio}`
+       it forwards to that studio's own desk, which re-checks the seat. */
     await p2.goto(`${BASE}/memberships/new`, { waitUntil: "networkidle" });
-    check((await p2.locator("h1").first().innerText().catch(() => "")) === "Add Membership", "artist · /memberships/new is still a page, though nothing links to it (Rule 14)");
-    check((await p2.getByRole("dialog").count()) === 0, "artist · and that page is not a sheet");
+    check(new URL(p2.url()).pathname === "/memberships", `artist · the old /memberships/new address forwards to Memberships (${new URL(p2.url()).pathname})`);
     /* ⚠ `/crews/new` WENT ON 5 Oct 2026 and its address forwards to the hub,
        one press from Add Crew (Rule 14: an old link lands somewhere a person
        can act, never on a 404) */
