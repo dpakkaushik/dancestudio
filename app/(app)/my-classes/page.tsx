@@ -1,10 +1,10 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import type { ReactNode } from "react";
 import { ClassForm } from "@/features/classes/components/ClassForm";
 import { ClassesManager } from "@/features/classes/components/ClassesManager";
 import { ClassTile } from "@/features/classes/components/ClassTile";
 import { EnrollButton } from "@/features/classBookings/components/EnrollButton";
+import { WhenColumns } from "@/features/classBookings/components/WhenColumns";
 import { SegmentedPanels } from "@/features/shell/components/SegmentedNav";
 import { DeskHero } from "@/features/businesses/components/biz-kit";
 import { DOS_UI, INK, LILAC, MUTED, SUB } from "@/lib/design/tokens";
@@ -93,17 +93,6 @@ const showsFor = (runs: boolean): Show[] => (runs ? ["manage", "booked", "assist
  *  micro-caps head the ASKED blocks above it wear, so one segment reads one way.
  *  An empty section says so in a line rather than vanishing, because the user
  *  asked for both sections and a missing one reads as a missing feature. */
-function ClassSection({ id, title, n, empty, last = false, children }: { id: string; title: string; n: number; empty: string; last?: boolean; children: ReactNode }) {
-  return (
-    <section data-testid={id} aria-label={title} style={{ marginBottom: last ? 0 : 22 }}>
-      <div style={{ fontSize: 9.5, fontWeight: 900, letterSpacing: 1, color: MUTED, margin: "0 0 9px" }}>
-        {title.toUpperCase()} · {n}
-      </div>
-      {n > 0 ? children : <div style={{ fontSize: 12, color: SUB, padding: "4px 2px 2px" }}>{empty}</div>}
-    </section>
-  );
-}
-
 const when = (iso: string | null): string =>
   iso
     ? new Intl.DateTimeFormat("en-IN", { timeZone: "Asia/Kolkata", weekday: "short", day: "numeric", month: "short", hour: "numeric", minute: "2-digit" }).format(new Date(iso))
@@ -381,9 +370,12 @@ export default async function MyClassesPage({ searchParams }: { searchParams: Pr
             node: (
               <>
                 {class_bookings.length > 0 ? (
-                  <>
-                    <ClassSection id="booked-upcoming" title="Upcoming" n={bookedUpcoming.length} empty="Nothing coming up.">
-                      {bookedUpcoming.map((e) => (
+                  <WhenColumns
+                    id="booked"
+                    noun="bookings"
+                    nUp={bookedUpcoming.length}
+                    nDone={bookedDone.length}
+                    upcoming={bookedUpcoming.map((e) => (
                         <ClassTile
                           key={e.id}
                           danceClass={toTileClass(e)}
@@ -395,25 +387,22 @@ export default async function MyClassesPage({ searchParams }: { searchParams: Pr
                           actions={<EnrollButton sessionId={e.sessionId} isFull={false} isSignedIn mine={{ id: e.id, status: e.status }} priceInr={e.priceInr} shareSlug={e.shareSlug} />}
                         />
                       ))}
-                    </ClassSection>
-                    {/* ⚠ A CLASS THAT IS OVER OFFERS NO WAY OUT OF ITS SEAT (4 Oct 2026,
-                        the user: "cancel / refund class should not be possible if class
-                        is over"). The card stays — it is the record of a class you took —
-                        and the Cancel / refund control goes; the database refuses it too. */}
-                    <ClassSection id="booked-completed" title="Completed" n={bookedDone.length} empty="Nothing completed yet." last>
-                      {bookedDone.map((e) => (
-                        <ClassTile
-                          key={e.id}
-                          danceClass={toTileClass(e)}
-                          filled={seatsOf(e.sessionId)}
-                          artist={bookedArtists.get(e.classId) ?? null}
-                          city={e.businessCity}
-                          href={`/c/${e.shareSlug}`}
-                          relation="booked"
-                        />
-                      ))}
-                    </ClassSection>
-                  </>
+                    /* ⚠ A CLASS THAT IS OVER OFFERS NO WAY OUT OF ITS SEAT (4 Oct 2026,
+                       the user: "cancel / refund class should not be possible if class
+                       is over"). The card stays — it is the record of a class you took —
+                       and the Cancel / refund control goes; the database refuses it too. */
+                    completed={bookedDone.map((e) => (
+                      <ClassTile
+                        key={e.id}
+                        danceClass={toTileClass(e)}
+                        filled={seatsOf(e.sessionId)}
+                        artist={bookedArtists.get(e.classId) ?? null}
+                        city={e.businessCity}
+                        href={`/c/${e.shareSlug}`}
+                        relation="booked"
+                      />
+                    ))}
+                  />
                 ) : null}
                 {class_bookings.length === 0 && (
                   <div style={{ textAlign: "center", padding: "40px 20px", color: SUB, border: "1.5px dashed var(--el)", borderRadius: 20, fontSize: 13 }}>
@@ -462,18 +451,18 @@ export default async function MyClassesPage({ searchParams }: { searchParams: Pr
                 {/* the job is the card's own chip, in the shared word and colour
                     (4 Oct 2026); the studio and the date are already on the card */}
                 {assisting.length > 0 ? (
-                  <>
-                    <ClassSection id="assist-upcoming" title="Upcoming" n={assistUpcoming.length} empty="Nothing coming up.">
-                      {assistUpcoming.map((c) => (
-                        <ClassTile key={c.id} danceClass={askToTileClass(c)} filled={seatsOf(c.sessionId)} artist={bookedArtists.get(c.classId) ?? null} city={c.businessCity} href={`/c/${c.classShareSlug}`} relation="assisting" />
-                      ))}
-                    </ClassSection>
-                    <ClassSection id="assist-completed" title="Completed" n={assistDone.length} empty="Nothing completed yet." last>
-                      {assistDone.map((c) => (
-                        <ClassTile key={c.id} danceClass={askToTileClass(c)} filled={seatsOf(c.sessionId)} artist={bookedArtists.get(c.classId) ?? null} city={c.businessCity} href={`/c/${c.classShareSlug}`} relation="assisting" />
-                      ))}
-                    </ClassSection>
-                  </>
+                  <WhenColumns
+                    id="assist"
+                    noun="classes you assist on"
+                    nUp={assistUpcoming.length}
+                    nDone={assistDone.length}
+                    upcoming={assistUpcoming.map((c) => (
+                      <ClassTile key={c.id} danceClass={askToTileClass(c)} filled={seatsOf(c.sessionId)} artist={bookedArtists.get(c.classId) ?? null} city={c.businessCity} href={`/c/${c.classShareSlug}`} relation="assisting" />
+                    ))}
+                    completed={assistDone.map((c) => (
+                      <ClassTile key={c.id} danceClass={askToTileClass(c)} filled={seatsOf(c.sessionId)} artist={bookedArtists.get(c.classId) ?? null} city={c.businessCity} href={`/c/${c.classShareSlug}`} relation="assisting" />
+                    ))}
+                  />
                 ) : null}
                 {assisting.length === 0 && askedToAssist.length === 0 && (
                   <div style={{ textAlign: "center", padding: "40px 20px", color: SUB, border: "1.5px dashed var(--el)", borderRadius: 20, fontSize: 13, lineHeight: 1.5 }}>

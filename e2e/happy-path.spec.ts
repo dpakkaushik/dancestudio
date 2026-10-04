@@ -245,11 +245,19 @@ function lastMonthName(): string {
   return new Intl.DateTimeFormat("en-IN", { timeZone: "UTC", month: "long" }).format(new Date(Date.UTC(y, m - 2, 15)));
 }
 
+/** A CLEANUP THAT READS ITS OWN STATUS (4 Oct 2026) — the right revoked
+ *  first, a refused delete said out loud; admin-support's copy says why. */
 async function deleteUser(userId: string) {
-  await fetch(`${supabaseUrl}/auth/v1/admin/users/${userId}`, {
+  await fetch(`${supabaseUrl}/rest/v1/platform_admins?user_id=eq.${userId}&deleted_at=is.null`, {
+    method: "PATCH",
+    headers: { ...adminHeaders, "Content-Type": "application/json" },
+    body: JSON.stringify({ deleted_at: new Date().toISOString() }),
+  });
+  const res = await fetch(`${supabaseUrl}/auth/v1/admin/users/${userId}`, {
     method: "DELETE",
     headers: adminHeaders,
   });
+  if (!res.ok) console.warn(`cleanup: could not delete account ${userId}: ${res.status} ${await res.text()}`);
 }
 
 
@@ -1153,7 +1161,8 @@ test.describe.serial("DanceOS, end to end", () => {
     await expect(learner.getByRole("link", { name: `Open ${studioName}` })).toBeVisible();
     // what the class made is the studio's business, not the room's
     await expect(learner.getByText("WHAT THIS SESSION MADE")).toHaveCount(0);
-    await learner.getByRole("button", { name: "Book free trial" }).click();
+    // "Book Now" on every booking button since 4 Oct 2026 (it read "Book free trial" here)
+    await learner.getByRole("button", { name: "Book Now", exact: true }).click();
     const confirmSheet = learner.getByRole("dialog", { name: "Confirm — no payment" });
     await expect(confirmSheet).toBeVisible();
     await confirmSheet.getByRole("button", { name: "Confirm free trial" }).click();

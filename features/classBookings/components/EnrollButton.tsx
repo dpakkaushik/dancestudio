@@ -131,14 +131,18 @@ export function EnrollButton({
             Class full
           </button>
         ) : isPaid ? (
+          /* ⚠ ONE WORD FOR BOOKING (4 Oct 2026, the user: "book a class and book a
+             spot buttons on class should be Book Now"). A paid class still opens
+             its page, where the payment step is; a free one still books here. Only
+             the words changed, and they are the same on the class page's own bar. */
           <Link href={`/c/${shareSlug}`} style={{ ...btn(true), textDecoration: "none" }}>
-            Book this class
+            Book Now
           </Link>
         ) : (
           <form action={enrollForm} style={{ flex: 1, display: "flex" }}>
             <input type="hidden" name="sessionId" value={sessionId} />
             <button type="submit" disabled={enrollPending} style={btn(true)}>
-              {enrollPending ? "Booking…" : "Book a spot"}
+              {enrollPending ? "Booking…" : "Book Now"}
             </button>
           </form>
         )}

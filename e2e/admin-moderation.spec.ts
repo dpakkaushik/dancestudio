@@ -152,8 +152,22 @@ async function openPeopleStack(page: Page) {
   await pressUntilOpen(page, /^People — \d+ updates?$/);
 }
 
+/** A CLEANUP THAT READS ITS OWN STATUS (4 Oct 2026) — the right revoked
+ *  first, a refused delete said out loud; admin-support's copy says why. */
 async function deleteUser(id: string) {
-  await fetch(`${supabaseUrl}/auth/v1/admin/users/${id}`, { method: "DELETE", headers: adminHeaders });
+  /* the studios it owns go first (a "Mod Studio …" was left on every run) */
+  const owned = (await (await fetch(`${supabaseUrl}/rest/v1/business_members?user_id=eq.${id}&member_role=eq.owner&select=business_id`, { headers: adminHeaders })).json()) as Array<{ business_id: string }>;
+  if (Array.isArray(owned) && owned.length) {
+    const res = await fetch(`${supabaseUrl}/rest/v1/businesses?id=in.(${owned.map((o) => o.business_id).join(",")})`, { method: "DELETE", headers: adminHeaders });
+    if (!res.ok) console.warn(`cleanup: could not delete businesses of ${id}: ${res.status} ${await res.text()}`);
+  }
+  await fetch(`${supabaseUrl}/rest/v1/platform_admins?user_id=eq.${id}&deleted_at=is.null`, {
+    method: "PATCH",
+    headers: { ...adminHeaders, "Content-Type": "application/json" },
+    body: JSON.stringify({ deleted_at: new Date().toISOString() }),
+  });
+  const res = await fetch(`${supabaseUrl}/auth/v1/admin/users/${id}`, { method: "DELETE", headers: adminHeaders });
+  if (!res.ok) console.warn(`cleanup: could not delete account ${id}: ${res.status} ${await res.text()}`);
 }
 
 test.describe.serial("the admin panel: businesses and reports", () => {

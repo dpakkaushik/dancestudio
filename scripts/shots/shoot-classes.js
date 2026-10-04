@@ -127,7 +127,10 @@ const text = async (page) => (await page.locator("body").innerText()).replace(/\
  *  trial" on a free class and "Book this class" on a priced one (ClassDetail
  *  2143). Asking a class page for "Book a spot" counts 0 forever — which is how
  *  one check here passed for the wrong reason until 30 Sep 2026. */
-const BOOK_ON_PAGE = /^Book (free trial|this class)$/;
+/* ⚠ "Book Now" on every booking button since 4 Oct 2026 (the user: "book a class
+   and book a spot buttons on class should be Book Now") — the card's and the
+   page's are one word now, so on a class PAGE this finds the bar's own button */
+const BOOK_ON_PAGE = /^Book Now$/;
 
 (async () => {
   const stamp = Date.now().toString(36);
@@ -416,10 +419,19 @@ const BOOK_ON_PAGE = /^Book (free trial|this class)$/;
        person who runs something opens on Manage (the 29 Sep lesson) */
     await lPage.goto(`${BASE}/my-classes?show=booked`, { waitUntil: "networkidle" });
     const ranCard = lPage.locator('[data-card="session"]').filter({ has: lPage.locator(`a[href^="/c/${ranSlug}"]`) });
-    check((await ranCard.count()) === 1, "the learner's Booked list still carries the class they took — it is the record");
-    check((await ranCard.getByRole("button", { name: /Cancel/ }).count()) === 0 && (await ranCard.getByRole("link", { name: /Cancel/ }).count()) === 0, "⚠ …and offers no Cancel or refund on it");
     const aheadCard = lPage.locator('[data-card="session"]').filter({ has: lPage.locator(`a[href^="/c/${aheadSlug}"]`) });
+    /* ⚠ UPCOMING · COMPLETED ARE COLUMNS since 4 Oct 2026 (the user: "upcoming
+       and completed as columns under booked and assist classes"). Upcoming opens
+       first and is the only one mounted, so the class that ran is NOT on screen
+       until Completed is pressed — asserted, because a check that only looks at
+       the new place cannot tell you the old one was cleared. */
     check((await aheadCard.getByRole("button", { name: /Cancel/ }).count()) + (await aheadCard.getByRole("link", { name: /Cancel/ }).count()) > 0, "…while the class still AHEAD keeps its way out — the gate is the clock, not the list");
+    check((await ranCard.count()) === 0, "the Upcoming column does not carry the class that ran");
+    await lPage.getByRole("button", { name: /^Completed bookings/ }).click();
+    await lPage.getByTestId("booked-completed").waitFor({ timeout: 10000 });
+    check((await ranCard.count()) === 1, "the learner's Completed column carries the class they took — it is the record");
+    check((await ranCard.getByRole("button", { name: /Cancel/ }).count()) === 0 && (await ranCard.getByRole("link", { name: /Cancel/ }).count()) === 0, "⚠ …and offers no Cancel or refund on it");
+    check((await aheadCard.count()) === 0, "…and the class still ahead is not in Completed");
 
     /* ══ 9 · CALLING A CLASS OFF GIVES THE MONEY BACK (#0b3) ══════════════════
        ⚠⚠ THE SHEET HAS PROMISED THIS SINCE 29 Aug 2026 AND NOTHING DID IT. It

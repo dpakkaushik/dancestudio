@@ -111,8 +111,27 @@ async function adminGoto(page: Page, email: string, path: string) {
   throw new Error(`the admin could not open ${path} — three attempts`);
 }
 
+/** A CLEANUP THAT READS ITS OWN STATUS (4 Oct 2026). Four throwaway e2e
+ *  accounts were found still holding PLATFORM ADMIN rights on production,
+ *  because this delete was fired and never checked. So the right is revoked
+ *  FIRST — `is_platform_admin()` tests `deleted_at`, so it bites at once even if
+ *  the account delete below is refused — and a refused delete is said out loud. */
 async function deleteUser(id: string) {
-  await fetch(`${supabaseUrl}/auth/v1/admin/users/${id}`, { method: "DELETE", headers: adminHeaders });
+  /* and the studios it owns go first, as the happy path's cleanup does — an
+     account deleted under its studio left a "Panel Studio …" on production on
+     every run (4 Oct 2026, swept: 24 of them across the specs) */
+  const owned = (await (await fetch(`${supabaseUrl}/rest/v1/business_members?user_id=eq.${id}&member_role=eq.owner&select=business_id`, { headers: adminHeaders })).json()) as Array<{ business_id: string }>;
+  if (Array.isArray(owned) && owned.length) {
+    const res = await fetch(`${supabaseUrl}/rest/v1/businesses?id=in.(${owned.map((o) => o.business_id).join(",")})`, { method: "DELETE", headers: adminHeaders });
+    if (!res.ok) console.warn(`cleanup: could not delete businesses of ${id}: ${res.status} ${await res.text()}`);
+  }
+  await fetch(`${supabaseUrl}/rest/v1/platform_admins?user_id=eq.${id}&deleted_at=is.null`, {
+    method: "PATCH",
+    headers: { ...adminHeaders, "Content-Type": "application/json" },
+    body: JSON.stringify({ deleted_at: new Date().toISOString() }),
+  });
+  const res = await fetch(`${supabaseUrl}/auth/v1/admin/users/${id}`, { method: "DELETE", headers: adminHeaders });
+  if (!res.ok) console.warn(`cleanup: could not delete account ${id}: ${res.status} ${await res.text()}`);
 }
 
 /** NAME A CITY IN THE PICKER (11 Sep 2026) — the same helper happy-path carries:

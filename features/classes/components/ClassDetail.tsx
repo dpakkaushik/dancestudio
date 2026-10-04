@@ -1938,7 +1938,9 @@ export function ClassDetail({
                     fontFamily: DOS_UI,
                   }}
                 >
-                  {isFree ? "Book free trial" : "Book this class"}
+                  {/* one word on every booking button (4 Oct 2026); the price and
+                      "Free" are already on the bar above it */}
+                  Book Now
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round">
                     <path d="M5 12h13M13 6.5 18.5 12 13 17.5" />
                   </svg>
