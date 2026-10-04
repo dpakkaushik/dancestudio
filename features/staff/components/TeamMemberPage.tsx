@@ -302,7 +302,9 @@ export function TeamMemberPage({
           href={`/person/${member.userId}`}
           hrefLabel={`${member.name} — their profile`}
           eyebrow={`${MEMBER_ROLE_WORD[member.role]} · ${KIND_WORD[kindOf(member.isArtist)]}`}
-          sub={[member.style, member.city].filter(Boolean).join(" · ") || null}
+          /* the city alone, like the Team desk's own card (4 Oct 2026, the user:
+             "remove dance style from under artist name in team detail page") */
+          sub={member.city || null}
           size={64}
           /* ⚠ MANAGE IS A PILL ON THE TOP RIGHT HERE (4 Oct 2026, the user:
              "Remove manage button from card and shift inside history page on

@@ -4,8 +4,10 @@ import Link from "next/link";
 import { useState, type CSSProperties } from "react";
 
 import { FigureHead } from "@/components/ui/FigureHead";
-import { ToolChip, ToolFace, ToolFacts } from "@/components/ui/ToolCard";
-import { INK, MUTED, SUB } from "@/lib/design/tokens";
+import { ToolChip, ToolFace, ToolFacts, inkOn } from "@/components/ui/ToolCard";
+import { dosStyleColor } from "@/lib/constants/styles";
+import { DISC_RADIUS, DOS_DISPLAY, INK, MUTED, SUB } from "@/lib/design/tokens";
+import { dosToolPaint } from "@/lib/format/styleInk";
 import type { TeamMemberClass } from "@/repositories/teamMemberWork";
 
 /** THEIR CLASSES HERE, REHAULED (4 Oct 2026, the user: *"Classes section in team-
@@ -50,6 +52,50 @@ const timeWords = (iso: string): string => {
   if (Number.isNaN(d.getTime())) return "";
   return d.toLocaleTimeString("en-IN", { hour: "numeric", minute: "2-digit", timeZone: "Asia/Kolkata" });
 };
+
+/** A DANCE STYLE'S FACE (4 Oct 2026, the user: "dance style should be taking their
+ *  icon badge color in place of profile pic") — the style's own badge (the coin,
+ *  DosStyleCoin 3400: its colour, its initials) in the profile picture's squircle,
+ *  so the three groupings wear one shape of face. */
+function StyleBadge({ style, size }: { style: string; size: number }) {
+  const c = dosStyleColor(style) || "#5AC8FA";
+  const initials =
+    style
+      .replace(/[^A-Za-z0-9 -]/g, " ")
+      .trim()
+      .split(/[\s-]+/)
+      .filter(Boolean)
+      .slice(0, 2)
+      .map((w) => w[0])
+      .join("")
+      .toUpperCase() || "•";
+  return (
+    <span
+      aria-hidden="true"
+      data-testid="team-class-style-badge"
+      title={style}
+      style={{
+        width: size,
+        height: size,
+        borderRadius: Math.round(size * DISC_RADIUS),
+        flexShrink: 0,
+        display: "inline-flex",
+        alignItems: "center",
+        justifyContent: "center",
+        background: dosToolPaint(c),
+        color: inkOn(c),
+        fontFamily: DOS_DISPLAY,
+        fontSize: Math.max(9, Math.round(size * 0.34)),
+        fontWeight: 900,
+        letterSpacing: 0.3,
+        lineHeight: 1,
+        boxShadow: "0 1px 4px rgba(0,0,0,.25)",
+      }}
+    >
+      {initials}
+    </span>
+  );
+}
 
 /** the room-full bar — booked seats over capacity, with the figure beside it */
 function FillBar({ c }: { c: TeamMemberClass }) {
@@ -179,7 +225,9 @@ export function TeamClassesPanel({
             <ToolFace name={title} photoPath={lead.artistPhoto} tint={tint} size={30} />
           ) : by === "studio" ? (
             <ToolFace name={title} photoPath={lead.venuePhoto} tint={tint} size={30} />
-          ) : null;
+          ) : (
+            <StyleBadge style={lead.style} size={30} />
+          );
         return (
           <div key={key} data-testid="team-class-group" style={panel}>
             {/* ⚠ THE WHOLE GROUP COLLAPSES (4 Oct 2026, the user: "make sure also
