@@ -2,7 +2,7 @@
 
 ## LAST SESSION (4 Oct 2026) — replaced on every push (Rule 13)
 
-> ### THE CLASS CARD ON THE TOOL-CARD ANATOMY, AND NO ROSTER BUTTON (4 Oct 2026, latest) — no migration · ✅ PUSHED AND LIVE (the sha and the live checks are recorded in the commit that follows this one, Rule 13)
+> ### THE CLASS CARD ON THE TOOL-CARD ANATOMY, AND NO ROSTER BUTTON (4 Oct 2026, latest) — no migration · ✅ PUSHED AND LIVE (`6f224c3`: Vercel READY, alias confirmed on the sha through the API; the card probe **52/52** in both themes and `stranger-smoke` all green ON THE LIVE SITE)
 > The user: *"push to live and redesign the class cards according to how we have done for other tool cards everywhere. Remove roster button. start fix and push to live"*, then *"continue from previous chat"*. The previous chat's waitlist batch went first (the block below: app pushed, then `20261004160000` applied), then the redesign.
 > * **`ClassTile` is the three bands every other tool card wears** (`components/ui/ToolCard.tsx` — `ToolHead` · `ToolBody` · `ToolFacts` · `ToolActions`), replacing the prototype's WHEN · WHO · WHAT sleeve (7969-8500):
 >   * **The profile band is the TEACHER** — a 58px squircle and the name in the display face over a wash of the style's own colour, eyebrow **TEACHER**, the **By {studio or artist}** line under the name (`class-owner` kept). With nobody confirmed it falls back to the MAKER ("STUDIO · no teacher yet"), then to the style itself with a dancer mark — never an empty face.
