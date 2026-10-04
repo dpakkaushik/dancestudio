@@ -265,3 +265,72 @@ export async function findRecentlyAskedPeople(
   const artists = await findArtistIds(supabase, rows.map((r) => r.id));
   return rows.map((r) => ({ ...toProfile(r), isArtist: artists.has(r.id) }));
 }
+
+/** a person the assistant picker may offer, with WHERE they come from — "Team",
+ *  or the crew they share with the person asking */
+export type PoolPerson = Profile & { isArtist: boolean; from: string };
+
+/** WHO MAY BE ASKED TO ASSIST ON A CLASS (4 Oct 2026, the user: "when adding a
+ *  class assistant to a class should be able to add only people from your own
+ *  team members or crew members. no one else").
+ *
+ *  Three sources, and nothing from the rest of DanceOS:
+ *   · the TEAM of the business the class belongs to — a studio's own people, or
+ *     an artist page's;
+ *   · the team of the artist page the person asking OWNS, when that is a
+ *     different business — so a teacher on a studio's class can bring their own
+ *     assistant;
+ *   · the confirmed members of every crew the person asking is confirmed in.
+ *  The person asking is left out. Each read is under its own policy: a team the
+ *  caller is not on reads nothing, and a crew's confirmed roster is public. ⚠ It
+ *  is the APP's rule — the picker offers only this list and `askClassPersonAction`
+ *  refuses anyone outside it — while `ask_class_person` itself still accepts
+ *  anybody, so a direct API call is not refused until a migration says so. */
+export async function findAssistantPool(supabase: SupabaseClient, businessId: string): Promise<PoolPerson[]> {
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return [];
+  const me = user.id;
+  const [team, myPages, myCrews] = await Promise.all([
+    supabase.from("business_members").select("user_id").eq("business_id", businessId).is("deleted_at", null).limit(200),
+    supabase.from("business_members").select("business_id, businesses (type, deleted_at)").eq("user_id", me).eq("member_role", "owner").is("deleted_at", null).limit(50),
+    supabase.from("crew_members").select("crew_id").eq("user_id", me).eq("status", "confirmed").is("deleted_at", null).limit(50),
+  ]);
+  for (const r of [team, myPages, myCrews]) {
+    if (r.error) throw new Error(`profiles.assistantPool failed: ${r.error.message}`);
+  }
+  type PageRow = { business_id: string; businesses: { type: string; deleted_at: string | null } | null };
+  const pageIds = ((myPages.data ?? []) as unknown as PageRow[])
+    .filter((p) => p.businesses?.type === "artist_page" && !p.businesses.deleted_at && p.business_id !== businessId)
+    .map((p) => p.business_id);
+  const crewIds = ((myCrews.data ?? []) as Array<{ crew_id: string }>).map((c) => c.crew_id);
+  const [pageTeam, crewRows] = await Promise.all([
+    pageIds.length
+      ? supabase.from("business_members").select("user_id").in("business_id", pageIds).is("deleted_at", null).limit(200)
+      : Promise.resolve({ data: [] as Array<{ user_id: string }>, error: null }),
+    crewIds.length
+      ? supabase.from("crew_members").select("user_id, crews (name, deleted_at)").in("crew_id", crewIds).eq("status", "confirmed").is("deleted_at", null).limit(400)
+      : Promise.resolve({ data: [] as Array<{ user_id: string; crews: { name: string; deleted_at: string | null } | null }>, error: null }),
+  ]);
+  if (pageTeam.error) throw new Error(`profiles.assistantPool failed: ${pageTeam.error.message}`);
+  if (crewRows.error) throw new Error(`profiles.assistantPool failed: ${crewRows.error.message}`);
+
+  /* the first source a person is found through names them — the class's own team first */
+  const from = new Map<string, string>();
+  const note = (id: string, word: string) => {
+    if (id !== me && !from.has(id)) from.set(id, word);
+  };
+  for (const r of (team.data ?? []) as Array<{ user_id: string }>) note(r.user_id, "Team");
+  for (const r of (pageTeam.data ?? []) as Array<{ user_id: string }>) note(r.user_id, "Your team");
+  for (const r of (crewRows.data ?? []) as unknown as Array<{ user_id: string; crews: { name: string; deleted_at: string | null } | null }>) {
+    if (r.crews && !r.crews.deleted_at) note(r.user_id, `Crew · ${r.crews.name}`);
+  }
+  const ids = [...from.keys()];
+  if (ids.length === 0) return [];
+  const { data, error } = await supabase.from("profiles").select(PROFILE_COLUMNS).in("id", ids).is("deleted_at", null).neq("role", "org").order("full_name", { ascending: true });
+  if (error) throw new Error(`profiles.assistantPool failed: ${error.message}`);
+  const rows = (data ?? []) as ProfileRow[];
+  const artists = await findArtistIds(supabase, rows.map((r) => r.id));
+  return rows.map((r) => ({ ...toProfile(r), isArtist: artists.has(r.id), from: from.get(r.id) ?? "Team" }));
+}

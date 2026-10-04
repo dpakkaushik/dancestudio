@@ -75,6 +75,18 @@ export async function addClassRoutineAction(input: z.input<typeof onClass>): Pro
   if (!parsed.success) return { error: "Invalid request" };
   const supabase = await me();
   try {
+    /* ⚠ A ROUTINE OF THE CLASS'S OWN STYLE (4 Oct 2026, the user: "add a routine
+       should only add routines of the same dance style"). The picker offers only
+       those; this asks again on the server so a hand-made request cannot put a
+       Kathak routine on a Hip-Hop class through the app. */
+    const [cls, routine] = await Promise.all([
+      supabase.from("classes").select("style").eq("id", parsed.data.classId).maybeSingle(),
+      supabase.from("routines").select("style").eq("id", parsed.data.routineId).maybeSingle(),
+    ]);
+    const classStyle = (cls.data as { style: string } | null)?.style;
+    const routineStyle = (routine.data as { style: string } | null)?.style;
+    if (!classStyle || !routineStyle) return { error: "Could not add the routine" };
+    if (classStyle !== routineStyle) return { error: `Only a ${classStyle} routine can go on a ${classStyle} class.` };
     await addClassRoutine(supabase, parsed.data.classId, parsed.data.routineId);
     if (parsed.data.shareSlug) revalidatePath(`/c/${parsed.data.shareSlug}`);
     revalidatePath("/routines");

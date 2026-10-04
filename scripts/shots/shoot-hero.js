@@ -439,7 +439,7 @@ const enterEdit = async (page) => {
     /* the register's hero is the tool card, not a heading element (the 18 Sep
        class-form re-cut drew it as a div) — its one stable control is the
        Create class pill, so that is what says the page is up */
-    await owner.getByRole("link", { name: /Create class/ }).waitFor();
+    await owner.getByRole("link", { name: /Add Class/ }).waitFor();
     check((await owner.getByText(/^Managing/).count()) === 0, "a desk: no Managing strip either — it is gone from every page");
     check((await owner.getByRole("link", { name: /Leave this studio/ }).count()) === 0, "a desk: and no blue Exit studio pill");
 

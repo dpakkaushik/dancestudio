@@ -4,7 +4,7 @@ import Link from "next/link";
 import type { CSSProperties, ReactNode } from "react";
 import { ToolActions, ToolBody, ToolFace } from "@/components/ui/ToolCard";
 import { dosStyleColor, DOS_LEVEL_LABEL } from "@/lib/constants/styles";
-import { DOS_DISPLAY, INK, LINE, MUTED, SUB } from "@/lib/design/tokens";
+import { DOS_DISPLAY, GREEN, INK, LINE, MUTED, SUB } from "@/lib/design/tokens";
 import { dosStyleInk } from "@/lib/format/styleInk";
 import { dateParts, timeOf } from "@/lib/format/session";
 import { photoUrl } from "@/lib/media/photo";
@@ -173,6 +173,7 @@ export function Half({
   hrefLabel,
   big = false,
   dim = false,
+  confirmed = false,
 }: {
   side: "artist" | "studio";
   tint: string;
@@ -192,6 +193,12 @@ export function Half({
   big?: boolean;
   /** an ask nobody has answered yet — the studio's own people see it, dimmed */
   dim?: boolean;
+  /** ⚠ THIS SIDE HAS SAID YES (4 Oct 2026, the user: "artist confirmed and
+   *  studio confirmed should cover the profile pic in green border for that
+   *  confirmation") — the face wears a green ring. The artist: a confirmed
+   *  teacher. The studio: the room said yes, or it made the class. An ask
+   *  nobody has answered, and "No teacher yet", wear none. */
+  confirmed?: boolean;
 }) {
   const style: CSSProperties = {
     flex: "1 1 0",
@@ -211,8 +218,12 @@ export function Half({
   };
   const inner = (
     <>
-      <span style={{ flexShrink: 0, opacity: dim ? 0.55 : 1, display: "inline-flex" }}>
-        <ToolFace name={name} photoPath={photoPath} tint={tint} size={big ? 56 : 46} icon={icon} />
+      <span
+        data-testid={confirmed ? `${side}-confirmed` : undefined}
+        title={confirmed ? "Confirmed" : undefined}
+        style={{ flexShrink: 0, opacity: dim ? 0.55 : 1, display: "inline-flex" }}
+      >
+        <ToolFace name={name} photoPath={photoPath} tint={tint} size={big ? 56 : 46} icon={icon} ring={confirmed ? GREEN : undefined} />
       </span>
       <span style={{ flex: 1, minWidth: 0, display: "block", textAlign: mirrored ? "right" : "left" }}>
         <span style={{ display: "block", fontSize: big ? 9.5 : 9, fontWeight: 900, letterSpacing: 0.8, textTransform: "uppercase", color: tint, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{eyebrow}</span>
@@ -377,8 +388,13 @@ export function ClassTile({ danceClass: c, filled = 0, artist, isToday = false, 
             made={artistMade}
             mirrored={false}
             title={artistMade ? madeBy : undefined}
+            /* a confirmed teacher, or the artist whose own class it is (seated as
+               its confirmed teacher at birth) — never "No teacher yet" */
+            confirmed={Boolean(artist) || (artistMade && Boolean(owner))}
           />
-          {studioSide ? <Half side="studio" tint={bc} name={studioSide.name} photoPath={studioSide.photoPath} eyebrow="Studio" made={studioMade} mirrored title={studioMade ? madeBy : undefined} /> : null}
+          {/* the studio half is only ever drawn for a side that has said yes: the
+              studio that made the class, or the venue that ACCEPTED the room */}
+          {studioSide ? <Half side="studio" tint={bc} name={studioSide.name} photoPath={studioSide.photoPath} eyebrow="Studio" made={studioMade} mirrored title={studioMade ? madeBy : undefined} confirmed /> : null}
         </div>
 
         {/* BAND 2 — the class: the style in its own ink, the level, what it is to you */}
@@ -386,12 +402,18 @@ export function ClassTile({ danceClass: c, filled = 0, artist, isToday = false, 
           {/* the style and its level, then the chips pushed to the right edge —
               the row WRAPS rather than the style breaking mid-word
               ("Contemporar / y", seen when a chip shared its line) */}
-          <div data-testid="class-title-row" style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: "4px 8px", minWidth: 0 }}>
-            {/* ⚠ BIGGER (4 Oct 2026, the user: "Bigger Style Name") — 25px, the
-                size a tool card's own heading is set at */}
-            <span data-testid="class-title" style={{ minWidth: 0, fontFamily: DOS_DISPLAY, fontSize: 25, fontWeight: 900, letterSpacing: -0.9, lineHeight: 1.05, color: ink, overflowWrap: "normal", wordBreak: "normal" }}>{headText}</span>
-            <span style={{ flexShrink: 0, fontSize: 9.5, fontWeight: 900, letterSpacing: 0.6, textTransform: "uppercase", color: MUTED }}>{levelWord}</span>
-            <span style={{ marginLeft: "auto", flexShrink: 0, display: "inline-flex", alignItems: "center", gap: 6 }}>
+          <div data-testid="class-title-row" style={{ display: "flex", flexWrap: "wrap", alignItems: "flex-start", gap: "4px 8px", minWidth: 0 }}>
+            {/* ⚠ THE LEVEL SITS UNDER THE STYLE (4 Oct 2026, the user: "level below
+                style name"). The pair never shrinks below its own width (`1 0
+                auto`), so when the chips cannot share the line they wrap under it
+                rather than the style breaking mid-word. */}
+            <span style={{ flex: "1 0 auto", minWidth: 0, maxWidth: "100%", display: "block" }}>
+              {/* ⚠ BIGGER (4 Oct 2026, the user: "Bigger Style Name") — 25px, the
+                  size a tool card's own heading is set at */}
+              <span data-testid="class-title" style={{ display: "block", fontFamily: DOS_DISPLAY, fontSize: 25, fontWeight: 900, letterSpacing: -0.9, lineHeight: 1.05, color: ink, overflowWrap: "normal", wordBreak: "normal" }}>{headText}</span>
+              <span data-testid="class-level" style={{ display: "block", marginTop: 4, fontSize: 10, fontWeight: 900, letterSpacing: 0.7, textTransform: "uppercase", color: MUTED }}>{levelWord}</span>
+            </span>
+            <span style={{ marginLeft: "auto", marginTop: 3, flexShrink: 0, display: "inline-flex", alignItems: "center", gap: 6 }}>
               {timeBadge}
               {titleChip}
               {href ? <span aria-hidden="true" style={{ color: LINE, fontSize: 15, fontWeight: 600, lineHeight: 1 }}>›</span> : null}

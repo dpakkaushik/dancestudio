@@ -890,7 +890,9 @@ test.describe.serial("DanceOS, end to end", () => {
 
     // ---- the class form is a two-step wizard (Step 11) --------------------
     await owner.goto(`/business/${businessId}/classes`);
-    await owner.getByText("Create class").click();
+    /* "Add Class" since 4 Oct 2026 (the user: "Create Class button to be renamed
+       as Add Class"); `exact` so the form's own "Add class" heading never matches */
+    await owner.getByRole("link", { name: "Add Class", exact: true }).click();
     // step 1 — basics: when, what, and the room it runs in (no name: the class is
     // called "{style} · {level}", so the register reads "Bollywood · All levels")
     const inThreeDays = new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
@@ -1077,6 +1079,16 @@ test.describe.serial("DanceOS, end to end", () => {
     // 18 Sep 2026: adding an assistant is done HERE, not in the form — the owner or
     // the person taking the class searches DanceOS and the person is asked
     await expect(owner.getByRole("button", { name: "Add someone to the team" })).toBeVisible();
+    /* ⚠ FROM YOUR TEAM AND YOUR CREWS ONLY (4 Oct 2026, the user: "only people from
+       your own team members or crew members. no one else"). The picker searches no
+       further: the learner — on DanceOS, on no team of this studio's and in no crew
+       with the owner — is not offered however their name is typed. */
+    await owner.getByRole("button", { name: "Add someone to the team" }).click();
+    await expect(owner.getByLabel("Search DanceOS for an assistant")).toHaveCount(0);
+    await owner.getByLabel("Search your team and crews for an assistant").fill(learnerName);
+    await expect(owner.getByText("Nobody on your team or your crews", { exact: false })).toBeVisible();
+    await expect(owner.getByRole("button", { name: `Ask ${learnerName} to assist on this class` })).toHaveCount(0);
+    await owner.getByRole("button", { name: "Add someone to the team" }).click();
     // the artist column is a door to the person (11900), and Change goes to the form
     await expect(owner.getByRole("link", { name: `Open ${trainerName}` })).toBeVisible();
     await expect(owner.getByRole("link", { name: "Change the artist taking this class" })).toBeVisible();
@@ -1445,7 +1457,9 @@ test.describe.serial("DanceOS, end to end", () => {
        row carried. The same slice's Rooms and Team buttons kept theirs, and the
        only way to know which of the three moved was to DIFF the three files
        against HEAD rather than hunt with another 12-minute run. */
-    await learner.getByRole("link", { name: "Create crew", exact: true }).click();
+    /* "Add Crew" since 4 Oct 2026 (the user); the form's own submit below still
+       reads "Create crew", because pressing it is the act of creating */
+    await learner.getByRole("link", { name: "Add Crew", exact: true }).click();
     /* ⚠ AND IT OPENS AS A SHEET OVER THE HUB (22 Sep 2026, ask 6) — `?new=1` on
        `/crews` rather than a page away. `/crews/new` is still the page. */
     await learner.waitForURL(/\/crews\?new=1$/);
@@ -3576,6 +3590,14 @@ test.describe.serial("DanceOS, end to end", () => {
     await expect(trainer.getByRole("button", { name: "Name the routine first" })).toBeVisible();
     await expect(trainer.getByRole("dialog", { name: "Add Routine" }).getByText("Paste the video link", { exact: true })).toHaveCount(0);
     await trainer.getByLabel("Routine name").fill(routineName);
+    /* ⚠ THE CLASS'S OWN STYLE (4 Oct 2026, the user: "add a routine should only
+       add routines of the same dance style") — the form opens on Hip-Hop, and the
+       class this routine goes on is Bollywood, so it is picked here. A routine of
+       another style is not offered on the class page at all (asserted below). */
+    const routineSheet = trainer.getByRole("dialog", { name: "Add Routine" });
+    await routineSheet.getByLabel("Dance style", { exact: true }).click();
+    await routineSheet.getByLabel("Search styles").fill("Bolly");
+    await routineSheet.getByRole("button", { name: "Bollywood", exact: true }).click();
     // ⚠ no Continue: five fields, one page (22 Sep 2026)
     // ⚠ NO SONG NAME FIELD since 19 Sep 2026 (the user: "just remove song name
     // from the add routine form") — the link or the MP3 IS the song
@@ -3601,6 +3623,8 @@ test.describe.serial("DanceOS, end to end", () => {
     // ── the class page: the class's CONFIRMED ARTIST puts it on, and it shows
     await trainer.goto(`/c/${shareSlug}`);
     await trainer.getByRole("button", { name: "Add a routine to this class" }).click();
+    // the picker names the class's style and offers routines of it alone (4 Oct 2026)
+    await expect(trainer.getByText("WHICH BOLLYWOOD ROUTINE?", { exact: true })).toBeVisible();
     await trainer.getByRole("button", { name: `Put ${routineName} on this class` }).click();
     await expect(trainer.getByRole("link", { name: `Open the song for ${routineName}` })).toBeVisible({ timeout: 15_000 });
 

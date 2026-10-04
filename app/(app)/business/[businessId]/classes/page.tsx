@@ -60,7 +60,9 @@ export default async function BusinessClassesPage({
     findClassesByBusiness(supabase, businessId),
     findClassesHostedByBusiness(supabase, businessId),
   ]);
-  const sessionIds = classes.map((c) => c.session?.id).filter(Boolean) as string[];
+  /* ⚠ the hosted classes' seats too (4 Oct 2026): their cards print "N/M Booked"
+     on the bar, and without a count they read 0 */
+  const sessionIds = [...classes, ...hosted.map((h) => h.danceClass)].map((c) => c.session?.id).filter(Boolean) as string[];
   const [counts, state, artists, whyNoClass, venueRequests, sentAsks] = await Promise.all([
     countEnrolledBySession(supabase, sessionIds),
     findClassPublishState(supabase, businessId).catch(() => new Map()),

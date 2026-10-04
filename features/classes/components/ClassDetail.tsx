@@ -24,6 +24,8 @@ import { RefundSheet } from "@/features/payments/components/RefundSheet";
 import { dosStyleColor, DOS_LEVEL_LABEL } from "@/lib/constants/styles";
 import { DOS_DISPLAY, DOS_UI, GOLD, GREEN } from "@/lib/design/tokens";
 import { dateParts, durText, timeRangeOf } from "@/lib/format/session";
+import { splitAddress } from "@/lib/format/address";
+import { inkOn } from "@/components/ui/ToolCard";
 import { useCloseOnBack } from "@/lib/hooks/useCloseOnBack";
 import { photoUrl } from "@/lib/media/photo";
 import type { ClassRegister } from "@/repositories/attendance";
@@ -38,6 +40,7 @@ import type { ClassMoney, PaidReceipt } from "@/types/payment";
 import type { RefundRequest } from "@/types/refund";
 import { AddAssistant, AssistantControls } from "./ClassTeamControls";
 import { ScanSheet, type ScanOutcome } from "@/features/people/components/ScanSheet";
+import type { PoolHit } from "@/features/people/components/PeoplePicker";
 import { ClassShare } from "./ClassShare";
 import { ClassDeleteChip } from "./ClassDeleteChip";
 import { DancerIcon, Half, SeatBar, WhenTile } from "./ClassTile";
@@ -197,6 +200,15 @@ export interface ClassDetailProps {
   isOwner?: boolean;
   /** the owner, or the class's confirmed teacher: the two who may add an assistant (18 Sep 2026) */
   canAddAssistant?: boolean;
+  /** WHO THEY MAY ASK (4 Oct 2026): their team and their crews, and nobody else
+   *  — read only when `canAddAssistant` */
+  assistantPool?: PoolHit[];
+  /** THE VENUE'S FULL ADDRESS (4 Oct 2026, the user: "full address of the
+   *  location") — the pin resolved to words, or null when there is no pin or the
+   *  geocoder did not answer in time; the area and city stand in then */
+  placeAddress?: string | null;
+  /** the venue's pin, so Maps opens the exact point rather than a name search */
+  placePin?: { lat: number; lng: number } | null;
   /** an artist's class: the ARTIST'S profile, which the place row opens when the
    *  class is at their own place (19 Sep 2026 — never the /artist redirect) */
   ownerHref?: string | null;
@@ -245,6 +257,9 @@ export function ClassDetail({
   paidUserIds = [],
   isOwner = false,
   canAddAssistant = false,
+  assistantPool = [],
+  placeAddress = null,
+  placePin = null,
   ownerHref = null,
   routines = [],
   myRoutines = [],
@@ -413,9 +428,18 @@ export function ClassDetail({
   const placeCity = atVenue ? c.venueCity : c.businessCity;
   const placeIsStudio = atVenue || c.businessType === "studio";
   const placeHref = atVenue ? `/studio/${c.venueBusinessId}` : c.businessType === "studio" ? `/studio/${c.businessId}` : (ownerHref ?? `/artist/${c.businessId}`);
-  const whereBits = [c.room, placeCity].filter(Boolean).join(" · ");
-  const mapsQuery = [c.room, placeName, placeArea, placeCity].filter(Boolean).join(", ");
-  const mapsLink = !placeIsStudio && c.mapsUrl ? c.mapsUrl : `https://maps.google.com/?q=${encodeURIComponent(mapsQuery)}`;
+  const mapsQuery = [placeName, placeArea, placeCity].filter(Boolean).join(", ");
+  /* the way there: the exact pin when there is one, the artist's own map link for
+     their own place, a name search last (4 Oct 2026) */
+  const mapsLink = placePin
+    ? `https://www.google.com/maps/search/?api=1&query=${placePin.lat},${placePin.lng}`
+    : !placeIsStudio && c.mapsUrl
+      ? c.mapsUrl
+      : `https://maps.google.com/?q=${encodeURIComponent(mapsQuery)}`;
+  /* the address in words — the geocoder's, else the area and city the place keeps */
+  const addressLines = placeAddress
+    ? splitAddress(placeAddress)
+    : { street: [placeArea, placeCity].filter(Boolean).join(", ") || "No address on record yet", locality: null };
 
   /* THE TWO HALVES (4 Oct 2026) — the card's own rule (`ClassTile`), with the
      page's door on the artist half. The artist is whoever is down to take it
@@ -430,11 +454,15 @@ export function ClassDetail({
   const studioMade = classOwner?.kind === "studio";
   const studioHalf = studioMade ? classOwner : (c.venue ?? null);
   const madeBy = classOwner ? `Created by ${classOwner.name} — ${classOwner.kind === "artist" ? "an artist" : "a studio"}` : undefined;
-  const artistHalf: { name: string; photoPath: string | null; icon?: ReactNode; eyebrow: string; dim: boolean; href?: string; hrefLabel?: string } = whoTakes
-    ? { name: whoTakes.personName, photoPath: whoTakes.avatarPath, eyebrow: artist ? "Artist" : "Artist · Asked", dim: !artist, href: `/person/${whoTakes.userId}`, hrefLabel: `Open ${whoTakes.personName}` }
+  /* ⚠ `confirmed` IS THE GREEN RING (4 Oct 2026, the user: "artist confirmed …
+     should cover the profile pic in green border"): a teacher who has said yes,
+     or the artist whose own class it is. The ask nobody has answered stays dim
+     and ringless, and so does "No teacher yet". */
+  const artistHalf: { name: string; photoPath: string | null; icon?: ReactNode; eyebrow: string; dim: boolean; confirmed: boolean; href?: string; hrefLabel?: string } = whoTakes
+    ? { name: whoTakes.personName, photoPath: whoTakes.avatarPath, eyebrow: artist ? "Artist" : "Artist · Asked", dim: !artist, confirmed: Boolean(artist), href: `/person/${whoTakes.userId}`, hrefLabel: `Open ${whoTakes.personName}` }
     : artistMade && classOwner
-      ? { name: classOwner.name, photoPath: classOwner.photoPath, eyebrow: "Artist", dim: false, href: ownerHref ?? undefined, hrefLabel: `${classOwner.name} — their profile` }
-      : { name: "No teacher yet", photoPath: null, icon: DancerIcon, eyebrow: "Artist", dim: false };
+      ? { name: classOwner.name, photoPath: classOwner.photoPath, eyebrow: "Artist", dim: false, confirmed: true, href: ownerHref ?? undefined, hrefLabel: `${classOwner.name} — their profile` }
+      : { name: "No teacher yet", photoPath: null, icon: DancerIcon, eyebrow: "Artist", dim: false, confirmed: false };
 
   /* one grammar for the money sheets — the same date/time the card prints */
   const whenText = when
@@ -724,7 +752,11 @@ export function ClassDetail({
               href={artistHalf.href}
               hrefLabel={artistHalf.hrefLabel}
               title={artistMade ? madeBy : undefined}
+              confirmed={artistHalf.confirmed}
             />
+            {/* the studio half is only drawn for a side that has said yes — the
+                studio that made the class, or the venue that ACCEPTED (`c.venue`
+                is null until then) — so it always wears the green ring */}
             {studioHalf ? (
               <Half
                 side="studio"
@@ -736,18 +768,23 @@ export function ClassDetail({
                 made={studioMade}
                 mirrored
                 title={studioMade ? madeBy : undefined}
+                confirmed
               />
             ) : null}
           </div>
 
           {/* BAND 2 — the class */}
           <div style={{ padding: "14px 14px 15px" }}>
-            <div data-testid="class-title-row" style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: "4px 9px", minWidth: 0 }}>
-              {/* ⚠ THE PAGE'S OWN `<h1>` (28 Sep 2026) — the style IS this page's
-                  name. Bigger since 4 Oct 2026 ("Bigger Style Name"). */}
-              <h1 style={{ margin: 0, minWidth: 0, fontFamily: DOS_DISPLAY, fontSize: 31, fontWeight: 900, letterSpacing: -1.1, lineHeight: 1.04, color: ink, overflowWrap: "normal", wordBreak: "normal" }}>{c.style}</h1>
-              <span style={{ flexShrink: 0, fontSize: 10, fontWeight: 900, letterSpacing: 0.6, textTransform: "uppercase", color: "var(--muted)" }}>{levelWord}</span>
-              <span style={{ marginLeft: "auto", flexShrink: 0, display: "inline-flex", alignItems: "center", gap: 6 }}>
+            <div data-testid="class-title-row" style={{ display: "flex", flexWrap: "wrap", alignItems: "flex-start", gap: "4px 9px", minWidth: 0 }}>
+              {/* ⚠ THE LEVEL SITS UNDER THE STYLE (4 Oct 2026, the user: "level
+                  below style name") — the card's own arrangement */}
+              <div style={{ flex: "1 0 auto", minWidth: 0, maxWidth: "100%" }}>
+                {/* ⚠ THE PAGE'S OWN `<h1>` (28 Sep 2026) — the style IS this page's
+                    name. Bigger since 4 Oct 2026 ("Bigger Style Name"). */}
+                <h1 style={{ margin: 0, fontFamily: DOS_DISPLAY, fontSize: 31, fontWeight: 900, letterSpacing: -1.1, lineHeight: 1.04, color: ink, overflowWrap: "normal", wordBreak: "normal" }}>{c.style}</h1>
+                <div data-testid="class-level" style={{ marginTop: 5, fontSize: 10.5, fontWeight: 900, letterSpacing: 0.7, textTransform: "uppercase", color: "var(--muted)" }}>{levelWord}</div>
+              </div>
+              <span style={{ marginLeft: "auto", marginTop: 5, flexShrink: 0, display: "inline-flex", alignItems: "center", gap: 6 }}>
                 {liveNow && !done ? (
                   <span style={{ display: "inline-flex", alignItems: "center", gap: 4, fontSize: 9, fontWeight: 900, letterSpacing: 0.7, textTransform: "uppercase", padding: "4px 9px", borderRadius: 999, background: GREEN, color: "#fff" }}>Live</span>
                 ) : done ? (
@@ -845,29 +882,10 @@ export function ClassDetail({
               </div>
             ))}
           </div>
-          {/* the count travels with the switch (11974-11991): scroll into a register
-              forty names long and the tabs still say how many of them are in the room */}
-          {(() => {
-            const openRefunds = refunds.filter((r) => r.status === "requested");
-            const owed = openRefunds.reduce((a, r) => a + (r.amountInr ?? 0), 0);
-            const line =
-              ownerSeg === "att"
-                ? `${checkedInCount} of ${c.capacity} in the room · ${sessionPhase === "live" ? "session running" : sessionPhase === "ended" ? "session over" : "not started yet"}`
-                : ownerSeg === "ref"
-                  ? openRefunds.length
-                    ? `${openRefunds.length} to settle · ₹${owed.toLocaleString("en-IN")} owed`
-                    : "Nothing to settle"
-                  : ownerSeg === "money"
-                    ? `${filled} of ${c.capacity} booked · ${price}`
-                    : `${filled} of ${c.capacity} booked · ${c.style} · ${levelWord}`;
-            const dot = ownerSeg === "att" && sessionPhase === "live" ? "#22C55E" : ownerSeg === "ref" && openRefunds.length ? "#F59E0B" : col;
-            return (
-              <div aria-live="polite" style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 6, fontSize: 10, fontWeight: 700, color: "var(--muted)", minWidth: 0 }}>
-                <span style={{ flexShrink: 0, width: 5, height: 5, borderRadius: 3, background: dot }} />
-                <span style={{ minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{line}</span>
-              </div>
-            );
-          })()}
+          {/* ⚠ NO STATUS LINE UNDER THE TABS (4 Oct 2026, the user: "text below
+              details, attendance row to be removed"). It repeated what the card
+              above already says — the seats on the bar, the style and level in
+              the title — and each panel opens on its own figures. */}
           </>
         )}
       </div>
@@ -1132,81 +1150,60 @@ export function ClassDetail({
             </svg>
           }
         >
-          <div
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: 10,
-              paddingBottom: 9,
-              marginBottom: 9,
-              borderBottom: "1.5px solid var(--el)",
-            }}
-          >
-            <Link href={placeHref} aria-label={`Open ${placeName}`} style={{ display: "flex", alignItems: "center", gap: 10, flex: 1, minWidth: 0, color: "var(--text)", textDecoration: "none" }}>
-              <div
-                style={{
-                  width: 34,
-                  height: 34,
-                  borderRadius: 11,
-                  flexShrink: 0,
-                  background: `linear-gradient(135deg,${STUDIO_RING[0]},${STUDIO_RING[1]})`,
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  color: "#fff",
-                  fontSize: 11.5,
-                  fontWeight: 900,
-                }}
-              >
-                {placeName.split(" ").map((x) => x[0]).join("").slice(0, 2).toUpperCase()}
+          {/* ⚠ THE ROOM, THE PLACE, ITS FULL ADDRESS, WHAT THE ROOM HAS AND THE WAY
+              THERE (4 Oct 2026, the user: "At the studio in class detail should
+              have full address of the location with bigger room name, maps button
+              and amenities"). The room is the headline — it is the one thing a
+              dancer looks for on arriving — then the studio as a door, then the
+              address in words, the amenities, and a real Maps button at the foot. */}
+          {c.room ? (
+            <div style={{ marginBottom: 11 }}>
+              <div style={{ fontSize: 9, fontWeight: 900, letterSpacing: 0.9, color: "var(--muted)" }}>ROOM</div>
+              <div data-testid="class-room" style={{ fontFamily: DOS_DISPLAY, fontSize: 23, fontWeight: 800, letterSpacing: -0.6, lineHeight: 1.1, color: ink, marginTop: 2, overflowWrap: "anywhere" }}>
+                {c.room}
               </div>
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ fontSize: 12.5, fontWeight: 800, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                  {placeName}
-                </div>
-                <div
-                  style={{
-                    fontSize: 9.5,
-                    fontWeight: 800,
-                    letterSpacing: 0.5,
-                    color: "var(--muted)",
-                    textTransform: "uppercase",
-                    overflow: "hidden",
-                    textOverflow: "ellipsis",
-                    whiteSpace: "nowrap",
-                  }}
-                >
-                  {whereBits}
-                </div>
-              </div>
-            </Link>
-            <a
-              href={mapsLink}
-              target="_blank"
-              rel="noopener noreferrer"
-              aria-label="Open this venue in Maps"
+            </div>
+          ) : null}
+          <Link href={placeHref} aria-label={`Open ${placeName}`} style={{ display: "flex", alignItems: "center", gap: 10, color: "var(--text)", textDecoration: "none" }}>
+            <div
               style={{
+                width: 36,
+                height: 36,
+                borderRadius: 11,
                 flexShrink: 0,
-                display: "inline-flex",
+                background: `linear-gradient(135deg,${STUDIO_RING[0]},${STUDIO_RING[1]})`,
+                display: "flex",
                 alignItems: "center",
-                gap: 4,
-                fontSize: 10.5,
-                fontWeight: 800,
-                color: col,
-                cursor: "pointer",
-                border: `1.5px solid ${col}44`,
-                borderRadius: 999,
-                padding: "5px 11px",
-                textDecoration: "none",
+                justifyContent: "center",
+                color: "#fff",
+                fontSize: 12,
+                fontWeight: 900,
               }}
             >
-              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke={col} strokeWidth="2" strokeLinecap="round">
-                <path d="M7 17 17 7M9 7h8v8" />
-              </svg>
-              Maps
-            </a>
+              {placeName.split(" ").map((x) => x[0]).join("").slice(0, 2).toUpperCase()}
+            </div>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ fontSize: 9, fontWeight: 900, letterSpacing: 0.8, color: "var(--muted)" }}>{placeIsStudio ? "STUDIO" : "HELD BY"}</div>
+              <div style={{ fontSize: 14, fontWeight: 800, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{placeName}</div>
+            </div>
+            <span aria-hidden="true" style={{ color: "var(--muted)", fontSize: 15, fontWeight: 800 }}>
+              ›
+            </span>
+          </Link>
+          {/* the address in words — the pin resolved, or the area and city when
+              there is no pin or the geocoder did not answer in time */}
+          <div data-testid="class-address" style={{ display: "flex", alignItems: "flex-start", gap: 9, marginTop: 11, padding: "10px 11px", borderRadius: 13, background: "var(--el)" }}>
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke={col} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" style={{ flexShrink: 0, marginTop: 1 }}>
+              <path d="M12 21s-6.5-5.6-6.5-11a6.5 6.5 0 0 1 13 0c0 5.4-6.5 11-6.5 11z" />
+              <circle cx="12" cy="10" r="2.3" />
+            </svg>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ fontSize: 12.5, fontWeight: 700, color: "var(--text)", lineHeight: 1.4, overflowWrap: "anywhere" }}>{addressLines.street}</div>
+              {addressLines.locality ? <div style={{ fontSize: 11, color: "var(--muted)", marginTop: 2, lineHeight: 1.4 }}>{addressLines.locality}</div> : null}
+            </div>
           </div>
           {/* what the room HAS — the amenities the studio set on it (12278-12354) */}
+          <div style={{ fontSize: 9, fontWeight: 900, letterSpacing: 0.9, color: "var(--muted)", margin: "12px 0 6px" }}>AMENITIES</div>
           <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 6 }}>
             {roomAmenities.length > 0 ? (
               /* the app's one amenity chip — the drawn icon in the style's colour
@@ -1218,6 +1215,33 @@ export function ClassDetail({
               </span>
             )}
           </div>
+          <a
+            href={mapsLink}
+            target="_blank"
+            rel="noopener noreferrer"
+            aria-label="Open this venue in Maps"
+            data-testid="class-maps"
+            style={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              gap: 7,
+              marginTop: 13,
+              padding: "11px 14px",
+              borderRadius: 14,
+              background: col,
+              color: inkOn(col),
+              fontSize: 13,
+              fontWeight: 800,
+              textDecoration: "none",
+            }}
+          >
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+              <path d="M12 21s-6.5-5.6-6.5-11a6.5 6.5 0 0 1 13 0c0 5.4-6.5 11-6.5 11z" />
+              <circle cx="12" cy="10" r="2.3" />
+            </svg>
+            Open in Maps
+          </a>
         </Sec>
 
         {/* ── WHAT THIS CLASS IS TAUGHT FROM (19 Sep 2026, the user: "Artist
@@ -1238,7 +1262,7 @@ export function ClassDetail({
               </svg>
             }
           >
-            <ClassRoutines classId={c.id} shareSlug={c.shareSlug} col={col} routines={routines} mine={myRoutines} canEdit={canSetRoutines} />
+            <ClassRoutines classId={c.id} shareSlug={c.shareSlug} col={col} routines={routines} mine={myRoutines} canEdit={canSetRoutines} style={c.style} />
           </Sec>
         )}
 
@@ -1297,7 +1321,7 @@ export function ClassDetail({
             {assistants.length === 0 && pendingAssistants.length === 0 && !canAddAssistant ? <div style={{ fontSize: 11, color: "var(--muted)", padding: "6px 0" }}>No assistants on this class.</div> : null}
             {/* the owner, or the person taking the class, asks somebody — from here,
                 not from the form (18 Sep 2026) */}
-            {canAddAssistant ? <AddAssistant classId={c.id} col={col} exclude={classPeople.filter((cl) => cl.status !== "rejected").map((cl) => cl.userId)} /> : null}
+            {canAddAssistant ? <AddAssistant classId={c.id} col={col} exclude={classPeople.filter((cl) => cl.status !== "rejected").map((cl) => cl.userId)} pool={assistantPool} /> : null}
             {assisting ? (
               <div style={{ fontSize: 10.5, color: "var(--sub)", marginTop: 8, paddingTop: 8, borderTop: "1.5px solid var(--el)" }}>
                 You are assisting on this class{canAtt || canRef ? ` — you hold ${[canAtt ? "attendance" : null, canRef ? "refunds" : null].filter(Boolean).join(" and ")}.` : "."}

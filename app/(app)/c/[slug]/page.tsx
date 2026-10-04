@@ -18,6 +18,9 @@ import { findRoomById } from "@/repositories/rooms";
 import { reconcileRailRefunds } from "@/services/refundRail";
 import { findMySeat } from "@/repositories/businesses";
 import type { ClassBookingStatus } from "@/types/classBooking";
+import type { PublicClassListing } from "@/types/class";
+import { reversePlace } from "@/lib/geo/places";
+import { findAssistantPool } from "@/repositories/profiles";
 
 /** The class detail page at its booking link — /c/{slug} (prototype S_class; the
  *  link grammar is shareRecOf's danceos.in/c/{slug}). Works signed out: RLS shows
@@ -41,6 +44,39 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
     title: `${danceClass.title} — ${danceClass.businessName} · DanceOS`,
     description: `Book ${danceClass.title} at ${danceClass.businessName}${danceClass.businessCity ? `, ${danceClass.businessCity}` : ""} on DanceOS.`,
   };
+}
+
+/** THE PLACE'S PIN AND ITS FULL ADDRESS (4 Oct 2026, the user: "At the studio in
+ *  class detail should have full address of the location"). The place is the
+ *  studio that said yes to an artist's class, the studio whose class it is, or —
+ *  for an artist's class at a place of their own — the pin they put on the class.
+ *  A business keeps no street address, so the address is the pin resolved by the
+ *  location picker's own geocoder, exactly as the Rooms desk does it. ⚠ A
+ *  business pin that was never placed is the city's centre, a guess, so it is
+ *  neither resolved nor handed to Maps; ⚠ the geocoder gets 1.2 s, and past that
+ *  (or with no key, or on any error) the page draws the area and city instead of
+ *  waiting. Never throws: a class page must not fail over its address. */
+async function placeOf(
+  supabase: Awaited<ReturnType<typeof createSupabaseServerClient>>,
+  c: PublicClassListing
+): Promise<{ pin: { lat: number; lng: number } | null; address: string | null }> {
+  try {
+    const atVenue = Boolean(c.venueName && c.venueBusinessId && c.venueStatus === "accepted");
+    const placeBusinessId = atVenue ? c.venueBusinessId : c.businessType === "studio" ? c.businessId : null;
+    let pin: { lat: number; lng: number } | null = null;
+    if (placeBusinessId) {
+      const { data } = await supabase.from("businesses").select("lat, lng, location_set_at").eq("id", placeBusinessId).maybeSingle();
+      const b = data as { lat: number | string | null; lng: number | string | null; location_set_at: string | null } | null;
+      if (b?.location_set_at && b.lat != null && b.lng != null) pin = { lat: Number(b.lat), lng: Number(b.lng) };
+    } else if (c.lat != null && c.lng != null) {
+      pin = { lat: c.lat, lng: c.lng };
+    }
+    if (!pin) return { pin: null, address: null };
+    const resolved = await Promise.race([reversePlace(pin.lat, pin.lng), new Promise<null>((r) => setTimeout(() => r(null), 1200))]);
+    return { pin, address: resolved?.label?.trim() || null };
+  } catch {
+    return { pin: null, address: null };
+  }
 }
 
 const isLiveNow = (startsAt: string, endsAt: string): boolean => {
@@ -137,6 +173,8 @@ export default async function ClassSharePage({
   const mayRunRegister =
     canManage ||
     (myClassPerson?.status === "confirmed" && (myClassPerson.canAttendance || Boolean(seat?.canAttendance)));
+  /* 18 Sep 2026: the owner hands out jobs; the owner or the confirmed teacher adds assistants */
+  const canAddAssistant = role === "owner" || (myClassPerson?.kind === "artist" && myClassPerson.status === "confirmed");
 
   /* ONE ROUND TRIP FOR THE FIVE INDEPENDENT READS (19 Sep 2026, the user: "make
      app snappier") — they used to run one after another, four serial waits on
@@ -148,7 +186,7 @@ export default async function ClassSharePage({
      published classes only); and, for an artist's class, WHOSE profile the
      place row opens — the person behind the artist page, so the link never
      goes through the /artist redirect. */
-  const [receipt, register, paidUserIds, room, ownerId, routines, myRoutines, canSetRoutines, passes, actingAs] = await Promise.all([
+  const [receipt, register, paidUserIds, room, ownerId, routines, myRoutines, canSetRoutines, passes, actingAs, assistantPool, place] = await Promise.all([
     myBooking && danceClass.priceInr > 0 ? findPaidReceiptByClassBooking(supabase, myBooking.id) : Promise.resolve(null),
     mayRunRegister ? findClassRegister(supabase, danceClass.id) : Promise.resolve(null),
     mayRunRegister && sessionId && danceClass.priceInr > 0 ? findPaidUserIdsBySession(supabase, sessionId) : Promise.resolve(new Set<string>()),
@@ -169,6 +207,11 @@ export default async function ClassSharePage({
        moved off `profiles.role` on 27 Sep, when R48 left that role with no
        holders and the gate silently open) */
     user ? resolveActingAs(supabase, as) : Promise.resolve(null),
+    /* WHO MAY BE ASKED TO ASSIST (4 Oct 2026): the team and the crews of the
+       person asking — read only for the two who may ask */
+    user && canAddAssistant ? findAssistantPool(supabase, danceClass.businessId).catch(() => []) : Promise.resolve([]),
+    /* THE PLACE'S PIN AND ITS FULL ADDRESS (4 Oct 2026) */
+    placeOf(supabase, danceClass),
   ]);
 
   /* Who may answer a refund request: the owner, or somebody holding the refunds
@@ -218,9 +261,11 @@ export default async function ClassSharePage({
       canSettleRefunds={canSettleRefunds}
       classMoney={classMoney}
       paidUserIds={[...paidUserIds]}
-      /* 18 Sep 2026: the owner hands out jobs; the owner or the confirmed teacher adds assistants */
       isOwner={role === "owner"}
-      canAddAssistant={role === "owner" || (myClassPerson?.kind === "artist" && myClassPerson.status === "confirmed")}
+      canAddAssistant={canAddAssistant}
+      assistantPool={assistantPool}
+      placeAddress={place.address}
+      placePin={place.pin}
       /* an artist's class at their own place opens the ARTIST'S profile from the place row (19 Sep 2026) */
       ownerHref={ownerId ? `/person/${ownerId}` : null}
       routines={routines}

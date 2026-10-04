@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
+import type { ReactNode } from "react";
 import { ClassForm } from "@/features/classes/components/ClassForm";
 import { ClassesManager } from "@/features/classes/components/ClassesManager";
 import { ClassTile } from "@/features/classes/components/ClassTile";
@@ -88,6 +89,21 @@ const SHOWS: Record<Show, { label: string; aria: string }> = {
  *  the wrong place for a class you are the teacher of. */
 const showsFor = (runs: boolean): Show[] => (runs ? ["manage", "booked", "assist"] : ["booked", "assist"]);
 
+/** A SECTION OF A SEGMENT — UPCOMING or COMPLETED (4 Oct 2026) — in the same
+ *  micro-caps head the ASKED blocks above it wear, so one segment reads one way.
+ *  An empty section says so in a line rather than vanishing, because the user
+ *  asked for both sections and a missing one reads as a missing feature. */
+function ClassSection({ id, title, n, empty, last = false, children }: { id: string; title: string; n: number; empty: string; last?: boolean; children: ReactNode }) {
+  return (
+    <section data-testid={id} aria-label={title} style={{ marginBottom: last ? 0 : 22 }}>
+      <div style={{ fontSize: 9.5, fontWeight: 900, letterSpacing: 1, color: MUTED, margin: "0 0 9px" }}>
+        {title.toUpperCase()} · {n}
+      </div>
+      {n > 0 ? children : <div style={{ fontSize: 12, color: SUB, padding: "4px 2px 2px" }}>{empty}</div>}
+    </section>
+  );
+}
+
 const when = (iso: string | null): string =>
   iso
     ? new Intl.DateTimeFormat("en-IN", { timeZone: "Asia/Kolkata", weekday: "short", day: "numeric", month: "short", hour: "numeric", minute: "2-digit" }).format(new Date(iso))
@@ -158,12 +174,27 @@ export default async function MyClassesPage({ searchParams }: { searchParams: Pr
   const show: Show =
     rawShow === "assist" ? "assist" : rawShow === "manage" && runs ? "manage" : rawShow === "booked" ? "booked" : runs ? "manage" : "booked";
   const booked = class_bookings.filter((e) => e.status === "enrolled").length;
-  /* the teacher each card wears in its centre (18 Sep 2026) — one read for every segment */
-  const bookedArtists = await findClassArtists(supabase, [
-    ...class_bookings.map((e) => e.classId),
-    ...teaching.map((c) => c.classId),
-    ...assisting.map((c) => c.classId),
+  /* the teacher each card wears in its centre (18 Sep 2026) — one read for every segment.
+     ⚠ AND THE SEATS ON THE BAR (4 Oct 2026). The bar has printed "N/M Booked"
+     since the morning, and this page never passed a count, so your own booked
+     card read "0/14 Booked" beside its BOOKED chip. `session_seat_counts` is the
+     aggregate every public card already reads — a number, never a name. */
+  const seatSessionIds = [
+    ...class_bookings.map((e) => e.sessionId),
+    ...assisting.map((c) => c.sessionId),
+    ...askedToAssist.map((c) => c.sessionId),
+    ...askedToTake.map((c) => c.sessionId),
+    ...teaching.map((c) => c.sessionId),
+  ].filter((s): s is string => Boolean(s));
+  const [bookedArtists, seats] = await Promise.all([
+    findClassArtists(supabase, [
+      ...class_bookings.map((e) => e.classId),
+      ...teaching.map((c) => c.classId),
+      ...assisting.map((c) => c.classId),
+    ]),
+    countEnrolledBySession(supabase, seatSessionIds).catch(() => new Map<string, number>()),
   ]);
+  const seatsOf = (sessionId: string | null) => (sessionId ? (seats.get(sessionId) ?? 0) : 0);
 
   /* ⚠ THE PAGE'S CLASSES ARE READ ONCE, WHICHEVER SEGMENT IS OPEN (19 Sep 2026):
      the Manage pill carries a COUNT now, so the number has to be true from the
@@ -199,6 +230,20 @@ export default async function MyClassesPage({ searchParams }: { searchParams: Pr
 
   /* the classes a studio put you in front of, in the register's own row shape */
   const nowIso = new Date().toISOString();
+
+  /* ⚠ UPCOMING · COMPLETED (4 Oct 2026, the user: "Booked and assist classes to
+     have Upcoming and Completed as sections"). The clock decides, as everywhere
+     since 30 Sep — a class is completed when its session has ENDED, never when a
+     column says so (nothing writes `status = 'completed'`). What is coming reads
+     soonest first; what is done reads most recent first. A row with no session
+     yet is still to come. */
+  const nowMs = Date.parse(nowIso);
+  const ended = (endsAt: string | null) => endsAt !== null && Date.parse(endsAt) <= nowMs;
+  const soonest = (a: string | null, b: string | null) => (a ?? "9").localeCompare(b ?? "9");
+  const bookedUpcoming = class_bookings.filter((e) => !ended(e.endsAt)).sort((a, b) => soonest(a.startsAt, b.startsAt));
+  const bookedDone = class_bookings.filter((e) => ended(e.endsAt)).sort((a, b) => soonest(b.startsAt, a.startsAt));
+  const assistUpcoming = assisting.filter((c) => !ended(c.endsAt));
+  const assistDone = assisting.filter((c) => ended(c.endsAt)).sort((a, b) => soonest(b.startsAt, a.startsAt));
   const elsewhere = teaching.map((c) => ({
     id: c.id,
     danceClass: askToTileClass(c),
@@ -287,6 +332,7 @@ export default async function MyClassesPage({ searchParams }: { searchParams: Pr
                             <ClassTile
                               key={c.id}
                               danceClass={askToTileClass(c)}
+                              filled={seatsOf(c.sessionId)}
                               city={c.businessCity}
                               href={`/c/${c.classShareSlug}`}
                               relation="askedToTeach"
@@ -312,9 +358,9 @@ export default async function MyClassesPage({ searchParams }: { searchParams: Pr
                           ⚠ And somebody with NO page gets the same three columns
                           instead of one undated pile, with no Create control. */}
                       {myPage && manage ? (
-                        <ClassesManager embedded businessId={myPage.id} classes={manage.classes} filledBySession={manage.filled} artists={manage.artists} publishState={manage.state} whyNoClass={manage.whyNoClass} nowIso={nowIso} elsewhere={elsewhere} />
+                        <ClassesManager embedded businessId={myPage.id} classes={manage.classes} filledBySession={{ ...Object.fromEntries(seats), ...manage.filled }} artists={manage.artists} publishState={manage.state} whyNoClass={manage.whyNoClass} nowIso={nowIso} elsewhere={elsewhere} />
                       ) : teaching.length > 0 ? (
-                        <ClassesManager embedded businessId="" classes={[]} nowIso={nowIso} elsewhere={elsewhere} offerCreate={false} />
+                        <ClassesManager embedded businessId="" classes={[]} filledBySession={Object.fromEntries(seats)} nowIso={nowIso} elsewhere={elsewhere} offerCreate={false} />
                       ) : null}
                       {myPageClasses.length === 0 && teaching.length === 0 && askedToTake.length === 0 ? (
                         <div style={{ textAlign: "center", padding: "40px 20px", color: SUB, border: "1.5px dashed var(--el)", borderRadius: 20, fontSize: 13, lineHeight: 1.5 }}>
@@ -334,25 +380,41 @@ export default async function MyClassesPage({ searchParams }: { searchParams: Pr
             key: "booked",
             node: (
               <>
-                {class_bookings.map((e) => (
-                  <ClassTile
-                    key={e.id}
-                    danceClass={toTileClass(e)}
-                    artist={bookedArtists.get(e.classId) ?? null}
-                    city={e.businessCity}
-                    href={`/c/${e.shareSlug}`}
-                    relation="booked"
-                    /* ⚠ A CLASS THAT IS OVER OFFERS NO WAY OUT OF ITS SEAT (4 Oct 2026,
-                       the user: "cancel / refund class should not be possible if class
-                       is over"). The card stays — it is the record of a class you took —
-                       and the Cancel / refund control goes; the database refuses it too. */
-                    actions={
-                      Date.parse(e.endsAt) > Date.parse(nowIso) ? (
-                        <EnrollButton sessionId={e.sessionId} isFull={false} isSignedIn mine={{ id: e.id, status: e.status }} priceInr={e.priceInr} shareSlug={e.shareSlug} />
-                      ) : undefined
-                    }
-                  />
-                ))}
+                {class_bookings.length > 0 ? (
+                  <>
+                    <ClassSection id="booked-upcoming" title="Upcoming" n={bookedUpcoming.length} empty="Nothing coming up.">
+                      {bookedUpcoming.map((e) => (
+                        <ClassTile
+                          key={e.id}
+                          danceClass={toTileClass(e)}
+                          filled={seatsOf(e.sessionId)}
+                          artist={bookedArtists.get(e.classId) ?? null}
+                          city={e.businessCity}
+                          href={`/c/${e.shareSlug}`}
+                          relation="booked"
+                          actions={<EnrollButton sessionId={e.sessionId} isFull={false} isSignedIn mine={{ id: e.id, status: e.status }} priceInr={e.priceInr} shareSlug={e.shareSlug} />}
+                        />
+                      ))}
+                    </ClassSection>
+                    {/* ⚠ A CLASS THAT IS OVER OFFERS NO WAY OUT OF ITS SEAT (4 Oct 2026,
+                        the user: "cancel / refund class should not be possible if class
+                        is over"). The card stays — it is the record of a class you took —
+                        and the Cancel / refund control goes; the database refuses it too. */}
+                    <ClassSection id="booked-completed" title="Completed" n={bookedDone.length} empty="Nothing completed yet." last>
+                      {bookedDone.map((e) => (
+                        <ClassTile
+                          key={e.id}
+                          danceClass={toTileClass(e)}
+                          filled={seatsOf(e.sessionId)}
+                          artist={bookedArtists.get(e.classId) ?? null}
+                          city={e.businessCity}
+                          href={`/c/${e.shareSlug}`}
+                          relation="booked"
+                        />
+                      ))}
+                    </ClassSection>
+                  </>
+                ) : null}
                 {class_bookings.length === 0 && (
                   <div style={{ textAlign: "center", padding: "40px 20px", color: SUB, border: "1.5px dashed var(--el)", borderRadius: 20, fontSize: 13 }}>
                     Nothing booked yet —{" "}
@@ -383,6 +445,7 @@ export default async function MyClassesPage({ searchParams }: { searchParams: Pr
                       <ClassTile
                         key={c.id}
                         danceClass={askToTileClass(c)}
+                        filled={seatsOf(c.sessionId)}
                         city={c.businessCity}
                         href={`/c/${c.classShareSlug}`}
                         relation="askedToAssist"
@@ -396,19 +459,22 @@ export default async function MyClassesPage({ searchParams }: { searchParams: Pr
                     ))}
                   </div>
                 ) : null}
-                {assisting.map((c) => (
-                  <ClassTile
-                    key={c.id}
-                    danceClass={askToTileClass(c)}
-                    artist={bookedArtists.get(c.classId) ?? null}
-                    city={c.businessCity}
-                    href={`/c/${c.classShareSlug}`}
-                    /* the job is the card's own chip now, in the shared word and
-                       colour (4 Oct 2026); the studio and the date were already on
-                       the card, so the action row that repeated them is gone */
-                    relation="assisting"
-                  />
-                ))}
+                {/* the job is the card's own chip, in the shared word and colour
+                    (4 Oct 2026); the studio and the date are already on the card */}
+                {assisting.length > 0 ? (
+                  <>
+                    <ClassSection id="assist-upcoming" title="Upcoming" n={assistUpcoming.length} empty="Nothing coming up.">
+                      {assistUpcoming.map((c) => (
+                        <ClassTile key={c.id} danceClass={askToTileClass(c)} filled={seatsOf(c.sessionId)} artist={bookedArtists.get(c.classId) ?? null} city={c.businessCity} href={`/c/${c.classShareSlug}`} relation="assisting" />
+                      ))}
+                    </ClassSection>
+                    <ClassSection id="assist-completed" title="Completed" n={assistDone.length} empty="Nothing completed yet." last>
+                      {assistDone.map((c) => (
+                        <ClassTile key={c.id} danceClass={askToTileClass(c)} filled={seatsOf(c.sessionId)} artist={bookedArtists.get(c.classId) ?? null} city={c.businessCity} href={`/c/${c.classShareSlug}`} relation="assisting" />
+                      ))}
+                    </ClassSection>
+                  </>
+                ) : null}
                 {assisting.length === 0 && askedToAssist.length === 0 && (
                   <div style={{ textAlign: "center", padding: "40px 20px", color: SUB, border: "1.5px dashed var(--el)", borderRadius: 20, fontSize: 13, lineHeight: 1.5 }}>
                     Nothing you assist on yet. When a studio asks you onto a class, the ask arrives here and you answer it on the spot.

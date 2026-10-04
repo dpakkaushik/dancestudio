@@ -91,7 +91,9 @@ function LedColumn({ led }: { led: CrewSummary[] }) {
           row under the list, so somebody who leads several scrolled past them
           all to start one */}
       {/* opens over this hub (22 Sep 2026); `/crews/new` is still the page */}
-      <DeskAddButton label="Create crew" href="?new=1" />
+      {/* "Add Crew", not "Create crew" (4 Oct 2026, the user). The form's own
+          submit still reads "Create crew": pressing it IS the act of creating. */}
+      <DeskAddButton label="Add Crew" href="?new=1" />
       {led.length ? (
         led.map((c) => <CrewCard key={c.id} crew={c} own since={c.createdAt} />)
       ) : (

@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 import { z } from "zod";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { askClassPerson, respondToClassAsk, setClassPersonPowers, withdrawClassAsk } from "@/repositories/classPeople";
+import { findAssistantPool } from "@/repositories/profiles";
 
 /** Step 11 people actions. Consent is the whole point: the studio ASKS (only
  *  its own team, owner/trainer only) and the person asked is the only one who
@@ -65,6 +66,19 @@ export async function askClassPersonAction(input: {
   }
   const supabase = await requireUser();
   try {
+    /* ⚠ AN ASSISTANT COMES FROM YOUR TEAM OR YOUR CREWS (4 Oct 2026, the user:
+       "only people from your own team members or crew members. no one else").
+       The picker offers only that list; this is the same list asked again on the
+       server, so a hand-made request cannot ask anybody else through the app. */
+    if (parsed.data.kind === "assistant") {
+      const { data: cls } = await supabase.from("classes").select("business_id").eq("id", parsed.data.classId).maybeSingle();
+      const businessId = (cls as { business_id: string } | null)?.business_id;
+      if (!businessId) return { error: "Class not found" };
+      const pool = await findAssistantPool(supabase, businessId);
+      if (!pool.some((p) => p.id === parsed.data.userId)) {
+        return { error: "Only people on your team or in your crews can be asked to assist." };
+      }
+    }
     await askClassPerson(supabase, parsed.data);
     revalidatePeopleSurfaces();
     return { error: null };

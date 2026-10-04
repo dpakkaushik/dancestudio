@@ -133,7 +133,7 @@ const tomorrowIst = () => {
 
     /* ── the crew, with the member asked ── */
     await leader.goto(`${BASE}/crews`, { waitUntil: "networkidle" });
-    await leader.getByRole("link", { name: "Create crew", exact: true }).click();
+    await leader.getByRole("link", { name: "Add Crew", exact: true }).click();
     await leader.getByRole("heading", { name: "Create crew" }).waitFor();
     await leader.getByLabel("Crew name").fill(crewName);
     /* a crew dances a LIST since 2 Oct 2026: the multi picker's add control */

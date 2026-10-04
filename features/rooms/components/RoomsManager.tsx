@@ -11,16 +11,7 @@ import { DOS_DISPLAY, DOS_UI } from "@/lib/design/tokens";
 import type { Room } from "@/types/room";
 import { DeskAddButton } from "@/features/settings/components/settings-kit";
 import { AmenityChip } from "@/components/ui/AmenityIcon";
-
-/** the street on one line, the city / state / PIN on the next — off a geocoder's
- *  comma-joined address, with its trailing country dropped. A short address
- *  (just "area, city") stays on one line. */
-function splitAddress(address: string): { street: string; locality: string | null } {
-  const parts = address.split(",").map((p) => p.trim()).filter(Boolean);
-  if (parts.length && /^india$/i.test(parts[parts.length - 1])) parts.pop();
-  if (parts.length <= 2) return { street: parts.join(", ") || address, locality: null };
-  return { street: parts.slice(0, -2).join(", "), locality: parts.slice(-2).join(", ") };
-}
+import { splitAddress } from "@/lib/format/address";
 
 /** The studio's rooms — lifted from the prototype's business settings Rooms
  *  segment (DanceOSApp.jsx:18389-18425). One studio = one location, so these are

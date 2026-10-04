@@ -3,7 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import { askClassPersonAction, setClassPersonPowersAction, withdrawClassAskAction } from "@/features/classPeople/server-actions/classPeople";
-import { PeoplePicker } from "@/features/people/components/PeoplePicker";
+import { PeoplePicker, type PoolHit } from "@/features/people/components/PeoplePicker";
 import type { ClassPerson } from "@/types/classPerson";
 
 /** THE CLASS TEAM, EDITED ON THE CLASS PAGE (18 Sep 2026). Assistants left the
@@ -11,7 +11,8 @@ import type { ClassPerson } from "@/types/classPerson";
  *  able to add from the manage inside the class section which should send
  *  request to the person" — and "both teacher and studio can add assistants".
  *  So the dashed "Add someone" row is a real control here: the app's one people
- *  search, anyone on DanceOS, and the person is ASKED (their Inbox says so). The
+ *  picker — since 4 Oct 2026 over your team and your crews only, never the rest
+ *  of DanceOS — and the person is ASKED (their Inbox says so). The
  *  jobs an assistant holds — attendance, refunds — stay the OWNER's to hand out
  *  (set_class_person_powers refuses anybody else), and a teacher may take back
  *  an assistant they asked for. The RPCs decide all of it; these only ask. */
@@ -28,7 +29,12 @@ const pill = (on: boolean, col: string): React.CSSProperties => ({
   fontFamily: "inherit",
 });
 
-export function AddAssistant({ classId, col, exclude }: { classId: string; col: string; exclude: string[] }) {
+/** ⚠ FROM YOUR TEAM AND YOUR CREWS ONLY (4 Oct 2026, the user: "when adding a
+ *  class assistant to a class should be able to add only people from your own
+ *  team members or crew members. no one else"). The picker offers `pool` and
+ *  nothing else — no search of DanceOS, no suggestions from history — and the
+ *  action asks the same question again on the server. */
+export function AddAssistant({ classId, col, exclude, pool }: { classId: string; col: string; exclude: string[]; pool: PoolHit[] }) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [err, setErr] = useState<string | null>(null);
@@ -53,11 +59,13 @@ export function AddAssistant({ classId, col, exclude }: { classId: string; col: 
       {open ? (
         <div style={{ marginTop: 8 }}>
           <PeoplePicker
-            title="SEARCH DANCEOS, THEN ASK THEM"
-            ariaLabel="Search DanceOS for an assistant"
+            title="YOUR TEAM AND CREWS, THEN ASK THEM"
+            placeholder="A name on your team or in your crews…"
+            ariaLabel="Search your team and crews for an assistant"
             actionWord="Ask ›"
             actionColor={col}
             exclude={exclude}
+            pool={pool}
             pickLabel={(p) => `Ask ${p.fullName} to assist on this class`}
             onPick={(p) =>
               start(async () => {

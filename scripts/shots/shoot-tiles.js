@@ -294,7 +294,7 @@ async function personOpensAStudio(page, who, acc, stamp) {
   await page.goto(`${BASE}/business/${studioId}/classes?new=1`, { waitUntil: "networkidle" });
   const form = page.getByRole("dialog", { name: "Add class" });
   await form.waitFor({ timeout: 15_000 }).catch(() => {});
-  check(await form.isVisible().catch(() => false), `${who} · Create class opens over the studio's register`);
+  check(await form.isVisible().catch(() => false), `${who} · Add Class opens over the studio's register`);
   await form.getByLabel("Class date").fill(new Date(Date.now() + 5 * 86400000).toISOString().slice(0, 10));
   await form.getByRole("button", { name: "Pick a dance style" }).or(form.getByRole("button", { name: /dance style/i })).first().click().catch(() => {});
   await form.getByPlaceholder(/search/i).first().fill("Hip").catch(() => {});
@@ -420,10 +420,10 @@ async function personOpensAStudio(page, who, acc, stamp) {
        owns it — an artist's register is the Manage segment of Your classes, so
        the href must keep `show=manage` or the list changes under the sheet. */
     await p2.goto(`${BASE}/my-classes?show=manage`, { waitUntil: "networkidle" });
-    await p2.getByRole("link", { name: "Create class" }).click();
+    await p2.getByRole("link", { name: "Add Class", exact: true }).click();
     const addClass = p2.getByRole("dialog", { name: "Add class" });
     await addClass.waitFor({ timeout: 15_000 }).catch(() => {});
-    check(await addClass.isVisible().catch(() => false), "artist · Create class opens a sheet over the register");
+    check(await addClass.isVisible().catch(() => false), "artist · Add Class opens a sheet over the register");
     check(new URL(p2.url()).search.includes("show=manage") && new URL(p2.url()).search.includes("new=1"), `artist · and it KEEPS the segment it was opened from (${new URL(p2.url()).search})`);
     await p2.close();
 

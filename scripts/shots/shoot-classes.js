@@ -360,7 +360,7 @@ const BOOK_ON_PAGE = /^Book (free trial|this class)$/;
     const draftPill = lPage.getByRole("button", { name: /^Draft, \d+ classes$/ });
     const pubPill = lPage.getByRole("button", { name: /^Published, \d+ classes$/ });
     check((await draftPill.count()) === 1 && (await pubPill.count()) === 1, "⚠⚠ somebody with NO page of their own now gets the register's columns over the classes they take");
-    check((await lPage.getByRole("button", { name: "Create class" }).count()) === 0 && (await lPage.getByTestId("why-no-class").count()) === 0, "…with no Create control, and no owner-only sentence about a studio they do not run");
+    check((await lPage.getByRole("link", { name: "Add Class", exact: true }).count()) === 0 && (await lPage.getByTestId("why-no-class").count()) === 0, "…with no Create control, and no owner-only sentence about a studio they do not run");
     const elsewhereHas = async () => (await lPage.locator(`[data-testid="classes-elsewhere"] a[href="/c/${secondRow.share_slug}"]`).count()) > 0;
     check(!(await elsewhereHas()), "⚠⚠ the DRAFT they take elsewhere is NOT at the foot of Published");
     await draftPill.click();

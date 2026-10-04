@@ -574,7 +574,7 @@ export function BusinessHub({
                 aria-label={`Cannot add a studio: ${gateShut}`}
                 style={{ borderRadius: 16, border: `1.5px dashed var(--el)`, padding: "13px 14px", background: CARD, marginBottom: 12 }}
               >
-                <div style={{ fontSize: 12.5, fontWeight: 900, color: INK }}>＋ Add studio</div>
+                <div style={{ fontSize: 12.5, fontWeight: 900, color: INK }}>＋ Add Studio</div>
                 <div style={{ fontSize: 11, color: SUB, marginTop: 4, lineHeight: 1.5 }}>{gateShut}</div>
                 {/* ⚠ THE DOOR WENT WITH THE SCREEN IT OPENED (21 Sep 2026). This
                     said "Where you stand with DanceOS ›" and pointed at `/` —
@@ -588,7 +588,8 @@ export function BusinessHub({
                     the conversation with DanceOS. */}
               </div>
             ) : (
-              <DeskAddButton label="Add studio" onClick={() => setSheetOpen(true)} />
+              /* "Add Studio", S capital (4 Oct 2026, the user) */
+              <DeskAddButton label="Add Studio" onClick={() => setSheetOpen(true)} />
             )}
 
             <Head>YOUR STUDIOS</Head>

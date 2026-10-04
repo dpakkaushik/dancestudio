@@ -30,10 +30,13 @@ export function ClassRoutines({
   routines,
   mine,
   canEdit,
+  style,
 }: {
   classId: string;
   shareSlug: string;
   col: string;
+  /** the class's dance style — the picker offers only routines of it (4 Oct 2026) */
+  style: string;
   /** what is on the class now — anybody who can read the class reads these */
   routines: Routine[];
   /** the caller's own routines, for the picker; empty for everybody else */
@@ -45,7 +48,11 @@ export function ClassRoutines({
   const [pending, start] = useTransition();
   const [err, setErr] = useState<string | null>(null);
   const on = new Set(routines.map((r) => r.id));
-  const offered = mine.filter((r) => !on.has(r.id));
+  /* ⚠ ONLY THE CLASS'S OWN STYLE (4 Oct 2026, the user: "add a routine should
+     only add routines of the same dance style") — a Kathak routine is not what a
+     Hip-Hop class is taught from. The action refuses any other on the server. */
+  const sameStyle = mine.filter((r) => r.style === style);
+  const offered = sameStyle.filter((r) => !on.has(r.id));
 
   const run = (fn: () => Promise<{ error: string | null }>) =>
     start(async () => {
@@ -116,10 +123,10 @@ export function ClassRoutines({
       {canEdit ? (
         pick ? (
           <div style={{ marginTop: 8 }}>
-            <div style={{ fontSize: 9.5, fontWeight: 900, letterSpacing: 0.8, color: "var(--muted)", marginBottom: 6 }}>WHICH ROUTINE?</div>
+            <div style={{ fontSize: 9.5, fontWeight: 900, letterSpacing: 0.8, color: "var(--muted)", marginBottom: 6 }}>WHICH {style.toUpperCase()} ROUTINE?</div>
             {offered.length === 0 ? (
-              <div style={{ fontSize: 11, color: SUB, lineHeight: 1.5 }}>
-                {mine.length === 0 ? "You have no routines yet — " : "All of your routines are already on this class — "}
+              <div data-testid="routine-none" style={{ fontSize: 11, color: SUB, lineHeight: 1.5 }}>
+                {sameStyle.length === 0 ? `You have no ${style} routines yet — ` : `All of your ${style} routines are already on this class — `}
                 <Link href="/routines" style={{ color: col, fontWeight: 800 }}>
                   make one in Routines ›
                 </Link>

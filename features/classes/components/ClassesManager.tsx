@@ -531,7 +531,10 @@ export function ClassesManager({
              drop the segment and switch the list back to Booked underneath the
              sheet it just opened. `/business/{id}/classes/new` is still the page
              behind it (Rule 14). */
-          <DeskAddButton label="Create class" href={createHref} />
+          /* "Add Class", not "Create class" (4 Oct 2026, the user: "Create Class
+             button to be renamed as Add Class") — the Add Routine / Add Membership
+             grammar every other desk's pill already speaks */
+          <DeskAddButton label="Add Class" href={createHref} />
         )}
 
         <LiveBanner n={liveN} on={liveOnly} setOn={setLiveOnly} />
@@ -793,6 +796,9 @@ export function ClassesManager({
               <ClassTile
                 key={e.id}
                 danceClass={e.danceClass}
+                /* the seats on the bar (4 Oct 2026) — the caller counts these
+                   sessions into the same map as its own classes */
+                filled={filledOf(e.danceClass)}
                 artist={e.artist}
                 city={e.city}
                 href={`/c/${e.danceClass.shareSlug}`}

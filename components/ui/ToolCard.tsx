@@ -105,7 +105,23 @@ const initialsOf = (name: string) =>
 
 /** THE FACE — the app's squircle (`DISC_RADIUS`), the picture when there is one
  *  and initials on the tool's colour when there is not; never an empty box. */
-export function ToolFace({ name, photoPath, tint, size = 58, icon }: { name: string; photoPath: string | null | undefined; tint: string; size?: number; icon?: ReactNode }) {
+export function ToolFace({
+  name,
+  photoPath,
+  tint,
+  size = 58,
+  icon,
+  ring,
+}: {
+  name: string;
+  photoPath: string | null | undefined;
+  tint: string;
+  size?: number;
+  icon?: ReactNode;
+  /** a solid ring in this colour instead of the faint tint one — the class
+   *  card's "this person has confirmed" (4 Oct 2026) */
+  ring?: string;
+}) {
   const src = photoUrl(photoPath);
   return (
     <span
@@ -124,7 +140,7 @@ export function ToolFace({ name, photoPath, tint, size = 58, icon }: { name: str
         color: inkOn(tint),
         fontSize: size * 0.34,
         fontWeight: 900,
-        boxShadow: `0 0 0 2px var(--card), 0 0 0 3.5px ${tint}55`,
+        boxShadow: ring ? `0 0 0 2px var(--card), 0 0 0 4.5px ${ring}` : `0 0 0 2px var(--card), 0 0 0 3.5px ${tint}55`,
       }}
     >
       {src ? <Image src={src} alt="" fill sizes={`${size}px`} style={{ objectFit: "cover" }} /> : (icon ?? initialsOf(name))}

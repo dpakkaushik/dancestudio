@@ -64,8 +64,11 @@ function Face({ name, photo }: { name: string; photo: string | null }) {
   );
 }
 
-function PersonRow({ p, actionWord, actionColor, label, onPick }: { p: Hit; actionWord: string; actionColor: string; label: string; onPick: () => void }) {
-  const sub = [KIND_WORD[kindOf(p.isArtist)], p.city].filter(Boolean).join(" · ");
+/** a person from a fixed list (the assistant picker's team and crews), with where they come from */
+export type PoolHit = Hit & { from?: string };
+
+function PersonRow({ p, actionWord, actionColor, label, onPick }: { p: PoolHit; actionWord: string; actionColor: string; label: string; onPick: () => void }) {
+  const sub = [p.from ?? KIND_WORD[kindOf(p.isArtist)], p.city].filter(Boolean).join(" · ");
   return (
     <div role="button" tabIndex={0} aria-label={label} onKeyDown={pressKey(onPick)} onClick={onPick} style={{ display: "flex", alignItems: "center", gap: 10, padding: "9px 0", cursor: "pointer", borderBottom: "1.5px solid var(--el)" }}>
       <Face name={p.fullName} photo={photoUrl(p.avatarPath)} />
@@ -87,6 +90,8 @@ export function PeoplePicker({
   exclude = [],
   onPick,
   pickLabel,
+  pool,
+  poolWords = "your team or your crews",
 }: {
   title?: string;
   placeholder?: string;
@@ -98,6 +103,14 @@ export function PeoplePicker({
   onPick: (p: Profile) => void;
   /** the row's aria-label — "Ask Rhea Kapoor to join the crew" */
   pickLabel: (p: Profile) => string;
+  /** ⚠ A FIXED LIST INSTEAD OF ALL OF DANCEOS (4 Oct 2026, the assistant picker:
+   *  "only people from your own team members or crew members. no one else"). When
+   *  given, nothing is searched on the server and nothing is suggested from
+   *  history: the field narrows THIS list by name, and a scanned code is offered
+   *  only if it names somebody on it. */
+  pool?: PoolHit[];
+  /** how the empty and no-match lines name the list */
+  poolWords?: string;
 }) {
   const [q, setQ] = useState("");
   /* the answer remembers the term it answers, so a stale answer is never shown for a new term */
@@ -107,11 +120,12 @@ export function PeoplePicker({
   const [scan, setScan] = useState<{ open: boolean; busy: boolean; error: string | null }>({ open: false, busy: false, error: null });
   const excludeKey = exclude.join(",");
   const term = q.trim();
+  const pooled = pool !== undefined;
 
   /* the search follows the field, a beat behind the last keystroke; state is
      only written from the timer's callback (an external event), never inline */
   useEffect(() => {
-    if (term.length < 2) return;
+    if (pooled || term.length < 2) return;
     let live = true;
     const t = setTimeout(async () => {
       const out = await searchPeopleAction({ term, exclude: excludeKey ? excludeKey.split(",") : [] });
@@ -122,10 +136,11 @@ export function PeoplePicker({
       live = false;
       clearTimeout(t);
     };
-  }, [term, excludeKey]);
+  }, [term, excludeKey, pooled]);
 
   /* the suggestions, once per roster (the roster changes when somebody is asked) */
   useEffect(() => {
+    if (pooled) return;
     let live = true;
     recentPeopleAction({ exclude: excludeKey ? excludeKey.split(",") : [] }).then((out) => {
       if (live) setRecent({ key: excludeKey, people: out.people });
@@ -133,7 +148,7 @@ export function PeoplePicker({
     return () => {
       live = false;
     };
-  }, [excludeKey]);
+  }, [excludeKey, pooled]);
 
   /* a scanned or pasted link names a person; they are looked up and offered exactly as a typed hit is */
   const onScanned = useCallback(
@@ -149,17 +164,29 @@ export function PeoplePicker({
           setScan({ open: true, busy: false, error: `${out.person.fullName} is already here.` });
           return;
         }
+        /* a fixed list admits nobody off it, however they were found */
+        if (pool && !pool.some((p) => p.id === out.person!.id)) {
+          setScan({ open: true, busy: false, error: `${out.person.fullName} is not on ${poolWords}.` });
+          return;
+        }
         setScan({ open: false, busy: false, error: null });
         onPick(out.person);
       });
     },
-    [excludeKey, onPick],
+    [excludeKey, onPick, pool, poolWords],
   );
 
   const searching = term.length >= 2 && answer.term !== term;
   const hits = answer.term === term ? answer.people : [];
   const error = answer.term === term ? answer.error : null;
   const suggestions = recent && recent.key === excludeKey ? recent.people : [];
+  /* the fixed list, narrowed by the field — every word typed must start a word of the name */
+  const excludedSet = new Set(excludeKey ? excludeKey.split(",") : []);
+  const words = term.toLowerCase().split(/\s+/).filter(Boolean);
+  const poolShown = (pool ?? []).filter(
+    (p) => !excludedSet.has(p.id) && words.every((w) => p.fullName.toLowerCase().split(/\s+/).some((n) => n.startsWith(w)))
+  );
+  const poolLeft = (pool ?? []).filter((p) => !excludedSet.has(p.id)).length;
   return (
     <div style={{ fontFamily: DOS_UI }}>
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, marginBottom: 7 }}>
@@ -188,7 +215,22 @@ export function PeoplePicker({
         />
       </div>
       {error ? <div style={{ fontSize: 10.5, color: "#F87171", marginTop: 9 }}>{error}</div> : null}
-      {term.length < 2 ? (
+      {pooled ? (
+        poolLeft === 0 ? (
+          <div style={{ fontSize: 10.5, color: "var(--muted)", marginTop: 9 }}>Nobody on {poolWords} to ask yet.</div>
+        ) : poolShown.length === 0 ? (
+          <div style={{ fontSize: 10.5, color: "var(--muted)", marginTop: 9 }}>Nobody on {poolWords} by that name.</div>
+        ) : (
+          <div data-testid="people-pool" style={{ maxHeight: 300, overflowY: "auto" }}>
+            {words.length === 0 ? (
+              <div style={{ fontSize: 9.5, fontWeight: 900, letterSpacing: 0.8, color: "var(--muted)", margin: "11px 0 2px" }}>{poolWords.toUpperCase()} · {poolLeft}</div>
+            ) : null}
+            {poolShown.map((p) => (
+              <PersonRow key={p.id} p={p} actionWord={actionWord} actionColor={actionColor} label={pickLabel(p)} onPick={() => onPick(p)} />
+            ))}
+          </div>
+        )
+      ) : term.length < 2 ? (
         suggestions.length > 0 ? (
           <div>
             <div style={{ fontSize: 9.5, fontWeight: 900, letterSpacing: 0.8, color: "var(--muted)", margin: "11px 0 2px" }}>RECENTLY ASKED</div>
