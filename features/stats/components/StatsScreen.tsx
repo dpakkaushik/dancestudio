@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { CitySelect } from "@/features/geo/components/CitySelect";
@@ -7,6 +8,8 @@ import { useState } from "react";
 import { DosStyleTile } from "@/features/discovery/components/DiscoverFilters";
 import { dosStyleColor } from "@/lib/constants/styles";
 import { Sheet } from "@/features/profiles/components/profile-kit";
+import { SectionCard } from "@/components/ui/SectionCard";
+import { TopPanel } from "@/components/ui/TopPanel";
 import { CARD, DOS_DISPLAY, DOS_UI, INK, LILAC, LINE, MUTED, SUB } from "@/lib/design/tokens";
 import { CHART_METRICS, CHART_SEGMENTS, CREW_POINT_RULES, POINT_RULES, SEG_WORD, SIDE_TINT, chartRowWords, hoursWords, type ChartMetric, type ChartRow, type ChartSegment, type DanceStats, type HistoryRow, type Side, type Standing } from "@/types/stats";
 
@@ -51,6 +54,22 @@ const dayWords = (iso: string) =>
 const monthWords = (d: string | null) => (d ? new Intl.DateTimeFormat("en-IN", { timeZone: "UTC", month: "short", year: "numeric" }).format(new Date(`${d}T00:00:00Z`)) : "—");
 const initialsOf = (name: string) => name.split(" ").filter(Boolean).map((w) => w[0]).slice(0, 2).join("").toUpperCase() || "D";
 
+/* the section cards' marks (5 Oct 2026) — one stroke family, drawn in the
+   section's own colour inside the band's soft square */
+const ico = (d: React.ReactNode, c: string) => (
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    {d}
+  </svg>
+);
+const SEC = { numbers: "#F59E0B", dance: "#EC4899", record: "#0EA5E9", stands: "#8B5CF6", boards: "#7C3AED" };
+const ICON = {
+  numbers: ico(<path d="M4 20V10M10 20V4M16 20v-7M22 20H2" />, SEC.numbers),
+  dance: ico(<path d="M12 3l2.4 5 5.6.8-4 3.9.9 5.6L12 15.8 7.1 18.3l.9-5.6-4-3.9 5.6-.8z" />, SEC.dance),
+  record: ico(<path d="M3 17l6-6 4 4 8-8M14 7h7v7" />, SEC.record),
+  stands: ico(<path d="M8 21h8M12 17v4M7 4h10v5a5 5 0 0 1-10 0zM17 5h3a3 3 0 0 1-3 4M7 5H4a3 3 0 0 0 3 4" />, SEC.stands),
+  boards: ico(<path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01" />, SEC.boards),
+};
+
 /* the side's own words on the record page (9998-10000): what the figure MEANS */
 const SIDE_CARD: Record<Side, string> = { conducted: "Classes taught", assisted: "Assisted on", attended: "Classes taken" };
 const SIDE_PAST: Record<Side, string> = { conducted: "Taught", assisted: "Assisted", attended: "Trained" };
@@ -73,7 +92,10 @@ const DAY_MS = 86_400_000;
 function StandingCard({ s, accent }: { s: Standing; accent: string }) {
   const r = s.row;
   return (
-    <div style={{ background: CARD, border: `1.5px solid ${LINE}`, borderLeft: `4px solid ${accent}`, borderRadius: 16, padding: "12px 14px", marginBottom: 8 }} data-testid="standing-card">
+    /* ⚠ a tile INSIDE its section card since 5 Oct 2026 — the 4px coloured left
+       edge went, the way it went from every tool card on 4 Oct ("remove bold line
+       from left of the card"); the scope's colour is a soft wash instead */
+    <div style={{ background: `${accent}10`, border: `1.5px solid ${accent}33`, borderRadius: 14, padding: "11px 13px", marginBottom: 8 }} data-testid="standing-card">
       <div style={{ ...micro, color: MUTED }}>{s.scope}</div>
       {r ? (
         <div style={{ display: "flex", alignItems: "center", gap: 12, marginTop: 6 }}>
@@ -101,6 +123,7 @@ function StandingCard({ s, accent }: { s: Standing; accent: string }) {
 
 export function StatsScreen({
   name,
+  photo = null,
   eyebrow,
   accent,
   backHref,
@@ -126,6 +149,9 @@ export function StatsScreen({
   basePath,
 }: {
   name: string;
+  /** the profile's own picture, signed and ready to draw (5 Oct 2026) — the hero
+   *  wears it where it wore initials; null draws the initials */
+  photo?: string | null;
   /** the kind's word over the name — Dancer · Artist · Studio · Crew */
   eyebrow: string;
   /** the entity's own colour: the hero's wash and the standing cards' edge */
@@ -388,12 +414,20 @@ export function StatsScreen({
           says what the TAB is about: your record's total on the first two, your
           place on THIS board on Charts — one line, three readings, so the same
           pixels never mean two things. */}
-      <div style={{ margin: "0 0 4px", padding: "22px 16px 18px", background: `linear-gradient(180deg, ${accent}b0 0%, ${accent}55 45%, ${accent}18 74%, ${LILAC} 100%)` }}>
-        <div style={{ ...micro, letterSpacing: 2.2, color: "rgba(255,255,255,.9)" }}>{tab === "charts" ? "DanceOS · India" : `${eyebrow} · Record`}</div>
-        <div style={{ fontSize: 30, fontWeight: 900, fontFamily: DOS_DISPLAY, letterSpacing: -1.2, lineHeight: 1.05, marginTop: 4 }}>{tab === "charts" ? "Rankings" : "Stats"}</div>
+      {/* ⚠⚠ THE NEW LOOK (5 Oct 2026, the user: "Redesign stats page according to
+          the new look"): the full-bleed wash that bled off the top is a TOP
+          SQUIRCLE now, the shape Discover, the Inbox, every Home and every tool
+          page stand on (C105, C116) — the tab's colour a soft wash INSIDE it,
+          the profile's own picture where initials stood, and the two columns
+          inside the same squircle as the heading, as the Inbox's are. Every
+          block below is the class page's section card (`SectionCard`). */}
+      <div style={{ padding: "0 16px" }}>
+      <TopPanel tint={accent} testId="stats-top" style={{ marginTop: 12 }}>
+        <div style={{ ...micro, letterSpacing: 2.2, color: SUB }}>{tab === "charts" ? "DanceOS · India" : `${eyebrow} · Record`}</div>
+        <div style={{ fontSize: 28, fontWeight: 900, fontFamily: DOS_DISPLAY, letterSpacing: -1.1, lineHeight: 1.05, marginTop: 4 }}>{tab === "charts" ? "Rankings" : "Stats"}</div>
         <div style={{ display: "flex", alignItems: "center", gap: 13, marginTop: 14 }}>
-          <span style={{ width: 64, height: 64, borderRadius: 16, flexShrink: 0, display: "inline-flex", alignItems: "center", justifyContent: "center", boxSizing: "border-box", border: "2.5px solid rgba(255,255,255,.9)", boxShadow: "0 6px 18px rgba(0,0,0,.45)", background: `linear-gradient(135deg,${accent},#7C3AED)`, color: "#fff", fontSize: 24, fontWeight: 900, letterSpacing: 0.5, fontFamily: DOS_DISPLAY }}>
-            {initialsOf(name)}
+          <span style={{ width: 62, height: 62, borderRadius: 19, flexShrink: 0, overflow: "hidden", display: "inline-flex", alignItems: "center", justifyContent: "center", boxSizing: "border-box", border: `2px solid ${accent}`, background: `linear-gradient(135deg,${accent},#7C3AED)`, color: "#fff", fontSize: 22, fontWeight: 900, letterSpacing: 0.5, fontFamily: DOS_DISPLAY }}>
+            {photo ? <Image src={photo} alt="" width={62} height={62} style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} /> : initialsOf(name)}
           </span>
           {/* a DIV, not a span: the heading below is a block element and an
               `<h1>` inside an inline is invalid nesting */}
@@ -409,7 +443,7 @@ export function StatsScreen({
                 visitor, had one from the start — so folding the rich screen back
                 in would have LOST it. The name is the heading: this page is
                 "{name}'s stats", and the word above it says which column. */}
-            <h1 style={{ margin: 0, display: "block", fontSize: 26, fontWeight: 900, letterSpacing: -0.8, lineHeight: 1.1, fontFamily: DOS_DISPLAY, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{name}</h1>
+            <h1 style={{ margin: 0, display: "block", fontSize: 23, fontWeight: 900, letterSpacing: -0.8, lineHeight: 1.1, fontFamily: DOS_DISPLAY, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{name}</h1>
             <span style={{ display: "block", fontSize: 11, fontWeight: 600, color: SUB, marginTop: 3 }} data-testid="stats-points">
               {heroLine}
             </span>
@@ -449,11 +483,9 @@ export function StatsScreen({
         >
           ‹ Back to the page
         </Link>
-      </div>
-
-      <div style={{ padding: "0 16px" }}>
-        {/* three dresses, one page */}
-        <div style={{ display: "flex", gap: 2, background: LINE, borderRadius: 12, padding: 3, marginBottom: 12 }}>
+        {/* three dresses, one page — inside the top squircle, the app's one pill
+            row (`SegmentedNav`'s own paint: the track, the solid pressed pill) */}
+        <div style={{ display: "flex", gap: 2, background: "var(--el)", borderRadius: 12, padding: 3, marginTop: 12 }}>
           {(
             [
               /* ⚠ THE USER'S OWN THREE WORDS (29 Sep 2026): *"the graphs and
@@ -470,20 +502,19 @@ export function StatsScreen({
                a push per tap made the back swipe walk Rankings → History →
                Record before it ever left the screen. The 19 Sep rule, which the
                metric chips below already followed and these did not. */
-            <Link key={k} href={tabHref(k)} replace scroll={false} aria-pressed={tab === k} style={{ flex: 1, textAlign: "center", padding: "8px 4px", borderRadius: 9, fontSize: 11.5, fontWeight: 800, textDecoration: "none", background: tab === k ? LILAC : "transparent", color: tab === k ? INK : SUB, boxShadow: tab === k ? "0 1px 4px rgba(0,0,0,.3)" : "none" }}>
+            <Link key={k} href={tabHref(k)} replace scroll={false} aria-pressed={tab === k} style={{ flex: 1, textAlign: "center", padding: "8px 4px", borderRadius: 9, fontSize: 11.5, fontWeight: 800, textDecoration: "none", background: tab === k ? "var(--solid)" : "transparent", color: tab === k ? INK : SUB, boxShadow: tab === k ? "0 1px 4px rgba(0,0,0,.3)" : "none" }}>
               {l}
             </Link>
           ))}
         </div>
+      </TopPanel>
+      <div style={{ height: 12 }} />
 
         {tab === "record" ? (
           <>
             {/* THE NUMBERS (10024): the three that ARE the record wear their own colour
                 as a bar across the top, with their hours on them */}
-            <div style={{ display: "flex", alignItems: "baseline", gap: 8, margin: "4px 0 10px" }}>
-              <span style={shelf}>The numbers</span>
-              {grid.length > 0 ? <span style={{ marginLeft: "auto", fontSize: 10.5, fontWeight: 800, color: MUTED }}>{grid.length} open</span> : null}
-            </div>
+            <SectionCard icon={ICON.numbers} label="THE NUMBERS" col={SEC.numbers} right={grid.length > 0 ? <span style={{ fontSize: 10.5, fontWeight: 800, color: MUTED, flexShrink: 0 }}>{grid.length} open</span> : null}>
             <div style={{ display: "grid", gridTemplateColumns: `repeat(${recordCards.length}, 1fr)`, gap: 8, marginBottom: 9 }}>
               {recordCards.map((c) => (
                 <div key={c.key} aria-label={c.aria} style={{ position: "relative", overflow: "hidden", background: `${c.colour}12`, border: `1.5px solid ${c.colour}55`, borderRadius: 14, padding: "12px 11px 13px" }}>
@@ -513,7 +544,7 @@ export function StatsScreen({
                 two-line row — so nothing about the list changed but where it
                 appears. */}
             {grid.length > 0 ? (
-              <div style={{ background: CARD, border: `1.5px solid ${LINE}`, borderRadius: 16, padding: "4px 12px", display: "grid", gridTemplateColumns: "1fr 1fr", columnGap: 14 }}>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", columnGap: 14 }}>
                 {grid.map((g) => {
                   const inner = (
                     <>
@@ -575,7 +606,7 @@ export function StatsScreen({
               </Sheet>
             ) : null}
 
-            <div style={{ fontSize: 10.5, color: MUTED, lineHeight: 1.5, marginTop: 10 }}>
+            <div style={{ fontSize: 10.5, color: MUTED, lineHeight: 1.5, marginTop: 4 }}>
               {isMe ? (
                 <>
                   Counted off your own sessions — a class you taught or assisted once its session had ended, and a class you were <b style={{ color: SUB }}>checked in</b> to. A booking nobody marked is not a session danced, so it is not counted here.
@@ -590,15 +621,12 @@ export function StatsScreen({
                 <>Counted off sessions that have ended and registers that were run. {sessionsNote}</>
               )}
             </div>
+            </SectionCard>
 
             {/* WHAT YOU DANCE MOST (10077): the way a library shows the artists you play most */}
             {styleShelf.length > 0 ? (
-              <div style={{ padding: "18px 0 2px" }}>
-                <div style={{ display: "flex", alignItems: "baseline", gap: 8, marginBottom: 2 }}>
-                  <span style={shelf}>What you dance most</span>
-                  <span style={{ marginLeft: "auto", fontSize: 10.5, fontWeight: 800, color: MUTED }}>{styleShelf.length} styles</span>
-                </div>
-                <div style={{ display: "flex", gap: 14, overflowX: "auto", scrollbarWidth: "none", padding: "9px 0 6px" }}>
+              <SectionCard icon={ICON.dance} label={isMe ? "WHAT YOU DANCE MOST" : "WHAT IS DANCED MOST"} col={SEC.dance} right={<span style={{ fontSize: 10.5, fontWeight: 800, color: MUTED, flexShrink: 0 }}>{styleShelf.length} styles</span>}>
+                <div style={{ display: "flex", gap: 14, overflowX: "auto", scrollbarWidth: "none", padding: "4px 0 4px" }}>
                   {styleShelf.map(([st, n], i) => (
                     <div key={st} aria-label={`${st} — ${n} sessions`} style={{ flexShrink: 0, textAlign: "center", minWidth: 0 }}>
                       <div style={{ position: "relative", display: "inline-flex" }}>
@@ -612,15 +640,12 @@ export function StatsScreen({
                     </div>
                   ))}
                 </div>
-              </div>
+              </SectionCard>
             ) : null}
 
             {/* THE WHOLE RECORD (10194) — not labelled "CV": the whole page is the dancer's CV */}
             {history.length > 0 ? (
-              <>
-                <div style={{ display: "flex", alignItems: "baseline", gap: 8, margin: "22px 0 8px" }}>
-                  <span style={shelf}>The whole record</span>
-                </div>
+              <SectionCard icon={ICON.record} label="THE WHOLE RECORD" col={SEC.record}>
                 {/* WHICH SIDE OF THE FLOOR (10225): the chosen side takes its own colour */}
                 <div style={{ display: "flex", gap: 8, marginBottom: 12 }}>
                   {SIDES.map((k) => {
@@ -638,7 +663,7 @@ export function StatsScreen({
                 </div>
 
                 {/* WHAT IT LOOKS LIKE OVER TIME (10248): the three sides stacked against the calendar */}
-                <div style={{ background: CARD, border: `1.5px solid ${LINE}`, borderRadius: 16, padding: "12px 13px 10px", marginBottom: 12 }}>
+                <div style={{ background: "var(--solid)", border: `1.5px solid ${LINE}`, borderRadius: 14, padding: "12px 13px 10px", marginBottom: 12 }}>
                   <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
                     <span style={{ ...micro, color: MUTED }}>SESSIONS · {grainLabel.toUpperCase()}</span>
                     <span style={{ marginLeft: "auto", display: "inline-flex", gap: 2, background: LINE, borderRadius: 10, padding: 2 }}>
@@ -722,7 +747,7 @@ export function StatsScreen({
                     ))}
                   </span>
                 </div>
-                <div style={{ background: CARD, border: `1.5px solid ${LINE}`, borderRadius: 16, padding: "6px 14px 10px" }}>
+                <div style={{ padding: "0 0 2px" }}>
                   {groups.length === 0 ? <div style={{ fontSize: 11.5, color: MUTED, padding: "10px 0" }}>Nothing on this side of the floor yet.</div> : null}
                   {groups.map((r, i) => {
                     const c = dim === "style" ? dosStyleColor(r.key) : "#5AC8FA";
@@ -745,7 +770,7 @@ export function StatsScreen({
                     );
                   })}
                 </div>
-              </>
+              </SectionCard>
             ) : null}
           </>
         ) : null}
@@ -764,12 +789,11 @@ export function StatsScreen({
                 this is the answer to "how is THIS one doing", which is the
                 question somebody opening a profile's stats actually has. */}
             {standings.length > 0 ? (
-              <div style={{ marginBottom: 14 }}>
-                <div style={{ ...micro, color: MUTED, marginBottom: 8 }}>Where {name} stands</div>
+              <SectionCard icon={ICON.stands} label={`WHERE ${name.toUpperCase()} STANDS`} col={SEC.stands}>
                 {standings.map((s) => (
                   <StandingCard key={s.scope} s={s} accent={accent} />
                 ))}
-              </div>
+              </SectionCard>
             ) : null}
 
             {!canBrowseBoards ? (
@@ -779,8 +803,7 @@ export function StatsScreen({
               </div>
             ) : null}
             {canBrowseBoards ? (
-              <>
-            <div style={{ ...micro, color: MUTED, marginBottom: 8 }}>Browse the boards</div>
+              <SectionCard icon={ICON.boards} label="BROWSE THE BOARDS" col={SEC.boards}>
             <div style={{ display: "flex", gap: 6, marginBottom: 9 }}>
               {CHART_SEGMENTS.map((s) => {
                 const on = segment === s.k;
@@ -915,7 +938,7 @@ export function StatsScreen({
                 );
               })
             )}
-              </>
+              </SectionCard>
             ) : null}
           </>
         ) : null}

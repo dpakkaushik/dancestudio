@@ -40,6 +40,24 @@ export const timeOf = (iso: string) =>
 export const timeRangeOf = (startsAt: string, endsAt: string) =>
   `${timeOf(startsAt)} – ${timeOf(endsAt)}`;
 
+/** "6–7 pm", "6:30–8 pm", "11:30am–12:30pm" — the range as short as it can be
+ *  said: no ":00", one am/pm when both ends share it, and both (unspaced) when a
+ *  class crosses noon. For the class card's one-line when-tile (5 Oct 2026, the
+ *  user: "keep date day and time in the same line"), where the long form
+ *  measured up to 49px too wide for a 360px phone. Falls back to the long form
+ *  if the clock ever prints something this does not recognise. */
+export const compactRangeOf = (startsAt: string, endsAt: string) => {
+  const parse = (s: string) => {
+    const m = s.match(/^(\d{1,2}):(\d{2})\s*([ap])\.?\s?m\.?$/i);
+    return m ? { h: m[1], mm: m[2], ap: `${m[3].toLowerCase()}m` } : null;
+  };
+  const a = parse(timeOf(startsAt));
+  const b = parse(timeOf(endsAt));
+  if (!a || !b) return timeRangeOf(startsAt, endsAt);
+  const short = (p: { h: string; mm: string }) => (p.mm === "00" ? p.h : `${p.h}:${p.mm}`);
+  return a.ap === b.ap ? `${short(a)}–${short(b)} ${b.ap}` : `${short(a)}${a.ap}–${short(b)}${b.ap}`;
+};
+
 /** "1h 30m", never "90 min" — prototype durText (line 79). */
 export const durText = (startsAt: string, endsAt: string) => {
   const mins = Math.max(0, Math.round((new Date(endsAt).getTime() - new Date(startsAt).getTime()) / 60000));

@@ -16,6 +16,7 @@ import { FollowerFigure } from "./FollowerFigure";
 import { FollowingFigure } from "./FollowingFigure";
 import type { HeroShot } from "./HeroRail";
 import { PersonBody } from "./PersonBody";
+import type { NextSessionsBooking } from "./NextSessions";
 import { ProfileLink, ProfileShare } from "./ProfileShare";
 import { StatsChip } from "./StatsChip";
 import { HeroId, HeroPersonMeta, IdentityHero } from "./hero-kit";
@@ -67,6 +68,7 @@ export function PublicPersonPage({
   memberships = [],
   artistTeam = [],
   nextSessions = [],
+  booking,
 }: {
   person: PublicPerson;
   /** THE HEADER PICTURES — this person's own, as many as their kind shows */
@@ -84,6 +86,8 @@ export function PublicPersonPage({
    *  the route off `personScheduleBusiness`, which is also what the bar's href
    *  is built from, so the preview and the door name one business */
   nextSessions?: CalendarEntry[];
+  /** what the rail needs to offer Book Now (5 Oct 2026) — absent on your own profile */
+  booking?: NextSessionsBooking;
 }) {
   const { profile } = person;
   /* the word over the name is the KIND's: an artist while the plan is live, a user */
@@ -288,6 +292,7 @@ export function PublicPersonPage({
           /* the first few classes behind that bar (30 Sep 2026, #0aj) — read by
              the route, because this component has no client of its own */
           nextSessions={nextSessions}
+          booking={isMe ? undefined : booking}
           accent={RC}
         />
       </div>

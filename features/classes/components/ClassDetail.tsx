@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useRef, useState, useSyncExternalStore, type CSSProperties, type ReactNode } from "react";
 import { AmenityChip } from "@/components/ui/AmenityIcon";
+import { SectionCard } from "@/components/ui/SectionCard";
 import {
   bookAtTheDoorAction,
   checkInAction,
@@ -116,27 +117,14 @@ const readServerOrigin = () => "";
    band over the style's own wash — the icon in a tinted squircle, the heading
    in the display face — and the body under a hairline, the way every tool
    card's bands stack. The heading's WORDS are unchanged (a locator reads them). */
+/* ⚠ THE CARD ITSELF LIVES IN `components/ui/SectionCard` since 5 Oct 2026 — the
+   Stats page and the dance style pages wear it too, and one card drawn in three
+   files is three cards that drift. */
 function Sec({ icon, label, col, children }: { icon: ReactNode; label: string; col: string; children: ReactNode }) {
   return (
-    <div
-      data-sec={label}
-      style={{
-        background: "var(--card)",
-        border: "1.5px solid var(--el)",
-        borderRadius: 20,
-        overflow: "hidden",
-        marginBottom: 12,
-        textAlign: "left",
-      }}
-    >
-      <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 14px", background: `linear-gradient(135deg, ${col}1f, ${col}08)`, borderBottom: `1.5px solid ${col}26` }}>
-        <span aria-hidden="true" style={{ width: 30, height: 30, borderRadius: 10, flexShrink: 0, background: `${col}24`, display: "flex", alignItems: "center", justifyContent: "center" }}>
-          {icon}
-        </span>
-        <span style={{ fontFamily: DOS_DISPLAY, fontSize: 12.5, fontWeight: 900, letterSpacing: 0.5, color: "var(--text)", minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{label}</span>
-      </div>
-      <div style={{ padding: "12px 14px 13px" }}>{children}</div>
-    </div>
+    <SectionCard icon={icon} label={label} col={col}>
+      {children}
+    </SectionCard>
   );
 }
 
@@ -801,7 +789,7 @@ export function ClassDetail({
 
             {/* THE DAY, THE DATE AND THE TIME IN ONE TILE, with how long it runs */}
             <div style={{ marginTop: 12 }}>
-              <WhenTile startsAt={c.session?.startsAt ?? null} tint={col} big extra={durNice} />
+              <WhenTile startsAt={c.session?.startsAt ?? null} endsAt={c.session?.endsAt ?? null} tint={col} big extra={durNice} />
             </div>
 
             {/* THE SEATS WRITTEN ON THE BAR, THE PRICE BESIDE IT (4 Oct 2026). A

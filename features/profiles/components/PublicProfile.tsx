@@ -13,7 +13,9 @@ import { ActionRow, CallButton, LocationButton, MailButton, MessageButton, mapsP
 import { MembershipsOnSale } from "@/features/memberships/components/MembershipsOnSale";
 import type { MembershipOnSale as MembershipOnSaleRow } from "@/repositories/memberships";
 import { FollowToggle } from "./FollowToggle";
-import { NextSessions } from "./NextSessions";
+import { NextSessions, type NextSessionsBooking } from "./NextSessions";
+import { StudioPlace } from "./StudioPlace";
+import type { Room } from "@/types/room";
 import type { CalendarEntry } from "@/types/calendar";
 import { EntityBand, Figure } from "./profile-band";
 import { FollowerFigure } from "./FollowerFigure";
@@ -63,6 +65,9 @@ export function PublicProfile({
   nextSessions = [],
   manageHref,
   memberships = [],
+  address = "",
+  rooms = [],
+  booking,
 }: {
   profile: PublicBusinessProfile;
   /** THE HEADER PICTURES (15 Sep 2026): a studio's photos of its space —
@@ -99,6 +104,14 @@ export function PublicProfile({
   manageHref: string;
   /** what this business has ON SALE (19 Sep 2026) — live ones of a listed business */
   memberships?: MembershipOnSaleRow[];
+  /** THE STUDIO'S FULL ADDRESS in words (5 Oct 2026) — `fullAddressOf`, the pin
+   *  resolved or the area and city; empty falls back to the place line */
+  address?: string;
+  /** its live rooms, each with its amenities (5 Oct 2026) — a listed studio's
+   *  rooms are anybody's to read (Step 11's policy) */
+  rooms?: Room[];
+  /** what the NEXT SESSIONS rail needs to offer Book Now (5 Oct 2026) */
+  booking?: NextSessionsBooking;
 }) {
   const { business } = profile;
   /* ⚠ THE KIND'S OWN COLOUR, NOT A HASH OF THE NAME (20 Sep 2026, the user:
@@ -330,15 +343,31 @@ export function PublicProfile({
         <ScheduleBar href={scheduleHref} />
         </TopPanel>
 
-        <InvertedPanel>
-        {/* ── A TASTE OF WHAT IS BEHIND THE BAR ABOVE (30 Sep 2026, #0aj) — three
-            cards, no door of its own, nothing at all when there is nothing ── */}
-        <NextSessions entries={nextSessions} />
+        {/* ── THE STUDIO ITSELF, A SECTION OF ITS OWN (5 Oct 2026, the user:
+            "below Schedule should have full adrees and rooms with amenities
+            mentioned alongside membership in a seprate segragation and others
+            from next session below that") — the full address, every room with
+            what it has, and what the studio sells ── */}
+        {business.type === "studio" ? (
+          <StudioPlace address={address || place} rooms={rooms} tint={RC}>
+            {/* ── WHAT IT SELLS (19 Sep 2026, the user: "Users should be able to
+                buy from Studio and Artist Profile Pages") — a price on a public
+                page is public; who holds one never is ── */}
+            <MembershipsOnSale memberships={memberships} businessName={business.name} accent={RC} signedIn={signedIn} canBuy={!isMember} />
+          </StudioPlace>
+        ) : null}
 
-        {/* ── WHAT IT SELLS (19 Sep 2026, the user: "Users should be able to buy
-            from Studio and Artist Profile Pages") — a price on a public page is
-            public; who holds one never is ── */}
-        <MembershipsOnSale memberships={memberships} businessName={business.name} accent={RC} signedIn={signedIn} canBuy={!isMember} />
+        {/* ⚠ ON THE PAGE'S OWN THEME (5 Oct 2026, the user: "Remove Dual tone
+            from public profile pages") — the squircle Home and Discover wear */}
+        <InvertedPanel ground="page">
+        {/* ── A TASTE OF WHAT IS BEHIND THE BAR ABOVE (30 Sep 2026, #0aj) — the
+            soonest five, each with its Book Now (5 Oct 2026) ── */}
+        <NextSessions entries={nextSessions} booking={booking} />
+
+        {/* an artist page read through this component keeps its memberships here */}
+        {business.type === "studio" ? null : (
+          <MembershipsOnSale memberships={memberships} businessName={business.name} accent={RC} signedIn={signedIn} canBuy={!isMember} />
+        )}
 
         {/* ── THE TEAM, A SECTION PER ROLE (11000-11060; re-cut 27 Sep 2026 to
             the user's *"Studio, Crew and Organization — simply should show the

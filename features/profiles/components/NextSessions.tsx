@@ -2,6 +2,8 @@
 
 import { useState } from "react";
 import { ClassTile } from "@/features/classes/components/ClassTile";
+import { EnrollButton } from "@/features/classBookings/components/EnrollButton";
+import type { ClassBookingStatus } from "@/types/classBooking";
 import { FigureHead } from "@/components/ui/FigureHead";
 import { LINE, SKY } from "@/lib/design/tokens";
 import { TYPE } from "./profile-kit";
@@ -38,7 +40,27 @@ import { nextSessionsOf, tileClassOf, type CalendarEntry } from "@/types/calenda
  *  reads as a measured zero, where the truth is "nothing is published for the
  *  next three months"; the bar above still opens the schedule. */
 
-export function NextSessions({ entries }: { entries: CalendarEntry[] }) {
+/** WHAT THE RAIL NEEDS TO OFFER "Book Now" (5 Oct 2026, the user: "Book Now
+ *  button for the next session on public profile pages"). Plain data, because the
+ *  rail is a client component and its page is a server one. */
+export interface NextSessionsBooking {
+  signedIn: boolean;
+  /** the viewer's own live seats, by session id — a booked card says Booked and
+   *  offers the way out of the seat instead */
+  mine: Record<string, { id: string; status: ClassBookingStatus }>;
+  /** sessions the viewer RUNS — the studio's own classes for its owner, a class
+   *  for the artist taking it — which offer no seat, the class page's rule (R61) */
+  runs: string[];
+  /** sessions that have already STARTED — the rail keeps a class until it ends,
+   *  and `book_class_session` refuses a seat once it has begun, so a Book Now
+   *  there would only be refused after the press. The class page says "This class
+   *  has already started" in the same place; here the bar is simply not drawn
+   *  (the card's own LIVE badge says why). Decided on the server, because a client
+   *  component may not read the clock during render. */
+  started: string[];
+}
+
+export function NextSessions({ entries, booking }: { entries: CalendarEntry[]; booking?: NextSessionsBooking }) {
   const [at, setAt] = useState(0);
   /* the server already trimmed to the soonest five (`findNextPublicSessions`);
      sorted and capped again here so a caller that forgets cannot draw fifty */
@@ -81,11 +103,40 @@ export function NextSessions({ entries }: { entries: CalendarEntry[] }) {
           padding: "2px 0 4px",
         }}
       >
-        {shown.map((e) => (
-          <div key={e.sessionId} role="listitem" data-testid="next-session" style={{ flex: one ? "0 0 100%" : "0 0 88%", scrollSnapAlign: one ? "start" : "center", minWidth: 0 }}>
-            <ClassTile danceClass={tileClassOf(e)} filled={e.filled} artist={e.artist} city={e.businessCity} href={`/c/${e.shareSlug}`} />
-          </div>
-        ))}
+        {shown.map((e) => {
+          /* ⚠ THE CARD'S OWN BUTTON BAR, WITH THE APP'S ONE BOOKING CONTROL (5 Oct
+             2026) — `EnrollButton`, exactly as Discover's shelf draws it: Book Now
+             (a free class books here, a priced one opens its page, where the
+             payment step is), Class full, Sign in to book, or — on a seat you
+             already hold — the way out of it. No bar at all on your OWN profile
+             (`booking` absent) or on a class you run. */
+          const seat = booking?.mine[e.sessionId] ?? null;
+          const offerTo = booking && !booking.runs.includes(e.sessionId) && (seat || !booking.started.includes(e.sessionId)) ? booking : null;
+          return (
+            <div key={e.sessionId} role="listitem" data-testid="next-session" style={{ flex: one ? "0 0 100%" : "0 0 88%", scrollSnapAlign: one ? "start" : "center", minWidth: 0 }}>
+              <ClassTile
+                danceClass={tileClassOf(e)}
+                filled={e.filled}
+                artist={e.artist}
+                city={e.businessCity}
+                href={`/c/${e.shareSlug}`}
+                relation={seat ? "booked" : null}
+                actions={
+                  offerTo ? (
+                    <EnrollButton
+                      sessionId={e.sessionId}
+                      isFull={e.filled >= e.capacity}
+                      isSignedIn={offerTo.signedIn}
+                      mine={seat}
+                      priceInr={e.priceInr}
+                      shareSlug={e.shareSlug}
+                    />
+                  ) : undefined
+                }
+              />
+            </div>
+          );
+        })}
       </div>
       {!one ? (
         <div style={{ display: "flex", gap: 5, justifyContent: "center", marginTop: 4 }} aria-hidden="true">

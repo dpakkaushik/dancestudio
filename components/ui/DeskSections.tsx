@@ -22,9 +22,9 @@ import { TopPanel } from "@/components/ui/TopPanel";
  *  sheet opened from inside still lays out against the screen, and a `sticky`
  *  block placed inside `DeskBody` sticks for the whole of the list. */
 
-export function DeskTop({ children, style }: { children: ReactNode; style?: CSSProperties }) {
+export function DeskTop({ children, style, tint }: { children: ReactNode; style?: CSSProperties; tint?: string }) {
   return (
-    <TopPanel testId="desk-top" style={{ margin: "12px 0 12px", ...style }}>
+    <TopPanel testId="desk-top" tint={tint} style={{ margin: "12px 0 12px", ...style }}>
       {children}
     </TopPanel>
   );

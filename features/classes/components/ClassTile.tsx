@@ -6,7 +6,7 @@ import { ToolActions, ToolBody, ToolFace } from "@/components/ui/ToolCard";
 import { dosStyleColor, DOS_LEVEL_LABEL } from "@/lib/constants/styles";
 import { DOS_DISPLAY, GREEN, INK, LINE, MUTED, SUB } from "@/lib/design/tokens";
 import { dosStyleInk } from "@/lib/format/styleInk";
-import { dateParts, timeOf } from "@/lib/format/session";
+import { compactRangeOf, dateParts, timeOf } from "@/lib/format/session";
 import { photoUrl } from "@/lib/media/photo";
 import { CLASS_RELATION, type ClassRelation } from "@/lib/format/classLabels";
 import type { ClassOwner, DanceClass } from "@/types/class";
@@ -62,29 +62,46 @@ export function SeatBar({ taken, cap, tint, note, height = 26, testId = "class-f
 /** THE WHEN TILE — the day, the date and the time in ONE tile (4 Oct 2026, the
  *  user: "Date, Time, Day together in one tile"), on the card and on the class
  *  page. The two parts keep their old test ids so a probe still finds each. */
-export function WhenTile({ startsAt, isToday = false, tint, extra, big = false }: { startsAt: string | null; isToday?: boolean; tint: string; extra?: string | null; big?: boolean }) {
+export function WhenTile({ startsAt, endsAt = null, isToday = false, tint, extra, big = false }: { startsAt: string | null; endsAt?: string | null; isToday?: boolean; tint: string; extra?: string | null; big?: boolean }) {
   const p = startsAt ? dateParts(startsAt) : null;
   const day = p ? (isToday ? "Today" : p.weekday.charAt(0) + p.weekday.slice(1).toLowerCase()) : "Date";
-  const date = p ? `${p.day} ${p.month.charAt(0)}${p.month.slice(1).toLowerCase()}` : "to be set";
-  const time = startsAt ? timeOf(startsAt) : "—";
-  const fs = big ? 19 : 16;
+  /* three letters for the month ("Sep", not "Sept") — the one line has to fit */
+  const date = p ? `${p.day} ${p.month.charAt(0)}${p.month.slice(1, 3).toLowerCase()}` : "to be set";
+  /* the START AND THE END (5 Oct 2026, the user: "should show both start and end
+     time on the class cards") — "6–7 pm", as short as the range can be said, so
+     date · day · time fit ONE line (the user: "keep date day and time in the
+     same line"). ⚠ The longest lines step the type down a little rather than
+     spill: measured, "30 Sep · Today · 10:30am–12pm" was the widest case */
+  const time = startsAt ? (endsAt ? compactRangeOf(startsAt, endsAt) : timeOf(startsAt)) : "—";
+  const len = `${date}${day}${time}`.length;
+  const fs = big ? (len <= 22 ? 18 : 16) : len <= 20 ? 14.5 : len <= 22 ? 13.5 : len <= 23 ? 12.5 : 12;
   return (
     <div
       data-testid="class-fact-when"
-      style={{ display: "flex", alignItems: "center", gap: 11, borderRadius: 14, background: `${tint}12`, border: "1.5px solid var(--el)", padding: big ? "12px 14px" : "9px 12px", minWidth: 0 }}
+      style={{ display: "flex", alignItems: "center", gap: big ? 11 : 9, borderRadius: 14, background: `${tint}12`, border: "1.5px solid var(--el)", padding: big ? "12px 14px" : "9px 11px", minWidth: 0 }}
     >
-      <span aria-hidden="true" style={{ flexShrink: 0, width: big ? 34 : 28, height: big ? 34 : 28, borderRadius: 10, background: `${tint}26`, color: tint, display: "flex", alignItems: "center", justifyContent: "center" }}>
-        <svg width={big ? 18 : 15} height={big ? 18 : 15} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.2} strokeLinecap="round" strokeLinejoin="round">
+      <span aria-hidden="true" style={{ flexShrink: 0, width: big ? 34 : 25, height: big ? 34 : 25, borderRadius: 9, background: `${tint}26`, color: tint, display: "flex", alignItems: "center", justifyContent: "center" }}>
+        <svg width={big ? 18 : 14} height={big ? 18 : 14} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.2} strokeLinecap="round" strokeLinejoin="round">
           <rect x="3.5" y="5" width="17" height="15.5" rx="3" />
           <path d="M8 3v4M16 3v4M3.5 10h17" />
         </svg>
       </span>
-      <span style={{ minWidth: 0, display: "flex", alignItems: "baseline", flexWrap: "wrap", gap: "2px 7px", fontSize: fs, fontWeight: 900, letterSpacing: -0.3, lineHeight: 1.15, color: INK, fontVariantNumeric: "tabular-nums" }}>
-        <span data-testid="class-fact-day">{day}</span>
-        <span aria-hidden="true" style={{ color: MUTED, fontWeight: 700 }}>·</span>
-        <span data-testid="class-fact-date" style={{ whiteSpace: "nowrap" }}>{date}</span>
-        <span aria-hidden="true" style={{ color: MUTED, fontWeight: 700 }}>·</span>
-        <span data-testid="class-fact-time" style={{ whiteSpace: "nowrap" }}>{time}</span>
+      {/* the DATE before the day (5 Oct 2026, the user: "Class cards- Date
+          before day"), then the START–END, ALL ON ONE LINE (the user, the same
+          day: "keep date day and time in the same line") — the line never
+          breaks inside itself; what keeps it inside a 360px card is the compact
+          range and the tile's own size, measured by the probe at 360 and 390 */}
+      <span style={{ minWidth: 0, display: "flex", alignItems: "baseline", flexWrap: "wrap", gap: "2px 8px", fontSize: fs, fontWeight: 900, letterSpacing: -0.3, lineHeight: 1.15, color: INK, fontVariantNumeric: "tabular-nums" }}>
+        {/* ⚠ ONE LINE from 360px up, measured with the widest range there is;
+            on a 320px phone the longest lines still cannot fit, and there the
+            time wraps rather than spilling out of the tile */}
+        <span style={{ display: "inline-flex", alignItems: "baseline", flexWrap: "wrap", gap: "2px 6px", minWidth: 0 }}>
+          <span data-testid="class-fact-date" style={{ whiteSpace: "nowrap" }}>{date}</span>
+          <span aria-hidden="true" style={{ color: MUTED, fontWeight: 700 }}>·</span>
+          <span data-testid="class-fact-day" style={{ whiteSpace: "nowrap" }}>{day}</span>
+          <span aria-hidden="true" style={{ color: MUTED, fontWeight: 700 }}>·</span>
+          <span data-testid="class-fact-time" style={{ whiteSpace: "nowrap" }}>{time}</span>
+        </span>
         {extra ? <span style={{ fontSize: fs - 5, fontWeight: 800, color: SUB, letterSpacing: 0, whiteSpace: "nowrap" }}>{extra}</span> : null}
       </span>
     </div>
@@ -429,7 +446,7 @@ export function ClassTile({ danceClass: c, filled = 0, artist, isToday = false, 
           </div>
           {/* THE DAY, THE DATE AND THE TIME IN ONE TILE (4 Oct 2026) */}
           <div style={{ marginTop: 10 }}>
-            <WhenTile startsAt={c.session?.startsAt ?? null} isToday={isToday} tint={bc} />
+            <WhenTile startsAt={c.session?.startsAt ?? null} endsAt={c.session?.endsAt ?? null} isToday={isToday} tint={bc} />
           </div>
           {/* THE SEATS WRITTEN ON THE BAR, THE PRICE BESIDE IT (4 Oct 2026, the
               user: "2/20 Booked · 18 Spots Left on the bar"): how full is the

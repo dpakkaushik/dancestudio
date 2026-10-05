@@ -2103,7 +2103,14 @@ test.describe.serial("DanceOS, end to end", () => {
        so the assertion is on the joined token — which is also what a screen
        reader says, and the reason for nesting rather than sitting them side by
        side in a zero-gap row (that looked joined and read as two words). */
-    await expect(trainer.getByText(/^Artist-\d{6}$/).first()).toBeVisible();
+    /* ⚠ WAIT FOR THE HOP TO LAND (5 Oct 2026, the second time this line went red
+       the same way — 4 Oct was the first): `/profile` forwards to `/person/{id}`,
+       and the trace of both reds reads "waiting for /person/… navigation to
+       finish" when the five seconds ran out. A timeout, never a wrong value — so
+       the wait is for the address first, then the fifteen seconds every other
+       post-navigation assertion in this suite has. */
+    await trainer.waitForURL(/\/person\/[0-9a-f-]{36}$/, { timeout: 20_000 });
+    await expect(trainer.getByText(/^Artist-\d{6}$/).first()).toBeVisible({ timeout: 15_000 });
     await expect(trainer.getByTestId("my-followers")).toHaveText("0");
     /* ⚠ AND NO CORNER AT ALL ON THIS PAGE (21 Sep 2026). The pencil went to
        Settings on 19 Sep ("all edit profile options to be removed from home and

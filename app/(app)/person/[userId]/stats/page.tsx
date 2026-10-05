@@ -50,6 +50,7 @@ export default async function PersonStatsPage({ params, searchParams }: { params
         kind: "person",
         id: userId,
         name: person.profile.fullName,
+        photoPath: person.profile.avatarPath,
         eyebrow: KIND_WORD[kind],
         accent: ROLE_RING[kind][1],
         backHref: `/person/${userId}`,

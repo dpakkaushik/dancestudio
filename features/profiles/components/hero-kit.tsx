@@ -349,10 +349,16 @@ export function IdentityHero({
                   in 2 lines"). It wrapped without a limit before, so a long name
                   could push the place line and the band down the screen; two is
                   what a name gets, and the full one is still its own `title`. */}
+              {/* ⚠ 29px, NOT THE DISPLAY 34 (5 Oct 2026, the user: "Reduce size of
+                  name on both profile and home pages a bit"). One hero draws every
+                  home and every profile page, so the change lands on all of them
+                  at once; the tracking eases with it so the letters do not crowd. */}
               <h1
                 title={name}
                 style={{
                   ...TYPE.display,
+                  fontSize: 29,
+                  letterSpacing: -1.1,
                   margin: 0,
                   color: INK,
                   minWidth: 0,

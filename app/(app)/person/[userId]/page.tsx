@@ -10,6 +10,8 @@ import { findPersonHeaderPhotos } from "@/repositories/headerPhotos";
 import { findTeamFollows } from "@/repositories/follows";
 import type { MembershipOnSale } from "@/repositories/memberships";
 import { findNextPublicSessions } from "@/repositories/calendar";
+import { startedSessionIds } from "@/types/calendar";
+import { findMyEnrolledSessionIds } from "@/repositories/classBookings";
 import { findPublicPerson, isFollowingPerson, personScheduleBusiness } from "@/repositories/publicPerson";
 import { findPublicStudioTeam } from "@/repositories/publicProfile";
 import { ensureArtistPage, findMyMemberships as findMyTeams } from "@/repositories/businesses";
@@ -113,7 +115,7 @@ export default async function PersonPage({ params }: { params: Promise<{ userId:
      one business. A preview of somebody else's schedule under a bar that opens
      this one's would be a lie nothing on the page could correct. */
   const schedule = personScheduleBusiness(person);
-  const [following, header, memberships, artistTeam, nextSessions, followingN] = await Promise.all([
+  const [following, header, memberships, artistTeam, nextSessions, followingN, mine] = await Promise.all([
     !isMe && user ? isFollowingPerson(supabase, userId) : Promise.resolve(false),
     /* THE HEADER (15 Sep 2026): their own pictures, as many as their KIND shows —
        one for a user, five for an artist (19 Sep 2026) */
@@ -158,7 +160,20 @@ export default async function PersonPage({ params }: { params: Promise<{ userId:
       }
       return person.following + n - overlap;
     })(),
+    /* the viewer's own seats, so a card on the rail says Booked rather than Book
+       Now (5 Oct 2026, the user: "Book Now button for the next session on public
+       profile pages") */
+    user ? findMyEnrolledSessionIds(supabase).catch(() => new Map()) : Promise.resolve(new Map()),
   ]);
+  /* ⚠ a class the VIEWER is taking offers them no seat — the class page's own rule
+     (R61). This page is never the viewer's own (that returned above), so it is
+     only ever a class they teach somewhere this person also does. */
+  const booking = {
+    signedIn: Boolean(user),
+    mine: Object.fromEntries(mine),
+    runs: nextSessions.filter((e) => user && e.artist?.userId === user.id).map((e) => e.sessionId),
+    started: startedSessionIds(nextSessions),
+  };
 
-  return <PublicPersonPage person={{ ...person, following: followingN }} header={header} isMe={isMe} following={following} signedIn={Boolean(user)} memberships={memberships} artistTeam={artistTeam} nextSessions={nextSessions} />;
+  return <PublicPersonPage person={{ ...person, following: followingN }} header={header} isMe={isMe} following={following} signedIn={Boolean(user)} memberships={memberships} artistTeam={artistTeam} nextSessions={nextSessions} booking={booking} />;
 }

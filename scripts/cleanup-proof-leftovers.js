@@ -138,6 +138,21 @@ async function allAuthUsers() {
   );
   const junkTenantIds = new Set(junkTenants.map((t) => t.id));
 
+  /* ⚠ CREWS, ADDED 5 Oct 2026. Until today this script swept studios and
+     accounts only, so every crew a proof or an e2e run left behind stayed live
+     on Discover's Crews tab ("E2E Crew mtvy5vpy", "Proof Crew 020158",
+     "Zq060518 Crew") — six of them, every one led by an account this script
+     had ALREADY soft-deleted. The rule is the businesses' own: a crew whose
+     leader is no live, non-junk profile is a leftover; a name a proof uses is
+     one too, but only under a test leader, so a real crew can never be caught
+     by its name. A real person's crew (led by a kept profile) is never touched. */
+  const crews = await getAll("crews?select=id,name,city,leader_id&deleted_at=is.null&order=id");
+  const JUNK_CREW_NAME = /^(E2E Crew|Proof Crew|Crew Proof|Shot Crew|Tiles Crew|Zq\d*)\b/i;
+  const testLed = (c) =>
+    junkIds.has(c.leader_id) || KEEP_PHONES.has(phoneOf.get(c.leader_id)) || isDemo(emailOf.get(c.leader_id));
+  const junkCrews = crews.filter((c) => !liveGood.has(c.leader_id) || (JUNK_CREW_NAME.test(c.name) && testLed(c)));
+  const junkCrewIds = new Set(junkCrews.map((c) => c.id));
+
   const who = (id) => emailOf.get(id) || (phoneOf.get(id) ? `phone ${phoneOf.get(id)}` : "no email");
   console.log(`live profiles read: ${profiles.length} · live businesses read: ${businesses.length} · owner rows read: ${owners.length}`);
   console.log(`profiles to soft-delete: ${junkProfiles.length}`);
@@ -146,6 +161,8 @@ async function allAuthUsers() {
   junkTenants.forEach((t) =>
     console.log(`  - ${t.type.padEnd(11)} ${t.name}${ownedByGood.has(t.id) ? `   (kept owner <${who(ownerOf.get(t.id))}>, junk NAME)` : ""}`)
   );
+  console.log(`crews to soft-delete (led by nobody live, or a proof's own name under a test leader): ${junkCrews.length}`);
+  junkCrews.forEach((c) => console.log(`  - ${c.name} · ${c.city}  (leader <${who(c.leader_id)}>${liveGood.has(c.leader_id) ? ", junk NAME" : ", not live"})`));
   if (SHOW_KEPT) {
     const kept = profiles.filter((p) => !junkIds.has(p.id));
     console.log(`\nPROFILES KEPT: ${kept.length}`);
@@ -161,6 +178,9 @@ async function allAuthUsers() {
       console.log(`  ${type}: ${rows.length}${type === "studio" ? ` (listed ${rows.filter((t) => t.visibility === "listed").length})` : ""}`);
       rows.forEach((t) => console.log(`    - ${t.name}  [${t.visibility}]  owner <${who(ownerOf.get(t.id))}>`));
     }
+    const keptCrews = crews.filter((c) => !junkCrewIds.has(c.id));
+    console.log(`CREWS KEPT: ${keptCrews.length}`);
+    keptCrews.forEach((c) => console.log(`    - ${c.name} · ${c.city}  leader <${who(c.leader_id)}>`));
   }
   if (!APPLY) {
     console.log("\nDRY RUN — nothing written. Re-run with --apply to soft-delete these.");
@@ -184,6 +204,16 @@ async function allAuthUsers() {
       counts[table] = await patchIn(table, "business_id", tids);
     }
     counts.businesses = await patchIn("businesses", "id", tids);
+  }
+  const cids = junkCrews.map((c) => c.id);
+  if (cids.length) {
+    /* what hangs off a crew first, the crew last — the same order as businesses.
+       `crew_practice_people` carries no crew_id (it hangs off the practice), so
+       it goes with its practice rather than being named here. */
+    for (const table of ["crew_practices", "crew_header_photos", "crew_contacts", "follows", "crew_members"]) {
+      counts[table] = await patchIn(table, "crew_id", cids);
+    }
+    counts.crews = await patchIn("crews", "id", cids);
   }
   if (pids.length) counts.profiles = await patchIn("profiles", "id", pids);
   console.log("\napplied:", JSON.stringify(counts));

@@ -232,11 +232,15 @@ const PROBE = (sel) => {
       `hero ${eyebrow.ground} vs card ${body.ground}`
     );
 
-    /* ⚠ THE SWAPPED PANEL'S OWN TIERS, measured where it still lives (3 Oct 2026):
-       a profile page's lower half is still the opposite theme, translucent, with
-       greys retuned for that composited ground. Moved here from Discover. */
+    /* ⚠⚠ AND NO OPPOSITE-THEME PANEL IS LEFT ANYWHERE (5 Oct 2026, the user:
+       "Remove Dual tone from public profile pages"). The profile pages were the
+       last place it lived (3 Oct); their lower half is the page-ground squircle
+       now, like Discover's, the Inbox's and every Home's. So this asserts the
+       swap is GONE and measures the three tiers on the squircle that replaced
+       it — the card veil, where the smallest text on the page sits. */
+    check((await page.locator(".dos-invert").count()) === 0, `[${theme}] a studio's public page draws no opposite-theme panel any more`);
     const inv = await page.evaluate(() => {
-      const panel = document.querySelector(".dos-invert");
+      const panel = document.querySelector('[data-testid="studio-place"], [data-testid="page-panel"]');
       if (!panel) return false;
       for (const tier of ["text", "sub", "muted"]) {
         const s = document.createElement("span");
@@ -247,11 +251,11 @@ const PROBE = (sel) => {
       }
       return true;
     });
-    if (!inv) { console.log(`  ..     [${theme}] this studio's page draws no lower panel to measure`); continue; }
+    if (!inv) { check(false, `[${theme}] a studio's public page carries its lower squircle`); continue; }
     const floor = { text: 7, sub: 4.5, muted: 4.5 };
     for (const tier of ["text", "sub", "muted"]) {
       const r = await page.evaluate(PROBE, `#dos-iprobe-${tier}`);
-      check(r && r.ratio >= floor[tier], `[${theme}] --${tier} INSIDE a profile page's opposite-theme panel reads at ${floor[tier]}:1 or better`, r ? `${r.ratio}:1 ${r.ink} on ${r.ground}` : "not found");
+      check(r && r.ratio >= floor[tier], `[${theme}] --${tier} INSIDE a profile page's lower squircle reads at ${floor[tier]}:1 or better`, r ? `${r.ratio}:1 ${r.ink} on ${r.ground}` : "not found");
     }
   }
 

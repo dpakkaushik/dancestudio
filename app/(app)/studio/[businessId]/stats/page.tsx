@@ -39,6 +39,7 @@ export default async function StudioStatsPage({ params, searchParams }: { params
         kind: "studio",
         id: businessId,
         name: business.name,
+        photoPath: business.photoPath,
         eyebrow: "Studio",
         accent: gradientOf(business.name)[1],
         backHref: `/studio/${businessId}`,

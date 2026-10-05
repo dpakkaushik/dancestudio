@@ -2,6 +2,7 @@ import { StatsScreen } from "@/features/stats/components/StatsScreen";
 import { findDiscoverCities } from "@/repositories/cities";
 import { DOS_STYLE_NAMES } from "@/lib/constants/styles";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { photoUrl } from "@/lib/media/photo";
 import { findChart, findEntityChartRow, findMyHistory, findMyPlace, findMyStats } from "@/repositories/stats";
 import { EMPTY_STATS, parseChartMetric, type ChartSegment, type DanceStats, type Standing } from "@/types/stats";
 
@@ -16,6 +17,9 @@ export interface StatsSubject {
   kind: "person" | "studio" | "crew";
   id: string;
   name: string;
+  /** the profile's own picture (5 Oct 2026) — the hero wears it where it wore
+   *  initials; a path in the public media bucket, or null */
+  photoPath?: string | null;
   /** the kind's word over the name — Dancer · Artist · Studio · Crew */
   eyebrow: string;
   accent: string;
@@ -106,6 +110,7 @@ export async function StatsPageBody({ subject, query, basePath }: { subject: Sta
   return (
     <StatsScreen
       name={subject.name}
+      photo={photoUrl(subject.photoPath ?? null)}
       eyebrow={subject.eyebrow}
       accent={subject.accent}
       backHref={subject.backHref}

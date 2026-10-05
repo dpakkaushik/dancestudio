@@ -412,6 +412,25 @@ const BOOK_ON_PAGE = /^Book Now$/;
     const barY = await lPage.getByRole("link", { name: "Schedule" }).first().evaluate((el) => el.getBoundingClientRect().top);
     const sumY = await lPage.getByTestId("next-sessions").evaluate((el) => el.getBoundingClientRect().top);
     check(sumY > barY, `…drawn UNDER the bar rather than above it (bar ${Math.round(barY)}, summary ${Math.round(sumY)})`);
+    /* ⚠ AND BETWEEN THEM, THE STUDIO'S PLACE (5 Oct 2026, the user: "below
+       Schedule should have full adrees and rooms with amenities mentioned
+       alongside membership in a seprate segragation and others from next session
+       below that") — its own squircle, with the address and a tile per room */
+    const placeY = await lPage.getByTestId("studio-place").evaluate((el) => el.getBoundingClientRect().top).catch(() => null);
+    check(placeY != null && placeY > barY && placeY < sumY, `the studio's place sits under the bar and above NEXT SESSIONS (bar ${Math.round(barY)}, place ${placeY == null ? "—" : Math.round(placeY)}, sessions ${Math.round(sumY)})`);
+    check((await lPage.getByTestId("studio-address").count()) === 1, "…carrying the full address");
+    check((await lPage.getByTestId("studio-room").count()) >= 1, "…and a tile per room");
+    /* ⚠ AND A CARD ON THE RAIL CARRIES THE BOOKING CONTROL (5 Oct 2026, the
+       user: "Book Now button for the next session on public profile pages") —
+       on the class that is AHEAD; ⚠ never on one that has already STARTED, which
+       the rail keeps until it ends and which `book_class_session` would refuse */
+    const ctl = /Book Now|Class full|Cancel booking|Cancel \/ refund|Sign in to book/;
+    const aheadOnRail = lPage.locator('[data-testid="next-session"]').filter({ has: lPage.locator(`a[href^="/c/${aheadSlug}"]`) });
+    check((await aheadOnRail.filter({ hasText: ctl }).count()) === 1, "the class that is AHEAD offers Book Now on NEXT SESSIONS");
+    const liveOnRail = lPage.locator('[data-testid="next-session"]').filter({ has: lPage.locator(`a[href^="/c/${liveSlug}"]`) });
+    if ((await liveOnRail.count()) === 1) {
+      check((await liveOnRail.filter({ hasText: /Book Now/ }).count()) === 0, "⚠ …while a class that has already STARTED offers no Book Now there");
+    }
 
     /* ══ 8b · A CLASS THAT IS OVER IS FINAL (4 Oct 2026) ══════════════════════
        The user: "cancel / refund class should not be possible if class is over".

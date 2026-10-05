@@ -34,6 +34,7 @@ export default async function CrewStatsPage({ params, searchParams }: { params: 
         kind: "crew",
         id: crewId,
         name: crew.name,
+        photoPath: crew.photo,
         eyebrow: "Crew",
         accent: CREW_GRAD[1],
         backHref: `/crew/${crewId}`,

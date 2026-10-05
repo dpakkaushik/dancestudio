@@ -145,6 +145,8 @@ export function SegmentedPanels({
   label = "Show",
   sections = false,
   top,
+  tint,
+  plainBody = false,
 }: {
   segments: Segment[];
   /** the segment the SERVER decided, from `?show=` — the URL still wins on load */
@@ -161,6 +163,13 @@ export function SegmentedPanels({
   sections?: boolean;
   /** drawn above the pills inside the top section (the tool's DeskHero, a sub-line) */
   top?: ReactNode;
+  /** a soft wash of the page's own colour inside the top squircle (5 Oct 2026 — a
+   *  dance style's page, whose colour IS the room) */
+  tint?: string;
+  /** the shown panel straight on the page rather than in the lower squircle —
+   *  for a panel made of its own section cards, where a card inside a card is a
+   *  second outline saying nothing (5 Oct 2026) */
+  plainBody?: boolean;
 }) {
   /* ⚠ THE CALLER PASSES `key={initial}` — see the note at each call site. React
      keeps a component's state across a re-render at the same position, so
@@ -199,11 +208,11 @@ export function SegmentedPanels({
     return (
       <>
         {/* the callers are desk pages that already pad their own top and foot */}
-        <DeskTop style={{ margin: "0 0 12px" }}>
+        <DeskTop tint={tint} style={{ margin: "0 0 12px" }}>
           {top}
           {pills}
         </DeskTop>
-        <DeskBody style={{ margin: 0 }}>{on?.node ?? null}</DeskBody>
+        {plainBody ? on?.node ?? null : <DeskBody style={{ margin: 0 }}>{on?.node ?? null}</DeskBody>}
       </>
     );
   }

@@ -11,7 +11,7 @@ import { MEMBER_ROLE_WORD } from "@/types/staff";
    the same morning. `Business` went with them: nothing here is a business row any
    more, only associations and chips. */
 import { PeopleGroup, PersonChip } from "./profile-kit";
-import { NextSessions } from "./NextSessions";
+import { NextSessions, type NextSessionsBooking } from "./NextSessions";
 import { InvertedPanel } from "@/components/ui/InvertedPanel";
 import type { CalendarEntry } from "@/types/calendar";
 import type { ReactNode } from "react";
@@ -64,6 +64,7 @@ export function PersonBody({
   accent,
   beforeGroups = null,
   artistTeam = [],
+  booking,
 }: {
   person: PublicPerson;
   isMe: boolean;
@@ -98,6 +99,10 @@ export function PersonBody({
    *  exists to stop. A studio's page still names its owner, which is a
    *  different person from the reader. */
   artistTeam?: PublicTeamMember[];
+  /** what the NEXT SESSIONS rail needs to offer Book Now (5 Oct 2026) — the
+   *  public page passes it; your own tab does not, because the classes on your
+   *  own rail are the ones you teach */
+  booking?: NextSessionsBooking;
 }) {
   const { profile } = person;
   /** ⚠ NEVER THEIR OWN ARTIST PAGE as a place they teach (R24) — but a class
@@ -189,7 +194,10 @@ export function PersonBody({
   if (!hasAnything) return null;
 
   return (
-    <InvertedPanel style={{ paddingTop: 14 }}>
+    /* ⚠ ON THE PAGE'S OWN THEME (5 Oct 2026, the user: "Remove Dual tone from
+       public profile pages") — the same squircle, no palette swap, as Home's and
+       Discover's lower halves have worn since 3 Oct (C115) */
+    <InvertedPanel ground="page" style={{ paddingTop: 14 }}>
       {/* ⚠ THE SCHEDULE BAR IS NOT HERE ANY MORE (3 Oct 2026, the user:
           "schedule on public view should be part of top half with contact
           buttons"). Each page draws `ScheduleBar` at the foot of its top
@@ -199,7 +207,7 @@ export function PersonBody({
       {/* ── A TASTE OF WHAT IS BEHIND THE BAR (30 Sep 2026, #0aj) — the first
           thing under the top half's bar, and with no door of its own: the bar
           IS that door ── */}
-      <NextSessions entries={nextSessions} />
+      <NextSessions entries={nextSessions} booking={booking} />
 
       {/* ── WHAT THEY SELL (19 Sep 2026): an artist's memberships, bought from
           their own profile page exactly as a studio's are from its ── */}

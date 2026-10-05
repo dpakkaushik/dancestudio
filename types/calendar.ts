@@ -102,6 +102,16 @@ export const NEXT_SESSIONS_MAX = 5;
 export const nextSessionsOf = (entries: CalendarEntry[]): CalendarEntry[] =>
   [...entries].sort((a, b) => a.startsAt.localeCompare(b.startsAt)).slice(0, NEXT_SESSIONS_MAX);
 
+/** the sessions of a schedule that have already STARTED (5 Oct 2026) — the
+ *  rail keeps a class until it ends and a seat cannot be booked once it has
+ *  begun, so its Book Now is not drawn there. Read by the SERVER page, because a
+ *  client component may not read the clock during render. Both sides are UTC
+ *  ISO strings, so the comparison is a string one. */
+export const startedSessionIds = (entries: CalendarEntry[]): string[] => {
+  const now = new Date().toISOString();
+  return entries.filter((e) => new Date(e.startsAt).toISOString() <= now).map((e) => e.sessionId);
+};
+
 /** ⚠⚠ `CalendarEventEntry` WAS HERE AND WENT WITH EVENTS (29 Sep 2026, the
  *  user: *"Remove Organization and Events completely from the system"*). It was
  *  added on 18 Sep because the calendar had drawn classes only while Home's deck

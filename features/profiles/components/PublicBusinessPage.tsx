@@ -8,7 +8,11 @@ import { findMembershipsOnSale } from "@/repositories/memberships";
 import { findPublicBusinessProfile } from "@/repositories/publicProfile";
 import { findPersonFollowerCounts } from "@/repositories/publicPerson";
 import { findMyMembershipRole } from "@/repositories/businesses";
+import { findMyEnrolledSessionIds } from "@/repositories/classBookings";
+import { findRoomsByBusiness } from "@/repositories/rooms";
+import { fullAddressOf } from "@/lib/geo/fullAddress";
 import type { BusinessType } from "@/types/business";
+import { startedSessionIds } from "@/types/calendar";
 import { PublicProfile } from "./PublicProfile";
 
 /** The public page of a business, for anybody — a stranger, a follower, or its
@@ -36,7 +40,9 @@ export async function PublicBusinessPage({ businessId, expect }: { businessId: s
      drawn disabled for one — and an organization follows since
      `20260920180000_an_organization_follows`. One round trip fewer on a page
      strangers open. */
-  const [following, role, header, memberships, ownerCounts, nextSessions] = await Promise.all([
+  const isStudio = profile.business.type === "studio";
+  const place = [profile.business.area, profile.business.city].filter(Boolean).join(", ");
+  const [following, role, header, memberships, ownerCounts, nextSessions, rooms, address, mine] = await Promise.all([
     user ? isFollowingBusiness(supabase, businessId) : Promise.resolve(false),
     user ? findMyMembershipRole(supabase, businessId) : Promise.resolve(null),
     /* THE HEADER (15 Sep 2026): the pictures that swipe across the top — the
@@ -63,7 +69,25 @@ export async function PublicBusinessPage({ businessId, expect }: { businessId: s
        on a page strangers open. The function says why it is the schedule page's
        own, and why a failure here is nothing rather than a 500. */
     findNextPublicSessions(supabase, businessId, { name: profile.business.name, city: profile.business.city }),
+    /* ⚠ THE STUDIO ITSELF (5 Oct 2026, the user: "below Schedule should have full
+       adrees and rooms with amenities") — its rooms (a listed studio's are
+       anybody's to read, Step 11) and its address in words. Both degrade to
+       nothing rather than failing: a page strangers open must not 500 over a
+       room list or a geocoder, and the geocoder has 1.2 s at most. */
+    isStudio ? findRoomsByBusiness(supabase, businessId).catch(() => []) : Promise.resolve([]),
+    isStudio
+      ? fullAddressOf({ lat: profile.business.lat ?? null, lng: profile.business.lng ?? null, locationSetAt: profile.business.locationSetAt ?? null }, place)
+      : Promise.resolve(place),
+    /* the viewer's own seats, so a card on the rail says Booked rather than Book Now */
+    user ? findMyEnrolledSessionIds(supabase).catch(() => new Map()) : Promise.resolve(new Map()),
   ]);
+  /* ⚠ WHAT THE VIEWER RUNS OFFERS NO SEAT — the class page's own rule (R61): the
+     OWNER on the studio's own classes, and whoever is the artist taking it. Faculty
+     and a manager may still book, exactly as on the class page. */
+  const runs = nextSessions
+    .filter((e) => (role === "owner" && e.owner?.kind === "studio") || (user && e.artist?.userId === user.id))
+    .map((e) => e.sessionId);
+  const booking = { signedIn: Boolean(user), mine: Object.fromEntries(mine), runs, started: startedSessionIds(nextSessions) };
   const ownerId0 = profile.team.find((m) => m.role === "owner")?.userId ?? null;
   const followingN = ownerId0 ? (ownerCounts.get(ownerId0)?.following ?? null) : null;
 
@@ -92,6 +116,9 @@ export async function PublicBusinessPage({ businessId, expect }: { businessId: s
       nextSessions={nextSessions}
       manageHref={profile.business.type === "studio" ? `/business/${businessId}` : `/business/${businessId}/classes`}
       memberships={memberships}
+      address={address}
+      rooms={rooms}
+      booking={booking}
     />
   );
 }

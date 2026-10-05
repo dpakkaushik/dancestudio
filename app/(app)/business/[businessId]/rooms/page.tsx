@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 import { RoomsManager } from "@/features/rooms/components/RoomsManager";
-import { reversePlace } from "@/lib/geo/places";
+import { fullAddressOf as resolveFullAddress } from "@/lib/geo/fullAddress";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { countRoomClasses, findRoomsByBusiness } from "@/repositories/rooms";
 import { findMyMemberships, runsTheBusiness } from "@/repositories/businesses";
@@ -81,13 +81,15 @@ export default async function BusinessRoomsPage({
  *  per instance). ⚠ A pin that was never placed is the city's centre, a guess, so
  *  it is not resolved; ⚠ and the geocoder gets 1.2 s — past that, or with no key,
  *  or on any error, the area and city stand in rather than the page waiting. */
+/* ⚠ THE RESOLVING ITSELF IS SHARED since 5 Oct 2026 (`lib/geo/fullAddress`) —
+   the studio's public page prints the same sentence, and two copies of one
+   address are two addresses that can disagree. This desk keeps only its read. */
 async function fullAddressOf(supabase: Awaited<ReturnType<typeof createSupabaseServerClient>>, businessId: string, fallback: string): Promise<string> {
   try {
     const { data } = await supabase.from("businesses").select("lat, lng, location_set_at").eq("id", businessId).maybeSingle();
     const b = data as { lat: number | null; lng: number | null; location_set_at: string | null } | null;
-    if (!b?.location_set_at || b.lat == null || b.lng == null) return fallback;
-    const place = await Promise.race([reversePlace(b.lat, b.lng), new Promise<null>((r) => setTimeout(() => r(null), 1200))]);
-    return place?.label?.trim() || fallback;
+    if (!b) return fallback;
+    return await resolveFullAddress({ lat: b.lat, lng: b.lng, locationSetAt: b.location_set_at }, fallback);
   } catch {
     return fallback;
   }

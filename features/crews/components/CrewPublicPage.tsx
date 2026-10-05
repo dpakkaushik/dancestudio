@@ -200,7 +200,9 @@ export function CrewPublicPage({
         </ActionRow>
         </TopPanel>
 
-        <InvertedPanel style={{ paddingTop: 0 }}>
+        {/* ⚠ ON THE PAGE'S OWN THEME (5 Oct 2026, the user: "Remove Dual tone
+            from public profile pages") — the squircle Home and Discover wear */}
+        <InvertedPanel ground="page" style={{ paddingTop: 0 }}>
         {/* ── THE ASSOCIATIONS, in one language: a row per person, the group headed with a count ── */}
         {lead.length ? (
           <PeopleGroup title="Crew leader" n={lead.length}>

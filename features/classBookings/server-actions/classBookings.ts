@@ -43,6 +43,9 @@ export async function enrollAction(
     revalidatePath("/discover");
     revalidatePath("/");
     revalidatePath("/c/[slug]", "page");
+    /* the profile pages' NEXT SESSIONS rail books too since 5 Oct 2026 */
+    revalidatePath("/studio/[businessId]", "page");
+    revalidatePath("/person/[userId]", "page");
     /* the database refuses a full class since `20261004160000`; until that is
        applied it could still answer anything but a seat, and that is not one */
     if (status !== "enrolled") {
@@ -73,6 +76,8 @@ export async function cancelClassBookingAction(
     revalidatePath("/discover");
     revalidatePath("/");
     revalidatePath("/c/[slug]", "page");
+    revalidatePath("/studio/[businessId]", "page");
+    revalidatePath("/person/[userId]", "page");
     return { error: null, outcome: "cancelled" };
   } catch (error: unknown) {
     return {
