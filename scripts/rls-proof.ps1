@@ -29,13 +29,19 @@ $pass = $true
 if ($a.user.id -eq $b.user.id) { $pass = $false }
 
 function Api($token) { return @{ apikey = $anon; Authorization = "Bearer $token"; "Content-Type" = "application/json"; Prefer = "return=representation" } }
+# !! WRITES ARE return=MINIMAL (6 Oct 2026): since 20261006092000 `profiles.phone` is
+# not selectable by a signed-in role, so a RETURNING * is refused for a COLUMN
+# reason at plan time. Check 4 would then throw instead of measuring RLS, and
+# check 5 would pass for the wrong reason - so the writes ask for no body, and
+# check 4 reads B's name back to decide.
+function Minimal($token) { return @{ apikey = $anon; Authorization = "Bearer $token"; "Content-Type" = "application/json"; Prefer = "return=minimal" } }
 
 # 26 Sep 2026: both are USERS - the organization login is retired (and "Delhi" is not in the
 # eight-city registry, which a BEFORE trigger refuses since 19 Sep 2026)
 foreach ($u in @(@{s=$a;n="Priya Test";r="user";c="Pune"}, @{s=$b;n="Studio Test";r="user";c="New Delhi"})) {
   try {
     $body = @{ id = $u.s.user.id; full_name = $u.n; role = $u.r; city = $u.c } | ConvertTo-Json
-    Invoke-RestMethod -Method Post -Uri "$base/rest/v1/profiles" -Headers (Api $u.s.access_token) -Body $body | Out-Null
+    Invoke-RestMethod -Method Post -Uri "$base/rest/v1/profiles" -Headers (Minimal $u.s.access_token) -Body $body | Out-Null
     "2. $($u.n) created own profile: OK"
   } catch { "2. $($u.n) insert skipped (already exists)" }
 }
@@ -44,14 +50,15 @@ $read = Invoke-RestMethod -Method Get -Uri "$base/rest/v1/profiles?id=eq.$($b.us
 "3. A reads B's profile (allowed by design): got '$($read.full_name)'"
 if (-not $read.full_name) { $pass = $false }
 
-$upd = Invoke-RestMethod -Method Patch -Uri "$base/rest/v1/profiles?id=eq.$($b.user.id)" -Headers (Api $a.access_token) -Body '{"full_name":"HACKED"}'
-$blocked = (@($upd).Count -eq 0)
+try { Invoke-RestMethod -Method Patch -Uri "$base/rest/v1/profiles?id=eq.$($b.user.id)" -Headers (Minimal $a.access_token) -Body '{"full_name":"HACKED"}' | Out-Null } catch {}
+$after = Invoke-RestMethod -Method Get -Uri "$base/rest/v1/profiles?id=eq.$($b.user.id)&select=full_name" -Headers (Api $a.access_token)
+$blocked = ($after.full_name -and $after.full_name -ne "HACKED")
 "4. A updates B's profile: $(if ($blocked) {'BLOCKED — RLS OK'} else {'SUCCEEDED — RLS FAILED'})"
 if (-not $blocked) { $pass = $false }
 
 try {
   $fake = @{ id = "00000000-0000-4000-8000-000000000001"; full_name = "Impostor"; role = "user" } | ConvertTo-Json
-  Invoke-RestMethod -Method Post -Uri "$base/rest/v1/profiles" -Headers (Api $a.access_token) -Body $fake | Out-Null
+  Invoke-RestMethod -Method Post -Uri "$base/rest/v1/profiles" -Headers (Minimal $a.access_token) -Body $fake | Out-Null
   "5. A inserts under another id: SUCCEEDED — RLS FAILED"; $pass = $false
 } catch { "5. A inserts under another id: REJECTED — RLS OK" }
 

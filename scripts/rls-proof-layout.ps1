@@ -80,8 +80,14 @@ function Layout($userId) {
   if ($rows.Count -eq 0) { return $null }
   return $rows[0].layout
 }
+# !! return=MINIMAL, not Api's return=representation (6 Oct 2026): since
+# 20261006092000 `profiles.phone` is not selectable by a signed-in role, so a
+# RETURNING * is refused for a COLUMN reason at plan time - before the CHECK this
+# proof exists to reach, and before a good PATCH could land at all. Layout() reads
+# the row back with the service role, so nothing here needs the returned body.
 function Patch-As($token, $userId, $body) {
-  return Invoke-RestMethod -Method Patch -Uri "$base/rest/v1/profiles?id=eq.$userId" -Headers (Api $token) -Body ($body | ConvertTo-Json -Depth 12)
+  $h = @{ apikey = $anon; Authorization = "Bearer $token"; "Content-Type" = "application/json"; Prefer = "return=minimal" }
+  return Invoke-RestMethod -Method Patch -Uri "$base/rest/v1/profiles?id=eq.$userId" -Headers $h -Body ($body | ConvertTo-Json -Depth 12)
 }
 
 $pass = $true

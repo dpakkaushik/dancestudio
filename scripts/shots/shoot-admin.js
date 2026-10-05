@@ -61,8 +61,12 @@ const PAGES = [
      would otherwise never reach is actually made. EEE Dance Studio is the demo
      world's and carried 14 shelves at the time this was written; if the demo
      world is re-seeded the id moves and this page draws the business list
-     instead of the figures — which still proves the tab, just not the read. */
-  ["reach-shown-one", "/admin/reach?tab=shown&q=EEE&id=2f2dba3e-52f7-419f-ba8a-46336a647de6"],
+     instead of the figures — which still proves the tab, just not the read.
+     (6 Oct 2026: it had moved — re-pointed at the row the 3 Oct re-seed made.
+     `shoot-reach` follows the list's own link instead, so it cannot go stale.) */
+  ["reach-shown-one", "/admin/reach?tab=shown&q=EEE&id=e73aa0e4-7082-4d38-b691-98cbb9414c7c"],
+  /* AN ARTIST (6 Oct 2026, decision 7) — the person read beside the business one */
+  ["reach-shown-artist", "/admin/reach?tab=shown&q=Aditya&id=bb557609-034d-4f69-a3df-07121a71a484&kind=person"],
   ["reach-email", "/admin/reach?tab=email"],
   ["reach-email-q", "/admin/reach?tab=email&q=nobody%40example.com"],
   ["accounts", "/admin/accounts"],

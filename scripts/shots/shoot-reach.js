@@ -97,8 +97,15 @@ const check = (name, pass, detail = "") => {
       check("and with none, it says so rather than drawing an empty list", /Nothing in the last 30 days/i.test(searches));
     }
 
+    /* ⚠ RE-CUT 6 Oct 2026: it asserted "Nothing in the last 7 days", which was
+       true the day it was written — production has terms that found nothing now,
+       so the honest claim is that the WINDOW moved, and the figure says so either
+       way (a count, and the empty sentence only when the count is 0) */
     const sevenDay = await open("/admin/reach?days=7");
-    check("the window is the address", /7 days/.test(sevenDay) && /Nothing in the last 7 days/i.test(sevenDay));
+    const sevenCount = /(\d+) terms with no answer/.exec(sevenDay);
+    check("the window is the address",
+      /7 days/.test(sevenDay) && sevenCount !== null && (sevenCount[1] !== "0" || /Nothing in the last 7 days/i.test(sevenDay)),
+      sevenCount ? `${sevenCount[1]} in 7 days` : "no figure");
 
     /* ── SHOWN ────────────────────────────────────────────────────────────── */
     const shown = await open("/admin/reach?tab=shown");
@@ -121,8 +128,14 @@ const check = (name, pass, detail = "") => {
       check("an artist's page answers (shown, or honestly not shown)", /shelves in 30 days/.test(oneArtist) || /Not shown once in the last 30 days/.test(oneArtist));
     }
 
-    /* the read that only a real admin can make */
-    const one = await open("/admin/reach?tab=shown&q=EEE&id=2f2dba3e-52f7-419f-ba8a-46336a647de6");
+    /* the read that only a real admin can make.
+       ⚠ RE-CUT 6 Oct 2026: it opened a HARD-CODED id, and the demo world was
+       re-seeded on 3 Oct — EEE Dance Studio is a different row now, so the page
+       fell back to the list and the check read "none" on a working desk. It
+       follows the link the list itself draws. */
+    await open("/admin/reach?tab=shown&q=EEE");
+    const eeeHref = await page.getByRole("link", { name: /EEE Dance Studio/ }).first().getAttribute("href").catch(() => null);
+    const one = eeeHref ? await open(eeeHref) : "";
     const shelves = /(\d+) shelves in 30 days/.exec(one);
     check("the business's impressions are read back", shelves !== null && Number(shelves[1]) > 0, shelves ? `${shelves[1]} shelves` : "none");
     check("the surface is in words, not its key", /Discover/.test(one) && !/discover_/.test(one));

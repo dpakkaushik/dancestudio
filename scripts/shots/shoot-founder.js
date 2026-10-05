@@ -65,7 +65,9 @@ const account = async (email, fullName, city) => {
   const created = await call("POST", `${SUPABASE}/auth/v1/admin/users`, H_SERVICE, { email, password: PASSWORD, email_confirm: true }, `create ${email}`);
   const token = await call("POST", `${SUPABASE}/auth/v1/token?grant_type=password`, { apikey: ANON, "Content-Type": "application/json" }, { email, password: PASSWORD }, `sign in ${email}`);
   const h = asUser(token.access_token);
-  await call("POST", "/rest/v1/profiles", h, { id: created.id, full_name: fullName, role: "user", city, styles: ["Hip-Hop"] }, `profile ${email}`);
+  /* return=minimal (6 Oct 2026): `profiles.phone` is not selectable by a signed-in
+     role since 20261006092000, so RETURNING * is refused for a column reason */
+  await call("POST", "/rest/v1/profiles", { ...h, Prefer: "return=minimal" }, { id: created.id, full_name: fullName, role: "user", city, styles: ["Hip-Hop"] }, `profile ${email}`);
   return { id: created.id, email, name: fullName, h };
 };
 
