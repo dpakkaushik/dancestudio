@@ -1009,27 +1009,40 @@ export function ClassDetail({
                 Invoice
               </span>
               <span aria-hidden="true" style={{ width: 1, background: "var(--el)" }} />
-              <span
-                role="button"
-                tabIndex={0}
-                onKeyDown={dosKey}
-                aria-label="Cancel booking"
-                onClick={() => setRefundOpen(true)}
-                style={{
-                  flex: 1,
-                  display: "inline-flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  gap: 6,
-                  padding: "10px 6px",
-                  fontSize: 11.5,
-                  fontWeight: 800,
-                  cursor: "pointer",
-                  color: "#F87171",
-                }}
-              >
-                Cancel booking
-              </span>
+              {/* ⚠ A STARTED CLASS IS FINAL (6 Oct 2026, decision 1): once the
+                  session is live the seat cannot be handed back, so the half that
+                  cancels says so instead — `_cancel_one_class_booking` refuses it
+                  in the same words */}
+              {sessionPhase === "live" ? (
+                <span
+                  data-testid="class-started-no-cancel"
+                  style={{ flex: 1, display: "inline-flex", alignItems: "center", justifyContent: "center", padding: "10px 6px", fontSize: 10.5, fontWeight: 800, color: "var(--muted)", textAlign: "center" }}
+                >
+                  Started — no cancelling now
+                </span>
+              ) : (
+                <span
+                  role="button"
+                  tabIndex={0}
+                  onKeyDown={dosKey}
+                  aria-label="Cancel booking"
+                  onClick={() => setRefundOpen(true)}
+                  style={{
+                    flex: 1,
+                    display: "inline-flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    gap: 6,
+                    padding: "10px 6px",
+                    fontSize: 11.5,
+                    fontWeight: 800,
+                    cursor: "pointer",
+                    color: "#F87171",
+                  }}
+                >
+                  Cancel booking
+                </span>
+              )}
             </div>
           </div>
         )}

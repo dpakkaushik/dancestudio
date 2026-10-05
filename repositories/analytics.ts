@@ -20,7 +20,10 @@ import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 
 export type SearchScope = "all" | "studios" | "artists" | "crews" | "classes";
 export type ImpressionSurface = "discover" | "search" | "followed" | "nearby";
-export type ImpressionKind = "business" | "class" | "crew";
+/* `person` since 6 Oct 2026 (`20261006093000`): an artist has been a PERSON since
+   R24, so Discover's Artists tab records its shelf under that word rather than
+   pretending a profile is a business */
+export type ImpressionKind = "business" | "class" | "crew" | "person";
 
 /** the CHECK's own bound — a shelf longer than this is a bug upstream */
 const MAX_SUBJECTS = 200;

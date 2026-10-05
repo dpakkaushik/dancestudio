@@ -1,4 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { findPhones } from "@/repositories/profiles";
 
 /** THE STUDENTS OF A STUDIO, DERIVED (21 Sep 2026).
  *
@@ -167,13 +168,15 @@ export async function findStudents(supabase: SupabaseClient, businessId: string)
   /* the names and faces. `profiles` is signed-in readable (Step 1), so one read
      covers every id; an empty answer simply leaves a row without a face. */
   const profiles = new Map<string, ProfileRow>();
+  /* ⚠ the number is `profile_phones`' to hand over (6 Oct 2026, decision 4) — a
+     business's runners read their own STUDENTS' numbers through it, in parallel
+     with the names; `profiles.phone` is not selectable by a client any more */
   if (userIds.length > 0) {
-    const { data } = await supabase
-      .from("profiles")
-      .select("id, full_name, profile_photo_path, phone")
-      .in("id", userIds.slice(0, 400))
-      .is("deleted_at", null);
-    for (const p of ((data ?? []) as ProfileRow[])) profiles.set(p.id, p);
+    const [{ data }, phones] = await Promise.all([
+      supabase.from("profiles").select("id, full_name, profile_photo_path").in("id", userIds.slice(0, 400)).is("deleted_at", null),
+      findPhones(supabase, userIds.slice(0, 400)),
+    ]);
+    for (const p of ((data ?? []) as ProfileRow[])) profiles.set(p.id, { ...p, phone: phones.get(p.id) ?? null });
   }
 
   const out: Student[] = [];

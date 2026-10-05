@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import { decideStudioVerificationAction } from "@/features/admin/server-actions/admin";
-import { endSubscriptionAction } from "@/features/admin/server-actions/subscriptions";
+import { endSubscriptionAction, refundFirstPeriodAction } from "@/features/admin/server-actions/subscriptions";
 import { VerifiedTick, dateWords } from "@/features/settings/components/settings-kit";
 import { PLATFORM_TINT, handleOf, isPlatform, safeHref } from "@/lib/constants/socials";
 import { INK, SUB } from "@/lib/design/tokens";
@@ -176,18 +176,35 @@ export function VerificationDesk({
     return start(async () => {
       const out = await decideStudioVerificationAction({ businessId, approve: false, note: withNote || null });
       if (out.error) return fire(out.error);
+      let refunded: string | null = null;
       if (end && m) {
-        const stopped = await endSubscriptionAction({ subscriptionId: m.subscriptionId, reason: `Studio not approved${withNote ? ` — ${withNote}` : ""}` });
+        const why = `Studio not approved${withNote ? ` — ${withNote}` : ""}`;
+        const stopped = await endSubscriptionAction({ subscriptionId: m.subscriptionId, reason: why });
         if (stopped.error) {
           setRejecting(null);
           setNote("");
           router.refresh();
           return fire(`${name} not approved — but its subscription is STILL LIVE: ${stopped.error}`);
         }
+        /* AND THE FIRST PERIOD GOES BACK (6 Oct 2026, decision 2) — a studio that
+           paid at creation (R51) and was then refused never had a month it could
+           use. Third, after the badge and the mandate: if this fails the studio
+           is correctly unverified, nothing more is charged, and the desk says the
+           money is still to be returned — recoverable from the Cashfree dashboard */
+        if (!m.granted) {
+          const back = await refundFirstPeriodAction({ subscriptionId: m.subscriptionId, reason: why });
+          if (back.error) {
+            setRejecting(null);
+            setNote("");
+            router.refresh();
+            return fire(`${name} not approved and its subscription ended — but the first month was NOT refunded: ${back.error}`);
+          }
+          refunded = back.amountInr ? `₹${back.amountInr.toLocaleString("en-IN")}` : "the first month";
+        }
       }
       setRejecting(null);
       setNote("");
-      fire(end ? `${name} not approved, and its subscription ended` : `${name} not approved`);
+      fire(end ? `${name} not approved, its subscription ended${refunded ? ` and ${refunded} refunded` : ""}` : `${name} not approved`);
       router.refresh();
     });
   };
@@ -285,7 +302,7 @@ export function VerificationDesk({
                       <label style={{ display: "flex", alignItems: "flex-start", gap: 8, marginTop: 9, cursor: "pointer" }}>
                         <input type="checkbox" checked={alsoEnd} onChange={(e) => setAlsoEnd(e.target.checked)} aria-label={`End the subscription on ${s.name} too`} style={{ marginTop: 2, accentColor: "#EF4444", width: 15, height: 15, flexShrink: 0 }} />
                         <span style={{ fontSize: 11, color: SUB, lineHeight: 1.45 }}>
-                          <b style={{ color: INK }}>End its subscription too.</b> {s.name} {mandates[s.id]!.granted ? "holds a comped plan" : `is being charged ₹${mandates[s.id]!.priceInr.toLocaleString("en-IN")} a month`} and it renews whether or not this is approved. Leave it on and they keep paying for a studio that cannot go on Discover.
+                          <b style={{ color: INK }}>{mandates[s.id]!.granted ? "End its subscription too." : "End its subscription and refund the first month."}</b> {s.name} {mandates[s.id]!.granted ? "holds a comped plan" : `is being charged ₹${mandates[s.id]!.priceInr.toLocaleString("en-IN")} a month — the first month goes back through Cashfree`} and it renews whether or not this is approved. Leave it on and they keep paying for a studio that cannot go on Discover.
                         </span>
                       </label>
                     ) : null}

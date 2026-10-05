@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
-import { updateMyProfile } from "@/repositories/profiles";
+import { findPhones, updateMyProfile } from "@/repositories/profiles";
 
 /** The Profile tab's one write (S_profiletab: Edit profile 11364, the links
  *  sheet 11161, the styles sheet 11217 — three sheets, one record). Zod checks
@@ -32,11 +32,16 @@ const schema = z.object({
   styles: z.array(z.string().trim().min(1).max(40)).max(12),
   /* the same shape the business phone takes (settings slice) — an empty box is
      null, which is how a person TAKES THEIR NUMBER DOWN without asking anyone */
+  /* ⚠ OMITTED = LEAVE IT AS IT IS (6 Oct 2026, decision 4): the number is its own
+     read now, and only the contact sheet edits it — so the styles and links rows
+     and Edit details send none, and the server keeps the stored one rather than
+     trusting a copy the page may never have held. */
   phone: z
     .string()
     .trim()
     .regex(/^\+?[0-9][0-9 ]{7,17}$/, "a phone number is 8 to 18 digits")
-    .nullable(),
+    .nullable()
+    .optional(),
   /* THE CONTACT EMAIL (19 Sep 2026) — the Mail button's address. Omitted, the
      column is left alone (the styles and links sheets never carry it); null
      clears it; the database keeps the same shape as a CHECK */
@@ -65,10 +70,16 @@ export async function updateMyProfileAction(input: MyProfileInput): Promise<{ er
     redirect("/login");
   }
   try {
+    /* the RPC takes the whole profile, so an omitted number is filled from the
+       one on record — never sent as null, which would take it down */
+    const phone =
+      parsed.data.phone === undefined
+        ? ((await findPhones(supabase, [user.id], { strict: true })).get(user.id) ?? null)
+        : parsed.data.phone || null;
     await updateMyProfile(supabase, {
       ...parsed.data,
       city: parsed.data.city || null,
-      phone: parsed.data.phone || null,
+      phone,
     });
     revalidatePath("/profile");
     revalidatePath("/");

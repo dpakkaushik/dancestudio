@@ -84,7 +84,8 @@ export async function sendEnquiryAction(input: z.input<typeof sendSchema>): Prom
     const {
       data: { user },
     } = await supabase.auth.getUser();
-    const me = user ? await findProfileById(supabase, user.id) : null;
+    /* the caller's own number, through `profile_phones` since 6 Oct 2026 */
+    const me = user ? await findProfileById(supabase, user.id, { withPhone: true }) : null;
     const id = await sendEnquiry(supabase, { ...parsed.data, mobile: me?.phone ?? null });
     revalidateInbox();
     return { error: null, enquiryId: id };

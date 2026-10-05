@@ -4,11 +4,14 @@ import { ReachDesk, type ReachTab } from "@/features/admin/components/ReachDesk"
 import { requireAdmin } from "@/features/admin/server/adminGuard";
 import { isResendWebhookConfigured } from "@/lib/resend/signature";
 import {
+  findAdminAccounts,
   findAdminBusinesses,
   findEmailDeliveryPulse,
   findEmailHistoryFor,
   findImpressionsForBusiness,
+  findImpressionsForPerson,
   findSearchTermsWithNoAnswer,
+  type AdminAccount,
   type AdminBusiness,
   type EmailEventRow,
   type EmailPulseRow,
@@ -41,7 +44,7 @@ const WINDOWS = [7, 30, 90];
 export default async function AdminReachPage({
   searchParams,
 }: {
-  searchParams: Promise<{ tab?: string; q?: string; id?: string; days?: string }>;
+  searchParams: Promise<{ tab?: string; q?: string; id?: string; kind?: string; days?: string }>;
 }) {
   const { supabase, badges } = await requireAdmin();
   const params = await searchParams;
@@ -53,6 +56,8 @@ export default async function AdminReachPage({
   let terms: SearchTermRow[] = [];
   let businesses: AdminBusiness[] = [];
   let chosen: AdminBusiness | null = null;
+  let people: AdminAccount[] = [];
+  let chosenPerson: AdminAccount | null = null;
   let impressions: ImpressionRow[] = [];
   let pulse: EmailPulseRow[] = [];
   let history: EmailEventRow[] = [];
@@ -64,13 +69,25 @@ export default async function AdminReachPage({
     needsMigration = r.needsMigration;
   } else if (tab === "shown") {
     if (q) {
-      businesses = await findAdminBusinesses(supabase, { q, limit: 100 });
+      /* ARTISTS TOO (6 Oct 2026, decision 7): an artist is a PERSON with a live
+         plan (R24), recorded under `person` — so the term is looked up among the
+         accounts as well, and only the ones holding the plan are offered */
+      [businesses, people] = await Promise.all([
+        findAdminBusinesses(supabase, { q, limit: 100 }),
+        findAdminAccounts(supabase, { q, limit: 50 }).then((a) => a.filter((p) => p.hasPlan && !p.isAdmin)),
+      ]);
       /* the link that opened this carries both the term and the id, so the
-         business is found in the list the term already returned — no second
-         read, and an id that is not in it simply falls back to the list */
-      chosen = params.id ? (businesses.find((b) => b.id === params.id) ?? null) : null;
-      if (chosen) {
-        const r = await findImpressionsForBusiness(supabase, chosen.id, days);
+         business or the artist is found in the list the term already returned —
+         no second read, and an id that is not in it simply falls back to the list */
+      if (params.id && params.kind === "person") {
+        chosenPerson = people.find((p) => p.id === params.id) ?? null;
+      } else if (params.id) {
+        chosen = businesses.find((b) => b.id === params.id) ?? null;
+      }
+      if (chosen || chosenPerson) {
+        const r = chosen
+          ? await findImpressionsForBusiness(supabase, chosen.id, days)
+          : await findImpressionsForPerson(supabase, chosenPerson!.id, days);
         impressions = r.rows;
         needsMigration = r.needsMigration;
       }
@@ -95,6 +112,8 @@ export default async function AdminReachPage({
         terms={terms}
         businesses={businesses}
         chosen={chosen}
+        people={people}
+        chosenPerson={chosenPerson}
         impressions={impressions}
         pulse={pulse}
         history={history}

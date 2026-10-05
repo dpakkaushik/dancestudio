@@ -64,6 +64,35 @@ export interface MyPass extends PassExpiry {
   status: "pending_payment" | "active" | "used_up" | "cancelled";
   priceInr: number;
   boughtAt: string | null;
+  /** ⚠ MAY GO BACK (6 Oct 2026, decision 3): active, not one unit spent, bought
+   *  less than 7 days ago and not run out — the same four tests
+   *  `return_membership_pass` makes, read here so the card offers Return only
+   *  where the database will take it */
+  returnable: boolean;
+}
+
+/** how long after buying a membership it can be handed back unused */
+export const RETURN_WINDOW_DAYS = 7;
+
+export function returnMembershipPassOutcome(raw: unknown): {
+  refund: { id: string; status: string; amountInr: number; provider: string; providerOrderId: string | null } | null;
+} {
+  const out = raw as { refund: { id: string; status: string; amount_inr: number; provider: string; provider_order_id: string | null } | null };
+  return {
+    refund: out?.refund
+      ? { id: out.refund.id, status: out.refund.status, amountInr: Number(out.refund.amount_inr), provider: out.refund.provider, providerOrderId: out.refund.provider_order_id }
+      : null,
+  };
+}
+
+/** HAND AN UNUSED MEMBERSHIP BACK (6 Oct 2026, decision 3) — the holder's own
+ *  act, refused by the database in words unless it is active, unspent, under a
+ *  week old and not run out. A paid one files one automatic refund, which the
+ *  action then sends through Cashfree. */
+export async function returnMembershipPass(supabase: SupabaseClient, passId: string) {
+  const { data, error } = await supabase.rpc("return_membership_pass", { p_pass_id: passId });
+  if (error) throw new Error(error.message);
+  return returnMembershipPassOutcome(data);
 }
 
 export interface MembershipClassUse {
@@ -278,21 +307,34 @@ export async function findMyMemberships(supabase: SupabaseClient): Promise<MyPas
   if (error) throw new Error(`memberships.mine failed: ${error.message}`);
   const rows = (data ?? []) as Array<Record<string, unknown>>;
   const expiry = await findPassExpiry(supabase, rows.map((r) => String(r.pass_id)));
-  return rows.map((r) => ({
-    ...(expiry.get(String(r.pass_id)) ?? NO_EXPIRY),
-    passId: String(r.pass_id),
-    membershipId: String(r.membership_id),
-    name: String(r.name),
-    businessId: String(r.business_id),
-    businessName: String(r.business_name ?? ""),
-    businessType: r.business_type as MyPass["businessType"],
-    unit: r.unit as Membership["unit"],
-    unitsTotal: n(r.units_total),
-    unitsUsed: n(r.units_used),
-    status: r.status as MyPass["status"],
-    priceInr: n(r.price_inr),
-    boughtAt: (r.bought_at as string | null) ?? null,
-  }));
+  const now = Date.now();
+  return rows.map((r) => {
+    const exp = expiry.get(String(r.pass_id)) ?? NO_EXPIRY;
+    const boughtAt = (r.bought_at as string | null) ?? null;
+    const status = r.status as MyPass["status"];
+    const unitsUsed = n(r.units_used);
+    return {
+      ...exp,
+      passId: String(r.pass_id),
+      membershipId: String(r.membership_id),
+      name: String(r.name),
+      businessId: String(r.business_id),
+      businessName: String(r.business_name ?? ""),
+      businessType: r.business_type as MyPass["businessType"],
+      unit: r.unit as Membership["unit"],
+      unitsTotal: n(r.units_total),
+      unitsUsed,
+      status,
+      priceInr: n(r.price_inr),
+      boughtAt,
+      returnable:
+        status === "active" &&
+        unitsUsed === 0 &&
+        !exp.expired &&
+        boughtAt !== null &&
+        now - Date.parse(boughtAt) < RETURN_WINDOW_DAYS * 86_400_000,
+    };
+  });
 }
 
 /** EVERY SESSION ONE PASS HAS BEEN SPENT ON (`pass_uses`, 19 Sep 2026 — with

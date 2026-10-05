@@ -3,6 +3,7 @@
 import { cookies, headers } from "next/headers";
 import { RedirectType, redirect } from "next/navigation";
 import { z } from "zod";
+import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { ONBOARDING_COOKIE } from "@/lib/auth/onboarding";
 import { LIMITS, clientKey, withinLimit } from "@/lib/rateLimit";
@@ -251,6 +252,43 @@ export async function signOutAction(): Promise<void> {
   const supabase = await createSupabaseServerClient();
   await supabase.auth.signOut();
   redirect("/login", RedirectType.replace);
+}
+
+/** DELETE MY ACCOUNT (6 Oct 2026, decision 6 — DPDP: a person must be able to
+ *  ask to be erased from inside the app). `request_account_deletion` decides —
+ *  it refuses, in words, while somebody else still depends on this person, and
+ *  otherwise opens the support thread, closes every seat and soft-deletes the
+ *  profile. Then this BANS SIGN-IN on the auth account, with the service role:
+ *  a soft-deleted person who could still sign in would meet onboarding, whose
+ *  insert collides with their own row. ⚠ The auth account is NOT deleted — that
+ *  is a platform admin's act, after reading the thread; putting a person back is
+ *  one UPDATE and `ban_duration: "none"`. */
+const deletionSchema = z.object({ reason: z.string().trim().max(1000).nullable() });
+
+export async function requestAccountDeletionAction(input: z.input<typeof deletionSchema>): Promise<AuthActionState> {
+  const parsed = deletionSchema.safeParse(input);
+  if (!parsed.success) {
+    return { error: parsed.error.issues[0]?.message ?? "Invalid request" };
+  }
+  const supabase = await createSupabaseServerClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) {
+    redirect("/login", RedirectType.replace);
+  }
+  const { error } = await supabase.rpc("request_account_deletion", { p_reason: parsed.data.reason || null });
+  if (error) {
+    return { error: error.message };
+  }
+  try {
+    await createSupabaseAdminClient().auth.admin.updateUserById(user.id, { ban_duration: "876000h" });
+  } catch {
+    /* the profile is closed and the thread is open — a failed ban is the admin's
+       to finish from the thread, and must not leave the person on this screen */
+  }
+  await supabase.auth.signOut();
+  redirect("/login?left=1", RedirectType.replace);
 }
 
 /** ONBOARDING'S FIRST STEP, WITHOUT THE REDIRECT (parity audit U2). The

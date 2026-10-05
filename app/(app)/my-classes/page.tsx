@@ -228,6 +228,9 @@ export default async function MyClassesPage({ searchParams }: { searchParams: Pr
      yet is still to come. */
   const nowMs = Date.parse(nowIso);
   const ended = (endsAt: string | null) => endsAt !== null && Date.parse(endsAt) <= nowMs;
+  /* ⚠ A STARTED CLASS IS FINAL TOO (6 Oct 2026, decision 1): its card stays under
+     Upcoming while it runs, and offers no Cancel — the database refuses it now */
+  const started = (startsAt: string | null) => startsAt !== null && Date.parse(startsAt) <= nowMs;
   const soonest = (a: string | null, b: string | null) => (a ?? "9").localeCompare(b ?? "9");
   const bookedUpcoming = class_bookings.filter((e) => !ended(e.endsAt)).sort((a, b) => soonest(a.startsAt, b.startsAt));
   const bookedDone = class_bookings.filter((e) => ended(e.endsAt)).sort((a, b) => soonest(b.startsAt, a.startsAt));
@@ -384,7 +387,7 @@ export default async function MyClassesPage({ searchParams }: { searchParams: Pr
                           city={e.businessCity}
                           href={`/c/${e.shareSlug}`}
                           relation="booked"
-                          actions={<EnrollButton sessionId={e.sessionId} isFull={false} isSignedIn mine={{ id: e.id, status: e.status }} priceInr={e.priceInr} shareSlug={e.shareSlug} />}
+                          actions={<EnrollButton sessionId={e.sessionId} isFull={false} isSignedIn mine={{ id: e.id, status: e.status }} priceInr={e.priceInr} shareSlug={e.shareSlug} started={started(e.startsAt)} />}
                         />
                       ))}
                     /* ⚠ A CLASS THAT IS OVER OFFERS NO WAY OUT OF ITS SEAT (4 Oct 2026,

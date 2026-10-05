@@ -4,6 +4,8 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState, useTransition, type CSSProperties } from "react";
 import { confirmCheckoutAction, startMembershipCheckoutAction } from "@/features/payments/server-actions/payments";
+import { returnMembershipPassAction } from "@/features/memberships/server-actions/memberships";
+import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { openCashfreeCheckout } from "@/lib/cashfree/checkout-client";
 import { DOS_TOOLS, DeskHero } from "@/features/businesses/components/biz-kit";
 import { DeskAddButton } from "@/features/settings/components/settings-kit";
@@ -100,6 +102,17 @@ export function MembershipsScreen({
     setToast(m);
     setTimeout(() => setToast(null), 2600);
   };
+  /* the pass being handed back, while its question is open (decision 3) */
+  const [returning, setReturning] = useState<MyPass | null>(null);
+  const [returnErr, setReturnErr] = useState<string | null>(null);
+  const doReturn = (p: MyPass) =>
+    start(async () => {
+      const out = await returnMembershipPassAction({ passId: p.passId });
+      if (out.error) return setReturnErr(out.error);
+      setReturning(null);
+      fire(out.message ?? "Membership handed back");
+      router.refresh();
+    });
 
   /* A PASS TAKEN BUT NOT PAID FOR — the checkout picks up where it left off, on
      the event page's own pattern: open Cashfree's window, then ask OUR server
@@ -240,6 +253,14 @@ export function MembershipsScreen({
                   <Link href={sellerHref} style={toolBtn(unpaid ? "secondary" : "tinted", TINT)}>
                     {p.businessType === "studio" ? "Studio page" : "Artist page"}
                   </Link>
+                  {/* ⚠ RETURN IT (6 Oct 2026, decision 3): only while the database
+                      will take it back — active, not one unit spent, under a week
+                      old — and always behind a question, because it is money */}
+                  {p.returnable ? (
+                    <button type="button" data-testid="return-pass" disabled={pending} onClick={() => { setReturnErr(null); setReturning(p); }} style={toolBtn("secondary", TINT)}>
+                      Return it
+                    </button>
+                  ) : null}
                 </ToolActions>
               </ToolCard>
             );
@@ -346,6 +367,22 @@ export function MembershipsScreen({
         </>
       )}
       </DeskBody>
+
+      {returning ? (
+        <ConfirmDialog
+          title={`Return ${returning.name}?`}
+          body={
+            returning.priceInr > 0
+              ? `It is handed back to ${returning.businessName} and your ${rupees(returning.priceInr)} goes back to you automatically. This cannot be undone.`
+              : `It is handed back to ${returning.businessName}. This cannot be undone.`
+          }
+          goWord="Return it"
+          busy={pending}
+          err={returnErr}
+          onKeep={() => setReturning(null)}
+          onGo={() => doReturn(returning)}
+        />
+      ) : null}
 
       {toast ? (
         <div role="status" style={{ position: "fixed", bottom: 96, left: "50%", transform: "translateX(-50%)", background: "#241B33", color: "#fff", padding: "11px 18px", borderRadius: 999, fontSize: 13, fontWeight: 700, zIndex: 40 }}>

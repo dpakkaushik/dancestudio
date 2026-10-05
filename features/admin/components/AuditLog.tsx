@@ -26,6 +26,8 @@ const ACTIONS: Record<string, { says: string; tone: string }> = {
   "report.dismissed": { says: "found no problem with", tone: MUTED },
   "subscription.grant": { says: "granted a subscription to", tone: "#22C55E" },
   "subscription.end": { says: "ended the subscription of", tone: "#EF4444" },
+  /* 6 Oct 2026 — a rejected studio's first period, given back (decision 2) */
+  "subscription.refund": { says: "refunded the first period of", tone: "#F59E0B" },
   "plan.grant": { says: "granted the Artist plan to", tone: "#22C55E" },
   "plan.end": { says: "ended the Artist plan of", tone: "#EF4444" },
   "plan.price": { says: "changed the price of", tone: "#F59E0B" },

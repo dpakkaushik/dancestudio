@@ -2239,7 +2239,16 @@ test.describe.serial("DanceOS, end to end", () => {
     }).toPass({ timeout: 30_000 });
     /* ⚠ NO "YOUR PLAN" SINCE 26 Sep 2026 — the plan is the Subscription tile on Home */
     await expect(settings.getByText("YOUR PLAN")).toHaveCount(0);
-    await expect(settings.getByText("ACCOUNT")).toBeVisible();
+    /* exact since 6 Oct 2026: "Delete my account" also contains the word */
+    await expect(settings.getByText("ACCOUNT", { exact: true })).toBeVisible();
+    /* DECISION 6 (6 Oct 2026): the account's own way out — drawn, opening its
+       question, and kept by Keep it (the deletion itself is the dry run's) */
+    await settings.getByRole("button", { name: "Delete my account" }).click();
+    const leave = trainer.getByRole("alertdialog", { name: "Delete your account?" });
+    await expect(leave).toBeVisible();
+    await expect(leave.getByLabel("Why are you leaving? (optional)")).toBeVisible();
+    await leave.getByRole("button", { name: "Keep it" }).click();
+    await expect(leave).toHaveCount(0);
     /* 19 Sep 2026: TILES, and no Notifications among them — "What reaches you"
        lives on the bell's own screen, once (the user: "can remove notifications
        and keep it inside the notifications section only"); Help & support and
@@ -2330,7 +2339,7 @@ test.describe.serial("DanceOS, end to end", () => {
        plan's own screen, where ENDING is a real Cancel with a confirm. */
     await trainer.goto("/profile?settings=1");
     const settings2 = trainer.getByRole("dialog", { name: "Settings" });
-    await expect(settings2.getByText("ACCOUNT")).toBeVisible();
+    await expect(settings2.getByText("ACCOUNT", { exact: true })).toBeVisible();
     await expect(settings2.getByText("PRO ACTIVE")).toHaveCount(0);
     await expect(settings2.getByRole("button", { name: "Artist tools" })).toHaveCount(0);
     await expect(settings2.getByRole("link", { name: /Subscription/ })).toHaveCount(0);

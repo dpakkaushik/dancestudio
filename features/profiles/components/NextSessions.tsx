@@ -130,6 +130,7 @@ export function NextSessions({ entries, booking }: { entries: CalendarEntry[]; b
                       mine={seat}
                       priceInr={e.priceInr}
                       shareSlug={e.shareSlug}
+                      started={booking?.started.includes(e.sessionId) ?? false}
                     />
                   ) : undefined
                 }

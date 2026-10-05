@@ -29,7 +29,38 @@ interface ProfileRow {
 /* ⚠ `about` LEFT on 20 Sep 2026 (`20260920160000_the_bio_is_gone`): the column is
    dropped, so selecting it here would fail every profile read. `events.about` is
    a different column and is untouched. */
-export const PROFILE_COLUMNS = "id, full_name, role, city, profile_photo_path, age, dob, socials, styles, member_no, verified_at, phone, contact_email, phone_public, lat, lng, location_set_at";
+/* ⚠⚠ NO `phone` (6 Oct 2026, decision 4, `20261006092000`): the column is not
+   selectable by any client role any more, so naming it here would refuse every
+   profile read. A number is read through `profile_phones` (`findPhones`), which
+   hands back only the ones the caller may see — their own, anybody's with Call
+   switched on, and a business runner's view of its own students. */
+export const PROFILE_COLUMNS = "id, full_name, role, city, profile_photo_path, age, dob, socials, styles, member_no, verified_at, contact_email, phone_public, lat, lng, location_set_at";
+
+/** THE NUMBERS THE CALLER MAY READ (6 Oct 2026, decision 4) — ids in, a map of
+ *  id → number out, holding only what `profile_phones` admits. Empty in, empty
+ *  out, no round trip; a refusal reads as "no numbers", never as an error, so a
+ *  page never fails over a phone.
+ *
+ *  ⚠ `strict` is for the one caller that WRITES a number back — the profile
+ *  save, which takes the whole record and would otherwise send null over a number
+ *  it merely failed to read. There a failed read throws rather than wiping it.
+ *  ⚠ Before `20261006092000` is applied the function does not exist (PostgREST
+ *  answers PGRST202), and the column is still selectable, so that one case reads
+ *  the column directly — the app goes live a few minutes before the migration. */
+export async function findPhones(supabase: SupabaseClient, ids: string[], opts: { strict?: boolean } = {}): Promise<Map<string, string>> {
+  const unique = [...new Set(ids.filter(Boolean))].slice(0, 400);
+  if (unique.length === 0) return new Map();
+  const toMap = (rows: Array<{ id: string; phone: string | null }>) =>
+    new Map(rows.filter((r) => r.phone).map((r) => [r.id, r.phone as string]));
+  const { data, error } = await supabase.rpc("profile_phones", { p_ids: unique });
+  if (!error) return toMap((data ?? []) as Array<{ id: string; phone: string }>);
+  if (error.code === "PGRST202") {
+    const old = await supabase.from("profiles").select("id, phone").in("id", unique);
+    if (!old.error) return toMap((old.data ?? []) as Array<{ id: string; phone: string | null }>);
+  }
+  if (opts.strict) throw new Error("Could not read your number just now — try again");
+  return new Map();
+}
 
 const toSocials = (raw: unknown): SocialLink[] =>
   Array.isArray(raw)
@@ -61,19 +92,21 @@ export const toProfile = (row: ProfileRow): Profile => ({
 
 export async function findProfileById(
   supabase: SupabaseClient,
-  id: string
+  id: string,
+  /** read the number too — for the screens that SHOW or EDIT it (Home, the
+   *  enquiry that sends it). In parallel with the row, so it costs no wall clock;
+   *  left off everywhere else so the chrome makes one read, as before. */
+  opts: { withPhone?: boolean } = {}
 ): Promise<Profile | null> {
-  const { data, error } = await supabase
-    .from("profiles")
-    .select(PROFILE_COLUMNS)
-    .eq("id", id)
-    .is("deleted_at", null)
-    .maybeSingle();
+  const [{ data, error }, phones] = await Promise.all([
+    supabase.from("profiles").select(PROFILE_COLUMNS).eq("id", id).is("deleted_at", null).maybeSingle(),
+    opts.withPhone ? findPhones(supabase, [id]) : Promise.resolve(new Map<string, string>()),
+  ]);
 
   if (error) {
     throw new Error(`profiles.findById failed: ${error.message}`);
   }
-  return data ? toProfile(data as ProfileRow) : null;
+  return data ? toProfile({ ...(data as ProfileRow), phone: phones.get(id) ?? null }) : null;
 }
 
 export async function createProfile(
@@ -166,14 +199,15 @@ export const PEOPLE_SEARCH_MAX = 5;
 export const PEOPLE_RECENT_MAX = 3;
 
 /** SEARCH DANCEOS (prototype 16413-16447): live profiles whose NAME contains the
- *  term or whose PUBLISHED NUMBER contains its digits (19 Sep 2026, the user:
+ *  term or who hold the WHOLE mobile number typed (19 Sep 2026, the user:
  *  "option to search name, mobile no."), the caller left out, at most five.
- *  Signed-in users read live profiles (Step 1's policy), so this is a plain
- *  read — the pickers that add a crew member, an assistant or a duet partner
- *  all go through it. ⚠ The number searched is `profiles.phone` — the one a
- *  person chose to publish on their page (N8, 30 Aug 2026), read by every
- *  signed-in caller already; a person with no published number is found by
- *  name alone. */
+ *  Signed-in users read live profiles (Step 1's policy), so the name half is a
+ *  plain read — the pickers that add a crew member, an assistant or a duet
+ *  partner all go through it. ⚠⚠ THE NUMBER HALF IS A DEFINER CALL since 6 Oct
+ *  2026 (decision 4): `profiles.phone` is not selectable by a client any more,
+ *  and the old `phone ilike %digits%` let anybody fish a number out three digits
+ *  at a time. `find_people_by_phone` matches a whole number (its last ten
+ *  digits) and hands back ids, never the number. */
 export async function searchProfiles(
   supabase: SupabaseClient,
   term: string,
@@ -193,9 +227,15 @@ export async function searchProfiles(
   const name = q.replace(/[%_,().]/g, "");
   const digits = q.replace(/\D/g, "");
   const clauses: string[] = [];
-  if (name.length >= 2) clauses.push(`full_name.ilike.%${name}%`);
-  /* three digits is a number being typed, not a name with a digit in it */
-  if (digits.length >= 3) clauses.push(`phone.ilike.%${digits}%`);
+  /* a term that is mostly digits is a number being typed, not a name */
+  if (name.length >= 2 && digits.length < 3) clauses.push(`full_name.ilike.%${name}%`);
+  if (digits.length >= 10) {
+    const { data: ids } = await supabase.rpc("find_people_by_phone", { p_number: digits });
+    const found = ((ids ?? []) as Array<string | { find_people_by_phone: string }>)
+      .map((x) => (typeof x === "string" ? x : x.find_people_by_phone))
+      .filter((x) => /^[0-9a-f-]{36}$/.test(x));
+    if (found.length > 0) clauses.push(`id.in.(${found.join(",")})`);
+  }
   if (clauses.length === 0) {
     return [];
   }

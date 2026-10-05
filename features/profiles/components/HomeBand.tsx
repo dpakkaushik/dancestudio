@@ -82,7 +82,7 @@ export function HomeBand({
       age: profile.age,
       socials: next.socials ?? lists.socials,
       styles: next.styles ?? lists.styles,
-      phone: profile.phone ?? null,
+      /* no `phone`: the server keeps the stored number (6 Oct 2026, decision 4) */
     });
     if (!out.error) router.refresh();
     return out.error;

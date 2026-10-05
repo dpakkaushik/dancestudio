@@ -3,7 +3,11 @@
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { isCashfreeConfigured } from "@/lib/cashfree/api";
-import { cancelCashfreeSubscription } from "@/lib/cashfree/subscriptions";
+import {
+  cancelCashfreeSubscription,
+  fetchCashfreeSubscriptionPayments,
+  refundCashfreeSubscriptionPayment,
+} from "@/lib/cashfree/subscriptions";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { setPlanPrice } from "@/repositories/plans";
@@ -113,4 +117,59 @@ export async function endSubscriptionAction(input: unknown): Promise<{ error: st
   }
   refresh();
   return { error: null };
+}
+
+/** GIVE A REJECTED STUDIO ITS FIRST PERIOD BACK (6 Oct 2026, decision 2).
+ *  ⚠ Rule 9: money. Since R51 a studio pays at creation and is verified after,
+ *  so one DanceOS refuses has paid for a month it could never use; "End its
+ *  subscription too" stops the next charge and this returns the first.
+ *
+ *  ⚠ THE ORDER IS THE DESIGN: Cashfree is asked FIRST, and the ledger records
+ *  only a refund Cashfree accepted — a row reading "refunded" over money that
+ *  never moved is the worst state this screen could leave. The amount is the
+ *  AUTHORISATION payment's own, read off Cashfree's list for this mandate; the
+ *  refund id is derived from that payment, so a second press is refused by
+ *  Cashfree as a duplicate rather than paying twice, and by the database's own
+ *  "already refunded". The record is written with the ADMIN's client, because
+ *  the door is `is_platform_admin()` inside and answers the service role with
+ *  nothing (10 Sep 2026). */
+export async function refundFirstPeriodAction(input: unknown): Promise<{ error: string | null; amountInr?: number }> {
+  const parsed = endSchema.safeParse(input);
+  if (!parsed.success) {
+    return { error: "Say why in a sentence — they read it" };
+  }
+  if (!isCashfreeConfigured()) {
+    return { error: "Cashfree is not configured, so nothing could be refunded" };
+  }
+  const supabase = await createSupabaseServerClient();
+  try {
+    const row = await findSubscriptionById(createSupabaseAdminClient(), parsed.data.subscriptionId);
+    if (!row) return { error: "no such subscription" };
+    if (row.granted) return { error: null };
+    if (!row.providerSubscriptionId) return { error: "this subscription never reached Cashfree — there is nothing to refund" };
+    const payments = await fetchCashfreeSubscriptionPayments(row.providerSubscriptionId);
+    const auth = payments.find((p) => p.payment_type === "AUTH" && p.payment_status === "SUCCESS");
+    if (!auth) return { error: "Cashfree holds no successful first-period payment on this mandate" };
+    const refundId = `dos_subref_${auth.payment_id.replace(/[^A-Za-z0-9_-]/g, "")}`.slice(0, 40);
+    const out = await refundCashfreeSubscriptionPayment({
+      providerSubscriptionId: row.providerSubscriptionId,
+      paymentId: auth.payment_id,
+      refundId,
+      amountInr: auth.payment_amount,
+      note: "DanceOS first month back",
+    });
+    const { data, error } = await supabase.rpc("admin_record_first_period_refund", {
+      p_subscription_id: row.id,
+      p_provider_refund_id: out.cf_refund_id ?? out.refund_id ?? refundId,
+      p_reason: parsed.data.reason,
+    });
+    if (error) {
+      return { error: `Cashfree accepted the refund (${refundId}) but the ledger did not record it: ${error.message}` };
+    }
+    refresh();
+    revalidatePath("/invoices");
+    return { error: null, amountInr: Number((data as { amount_inr?: number } | null)?.amount_inr ?? auth.payment_amount) };
+  } catch (e) {
+    return { error: e instanceof Error ? e.message : "Could not refund that" };
+  }
 }

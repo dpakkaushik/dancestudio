@@ -61,6 +61,7 @@ export function EnrollButton({
   priceInr,
   shareSlug,
   cannotBookWhy = null,
+  started = false,
 }: {
   sessionId: string;
   isFull: boolean;
@@ -75,6 +76,11 @@ export function EnrollButton({
    *  rather than being a constant here, because the reason differs by kind (a
    *  crew enters events; a studio teaches). Null means you may book. */
   cannotBookWhy?: string | null;
+  /** ⚠ THE SESSION HAS STARTED (6 Oct 2026, decision 1): a seat in a room that is
+   *  already dancing cannot be handed back, so a held seat offers no Cancel —
+   *  `_cancel_one_class_booking` refuses it in the same words. Decided by the
+   *  caller on the server, where the clock may be read. */
+  started?: boolean;
 }) {
   const [enrollState, enrollForm, enrollPending] = useActionState(enrollAction, initialState);
   const [cancelState, cancelForm, cancelPending] = useActionState(cancelClassBookingAction, initialState);
@@ -103,7 +109,11 @@ export function EnrollButton({
   return (
     <div style={{ width: "100%" }}>
       <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-        {mine ? (
+        {mine && started ? (
+          <div data-testid="class-started-no-cancel" style={{ fontSize: 10.5, fontWeight: 700, color: "var(--muted)", lineHeight: 1.45, padding: "4px 2px" }}>
+            This class has started — it can no longer be cancelled
+          </div>
+        ) : mine ? (
           <>
             {/* ⚠ NO CHIP HERE (4 Oct 2026). It read "Enrolled ✓" — the stored
                 value's own word — and every caller now hands the CARD its

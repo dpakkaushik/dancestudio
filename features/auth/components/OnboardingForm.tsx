@@ -170,7 +170,7 @@ export function OnboardingForm({
   };
   const writeProfile = (next: { styles: string[]; socials: SocialLink[] }, then: () => void) => {
     start(async () => {
-      const out = await updateMyProfileAction({ fullName, city: city.trim(), age: null, phone: null, styles: next.styles, socials: next.socials });
+      const out = await updateMyProfileAction({ fullName, city: city.trim(), age: null, styles: next.styles, socials: next.socials });
       if (out.error) return fire(out.error);
       then();
     });

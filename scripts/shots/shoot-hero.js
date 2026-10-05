@@ -741,7 +741,8 @@ const enterEdit = async (page) => {
     await owner.goto(`${BASE}/profile?settings=1`);
     const ownerSettings = owner.getByRole("dialog", { name: "Settings" });
     await ownerSettings.waitFor();
-    await ownerSettings.getByText("ACCOUNT").waitFor();
+    /* exact: "Delete my account" (6 Oct 2026) also contains the word */
+    await ownerSettings.getByText("ACCOUNT", { exact: true }).waitFor();
     check((await ownerSettings.getByRole("button", { name: "Edit profile", exact: true }).count()) === 0 && !(await ownerSettings.innerText()).includes("YOU\n"), "settings: NO Edit profile tile and no YOU block — the pencil is on Home's corner (26 Sep 2026)");
     await owner.goto(`${BASE}/`);
     await enterEdit(owner);

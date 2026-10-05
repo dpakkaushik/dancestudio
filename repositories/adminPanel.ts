@@ -757,6 +757,25 @@ export async function findImpressionsForBusiness(
     p_business_id: businessId,
     p_days: days,
   });
+  return impressionRows(data, error);
+}
+
+/** How often one ARTIST was shown on Discover's Artists tab (6 Oct 2026,
+ *  `20261006093000`) — the twin of the business read, because an artist has
+ *  been a PERSON since R24 and is recorded under `person`. */
+export async function findImpressionsForPerson(
+  supabase: SupabaseClient,
+  userId: string,
+  days = 30
+): Promise<DeskResult<ImpressionRow[]>> {
+  const { data, error } = await supabase.rpc("impressions_for_person", {
+    p_user_id: userId,
+    p_days: days,
+  });
+  return impressionRows(data, error);
+}
+
+function impressionRows(data: unknown, error: { code?: string; message: string } | null): DeskResult<ImpressionRow[]> {
   if (error) {
     if (missingFunction(error)) {
       return { rows: [], needsMigration: true };

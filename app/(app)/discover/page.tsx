@@ -302,16 +302,26 @@ export default async function DiscoverPage({
      ⚠ It runs AFTER the response has gone out, with the service role, and can
      never fail the page: Discover is the most-visited surface in the app and a
      measurement is not worth a 500.
-     ⚠⚠ THE ARTISTS TAB IS DELIBERATELY NOT RECORDED. `impressions.subject_kind`
-     admits `business | class | crew`, and an artist on this shelf is a PERSON
-     since R24 — their id is a `profiles` id, not a business's. Filing them as
-     'business' would put the wrong key in the column and quietly corrupt the one
-     read that answers "was this studio shown"; widening the CHECK is a migration
-     and belongs with its own approval. Said out loud rather than fudged. */
+     ⚠⚠ THE ARTISTS TAB IS RECORDED AS `person` (6 Oct 2026, decision 7). It was
+     left out on 30 Sep because an artist on this shelf is a PERSON since R24 — a
+     `profiles` id — and the CHECK admitted only business | class | crew; filing
+     them as 'business' would have corrupted the one read that answers "was this
+     studio shown". `20261006093000` widened the CHECK instead, and
+     `impressions_for_person` is the admin's read of it. Until that migration is
+     applied the insert is refused by the CHECK and swallowed, like any other
+     failed measurement. */
   const shownIds =
-    tab === "classes" ? classes.map((c) => c.id) : tab === "crews" ? crews.map((c) => c.id) : wantsBusinesses ? businesses.map((b) => b.id) : [];
+    tab === "classes"
+      ? classes.map((c) => c.id)
+      : tab === "crews"
+        ? crews.map((c) => c.id)
+        : wantsArtists
+          ? artists.map((a) => a.id)
+          : wantsBusinesses
+            ? businesses.map((b) => b.id)
+            : [];
   if (shownIds.length > 0) {
-    const shownKind = tab === "classes" ? "class" : tab === "crews" ? "crew" : "business";
+    const shownKind = tab === "classes" ? "class" : tab === "crews" ? "crew" : wantsArtists ? "person" : "business";
     after(() =>
       recordImpression({
         viewerId: user?.id ?? null,

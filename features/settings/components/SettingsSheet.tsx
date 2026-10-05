@@ -2,7 +2,9 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useState, type CSSProperties, type ReactNode } from "react";
+import { useState, useTransition, type CSSProperties, type ReactNode } from "react";
+import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
+import { requestAccountDeletionAction } from "@/features/auth/server-actions/auth";
 import { DOS_UI, INK, MUTED, RED, SUB } from "@/lib/design/tokens";
 import type { ArtistPlan } from "@/repositories/plans";
 import type { Profile, ProfileRole } from "@/types/profile";
@@ -70,6 +72,8 @@ const ICONS = {
   help: (c: string) => <Glyph c={c}><circle cx="12" cy="12" r="8.5" /><circle cx="12" cy="12" r="3.2" /><path d="m6 6 3.7 3.7M18 6l-3.7 3.7M18 18l-3.7-3.7M6 18l3.7-3.7" /></Glyph>,
   admin: (c: string) => <Glyph c={c}><path d="M12 3 5 6v5.5c0 4.2 2.9 7.6 7 9.5 4.1-1.9 7-5.3 7-9.5V6z" /><path d="M12 8v4M12 15.5v.5" /></Glyph>,
   logout: (c: string) => <Glyph c={c}><path d="M10 4H6a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h4" /><path d="m15 8 5 4-5 4M20 12H9" /></Glyph>,
+  /* a person with a line through them — leaving, not signing out */
+  leave: (c: string) => <Glyph c={c}><circle cx="11" cy="8" r="3.4" /><path d="M4.5 20c.7-3.6 3.2-5.6 6.5-5.6 1.2 0 2.3.3 3.2.8" /><path d="m16 15 5 5M21 15l-5 5" /></Glyph>,
   /* EDIT PROFILE IS SETTINGS' FIRST OPTION (19 Sep 2026) — the pencil's glyph,
      where the pencil used to be on two heroes */
   edit: (c: string) => <Glyph c={c}><path d="M4 20h4L20 8l-4-4L4 16z" /><path d="m14.5 5.5 4 4" /></Glyph>,
@@ -179,6 +183,11 @@ export function SettingsSheet({
    *  that bug was about closing AND pushing, not about pushing. */
   const go = (href: string) => router.push(href);
   const [toast, setToast] = useState<string | null>(null);
+  /* DELETE MY ACCOUNT's question (6 Oct 2026) */
+  const [leaving, setLeaving] = useState(false);
+  const [leaveWhy, setLeaveWhy] = useState("");
+  const [leaveErr, setLeaveErr] = useState<string | null>(null);
+  const [leavePending, startLeave] = useTransition();
   const fire = (m: string) => {
     setToast(m);
     setTimeout(() => setToast(null), 2400);
@@ -373,7 +382,48 @@ export function SettingsSheet({
               Admin panel
             </Tile>
           ) : null}
+          {/* DELETE MY ACCOUNT (6 Oct 2026, decision 6) — the ACCOUNT's, so it is
+              drawn only on your own Settings, never a studio's or a crew's; and a
+              platform admin is never offered it (their seat is the platform's) */}
+          {me?.profile && !isAdmin ? (
+            <Tile icon={ICONS.leave(RED)} onClick={() => { setLeaveErr(null); setLeaving(true); }} danger ariaLabel="Delete my account">
+              Delete my account
+            </Tile>
+          ) : null}
         </div>
+        {leaving ? (
+          <ConfirmDialog
+            title="Delete your account?"
+            goWord="Delete my account"
+            keepWord="Keep it"
+            busy={leavePending}
+            err={leaveErr}
+            onKeep={() => (leavePending ? undefined : setLeaving(false))}
+            onGo={() =>
+              startLeave(async () => {
+                setLeaveErr(null);
+                const out = await requestAccountDeletionAction({ reason: leaveWhy.trim() || null });
+                /* on success the action signs out and redirects; only a refusal comes back */
+                if (out?.error) setLeaveErr(out.error);
+              })
+            }
+            body={
+              <>
+                Your profile closes at once and you are signed out. DanceOS reads your request and erases the account — nothing you
+                booked or taught is rewritten. You cannot do this while somebody depends on you: a studio you own alone, a crew you
+                lead, a plan that renews, or a class still to run.
+                <textarea
+                  aria-label="Why are you leaving? (optional)"
+                  placeholder="Why are you leaving? (optional)"
+                  value={leaveWhy}
+                  maxLength={1000}
+                  onChange={(e) => setLeaveWhy(e.target.value)}
+                  style={{ display: "block", width: "100%", boxSizing: "border-box", marginTop: 10, minHeight: 64, padding: "9px 10px", borderRadius: 12, border: "1.5px solid var(--el)", background: "var(--card)", color: INK, fontFamily: "inherit", fontSize: 12.5, resize: "vertical" }}
+                />
+              </>
+            }
+          />
+        ) : null}
         {/* ⚠ LOG OUT IS NOT HERE ANY MORE (21 Sep 2026, the user: "shift log out
             from setting to profile switcher"). It is the last row of the profile
             switcher, which is the chip beside the gear on EVERY screen — so the

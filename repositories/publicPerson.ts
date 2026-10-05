@@ -1,5 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { PROFILE_COLUMNS, findArtistIds, toProfile } from "@/repositories/profiles";
+import { PROFILE_COLUMNS, findArtistIds, findPhones, toProfile } from "@/repositories/profiles";
 import type { Profile } from "@/types/profile";
 import type { DanceStats } from "@/types/stats";
 import { EMPTY_STATS } from "@/types/stats";
@@ -163,13 +163,17 @@ export async function setPersonFollow(supabase: SupabaseClient, userId: string, 
 /** The whole page in one read set. Null when there is no such live person — the
  *  honest answer for a bad id and for somebody who has left. */
 export async function findPublicPerson(supabase: SupabaseClient, userId: string): Promise<PublicPerson | null> {
-  const { data: profileRow, error: profileError } = await supabase
-    .from("profiles")
-    .select(PROFILE_COLUMNS)
-    .eq("id", userId)
-    .is("deleted_at", null)
-    .maybeSingle();
-  let profile: Profile | null = profileError || !profileRow ? null : toProfile(profileRow as Parameters<typeof toProfile>[0]);
+  /* ⚠ THE NUMBER IS ITS OWN READ (6 Oct 2026, decision 4): `profiles.phone` is
+     not selectable by a client, so it comes through `profile_phones` — in
+     parallel with the row, and only when the caller may see it (their own, or
+     Call switched on). A stranger's call is refused and reads as no number;
+     their artist's number arrives through `public_artist` below. */
+  const [{ data: profileRow, error: profileError }, phones] = await Promise.all([
+    supabase.from("profiles").select(PROFILE_COLUMNS).eq("id", userId).is("deleted_at", null).maybeSingle(),
+    findPhones(supabase, [userId]),
+  ]);
+  let profile: Profile | null =
+    profileError || !profileRow ? null : toProfile({ ...(profileRow as Parameters<typeof toProfile>[0]), phone: phones.get(userId) ?? null });
   if (!profile) {
     /* A STRANGER (19 Sep 2026): the row itself is signed-in only, and an ARTIST's
        public face comes through `public_artist` — the public columns and no more:

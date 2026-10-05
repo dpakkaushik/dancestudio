@@ -102,11 +102,24 @@ const check = (name, pass, detail = "") => {
 
     /* ── SHOWN ────────────────────────────────────────────────────────────── */
     const shown = await open("/admin/reach?tab=shown");
-    check("Shown asks for a business before it answers", /Find a business to see how often it was shown/i.test(shown));
+    check("Shown asks for a business or an artist before it answers", /Find a business or an artist to see how often it was shown/i.test(shown));
     check("and says an impression is one row per SHELF", /one row per SHELF/i.test(shown));
 
     const list = await open("/admin/reach?tab=shown&q=EEE");
     check("a term returns businesses", /EEE Dance Studio/.test(list), "EEE Dance Studio");
+
+    /* ARTISTS (6 Oct 2026, decision 7) — a person with a live plan is offered
+       under ARTISTS, and opening one reads `impressions_for_person` */
+    const artists = await open("/admin/reach?tab=shown&q=Aditya");
+    check("a term returns artists under their own head", /ARTISTS/.test(artists) && /Aditya/.test(artists), "Aditya");
+    const artistLink = page.getByTestId("reach-artist").first();
+    if ((await artistLink.count()) > 0) {
+      await artistLink.click();
+      await page.waitForURL(/kind=person/, { timeout: 15000 });
+      await page.locator("h1").first().waitFor({ timeout: 15000 });
+      const oneArtist = await page.locator("#dos-main").innerText().catch(() => "");
+      check("an artist's page answers (shown, or honestly not shown)", /shelves in 30 days/.test(oneArtist) || /Not shown once in the last 30 days/.test(oneArtist));
+    }
 
     /* the read that only a real admin can make */
     const one = await open("/admin/reach?tab=shown&q=EEE&id=2f2dba3e-52f7-419f-ba8a-46336a647de6");

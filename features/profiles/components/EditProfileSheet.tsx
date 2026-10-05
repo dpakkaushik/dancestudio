@@ -118,8 +118,9 @@ export function EditProfileSheet({
         dob: d.dob ? d.dob : undefined,
         socials: lists.socials,
         styles: lists.styles,
-        /* unchanged — the contact sheet on Home is where these move */
-        phone: profile.phone ?? null,
+        /* unchanged — the contact sheet on Home is where these move. No `phone`:
+           the server keeps the stored number (6 Oct 2026, decision 4), so a page
+           that never read it cannot take it down */
         contactEmail: profile.contactEmail ?? null,
       });
       if (out.error) {

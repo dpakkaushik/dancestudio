@@ -2,6 +2,7 @@ import Link from "next/link";
 import { DOS_DISPLAY, INK, SUB } from "@/lib/design/tokens";
 import type { ImpressionSurface } from "@/repositories/analytics";
 import type {
+  AdminAccount,
   AdminBusiness,
   EmailEventRow,
   EmailPulseRow,
@@ -128,6 +129,8 @@ export function ReachDesk({
   terms,
   businesses,
   chosen,
+  people = [],
+  chosenPerson = null,
   impressions,
   pulse,
   history,
@@ -140,6 +143,9 @@ export function ReachDesk({
   terms: SearchTermRow[];
   businesses: AdminBusiness[];
   chosen: AdminBusiness | null;
+  /** artists matching the term — people with a live plan (6 Oct 2026) */
+  people?: AdminAccount[];
+  chosenPerson?: AdminAccount | null;
   impressions: ImpressionRow[];
   pulse: EmailPulseRow[];
   history: EmailEventRow[];
@@ -217,30 +223,42 @@ export function ReachDesk({
           <SearchBar action={base} q={q} placeholder="Find a studio or an artist" keep={keep} />
           {!q ? (
             <EmptyLine>
-              Find a business to see how often it was shown, on which surface, and where in the shelf.
+              Find a business or an artist to see how often it was shown, on which surface, and where in the shelf.
               ⚠ An impression is one row per SHELF rather than per card, so “shown” counts the times a
               shelf carrying this business was drawn.
             </EmptyLine>
-          ) : !chosen ? (
+          ) : !chosen && !chosenPerson ? (
             <>
-              <CountLine shown={businesses.length} total={businesses.length} what="businesses" q={q} />
-              {businesses.length === 0 ? (
+              <CountLine shown={businesses.length + people.length} total={businesses.length + people.length} what="results" q={q} />
+              {businesses.length === 0 && people.length === 0 ? (
                 <EmptyLine>Nothing by that name.</EmptyLine>
-              ) : (
-                businesses.map((b) => (
-                  <Link key={b.id} href={`${base}?tab=shown&q=${encodeURIComponent(q)}&id=${b.id}${days === 30 ? "" : `&days=${days}`}`} style={{ textDecoration: "none", color: "inherit", display: "block" }}>
-                    <Row>
-                      <span style={{ flex: 1, minWidth: 0, fontSize: 12.5, fontWeight: 800, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{b.name}</span>
-                      <span style={{ fontSize: 10, color: MUTED, flexShrink: 0 }}>{b.city ?? "—"}</span>
-                      <span style={{ fontSize: 10, color: SUB, flexShrink: 0 }}>›</span>
-                    </Row>
-                  </Link>
-                ))
-              )}
+              ) : null}
+              {businesses.length > 0 ? <Head>BUSINESSES</Head> : null}
+              {businesses.map((b) => (
+                <Link key={b.id} href={`${base}?tab=shown&q=${encodeURIComponent(q)}&id=${b.id}${days === 30 ? "" : `&days=${days}`}`} style={{ textDecoration: "none", color: "inherit", display: "block" }}>
+                  <Row>
+                    <span style={{ flex: 1, minWidth: 0, fontSize: 12.5, fontWeight: 800, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{b.name}</span>
+                    <span style={{ fontSize: 10, color: MUTED, flexShrink: 0 }}>{b.city ?? "—"}</span>
+                    <span style={{ fontSize: 10, color: SUB, flexShrink: 0 }}>›</span>
+                  </Row>
+                </Link>
+              ))}
+              {/* ARTISTS (6 Oct 2026, decision 7) — a person with a live plan, whose
+                  shelf on Discover's Artists tab is recorded under `person` */}
+              {people.length > 0 ? <Head>ARTISTS</Head> : null}
+              {people.map((p) => (
+                <Link key={p.id} data-testid="reach-artist" href={`${base}?tab=shown&q=${encodeURIComponent(q)}&id=${p.id}&kind=person${days === 30 ? "" : `&days=${days}`}`} style={{ textDecoration: "none", color: "inherit", display: "block" }}>
+                  <Row>
+                    <span style={{ flex: 1, minWidth: 0, fontSize: 12.5, fontWeight: 800, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{p.fullName}</span>
+                    <span style={{ fontSize: 10, color: MUTED, flexShrink: 0 }}>{p.city ?? "—"}</span>
+                    <span style={{ fontSize: 10, color: SUB, flexShrink: 0 }}>›</span>
+                  </Row>
+                </Link>
+              ))}
             </>
           ) : (
             <>
-              <Head>{chosen.name.toUpperCase()}</Head>
+              <Head>{(chosen?.name ?? chosenPerson?.fullName ?? "").toUpperCase()}</Head>
               {impressions.length === 0 ? (
                 <EmptyLine>
                   Not shown once in the last {days} days. ⚠ That is a real answer and a different one from
@@ -267,8 +285,7 @@ export function ReachDesk({
                   ))}
                   <EmptyLine>
                     The place is a MEDIAN, not a mean: one very long shelf moves a mean and says nothing.
-                    ⚠ Artists are not counted — an impression names a business, a class or a crew, and an
-                    artist has been a person rather than a business since 18 Sep 2026.
+                    An artist is counted from 6 Oct 2026, when the Artists tab started recording its shelf.
                   </EmptyLine>
                 </>
               )}

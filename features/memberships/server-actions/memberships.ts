@@ -3,8 +3,10 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
+import { isCashfreeConfigured, refundCashfreePayment } from "@/lib/cashfree/api";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
-import { bookWithMembership, buyMembership, deleteMembership, saveMembership } from "@/repositories/memberships";
+import { bookWithMembership, buyMembership, deleteMembership, returnMembershipPass, saveMembership } from "@/repositories/memberships";
+import { attachProviderRefund } from "@/repositories/payments";
 
 /** MEMBERSHIPS — the writes (19 Sep 2026). Zod checks the shape; every rule
  *  that matters is the RPC's: who may sell, who may buy, whether a class takes
@@ -96,6 +98,37 @@ export async function buyMembershipAction(input: { membershipId: string }): Prom
     return { error: null, passId: pass.passId, needsPayment: pass.status === "pending_payment" };
   } catch (error: unknown) {
     return { error: error instanceof Error ? error.message : "Could not take that membership" };
+  }
+}
+
+/** ⚠ MONEY. HAND AN UNUSED MEMBERSHIP BACK (6 Oct 2026, the user's decision 3:
+ *  "allow refund within 7 days of purchase if no hours used"). The database
+ *  decides — `return_membership_pass` refuses in words unless it is the
+ *  holder's, active, unspent, under a week old and not run out — and files one
+ *  automatic refund for a paid pass. This then sends it to Cashfree exactly as
+ *  a class cancel does; a failed send leaves the row `pending` and unsent, where
+ *  the studio's ledger offers "Send through Cashfree" again. */
+export async function returnMembershipPassAction(input: { passId: string }): Promise<MembershipResult & { message?: string }> {
+  const parsed = z.object({ passId: z.string().uuid() }).safeParse(input);
+  if (!parsed.success) return { error: "Invalid request" };
+  const supabase = await me();
+  try {
+    const { refund } = await returnMembershipPass(supabase, parsed.data.passId);
+    revalidateMembershipSurfaces();
+    if (!refund) return { error: null, message: "Membership handed back" };
+    const amount = `₹${refund.amountInr.toLocaleString("en-IN")}`;
+    if (isCashfreeConfigured() && refund.provider === "cashfree" && refund.providerOrderId) {
+      try {
+        const cf = await refundCashfreePayment({ providerOrderId: refund.providerOrderId, refundId: refund.id, amountInr: refund.amountInr, note: "Membership returned unused" });
+        await attachProviderRefund(supabase, refund.id, String(cf.cf_refund_id));
+        return { error: null, message: `Returned — your ${amount} refund is on its way` };
+      } catch {
+        return { error: null, message: `Returned — your ${amount} refund is queued` };
+      }
+    }
+    return { error: null, message: `Returned — your ${amount} refund is queued` };
+  } catch (error: unknown) {
+    return { error: error instanceof Error ? error.message : "Could not return that membership" };
   }
 }
 

@@ -66,7 +66,9 @@ export default async function HomePage() {
   if (!user) {
     redirect("/login");
   }
-  const profile = await findProfileById(supabase, user.id);
+  /* `withPhone`: Home shows the person's Call button and its contact ⊕ edits the
+     number, and since 6 Oct 2026 the number is its own read (decision 4) */
+  const profile = await findProfileById(supabase, user.id, { withPhone: true });
   if (!profile) {
     /* a platform admin is ADMIN ONLY (9 Sep 2026): no profile, no Home — the queue is its place */
     redirect((await amIPlatformAdmin(supabase)) ? "/admin/verifications" : "/onboarding");

@@ -145,6 +145,44 @@ export async function fetchCashfreeSubscription(providerSubscriptionId: string):
   return cf<CashfreeSubscription>(`/subscriptions/${encodeURIComponent(providerSubscriptionId)}`);
 }
 
+/** One payment on a mandate, as `GET /subscriptions/{id}/payments` answers it
+ *  (read off the sandbox, 6 Oct 2026). ⚠ `payment_id` is the MERCHANT id the
+ *  refund endpoint asks for — for the authorisation it is Cashfree's own string
+ *  ("11202139_768_…"), not the `sub_auth_…` key our ledger files the row under. */
+export interface CashfreeSubscriptionPayment {
+  payment_id: string;
+  cf_payment_id?: string;
+  payment_amount: number;
+  payment_status: string;
+  payment_type: string;
+}
+
+export async function fetchCashfreeSubscriptionPayments(providerSubscriptionId: string): Promise<CashfreeSubscriptionPayment[]> {
+  return cf<CashfreeSubscriptionPayment[]>(`/subscriptions/${encodeURIComponent(providerSubscriptionId)}/payments`);
+}
+
+/** Give one mandate payment back (6 Oct 2026, decision 2 — a studio rejected at
+ *  verification gets its first period back). ⚠ Money: the amount is the
+ *  payment's own, read off Cashfree a moment earlier by the caller; nothing the
+ *  browser said reaches this. */
+export async function refundCashfreeSubscriptionPayment(params: {
+  providerSubscriptionId: string;
+  paymentId: string;
+  refundId: string;
+  amountInr: number;
+  note: string;
+}): Promise<{ refund_id?: string; cf_refund_id?: string; refund_status?: string }> {
+  return cf(`/subscriptions/${encodeURIComponent(params.providerSubscriptionId)}/refunds`, {
+    method: "POST",
+    body: JSON.stringify({
+      payment_id: params.paymentId,
+      refund_id: params.refundId,
+      refund_amount: params.amountInr,
+      refund_note: params.note.replace(/[^A-Za-z0-9 ]/g, " ").replace(/\s+/g, " ").trim().slice(0, 100) || "DanceOS refund",
+    }),
+  });
+}
+
 /** Stop future charges. What was paid for stands — access runs to period end on our side. */
 export async function cancelCashfreeSubscription(providerSubscriptionId: string): Promise<CashfreeSubscription> {
   return cf<CashfreeSubscription>(`/subscriptions/${encodeURIComponent(providerSubscriptionId)}/manage`, {

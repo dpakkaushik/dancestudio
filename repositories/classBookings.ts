@@ -46,22 +46,32 @@ export async function bookClassSession(
  *  once `20261004170000` is applied, the database's own, word for word. */
 export const CLASS_OVER_SENTENCE = "This class is over — it can no longer be cancelled or refunded";
 
+/** The sentence a cancel of a class that has STARTED is refused with — the
+ *  app's and, since `20261006090000`, the database's own, word for word. */
+export const CLASS_STARTED_SENTENCE = "This class has started — it can no longer be cancelled";
+
 /** ⚠ A FINISHED CLASS IS FINAL (4 Oct 2026, the user: "cancel / refund class
- *  should not be possible if class is over"). Asked BEFORE the cancel RPC, so the
- *  rule holds in the app even before the database learns it (the held migration
- *  `20261004170000` puts the same refusal inside `_cancel_one_class_booking`).
- *  Reads the booking under the caller's own RLS: a row they cannot read is left
- *  for the RPC to refuse in its own words. */
+ *  should not be possible if class is over") — AND SINCE 6 Oct 2026 A STARTED
+ *  ONE IS TOO, for the person holding the seat (the user's decision 1: a seat
+ *  in a room that is already dancing is not a seat that can be handed back).
+ *  Asked BEFORE the cancel RPC, which refuses the same two things itself
+ *  (`_cancel_one_class_booking`); a studio calling a class off is a different
+ *  door and is untouched. Reads the booking under the caller's own RLS: a row
+ *  they cannot read is left for the RPC to refuse in its own words. */
 export async function assertBookingNotOver(supabase: SupabaseClient, classBookingId: string): Promise<void> {
   const { data } = await supabase
     .from("class_bookings")
-    .select("id, class_sessions (ends_at)")
+    .select("id, class_sessions (starts_at, ends_at)")
     .eq("id", classBookingId)
     .maybeSingle();
-  const row = data as { class_sessions: { ends_at: string } | null } | null;
+  const row = data as { class_sessions: { starts_at: string | null; ends_at: string | null } | null } | null;
   const endsAt = row?.class_sessions?.ends_at;
   if (endsAt && Date.parse(endsAt) <= Date.now()) {
     throw new Error(CLASS_OVER_SENTENCE);
+  }
+  const startsAt = row?.class_sessions?.starts_at;
+  if (startsAt && Date.parse(startsAt) <= Date.now()) {
+    throw new Error(CLASS_STARTED_SENTENCE);
   }
 }
 

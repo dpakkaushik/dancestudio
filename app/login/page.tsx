@@ -27,10 +27,18 @@ import { BTN_STYLE, DOS_DISPLAY, GOLD, INK, LINE, SKY, SUB } from "@/lib/design/
  *
  *  The tagline is the user's, replacing the prototype's longer one.
  */
-export default async function LoginWelcomePage() {
+export default async function LoginWelcomePage({ searchParams }: { searchParams: Promise<{ left?: string }> }) {
   await leaveIfSignedIn();
+  /* AN ACCOUNT CLOSED FROM SETTINGS LANDS HERE (6 Oct 2026, decision 6) — said
+     once, so the person is not left wondering whether the press did anything */
+  const left = (await searchParams).left === "1";
   return (
     <AuthShell>
+      {left ? (
+        <div role="status" data-testid="account-closed" style={{ marginTop: 12, padding: "11px 13px", borderRadius: 14, border: `1.5px solid ${LINE}`, background: "var(--card)", fontSize: 12.5, lineHeight: 1.5, color: SUB }}>
+          <b style={{ color: INK }}>Your account is closed.</b> DanceOS will erase it and reply to your address — you cannot sign in to it meanwhile.
+        </div>
+      ) : null}
       {/* ⚠ THE FIRST PAGE, REVAMPED ABOVE THE BUTTONS (3 Oct 2026, the user:
           "dance os logo on start screen page in the centre. Dance First, Think
           Later! also there above start dancing and login revamp the first page
