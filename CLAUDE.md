@@ -2,7 +2,7 @@
 
 ## LAST SESSION (10 Oct 2026) — replaced on every push (Rule 13)
 
-> ### THE CALENDAR, CLICK FOR CLICK LIKE GOOGLE'S: A MONTH IS ITS NAME, NO PILL ROW, A MINI MONTH IN THE PAGE, 3 DAYS, AND A DAY OPENS ITS DAY (10 Oct 2026, latest) — no migration · COMMITTED, NOT PUSHED (waiting on "push to live")
+> ### THE CALENDAR, CLICK FOR CLICK LIKE GOOGLE'S: A MONTH IS ITS NAME, NO PILL ROW, A MINI MONTH IN THE PAGE, 3 DAYS, AND A DAY OPENS ITS DAY (10 Oct 2026, latest) — no migration · ✅ PUSHED AND LIVE (`1b61898`: Vercel READY, alias confirmed on the sha through the API; ON THE LIVE SITE `stranger-smoke` **9/9** and the calendar probe **53/53**)
 > The user: *"calendar- blue tile on every month in schedule should not have the blue heading color should just be market in seprate way. the pill below 3 bar and month on top left should look different. check google calendar properly and check for all clicks and changes according in every section of it shoul be like google calendar."* Row C144.
 > * **The Schedule's month marker is the month's NAME** (24px display, the year quieter, a rule to the edge) — no blue tile.
 > * **The bar**: ☰ · the month as plain 21px/600 words with a filled caret (a soft pill while open) · ‹ › (not in Schedule) · today's page. **The pill row under it is gone**; a narrowed calendar says so in ONE quiet line only while it is narrowed ("Hidden: Practice · Show all", a studio's "Showing Hall A · Change"). **The bar names the month in every view** (it read "Sat 10 October" / "6 Oct – 12 Oct"); two months when a week spans them ("Sep – Oct"); **in Schedule it follows the list as you scroll** (`data-month-key`).
@@ -13438,7 +13438,7 @@ for the database schema. **The UI is not redesigned** — see Rule 2.
 
 ### Progress tracker — update after EVERY push (Rule 11)
 
-- **THE CALENDAR CLICK FOR CLICK LIKE GOOGLE'S — 10 Oct 2026, no step number — no migration, committed.** Row C144. Detail at the top.
+- **THE CALENDAR CLICK FOR CLICK LIKE GOOGLE'S — 10 Oct 2026, no step number — no migration, PUSHED AND LIVE (`1b61898`).** Row C144. Detail at the top.
 - **A RESPONSIVE PRICE BAR, DRAG BETWEEN TWO TILES, FOLLOWER COUNTS ON STYLES, GOOGLE CALENDAR'S TOP HALF AND SCHEDULE — 10 Oct 2026, no step number — no migration ⚠ (Rule 9: one service-role aggregate).** Rows C142, C143, R76; the leftovers swept. Detail at the top.
 - **DISCOVER OPENS ON CLASSES, YOUR STYLES AS A FOLLOWED SHELF, A SORT ON EVERY TAB, A TWO-ENDED PRICE BAR — 10 Oct 2026, no step number — no migration, PUSHED AND LIVE (`97db583`).** Rows C140, C141. Detail at the top.
 - **THE CALENDAR AS GOOGLE CALENDAR, A STYLE PAGE'S CLASSES COLUMN, THE CLASS PAGE IN THREE ROUNDS — 10 Oct 2026, no step number — no migration, PUSHED AND LIVE (`491f38e`).** Rows C138, C139. The whole e2e suite 56/56. Detail at the top.
