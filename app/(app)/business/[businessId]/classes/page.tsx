@@ -1,6 +1,13 @@
 import { redirect } from "next/navigation";
 import { ClassForm } from "@/features/classes/components/ClassForm";
 import { ClassesManager } from "@/features/classes/components/ClassesManager";
+import { DeskHero, DOS_TOOLS } from "@/features/businesses/components/biz-kit";
+import { RoomRequestSettings } from "@/features/inbox/components/AskSettings";
+import { InboxScreen } from "@/features/inbox/components/InboxScreen";
+import { buildRequests } from "@/features/inbox/requestItems";
+import { SegmentedPanels } from "@/features/shell/components/SegmentedNav";
+import { DOS_UI, INK, LILAC } from "@/lib/design/tokens";
+import { findTakesRoomRequests } from "@/repositories/askSettings";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { findAskedClassPeopleForBusinesses, findClassArtists } from "@/repositories/classPeople";
 import { findClassPublishState, findClassesByBusiness, findClassesHostedByBusiness, findVenueRequestsForBusinesses, findWhyNoClass } from "@/repositories/classes";
@@ -26,7 +33,8 @@ export default async function BusinessClassesPage({
   searchParams: Promise<Record<string, string | undefined>>;
 }) {
   const { businessId } = await params;
-  const opening = (await searchParams).new === "1";
+  const sp = await searchParams;
+  const opening = sp.new === "1";
   const supabase = await createSupabaseServerClient();
   const {
     data: { user },
@@ -63,7 +71,7 @@ export default async function BusinessClassesPage({
   /* ⚠ the hosted classes' seats too (4 Oct 2026): their cards print "N/M Booked"
      on the bar, and without a count they read 0 */
   const sessionIds = [...classes, ...hosted.map((h) => h.danceClass)].map((c) => c.session?.id).filter(Boolean) as string[];
-  const [counts, state, artists, whyNoClass, venueRequests, sentAsks] = await Promise.all([
+  const [counts, state, artists, whyNoClass, venueRequests, sentAsks, takesRooms] = await Promise.all([
     countEnrolledBySession(supabase, sessionIds),
     findClassPublishState(supabase, businessId).catch(() => new Map()),
     /* the teacher each row's card wears in its centre (18 Sep 2026) — a draft
@@ -77,14 +85,30 @@ export default async function BusinessClassesPage({
        owned by the ARTIST's page, so `findClassesByBusiness` above has never
        returned one — the studio's own rooms were being committed and its classes
        desk said nothing at all. The only place to answer was the Inbox. */
-    findVenueRequestsForBusinesses(supabase, [businessId]).catch(() => []),
-    /* the live asks this studio has SENT, so a row that says "⏳ {name} asked"
-       can also take it back — `publishState` names who but carries no id */
-    findAskedClassPeopleForBusinesses(supabase, [businessId]).catch(() => []),
+    /* ⚠ every answer since 11 Oct 2026 — the Requests column keeps the
+       answered ones under Done rather than letting them vanish */
+    findVenueRequestsForBusinesses(supabase, [businessId], ["requested", "accepted", "declined"]).catch(() => []),
+    /* the asks this studio has SENT, every status and the withdrawn ones — the
+       live ones also let a row that says "⏳ {name} asked" take it back */
+    findAskedClassPeopleForBusinesses(supabase, [businessId], ["asked", "confirmed", "rejected"], { withdrawn: true }).catch(() => []),
+    /* whether artists may ask this studio for a room (3 Oct 2026) — its switch
+       moved here from the Inbox with the requests (11 Oct 2026) */
+    findTakesRoomRequests(supabase, businessId),
   ]);
   const askedTeachers = Object.fromEntries(
-    sentAsks.filter((a) => a.kind === "artist").map((a) => [a.classId, a.id])
+    sentAsks.filter((a) => a.kind === "artist" && a.status === "asked" && !a.withdrawn).map((a) => [a.classId, a.id])
   );
+  /* ⚠⚠ THE REQUESTS COLUMN (11 Oct 2026, the user's choice: class requests live
+     in Classes only, with their settings). Rooms artists asked this studio for,
+     and the teachers and assistants it asked — answered with the Inbox's own
+     cards and RPCs, which are the ones that decide who may answer. */
+  const { requestsIn, requestsOut } = buildRequests({ venueIn: venueRequests, classPeopleOut: sentAsks });
+  const reqArtists = Object.fromEntries(
+    await findClassArtists(supabase, [...new Set([...requestsIn, ...requestsOut].map((r) => r.danceClass?.id).filter((x): x is string => Boolean(x)))]).catch(() => new Map())
+  );
+  const roomsWaiting = venueRequests.filter((v) => v.venueStatus === "requested").length;
+  const show = sp.show === "requests" ? "requests" : sp.show === "classes" ? "classes" : roomsWaiting > 0 ? "requests" : "classes";
+  const nowIso = stampNowIso();
   /* ⚠ ADD CLASS OPENS OVER THIS REGISTER (22 Sep 2026, the user: "all forms and
      add buttons … should open form like how setting page or edit profile page
      open from the same screen", then "from inside their respective sections").
@@ -94,9 +118,9 @@ export default async function BusinessClassesPage({
      anybody can type. The old full-page `/business/{id}/classes/new` forwards
      here since 5 Oct 2026 (next.config.ts). */
   const rooms = opening && myRole === "owner" && !whyNoClass ? await findRoomsByBusiness(supabase, businessId).catch(() => []) : [];
-  return (
-    <>
+  const register = (
       <ClassesManager
+        embedded
         businessId={businessId}
         classes={classes}
         filledBySession={Object.fromEntries(counts)}
@@ -109,7 +133,6 @@ export default async function BusinessClassesPage({
            are the owner's exactly as Create is. R55 let a MANAGER in here on
            28 Sep and only Create was re-checked. */
         canEdit={myRole === "owner"}
-        venueRequests={venueRequests}
         askedTeachers={askedTeachers}
         /* the artists' classes this studio said yes to, filed in their tabs,
            read-only — the class is the artist's to edit (2 Oct 2026) */
@@ -123,7 +146,48 @@ export default async function BusinessClassesPage({
         /* the studio's word for an artist's class in its room — "At your
            studio", as its Home deck says (it read "Hosted" here) */
         elsewhereRelation="atYourStudio"
-        nowIso={stampNowIso()}
+        nowIso={nowIso}
+      />
+  );
+  const waitingOut = requestsOut.filter((r) => r.status === "asked").length;
+
+  return (
+    <div style={{ background: LILAC, color: INK, maxWidth: 430, margin: "0 auto", fontFamily: DOS_UI, minHeight: "100vh", padding: "14px 16px 40px", boxSizing: "border-box" }}>
+      {/* ⚠⚠ CLASSES · REQUESTS (11 Oct 2026, the user's choice for a studio):
+          the register, then the requests about its classes — the rooms artists
+          want, and the teachers it asked — with the room switch on top of them.
+          A fixed order, a badge for what waits; the page opens on Requests only
+          while a room request is waiting on an answer. */}
+      <SegmentedPanels
+        key={show}
+        initial={show}
+        sections
+        top={<DeskHero tool="classes" as="h1" margin="0" />}
+        segments={[
+          { key: "classes", href: `/business/${businessId}/classes?show=classes`, label: "Classes", aria: "Show this studio's classes", n: classes.length + hosted.length },
+          { key: "requests", href: `/business/${businessId}/classes?show=requests`, label: "Requests", aria: "Show the requests about this studio's classes", n: roomsWaiting + waitingOut },
+        ]}
+        panels={[
+          { key: "classes", node: register },
+          {
+            key: "requests",
+            node: (
+              <InboxScreen
+                embed
+                embedFor="studio"
+                accent={DOS_TOOLS.classes.c}
+                requestsIn={requestsIn}
+                requestsOut={requestsOut}
+                artists={reqArtists}
+                enquiriesIn={[]}
+                enquiriesOut={[]}
+                noEnquiries
+                nowIso={nowIso}
+                requestSettings={<RoomRequestSettings businessId={businessId} on={takesRooms} owner={myRole === "owner"} />}
+              />
+            ),
+          },
+        ]}
       />
       {opening && myRole === "owner" && !whyNoClass ? (
         <ClassForm
@@ -138,6 +202,6 @@ export default async function BusinessClassesPage({
           sheet
         />
       ) : null}
-    </>
+    </div>
   );
 }

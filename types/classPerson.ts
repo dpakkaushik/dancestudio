@@ -43,6 +43,9 @@ export interface MyClassPersonAsk extends ClassPerson {
   /** ⚠ the ask was WITHDRAWN before it was answered (2 Oct 2026) — the row is
    *  soft-deleted, kept so the Inbox's Completed can say so rather than lose it */
   withdrawn?: boolean;
+  /** the business that owns the class (11 Oct 2026) — the Classes section's
+   *  Requests column builds "Ask someone else ›" from it */
+  classBusinessId?: string | null;
   classTitle: string;
   classStyle: string;
   classShareSlug: string;

@@ -7,8 +7,7 @@ import { findMyInboxOff } from "@/repositories/askSettings";
 import { buildRequests } from "@/features/inbox/requestItems";
 import { DOS_TINT } from "@/lib/design/tokens";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
-import { findAskedClassPeopleForBusinesses, findClassArtists, findMyPendingClassPeople } from "@/repositories/classPeople";
-import { findMyVenueAsks, findVenueRequestsForBusinesses } from "@/repositories/classes";
+import { findMyPendingClassPeople } from "@/repositories/classPeople";
 import { findAskedForMyCrews, findMyPendingCrewAsks } from "@/repositories/crews";
 import { findMyCrewPractices } from "@/repositories/crewPractices";
 import { findMyAnsweredInvites, findMyPendingInvites, findSentInvites } from "@/repositories/invites";
@@ -56,10 +55,6 @@ export default async function InboxPage({ searchParams }: { searchParams: Promis
     searchParams,
   ]);
   const businesses = memberships.map((m) => m.business);
-  const businessIds = businesses.map((t) => t.id);
-  /* the rooms asked of the STUDIOS you own, and the rooms your own PAGE has asked for */
-  const ownedStudioIds = memberships.filter((m) => m.memberRole === "owner" && m.business.type === "studio").map((m) => m.business.id);
-  const ownedPageIds = memberships.filter((m) => m.memberRole === "owner" && m.business.type === "artist_page").map((m) => m.business.id);
 
   /* AN ANSWERED ASK STAYS ON THE DESK (19 Sep 2026, the user: "enquiries and
      requests don't get removed after accepting"): every ask read takes the
@@ -81,21 +76,24 @@ export default async function InboxPage({ searchParams }: { searchParams: Promis
      RECEIVED invite (no policy at all — `my_answered_invites`, the held
      20261002140000, which answers none until it is applied). Each now lands
      under its column's Completed. */
-  const VENUE_ALL: Array<"requested" | "accepted" | "declined"> = ["requested", "accepted", "declined"];
   /* ⚠ ENQUIRIES ARE BACK ON THIS DESK (2 Oct 2026, the user: "shift back enquiries to inbox from home tools for all profiles") — the reads `/enquiries` made, through one loader shared with a studio's and a crew's Inbox.
      ⚠ It rides the same round as the asks (10 Oct 2026): it needs the memberships and nothing the asks need, and it was a round of its own. */
-  const [enq, classPeopleIn, invitesIn, invitesInAnswered, classPeopleOut, invitesOutByBusiness, crewIn, crewOut, venueIn, venueOut] = await Promise.all([
+  /* ⚠⚠ THE CLASS ASKS LEFT THIS DESK (11 Oct 2026, the user's choice: class
+     requests live in Classes only). Teach and assist asks put to you, and the
+     ones your own page sent, are the Requests column of /my-classes; a studio's
+     room requests and the teachers it asked are its own register's. What is read
+     here is only the COUNT of what waits on you, for the one line that says so —
+     the room and sent-ask reads went with them. */
+  const [enq, classPeopleIn, invitesIn, invitesInAnswered, invitesOutByBusiness, crewIn, crewOut] = await Promise.all([
     loadEnquiries(supabase, { kind: "person", userId: user.id, memberships }),
-    findMyPendingClassPeople(supabase, [...ALL], { withdrawn: true }),
+    findMyPendingClassPeople(supabase).catch(() => []),
     findMyPendingInvites(supabase),
     findMyAnsweredInvites(supabase),
-    findAskedClassPeopleForBusinesses(supabase, businessIds, [...ALL], { withdrawn: true }),
     Promise.all(businesses.map(async (t) => (await findSentInvites(supabase, t.id)).map((i) => ({ ...i, businessName: t.name })))),
     findMyPendingCrewAsks(supabase, [...ALL], { withdrawn: true }),
     findAskedForMyCrews(supabase, [...ALL], { withdrawn: true }),
-    findVenueRequestsForBusinesses(supabase, ownedStudioIds, VENUE_ALL).catch(() => []),
-    findMyVenueAsks(supabase, ownedPageIds).catch(() => []),
   ]);
+  const classAsksWaiting = classPeopleIn.filter((c) => c.status === "asked" && !c.withdrawn).length;
 
   /* ⚠ THE PRACTICES THIS PERSON HAS BEEN ASKED TO (27 Sep 2026). Only the ones
      still AHEAD: a rehearsal that has happened is not a yes or a no you owe
@@ -113,21 +111,13 @@ export default async function InboxPage({ searchParams }: { searchParams: Promis
   );
 
   const { requestsIn, requestsOut } = buildRequests({
-    venueIn,
-    classPeopleIn,
     invitesIn,
     invitesInAnswered,
     crewIn,
     practiceIn,
-    venueOut,
-    classPeopleOut,
     invitesOut: invitesOutByBusiness.flat(),
     crewOut,
   });
-
-  /* the teacher each class card wears — one read for the whole desk (1 Oct 2026) */
-  const classIds = [...new Set([...requestsIn, ...requestsOut].map((r) => r.danceClass?.id).filter((x): x is string => Boolean(x)))];
-  const artists = Object.fromEntries(await findClassArtists(supabase, classIds).catch(() => new Map()));
 
   const accent = DOS_TINT[kindOf(Boolean(plan?.active))];
 
@@ -136,11 +126,11 @@ export default async function InboxPage({ searchParams }: { searchParams: Promis
       accent={accent}
       requestsIn={requestsIn}
       requestsOut={requestsOut}
-      artists={artists}
       enquiriesIn={enq.enquiriesIn}
       enquiriesOut={enq.enquiriesOut}
       settings={<EnquirySettings businesses={enq.settingsFor} />}
-      requestSettings={<PersonAskSettings section="requests" off={inboxOff} />}
+      /* the teach / assist switches moved to Classes with the asks (11 Oct 2026) */
+      classPointer={{ n: classAsksWaiting, href: "/my-classes?show=requests" }}
       inviteSettings={<PersonAskSettings section="invites" off={inboxOff} />}
       initialSection={show === "enquiries" ? "enq" : show === "done" ? "done" : undefined}
       nowIso={nowIso}

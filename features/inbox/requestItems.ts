@@ -229,6 +229,7 @@ export function buildRequests(s: RequestSources): { requestsIn: RequestItem[]; r
       status: askStatus(v.venueStatus),
       danceClass: v.danceClass,
       relation: "roomRequest",
+      editHref: `/business/${v.artistBusinessId}/classes/${v.classId}/edit`,
     })),
     ...(s.classPeopleOut ?? []).map((c): RequestItem => ({
       kind: "classPerson",
@@ -247,6 +248,7 @@ export function buildRequests(s: RequestSources): { requestsIn: RequestItem[]; r
       status: statusOf(c.status, c.withdrawn),
       danceClass: askToTileClass(c),
       relation: CLAIM_RELATION[c.kind],
+      editHref: c.classBusinessId ? `/business/${c.classBusinessId}/classes/${c.classId}/edit` : null,
     })),
     ...(s.invitesOut ?? []).map((i): RequestItem => ({
       kind: "invite",

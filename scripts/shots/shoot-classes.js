@@ -221,7 +221,7 @@ const BOOK_ON_PAGE = /^Book Now$/;
     /* ⚠ THE DRAFT TAB IS WHERE Edit AND Publish LIVE, so asserting their absence
        on the Published tab proves nothing — "not drawn" and "not on this tab"
        look identical from outside (the 28 Sep lesson about an absent control). */
-    await mPage.getByRole("button", { name: /^Draft,/ }).click();
+    await mPage.getByRole("button", { name: /^Drafts,/ }).click();
     await mPage.waitForTimeout(400);
     check((await mPage.getByRole("link", { name: "Edit", exact: true }).count()) === 0, "⚠⚠ no Edit on a DRAFT either — the edit page redirects a manager away without a word");
     /* ⚠ `/^Publish/` ALSO MATCHES THE "Published, 2 classes" TAB PILL — which
@@ -240,7 +240,7 @@ const BOOK_ON_PAGE = /^Book Now$/;
     oPage.on("pageerror", (e) => errs.push(String(e)));
     await oPage.goto(`${BASE}/business/${studio.id}/classes`, { waitUntil: "networkidle" });
 
-    await oPage.getByRole("button", { name: /^Draft,/ }).click();
+    await oPage.getByRole("button", { name: /^Drafts,/ }).click();
     await oPage.waitForTimeout(400);
     check((await oPage.getByRole("link", { name: "Edit", exact: true }).count()) > 0, "the OWNER is offered Edit on the same draft — the gate is the SEAT, not the screen");
     check((await oPage.getByRole("button", { name: /^Publish($| —)/ }).count()) > 0, "…and Publish");
@@ -250,10 +250,13 @@ const BOOK_ON_PAGE = /^Book Now$/;
     check((await oPage.getByRole("button", { name: "Delete", exact: true }).count()) === 0 && (await oPage.getByTestId("class-delete").count()) === 0, "…and NO Delete on the row — it lives on the class page's top right since 4 Oct 2026");
     check((await oPage.getByRole("link", { name: "Refunds", exact: true }).count()) === 0, "…and no Refunds pill on any card either (4 Oct 2026)");
 
-    const completedPill = oPage.getByRole("button", { name: /^Completed,/ });
-    check(/Completed, 1 classes/.test(await completedPill.getAttribute("aria-label")), `⚠⚠ the Completed tab counts the class that has RUN — nothing ever writes 'completed' (read "${await completedPill.getAttribute("aria-label")}")`);
-    const publishedPill = oPage.getByRole("button", { name: /^Published,/ });
-    check(/Published, 2 classes/.test(await publishedPill.getAttribute("aria-label")), `…and it is OFF Published, which held it for ever before (read "${await publishedPill.getAttribute("aria-label")}")`);
+    /* ⚠ DRAFTS · UPCOMING · PAST since 11 Oct 2026 (the user's choice) */
+    const completedPill = oPage.getByRole("button", { name: /^Past,/ });
+    check(/Past, 1 classes/.test(await completedPill.getAttribute("aria-label")), `⚠⚠ the Past tab counts the class that has RUN — nothing ever writes 'completed' (read "${await completedPill.getAttribute("aria-label")}")`);
+    const publishedPill = oPage.getByRole("button", { name: /^Upcoming,/ });
+    check(/Upcoming, 2 classes/.test(await publishedPill.getAttribute("aria-label")), `…and it is OFF Upcoming, which held it for ever before (read "${await publishedPill.getAttribute("aria-label")}")`);
+    const tabOrder = await oPage.getByRole("button", { name: /^(Drafts|Upcoming|Past), \d+ classes$/ }).evaluateAll((els) => els.map((e) => e.textContent.split(" ·")[0].trim()));
+    check(tabOrder.join(",") === "Drafts,Upcoming,Past", `the tabs read Drafts · Upcoming · Past, in that order (${tabOrder.join(" · ")})`);
 
     await completedPill.click();
     await oPage.waitForTimeout(400);
@@ -261,7 +264,11 @@ const BOOK_ON_PAGE = /^Book Now$/;
     check(/Kathak/.test(doneBody), "…and the class that ran is actually listed there");
 
     /* ══ 3 · A ROOM REQUEST, ANSWERED FROM THE CLASSES DESK ═══════════════════ */
-    check((await oPage.getByRole("button", { name: /^Requests,/ }).count()) === 0, "⚠ with nothing asked, there is NO Requests tab — a door onto an empty room is worse than no door");
+    /* ⚠⚠ A REQUESTS COLUMN, ALWAYS (11 Oct 2026, the user's choice: class
+       requests live in Classes, in a fixed column with a badge) — it replaced the
+       register's fourth tab, which appeared only when something was asked */
+    const reqCol = oPage.getByRole("link", { name: /^Show the requests about this studio's classes/ });
+    check((await reqCol.count()) === 1, "the studio's Classes section has a Requests column beside Classes");
 
     /* ⚠ THE ASKER HAS TO BE AN ARTIST PAGE, and the database is what says so:
        *"a studio holds its classes in its own rooms — a venue is for an artist's
@@ -290,14 +297,16 @@ const BOOK_ON_PAGE = /^Book Now$/;
     });
 
     if (venueClassId) {
-      await oPage.reload({ waitUntil: "networkidle" });
-      const reqPill = oPage.getByRole("button", { name: /^Requests,/ });
-      check((await reqPill.count()) === 1, "⚠⚠ an artist asks for one of this studio's rooms and it appears ON THE CLASSES DESK — it had no home here at all");
-      await reqPill.click();
-      await oPage.waitForTimeout(400);
+      /* the page OPENS on Requests while a room request waits (the user's choice) */
+      await oPage.goto(`${BASE}/business/${studio.id}/classes`, { waitUntil: "networkidle" });
+      check((await oPage.getByTestId("class-requests").count()) === 1, "⚠⚠ an artist asks for one of this studio's rooms and the Classes section OPENS on Requests");
+      /* the badge counts what waits: this room request, and the teacher ask the
+         studio itself sent earlier in this shoot and is still waiting on */
+      check(/\(2\)$/.test((await reqCol.getAttribute("aria-label")) || ""), `…its badge counts what waits — the room asked for and the teacher still to answer (${await reqCol.getAttribute("aria-label")})`);
+      check((await oPage.getByTestId("class-requests").getByTestId("request-settings").count()) === 1, "…with the room switch on top of it, moved here from the Inbox");
       const reqBody = await text(oPage);
-      check(new RegExp(`Cls Asker ${stamp}`).test(reqBody) && /wants Room A/.test(reqBody), "…naming who wants which room, on the app's own class card");
-      await oPage.getByRole("button", { name: "Accept the room" }).first().click();
+      check(new RegExp(`Cls Asker ${stamp}`).test(reqBody) && /room for a class/.test(reqBody), "…naming who wants a room, on the app's own class card");
+      await oPage.getByTestId("class-requests").getByRole("button", { name: /^Accept / }).first().click();
       await oPage.waitForTimeout(2000);
       const vs = (await rows(owner.h, `classes?id=eq.${venueClassId}&select=venue_status`))[0];
       check(vs.venue_status === "accepted", `…and one press holds the room, read back out of the database (venue_status "${vs.venue_status}")`);
@@ -306,8 +315,8 @@ const BOOK_ON_PAGE = /^Book Now$/;
     }
 
     /* ══ 4 · AN ASK CAN BE TAKEN BACK FROM THE ROW THAT NAMES IT ══════════════ */
-    await oPage.goto(`${BASE}/business/${studio.id}/classes`, { waitUntil: "networkidle" });
-    await oPage.getByRole("button", { name: /^Draft,/ }).click();
+    await oPage.goto(`${BASE}/business/${studio.id}/classes?show=classes`, { waitUntil: "networkidle" });
+    await oPage.getByRole("button", { name: /^Drafts,/ }).click();
     await oPage.waitForTimeout(400);
     const draftBody = await text(oPage);
     /* the chip reads "{name} · Asked" since the one word list of 4 Oct 2026 (it was "⏳ {name} asked") */
@@ -361,11 +370,19 @@ const BOOK_ON_PAGE = /^Book Now$/;
     /* ══ 7 · THE PERSON ASKED ANSWERS IT WHERE THE CLASS IS ═══════════════════ */
     const second = await draftClass(owner.h, studio.id, roomA[0].id, "Contemporary", 60 * 24 * 15, 60 * 24 * 15 + 60);
     await rpc(owner.h, "ask_class_person", { p_class_id: second, p_user_id: learner.id, p_kind: "artist" });
-    await lPage.goto(`${BASE}/my-classes?show=manage`, { waitUntil: "networkidle" });
+    /* ⚠ THE CLASSES SECTION'S REQUESTS COLUMN since 11 Oct 2026 — and the page
+       OPENS on it while an ask waits, so no column is named in the address */
+    await lPage.goto(`${BASE}/my-classes`, { waitUntil: "networkidle" });
     const myBody = await text(lPage);
-    check(/ASKED TO TAKE/.test(myBody), "⚠⚠ somebody asked to TAKE a class finds it in the Classes section — they own no page, so Manage was not even drawn for them");
+    check((await lPage.getByTestId("class-requests").count()) === 1 && /Asked to teach/i.test(myBody), "⚠⚠ somebody asked to TAKE a class lands on Classes › Requests, the ask on its own card");
+    check((await lPage.getByTestId("request-settings").count()) === 1, "…with the teach / assist switches on top of it, moved here from the Inbox");
     check(!/you say yes in your Inbox/.test(myBody), "⚠ …and nothing still sends them to the Inbox for something this screen does");
-    await lPage.getByRole("button", { name: "Accept", exact: true }).first().click();
+    await lPage.goto(`${BASE}/inbox`, { waitUntil: "networkidle" });
+    await lPage.getByRole("button", { name: /^Requests — / }).click().catch(() => {});
+    const ptr = lPage.getByTestId("class-requests-pointer");
+    check((await ptr.count()) === 1 && /1 class request/.test(await ptr.innerText()), "…and the Inbox keeps one line counting it and pointing to Classes");
+    await lPage.goto(`${BASE}/my-classes?show=requests`, { waitUntil: "networkidle" });
+    await lPage.getByTestId("class-requests").getByRole("button", { name: /^Accept / }).first().click();
     await lPage.waitForTimeout(2500);
     const seated = await rows(owner.h, `class_people?class_id=eq.${second}&status=eq.confirmed&deleted_at=is.null&select=user_id`);
     check(seated.length === 1 && seated[0].user_id === learner.id, "…one press and they are on it, read back out of the database");
@@ -374,21 +391,17 @@ const BOOK_ON_PAGE = /^Book Now$/;
        It was one block under the register, so every tab ended on the same list.
        The class just accepted is a DRAFT at somebody else's studio: it belongs
        under Draft and nowhere else. */
+    /* ⚠ RE-CUT 11 Oct 2026: a class you TAKE is the Teaching column's — its own
+       column now, Upcoming · Past inside — and a user's columns are Booked ·
+       Teaching · Assisting · Requests, in that order, whatever they hold */
     const [secondRow] = await rows(owner.h, `classes?id=eq.${second}&select=share_slug`);
-    await lPage.goto(`${BASE}/my-classes?show=manage`, { waitUntil: "networkidle" });
-    const draftPill = lPage.getByRole("button", { name: /^Draft, \d+ classes$/ });
-    const pubPill = lPage.getByRole("button", { name: /^Published, \d+ classes$/ });
-    check((await draftPill.count()) === 1 && (await pubPill.count()) === 1, "⚠⚠ somebody with NO page of their own now gets the register's columns over the classes they take");
+    await lPage.goto(`${BASE}/my-classes?show=teaching`, { waitUntil: "networkidle" });
+    const cols = await lPage.getByRole("group", { name: "Show" }).getByRole("link").evaluateAll((els) => els.map((e) => e.textContent.replace(/\s*\d+$/, "").trim()));
+    check(cols.join(",") === "Booked,Teaching,Assisting,Requests", `⚠⚠ a user's Classes reads Booked · Teaching · Assisting · Requests (${cols.join(" · ")})`);
+    check((await lPage.locator(`a[href="/c/${secondRow.share_slug}"]`).count()) > 0, "…and the class they just accepted is under Teaching");
     check((await lPage.getByRole("link", { name: "Add Class", exact: true }).count()) === 0 && (await lPage.getByTestId("why-no-class").count()) === 0, "…with no Create control, and no owner-only sentence about a studio they do not run");
-    const elsewhereHas = async () => (await lPage.locator(`[data-testid="classes-elsewhere"] a[href="/c/${secondRow.share_slug}"]`).count()) > 0;
-    check(!(await elsewhereHas()), "⚠⚠ the DRAFT they take elsewhere is NOT at the foot of Published");
-    await draftPill.click();
-    await lPage.waitForTimeout(400);
-    check(await elsewhereHas(), "…it is under Draft, where it belongs");
-    check(/Draft, 1 classes/.test((await draftPill.getAttribute("aria-label")) || ""), "…and the Draft pill counts it");
-    await lPage.getByRole("button", { name: /^Completed, \d+ classes$/ }).click();
-    await lPage.waitForTimeout(400);
-    check(!(await elsewhereHas()), "…and it is not under Completed either");
+    await lPage.goto(`${BASE}/my-classes?show=manage`, { waitUntil: "networkidle" });
+    check((await lPage.locator(`a[href="/c/${secondRow.share_slug}"]`).count()) > 0, "⚠ an old ?show=manage link still lands on what it held — Teaching, for somebody with no page (Rule 14)");
 
     /* ══ 8 · NEXT SESSIONS ON THE PUBLIC PAGE (#0aj) ══════════════════════════
        The backlog row wanted the whole public schedule folded into the profile

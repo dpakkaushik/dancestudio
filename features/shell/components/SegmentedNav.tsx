@@ -68,8 +68,11 @@ const WRAP: CSSProperties = { display: "flex", gap: 2, background: "var(--el)", 
 /** THE PILL ROW ITSELF — drawn once, used by both controls below, so the
  *  navigating segment and the instant one cannot drift apart. */
 function Pills({ segments, shown, label, onPress, style }: { segments: Segment[]; shown: string; label: string; onPress: (s: Segment, e: React.MouseEvent) => void; style?: CSSProperties }) {
+  /* ⚠ MORE THAN FOUR WRAP, 3 + 2 (11 Oct 2026) — an artist's Classes has five
+     columns, and five at 11.5px in a phone's width cut "My classes 12" */
+  const wrap = segments.length > 4;
   return (
-    <div role="group" aria-label={label} style={{ ...WRAP, ...style }}>
+    <div role="group" aria-label={label} style={{ ...WRAP, ...(wrap ? { flexWrap: "wrap", rowGap: 3 } : null), ...style }}>
       {segments.map((s) => {
         const on = shown === s.key;
         return (
@@ -80,7 +83,8 @@ function Pills({ segments, shown, label, onPress, style }: { segments: Segment[]
             aria-current={on ? "page" : undefined}
             onClick={(e) => onPress(s, e)}
             style={{
-              flex: 1,
+              flex: wrap ? "1 0 30%" : 1,
+              whiteSpace: wrap ? "nowrap" : undefined,
               textAlign: "center",
               padding: "8px 2px",
               borderRadius: 9,

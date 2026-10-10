@@ -7,7 +7,6 @@ import type { ReactNode } from "react";
 import {
   checkRoomClashAction,
   publishClassAction,
-  respondToVenueRequestAction,
   type ClassActionState,
   type RoomClash,
 } from "@/features/classes/server-actions/classes";
@@ -18,7 +17,7 @@ import { DOS_TOOLS, dosToolPaint } from "@/features/businesses/components/biz-ki
 import { useCloseOnBack } from "@/lib/hooks/useCloseOnBack";
 import { DeskBody, DeskTop } from "@/components/ui/DeskSections";
 import { DOS_DISPLAY, DOS_UI, INK, LILAC, SUB } from "@/lib/design/tokens";
-import type { ClassPublishState, VenueRequest } from "@/repositories/classes";
+import type { ClassPublishState } from "@/repositories/classes";
 import type { ClassArtist } from "@/types/classPerson";
 import { classPhaseAt, type DanceClass } from "@/types/class";
 import { ASK_STATUS_WORD, type ClassRelation } from "@/lib/format/classLabels";
@@ -69,12 +68,17 @@ const EL = "var(--el)";
  *  classes section at all: a venue request is a class owned by the ARTIST's
  *  page, so `findClassesByBusiness` never returned one and a studio's own rooms
  *  were being committed with its classes desk silent about it. */
-type Tab = "published" | "draft" | "completed" | "requests";
+/* ⚠⚠ DRAFTS · UPCOMING · PAST, IN THAT ORDER (11 Oct 2026, the user's choice).
+   Published and Completed were the COLUMN's words; what a person reading the
+   register wants to know is where the class is in its life — not yet out, still
+   to come (or running), or over. The keys stay the old ones so the clock rule
+   below did not have to move. The REQUESTS tab is gone: room requests are the
+   Classes section's own Requests column now, beside the teachers you asked. */
+type Tab = "published" | "draft" | "completed";
 const TAB_WORD: Record<Tab, string> = {
-  published: "Published",
-  draft: "Draft",
-  completed: "Completed",
-  requests: "Requests",
+  draft: "Drafts",
+  published: "Upcoming",
+  completed: "Past",
 };
 const initialState: ClassActionState = { error: null };
 
@@ -98,17 +102,6 @@ const bizBtn: React.CSSProperties = {
   marginBottom: 10,
   textDecoration: "none",
 };
-
-const pill = (danger: boolean): React.CSSProperties => ({
-  fontSize: 10.5,
-  fontWeight: 800,
-  padding: "6px 11px",
-  borderRadius: 999,
-  cursor: "pointer",
-  border: "none",
-  background: danger ? "rgba(239,68,68,.14)" : EL,
-  color: danger ? "#F87171" : INK,
-});
 
 /* ⚠ THE DRAFT ROW'S ACTS ARE BIG (4 Oct 2026, the user: "bigger edit and publish
    buttons"): equal buttons across the card, Publish the filled one. `--text` on
@@ -323,7 +316,6 @@ export function ClassesManager({
   whyNoClass = null,
   canCreate = true,
   canEdit = true,
-  venueRequests = [],
   askedTeachers = {},
   elsewhere = [],
   elsewhereHead = "AT OTHER STUDIOS",
@@ -377,9 +369,6 @@ export function ClassesManager({
    *  repository function now reads back rather than trusting. Drawing the
    *  control is the bug; the RPCs were right all along. */
   canEdit?: boolean;
-  /** the asks for THIS studio's rooms, waiting on an answer (30 Sep 2026) —
-   *  empty for an artist's own register, which owns no rooms to be asked for */
-  venueRequests?: VenueRequest[];
   /** classId → the id of the live ARTIST ask on it, so a row that says
    *  "⏳ {name} asked" can also take the ask back (30 Sep 2026). The chips have
    *  named these since 18 Sep and offered nothing to do about one. */
@@ -444,24 +433,18 @@ export function ClassesManager({
      class that has run is Completed here even though nothing ever writes that
      word to the column (see `classPhaseAt`). Live counts as Published, because
      it is still running and its register is still open. */
-  const bucketOf = (c: DanceClass): Exclude<Tab, "requests"> => {
+  const bucketOf = (c: DanceClass): Tab => {
     const p = classPhaseAt(c, nowMs);
     return p === "draft" ? "draft" : p === "over" ? "completed" : "published";
   };
-  const countOf = (k: Tab) =>
-    k === "requests"
-      ? venueRequests.length
-      : classes.filter((c) => bucketOf(c) === k).length + elsewhere.filter((e) => bucketOf(e.danceClass) === k).length;
-  const tabs: Tab[] = venueRequests.length > 0 ? ["published", "draft", "completed", "requests"] : ["published", "draft", "completed"];
-  /* ⚠ THE OPEN TAB CAN STOP EXISTING UNDER YOU (30 Sep 2026, found by reading
-     this back): answering the LAST room request takes Requests out of the pill
-     row, and the view was still on it — no rows, no pill, and the empty state
-     is guarded against that tab, so the desk went blank. Falling back keeps the
-     answer to "what happens after the last one" the obvious one. */
-  const tab: Tab = tabs.includes(rawTab) ? rawTab : "published";
-  let list = tab === "requests" ? [] : classes.filter((c) => bucketOf(c) === tab);
+  const countOf = (k: Tab) => classes.filter((c) => bucketOf(c) === k).length + elsewhere.filter((e) => bucketOf(e.danceClass) === k).length;
+  /* the order a class lives in — Drafts, then Upcoming, then Past; the register
+     still OPENS on Upcoming, which is where the work of the week is */
+  const tabs: Tab[] = ["draft", "published", "completed"];
+  const tab: Tab = rawTab;
+  let list = classes.filter((c) => bucketOf(c) === tab);
   if (liveOnly) list = list.filter((c) => isLiveAt(c, nowMs));
-  const away = tab === "requests" ? [] : elsewhere.filter((e) => bucketOf(e.danceClass) === tab && (!liveOnly || isLiveAt(e.danceClass, nowMs)));
+  const away = elsewhere.filter((e) => bucketOf(e.danceClass) === tab && (!liveOnly || isLiveAt(e.danceClass, nowMs)));
   const filledOf = (c: DanceClass) => (c.session ? filledBySession[c.session.id] ?? 0 : 0);
   const actionError = publishResult.error || rowError;
 
@@ -580,7 +563,7 @@ export function ClassesManager({
                   key={k}
                   type="button"
                   aria-pressed={on}
-                  aria-label={`${TAB_WORD[k]}, ${countOf(k)} ${k === "requests" ? "requests" : "classes"}`}
+                  aria-label={`${TAB_WORD[k]}, ${countOf(k)} classes`}
                   onClick={() => setTab(k)}
                   style={{
                     flex: 1,
@@ -612,7 +595,7 @@ export function ClassesManager({
           <div role="status" style={{ fontSize: 12, color: "#F59E0B", fontWeight: 700, margin: "8px 0" }}>{note}</div>
         ) : null}
 
-        {tab !== "requests" && list.length === 0 && away.length === 0 && (
+        {list.length === 0 && away.length === 0 && (
           <div
             style={{
               textAlign: "center",
@@ -644,44 +627,6 @@ export function ClassesManager({
             than a second row shape that can drift. The ACTION is the same RPC the
             Inbox calls, which decides who may answer; this is a second door onto
             one subject, not a second rule. */}
-        {tab === "requests" ? (
-          <div style={{ marginTop: 8 }}>
-            {venueRequests.map((v) => (
-              <ClassTile
-                key={v.classId}
-                danceClass={v.danceClass}
-                artist={null}
-                href={`/c/${v.shareSlug}`}
-                relation="roomRequest"
-                actions={
-                  <>
-                    <span style={{ flexBasis: "100%", fontSize: 10.5, color: SUB, lineHeight: 1.45 }}>
-                      <b style={{ color: INK }}>{v.artistName}</b> wants {v.room ?? "a room"} at {v.venueName}. Accepting holds it
-                      for them — the class, its bookings and its money stay theirs.
-                    </span>
-                    <button
-                      type="button"
-                      disabled={busy === v.classId}
-                      onClick={() => run(v.classId, () => respondToVenueRequestAction({ classId: v.classId, accept: false }))}
-                      style={pill(true)}
-                    >
-                      {busy === v.classId ? "…" : "Decline"}
-                    </button>
-                    <button
-                      type="button"
-                      disabled={busy === v.classId}
-                      onClick={() => run(v.classId, () => respondToVenueRequestAction({ classId: v.classId, accept: true }))}
-                      style={{ ...pill(false), background: INK, color: LILAC }}
-                    >
-                      {busy === v.classId ? "…" : "Accept the room"}
-                    </button>
-                  </>
-                }
-              />
-            ))}
-          </div>
-        ) : null}
-
         <div style={{ marginTop: 8 }}>
           {list.map((c) => {
             const st = publishState[c.id];

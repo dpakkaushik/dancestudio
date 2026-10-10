@@ -311,7 +311,7 @@ async function personOpensAStudio(page, who, acc, stamp) {
   await page.goto(`${BASE}/business/${studioId}/classes`, { waitUntil: "networkidle" });
   /* a new class is a DRAFT, and the register opens on Published — the Draft
      segment is where its Publish pill is (the happy path presses the same pill) */
-  await page.getByRole("button", { name: /^Draft, \d+ classes$/ }).click().catch(() => {});
+  await page.getByRole("button", { name: /^Drafts, \d+ classes$/ }).click().catch(() => {});
   const publish = page.getByRole("button", { name: "Publish", exact: true });
   await publish.first().waitFor({ timeout: 15_000 }).catch(() => {});
   check((await publish.count()) >= 1, `${who} · the register offers Publish with nothing in its way — nobody was asked (${(await page.getByRole("button", { name: /^Publish/ }).allTextContents().catch(() => [])).join(" | ") || "no Publish pill at all"})`);
@@ -320,15 +320,15 @@ async function personOpensAStudio(page, who, acc, stamp) {
      already completed") — an answered ask still exists, which is the 19 Sep
      rule and the whole point of this check; it has simply moved off the live
      desk so Requests holds only what still needs somebody. */
-  await page.goto(`${BASE}/inbox`, { waitUntil: "networkidle" });
-  /* Requests › Completed since later on 2 Oct 2026 — Completed is a side of each column */
-  await page.getByRole("button", { name: /^Requests — / }).click().catch(() => {});
-  await page.getByRole("button", { name: "Completed requests" }).click().catch(() => {});
+  /* ⚠ IN THE CLASSES SECTION SINCE 11 Oct 2026 (class requests live there only)
+     — its Requests column, the Done side */
+  await page.goto(`${BASE}/my-classes?show=requests`, { waitUntil: "networkidle" });
+  await page.getByRole("button", { name: "Done class requests" }).click().catch(() => {});
   const inbox = await page.locator("body").innerText().catch(() => "");
   /* ⚠ "Accepted", not "Confirmed" (27 Sep 2026): a class ask is drawn as the
      app's own class card with Accept / Reject under it, so the answer it wears
      uses the same verb as the button that gave it. */
-  check(/Hip-Hop/.test(inbox) && /accepted/i.test(inbox), `${who} · the Inbox keeps the line, wearing its answer`);
+  check(/Hip-Hop/.test(inbox) && /accepted/i.test(inbox), `${who} · Classes › Requests keeps the line, wearing its answer`);
   await page.goto(`${BASE}/notifications`, { waitUntil: "networkidle" });
   check(/You take Hip-Hop/.test(await page.locator("body").innerText().catch(() => "")), `${who} · and the bell says "You take …" — the log the user asked for`);
   return studioId;

@@ -180,6 +180,7 @@ export async function findClassesWithArtist(
 
 interface MyAskRow extends ClassPersonRow {
   deleted_at?: string | null;
+  business_id?: string | null;
   classes: {
     id: string;
     style: string;
@@ -202,12 +203,13 @@ interface MyAskRow extends ClassPersonRow {
  *  class cards in same way" — and the ask's own STATUS, so an answered ask can
  *  still be listed in the Inbox ("enquiries and requests don't get removed
  *  after accepting"). */
-const ASK_SELECT = `${CLAIM_COLUMNS}, deleted_at, classes (id, style, level, share_slug, room, price_inr, capacity, status, poster_path, venue_status, businesses!classes_business_id_fkey (name, city, type, profile_photo_path), venue:businesses!classes_venue_business_id_fkey (name, type, profile_photo_path), class_sessions (id, starts_at, ends_at))`;
+const ASK_SELECT = `${CLAIM_COLUMNS}, deleted_at, business_id, classes (id, style, level, share_slug, room, price_inr, capacity, status, poster_path, venue_status, businesses!classes_business_id_fkey (name, city, type, profile_photo_path), venue:businesses!classes_venue_business_id_fkey (name, type, profile_photo_path), class_sessions (id, starts_at, ends_at))`;
 const toAsk = (r: MyAskRow): MyClassPersonAsk => {
   const first = [...(r.classes!.class_sessions ?? [])].sort((a, b) => a.starts_at.localeCompare(b.starts_at))[0] ?? null;
   return {
     ...toClassPerson(r),
     withdrawn: Boolean(r.deleted_at) && r.status === "asked",
+    classBusinessId: r.business_id ?? null,
     classTitle: dosClassLabel(r.classes!.style, r.classes!.level),
     classStyle: r.classes!.style,
     classShareSlug: r.classes!.share_slug,

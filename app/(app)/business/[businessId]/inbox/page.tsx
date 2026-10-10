@@ -1,13 +1,10 @@
 import { redirect } from "next/navigation";
 import { EnquirySettings } from "@/features/enquiries/components/EnquirySettings";
 import { loadEnquiries } from "@/features/enquiries/server/loadEnquiries";
-import { RoomRequestSettings } from "@/features/inbox/components/AskSettings";
 import { InboxScreen } from "@/features/inbox/components/InboxScreen";
-import { findTakesRoomRequests } from "@/repositories/askSettings";
 import { buildRequests } from "@/features/inbox/requestItems";
 import { gradientOf } from "@/features/profiles/components/profile-kit";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
-import { findAskedClassPeopleForBusinesses, findClassArtists } from "@/repositories/classPeople";
 import { findVenueRequestsForBusinesses } from "@/repositories/classes";
 import { findSentInvites } from "@/repositories/invites";
 import { findMyMemberships, runsTheBusiness } from "@/repositories/businesses";
@@ -56,33 +53,29 @@ export default async function StudioInboxPage({ params, searchParams }: { params
   /* ⚠ AND IT READS THEM AGAIN (2 Oct 2026, the user: "shift back enquiries to
      inbox from home tools for all profiles") — the studio's enquiries are this
      Inbox's third desk, read through the loader the person's Inbox shares */
-  const [venueIn, classPeopleOut, invitesOut, enq, { show }, takesRooms] = await Promise.all([
-    /* ⚠ every status, so an answered or withdrawn one moves to Completed rather than vanishing (2 Oct 2026) */
-    findVenueRequestsForBusinesses(supabase, [businessId], ["requested", "accepted", "declined"]).catch(() => []),
-    findAskedClassPeopleForBusinesses(supabase, [businessId], ["asked", "confirmed", "rejected"], { withdrawn: true }),
+  /* ⚠⚠ THE ROOM REQUESTS AND THE TEACHERS ASKED MOVED TO THE REGISTER (11 Oct
+     2026, the user's choice: class requests live in Classes only). This desk
+     keeps the enquiries and the invites it sent, and one line counting the room
+     requests that wait — the room switch went with them. */
+  const [venueWaiting, invitesOut, enq, { show }] = await Promise.all([
+    findVenueRequestsForBusinesses(supabase, [businessId], ["requested"]).catch(() => []),
     findSentInvites(supabase, businessId).then((rows) => rows.map((i) => ({ ...i, businessName: business.name }))),
     loadEnquiries(supabase, { kind: "business", id: businessId, memberships }),
     searchParams,
-    /* ⚠ whether artists may ask this studio for a room (3 Oct 2026) */
-    findTakesRoomRequests(supabase, businessId),
   ]);
-  const { requestsIn, requestsOut } = buildRequests({ venueIn, classPeopleOut, invitesOut });
-  /* the teacher each class card wears — one read for the whole desk (1 Oct 2026) */
-  const classIds = [...new Set([...requestsIn, ...requestsOut].map((r) => r.danceClass?.id).filter((x): x is string => Boolean(x)))];
-  const artists = Object.fromEntries(await findClassArtists(supabase, classIds).catch(() => new Map()));
+  const { requestsIn, requestsOut } = buildRequests({ invitesOut });
 
   return (
     <InboxScreen
       accent={gradientOf(business.name)[1]}
       requestsIn={requestsIn}
       requestsOut={requestsOut}
-      artists={artists}
       enquiriesIn={enq.enquiriesIn}
       enquiriesOut={[]}
       receivedOnly
       deskSub={business.name}
       settings={<EnquirySettings businesses={enq.settingsFor} />}
-      requestSettings={<RoomRequestSettings businessId={businessId} on={takesRooms} owner={membership.memberRole === "owner"} />}
+      classPointer={{ n: venueWaiting.length, href: `/business/${businessId}/classes?show=requests` }}
       initialSection={show === "enquiries" ? "enq" : show === "done" ? "done" : undefined}
       nowIso={stampNowIso()}
     />

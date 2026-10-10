@@ -105,7 +105,17 @@ export interface RequestItem {
   /** the SEAT an invitation offers, in the app's word and its label colour
    *  (2 Oct 2026, "better cards for invites") — absent for a crew ask */
   role?: { word: string; colour: string };
+  /** THE CLASS'S EDIT FORM, for an ask YOU sent (11 Oct 2026) — a room request
+   *  is changed there ("Pick another studio ›") and a declined teacher is
+   *  replaced there ("Ask someone else ›"); absent for every other kind */
+  editHref?: string | null;
 }
+
+/** THE CLASS ASKS — teach, assist and a room (11 Oct 2026). They live in the
+ *  Classes section now, beside the class they are about; the Inbox keeps the
+ *  team and crew invitations, the practices and the enquiries, and one line
+ *  pointing here. */
+export const isClassAsk = (r: RequestItem) => r.kind === "classPerson" || r.kind === "venue";
 
 /* ⚠ A `Record` KEYED ON THE UNION, which is the point: adding `practice` to
    `RequestItem["kind"]` made this line fail to COMPILE until the word was
@@ -192,7 +202,23 @@ export function InboxScreen({
   requestSettings = null,
   inviteSettings = null,
   artists = {},
+  embed = false,
+  embedFor = "person",
+  classPointer = null,
 }: {
+  /** whose Requests column it is — the empty lines name what can land there:
+   *  a person is asked to teach or assist, a studio is asked for a room */
+  embedFor?: "person" | "studio";
+  /** ⚠ THE CLASSES SECTION'S REQUESTS COLUMN (11 Oct 2026, the user's choice:
+   *  class requests live in Classes only). Drawn without the Inbox's heading,
+   *  columns or squircles — just the settings slot, To answer · Sent · Done,
+   *  the filters and the request cards, inside the page that embeds it. The
+   *  cards, the buttons and the RPCs are this file's, so the two screens cannot
+   *  answer one ask two ways. Only `requestsIn` / `requestsOut` are read. */
+  embed?: boolean;
+  /** the Inbox's one line about the class asks that moved to Classes — how many
+   *  wait on you, and where (11 Oct 2026) */
+  classPointer?: { n: number; href: string } | null;
   /** ⚠ WHAT ASKS YOU TAKE (3 Oct 2026, the user: "request and invite settings
    *  for inbox") — slots, like `settings`, because the switches belong to
    *  whoever this desk is (a person's kinds, a studio's room requests) and this
@@ -357,14 +383,16 @@ export function InboxScreen({
   })();
   const SECT: Array<["enq" | "req" | "join", string, number, string]> = [
     ...(noEnquiries ? [] : ([["enq", "Enquiries", newIn.length, "#EC4899"]] as Array<["enq", string, number, string]>)),
-    ["req", "Requests", askIn.filter((r) => r.dir === "in").length, "#DC2626"],
+    /* the class asks that moved to Classes still COUNT here (11 Oct 2026) — the
+       badge is how somebody who never opens Classes learns a studio wants them */
+    ["req", "Requests", askIn.filter((r) => r.dir === "in").length + (classPointer?.n ?? 0), "#DC2626"],
     ["join", "Invites", joinIn.filter((r) => r.dir === "in").length, JOIN_TINT.invite ?? SKY],
   ];
   /* ⚠ WHAT WAITS ON YOU (2 Oct 2026, found re-reading): this was
      `requestsIn.length`, which since 19 Sep includes every ANSWERED ask too — so
      somebody who had answered everything read "4 waiting on you". It is the
      unanswered asks and invitations put to you, and the enquiries still new. */
-  const owed = askIn.length + joinIn.length + newIn.length;
+  const owed = askIn.length + joinIn.length + newIn.length + (classPointer?.n ?? 0);
 
   /* one answer per kind — the RPC behind each decides who may give it */
   const answer = (r: RequestItem, accept: boolean) =>
@@ -429,7 +457,19 @@ export function InboxScreen({
        *  ⚠ The WORDS are unchanged, because they carry who answered — "you said
        *  yes" and "Accepted by {who}" are two different facts and the desk shows
        *  both directions in one list. */
-      return <div style={{ flex: 1, display: "flex", padding: "2px 0" }}>{answerStamp(r, false)}</div>;
+      /* ⚠ A NO YOU WERE GIVEN HAS A WAY ON (11 Oct 2026): a declined teacher is
+         replaced, and a declined room is swapped, from the class's Edit form */
+      const onward = r.dir === "out" && r.status === "rejected" && r.editHref ? (r.kind === "venue" ? "Pick another studio ›" : "Ask someone else ›") : null;
+      return (
+        <div style={{ flex: 1, display: "flex", alignItems: "center", gap: 8, padding: "2px 0", flexWrap: "wrap" }}>
+          {answerStamp(r, false)}
+          {onward ? (
+            <Link href={r.editHref!} data-testid="ask-onward" style={{ marginLeft: "auto", fontSize: 11.5, fontWeight: 900, color: "var(--text)", textDecoration: "none", padding: "7px 12px", borderRadius: 999, border: "1.5px solid var(--el)" }}>
+              {onward}
+            </Link>
+          ) : null}
+        </div>
+      );
     }
     if (r.dir === "in") {
       return (
@@ -458,6 +498,13 @@ export function InboxScreen({
     return (
       <>
         <div style={{ flex: 1, fontSize: 10.5, color: "#F59E0B", fontWeight: 800, alignSelf: "center" }}>⏳ Waiting on {r.who}</div>
+        {/* a room request is not withdrawn, it is MOVED — the class's Edit form
+            picks another studio or a place of your own (11 Oct 2026) */}
+        {r.kind === "venue" && r.editHref ? (
+          <Link href={r.editHref} style={{ flexShrink: 0, textAlign: "center", padding: "11px 16px", borderRadius: 999, background: "var(--el)", color: "var(--text)", fontWeight: 800, fontSize: 12.5, textDecoration: "none" }}>
+            Pick another studio ›
+          </Link>
+        ) : (
         <button
           type="button"
           disabled={busy}
@@ -467,6 +514,7 @@ export function InboxScreen({
         >
           Withdraw
         </button>
+        )}
       </>
     );
   };
@@ -739,14 +787,14 @@ export function InboxScreen({
   /* ⚠ Completed's count is what is IN it (not what waits on you — nothing there
      waits on anybody), painted green so it never reads as owed. And a studio's
      or a crew's Enquiries desk has no Sent side: an enquiry is sent by a person. */
-  const sideSwitch = (cur: Side3, set: (s: Side3) => void, nIn: number, nOut: number | null, nDone: number, noun: string, tint: string) => (
+  const sideSwitch = (cur: Side3, set: (s: Side3) => void, nIn: number, nOut: number | null, nDone: number, noun: string, tint: string, words: readonly [string, string, string] = ["Received", "Sent", "Completed"]) => (
     /* in the TOP squircle since 3 Oct 2026, under the column's settings */
     <div data-testid="inbox-sides" style={{ display: "flex", gap: 6, marginTop: 12 }}>
       {(
         [
-          ["in", "Received", nIn, tint],
-          ...(nOut === null ? [] : [["out", "Sent", nOut, tint]]),
-          ["done", "Completed", nDone, "#22C55E"],
+          ["in", words[0], nIn, tint],
+          ...(nOut === null ? [] : [["out", words[1], nOut, tint]]),
+          ["done", words[2], nDone, "#22C55E"],
         ] as Array<[Side3, string, number, string]>
       ).map(([k, l, n, tint]) => (
         <div key={k} role="button" tabIndex={0} aria-pressed={cur === k} aria-label={`${l} ${noun}`} onKeyDown={pressKey(() => set(k))} onClick={() => set(k)} style={{ flex: 1, textAlign: "center", padding: "9px 6px", borderRadius: 12, cursor: "pointer", fontSize: 11.5, fontWeight: 800, background: cur === k ? "var(--text)" : "var(--card)", color: cur === k ? "var(--solid)" : "var(--sub)", border: "1.5px solid var(--el)" }}>
@@ -856,6 +904,46 @@ export function InboxScreen({
     </div>
   );
   const colSettings = sect === "enq" ? settings : sect === "req" ? requestSettings : inviteSettings;
+
+  const toastEl = toast ? (
+    <div role="status" aria-live="polite" style={{ position: "fixed", bottom: 96, left: "50%", transform: "translateX(-50%)", background: "var(--solid)", border: "1.5px solid #0EA5E9", boxShadow: "0 6px 24px rgba(0,0,0,.45)", color: "var(--text)", padding: "11px 18px", borderRadius: 999, fontSize: 13, fontWeight: 700, maxWidth: 360, textAlign: "center", zIndex: 650 }}>
+      {toast}
+    </div>
+  ) : null;
+
+  if (embed) {
+    /* ── THE CLASSES SECTION'S REQUESTS COLUMN (11 Oct 2026) ── */
+    return (
+      <div data-testid="class-requests">
+        {requestSettings}
+        {sideSwitch(rqSide, pickRqSide, askIn.length, receivedOnly ? null : askOut.length, doneAsks.length, "class requests", REQ_TINT, ["To answer", "Sent", "Done"])}
+        <div style={{ height: 14 }} />
+        {error ? <div style={{ fontSize: 11.5, color: "#F87171", marginBottom: 10 }}>{error}</div> : null}
+        {reqBase.length ? <InboxFilters value={fReq} onChange={setFReq} noun="requests" kinds={kindsOf(reqBase)} stages={stagesOf(reqBase, false)} stageLabel="OUTCOME" sorts={REQ_SORTS} /> : null}
+        {reqBase.length === 0 ? (
+          <div style={emptyBox}>
+            <div style={{ fontSize: 12.5, fontWeight: 800 }}>{rqSide === "done" ? "Nothing done yet" : "Nothing here"}</div>
+            <div style={{ fontSize: 10.5, color: "var(--sub)", marginTop: 3 }}>
+              {rqSide === "in"
+                ? receivedOnly || embedFor === "studio"
+                  ? "No artist has asked for one of your rooms."
+                  : "Nobody has asked you to teach or assist a class."
+                : rqSide === "out"
+                  ? embedFor === "studio"
+                    ? "This studio has not asked anybody to teach or assist."
+                    : "You have not asked anybody onto a class or for a room."
+                  : "Requests land here once they are accepted, rejected or withdrawn."}
+            </div>
+          </div>
+        ) : reqShown.length === 0 ? (
+          noMatch
+        ) : (
+          reqShown.map(askCard)
+        )}
+        {toastEl}
+      </div>
+    );
+  }
 
   return (
     <div style={{ position: "relative", background: LILAC, color: "var(--text)", maxWidth: 430, margin: "0 auto", fontFamily: DOS_UI, minHeight: "100vh", display: "flex", flexDirection: "column" }}>
@@ -976,7 +1064,20 @@ export function InboxScreen({
 
         {sect === "req" ? (
           <>
-            {reqBase.length ? <InboxFilters value={fReq} onChange={setFReq} noun="requests" kinds={kindsOf(reqBase)} stages={stagesOf(reqBase, false)} stageLabel="OUTCOME" sorts={REQ_SORTS} /> : null}
+            {/* ⚠ CLASS REQUESTS LIVE IN CLASSES (11 Oct 2026, the user's choice) —
+                teach, assist and room asks are answered beside the class they are
+                about; this column keeps the practices, and says where the rest went */}
+            {classPointer ? (
+              <Link href={classPointer.href} data-testid="class-requests-pointer" aria-label={`${classPointer.n} class ${classPointer.n === 1 ? "request" : "requests"} — open Classes`} style={{ display: "flex", alignItems: "center", gap: 10, padding: "12px 14px", marginBottom: 12, borderRadius: 16, background: "var(--card)", border: "1.5px solid var(--el)", color: "var(--text)", textDecoration: "none" }}>
+                <span style={{ fontSize: 13, fontWeight: 900, flex: 1 }}>
+                  {classPointer.n > 0 ? `${classPointer.n} class ${classPointer.n === 1 ? "request" : "requests"} waiting` : "Class requests"}
+                  <span style={{ display: "block", fontSize: 10.5, fontWeight: 700, color: "var(--sub)", marginTop: 2 }}>Teach, assist and room requests are answered in Classes</span>
+                </span>
+                {classPointer.n > 0 ? <span style={{ fontSize: 10, fontWeight: 900, fontFamily: DOS_MONO, padding: "2px 8px", borderRadius: 999, background: REQ_TINT, color: "#fff" }}>{classPointer.n}</span> : null}
+                <span aria-hidden="true" style={{ fontWeight: 900 }}>›</span>
+              </Link>
+            ) : null}
+            {reqBase.length ?<InboxFilters value={fReq} onChange={setFReq} noun="requests" kinds={kindsOf(reqBase)} stages={stagesOf(reqBase, false)} stageLabel="OUTCOME" sorts={REQ_SORTS} /> : null}
             {reqBase.length === 0 ? (
               <div style={emptyBox}>
                 <div style={{ fontSize: 12.5, fontWeight: 800 }}>{rqSide === "done" ? "Nothing completed yet" : "Nothing here"}</div>
@@ -1040,11 +1141,7 @@ export function InboxScreen({
       </div>
       </InvertedPanel>
 
-      {toast ? (
-        <div role="status" aria-live="polite" style={{ position: "fixed", bottom: 96, left: "50%", transform: "translateX(-50%)", background: "var(--solid)", border: "1.5px solid #0EA5E9", boxShadow: "0 6px 24px rgba(0,0,0,.45)", color: "var(--text)", padding: "11px 18px", borderRadius: 999, fontSize: 13, fontWeight: 700, maxWidth: 360, textAlign: "center", zIndex: 650 }}>
-          {toast}
-        </div>
-      ) : null}
+      {toastEl}
     </div>
   );
 }
