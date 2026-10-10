@@ -1,12 +1,18 @@
+import Link from "next/link";
 import { redirect } from "next/navigation";
 import { ClassForm } from "@/features/classes/components/ClassForm";
 import { ClassesManager } from "@/features/classes/components/ClassesManager";
+import { ClassesHome, type RunningItem } from "@/features/classes/components/ClassesHome";
+import { doorOpen, needLinksOf, runningWhen } from "@/features/classes/classesScreen";
+import { STAGES, type ClassStage } from "@/features/classes/stages";
 import { DeskHero, DOS_TOOLS } from "@/features/businesses/components/biz-kit";
 import { RoomRequestSettings } from "@/features/inbox/components/AskSettings";
 import { InboxScreen } from "@/features/inbox/components/InboxScreen";
 import { buildRequests } from "@/features/inbox/requestItems";
-import { SegmentedPanels } from "@/features/shell/components/SegmentedNav";
+import { DeskTop } from "@/components/ui/DeskSections";
 import { DOS_UI, INK, LILAC } from "@/lib/design/tokens";
+import { countCheckedInBySession } from "@/repositories/attendance";
+import { findRefundsByBusiness } from "@/repositories/refunds";
 import { findTakesRoomRequests } from "@/repositories/askSettings";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { findAskedClassPeopleForBusinesses, findClassArtists } from "@/repositories/classPeople";
@@ -106,9 +112,48 @@ export default async function BusinessClassesPage({
   const reqArtists = Object.fromEntries(
     await findClassArtists(supabase, [...new Set([...requestsIn, ...requestsOut].map((r) => r.danceClass?.id).filter((x): x is string => Boolean(x)))]).catch(() => new Map())
   );
-  const roomsWaiting = venueRequests.filter((v) => v.venueStatus === "requested").length;
-  const show = sp.show === "requests" ? "requests" : sp.show === "classes" ? "classes" : roomsWaiting > 0 ? "requests" : "classes";
+  /* ⚠⚠ ONE SCREEN FOR A STUDIO AND A PERSON (11 Oct 2026, the user's choice):
+     the Needs-you strip, the Running now card and the stage board — the same
+     `ClassesHome` `/my-classes` stands on. `?show=requests` is the request
+     history; every other address (an old `?show=classes` too) is the screen. */
+  const show = sp.show === "requests" ? "requests" : "classes";
   const nowIso = stampNowIso();
+  const nowMs = Date.parse(nowIso);
+  const rawStage = sp.stage ?? "";
+  const initialStage: ClassStage | "all" = (STAGES as string[]).includes(rawStage) ? (rawStage as ClassStage) : "all";
+  /* the classes whose door is open now — the studio's own and the artists'
+     classes in its rooms; whoever runs the studio runs those registers */
+  const live = [...classes.filter((c) => c.status !== "draft"), ...hosted.map((h) => h.danceClass)].filter((c) => c.session && doorOpen(c.session.startsAt, c.session.endsAt, nowMs));
+  const [inRoom, refunds] = await Promise.all([
+    countCheckedInBySession(supabase, live.map((c) => c.session!.id)),
+    /* the refunds waiting on a decision — the owner's to make */
+    myRole === "owner" ? findRefundsByBusiness(supabase, businessId).catch(() => []) : Promise.resolve([]),
+  ]);
+  const running: RunningItem[] = live
+    .sort((a, b) => a.session!.startsAt.localeCompare(b.session!.startsAt))
+    .map((c) => ({
+      key: c.id,
+      title: c.title,
+      path: `/c/${c.shareSlug}`,
+      when: runningWhen(c.session!.startsAt, c.session!.endsAt, nowMs),
+      started: Date.parse(c.session!.startsAt) <= nowMs,
+      booked: counts.get(c.session!.id) ?? 0,
+      capacity: c.capacity,
+      checkedIn: inRoom.get(c.session!.id) ?? 0,
+      canDoor: true,
+      role: c.businessId === businessId ? "Your class" : "At your studio",
+    }));
+  const stateObj = Object.fromEntries(state);
+  const needLinks = needLinksOf({
+    classes,
+    state: stateObj,
+    nowMs,
+    businessId,
+    canEdit: myRole === "owner",
+    readyHref: `/business/${businessId}/classes?stage=ready`,
+    refunds,
+    refundsHref: myRole === "owner" ? `/business/${businessId}/refunds` : null,
+  });
   /* ⚠ ADD CLASS OPENS OVER THIS REGISTER (22 Sep 2026, the user: "all forms and
      add buttons … should open form like how setting page or edit profile page
      open from the same screen", then "from inside their respective sections").
@@ -125,7 +170,8 @@ export default async function BusinessClassesPage({
         classes={classes}
         filledBySession={Object.fromEntries(counts)}
         artists={Object.fromEntries(artists)}
-        publishState={Object.fromEntries(state)}
+        publishState={stateObj}
+        initialStage={initialStage}
         whyNoClass={whyNoClass}
         canCreate={myRole === "owner"}
         /* ⚠ THE SAME SEAT DECIDES EVERY WRITE ON THIS DESK (30 Sep 2026): RLS
@@ -153,42 +199,47 @@ export default async function BusinessClassesPage({
 
   return (
     <div style={{ background: LILAC, color: INK, maxWidth: 430, margin: "0 auto", fontFamily: DOS_UI, minHeight: "100vh", padding: "14px 16px 40px", boxSizing: "border-box" }}>
-      {/* ⚠⚠ CLASSES · REQUESTS (11 Oct 2026, the user's choice for a studio):
-          the register, then the requests about its classes — the rooms artists
-          want, and the teachers it asked — with the room switch on top of them.
-          A fixed order, a badge for what waits; the page opens on Requests only
-          while a room request is waiting on an answer. */}
-      <SegmentedPanels
-        key={show}
-        initial={show}
-        sections
-        top={<DeskHero tool="classes" as="h1" margin="0" />}
-        segments={[
-          { key: "classes", href: `/business/${businessId}/classes?show=classes`, label: "Classes", aria: "Show this studio's classes", n: classes.length + hosted.length },
-          { key: "requests", href: `/business/${businessId}/classes?show=requests`, label: "Requests", aria: "Show the requests about this studio's classes", n: roomsWaiting + waitingOut },
-        ]}
-        panels={[
-          { key: "classes", node: register },
-          {
-            key: "requests",
-            node: (
-              <InboxScreen
-                embed
-                embedFor="studio"
-                accent={DOS_TOOLS.classes.c}
-                requestsIn={requestsIn}
-                requestsOut={requestsOut}
-                artists={reqArtists}
-                enquiriesIn={[]}
-                enquiriesOut={[]}
-                noEnquiries
-                nowIso={nowIso}
-                requestSettings={<RoomRequestSettings businessId={businessId} on={takesRooms} owner={myRole === "owner"} />}
-              />
-            ),
-          },
-        ]}
-      />
+      {/* ⚠⚠ ONE SCREEN (11 Oct 2026, the user's second pass that evening): the
+          rooms artists ask for are the top of Needs you, a class on the clock is
+          the Running-now card, and the register is the stage board. The whole
+          request history — with the room switch — is `?show=requests`. */}
+      {show === "requests" ? (
+        <>
+          <DeskTop style={{ paddingBottom: 12 }}>
+            <DeskHero tool="classes" as="h1" margin="0" />
+            <Link href={`/business/${businessId}/classes`} data-testid="back-to-classes" style={{ display: "inline-block", marginTop: 10, fontSize: 12, fontWeight: 800, color: "var(--text)", textDecoration: "none", padding: "8px 13px", borderRadius: 999, border: "1.5px solid var(--el)", background: "var(--card)" }}>
+              ‹ Back to classes
+            </Link>
+          </DeskTop>
+          <InboxScreen
+            embed
+            embedFor="studio"
+            accent={DOS_TOOLS.classes.c}
+            requestsIn={requestsIn}
+            requestsOut={requestsOut}
+            artists={reqArtists}
+            enquiriesIn={[]}
+            enquiriesOut={[]}
+            noEnquiries
+            nowIso={nowIso}
+            requestSettings={<RoomRequestSettings businessId={businessId} on={takesRooms} owner={myRole === "owner"} />}
+          />
+        </>
+      ) : (
+        <ClassesHome
+          key={initialStage}
+          mode="studio"
+          top={<DeskHero tool="classes" as="h1" margin="0" />}
+          asks={requestsIn.filter((r) => r.status === "asked")}
+          artists={reqArtists}
+          needLinks={needLinks}
+          running={running}
+          board={register}
+          requestsHref={`/business/${businessId}/classes?show=requests`}
+          requestsWaiting={waitingOut}
+          basePath={`/business/${businessId}/classes`}
+        />
+      )}
       {opening && myRole === "owner" && !whyNoClass ? (
         <ClassForm
           businessId={businessId}

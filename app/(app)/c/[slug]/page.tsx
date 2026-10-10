@@ -106,7 +106,10 @@ export default async function ClassSharePage({
   searchParams: Promise<Record<string, string | undefined>>;
 }) {
   const { slug } = await params;
-  const { as } = await searchParams;
+  const { as, open } = await searchParams;
+  /* the Classes screen's Running now card (11 Oct 2026) — a request, honoured by
+     the page only when this viewer has a register */
+  const openOn = open === "scan" ? "scan" : open === "register" ? "register" : null;
   if (!SLUG_RE.test(slug)) {
     notFound();
   }
@@ -295,6 +298,7 @@ export default async function ClassSharePage({
       viewerCanBook={canBookClass(actingAs)}
       cannotBookWhy={actingAs && !canBookClass(actingAs) ? noBookingWords(actingAs) : null}
       passes={passes}
+      openOn={openOn}
     />
   );
 }

@@ -8,6 +8,14 @@ import { practiceWhen, type CrewPractice } from "@/types/crewPractice";
 import type { MemberRole } from "@/repositories/businesses";
 import { MEMBER_LABEL, MEMBER_ROLE_WORD } from "@/types/staff";
 
+/** THE CLASS ASKS — teach, assist and a room (11 Oct 2026). They live in the
+ *  Classes section, beside the class they are about; the Inbox keeps the team
+ *  and crew invitations, the practices and the enquiries, and one line pointing
+ *  there. ⚠ HERE, in a plain module, and never in `InboxScreen` (a "use client"
+ *  file): a server page calls it, and a function exported from a client module
+ *  is a client REFERENCE on the server, not a function. */
+export const isClassAsk = (r: RequestItem) => r.kind === "classPerson" || r.kind === "venue";
+
 /** THE REQUESTS DESK'S ROWS, BUILT ONCE (18 Sep 2026). The person's Inbox has
  *  turned the asks that already exist — class asks, team invites, crew asks,
  *  room requests, practices — into `RequestItem`s since Step 18; a studio's

@@ -947,9 +947,9 @@ test.describe.serial("DanceOS, end to end", () => {
 
     // back on the register, and the class is a DRAFT waiting on the person asked
     await owner.waitForURL(/\/business\/[0-9a-f-]+\/classes$/);
-    /* ⚠ DRAFTS · UPCOMING · PAST (11 Oct 2026, the user's choice) — the tab words
-       are where a class is in its life now, not the column's */
-    await owner.getByRole("button", { name: /^Drafts, \d+ classes$/ }).click();
+    /* ⚠ A STAGE BOARD (11 Oct 2026, the user's choice) — a draft whose teacher
+       has been asked and has not answered is WAITING FOR A YES */
+    await owner.getByRole("button", { name: /^Waiting, [1-9]\d* classes$/ }).click();
     registerTile = owner.locator(`[aria-label="Open ${classTitle}"]`);
     await expect(registerTile).toBeVisible();
     // the row wears the request it waits on, and Publish says why it cannot yet
@@ -963,23 +963,32 @@ test.describe.serial("DanceOS, end to end", () => {
     /* ⚠⚠ CLASS REQUESTS LIVE IN CLASSES (11 Oct 2026, the user's choice). The
        Inbox's Requests column keeps one line counting them and pointing there —
        asserted at both ends: the line names the ask, and pressing it lands on
-       the Classes section's Requests column, which is where the answer is given */
+       the Classes screen, whose NEEDS YOU strip is where the answer is given
+       (the strip replaced the Requests column the same evening) */
     await trainer.goto("/inbox");
     await pressPill(trainer, /^Requests — \d+ waiting/);
     await expect(trainer.getByRole("button", { name: `Accept ${classTitle}` })).toHaveCount(0);
     const pointer = trainer.getByTestId("class-requests-pointer");
     await expect(pointer).toContainText(/class request/);
     await pointer.click();
-    await trainer.waitForURL(/\/my-classes\?show=requests$/);
-    await expect(trainer.getByTestId("class-requests")).toBeVisible();
+    await trainer.waitForURL(/\/my-classes$/);
+    await expect(trainer.getByTestId("needs-you")).toBeVisible();
     // ⚠ ACCEPT, not Confirm (27 Sep 2026, the user: "class and event requests
     // should have same cards with accept and reject buttons") — a class ask is
     // an ASK, and the invitations to join are a second section with Join/Decline
-    await trainer.getByRole("button", { name: `Accept ${classTitle}` }).click();
-    await expect(trainer.getByText(/Accepted · you are the artist taking it/)).toBeVisible({ timeout: 15_000 });
+    await trainer.getByTestId("needs-you").getByRole("button", { name: `Accept ${classTitle}` }).click();
+    await expect(trainer.getByText(/✅ Accepted · /)).toBeVisible({ timeout: 15_000 });
+    // the answered ask leaves the strip, and the full history still holds it
+    await expect(trainer.getByRole("button", { name: `Accept ${classTitle}` })).toHaveCount(0, { timeout: 15_000 });
+    await trainer.getByTestId("see-all-requests").click();
+    await trainer.waitForURL(/\/my-classes\?show=requests$/);
+    await expect(trainer.getByTestId("class-requests")).toBeVisible();
     // now the owner publishes from the register — the door the form no longer is
     await owner.goto(`/business/${businessId}/classes`);
-    await owner.getByRole("button", { name: /^Drafts, \d+ classes$/ }).click();
+    /* everybody has said yes, so the draft is READY TO PUBLISH — and the Needs-you
+       strip says so */
+    await expect(owner.getByTestId("needs-you").getByText(/ready to publish/)).toBeVisible();
+    await owner.getByRole("button", { name: /^Ready, [1-9]\d* classes$/ }).click();
     await owner.getByRole("button", { name: "Publish", exact: true }).click();
     await owner.getByRole("dialog", { name: "Publish this class?" }).getByRole("button", { name: "Publish it" }).click();
     // the register stays on the tab you were reading — the class has moved to Upcoming
@@ -3340,10 +3349,12 @@ test.describe.serial("DanceOS, end to end", () => {
 
     // the person asked reads the ask in their own Inbox, naming the studio that
     // sent it — which is the whole of the bug, since the studio is a draft's away
-    /* ⚠ in the Classes section since 11 Oct 2026 — which OPENS on Requests while
-       an ask waits on you (the user's choice), so no column is pressed */
+    /* ⚠ in the Classes section since 11 Oct 2026 — its NEEDS YOU strip, at the
+       top, while an ask waits on you (re-cut the same evening), so no column is
+       pressed */
     await learner.goto("/my-classes");
-    await expect(learner.getByTestId("class-requests")).toBeVisible({ timeout: 15_000 });
+    const needsYou = learner.getByTestId("needs-you");
+    await expect(needsYou).toBeVisible({ timeout: 15_000 });
     /* ⚠ A CLASS ASK IS A CLASS CARD SINCE 27 Sep 2026 (the user: "event and
        class request cards should also look like class and event cards on
        discover with accept and reject buttons"), so the row's own sentence —
@@ -3351,14 +3362,15 @@ test.describe.serial("DanceOS, end to end", () => {
        is drawn is the app's `ClassTile` for the class, with one line over it
        saying who is asking and as what. Both are asserted, because the card
        naming the right CLASS is the half the old wording carried. */
-    await expect(learner.getByText(`wants you as`)).toBeVisible({ timeout: 15_000 });
-    await expect(learner.getByTestId("request-row").filter({ hasText: "Salsa" })).toBeVisible();
+    await expect(needsYou.getByText(`wants you as`)).toBeVisible({ timeout: 15_000 });
+    await expect(needsYou.getByTestId("needs-ask").filter({ hasText: "Salsa" })).toBeVisible();
     // and they say yes, so the only thing left in the way is the room
-    await learner.getByRole("button", { name: "Accept Salsa · All levels" }).click();
-    await expect(learner.getByText(/Accepted · you are the artist taking it/)).toBeVisible({ timeout: 15_000 });
+    await needsYou.getByRole("button", { name: "Accept Salsa · All levels" }).click();
+    await expect(learner.getByText(/✅ Accepted · /)).toBeVisible({ timeout: 15_000 });
 
     await owner.goto(`/business/${businessId}/classes`);
-    await owner.getByRole("button", { name: /^Drafts, \d+ classes$/ }).click();
+    /* the stage board (11 Oct 2026): everybody has said yes, so it is READY */
+    await owner.getByRole("button", { name: /^Ready, [1-9]\d* classes$/ }).click();
     await owner.getByRole("button", { name: "Publish", exact: true }).click();
     const sheet = owner.getByRole("dialog", { name: "Publish this class?" });
     /* ⚠ FIFTEEN, NOT FIVE (21 Sep 2026) — and it is not a flake allowance, it is

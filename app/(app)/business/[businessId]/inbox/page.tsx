@@ -75,7 +75,7 @@ export default async function StudioInboxPage({ params, searchParams }: { params
       receivedOnly
       deskSub={business.name}
       settings={<EnquirySettings businesses={enq.settingsFor} />}
-      classPointer={{ n: venueWaiting.length, href: `/business/${businessId}/classes?show=requests` }}
+      classPointer={{ n: venueWaiting.length, href: `/business/${businessId}/classes` }}
       initialSection={show === "enquiries" ? "enq" : show === "done" ? "done" : undefined}
       nowIso={stampNowIso()}
     />

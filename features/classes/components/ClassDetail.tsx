@@ -217,6 +217,11 @@ export interface ClassDetailProps {
    *  decides the list (`passes_for_session` reads the class's two switches), so a
    *  pass this class refuses is never offered and never spendable. */
   passes?: PassForSession[];
+  /** ⚠ OPEN ON THE DOOR (11 Oct 2026) — the Classes screen's RUNNING NOW card
+   *  sends `?open=register` or `?open=scan`, so a live class is one press from
+   *  its register or its camera. A REQUEST: honoured only when this viewer has a
+   *  register at all, and the camera only while check-in is still open. */
+  openOn?: "register" | "scan" | null;
 }
 
 export function ClassDetail({
@@ -251,6 +256,7 @@ export function ClassDetail({
   viewerCanBook = true,
   cannotBookWhy = null,
   passes = [],
+  openOn = null,
 }: ClassDetailProps) {
   const col = dosStyleColor(c.style);
   const dark = useSyncExternalStore(subscribeToHtmlClass, readIsDark, readServerIsDark);
@@ -273,11 +279,12 @@ export function ClassDetail({
   const [invoiceOpen, setInvoiceOpen] = useState(false);
   const [refundOpen, setRefundOpen] = useState(false);
   /* Details / Attendance — the strip belongs to the card (prototype 11961-11970) */
-  const [ownerSeg, setOwnerSeg] = useState<"details" | "att" | "money" | "ref">("details");
+  const [ownerSeg, setOwnerSeg] = useState<"details" | "att" | "money" | "ref">(openOn && register ? "att" : "details");
   /* one register op at a time — the row that is busy shows it */
   const [opPending, setOpPending] = useState<string | null>(null);
-  /* the register's own scanner (28 Sep 2026) — see `scanCheckIn` */
-  const [scanOpen, setScanOpen] = useState(false);
+  /* the register's own scanner (28 Sep 2026) — see `scanCheckIn`; opened at once
+     when the Running now card asked for it (11 Oct 2026) */
+  const [scanOpen, setScanOpen] = useState(openOn === "scan" && Boolean(register) && sessionPhase !== "ended");
   /** ⚠⚠ WHO THIS SHEET HAS ALREADY CHECKED IN, found by DRIVING it (28 Sep 2026).
    *  `register` is a PROP: it only changes when `router.refresh()` lands, and a
    *  door scanning the same code twice in a second beats that round trip. So the

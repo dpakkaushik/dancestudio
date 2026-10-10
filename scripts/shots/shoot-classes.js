@@ -221,7 +221,9 @@ const BOOK_ON_PAGE = /^Book Now$/;
     /* ⚠ THE DRAFT TAB IS WHERE Edit AND Publish LIVE, so asserting their absence
        on the Published tab proves nothing — "not drawn" and "not on this tab"
        look identical from outside (the 28 Sep lesson about an absent control). */
-    await mPage.getByRole("button", { name: /^Drafts,/ }).click();
+    /* ⚠ THE STAGE BOARD since 11 Oct 2026 — a draft whose teacher was asked and
+       has not answered is WAITING, a pill of its own */
+    await mPage.getByRole("button", { name: /^Waiting, \d+ classes$/ }).click();
     await mPage.waitForTimeout(400);
     check((await mPage.getByRole("link", { name: "Edit", exact: true }).count()) === 0, "⚠⚠ no Edit on a DRAFT either — the edit page redirects a manager away without a word");
     /* ⚠ `/^Publish/` ALSO MATCHES THE "Published, 2 classes" TAB PILL — which
@@ -240,7 +242,7 @@ const BOOK_ON_PAGE = /^Book Now$/;
     oPage.on("pageerror", (e) => errs.push(String(e)));
     await oPage.goto(`${BASE}/business/${studio.id}/classes`, { waitUntil: "networkidle" });
 
-    await oPage.getByRole("button", { name: /^Drafts,/ }).click();
+    await oPage.getByRole("button", { name: /^Waiting, \d+ classes$/ }).click();
     await oPage.waitForTimeout(400);
     check((await oPage.getByRole("link", { name: "Edit", exact: true }).count()) > 0, "the OWNER is offered Edit on the same draft — the gate is the SEAT, not the screen");
     check((await oPage.getByRole("button", { name: /^Publish($| —)/ }).count()) > 0, "…and Publish");
@@ -250,13 +252,22 @@ const BOOK_ON_PAGE = /^Book Now$/;
     check((await oPage.getByRole("button", { name: "Delete", exact: true }).count()) === 0 && (await oPage.getByTestId("class-delete").count()) === 0, "…and NO Delete on the row — it lives on the class page's top right since 4 Oct 2026");
     check((await oPage.getByRole("link", { name: "Refunds", exact: true }).count()) === 0, "…and no Refunds pill on any card either (4 Oct 2026)");
 
-    /* ⚠ DRAFTS · UPCOMING · PAST since 11 Oct 2026 (the user's choice) */
-    const completedPill = oPage.getByRole("button", { name: /^Past,/ });
-    check(/Past, 1 classes/.test(await completedPill.getAttribute("aria-label")), `⚠⚠ the Past tab counts the class that has RUN — nothing ever writes 'completed' (read "${await completedPill.getAttribute("aria-label")}")`);
-    const publishedPill = oPage.getByRole("button", { name: /^Upcoming,/ });
-    check(/Upcoming, 2 classes/.test(await publishedPill.getAttribute("aria-label")), `…and it is OFF Upcoming, which held it for ever before (read "${await publishedPill.getAttribute("aria-label")}")`);
-    const tabOrder = await oPage.getByRole("button", { name: /^(Drafts|Upcoming|Past), \d+ classes$/ }).evaluateAll((els) => els.map((e) => e.textContent.split(" ·")[0].trim()));
-    check(tabOrder.join(",") === "Drafts,Upcoming,Past", `the tabs read Drafts · Upcoming · Past, in that order (${tabOrder.join(" · ")})`);
+    /* ⚠ THE STAGE BOARD since 11 Oct 2026 (the user's choice): every class is in
+       the stage it is in — Needs · Waiting · Ready · Upcoming · Running · Done —
+       and the class running right now has a pill of its own */
+    const completedPill = oPage.getByRole("button", { name: /^Done, \d+ classes$/ });
+    check(/Done, 1 classes/.test(await completedPill.getAttribute("aria-label")), `⚠⚠ Done counts the class that has RUN — nothing ever writes 'completed' (read "${await completedPill.getAttribute("aria-label")}")`);
+    const publishedPill = oPage.getByRole("button", { name: /^Upcoming, \d+ classes$/ });
+    check(/Upcoming, 1 classes/.test(await publishedPill.getAttribute("aria-label")), `…and it is OFF Upcoming, which held it for ever before (read "${await publishedPill.getAttribute("aria-label")}")`);
+    const runningPill = oPage.getByRole("button", { name: /^Running, \d+ classes$/ });
+    check(/Running, 1 classes/.test(await runningPill.getAttribute("aria-label")), `…while the class on the clock right now is Running (read "${await runningPill.getAttribute("aria-label")}")`);
+    const tabOrder = await oPage.getByTestId("stage-strip").locator("[data-testid^='stage-pill-']").evaluateAll((els) => els.map((e) => e.getAttribute("data-testid").replace("stage-pill-", "")));
+    check(tabOrder.join(",") === "all,needs,waiting,ready,upcoming,running,done", `the stages read All · Needs · Waiting · Ready · Upcoming · Running · Done, in that order (${tabOrder.join(" · ")})`);
+    /* ⚠ AND THE CLASS ON THE CLOCK IS ON THE RUNNING-NOW CARD, with the door's two buttons */
+    const runCard = oPage.getByTestId("running-card").filter({ hasText: /Salsa/ });
+    check((await runCard.count()) === 1, "the class running right now has the Running-now card on the studio's screen");
+    check((await runCard.getByTestId("running-scan").count()) === 1 && (await runCard.getByTestId("running-register").count()) === 1, "…with Scan and Register, which open the class page straight onto its door");
+    check(/\?open=scan$/.test((await runCard.getByTestId("running-scan").getAttribute("href")) || ""), "…Scan opening the scanner itself (?open=scan)");
 
     await completedPill.click();
     await oPage.waitForTimeout(400);
@@ -267,8 +278,10 @@ const BOOK_ON_PAGE = /^Book Now$/;
     /* ⚠⚠ A REQUESTS COLUMN, ALWAYS (11 Oct 2026, the user's choice: class
        requests live in Classes, in a fixed column with a badge) — it replaced the
        register's fourth tab, which appeared only when something was asked */
-    const reqCol = oPage.getByRole("link", { name: /^Show the requests about this studio's classes/ });
-    check((await reqCol.count()) === 1, "the studio's Classes section has a Requests column beside Classes");
+    /* ⚠⚠ RE-CUT 11 Oct 2026, the same evening: the column became the NEEDS-YOU
+       strip at the top of the one screen, and the whole history is one press away */
+    const reqCol = oPage.getByTestId("see-all-requests");
+    check((await reqCol.count()) === 1, "the studio's Classes screen carries See all requests ›");
 
     /* ⚠ THE ASKER HAS TO BE AN ARTIST PAGE, and the database is what says so:
        *"a studio holds its classes in its own rooms — a venue is for an artist's
@@ -297,16 +310,19 @@ const BOOK_ON_PAGE = /^Book Now$/;
     });
 
     if (venueClassId) {
-      /* the page OPENS on Requests while a room request waits (the user's choice) */
+      /* the ask arrives in NEEDS YOU, at the top of the studio's own screen */
       await oPage.goto(`${BASE}/business/${studio.id}/classes`, { waitUntil: "networkidle" });
-      check((await oPage.getByTestId("class-requests").count()) === 1, "⚠⚠ an artist asks for one of this studio's rooms and the Classes section OPENS on Requests");
-      /* the badge counts what waits: this room request, and the teacher ask the
-         studio itself sent earlier in this shoot and is still waiting on */
-      check(/\(2\)$/.test((await reqCol.getAttribute("aria-label")) || ""), `…its badge counts what waits — the room asked for and the teacher still to answer (${await reqCol.getAttribute("aria-label")})`);
-      check((await oPage.getByTestId("class-requests").getByTestId("request-settings").count()) === 1, "…with the room switch on top of it, moved here from the Inbox");
-      const reqBody = await text(oPage);
-      check(new RegExp(`Cls Asker ${stamp}`).test(reqBody) && /room for a class/.test(reqBody), "…naming who wants a room, on the app's own class card");
-      await oPage.getByTestId("class-requests").getByRole("button", { name: /^Accept / }).first().click();
+      const needs = oPage.getByTestId("needs-you");
+      check((await needs.getByTestId("needs-ask").count()) === 1, "⚠⚠ an artist asks for one of this studio's rooms and it is the first thing under Needs you");
+      const needBody = await needs.innerText();
+      check(new RegExp(`Cls Asker ${stamp}`).test(needBody) && /your room/.test(needBody), "…naming who wants a room, on the app's own class card");
+      /* the teacher the studio itself asked is still waiting — said beside the history link */
+      check(/1 waiting on somebody/.test(await text(oPage)), "…and what the studio asked of others and still waits on is said beside See all requests");
+      await oPage.goto(`${BASE}/business/${studio.id}/classes?show=requests`, { waitUntil: "networkidle" });
+      check((await oPage.getByTestId("class-requests").getByTestId("request-settings").count()) === 1, "…the history carries the room switch, moved here from the Inbox");
+      check((await oPage.getByTestId("back-to-classes").count()) === 1, "…and a way back to the classes");
+      await oPage.goto(`${BASE}/business/${studio.id}/classes`, { waitUntil: "networkidle" });
+      await needs.getByRole("button", { name: /^Accept / }).first().click();
       await oPage.waitForTimeout(2000);
       const vs = (await rows(owner.h, `classes?id=eq.${venueClassId}&select=venue_status`))[0];
       check(vs.venue_status === "accepted", `…and one press holds the room, read back out of the database (venue_status "${vs.venue_status}")`);
@@ -316,7 +332,7 @@ const BOOK_ON_PAGE = /^Book Now$/;
 
     /* ══ 4 · AN ASK CAN BE TAKEN BACK FROM THE ROW THAT NAMES IT ══════════════ */
     await oPage.goto(`${BASE}/business/${studio.id}/classes?show=classes`, { waitUntil: "networkidle" });
-    await oPage.getByRole("button", { name: /^Drafts,/ }).click();
+    await oPage.getByRole("button", { name: /^Waiting, \d+ classes$/ }).click();
     await oPage.waitForTimeout(400);
     const draftBody = await text(oPage);
     /* the chip reads "{name} · Asked" since the one word list of 4 Oct 2026 (it was "⏳ {name} asked") */
@@ -372,17 +388,21 @@ const BOOK_ON_PAGE = /^Book Now$/;
     await rpc(owner.h, "ask_class_person", { p_class_id: second, p_user_id: learner.id, p_kind: "artist" });
     /* ⚠ THE CLASSES SECTION'S REQUESTS COLUMN since 11 Oct 2026 — and the page
        OPENS on it while an ask waits, so no column is named in the address */
+    /* ⚠ NEEDS YOU since 11 Oct 2026 — the ask is at the top of the one screen */
     await lPage.goto(`${BASE}/my-classes`, { waitUntil: "networkidle" });
     const myBody = await text(lPage);
-    check((await lPage.getByTestId("class-requests").count()) === 1 && /Asked to teach/i.test(myBody), "⚠⚠ somebody asked to TAKE a class lands on Classes › Requests, the ask on its own card");
-    check((await lPage.getByTestId("request-settings").count()) === 1, "…with the teach / assist switches on top of it, moved here from the Inbox");
+    const myNeeds = lPage.getByTestId("needs-you");
+    check((await myNeeds.getByTestId("needs-ask").count()) === 1 && /Asked to teach/i.test(await myNeeds.innerText()), "⚠⚠ somebody asked to TAKE a class finds it first, under Needs you, on its own card");
     check(!/you say yes in your Inbox/.test(myBody), "⚠ …and nothing still sends them to the Inbox for something this screen does");
+    await lPage.goto(`${BASE}/my-classes?show=requests`, { waitUntil: "networkidle" });
+    check((await lPage.getByTestId("request-settings").count()) === 1, "…and See all requests carries the teach / assist switches, moved here from the Inbox");
     await lPage.goto(`${BASE}/inbox`, { waitUntil: "networkidle" });
     await lPage.getByRole("button", { name: /^Requests — / }).click().catch(() => {});
     const ptr = lPage.getByTestId("class-requests-pointer");
     check((await ptr.count()) === 1 && /1 class request/.test(await ptr.innerText()), "…and the Inbox keeps one line counting it and pointing to Classes");
-    await lPage.goto(`${BASE}/my-classes?show=requests`, { waitUntil: "networkidle" });
-    await lPage.getByTestId("class-requests").getByRole("button", { name: /^Accept / }).first().click();
+    check((await ptr.getAttribute("href")) === "/my-classes", `…to the Classes screen itself (${await ptr.getAttribute("href")})`);
+    await lPage.goto(`${BASE}/my-classes`, { waitUntil: "networkidle" });
+    await lPage.getByTestId("needs-you").getByRole("button", { name: /^Accept / }).first().click();
     await lPage.waitForTimeout(2500);
     const seated = await rows(owner.h, `class_people?class_id=eq.${second}&status=eq.confirmed&deleted_at=is.null&select=user_id`);
     check(seated.length === 1 && seated[0].user_id === learner.id, "…one press and they are on it, read back out of the database");
@@ -395,10 +415,19 @@ const BOOK_ON_PAGE = /^Book Now$/;
        column now, Upcoming · Past inside — and a user's columns are Booked ·
        Teaching · Assisting · Requests, in that order, whatever they hold */
     const [secondRow] = await rows(owner.h, `classes?id=eq.${second}&select=share_slug`);
+    /* ⚠ RE-CUT AGAIN 11 Oct 2026, the same evening: ONE TIMELINE with chips —
+       All · Booked · Teaching · Assisting for a user, Mine added for an artist */
     await lPage.goto(`${BASE}/my-classes?show=teaching`, { waitUntil: "networkidle" });
-    const cols = await lPage.getByRole("group", { name: "Show" }).getByRole("link").evaluateAll((els) => els.map((e) => e.textContent.replace(/\s*\d+$/, "").trim()));
-    check(cols.join(",") === "Booked,Teaching,Assisting,Requests", `⚠⚠ a user's Classes reads Booked · Teaching · Assisting · Requests (${cols.join(" · ")})`);
+    const cols = await lPage.getByTestId("classes-chips").locator("button").evaluateAll((els) => els.map((e) => e.getAttribute("data-testid").replace("classes-chip-", "")));
+    check(cols.join(",") === "all,booked,teaching,assisting", `⚠⚠ a user's Classes reads All · Booked · Teaching · Assisting (${cols.join(" · ")})`);
+    check((await lPage.getByTestId("classes-chip-teaching").getAttribute("aria-pressed")) === "true", "…the address opening the Teaching chip");
     check((await lPage.locator(`a[href="/c/${secondRow.share_slug}"]`).count()) > 0, "…and the class they just accepted is under Teaching");
+    await lPage.getByTestId("classes-chip-booked").click();
+    await lPage.waitForTimeout(300);
+    check((await lPage.locator(`a[href="/c/${secondRow.share_slug}"]`).count()) === 0 && /show=booked/.test(lPage.url()), "…and a chip narrows the timeline in place, the address following it");
+    await lPage.getByTestId("classes-chip-all").click();
+    await lPage.waitForTimeout(300);
+    check((await lPage.locator(`a[href="/c/${secondRow.share_slug}"]`).count()) > 0 && (await lPage.locator(`a[href^="/c/${aheadSlug}"]`).count()) > 0, "…All holding what they teach and what they booked on one timeline");
     check((await lPage.getByRole("link", { name: "Add Class", exact: true }).count()) === 0 && (await lPage.getByTestId("why-no-class").count()) === 0, "…with no Create control, and no owner-only sentence about a studio they do not run");
     await lPage.goto(`${BASE}/my-classes?show=manage`, { waitUntil: "networkidle" });
     check((await lPage.locator(`a[href="/c/${secondRow.share_slug}"]`).count()) > 0, "⚠ an old ?show=manage link still lands on what it held — Teaching, for somebody with no page (Rule 14)");
@@ -474,12 +503,14 @@ const BOOK_ON_PAGE = /^Book Now$/;
        until Completed is pressed — asserted, because a check that only looks at
        the new place cannot tell you the old one was cleared. */
     check((await aheadCard.getByRole("button", { name: /Cancel/ }).count()) + (await aheadCard.getByRole("link", { name: /Cancel/ }).count()) > 0, "…while the class still AHEAD keeps its way out — the gate is the clock, not the list");
-    check((await ranCard.count()) === 0, "the Upcoming column does not carry the class that ran");
-    await lPage.getByRole("button", { name: /^Completed bookings/ }).click();
-    await lPage.getByTestId("booked-completed").waitFor({ timeout: 10000 });
-    check((await ranCard.count()) === 1, "the learner's Completed column carries the class they took — it is the record");
+    /* ⚠ ONE TIMELINE since 11 Oct 2026: the class that ran is under PAST, folded,
+       and the class still ahead under its own day — never both in one group */
+    const pastFold = lPage.getByTestId("timeline-past");
+    check((await pastFold.count()) === 1 && (await pastFold.evaluate((el) => el.open)) === false, "the timeline folds what is over under Past");
+    check((await pastFold.locator(`a[href^="/c/${aheadSlug}"]`).count()) === 0, "…and the class still ahead is not in it");
+    await pastFold.locator("summary").click();
+    check((await pastFold.locator(`a[href^="/c/${ranSlug}"]`).count()) === 1, "the learner's Past carries the class they took — it is the record");
     check((await ranCard.getByRole("button", { name: /Cancel/ }).count()) === 0 && (await ranCard.getByRole("link", { name: /Cancel/ }).count()) === 0, "⚠ …and offers no Cancel or refund on it");
-    check((await aheadCard.count()) === 0, "…and the class still ahead is not in Completed");
 
     /* ══ 9 · CALLING A CLASS OFF GIVES THE MONEY BACK (#0b3) ══════════════════
        ⚠⚠ THE SHEET HAS PROMISED THIS SINCE 29 Aug 2026 AND NOTHING DID IT. It

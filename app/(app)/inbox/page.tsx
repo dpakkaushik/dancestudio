@@ -130,7 +130,9 @@ export default async function InboxPage({ searchParams }: { searchParams: Promis
       enquiriesOut={enq.enquiriesOut}
       settings={<EnquirySettings businesses={enq.settingsFor} />}
       /* the teach / assist switches moved to Classes with the asks (11 Oct 2026) */
-      classPointer={{ n: classAsksWaiting, href: "/my-classes?show=requests" }}
+      /* ⚠ to the Classes screen itself since 11 Oct 2026 — the asks waiting on
+         you are its Needs-you strip, at the top */
+      classPointer={{ n: classAsksWaiting, href: "/my-classes" }}
       inviteSettings={<PersonAskSettings section="invites" off={inboxOff} />}
       initialSection={show === "enquiries" ? "enq" : show === "done" ? "done" : undefined}
       nowIso={nowIso}

@@ -311,7 +311,9 @@ async function personOpensAStudio(page, who, acc, stamp) {
   await page.goto(`${BASE}/business/${studioId}/classes`, { waitUntil: "networkidle" });
   /* a new class is a DRAFT, and the register opens on Published — the Draft
      segment is where its Publish pill is (the happy path presses the same pill) */
-  await page.getByRole("button", { name: /^Drafts, \d+ classes$/ }).click().catch(() => {});
+  /* ⚠ THE STAGE BOARD since 11 Oct 2026: a draft whose teacher is the owner
+     themselves is READY — nothing to wait for — and its Publish is there */
+  await page.getByRole("button", { name: /^Ready, \d+ classes$/ }).click().catch(() => {});
   const publish = page.getByRole("button", { name: "Publish", exact: true });
   await publish.first().waitFor({ timeout: 15_000 }).catch(() => {});
   check((await publish.count()) >= 1, `${who} · the register offers Publish with nothing in its way — nobody was asked (${(await page.getByRole("button", { name: /^Publish/ }).allTextContents().catch(() => [])).join(" | ") || "no Publish pill at all"})`);

@@ -95,6 +95,28 @@ export async function findClassRegister(
   };
 }
 
+/** HOW MANY ARE IN THE ROOM, per session (11 Oct 2026) — the Classes screen's
+ *  RUNNING NOW card prints "3 of 12 in". One read for every live session on the
+ *  screen. ⚠ RLS decides what is counted: a business's runners and whoever may
+ *  run that class's register read its rows (20261003110000), so the caller only
+ *  asks for sessions it may run — an assistant without the job would read 0, and
+ *  the card does not print a count for one. */
+export async function countCheckedInBySession(supabase: SupabaseClient, sessionIds: string[]): Promise<Map<string, number>> {
+  const out = new Map<string, number>();
+  if (sessionIds.length === 0) return out;
+  const { data, error } = await supabase
+    .from("attendance")
+    .select("session_id")
+    .in("session_id", sessionIds)
+    .is("deleted_at", null)
+    .limit(2000);
+  if (error || !data) return out;
+  for (const r of data as Array<{ session_id: string }>) {
+    out.set(r.session_id, (out.get(r.session_id) ?? 0) + 1);
+  }
+  return out;
+}
+
 /** PAID AT THE DOOR (2 Oct 2026) — the register records a door seat as paid, or
  *  takes it back. Every rule is the RPC's (who may run the register, a free class,
  *  a self-booked or online-paid seat). ⚠ Before 20261002140000 is applied the RPC

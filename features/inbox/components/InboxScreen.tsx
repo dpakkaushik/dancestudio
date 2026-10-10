@@ -111,11 +111,10 @@ export interface RequestItem {
   editHref?: string | null;
 }
 
-/** THE CLASS ASKS — teach, assist and a room (11 Oct 2026). They live in the
- *  Classes section now, beside the class they are about; the Inbox keeps the
- *  team and crew invitations, the practices and the enquiries, and one line
- *  pointing here. */
-export const isClassAsk = (r: RequestItem) => r.kind === "classPerson" || r.kind === "venue";
+/* ⚠ `isClassAsk` lives in `features/inbox/requestItems.ts` (11 Oct 2026): it
+   was exported from HERE, a "use client" module, and a server page calling it
+   threw "Attempted to call isClassAsk() from the server" — but only once the
+   list it filtered held a row, so typecheck, lint and the build were all green */
 
 /* ⚠ A `Record` KEYED ON THE UNION, which is the point: adding `practice` to
    `RequestItem["kind"]` made this line fail to COMPILE until the word was

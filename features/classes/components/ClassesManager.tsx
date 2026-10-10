@@ -21,6 +21,7 @@ import type { ClassPublishState } from "@/repositories/classes";
 import type { ClassArtist } from "@/types/classPerson";
 import { classPhaseAt, type DanceClass } from "@/types/class";
 import { ASK_STATUS_WORD, type ClassRelation } from "@/lib/format/classLabels";
+import { STAGES, STAGE_WORDS, stageOfClass, type ClassStage } from "@/features/classes/stages";
 
 /* the IST date and clock of a session, in the shape the clash check takes */
 const istParts = (iso: string) => {
@@ -74,12 +75,13 @@ const EL = "var(--el)";
    to come (or running), or over. The keys stay the old ones so the clock rule
    below did not have to move. The REQUESTS tab is gone: room requests are the
    Classes section's own Requests column now, beside the teachers you asked. */
+/* ⚠⚠ AND THEN A STAGE BOARD (11 Oct 2026, the user's choice when the Classes
+   screen was reimagined): the three tabs became six STAGES — Needs a teacher or
+   a room · Waiting for a yes · Ready to publish · Upcoming · Running now · Done —
+   because "Drafts" was three different states wearing one word
+   (`features/classes/stages.ts`). The clock rule below is unchanged and still
+   decides which ACTIONS a row carries. */
 type Tab = "published" | "draft" | "completed";
-const TAB_WORD: Record<Tab, string> = {
-  draft: "Drafts",
-  published: "Upcoming",
-  completed: "Past",
-};
 const initialState: ClassActionState = { error: null };
 
 /* the tile that opens this page is painted in the tool's own colour, and the
@@ -153,71 +155,9 @@ const isLiveAt = (c: DanceClass, nowMs: number) =>
   new Date(c.session.startsAt).getTime() <= nowMs &&
   nowMs <= new Date(c.session.endsAt).getTime();
 
-/** LiveBanner (prototype 3949-3969) — the same "happening now" filter Events has. */
-function LiveBanner({ n, on, setOn }: { n: number; on: boolean; setOn: (fn: (v: boolean) => boolean) => void }) {
-  if (!n) return null;
-  return (
-    <div
-      role="button"
-      tabIndex={0}
-      aria-pressed={on}
-      onClick={() => setOn((v) => !v)}
-      onKeyDown={(e) => {
-        if (e.key === "Enter" || e.key === " ") {
-          e.preventDefault();
-          setOn((v) => !v);
-        }
-      }}
-      style={{
-        display: "flex",
-        alignItems: "center",
-        gap: 10,
-        background: on ? "rgba(34,197,94,.16)" : CARD,
-        border: `1.5px solid ${on ? "#22C55E" : EL}`,
-        borderRadius: 16,
-        padding: "12px 13px",
-        marginBottom: 10,
-        cursor: "pointer",
-        WebkitTapHighlightColor: "transparent",
-      }}
-    >
-      <span style={{ position: "relative", width: 12, height: 12, flexShrink: 0 }}>
-        <span style={{ position: "absolute", inset: 0, borderRadius: 6, background: "#22C55E" }} />
-        <span
-          style={{
-            position: "absolute",
-            inset: -4,
-            borderRadius: 10,
-            border: "2px solid #22C55E",
-            opacity: 0.45,
-            animation: "dosPulseH 1.4s ease-out infinite",
-          }}
-        />
-      </span>
-      <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{ fontSize: 13, fontWeight: 900, color: "#22C55E", fontFamily: DOS_UI }}>
-          <span style={{ fontVariantNumeric: "tabular-nums" }}>{n}</span> {n === 1 ? "class" : "classes"} live right now
-        </div>
-        <div style={{ fontSize: 10.5, color: SUB, marginTop: 1 }}>
-          {on ? "Showing live only — tap to show all" : "Tap to filter to live classes"}
-        </div>
-      </div>
-      <span
-        style={{
-          fontSize: 10,
-          fontWeight: 900,
-          padding: "5px 10px",
-          borderRadius: 999,
-          flexShrink: 0,
-          background: on ? "#22C55E" : EL,
-          color: on ? "#fff" : SUB,
-        }}
-      >
-        {on ? "ON" : "OFF"}
-      </span>
-    </div>
-  );
-}
+/* ⚠ THE LIVE BANNER WENT (11 Oct 2026). Its job — "what is running now" — is the
+   Running stage on this board and the RUNNING NOW card on the Classes screen,
+   which carries the register and the scanner rather than a filter. */
 
 /** Confirm sheet — lifted from the prototype's ask/delete sheets (DanceOSApp.jsx:15065-15105). */
 function ConfirmSheet({
@@ -322,7 +262,11 @@ export function ClassesManager({
   elsewhereRelation = "teaching",
   offerCreate = true,
   sections = true,
+  initialStage = "all",
 }: {
+  /** the stage the board opens on — the Needs-you strip's "Ready to publish ›"
+   *  opens it on Ready (11 Oct 2026); "all" draws every stage in order */
+  initialStage?: ClassStage | "all";
   /** ⚠ DRAW IN THE THREE-SECTION LAYOUT (3 Oct 2026, C116): the hero, Create
    *  and the live filter in a `DeskTop`, the sticky tabs and the list in a
    *  `DeskBody`. Pass `false` when this register is nested inside a page that
@@ -413,8 +357,7 @@ export function ClassesManager({
     q.set("new", "1");
     return `?${q.toString()}`;
   })();
-  const [rawTab, setTab] = useState<Tab>("published");
-  const [liveOnly, setLiveOnly] = useState(false);
+  const [pick, setPick] = useState<ClassStage | "all">(initialStage);
   /* the row that is mid-action, and whatever the last one said if it failed —
      the two new controls (withdraw an ask, answer a room request) are plain
      async calls rather than form actions, so they carry their own busy state */
@@ -428,7 +371,6 @@ export function ClassesManager({
   const [publishResult, publishFormAction] = useActionState(publishClassAction, initialState);
 
   const nowMs = new Date(nowIso).getTime();
-  const liveN = classes.filter((c) => isLiveAt(c, nowMs)).length + elsewhere.filter((e) => isLiveAt(e.danceClass, nowMs)).length;
   /* WHICH TAB A CLASS BELONGS ON, off the clock rather than off `status` — a
      class that has run is Completed here even though nothing ever writes that
      word to the column (see `classPhaseAt`). Live counts as Published, because
@@ -437,14 +379,24 @@ export function ClassesManager({
     const p = classPhaseAt(c, nowMs);
     return p === "draft" ? "draft" : p === "over" ? "completed" : "published";
   };
-  const countOf = (k: Tab) => classes.filter((c) => bucketOf(c) === k).length + elsewhere.filter((e) => bucketOf(e.danceClass) === k).length;
-  /* the order a class lives in — Drafts, then Upcoming, then Past; the register
-     still OPENS on Upcoming, which is where the work of the week is */
-  const tabs: Tab[] = ["draft", "published", "completed"];
-  const tab: Tab = rawTab;
-  let list = classes.filter((c) => bucketOf(c) === tab);
-  if (liveOnly) list = list.filter((c) => isLiveAt(c, nowMs));
-  const away = elsewhere.filter((e) => bucketOf(e.danceClass) === tab && (!liveOnly || isLiveAt(e.danceClass, nowMs)));
+  /* THE STAGE OF EVERY ROW — the register's own and the ones held elsewhere (an
+     artist's class in this studio's room is published, so it is only ever
+     Upcoming, Running or Done) */
+  const stageOf = (c: DanceClass): ClassStage => stageOfClass(c, publishState[c.id], nowMs);
+  const countOf = (k: ClassStage) => classes.filter((c) => stageOf(c) === k).length + elsewhere.filter((e) => stageOf(e.danceClass) === k).length;
+  /* what is still to come or running reads soonest first; what is done, most
+     recent first — a register is read from the work of the week */
+  const startOf = (c: DanceClass) => c.session?.startsAt ?? "9";
+  const inStage = (k: ClassStage) => {
+    const own = classes.filter((c) => stageOf(c) === k);
+    const away = elsewhere.filter((e) => stageOf(e.danceClass) === k);
+    const asc = (a: string, b: string) => (k === "done" ? b.localeCompare(a) : a.localeCompare(b));
+    return {
+      own: [...own].sort((a, b) => asc(startOf(a), startOf(b))),
+      away: [...away].sort((a, b) => asc(startOf(a.danceClass), startOf(b.danceClass))),
+    };
+  };
+  const total = classes.length + elsewhere.length;
   const filledOf = (c: DanceClass) => (c.session ? filledBySession[c.session.id] ?? 0 : 0);
   const actionError = publishResult.error || rowError;
 
@@ -543,48 +495,184 @@ export function ClassesManager({
           <DeskAddButton label="Add Class" href={createHref} />
         )}
 
-        <LiveBanner n={liveN} on={liveOnly} setOn={setLiveOnly} />
       </>
   );
 
-  /* ⚠ THE LOWER SECTION (3 Oct 2026, C116) — the sticky tabs, then the list */
+  /* ONE ROW OF THIS REGISTER'S OWN — the card, the request chips it waits on,
+     and the acts its stage allows. Pulled out of the list on 11 Oct 2026 so the
+     board can draw a row under any of its six stages. */
+  const ownRow = (c: DanceClass) => {
+    const st = publishState[c.id];
+    const chips = stateChips(st);
+    const chipRow = chips.length ? (
+      <span style={{ display: "flex", gap: 6, flexWrap: "wrap", flexBasis: "100%" }}>
+        {chips.map(([w, tint]) => (
+          <span key={w} style={{ fontSize: 9.5, fontWeight: 900, letterSpacing: 0.4, padding: "3px 8px", borderRadius: 999, background: `${tint}1f`, color: tint, textTransform: "uppercase" }}>
+            {w}
+          </span>
+        ))}
+      </span>
+    ) : null;
+    return (
+      <ClassTile
+        key={c.id}
+        danceClass={c}
+        filled={filledOf(c)}
+        artist={artists[c.id] ?? null}
+        href={`/c/${c.shareSlug}`}
+        live={isLiveAt(c, nowMs)}
+        actions={
+          bucketOf(c) === "draft" ? (
+            <>
+              {chipRow}
+              {/* ⚠ EVERY CONTROL FROM HERE DOWN IS THE OWNER'S (30 Sep 2026) —
+                  RLS admits only the owner to `classes` UPDATE */}
+              {canEdit ? (
+                <>
+                  {/* A DECLINED ROOM OR TEACHER OFFERS THE WAY OUT IN ONE PRESS
+                      (18 Sep / 30 Sep 2026) — the form is where it is changed */}
+                  {st?.venueStatus === "declined" ? (
+                    <Link href={`/business/${businessId}/classes/${c.id}/edit`} style={bigBtn(false, true)}>
+                      Pick another studio ›
+                    </Link>
+                  ) : st?.teacherStatus === "rejected" ? (
+                    <Link href={`/business/${businessId}/classes/${c.id}/edit`} style={bigBtn(false, true)}>
+                      Ask somebody else ›
+                    </Link>
+                  ) : (
+                    <Link href={`/business/${businessId}/classes/${c.id}/edit`} style={bigBtn(false)}>
+                      Edit
+                    </Link>
+                  )}
+                  {/* ⚠ AN ASK CAN BE TAKEN BACK FROM HERE (30 Sep 2026) */}
+                  {st?.teacherStatus === "asked" && askedTeachers[c.id] ? (
+                    <button
+                      type="button"
+                      disabled={busy === c.id}
+                      onClick={() => run(c.id, () => withdrawClassAskAction({ classPersonId: askedTeachers[c.id] }))}
+                      style={bigBtn(false)}
+                    >
+                      {busy === c.id ? "…" : "Withdraw ask"}
+                    </button>
+                  ) : null}
+                  {/* PUBLISH WAITS FOR A YES (18 Sep 2026) — not disabled: pressed
+                      too early it says the database's own sentence */}
+                  <button
+                    type="button"
+                    aria-label={st?.why ? `Publish — ${st.why}` : "Publish"}
+                    onClick={async () => {
+                      if (st?.why) {
+                        setNote(st.why);
+                        return;
+                      }
+                      setNote(null);
+                      /* the room is asked before the sheet opens (F3) */
+                      let clash: RoomClash = null;
+                      if (c.roomId && c.session && !c.venueBusinessId) {
+                        const s = istParts(c.session.startsAt);
+                        const e = istParts(c.session.endsAt);
+                        clash = await checkRoomClashAction({ businessId, roomId: c.roomId, date: s.date, startTime: s.time, endTime: e.time, excludeClassId: c.id });
+                      }
+                      setAsk({ kind: "publish", c, clash });
+                    }}
+                    style={{ ...bigBtn(true), opacity: st?.why ? 0.55 : 1 }}
+                  >
+                    Publish
+                  </button>
+                </>
+              ) : null}
+            </>
+          ) : bucketOf(c) === "published" ? (
+            /* ⚠ NO ROSTER, NO DELETE (4 Oct 2026) — the class page has both */
+            <>{chipRow}</>
+          ) : /* ⚠ NO REFUNDS PILL ON A DONE CARD (4 Oct 2026) — the class page's tab */
+          null
+        }
+      />
+    );
+  };
+
+  /* a class held ELSEWHERE — read-only, the other business owns it (1 Oct 2026) */
+  const awayRow = (e: (typeof elsewhere)[number]) => (
+    <ClassTile
+      key={e.id}
+      danceClass={e.danceClass}
+      filled={filledOf(e.danceClass)}
+      artist={e.artist}
+      city={e.city}
+      href={`/c/${e.danceClass.shareSlug}`}
+      live={isLiveAt(e.danceClass, nowMs)}
+      relation={elsewhereRelation}
+    />
+  );
+
+  /* one stage's rows: this register's own, then the ones held elsewhere under
+     their own small head when both are there */
+  const stageRows = (k: ClassStage) => {
+    const { own, away } = inStage(k);
+    return (
+      <>
+        {own.map(ownRow)}
+        {away.length > 0 ? (
+          <div style={{ marginTop: own.length > 0 ? 14 : 0 }} data-testid="classes-elsewhere">
+            {own.length > 0 ? (
+              <div style={{ fontSize: 9.5, fontWeight: 900, letterSpacing: 1, color: SUB, margin: "0 0 9px" }}>{elsewhereHead} · {away.length}</div>
+            ) : null}
+            {away.map(awayRow)}
+          </div>
+        ) : null}
+      </>
+    );
+  };
+
+  const stageHead = (k: ClassStage) => (
+    <div style={{ display: "flex", alignItems: "center", gap: 8, margin: "14px 2px 9px" }}>
+      <span aria-hidden="true" style={{ width: 8, height: 8, borderRadius: 4, background: STAGE_WORDS[k].tint, flexShrink: 0 }} />
+      <h2 style={{ margin: 0, fontSize: 13, fontWeight: 900, fontFamily: DOS_UI, letterSpacing: -0.1 }}>{STAGE_WORDS[k].head}</h2>
+      <span style={{ fontSize: 11, fontWeight: 800, color: SUB, fontVariantNumeric: "tabular-nums" }}>{countOf(k)}</span>
+    </div>
+  );
+
+  const pillBtn = (key: ClassStage | "all", word: string, n: number) => {
+    const on = pick === key;
+    return (
+      <button
+        key={key}
+        type="button"
+        aria-pressed={on}
+        aria-label={`${word}, ${n} classes`}
+        data-testid={`stage-pill-${key}`}
+        onClick={() => setPick(key)}
+        style={{
+          flexShrink: 0,
+          padding: "8px 12px",
+          borderRadius: 999,
+          cursor: "pointer",
+          fontSize: 11.5,
+          fontWeight: 800,
+          fontFamily: "inherit",
+          border: `1.5px solid ${on ? "var(--text)" : EL}`,
+          background: on ? "var(--text)" : CARD,
+          color: on ? "var(--solid)" : n === 0 && key !== "all" ? SUB : INK,
+          whiteSpace: "nowrap",
+        }}
+      >
+        {word} · {n}
+      </button>
+    );
+  };
+
+  /* ⚠ THE LOWER SECTION (3 Oct 2026, C116) — the sticky stage strip, then the
+     board. ⚠ A STAGE BOARD SINCE 11 Oct 2026: "All" draws every stage in its
+     order with its own heading, empty ones left out and Done folded; a pill
+     narrows to one stage. The pills are a fixed set with a count on each — a
+     stage with nothing in it still has its pill, at 0. */
   const body = (
       <>
-        {/* the three lifecycles, pinned under the top bar (prototype 14995-15006) */}
-        {/* ⚠ an EMBEDDED register (an artist's Manage segment) stands inside
-            `/my-classes`' own lower section, so its band wears that section's
-            ground too — the page's would cut a stripe across the panel */}
         <div style={{ position: "sticky", top: "var(--dos-top)", zIndex: 120, background: inSections || embedded ? `linear-gradient(var(--card), var(--card)), ${LILAC}` : LILAC, margin: inSections || embedded ? "0 -14px" : "0 -16px", padding: inSections || embedded ? "6px 14px 8px" : "6px 16px 8px", borderRadius: inSections ? "14px 14px 0 0" : undefined }}>
-          <div style={{ display: "flex", gap: 2, background: EL, borderRadius: 12, padding: 3 }}>
-            {tabs.map((k) => {
-              const on = tab === k;
-              return (
-                <button
-                  key={k}
-                  type="button"
-                  aria-pressed={on}
-                  aria-label={`${TAB_WORD[k]}, ${countOf(k)} classes`}
-                  onClick={() => setTab(k)}
-                  style={{
-                    flex: 1,
-                    minWidth: 0,
-                    textAlign: "center",
-                    padding: "8px 4px",
-                    borderRadius: 9,
-                    cursor: "pointer",
-                    fontSize: 11.5,
-                    fontWeight: 800,
-                    border: "none",
-                    transition: "all .15s",
-                    background: on ? LILAC : "transparent",
-                    color: on ? INK : SUB,
-                    boxShadow: on ? "0 1px 4px rgba(0,0,0,.3)" : "none",
-                  }}
-                >
-                  {TAB_WORD[k]} · {countOf(k)}
-                </button>
-              );
-            })}
+          <div role="group" aria-label="Stages" data-testid="stage-strip" style={{ display: "flex", gap: 6, overflowX: "auto", scrollbarWidth: "none", paddingBottom: 2 }}>
+            {pillBtn("all", "All", total)}
+            {STAGES.map((k) => pillBtn(k, STAGE_WORDS[k].pill, countOf(k)))}
           </div>
         </div>
 
@@ -595,7 +683,7 @@ export function ClassesManager({
           <div role="status" style={{ fontSize: 12, color: "#F59E0B", fontWeight: 700, margin: "8px 0" }}>{note}</div>
         ) : null}
 
-        {list.length === 0 && away.length === 0 && (
+        {(pick === "all" ? total === 0 : countOf(pick) === 0) && (
           <div
             style={{
               textAlign: "center",
@@ -607,176 +695,40 @@ export function ClassesManager({
           >
             <div style={{ fontSize: 13, fontWeight: 800 }}>Nothing here yet</div>
             <div style={{ fontSize: 11, color: SUB, marginTop: 4 }}>
-              {liveOnly
-                ? "Nothing is running right now — tap the live filter to show all."
-                : tab === "completed"
-                  ? "Classes move here once their session is over."
+              {pick === "done"
+                ? "Classes move here once their session is over."
+                : pick === "running"
+                  ? "Nothing is running right now."
                   : !offerCreate
                     ? "Classes a studio puts you in front of land here once you say yes."
-                    : "Create a class — it is saved as a draft, and published here once the yes it waits for is in."}
+                    : "Add a class — it is saved as a draft, and published from here once the yes it waits for is in."}
             </div>
           </div>
         )}
 
-        {/* ⚠⚠ SOMEBODY WANTS ONE OF YOUR ROOMS (30 Sep 2026). Until today the only
-            place to answer this was the Inbox: the class belongs to the ARTIST's
-            page, so `findClassesByBusiness` never returned it and a studio's
-            classes desk said nothing at all while its rooms were being committed.
-            ⚠ It draws the app's own class card, exactly as the Inbox's own
-            Requests desk does since 27 Sep — the same card, one source, rather
-            than a second row shape that can drift. The ACTION is the same RPC the
-            Inbox calls, which decides who may answer; this is a second door onto
-            one subject, not a second rule. */}
-        <div style={{ marginTop: 8 }}>
-          {list.map((c) => {
-            const st = publishState[c.id];
-            const chips = stateChips(st);
-            const chipRow = chips.length ? (
-              <span style={{ display: "flex", gap: 6, flexWrap: "wrap", flexBasis: "100%" }}>
-                {chips.map(([w, tint]) => (
-                  <span key={w} style={{ fontSize: 9.5, fontWeight: 900, letterSpacing: 0.4, padding: "3px 8px", borderRadius: 999, background: `${tint}1f`, color: tint, textTransform: "uppercase" }}>
-                    {w}
-                  </span>
-                ))}
-              </span>
-            ) : null;
-            return (
-            <ClassTile
-              key={c.id}
-              danceClass={c}
-              filled={filledOf(c)}
-              artist={artists[c.id] ?? null}
-              href={`/c/${c.shareSlug}`}
-              live={isLiveAt(c, nowMs)}
-              actions={
-                bucketOf(c) === "draft" ? (
-                  <>
-                    {chipRow}
-                    {/* A DECLINED ROOM OFFERS THE WAY OUT IN ONE PRESS (18 Sep 2026): the
-                        studio said no, so the class is going nowhere until it is moved —
-                        the form's WHERE step is where it is moved, and this names it */}
-                    {/* ⚠ EVERY CONTROL FROM HERE DOWN IS THE OWNER'S (30 Sep 2026).
-                        RLS has admitted only the owner to `classes` UPDATE since
-                        18 Sep, and R55 opened this desk to managers on 28 Sep —
-                        so these three were drawn for a seat every one of them
-                        refuses. The sentence above the list says so once; drawing
-                        them and failing said it three times, badly. */}
-                    {canEdit ? (
-                      <>
-                    {st?.venueStatus === "declined" ? (
-                      <Link href={`/business/${businessId}/classes/${c.id}/edit`} style={bigBtn(false, true)}>
-                        Pick another studio ›
-                      </Link>
-                    ) : st?.teacherStatus === "rejected" ? (
-                      /* ⚠ THE SAME WAY OUT FOR A TEACHER WHO SAID NO (30 Sep 2026).
-                         The chip has said "✕ {name} said no" since 18 Sep and the
-                         row offered nothing but Edit — the same dead end a declined
-                         room used to be. Who takes the class is named in the form,
-                         so the form is where it is changed, and the pill says so. */
-                      <Link href={`/business/${businessId}/classes/${c.id}/edit`} style={bigBtn(false, true)}>
-                        Ask somebody else ›
-                      </Link>
-                    ) : (
-                      <Link href={`/business/${businessId}/classes/${c.id}/edit`} style={bigBtn(false)}>
-                        Edit
-                      </Link>
-                    )}
-                    {/* ⚠ AN ASK CAN BE TAKEN BACK FROM HERE (30 Sep 2026). The row
-                        has named who it is waiting on since 18 Sep and offered no
-                        way to stop waiting: the only door was the Inbox's Sent
-                        side or the class page. Same RPC, which decides who may. */}
-                    {st?.teacherStatus === "asked" && askedTeachers[c.id] ? (
-                      <button
-                        type="button"
-                        disabled={busy === c.id}
-                        onClick={() => run(c.id, () => withdrawClassAskAction({ classPersonId: askedTeachers[c.id] }))}
-                        style={bigBtn(false)}
-                      >
-                        {busy === c.id ? "…" : "Withdraw ask"}
-                      </button>
-                    ) : null}
-                    {/* PUBLISH WAITS FOR A YES (18 Sep 2026): the database's own sentence is
-                        what the button says when pressed too early — the same words the
-                        trigger would raise, so the screen cannot drift from the rule */}
-                    {/* NOT disabled, on purpose (18 Sep 2026): the prototype's own rule
-                        for a button that cannot do its job yet is that it NAMES the
-                        missing answer rather than greying out (15573-15578). Pressing
-                        it says the database's own sentence; it just cannot publish. */}
-                    <button
-                      type="button"
-                      aria-label={st?.why ? `Publish — ${st.why}` : "Publish"}
-                      onClick={async () => {
-                        if (st?.why) {
-                          setNote(st.why);
-                          return;
-                        }
-                        setNote(null);
-                        /* the room is asked before the sheet opens (F3) — the class's own
-                           room; a venue's rooms are the venue's to read, so the database
-                           answers for those at the press */
-                        let clash: RoomClash = null;
-                        if (c.roomId && c.session && !c.venueBusinessId) {
-                          const s = istParts(c.session.startsAt);
-                          const e = istParts(c.session.endsAt);
-                          clash = await checkRoomClashAction({ businessId, roomId: c.roomId, date: s.date, startTime: s.time, endTime: e.time, excludeClassId: c.id });
-                        }
-                        setAsk({ kind: "publish", c, clash });
-                      }}
-                      style={{ ...bigBtn(true), opacity: st?.why ? 0.55 : 1 }}
-                    >
-                      Publish
-                    </button>
-                    {/* ⚠ NO DELETE ON THE CARD (4 Oct 2026, the user: "delete class
-                        removed from class card and goes on top right of class
-                        detail page"). The card opens the class page, where Delete
-                        is the chip on its top right, behind the same question. */}
-                      </>
-                    ) : null}
-                  </>
-                ) : bucketOf(c) === "published" ? (
-                  <>
-                    {chipRow}
-                    {/* ⚠ NO ROSTER PILL (4 Oct 2026, the user: "remove roster
-                        button"). The card opens the class page, whose Attendance
-                        tab IS the register; the old `/roster` address forwards
-                        to this desk since 5 Oct 2026 (next.config.ts, Rule 14).
-                        ⚠ AND NO DELETE (4 Oct 2026, later) — it is the chip on the
-                        class page's top right now. */}
-                  </>
-                ) : /* ⚠ NO REFUNDS PILL ON A COMPLETED CARD (4 Oct 2026, the user:
-                       "remove refunds button on class cards"). The card opens the
-                       class page, whose Refunds tab is the queue. */
-                null
-              }
-            />
-            );
-          })}
+        <div style={{ marginTop: 4 }}>
+          {pick === "all"
+            ? STAGES.filter((k) => countOf(k) > 0).map((k) =>
+                k === "done" ? (
+                  /* what is over is a record, not work — folded, still one press away */
+                  <details key={k} data-testid={`stage-${k}`} style={{ marginTop: 6 }}>
+                    <summary style={{ listStyle: "none", cursor: "pointer" }}>{stageHead(k)}</summary>
+                    {stageRows(k)}
+                  </details>
+                ) : (
+                  <section key={k} data-testid={`stage-${k}`}>
+                    {stageHead(k)}
+                    {stageRows(k)}
+                  </section>
+                )
+              )
+            : countOf(pick) > 0 ? (
+                <section data-testid={`stage-${pick}`}>
+                  {stageHead(pick)}
+                  {stageRows(pick)}
+                </section>
+              ) : null}
         </div>
-
-        {/* the classes you take elsewhere that belong in THIS tab — headed only
-            when your own rows are above them, so a tab holding nothing else
-            does not wear a heading over its one list */}
-        {away.length > 0 ? (
-          <div style={{ marginTop: list.length > 0 ? 18 : 8 }} data-testid="classes-elsewhere">
-            {list.length > 0 ? (
-              <div style={{ fontSize: 9.5, fontWeight: 900, letterSpacing: 1, color: SUB, margin: "0 0 9px" }}>{elsewhereHead} · {away.length}</div>
-            ) : null}
-            {away.map((e) => (
-              <ClassTile
-                key={e.id}
-                danceClass={e.danceClass}
-                /* the seats on the bar (4 Oct 2026) — the caller counts these
-                   sessions into the same map as its own classes */
-                filled={filledOf(e.danceClass)}
-                artist={e.artist}
-                city={e.city}
-                href={`/c/${e.danceClass.shareSlug}`}
-                live={isLiveAt(e.danceClass, nowMs)}
-                relation={elsewhereRelation}
-              />
-            ))}
-          </div>
-        ) : null}
       </>
   );
 
