@@ -391,6 +391,29 @@ a:focus-visible:not([data-slot]) {
 }
 
 /* a full-screen picture fading up over whatever opened it (prototype 10572) */
+/* the calendar's day, week and month slide in from the side they were stepped
+   towards (10 Oct 2026, "make sure calendar is smooth") — transform and opacity
+   only, so it stays on the compositor */
+@keyframes dosCalNext {
+  from {
+    opacity: 0.35;
+    transform: translateX(28px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@keyframes dosCalPrev {
+  from {
+    opacity: 0.35;
+    transform: translateX(-28px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
 @keyframes dosFadeIn {
   from {
     opacity: 0;

@@ -21,6 +21,7 @@ import { CLASS_RELATION, SIDE_RELATION } from "@/lib/format/classLabels";
 import { useCloseOnBack } from "@/lib/hooks/useCloseOnBack";
 import { tileClassOf, type CalendarEntry, type CalendarMonth, type CalendarPracticeEntry, type CalendarSide } from "@/types/calendar";
 import { PRACTICE_TINT, PRACTICE_WORD, practiceWhen } from "@/types/crewPractice";
+import { MonthGrid, TimeGrid, useSwipe, type GridItem, type MonthChip } from "./calendar-grid";
 
 /** The calendar, lifted from prototype S_profiletab in its `calendarOnly` dress
  *  (`CalTab=()=><S_profiletab calendarOnly/>` 19146, `StudioCalPage` 19143):
@@ -146,8 +147,6 @@ function CalendarBody({ sectioned, children }: { sectioned: boolean; children: R
    two ways on a page and the page it links to is exactly the drift this repo
    keeps paying for. */
 
-const hourLabel = (h: number) => (h === 12 ? "12 pm" : h > 12 ? `${h - 12} pm` : `${h} am`);
-
 const emptyCard: React.CSSProperties = {
   background: "transparent",
   borderRadius: 16,
@@ -166,12 +165,12 @@ const emptyCard: React.CSSProperties = {
  *  Assist are class ideas.
  *  ⚠ A DAY OF AN EVENT was the second variant and went on 29 Sep 2026. */
 type Row =
-  | { k: "class"; id: string; dayKey: string; hour: number; startsAt: string; style: string; room: string | null; side: CalendarSide; e: CalendarEntry }
+  | { k: "class"; id: string; dayKey: string; hour: number; startsAt: string; endsAt: string; style: string; room: string | null; side: CalendarSide; e: CalendarEntry }
   /* ⚠ A PRACTICE IS ITS OWN KIND (27 Sep 2026) — see `CalendarPracticeEntry` for
      why it is neither of the other two. It carries the same five fields every
      view groups, filters and counts through, so adding it did not have to touch
      the schedule, the day rail, the week or the month grid either. */
-  | { k: "practice"; id: string; dayKey: string; hour: number; startsAt: string; style: string; room: null; side: null; e: CalendarPracticeEntry };
+  | { k: "practice"; id: string; dayKey: string; hour: number; startsAt: string; endsAt: string; style: string; room: null; side: null; e: CalendarPracticeEntry };
 
 const classRow = (e: CalendarEntry): Row => ({
   k: "class",
@@ -179,6 +178,7 @@ const classRow = (e: CalendarEntry): Row => ({
   dayKey: e.dayKey,
   hour: e.hour,
   startsAt: e.startsAt,
+  endsAt: e.endsAt,
   style: e.style,
   room: e.room,
   side: e.side,
@@ -190,6 +190,7 @@ const practiceRow = (e: CalendarPracticeEntry): Row => ({
   dayKey: e.dayKey,
   hour: e.hour,
   startsAt: e.startsAt,
+  endsAt: e.endsAt,
   style: e.style,
   room: null,
   side: null,
@@ -316,6 +317,8 @@ export function CalendarScreen({ mode, months, todayKey, entries, practices = []
   const [sel, setSel] = useState(todayKey);
   const [mi, setMi] = useState(Math.max(0, idx(monthOfDay(todayKey))));
   const [panelOpen, setPanelOpen] = useState(false);
+  /* which way the last step went — the next day, week or month slides in from that side */
+  const [slide, setSlide] = useState<0 | 1 | -1>(0);
   useCloseOnBack(() => setPanelOpen(false), panelOpen);
   /* ONE ROOM AT A TIME (8655): a studio with more than one room opens on its
      first room, and "All rooms" is a deliberate act rather than the landing state.
@@ -386,6 +389,7 @@ export function CalendarScreen({ mode, months, todayKey, entries, practices = []
      to it — the day's row, or the first row after it, since a day with nothing
      on it is not drawn */
   const jumpTo = (dayKey: string) => {
+    setSlide(dayKey > sel ? 1 : dayKey < sel ? -1 : 0);
     setSel(dayKey);
     const j = idx(monthOfDay(dayKey));
     if (j >= 0) setMi(j);
@@ -404,14 +408,22 @@ export function CalendarScreen({ mode, months, todayKey, entries, practices = []
     if (view === "week" || view === "day") {
       const p = addDays(sel, (view === "week" ? 7 : 1) * dir);
       if (!inWindow(p)) return;
+      setSlide(dir);
       setSel(p);
       setMi(idx(monthOfDay(p)));
       return;
     }
     const n = mi + dir;
     if (n < 0 || n >= months.length) return;
+    setSlide(dir);
     setMi(n);
+    /* ⚠ THE MONTH CARRIES ITS DAY WITH IT (10 Oct 2026): stepping the month used
+       to leave the picked day behind in the old month, so the list under the
+       grid named a day that was no longer on screen. It lands on today when
+       today is in that month, the 1st otherwise. */
+    const landing = monthOfDay(todayKey) === months[n].key ? todayKey : dayKeyFor(months[n].key, 1);
     if (view === "sched") jumpTo(dayKeyFor(months[n].key, 1));
+    else setSel(landing);
   };
   const canStep = (dir: 1 | -1) =>
     view === "week" || view === "day"
@@ -615,6 +627,78 @@ export function CalendarScreen({ mode, months, todayKey, entries, practices = []
   };
 
   const card = (r: Row) => (isPublic ? publicCard(r) : pill(r));
+
+  /** ONE BLOCK ON THE TIME GRID — Google's event block: the thing's own colour
+   *  as a soft fill with a solid edge, the name first, the time under it, and
+   *  what it is to you only where there is room. It is the SAME link the pill
+   *  is, with the same accessible name, so it opens the class or the practice. */
+  const block = (r: Row, h: number, narrow: boolean) => {
+    const isPractice = r.k === "practice";
+    const cancelled = isPractice && r.e.cancelled;
+    const tint = isPractice ? (cancelled ? MUTED : PRACTICE_C) : dosStyleColor(r.style);
+    const draft = r.k === "class" && mode !== "personal" && r.e.classStatus === "draft";
+    const name = isPractice ? r.e.crewName : r.style;
+    const when = `${timeOf(r.startsAt)}${narrow ? "" : ` – ${timeOf(r.endsAt)}`}`;
+    const third =
+      r.k === "class"
+        ? mode === "personal"
+          ? SIDES[r.side].name
+          : [draft ? "Draft" : null, room === null ? r.e.room : null].filter(Boolean).join(" · ")
+        : cancelled
+          ? "Called off"
+          : PRACTICE_WORD[r.e.standing];
+    const label = r.k === "class" ? `Open ${r.e.title}` : `${r.e.crewName} practice, ${practiceWhen(r.startsAt)}${cancelled ? " — called off" : ""}`;
+    return (
+      <Link
+        data-testid="cal-event"
+        href={r.k === "class" ? `/c/${r.e.shareSlug}` : r.e.href}
+        aria-label={label}
+        style={{
+          display: "block",
+          height: "100%",
+          boxSizing: "border-box",
+          overflow: "hidden",
+          borderRadius: narrow ? 6 : 8,
+          padding: narrow ? "3px 4px" : "5px 8px",
+          /* opaque, so a session cascaded over another in a week column hides the one beneath */
+          background: `linear-gradient(${tint}33, ${tint}33), var(--bg)`,
+          borderLeft: `3px solid ${tint}`,
+          outline: draft ? `1.5px dashed ${tint}` : "none",
+          outlineOffset: -1.5,
+          color: INK,
+          textDecoration: cancelled ? "line-through" : "none",
+          opacity: cancelled ? 0.6 : 1,
+        }}
+      >
+        <span style={{ display: "block", fontSize: narrow ? 10 : 12.5, fontWeight: 900, lineHeight: 1.15, letterSpacing: -0.15, overflow: "hidden", textOverflow: narrow ? "clip" : "ellipsis", whiteSpace: "nowrap" }}>
+          {name}
+        </span>
+        {h >= (narrow ? 34 : 30) ? (
+          <span style={{ display: "block", fontSize: narrow ? 8.5 : 10.5, fontWeight: 700, color: SUB, lineHeight: 1.2, marginTop: 1, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+            {when}
+          </span>
+        ) : null}
+        {!narrow && h >= 46 && third ? (
+          <span style={{ display: "block", fontSize: 10, fontWeight: 800, color: tint, lineHeight: 1.2, marginTop: 2, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+            {third}
+          </span>
+        ) : null}
+      </Link>
+    );
+  };
+  const gridItemsOf = (dayKey: string): GridItem[] =>
+    agendaOf(dayKey).map((r) => ({ id: r.id, startsAt: r.startsAt, endsAt: r.endsAt, render: (h, narrow) => block(r, h, narrow) }));
+  /* the month's chips: the time and the name, in the thing's own colour, faded once over */
+  const monthChipsOf = (dayKey: string): MonthChip[] =>
+    agendaOf(dayKey).map((r) => ({
+      id: r.id,
+      label: r.k === "practice" ? r.e.crewName : r.style,
+      tint: r.k === "practice" ? (r.e.cancelled ? MUTED : PRACTICE_C) : dosStyleColor(r.style),
+      faded: dayKey < todayKey || (r.k === "practice" && r.e.cancelled),
+    }));
+  const swipe = useSwipe((dir) => {
+    if (canStep(dir)) step(dir);
+  });
 
   const nothing = isPublic ? (
     <div style={emptyCard}>
@@ -1040,9 +1124,44 @@ export function CalendarScreen({ mode, months, todayKey, entries, practices = []
                   boxShadow: "0 18px 46px rgba(0,0,0,.55)",
                 }}
               >
-                {view === "week" ? (
-                  <div style={{ display: "grid", gridTemplateColumns: "repeat(7,1fr)" }}>
-                    {week.map((w, i) => dayCell(w, i, true))}
+                {/* ⚠ IN MONTH THE PANEL PICKS A MONTH (10 Oct 2026) — the month grid
+                    itself is the page now, so a second copy of it in the panel
+                    would be the same grid twice; every other view gets Google's
+                    mini month */}
+                {view === "month" ? (
+                  <div style={{ display: "grid", gridTemplateColumns: "repeat(3, minmax(0, 1fr))", gap: 6 }}>
+                    {months.map((m, j) => {
+                      const on = j === mi;
+                      const pick = () => {
+                        setSlide(j > mi ? 1 : j < mi ? -1 : 0);
+                        setMi(j);
+                        setSel(monthOfDay(todayKey) === m.key ? todayKey : dayKeyFor(m.key, 1));
+                        setPanelOpen(false);
+                      };
+                      return (
+                        <div
+                          key={m.key}
+                          role="button"
+                          tabIndex={0}
+                          aria-pressed={on}
+                          onKeyDown={pressKey(pick)}
+                          onClick={pick}
+                          style={{
+                            textAlign: "center",
+                            padding: "9px 4px",
+                            borderRadius: 10,
+                            cursor: "pointer",
+                            fontSize: 11.5,
+                            fontWeight: 800,
+                            color: on ? "var(--solid)" : INK,
+                            background: on ? INK : "transparent",
+                            border: `1.5px solid ${on ? INK : LINE}`,
+                          }}
+                        >
+                          {m.label}
+                        </div>
+                      );
+                    })}
                   </div>
                 ) : (
                   <>
@@ -1066,13 +1185,70 @@ export function CalendarScreen({ mode, months, todayKey, entries, practices = []
       </div>
       {/* ── end of the fixed controls; the sessions scroll under them ── */}
 
-      {view === "week" ? (
-        <>
-          <div style={{ fontSize: 11.5, fontWeight: 800, color: MUTED, margin: "10px 0 8px" }}>
-            {dowOf(sel)} {dayNumberOf(sel)} {G.monthName.toUpperCase()}
-          </div>
-          {agenda.length === 0 ? nothing : agenda.map(card)}
-        </>
+      {/* ⚠⚠ DAY, WEEK AND MONTH ARE GOOGLE CALENDAR'S SHAPES (10 Oct 2026, the
+          user: "fix calender and makit same as google calender. fix pages for
+          day, week, month, redesign it accordingly"). Day and Week are a TIME
+          GRID — the hours down the side, each session a block as tall as it
+          runs, overlaps side by side, a red line at now — and Month is a GRID OF
+          DAYS with a chip per session. Every filter above still decides what is
+          drawn (the room, the side, Classes or Practice), the date panel still
+          steps and jumps, and a sideways swipe steps too. Schedule is untouched:
+          it was already Google's own Schedule view. ⚠ Each view is keyed on what
+          it shows, so a step slides the new one in from the side it came from. */}
+      {view === "week" || view === "day" || view === "month" ? (
+        <div
+          {...swipe}
+          key={`${view}|${view === "month" ? months[mi].key : view === "week" ? week[0] : sel}`}
+          data-testid={`cal-view-${view}`}
+          style={{
+            paddingTop: 12,
+            touchAction: "pan-y",
+            animation: slide === 0 ? undefined : `${slide > 0 ? "dosCalNext" : "dosCalPrev"} .22s ease-out`,
+          }}
+        >
+          {view === "day" ? (
+            <>
+              {agenda.length === 0 ? nothing : null}
+              <TimeGrid days={[sel]} itemsOf={gridItemsOf} todayKey={todayKey} hourH={56} />
+            </>
+          ) : null}
+          {view === "week" ? (
+            <TimeGrid
+              days={week.filter(inWindow)}
+              itemsOf={gridItemsOf}
+              todayKey={todayKey}
+              hourH={48}
+              selected={sel}
+              onDay={(d) => {
+                setSlide(0);
+                setSel(d);
+                setMi(idx(monthOfDay(d)));
+                setView("day");
+              }}
+            />
+          ) : null}
+          {view === "month" ? (
+            <MonthGrid
+              monthKey={months[mi].key}
+              days={months[mi].days}
+              offset={months[mi].offset}
+              dayKeyFor={(d) => dayKeyFor(months[mi].key, d)}
+              shift={addDays}
+              chipsOf={monthChipsOf}
+              inWindow={inWindow}
+              todayKey={todayKey}
+              selected={sel}
+              onPick={(d) => {
+                setSel(d);
+                const j = idx(monthOfDay(d));
+                if (j >= 0 && j !== mi) {
+                  setSlide(j > mi ? 1 : -1);
+                  setMi(j);
+                }
+              }}
+            />
+          ) : null}
+        </div>
       ) : null}
 
       {/* ── THE MONTH (9314-9327): the grid lives in the shared panel; what is
@@ -1080,48 +1256,30 @@ export function CalendarScreen({ mode, months, todayKey, entries, practices = []
           counted, with its sessions under it ── */}
       {view === "month" ? (
         <>
-          <div style={{ display: "flex", alignItems: "baseline", gap: 8, margin: "10px 2px 9px" }}>
+          {/* THE DAY YOU TAPPED, UNDER THE GRID — Google's month on a phone
+              lists the picked day's sessions beneath it; "Open day" goes to that
+              day's time grid */}
+          <div style={{ display: "flex", alignItems: "baseline", gap: 8, margin: "14px 2px 9px" }}>
             <b style={{ fontSize: 12.5, fontWeight: 800, letterSpacing: 0.3 }}>
               {dowOf(sel)} {dayNumberOf(sel)} {months[Math.max(0, idx(monthOfDay(sel)))].monthName}
             </b>
             <span style={{ fontSize: 10.5, color: MUTED, fontWeight: 700 }}>
               {agenda.length ? `${agenda.length} session${agenda.length === 1 ? "" : "s"}` : "nothing on"}
             </span>
-            {/* the month's own marker — it never shares a screen with the
-                schedule's divider, so this one is not a repeat, only blue */}
-            {isToday(sel) ? <span style={{ marginLeft: "auto", fontSize: 9.5, fontWeight: 900, letterSpacing: 0.5, color: TODAY_INK }}>TODAY</span> : null}
+            <span
+              role="button"
+              tabIndex={0}
+              aria-label="Open this day"
+              onKeyDown={pressKey(() => pickView("day"))}
+              onClick={() => pickView("day")}
+              style={{ marginLeft: "auto", fontSize: 10.5, fontWeight: 800, color: SUB, cursor: "pointer", padding: "3px 9px", borderRadius: 999, border: `1.5px solid ${LINE}` }}
+            >
+              Open day ›
+            </span>
           </div>
           {agenda.length === 0 ? nothing : agenda.map(card)}
         </>
       ) : null}
-
-      {view === "day"
-        ? (() => {
-            /* the rail covers 8 am–9 pm OR the hours the day actually uses,
-               whichever is wider (9335-9340) */
-            const used = agenda.map((e) => e.hour);
-            const lo = Math.min(8, ...(used.length ? used : [8]));
-            const hi = Math.max(21, ...(used.length ? used : [21]));
-            return (
-              <>
-                <div style={{ height: 8 }} />
-                <div>
-                  {Array.from({ length: hi - lo + 1 }, (_, i) => lo + i).map((h) => {
-                    const ev = agenda.filter((e) => e.hour === h);
-                    return (
-                      <div key={h} style={{ display: "flex", minHeight: ev.length ? 26 : 22 }}>
-                        <div style={{ width: 52, textAlign: "right", paddingRight: 8, fontSize: 10, color: MUTED, paddingTop: 4, flexShrink: 0 }}>
-                          {hourLabel(h)}
-                        </div>
-                        <div style={{ flex: 1, padding: "0 0 3px", minWidth: 0, borderTop: `1.5px solid ${LINE}` }}>{ev.map(card)}</div>
-                      </div>
-                    );
-                  })}
-                </div>
-              </>
-            );
-          })()
-        : null}
 
       {view === "sched" ? (
         <div style={{ paddingTop: 10 }}>

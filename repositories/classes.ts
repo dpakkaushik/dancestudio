@@ -320,10 +320,12 @@ const heldCity = (row: PublicClassRow): string | null =>
 export async function findPublishedClasses(
   supabase: SupabaseClient,
   limit = 50,
-  city?: string | null
+  city?: string | null,
+  /** narrows to one dance style in the query — the style page's Classes column (10 Oct 2026) */
+  style?: string | null
 ): Promise<PublicClassListing[]> {
-  const base = (embed: string) =>
-    supabase
+  const base = (embed: string) => {
+    const q = supabase
       .from("classes")
       /* ⚠ THE KEY IS NAMED (18 Sep 2026): `classes` gains a second foreign key
          into `businesses` — the VENUE an artist's class is held at — and PostgREST
@@ -335,6 +337,8 @@ export async function findPublishedClasses(
       .is("deleted_at", null)
       .is("class_sessions.deleted_at", null)
       .gt("class_sessions.starts_at", new Date().toISOString());
+    return style ? q.eq("style", style) : q;
+  };
 
   const reads = city
     ? [

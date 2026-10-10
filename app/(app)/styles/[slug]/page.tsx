@@ -9,6 +9,14 @@ import { styleFromSlug, styleInfo } from "@/lib/constants/styleInfo";
 import { DOS_UI, INK, SUB, TAB_TITLE } from "@/lib/design/tokens";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { findChart } from "@/repositories/stats";
+import { ClassTile } from "@/features/classes/components/ClassTile";
+import { EnrollButton } from "@/features/classBookings/components/EnrollButton";
+import { findPublishedClasses } from "@/repositories/classes";
+import { findClassArtists, findClassesWithArtist } from "@/repositories/classPeople";
+import { countEnrolledBySession, findMyEnrolledSessionIds } from "@/repositories/classBookings";
+import type { ClassArtist } from "@/types/classPerson";
+import type { ClassBookingStatus } from "@/types/classBooking";
+import type { PublicClassListing } from "@/types/class";
 import type { ChartRow, ChartSegment } from "@/types/stats";
 
 /** A DANCE STYLE'S OWN PAGE (2 Oct 2026, the user: "page opens dance style —
@@ -21,6 +29,12 @@ import type { ChartRow, ChartSegment } from "@/types/stats";
  *  scroll meant scrolling past the history every time you wanted the table
  *  (its own words, 9481-9486). Here they are Details and Rankings, the app's own
  *  segmented control, both rendered in one server pass.
+ *
+ *  ⚠ CLASSES IS THE FIRST COLUMN (10 Oct 2026, the user: "remove find classes
+ *  button from below and add a column called classes alongside details and
+ *  rankings … this should be the first section"): the page opens on every class
+ *  of this style still to come, and the Find classes link under Details is gone.
+ *  `?show=details` and `?show=rankings` still open the other two.
  *
  *  ⚠ PUBLIC, like Discover: the record is the same for everybody. The boards are
  *  `dance_chart`, which is signed-in only (Step 25 — a person's activity is not
@@ -47,16 +61,33 @@ export default async function StylePage({
 
   const SEGS: ChartSegment[] = ["studio", "artist", "crew", "dancer"];
   /* ⚠ A BOARD THAT CANNOT BE READ IS AN EMPTY BOARD, never a 500 — this page is
-     mostly an encyclopedia entry and must not fail over a leaderboard */
-  const boards = user
-    ? Object.fromEntries(
-        await Promise.all(
-          SEGS.map(async (s) => [s, await findChart(supabase, { segment: s, style, limit: 20 }).catch(() => [] as ChartRow[])] as const)
-        )
-      ) as Record<ChartSegment, ChartRow[]>
-    : null;
+     mostly an encyclopedia entry and must not fail over a leaderboard.
+     ⚠ THE CLASSES COLUMN (10 Oct 2026, the user: "add a column called classes
+     alongside details and rankings showing all class cards for that style. this
+     should be the first section"). Every published class of this style still to
+     come, in every city, read in the SAME round as the boards; a class nobody is
+     confirmed to teach is left off, which is Discover's own rule (18 Sep 2026). */
+  const [boardsList, styleClassesRaw, mine] = await Promise.all([
+    user
+      ? Promise.all(SEGS.map(async (s) => [s, await findChart(supabase, { segment: s, style, limit: 20 }).catch(() => [] as ChartRow[])] as const))
+      : Promise.resolve(null),
+    findPublishedClasses(supabase, 120, null, style).catch(() => [] as PublicClassListing[]),
+    user ? findMyEnrolledSessionIds(supabase).catch(() => new Map<string, { id: string; status: ClassBookingStatus }>()) : Promise.resolve(new Map<string, { id: string; status: ClassBookingStatus }>()),
+  ]);
+  const boards = boardsList ? (Object.fromEntries(boardsList) as Record<ChartSegment, ChartRow[]>) : null;
+  const ids = styleClassesRaw.map((c) => c.id);
+  const sessionIds = styleClassesRaw.map((c) => c.session?.id).filter(Boolean) as string[];
+  const [taught, counts, classArtists] = await Promise.all([
+    findClassesWithArtist(supabase, ids).catch(() => new Set<string>()),
+    countEnrolledBySession(supabase, sessionIds).catch(() => new Map<string, number>()),
+    findClassArtists(supabase, ids).catch(() => new Map<string, ClassArtist>()),
+  ]);
+  /* soonest first — the card that happens next is the one somebody is choosing */
+  const styleClasses = styleClassesRaw
+    .filter((c) => taught.has(c.id))
+    .sort((a, b) => (a.session?.startsAt ?? "").localeCompare(b.session?.startsAt ?? ""));
 
-  const show = sp.show === "rankings" ? "rankings" : "details";
+  const show = sp.show === "rankings" ? "rankings" : sp.show === "details" ? "details" : "classes";
   const base = `/styles/${slug}`;
   /* ⚠ THE NEW LOOK (5 Oct 2026, the user: "Redesign stats page according to the
      new look and all dance style pages as well"): every block is the class
@@ -123,11 +154,51 @@ export default async function StylePage({
           ))
         )}
       </SectionCard>
-
-      <Link href={`/discover?tab=classes&styles=${encodeURIComponent(style)}`} style={{ display: "block", textAlign: "center", padding: "13px", borderRadius: 999, background: "var(--text)", color: "var(--solid)", fontWeight: 900, fontSize: 13.5, textDecoration: "none", marginTop: 4 }}>
-        Find {style} classes ›
-      </Link>
     </div>
+  );
+
+  /* THE CLASSES COLUMN — the app's one class card, exactly as Discover's Classes
+     shelf draws it, for every city (a style page is not about one place) */
+  const classesPanel = (
+    <SectionCard icon={mark(<path d="M3 5h18v15H3zM3 10h18M8 3v4M16 3v4" />)} label={`${style.toUpperCase()} CLASSES`} col={color}>
+      <div data-testid="style-classes-count" style={{ fontSize: 11.5, fontWeight: 800, color: SUB, marginBottom: 10 }}>
+        {styleClasses.length === 1 ? "1 class coming up" : `${styleClasses.length} classes coming up`}
+      </div>
+      {styleClasses.length === 0 ? (
+        <div data-testid="style-classes-empty" style={{ textAlign: "center", padding: "22px 12px", border: "1.5px dashed var(--el)", borderRadius: 14, fontSize: 12.5, color: SUB }}>
+          No {style} classes are coming up yet.
+        </div>
+      ) : (
+        <div style={{ display: "grid", gap: 12 }}>
+          {styleClasses.map((c) => {
+            const filled = c.session ? counts.get(c.session.id) ?? 0 : 0;
+            return (
+              <ClassTile
+                key={c.id}
+                danceClass={c}
+                filled={filled}
+                artist={classArtists.get(c.id) ?? null}
+                city={c.venueStatus === "accepted" && c.venueCity ? c.venueCity : c.businessCity}
+                href={`/c/${c.shareSlug}`}
+                relation={c.session && mine.get(c.session.id)?.status === "enrolled" ? "booked" : null}
+                actions={
+                  c.session ? (
+                    <EnrollButton
+                      sessionId={c.session.id}
+                      isFull={filled >= c.capacity}
+                      isSignedIn={Boolean(user)}
+                      mine={mine.get(c.session.id) ?? null}
+                      priceInr={c.priceInr}
+                      shareSlug={c.shareSlug}
+                    />
+                  ) : null
+                }
+              />
+            );
+          })}
+        </div>
+      )}
+    </SectionCard>
   );
 
   const rankings = (
@@ -169,10 +240,12 @@ export default async function StylePage({
             </>
           }
           segments={[
-            { key: "details", href: base, label: "Details", aria: "Details" },
+            { key: "classes", href: base, label: "Classes", aria: "Classes" },
+            { key: "details", href: `${base}?show=details`, label: "Details", aria: "Details" },
             { key: "rankings", href: `${base}?show=rankings`, label: "Rankings", aria: "Rankings" },
           ]}
           panels={[
+            { key: "classes", node: classesPanel },
             { key: "details", node: details },
             { key: "rankings", node: rankings },
           ]}

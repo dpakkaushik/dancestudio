@@ -111,17 +111,37 @@ export default async function ClassSharePage({
     notFound();
   }
 
-  const danceClass = await loadClass(slug);
+  /* ⚠ FEWER ROUNDS IN A ROW (10 Oct 2026, the user: "left — 1st one solve", the
+     class page's 4–5 serial reads). The class and the session are independent,
+     so they are asked TOGETHER; every read below that needs only the class is
+     STARTED the moment it is known and awaited with the reads that needed the
+     first batch, so the page waits for three rounds where it waited for five. */
+  const supabase = await createSupabaseServerClient();
+  const [danceClass, {
+    data: { user },
+  }] = await Promise.all([loadClass(slug), supabase.auth.getUser()]);
   if (!danceClass) {
     notFound();
   }
 
-  const supabase = await createSupabaseServerClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
   const sessionId = danceClass.session?.id ?? null;
+  /* THE READS THAT NEED ONLY THE CLASS, STARTED NOW. Each carries a no-op catch
+     so an early throw below never leaves one as an unhandled rejection — the
+     awaited promise is the original, so a real failure still surfaces. */
+  const early = <T,>(p: Promise<T>): Promise<T> => {
+    p.catch(() => {});
+    return p;
+  };
+  const roomP = early(danceClass.roomId ? findRoomById(supabase, danceClass.roomId) : Promise.resolve(null));
+  const ownerIdP = early(danceClass.businessType === "artist_page" ? findArtistPageOwner(supabase, danceClass.businessId).catch(() => null) : Promise.resolve(null));
+  const routinesP = early(findClassRoutines(supabase, danceClass.id).catch(() => []));
+  const myRoutinesP = early(user ? findMyRoutines(supabase).catch(() => []) : Promise.resolve([]));
+  const canSetRoutinesP = early(user ? canSetClassRoutines(supabase, danceClass.id).catch(() => false) : Promise.resolve(false));
+  const actingAsP = early(user ? resolveActingAs(supabase, as) : Promise.resolve(null));
+  const placeP = early(placeOf(supabase, danceClass));
+  /* the passes are asked for whether or not the viewer holds a seat, and dropped
+     below if they do — a cheap read in parallel beats a round of its own */
+  const passesP = early(user && sessionId ? findPassesForSession(supabase, sessionId).catch(() => []) : Promise.resolve([]));
   /* ⚠ CLAIMS MOVED UP INTO THIS BATCH (28 Sep 2026), and it costs nothing: it
      depends only on the class's id, so it was always parallelisable. What it
      BUYS is that the viewer's own classPerson is known BEFORE the batch that decides
@@ -186,34 +206,6 @@ export default async function ClassSharePage({
      published classes only); and, for an artist's class, WHOSE profile the
      place row opens — the person behind the artist page, so the link never
      goes through the /artist redirect. */
-  const [receipt, register, paidUserIds, room, ownerId, routines, myRoutines, canSetRoutines, passes, actingAs, assistantPool, place] = await Promise.all([
-    myBooking && danceClass.priceInr > 0 ? findPaidReceiptByClassBooking(supabase, myBooking.id) : Promise.resolve(null),
-    mayRunRegister ? findClassRegister(supabase, danceClass.id) : Promise.resolve(null),
-    mayRunRegister && sessionId && danceClass.priceInr > 0 ? findPaidUserIdsBySession(supabase, sessionId) : Promise.resolve(new Set<string>()),
-    danceClass.roomId ? findRoomById(supabase, danceClass.roomId) : Promise.resolve(null),
-    danceClass.businessType === "artist_page" ? findArtistPageOwner(supabase, danceClass.businessId).catch(() => null) : Promise.resolve(null),
-    /* WHAT THIS CLASS IS TAUGHT FROM (19 Sep 2026): the routines on it — RLS
-       hands them to anybody who may read the class — the viewer's OWN routines
-       for the picker, and whether they may change what is on it at all */
-    findClassRoutines(supabase, danceClass.id).catch(() => []),
-    user ? findMyRoutines(supabase).catch(() => []) : Promise.resolve([]),
-    user ? canSetClassRoutines(supabase, danceClass.id).catch(() => false) : Promise.resolve(false),
-    /* THE PASSES THIS VIEWER CAN SPEND HERE (19 Sep 2026): their own live
-       memberships that THIS class admits, with a unit left. The database reads
-       the class's two switches, so the bar never offers a pass the RPC refuses;
-       nothing is asked for a viewer who is not signed in or has no seat to take. */
-    user && sessionId && !myBooking ? findPassesForSession(supabase, sessionId).catch(() => []) : Promise.resolve([]),
-    /* WHICH PROFILE IS READING: a business books nothing (19 Sep 2026; the test
-       moved off `profiles.role` on 27 Sep, when R48 left that role with no
-       holders and the gate silently open) */
-    user ? resolveActingAs(supabase, as) : Promise.resolve(null),
-    /* WHO MAY BE ASKED TO ASSIST (4 Oct 2026): the team and the crews of the
-       person asking — read only for the two who may ask */
-    user && canAddAssistant ? findAssistantPool(supabase, danceClass.businessId).catch(() => []) : Promise.resolve([]),
-    /* THE PLACE'S PIN AND ITS FULL ADDRESS (4 Oct 2026) */
-    placeOf(supabase, danceClass),
-  ]);
-
   /* Who may answer a refund request: the owner, or somebody holding the refunds
      job on this class (prototype 12710). Deliberately NOT every trainer — the
      job is grantable per class precisely because settling money is not implied
@@ -234,11 +226,37 @@ export default async function ClassSharePage({
      already draws. Both reads in one round trip. */
   /* the class's own queue asks the rail about its pending rows first, the way
      both ledgers do (30 Sep 2026) — a refund Cashfree has paid is not "processing" */
-  if (canSettleRefunds) await reconcileRailRefunds(supabase, { classId: danceClass.id });
-  const [refunds, classMoney] = await Promise.all([
-    canSettleRefunds ? findRefundsByClass(supabase, danceClass.id) : Promise.resolve([]),
+  /* ⚠ ONE LAST ROUND (10 Oct 2026): the reads that needed the seat or the
+     viewer's own class row go out TOGETHER, beside the ones started above —
+     the refund queue's reconcile-then-read is one chain inside it, so it no
+     longer holds a round of its own. */
+  const [receipt, register, paidUserIds, room, ownerId, routines, myRoutines, canSetRoutines, passesAll, actingAs, assistantPool, place, refunds, classMoney] = await Promise.all([
+    myBooking && danceClass.priceInr > 0 ? findPaidReceiptByClassBooking(supabase, myBooking.id) : Promise.resolve(null),
+    mayRunRegister ? findClassRegister(supabase, danceClass.id) : Promise.resolve(null),
+    mayRunRegister && sessionId && danceClass.priceInr > 0 ? findPaidUserIdsBySession(supabase, sessionId) : Promise.resolve(new Set<string>()),
+    roomP,
+    ownerIdP,
+    /* WHAT THIS CLASS IS TAUGHT FROM (19 Sep 2026): the routines on it, the
+       viewer's OWN routines for the picker, and whether they may change them */
+    routinesP,
+    myRoutinesP,
+    canSetRoutinesP,
+    /* THE PASSES THIS VIEWER CAN SPEND HERE (19 Sep 2026) — the database reads
+       the class's two switches, so the bar never offers a pass the RPC refuses */
+    passesP,
+    /* WHICH PROFILE IS READING: a business books nothing (19 Sep, re-cut 27 Sep) */
+    actingAsP,
+    /* WHO MAY BE ASKED TO ASSIST (4 Oct 2026) — read only for the two who may ask */
+    user && canAddAssistant ? findAssistantPool(supabase, danceClass.businessId).catch(() => []) : Promise.resolve([]),
+    /* THE PLACE'S PIN AND ITS FULL ADDRESS (4 Oct 2026) */
+    placeP,
+    canSettleRefunds
+      ? reconcileRailRefunds(supabase, { classId: danceClass.id }).then(() => findRefundsByClass(supabase, danceClass.id))
+      : Promise.resolve([]),
     role === "owner" ? findClassMoney(supabase, danceClass.id) : Promise.resolve(null),
   ]);
+  /* a viewer who already holds a seat is offered no pass */
+  const passes = myBooking ? [] : passesAll;
 
   return (
     <ClassDetail
