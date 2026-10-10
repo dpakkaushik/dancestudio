@@ -66,24 +66,30 @@ export default async function HomePage() {
   if (!user) {
     redirect("/login");
   }
-  /* `withPhone`: Home shows the person's Call button and its contact ⊕ edits the
-     number, and since 6 Oct 2026 the number is its own read (decision 4) */
-  const profile = await findProfileById(supabase, user.id, { withPhone: true });
-  if (!profile) {
-    /* a platform admin is ADMIN ONLY (9 Sep 2026): no profile, no Home — the queue is its place */
-    redirect((await amIPlatformAdmin(supabase)) ? "/admin/verifications" : "/onboarding");
-  }
-
   const now = new Date();
   const nowIso = now.toISOString();
 
-  /* ⚠ `isOrg` IS GONE (26 Sep 2026): the organization LOGIN was retired — every
-     profile here is a person's. ⚠⚠ AND ON 29 Sep 2026 THE ORGANIZATION ITSELF
-     WENT (the user: "remove Organization and Events completely"), taking
-     `OrgHome`, the standing card, the GST card and the two folds that hid this
-     page from an organization waiting on approval. What is still asked for is
-     what is still shown. */
-  const [memberships, invites, plan] = await Promise.all([
+  /* ⚠ TWO ROUNDS, NOT FOUR (10 Oct 2026, the user: "make sure app is fast and
+     smooth on every page"). Measured, Home read the profile, THEN the plan, THEN
+     everything else — four database rounds one after another. What needs neither
+     the profile nor the plan starts now and is awaited with the second round;
+     each carries a no-op catch so a read still in flight when the page redirects
+     (no profile yet) is never an unhandled rejection — awaiting it below still
+     throws as it always did. */
+  const deckP = findMyDeck(supabase, user.id, nowIso);
+  const followersP = findMyPersonFollowers(supabase).catch(() => []);
+  const followingPeopleP = findMyFollowedPeople(supabase).catch(() => []);
+  const followedBusinessesP = findMyFollowing(supabase).catch(() => []);
+  const followedCrewsP = findMyFollowedCrews(supabase).catch(() => []);
+  /* ⚠ THE CREWS AND STUDIOS THIS PERSON IS ON (2 Oct 2026, the user) — a member
+     follows their own teams, derived rather than stored */
+  const teamsP = findTeamFollows(supabase, user.id).catch(() => ({ businesses: [], crews: [] }));
+  deckP.catch(() => {});
+
+  /* `withPhone`: Home shows the person's Call button and its contact ⊕ edits the
+     number, and since 6 Oct 2026 the number is its own read (decision 4) */
+  const [profile, memberships, invites, plan] = await Promise.all([
+    findProfileById(supabase, user.id, { withPhone: true }),
     /* WITH the role (18 Sep 2026): an artist's grid needs the page they OWN, not
        the first business they belong to — a studio they teach at is not theirs */
     findMyMemberships(supabase),
@@ -91,9 +97,20 @@ export default async function HomePage() {
     // with, so an invite arrives here without any link being passed around
     findMyPendingInvites(supabase),
     findMyArtistPlan(supabase),
-    /* ⚠ THE SUPPORT-THREADS READ WENT WITH ITS CARD (20 Sep 2026): Settings'
-       Help & support tile is that door for every kind of account */
   ]);
+  if (!profile) {
+    /* a platform admin is ADMIN ONLY (9 Sep 2026): no profile, no Home — the queue is its place */
+    redirect((await amIPlatformAdmin(supabase)) ? "/admin/verifications" : "/onboarding");
+  }
+
+  /* ⚠ `isOrg` IS GONE (26 Sep 2026): the organization LOGIN was retired — every
+     profile here is a person's. ⚠⚠ AND ON 29 Sep 2026 THE ORGANIZATION ITSELF
+     WENT (the user: "remove Organization and Events completely"), taking
+     `OrgHome`, the standing card, the GST card and the two folds that hid this
+     page from an organization waiting on approval. What is still asked for is
+     what is still shown. */
+  /* ⚠ THE SUPPORT-THREADS READ WENT WITH ITS CARD (20 Sep 2026): Settings'
+     Help & support tile is that door for every kind of account */
   /* ⚠ the `businesses` list went with events (29 Sep 2026): its one reader was
      `findMyDeck`, which asked which businesses had an event running today */
   /* what the sleeve calls you: a person is an artist while the plan is live */
@@ -129,20 +146,18 @@ export default async function HomePage() {
   const homeKind = isArtist ? "artist" : "user";
   const [header, deck, pageId, followers, followingPeople, followedBusinesses, followedCrews, toolOrder, teams] = await Promise.all([
     findPersonHeaderPhotos(supabase, user.id, headerMax),
-    findMyDeck(supabase, user.id, nowIso),
+    deckP,
     !isArtist ? Promise.resolve(null) : ensureArtistPage(supabase, profile, memberships),
-    findMyPersonFollowers(supabase).catch(() => []),
-    findMyFollowedPeople(supabase).catch(() => []),
-    findMyFollowing(supabase).catch(() => []),
-    findMyFollowedCrews(supabase).catch(() => []),
+    followersP,
+    followingPeopleP,
+    followedBusinessesP,
+    followedCrewsP,
     /* ⚠ THIS PERSON'S OWN ARRANGEMENT OF THE TOOL GRID (22 Sep 2026). It rides
        the batch that is already being awaited, so Home costs no extra round
        trip for it, and it answers null rather than throwing — a preference must
        never be the reason a Home does not render. */
     findMyToolOrder(supabase, user.id, toolsLayoutKey(homeKind)),
-    /* ⚠ THE CREWS AND STUDIOS THIS PERSON IS ON (2 Oct 2026, the user) — a member
-       follows their own teams, derived rather than stored */
-    findTeamFollows(supabase, user.id).catch(() => ({ businesses: [], crews: [] })),
+    teamsP,
   ]);
   const { businesses: followingBusinesses, crews: followingCrews } = withTeamFollows({ businesses: followedBusinesses, crews: followedCrews }, teams);
 

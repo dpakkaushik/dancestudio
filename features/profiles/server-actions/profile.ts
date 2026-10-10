@@ -82,7 +82,6 @@ export async function updateMyProfileAction(input: MyProfileInput): Promise<{ er
       city: parsed.data.city || null,
       phone,
     });
-    revalidatePath("/profile");
     revalidatePath("/");
     revalidatePath(`/person/${user.id}`);
     return { error: null };

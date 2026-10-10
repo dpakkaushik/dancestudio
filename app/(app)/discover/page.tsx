@@ -245,15 +245,25 @@ export default async function DiscoverPage({
        BEFORE that rule, on 18 Sep 2026.);
      · every business card ends with its styles — the styles of its published
        classes — and a style filter narrows through the same map. */
-  const [crewsRaw, taught, stylesByBusiness, followedCrews] = await Promise.all([
+  /* ⚠ THE STUDIOS TAB'S CARD READS RIDE THIS ROUND TOO (10 Oct 2026, the user:
+     "make sure app is fast and smooth on every page"). They used to wait for the
+     style filter below and then go out as a round of their own — measured, the
+     Studios tab made five database rounds one after another. They only need the
+     ids the radius search handed back, so they are asked for ALL of those (at
+     most one page, 50) beside the styles, and the filter then narrows a list that
+     already has its faces, counts and posters. */
+  const followedIds = following.filter((f) => f.businessType === "studio").map((f) => f.businessId);
+  const nearbyIds = nearby.map((t) => t.id);
+  const [crewsRaw, taught, stylesByBusiness, followedCrews, followerCounts, facts, shotsByBusiness] = await Promise.all([
     tab === "crews" ? findCrewsByCity(supabase, cityQ) : Promise.resolve([]),
     tab === "classes" ? findClassesWithArtist(supabase, inCity.map((c) => c.id)) : Promise.resolve(new Set<string>()),
-    wantsBusinesses ? findPublishedStylesByBusiness(supabase, nearby.map((t) => t.id)) : Promise.resolve(new Map<string, string[]>()),
+    wantsBusinesses ? findPublishedStylesByBusiness(supabase, nearbyIds) : Promise.resolve(new Map<string, string[]>()),
     wantsFollows && wantsCrews ? findMyFollowedCrews(supabase) : Promise.resolve([] as FollowedCrew[]),
+    wantsBusinesses ? findFollowerCounts(supabase, nearbyIds) : Promise.resolve(new Map<string, number>()),
+    wantsBusinesses ? findBusinessCardFacts(supabase, [...nearbyIds, ...followedIds]) : Promise.resolve(new Map<string, BusinessCardFacts>()),
+    wantsBusinesses ? findStudioHeaderPhotosMany(supabase, nearbyIds) : Promise.resolve(new Map<string, HeaderPhoto[]>()),
   ]);
   const crews = tab === "crews" ? recommendFirst(filterCrews(crewsRaw, filters), learnStyles, filters, (c) => c.styles) : [];
-  /* one aggregate call for the whole crews shelf — the count every card prints */
-  const crewFollowers = wantsCrews ? await findCrewFollowerCounts(supabase, crews.map((c) => c.id)) : new Map<string, number>();
   const classes = tab === "classes" ? recommendFirst(inCity.filter((c) => taught.has(c.id)), learnStyles, filters, (c) => [c.style]) : inCity;
 
   /* the second round: what depends on the first — the seat counts, and WHO that
@@ -263,14 +273,19 @@ export default async function DiscoverPage({
      above asked a question anon can answer.
      ⚠ The host cards (18 Sep 2026) and what this person already held (27 Sep)
      went with events on 29 Sep. */
-  const [counts, classArtists] = await Promise.all([
+  /* an artist narrows by style through THEIR OWN styles — the ones on their profile */
+  const artists = wantsArtists ? recommendFirst(artistsRaw.filter((a) => anyStyleOk(filters, a.styles)), learnStyles, filters, (a) => a.styles) : [];
+  /* ⚠ one round for every tab's per-card counts (10 Oct 2026): the crews' and the
+     artists' follower counts used to be two more rounds of their own */
+  const [counts, classArtists, crewFollowers, personCounts] = await Promise.all([
     tab === "classes" ? countEnrolledBySession(supabase, classes.map((c) => c.session?.id).filter(Boolean) as string[]) : Promise.resolve(new Map<string, number>()),
     tab === "classes" ? findClassArtists(supabase, classes.map((c) => c.id)) : Promise.resolve(new Map<string, ClassArtist>()),
+    /* one aggregate call for the whole crews shelf — the count every card prints */
+    wantsCrews ? findCrewFollowerCounts(supabase, crews.map((c) => c.id)) : Promise.resolve(new Map<string, number>()),
+    wantsArtists ? findPersonFollowerCounts(supabase, artists.map((a) => a.id)) : Promise.resolve(new Map<string, { followers: number; following: number }>()),
   ]);
   const businesses = wantsBusinesses ? recommendFirst(filterBusinesses(nearby, filters, stylesByBusiness), learnStyles, filters, (b) => stylesByBusiness.get(b.id) ?? []) : [];
   const followed = following.filter((f) => f.businessType === "studio");
-  /* an artist narrows by style through THEIR OWN styles — the ones on their profile */
-  const artists = wantsArtists ? recommendFirst(artistsRaw.filter((a) => anyStyleOk(filters, a.styles)), learnStyles, filters, (a) => a.styles) : [];
   /* the Styles tab's own shelf, narrowed by its own filters (2 Oct 2026) */
   const styleShelf = tab === "styles" ? recommendFirst(filterStyleShelf(stylesShelfOrder(), filters, styleCount), learnStyles, filters, (x) => [x]) : [];
   /* the follower count sits at the foot of every card — a number, never a name (Step 15);
@@ -282,12 +297,8 @@ export default async function DiscoverPage({
      signings, which is the per-card shape `findClassArtists` exists to avoid.
      They are the studio's own `studio_photos`, the same rows its poster rail
      draws, under the policy that makes a LISTED studio's pictures public. */
-  const [followerCounts, facts, personCounts, shotsByBusiness] = await Promise.all([
-    wantsBusinesses ? findFollowerCounts(supabase, businesses.map((t) => t.id)) : Promise.resolve(new Map<string, number>()),
-    wantsBusinesses ? findBusinessCardFacts(supabase, [...businesses.map((t) => t.id), ...followed.map((f) => f.businessId)]) : Promise.resolve(new Map<string, BusinessCardFacts>()),
-    wantsArtists ? findPersonFollowerCounts(supabase, artists.map((a) => a.id)) : Promise.resolve(new Map<string, { followers: number; following: number }>()),
-    wantsBusinesses ? findStudioHeaderPhotosMany(supabase, businesses.map((t) => t.id)) : Promise.resolve(new Map<string, HeaderPhoto[]>()),
-  ]);
+  /* (the follower counts, the faces and the posters are read in the round above,
+     for every studio the radius search returned) */
   /* the face and the tick reach the cards together — one read, two facts (D7).
      The pin used to ride along for the map view; the map went on 18 Sep 2026. */
   businesses.forEach((t) => {

@@ -142,6 +142,21 @@ const nextConfig: NextConfig = {
          one (My classes' "find a class"); it opens Discover now. Any `?as=` rides
          along onto Discover, which reads it the same way. */
       { source: "/classes", destination: "/discover?tab=classes", permanent: false },
+
+      /* ══ FOUR PAGE FILES THAT ONLY FORWARDED (10 Oct 2026, the user: "delete all
+         unreachable pages and files. make sure doesnt affect current running of the
+         app in any way") ══
+         Nothing in the app links any of these and no stored notification points at
+         one (both checked); each was a page whose whole body was a redirect. The
+         addresses keep forwarding exactly where they did (Rule 14). A signed-out
+         visitor lands on the destination, which sends them to sign in itself.
+         ⚠ The four that depend on WHO is signed in (`/profile`, `/stats`, `/assets`,
+         `/enquiries`) cannot be a fixed forward here, so they are answered in the
+         proxy instead — lib/supabase/middleware.ts. */
+      { source: "/managed", destination: "/my-classes?show=manage", permanent: false },
+      { source: "/business/:businessId/enquiries", destination: "/business/:businessId/inbox?show=enquiries", permanent: false },
+      { source: "/crews/:crewId/manage/enquiries", destination: "/crews/:crewId/inbox", permanent: false },
+      { source: "/crews/:crewId/manage/earnings", destination: "/crews/:crewId/manage", permanent: false },
     ];
   },
 };

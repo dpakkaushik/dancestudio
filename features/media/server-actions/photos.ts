@@ -42,8 +42,6 @@ export async function setMyAvatarAction(input: { path: string | null }): Promise
   if (error) {
     return { error: error.message };
   }
-  revalidatePath("/profile");
-  revalidatePath("/stats");
   revalidatePath("/person/[userId]", "page");
   return { error: null, path: (data as string | null) ?? null };
 }
@@ -114,7 +112,6 @@ export async function addMyGalleryPhotoAction(input: { path: string }): Promise<
     return { error: error.message };
   }
   revalidatePath("/");
-  revalidatePath("/profile");
   revalidatePath("/person/[userId]", "page");
   return { error: null, path: parsed.data, id: (data as string | null) ?? null };
 }
@@ -128,7 +125,6 @@ export async function removeMyGalleryPhotoAction(input: { id: string }): Promise
     return { error: error.message };
   }
   revalidatePath("/");
-  revalidatePath("/profile");
   revalidatePath("/person/[userId]", "page");
   return { error: null, path: (data as string | null) ?? null };
 }

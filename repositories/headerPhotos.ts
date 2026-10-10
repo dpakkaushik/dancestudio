@@ -2,6 +2,51 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { HEADER_MAX_ARTIST, HEADER_MAX_CREW, photoUrl } from "@/lib/media/photo";
 import { PROOF_BUCKET, PROOF_URL_SECONDS } from "@/lib/media/proof";
 
+/** SIGNED URLS ARE REUSED WHILE THEY ARE GOOD (10 Oct 2026, the user: "make sure
+ *  app is fast and smooth on every page").
+ *
+ *  Measured, Discover's Studios tab spent its last ~230 ms signing poster URLs —
+ *  a storage call after the photo read, on EVERY visit — and because every
+ *  signing mints a new token, the URL changed every time and the browser could
+ *  never use the picture it already had: every visit re-downloaded every poster.
+ *
+ *  This keeps what was signed, per server instance, and hands it back while it
+ *  has more than ten minutes of its thirty left.
+ *  ⚠ It changes nobody's access: a path is only ever looked up here AFTER the
+ *  caller's own row-security read returned it (`studio_photos` under the policy
+ *  that admits a listed studio's rows, or `business_header_photos`), and the
+ *  storage policy that decides signing is the same predicate. A signed URL is a
+ *  bearer link the page already hands to its reader either way. */
+const SIGNED = new Map<string, { url: string; until: number }>();
+const KEEP_MS = 10 * 60 * 1000;
+
+async function signProofPaths(supabase: SupabaseClient, paths: string[]): Promise<Map<string, string> | null> {
+  const now = Date.now();
+  const out = new Map<string, string>();
+  const missing: string[] = [];
+  for (const p of new Set(paths)) {
+    const hit = SIGNED.get(p);
+    if (hit && hit.until - now > KEEP_MS) out.set(p, hit.url);
+    else missing.push(p);
+  }
+  if (missing.length === 0) return out;
+  const signed = await supabase.storage.from(PROOF_BUCKET).createSignedUrls(missing, PROOF_URL_SECONDS);
+  if (signed.error) return out.size ? out : null;
+  const until = now + PROOF_URL_SECONDS * 1000;
+  (signed.data ?? []).forEach((s) => {
+    if (s.path && s.signedUrl) {
+      out.set(s.path, s.signedUrl);
+      SIGNED.set(s.path, { url: s.signedUrl, until });
+    }
+  });
+  /* a ceiling, so a long-lived instance cannot grow this without bound */
+  if (SIGNED.size > 5000) {
+    for (const [k, v] of SIGNED) if (v.until - now <= KEEP_MS) SIGNED.delete(k);
+    if (SIGNED.size > 5000) SIGNED.clear();
+  }
+  return out;
+}
+
 /** One picture in a header rail, ready to draw. */
 export interface HeaderPhoto {
   id: string;
@@ -59,18 +104,7 @@ export async function findBusinessHeaderPhotos(supabase: SupabaseClient, busines
   }
   const rows = (data ?? []) as Array<{ id: string; path: string; bucket: string }>;
   const proof = rows.filter((r) => r.bucket === PROOF_BUCKET);
-  const urlByPath = new Map<string, string>();
-  if (proof.length) {
-    const signed = await supabase.storage.from(PROOF_BUCKET).createSignedUrls(
-      proof.map((r) => r.path),
-      PROOF_URL_SECONDS
-    );
-    if (!signed.error) {
-      (signed.data ?? []).forEach((s) => {
-        if (s.path && s.signedUrl) urlByPath.set(s.path, s.signedUrl);
-      });
-    }
-  }
+  const urlByPath = proof.length ? ((await signProofPaths(supabase, proof.map((r) => r.path))) ?? new Map<string, string>()) : new Map<string, string>();
   return rows.map((r) =>
     r.bucket === PROOF_BUCKET
       ? { id: r.id, path: r.path, url: urlByPath.get(r.path) ?? null, signed: true }
@@ -131,18 +165,11 @@ export async function findStudioHeaderPhotosMany(supabase: SupabaseClient, busin
   if (kept.length === 0) {
     return out;
   }
-  const signed = await supabase.storage.from(PROOF_BUCKET).createSignedUrls(
-    kept.map((r) => r.path),
-    PROOF_URL_SECONDS
-  );
-  if (signed.error) {
+  const urlByPath = await signProofPaths(supabase, kept.map((r) => r.path));
+  if (!urlByPath) {
     out.clear();
     return out;
   }
-  const urlByPath = new Map<string, string>();
-  (signed.data ?? []).forEach((s) => {
-    if (s.path && s.signedUrl) urlByPath.set(s.path, s.signedUrl);
-  });
   out.forEach((list, key) => {
     out.set(
       key,

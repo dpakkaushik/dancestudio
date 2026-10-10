@@ -31,7 +31,6 @@ export async function activateArtistPlanAction(input: { plan: "monthly" | "yearl
   try {
     const out = await activateArtistPlan(supabase, parsed.data.plan);
     revalidatePath("/subscription");
-    revalidatePath("/profile");
     revalidatePath("/");
     return { error: null, until: out.until };
   } catch (error: unknown) {
@@ -81,7 +80,6 @@ export async function updateBusinessProfileAction(input: BusinessProfileActionIn
     /* a rename shows on the studio's own home, the hub and the switcher */
     revalidatePath(`/business/${businessId}`);
     revalidatePath("/business");
-    revalidatePath("/profile");
     return { error: null };
   } catch (error: unknown) {
     return { error: error instanceof Error ? error.message : "Could not save that" };

@@ -205,7 +205,6 @@ export async function POST(req: Request) {
       revalidatePath("/");
       revalidatePath("/business");
       revalidatePath("/subscription");
-      revalidatePath("/profile");
       revalidatePath("/discover");
     }
 

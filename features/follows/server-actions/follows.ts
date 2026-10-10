@@ -39,7 +39,6 @@ export async function setFollowAction(input: { businessId: string; on: boolean }
     const state = await setFollow(supabase, parsed.data.businessId, parsed.data.on);
     revalidatePath(`/studio/${parsed.data.businessId}`);
     revalidatePath(`/artist/${parsed.data.businessId}`);
-    revalidatePath("/profile");
     revalidatePath("/discover");
     return { state, error: null };
   } catch (error: unknown) {
@@ -72,7 +71,6 @@ export async function setPersonFollowAction(input: { userId: string; on: boolean
     const state = await setPersonFollow(supabase, parsed.data.userId, parsed.data.on);
     revalidatePath(`/person/${parsed.data.userId}`);
     /* ⚠ the `/org/{id}` revalidation went with organizations (29 Sep 2026) */
-    revalidatePath("/profile");
     return { state, error: null };
   } catch (error: unknown) {
     return { state: null, error: error instanceof Error ? error.message : "Could not update that follow" };
@@ -101,7 +99,6 @@ export async function setCrewFollowAction(input: { crewId: string; on: boolean }
   try {
     const state = await setCrewFollow(supabase, parsed.data.crewId, parsed.data.on);
     revalidatePath(`/crew/${parsed.data.crewId}`);
-    revalidatePath("/profile");
     return { state, error: null };
   } catch (error: unknown) {
     return { state: null, error: error instanceof Error ? error.message : "Could not update that follow" };

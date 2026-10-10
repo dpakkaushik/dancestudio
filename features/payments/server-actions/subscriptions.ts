@@ -54,7 +54,6 @@ const refresh = () => {
   revalidatePath("/");
   revalidatePath("/business");
   revalidatePath("/subscription");
-  revalidatePath("/profile");
   revalidatePath("/discover");
 };
 

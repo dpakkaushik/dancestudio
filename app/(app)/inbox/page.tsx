@@ -42,9 +42,19 @@ export default async function InboxPage({ searchParams }: { searchParams: Promis
      plan's answer alone now. One round trip fewer. */
   /* ⚠ and the kinds of ask this person has switched off (3 Oct 2026) — it rides
      the batch that was already awaited, and answers [] rather than throwing */
-  const [memberships, plan, inboxOff] = await Promise.all([findMyMemberships(supabase), findMyArtistPlan(supabase), findMyInboxOff(supabase, user.id)]);
-  /* ⚠ ENQUIRIES ARE BACK ON THIS DESK (2 Oct 2026, the user: "shift back enquiries to inbox from home tools for all profiles") — the reads `/enquiries` made, through one loader shared with a studio's and a crew's Inbox */
-  const [{ show }, enq] = await Promise.all([searchParams, loadEnquiries(supabase, { kind: "person", userId: user.id, memberships })]);
+  /* ⚠ THE PRACTICES RIDE THE FIRST ROUND (10 Oct 2026, the user: "make sure app
+     is fast and smooth on every page"): they depend on nothing else here, and
+     measured, they were a round trip of their own at the END of the page, after
+     the enquiries and after the asks — six rounds one after another. Read for
+     sixty days back; what that keeps is decided below. */
+  const nowIso = stampNowIso();
+  const [memberships, plan, inboxOff, practicesRaw, { show }] = await Promise.all([
+    findMyMemberships(supabase),
+    findMyArtistPlan(supabase),
+    findMyInboxOff(supabase, user.id),
+    findMyCrewPractices(supabase, { from: new Date(Date.parse(nowIso) - 60 * 86400000).toISOString() }),
+    searchParams,
+  ]);
   const businesses = memberships.map((m) => m.business);
   const businessIds = businesses.map((t) => t.id);
   /* the rooms asked of the STUDIOS you own, and the rooms your own PAGE has asked for */
@@ -72,7 +82,10 @@ export default async function InboxPage({ searchParams }: { searchParams: Promis
      20261002140000, which answers none until it is applied). Each now lands
      under its column's Completed. */
   const VENUE_ALL: Array<"requested" | "accepted" | "declined"> = ["requested", "accepted", "declined"];
-  const [classPeopleIn, invitesIn, invitesInAnswered, classPeopleOut, invitesOutByBusiness, crewIn, crewOut, venueIn, venueOut] = await Promise.all([
+  /* ⚠ ENQUIRIES ARE BACK ON THIS DESK (2 Oct 2026, the user: "shift back enquiries to inbox from home tools for all profiles") — the reads `/enquiries` made, through one loader shared with a studio's and a crew's Inbox.
+     ⚠ It rides the same round as the asks (10 Oct 2026): it needs the memberships and nothing the asks need, and it was a round of its own. */
+  const [enq, classPeopleIn, invitesIn, invitesInAnswered, classPeopleOut, invitesOutByBusiness, crewIn, crewOut, venueIn, venueOut] = await Promise.all([
+    loadEnquiries(supabase, { kind: "person", userId: user.id, memberships }),
     findMyPendingClassPeople(supabase, [...ALL], { withdrawn: true }),
     findMyPendingInvites(supabase),
     findMyAnsweredInvites(supabase),
@@ -95,8 +108,7 @@ export default async function InboxPage({ searchParams }: { searchParams: Promis
      Completed rather than vanishing the moment the evening passes. A PAST
      practice nobody answered is left out — it waits on nobody now, and a
      Reject button on last Tuesday would be a control that means nothing. */
-  const nowIso = stampNowIso();
-  const practiceIn = (await findMyCrewPractices(supabase, { from: new Date(Date.parse(nowIso) - 60 * 86400000).toISOString() })).filter(
+  const practiceIn = practicesRaw.filter(
     (p) => p.myStatus !== "leader" && p.status !== "cancelled" && (p.startsAt >= nowIso || p.myStatus !== "asked")
   );
 

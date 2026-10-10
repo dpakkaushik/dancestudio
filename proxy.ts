@@ -7,8 +7,9 @@ export async function proxy(request: NextRequest) {
 
 /** WHAT THE SESSION REFRESH IS ALLOWED TO COST (11 Sep 2026).
  *
- *  `updateSession` calls `supabase.auth.getUser()`, and for a signed-in caller
- *  that is a NETWORK ROUND TRIP to the Supabase Auth server. It has to happen —
+ *  `updateSession` used to call `supabase.auth.getUser()`, and for a signed-in caller
+ *  that is a NETWORK ROUND TRIP to the Supabase Auth server (since 10 Oct 2026 it
+ *  calls `getClaims()`, which verifies the token locally — see that file). It has to happen —
  *  it is what revalidates the token and rewrites the cookie when it rotates —
  *  but it should happen on requests that are about a person, and the matcher
  *  used to fire it on very nearly everything.

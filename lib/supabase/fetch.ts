@@ -26,7 +26,24 @@ const PAUSES_MS = [300, 900];
 
 const pause = (ms: number) => new Promise<void>((r) => setTimeout(r, ms));
 
+/** TIMING, OPT-IN (10 Oct 2026, the user: "make sure app is fast and smooth on
+ *  every page"). With `DOS_TIMING=1` in the server's environment every request
+ *  this client makes is logged with when it started and how long it took, so a
+ *  slow page names the read that made it slow instead of being guessed at. Off
+ *  by default, and never on in production. */
+const TIMING = process.env.DOS_TIMING === "1";
+
 export const resilientFetch: typeof fetch = async (input, init) => {
+  if (!TIMING) return attempt(input, init);
+  const started = Date.now();
+  const res = await attempt(input, init);
+  const url = new URL(typeof input === "string" ? input : input instanceof URL ? input.href : input.url);
+  const method = (init?.method ?? "GET").toUpperCase();
+  console.log(`[supabase-t] ${started} ${String(Date.now() - started).padStart(5)}ms ${method} ${url.pathname}${url.search.slice(0, 90)}`);
+  return res;
+};
+
+const attempt: typeof fetch = async (input, init) => {
   const method = (init?.method ?? (input instanceof Request ? input.method : "GET")).toUpperCase();
   if (!IDEMPOTENT.has(method)) {
     return fetch(input, init);

@@ -232,7 +232,18 @@ $forwards = @(
   # a pointer that is not a uuid must NOT be spliced into a path
   @("/memberships/new?business=not-a-uuid", "/memberships"),
   # a second copy of another screen (5 Oct 2026, stage 2)
-  @("/classes", "/discover")
+  @("/classes", "/discover"),
+  # eight page files that only forwarded (10 Oct 2026) - four in next.config.ts,
+  # and four answered by the proxy because they depend on who is signed in; to a
+  # stranger those send to sign in, as the pages did (/enquiries never asked)
+  @("/managed", "/my-classes"),
+  @("/business/$fake/enquiries", "/business/$fake/inbox"),
+  @("/crews/$fake/manage/enquiries", "/crews/$fake/inbox"),
+  @("/crews/$fake/manage/earnings", "/crews/$fake/manage"),
+  @("/profile", "/login"),
+  @("/stats?tab=history", "/login"),
+  @("/assets", "/login"),
+  @("/enquiries", "/inbox")
 )
 $lost = @()
 foreach ($f in $forwards) {

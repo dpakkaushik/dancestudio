@@ -101,7 +101,6 @@ export async function respondToClassAskAction(input: {
   try {
     await respondToClassAsk(supabase, parsed.data.classPersonId, parsed.data.accept);
     revalidatePeopleSurfaces();
-    revalidatePath("/profile");
     return { error: null };
   } catch (error: unknown) {
     return { error: error instanceof Error ? error.message : "Could not answer" };
