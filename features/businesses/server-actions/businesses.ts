@@ -52,7 +52,7 @@ const createBusinessSchema = z
        at least one at birth — the check below, and the database's own inside
        `create_business_with_owner`. An artist page names none: it is provisioned
        by Home, and the PERSON's styles are what their page shows. */
-    styles: z.array(z.string().trim().min(1).max(40)).max(12),
+    styles: z.array(z.string().trim().min(1).max(40)).max(100),
     /* WHERE IT IS (11 Sep 2026): the pin from the sheet's map, when one was
        placed. Optional, because an artist page has no floor and a studio whose
        owner skipped the map still gets made — on its city's centroid, the way

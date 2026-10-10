@@ -121,4 +121,11 @@ $studioClear = ($null -eq $whyStudio) -or ("$whyStudio" -eq "null") -or ("$whySt
 "9. why_no_class: a studio -> nothing ('$whyStudio') $(if ($studioClear) {'-- OK'} else {'-- !!! FAILED !!!'})"
 if (-not $studioClear) { $pass = $false }
 
+# THE STUDIO THIS RUN MADE GOES (10 Oct 2026): it is LISTED, so left behind it
+# sat on Discover under the kept test-phone owner ("Class Studio {stamp}") until
+# the leftover guard found it. New-Studio registered it; this deletes it and
+# reads the delete back. The phone account itself is never registered.
+Remove-ProofWorld
+if (@($script:ProofLeftovers).Count -gt 0) { $pass = $false }
+
 if ($pass) { "`nALL CLASS RLS CHECKS PASSED"; exit 0 } else { "`nCLASS RLS CHECKS FAILED"; exit 1 }

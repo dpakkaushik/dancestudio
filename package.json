@@ -9,6 +9,7 @@
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
     "audit:reads": "node scripts/audit-reads.mjs",
+    "guard:leftovers": "node scripts/leftover-guard.js",
     "test:e2e": "playwright test"
   },
   "dependencies": {

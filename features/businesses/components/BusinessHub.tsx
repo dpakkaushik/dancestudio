@@ -812,7 +812,7 @@ export function BusinessHub({
                       studio picked its styles one way at birth and another way
                       from its own band (`StylesRowEditor`, which opens this same
                       picker). It searches, which is what 66 rows need. */}
-                  <DosStyleMultiPicker value={styles} onChange={setStyles} max={8} />
+                  <DosStyleMultiPicker value={styles} onChange={setStyles} />
                 </>
               )}
 

@@ -36,9 +36,12 @@ const has = (f) => argv.includes(f);
 const emails = argv.reduce((acc, a, i) => (a === "--email" && argv[i + 1] ? [...acc, argv[i + 1].toLowerCase()] : acc), []);
 const APPLY = has("--apply");
 const JUNK = has("--junk");
-const TEST_PHONES = ["919999999999", "918888888888"];
-/* the prefixes the proof scripts and the e2e suites mint, @example.com only */
-const JUNK_EMAIL = /^(e2e|ev|mng|pp|follow|srch|prof|st|look|stats|crew|evt|enq|mgd|pay|rf|wh|inv|cls|near|sl)-[^@]*@example\.com$/i;
+/* the prefixes the proof scripts, the shoots and the e2e suites mint (@example.com
+   only), and the two kept test phones — ONE list, shared with
+   cleanup-proof-leftovers.js and leftover-guard.js (10 Oct 2026: this file's own
+   copy knew 21 prefixes and missed a dozen families) */
+const { JUNK_EMAIL, KEEP_PHONES } = require("./proof-patterns");
+const TEST_PHONES = [...KEEP_PHONES];
 
 async function call(method, url, body) {
   const res = await fetch(url, { method, headers: H, body: body ? JSON.stringify(body) : undefined });

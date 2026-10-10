@@ -57,9 +57,18 @@ const SHOW_KEPT = process.argv.includes("--show-kept");
    ⚠ All three are `@example.com`, which is the rail: a real person never is, so
    however broad a prefix looks it cannot reach one. `demo.*` is anchored
    separately by isDemo() and is unaffected. */
-const JUNK_EMAIL =
-  /^((ev|mng|pp|follow|srch|e2e|prof|st|stats|crew|evt|enq|mgd|pay|rf|wh|inv|cls|near|sl|mod|panel|shots|orghome|proof|att|set|rooms|leads|enroll|ratecheck|sv-admin|staffproof|em)-[^@]*|(shot|tiles)\.[^@]*)@example\.com$/i;
-const JUNK_NAMES = new Set(["Studio Test", "Priya Test"]);
+/* ⚠ 10 Oct 2026: THE PATTERNS LIVE IN scripts/proof-patterns.js NOW — this file and
+   remove-accounts.js had drifted apart, and both missed a dozen families the newer
+   scripts mint. One list, read by both, and by scripts/leftover-guard.js. */
+const {
+  JUNK_EMAIL,
+  JUNK_NAMES,
+  JUNK_TENANT_NAME,
+  JUNK_OWNER_ONLY_NAME,
+  JUNK_CREW_NAME,
+  KEEP_PHONES,
+  isDemo,
+} = require("./proof-patterns");
 
 /* THE BUSINESSES THE PROOF SCRIPTS NAME, verbatim. Ownership alone is not
    enough: the two test PHONE accounts are kept on purpose (below), so every
@@ -67,15 +76,15 @@ const JUNK_NAMES = new Set(["Studio Test", "Priya Test"]);
    Discover, called things like "Enroll Studio 142804" (found 10 Sep 2026); and
    the demo owner holds a "Mandate Test …" from an early paid-webhook run. A name
    match sweeps one too, but only when its owner is a junk account, one of those
-   kept phones or a demo account, so a real business can never be caught by it. */
-const JUNK_TENANT_NAME =
-  /^(Webhook Proof Studio|Enroll Studio|Managed [AB]|Near Studio|Event Proof Studio|Rival Studio|Rooms Proof Studio|Leads Proof Studio|Class Studio|Att Proof Studio|Pay Proof Studio|Refund Proof Studio|Crew Proof Studio|Follow Proof Studio|Media Studio|Notif Proof Studio|Stat Proof Studio|Income Proof Studio|Settings Proof Studio|Slug Proof Studio|Enquiry Proof Studio|Earn Proof Studio|Staff Proof Studio|PP (Listed|Private) Studio|Private Studio|Other Studio|Artist Business|Studio [AB]|Mandate (Test|Proof)( Studio)?|Mod (Studio|Org)|E2E (Studio|Owner)|Shot (Studio|Org|Owner)|Timeline Test|Zq)\b/i;
-/* the two Supabase TEST PHONE numbers are how paid-webhook.spec.ts and the older
+   kept phones or a demo account, so a real business can never be caught by it.
+   (JUNK_TENANT_NAME, KEEP_PHONES and isDemo come from scripts/proof-patterns.js.)
+   ⚠ "EEE Dance Studio" is ALSO the demo world's real studio, so that name
+   (JUNK_OWNER_ONLY_NAME) counts only under a junk-EMAIL owner — never under a
+   demo account or a kept test phone.
+   The two Supabase TEST PHONE numbers are how paid-webhook.spec.ts and the older
    proofs sign in. They have no email, so "no email" alone would sweep them up on
    every run and the next phone-based proof would fail with "finish onboarding
    first" — they are kept, and scripts/ensure-test-phone-profiles.js shapes them. */
-const KEEP_PHONES = new Set(["919999999999", "918888888888"]);
-const isDemo = (email) => Boolean(email && /^demo\./i.test(email));
 
 async function call(method, url, body, extraHeaders) {
   const res = await fetch(url, { method, headers: { ...H, ...(extraHeaders || {}) }, body: body ? JSON.stringify(body) : undefined });
@@ -134,7 +143,10 @@ async function allAuthUsers() {
     return KEEP_PHONES.has(phoneOf.get(owner)) || isDemo(emailOf.get(owner));
   };
   const junkTenants = businesses.filter(
-    (t) => !ownedByGood.has(t.id) || (JUNK_TENANT_NAME.test(t.name) && testOwned(t))
+    (t) =>
+      !ownedByGood.has(t.id) ||
+      (JUNK_TENANT_NAME.test(t.name) && testOwned(t)) ||
+      (JUNK_OWNER_ONLY_NAME.test(t.name) && junkIds.has(ownerOf.get(t.id)))
   );
   const junkTenantIds = new Set(junkTenants.map((t) => t.id));
 
@@ -147,7 +159,6 @@ async function allAuthUsers() {
      one too, but only under a test leader, so a real crew can never be caught
      by its name. A real person's crew (led by a kept profile) is never touched. */
   const crews = await getAll("crews?select=id,name,city,leader_id&deleted_at=is.null&order=id");
-  const JUNK_CREW_NAME = /^(E2E Crew|Proof Crew|Crew Proof|Shot Crew|Tiles Crew|Zq\d*)\b/i;
   const testLed = (c) =>
     junkIds.has(c.leader_id) || KEEP_PHONES.has(phoneOf.get(c.leader_id)) || isDemo(emailOf.get(c.leader_id));
   const junkCrews = crews.filter((c) => !liveGood.has(c.leader_id) || (JUNK_CREW_NAME.test(c.name) && testLed(c)));

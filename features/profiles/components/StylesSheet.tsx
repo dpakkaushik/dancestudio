@@ -29,7 +29,8 @@ export function StylesSheet({
   onSave,
   pending,
   lastWords,
-  max = 12,
+  /* no limit (10 Oct 2026, the user) — 100 is the database's safety ceiling */
+  max = 100,
   onClose,
   label = "Add a dance style",
   title = "＋ Add a dance style",

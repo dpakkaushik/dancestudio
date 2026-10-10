@@ -29,7 +29,8 @@ const schema = z.object({
       })
     )
     .max(12),
-  styles: z.array(z.string().trim().min(1).max(40)).max(12),
+  /* no limit on dance styles (10 Oct 2026) — 100 is the database's safety ceiling */
+  styles: z.array(z.string().trim().min(1).max(40)).max(100),
   /* the same shape the business phone takes (settings slice) — an empty box is
      null, which is how a person TAKES THEIR NUMBER DOWN without asking anyone */
   /* ⚠ OMITTED = LEAVE IT AS IT IS (6 Oct 2026, decision 4): the number is its own
@@ -90,14 +91,14 @@ export async function updateMyProfileAction(input: MyProfileInput): Promise<{ er
   }
 }
 
-const learnSchema = z.object({ styles: z.array(z.string().trim().min(1).max(40)).max(12) });
+const learnSchema = z.object({ styles: z.array(z.string().trim().min(1).max(40)).max(100) });
 
 /** THE STYLES SOMEBODY WANTS TO LEARN (11 Oct 2026) — onboarding's first styles
  *  step and Discover's Recommendation settings. Its own door, because the
  *  column is private and `update_my_profile` takes the public profile. */
 export async function setMyLearnStylesAction(input: { styles: string[] }): Promise<{ error: string | null; styles?: string[] }> {
   const parsed = learnSchema.safeParse(input);
-  if (!parsed.success) return { error: "Pick up to twelve styles" };
+  if (!parsed.success) return { error: "Those styles could not be saved — check the names and try again" };
   const supabase = await createSupabaseServerClient();
   const {
     data: { user },

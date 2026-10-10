@@ -61,6 +61,7 @@ function Check($n, $label, $ok) {
 function New-EmailUser($email, $name, $role) {
   $u = Invoke-RestMethod -Method Post -Uri "$base/auth/v1/admin/users" -Headers $adminH -Body (@{
     email = $email; password = "Proof-passw0rd!"; email_confirm = $true } | ConvertTo-Json)
+  Register-ProofUser $u.id   # before the profile insert, so a failure there still cleans the account
   Invoke-RestMethod -Method Post -Uri "$base/rest/v1/profiles" -Headers $svcH -Body (@{
     id = $u.id; full_name = $name; role = $role; city = "Pune"; created_by = $u.id; updated_by = $u.id } | ConvertTo-Json) | Out-Null
   # 26 Sep 2026: the organization LOGIN is retired - every account here is a person
@@ -85,15 +86,18 @@ function Remove-Object($token, $path) {
 
 $pass = $true
 $stamp = Get-Date -Format "HHmmss"
-$me = New-EmailUser "media-me-$stamp@example.com" "Media Me $stamp" "user"
-$other = New-EmailUser "media-other-$stamp@example.com" "Media Other $stamp" "user"
-$owner = New-EmailUser "media-owner-$stamp@example.com" "Media Owner $stamp" "user"
-$ta = New-Studio $owner.token "Media Studio $stamp" "Kothrud" "Pune"
-Subscribe-Studio ([string]$ta.id)
-$crew = Rpc (Api $me.token) "create_crew" @{ p_name = "Media Crew $stamp"; p_city = "Pune"; p_style = "Hip-Hop"; p_member_ids = @() }
 $uploaded = @()
 
 try {
+  # the world is built INSIDE the try, so a set-up failure still reaches the cleanup
+  $me = New-EmailUser "media-me-$stamp@example.com" "Media Me $stamp" "user"
+  $other = New-EmailUser "media-other-$stamp@example.com" "Media Other $stamp" "user"
+  $owner = New-EmailUser "media-owner-$stamp@example.com" "Media Owner $stamp" "user"
+  $ta = New-Studio $owner.token "Media Studio $stamp" "Kothrud" "Pune"
+  Subscribe-Studio ([string]$ta.id)
+  $crew = Rpc (Api $me.token) "create_crew" @{ p_name = "Media Crew $stamp"; p_city = "Pune"; p_style = "Hip-Hop"; p_member_ids = @() }
+  Register-ProofCrew $crew
+
   # 1. YOUR OWN FOLDER, AND ONLY YOURS
   $mine = "avatars/$($me.id)/proof-$stamp.png"
   Upload $me.token $mine | Out-Null

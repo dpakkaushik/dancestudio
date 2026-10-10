@@ -93,4 +93,11 @@ if (-not $anonSeesA -or $anonSeesB) { $pass = $false }
 # B's owner is this run's; the studio it made stays unlisted and soft-deletable by the cleanup script
 Invoke-RestMethod -Method Delete -Uri "$base/auth/v1/admin/users/$($b.user.id)" -Headers $svcH | Out-Null
 
+# THE STUDIOS THIS RUN MADE GO (10 Oct 2026): A's is LISTED, so left behind it
+# sat on Discover under the kept test-phone owner ("Studio A {stamp}") until the
+# leftover guard found it. New-Studio registered both; this deletes them and
+# reads the deletes back. The phone account itself is never registered.
+Remove-ProofWorld
+if (@($script:ProofLeftovers).Count -gt 0) { $pass = $false }
+
 if ($pass) { "`nALL TENANT RLS CHECKS PASSED"; exit 0 } else { "`nTENANT RLS CHECKS FAILED"; exit 1 }

@@ -39,4 +39,18 @@ foreach ($s in $scripts) {
 }
 $passed = @($results | Where-Object ok).Count
 Write-Output ("{0}/{1} proofs green" -f $passed, $results.Count)
-if ($passed -ne $results.Count) { exit 1 }
+
+# THE LEFTOVER GUARD, LAST (10 Oct 2026). Every proof now cleans up in a finally
+# that checks its own result and prints "CLEANUP -- FAIL" for anything it left;
+# this is the second net, read-only: it fails if ANY throwaway admin, test-named
+# LISTED studio or throwaway profile is live on the database the proofs just used,
+# whichever script (or earlier run) left it. It deletes nothing.
+Write-Output ""
+Write-Output "leftover guard (scripts/leftover-guard.js, read-only):"
+$guardOut = & node (Join-Path $root "scripts\leftover-guard.js") 2>&1 | Out-String
+$guardCode = $LASTEXITCODE
+($guardOut -split "`r?`n" | Where-Object { $_.Trim() -ne "" }) | ForEach-Object { Write-Output ("  {0}" -f $_) }
+$guardOk = ($guardCode -eq 0)
+Write-Output ("{0} leftover guard" -f $(if ($guardOk) { "PASS" } else { "FAIL" }))
+
+if (($passed -ne $results.Count) -or (-not $guardOk)) { exit 1 }

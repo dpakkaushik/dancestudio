@@ -35,8 +35,151 @@ function New-Studio($token, $name, $area, $city, $styles = @("Hip-Hop")) {
   Assert-City $city
   Sweep-Own-Leftovers $token $name
   $h = @{ apikey = $anon; Authorization = "Bearer $token"; "Content-Type" = "application/json"; Prefer = "return=representation" }
-  return Invoke-RestMethod -Method Post -Uri "$base/rest/v1/rpc/create_business_with_owner" -Headers $h -Body (@{
+  $made = Invoke-RestMethod -Method Post -Uri "$base/rest/v1/rpc/create_business_with_owner" -Headers $h -Body (@{
     p_name = $name; p_type = "studio"; p_area = $area; p_city = $city; p_styles = $styles } | ConvertTo-Json)
+  Register-ProofBusiness $made   # the moment it exists, so a crash a line later still cleans it up
+  return $made
+}
+
+# ---------------------------------------------------------------------------
+# WHAT A PROOF MADE, AND ONE CLEANUP THAT CHECKS ITS OWN RESULT (10 Oct 2026).
+#
+# The user: "Make every proof and shoot clean up in a 'finally' that checks its
+# own result ... Nothing deletes on a schedule." An audit of every rls-proof-*.ps1
+# found the same three shapes over and over:
+#   * the world was built BEFORE the `try`, so a failure in setup skipped the
+#     `finally` altogether and left accounts and studios on production;
+#   * the `finally` deleted with $ErrorActionPreference = Stop, so the FIRST
+#     failed delete aborted every delete after it (the 20 Sep search-proof leak:
+#     five businesses, three of them LISTED on Discover);
+#   * or it swallowed every failure in try{}catch{}, so nobody ever learned what
+#     was left - which is how 484 throwaway platform admins piled up for 13 days.
+#
+# So: REGISTER every id the moment it is created (New-Studio and New-Artist-Page
+# do it themselves; a proof calls Register-ProofUser / -Crew / -Admin / -Business
+# for anything it makes by hand), and end every `finally` with Remove-ProofWorld.
+# It deletes in dependency order, each delete standing on its own, READS EACH ONE
+# BACK, and prints every leftover as a "CLEANUP -- FAIL" line - which run-proofs.ps1
+# counts as a red - and sets $pass = $false so the proof exits 1.
+#
+# The two kept test PHONE accounts are never registered as users (a phone-based
+# proof signs them in; it does not make them), so nothing here can delete them.
+$script:ProofMade = @{
+  users      = New-Object System.Collections.ArrayList
+  businesses = New-Object System.Collections.ArrayList
+  crews      = New-Object System.Collections.ArrayList
+  admins     = New-Object System.Collections.ArrayList
+}
+$script:ProofLeftovers = @()
+
+# an id out of whatever a call handed back: a bare uuid string, a row, or a
+# one-row array (Invoke-RestMethod's shape for a `return=representation` insert)
+function Get-ProofId($x) {
+  if ($null -eq $x) { return "" }
+  if ($x -is [string]) { return $x.Trim('"') }
+  $first = @($x)[0]
+  if ($null -eq $first) { return "" }
+  if ($first -is [string]) { return $first.Trim('"') }
+  if ($first.PSObject.Properties["id"]) { return [string]$first.id }
+  return [string]$first
+}
+function Add-ProofMade($kind, $idOrRow) {
+  $id = Get-ProofId $idOrRow
+  if (-not $id -or $id -eq "null") { return }
+  if (-not $script:ProofMade[$kind].Contains($id)) { [void]$script:ProofMade[$kind].Add($id) }
+}
+function Register-ProofUser($idOrRow)     { Add-ProofMade "users" $idOrRow }
+function Register-ProofBusiness($idOrRow) { Add-ProofMade "businesses" $idOrRow }
+function Register-ProofCrew($idOrRow)     { Add-ProofMade "crews" $idOrRow }
+# a platform_admins row a proof GRANTED; Remove-ProofWorld revokes it (soft, the way
+# revoke-throwaway-admins.js does) before the account is deleted, and reads it back
+function Register-ProofAdmin($userId)     { Add-ProofMade "admins" $userId }
+
+# a failed web call's status code and the first words of its body, for the report
+function Get-ProofStatus($err) {
+  try { return [int]$err.Exception.Response.StatusCode } catch { return 0 }
+}
+function Get-ProofErr($err) {
+  $code = Get-ProofStatus $err
+  $msg = [string]$err.Exception.Message
+  if ($msg.Length -gt 140) { $msg = $msg.Substring(0, 140) }
+  if ($code) { return "HTTP $code $msg" } else { return $msg }
+}
+function Get-ProofRowCount($uri) {
+  $res = Invoke-WebRequest -Method Get -Uri $uri -Headers $svcH -UseBasicParsing
+  $t = [string]$res.Content
+  if ($t.Trim() -eq "[]" -or $t.Trim() -eq "") { return 0 }
+  return @(($t | ConvertFrom-Json) | Where-Object { $null -ne $_ }).Count
+}
+
+# Delete everything this proof registered. Never throws: every step has its own
+# try, every failure is collected, and the list is printed at the end. Returns
+# nothing; the verdict is $script:ProofLeftovers and $script:pass.
+#
+# Order matters: businesses first (their classes, rooms, seats and memberships
+# cascade with them), then crews, then admin rights REVOKED, then the accounts -
+# because deleting an account a business still names is refused or orphans it.
+function Remove-ProofWorld {
+  $left = New-Object System.Collections.ArrayList
+  $userH = @{ apikey = $svcH.apikey; Authorization = $svcH.Authorization }
+
+  foreach ($id in @($script:ProofMade.businesses)) {
+    try {
+      Invoke-WebRequest -Method Delete -Uri "$base/rest/v1/businesses?id=eq.$id" -Headers $svcH -UseBasicParsing | Out-Null
+      if ((Get-ProofRowCount "$base/rest/v1/businesses?id=eq.$id&select=id") -gt 0) { [void]$left.Add("business $id (still there after the delete)") }
+    } catch { [void]$left.Add("business $id ($(Get-ProofErr $_))") }
+  }
+  foreach ($id in @($script:ProofMade.crews)) {
+    try {
+      Invoke-WebRequest -Method Delete -Uri "$base/rest/v1/crews?id=eq.$id" -Headers $svcH -UseBasicParsing | Out-Null
+      if ((Get-ProofRowCount "$base/rest/v1/crews?id=eq.$id&select=id") -gt 0) { [void]$left.Add("crew $id (still there after the delete)") }
+    } catch { [void]$left.Add("crew $id ($(Get-ProofErr $_))") }
+  }
+  foreach ($id in @($script:ProofMade.admins)) {
+    try {
+      $now = (Get-Date).ToUniversalTime().ToString("o")
+      Invoke-WebRequest -Method Patch -Uri "$base/rest/v1/platform_admins?user_id=eq.$id&deleted_at=is.null" -Headers $svcH -Body (@{ deleted_at = $now } | ConvertTo-Json) -UseBasicParsing | Out-Null
+      if ((Get-ProofRowCount "$base/rest/v1/platform_admins?user_id=eq.$id&deleted_at=is.null&select=user_id") -gt 0) {
+        [void]$left.Add("PLATFORM ADMIN right for $id (still live after the revoke)")
+      }
+    } catch { [void]$left.Add("PLATFORM ADMIN right for $id ($(Get-ProofErr $_))") }
+  }
+  foreach ($id in @($script:ProofMade.users)) {
+    try {
+      Invoke-WebRequest -Method Delete -Uri "$base/auth/v1/admin/users/$id" -Headers $userH -UseBasicParsing | Out-Null
+    } catch {
+      # 404 = already gone (a cascade, or an earlier delete) - that is the outcome we wanted
+      if ((Get-ProofStatus $_) -ne 404) { [void]$left.Add("account $id ($(Get-ProofErr $_))"); continue }
+    }
+    try {
+      Invoke-WebRequest -Method Get -Uri "$base/auth/v1/admin/users/$id" -Headers $userH -UseBasicParsing | Out-Null
+      [void]$left.Add("account $id (still there after the delete)")
+    } catch {
+      if ((Get-ProofStatus $_) -ne 404) { [void]$left.Add("account $id (could not read it back: $(Get-ProofErr $_))") }
+    }
+  }
+
+  $script:ProofLeftovers = @($left)
+  $made = "$($script:ProofMade.businesses.Count) business(es), $($script:ProofMade.crews.Count) crew(s), $($script:ProofMade.admins.Count) admin right(s), $($script:ProofMade.users.Count) account(s)"
+  if ($left.Count) {
+    $script:pass = $false
+    Write-Output "   CLEANUP -- FAIL: $($left.Count) thing(s) this proof made are STILL ON PRODUCTION:"
+    foreach ($l in $left) { Write-Output "   CLEANUP -- FAIL:   $l" }
+    Write-Output "   (scripts/leftover-guard.js will name them too; nothing deletes on a schedule)"
+  } else {
+    Write-Output "   (cleanup checked: $made deleted and read back gone)"
+  }
+}
+
+# For a cleanup step a proof does BY HAND (a storage object, a row by name, a
+# profile restored): run it, and on failure add it to the same leftovers report.
+function Invoke-ProofCleanup($label, [scriptblock]$action) {
+  try { & $action | Out-Null }
+  catch {
+    $script:pass = $false
+    $script:ProofLeftovers = @($script:ProofLeftovers) + "$label ($(Get-ProofErr $_))"
+    Write-Output "   CLEANUP -- FAIL:   $label ($(Get-ProofErr $_))"
+  }
 }
 
 # ---------------------------------------------------------------------------
@@ -100,8 +243,10 @@ function Sweep-Own-Leftovers($token, $name) {
 function New-Artist-Page($token, $name, $area, $city) {
   Assert-City $city
   $h = @{ apikey = $anon; Authorization = "Bearer $token"; "Content-Type" = "application/json"; Prefer = "return=representation" }
-  return Invoke-RestMethod -Method Post -Uri "$base/rest/v1/rpc/create_business_with_owner" -Headers $h -Body (@{
+  $made = Invoke-RestMethod -Method Post -Uri "$base/rest/v1/rpc/create_business_with_owner" -Headers $h -Body (@{
     p_name = $name; p_type = "artist_page"; p_area = $area; p_city = $city } | ConvertTo-Json)
+  Register-ProofBusiness $made
+  return $made
 }
 
 # ---------------------------------------------------------------------------

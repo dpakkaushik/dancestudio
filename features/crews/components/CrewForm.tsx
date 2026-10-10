@@ -115,7 +115,7 @@ export function CrewForm({ defaultCity, sheet = false }: { defaultCity: string |
           <div style={FORM_LABEL}>DANCE STYLES</div>
           {/* the app's one style list (9561), several at once since 2 Oct 2026 —
               searchable, "All styles" above the list and exclusive both ways */}
-          <DosStyleMultiPicker value={styles} onChange={setStyles} all max={8} />
+          <DosStyleMultiPicker value={styles} onChange={setStyles} all />
 
           {/* THE CREW'S NUMBER AND ADDRESS (26 Sep 2026) — the crew's own, asked
               for here rather than copied off the leader's login; both editable

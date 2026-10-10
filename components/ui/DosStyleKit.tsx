@@ -289,7 +289,10 @@ export function DosStyleMultiPicker({
   value,
   onChange,
   all = false,
-  max = 8,
+  /* no limit (10 Oct 2026, the user: "no limit of 12 dance styles should be
+     unlimited") — 100 is the database's safety ceiling, and the registry holds
+     about fifty, so nobody can reach it by picking */
+  max = 100,
   ariaLabel = "Add a dance style",
 }: {
   value: string[];

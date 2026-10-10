@@ -57,7 +57,7 @@ const businessProfileSchema = z.object({
   contactEmail: z.string().trim().email("that is not an email address").max(254).nullable().optional(),
   /* THE DANCE STYLES (19 Sep 2026): omitted → unchanged. The database decides
      whether an empty list is allowed — a studio's is not (`20260919190000`) */
-  styles: z.array(z.string().trim().min(1).max(40)).max(12).optional(),
+  styles: z.array(z.string().trim().min(1).max(40)).max(100).optional(),
 });
 export type BusinessProfileActionInput = z.infer<typeof businessProfileSchema>;
 

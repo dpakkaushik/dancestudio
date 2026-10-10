@@ -54,6 +54,7 @@ function Check($n, $label, $ok) {
 function New-EmailUser($email, $name, $role) {
   $u = Invoke-RestMethod -Method Post -Uri "$base/auth/v1/admin/users" -Headers $adminH -Body (@{
     email = $email; password = "Proof-passw0rd!"; email_confirm = $true } | ConvertTo-Json)
+  Register-ProofUser ([string]$u.id)   # before the profile, so a failed insert is still cleaned up
   Invoke-RestMethod -Method Post -Uri "$base/rest/v1/profiles" -Headers $svcH -Body (@{
     id = $u.id; full_name = $name; role = $role; city = "Pune"; created_by = $u.id; updated_by = $u.id } | ConvertTo-Json) | Out-Null
   # 26 Sep 2026: the organization LOGIN is retired - every account here is a person
@@ -64,17 +65,20 @@ function New-EmailUser($email, $name, $role) {
 $pass = $true
 $stamp = Get-Date -Format "HHmmss"
 $tag = "Zq$stamp"   # a token no real row carries, so every match is ours
-$ownerA = New-EmailUser "srch-a-$stamp@example.com" "Owner A $stamp" "user"
-$ownerB = New-EmailUser "srch-b-$stamp@example.com" "Owner B $stamp" "user"
-$dancer = New-EmailUser "srch-d-$stamp@example.com" "$tag Dancer" "user"
-$ta = New-Studio $ownerA.token "$tag Studio Kothrud" "Kothrud" "Pune"
-Subscribe-Studio ([string]$ta.id)
-$tb = New-Studio $ownerB.token "$tag Private Hall" "Andheri" "Mumbai"
-Subscribe-Studio ([string]$tb.id)
-Invoke-RestMethod -Method Patch -Uri "$base/rest/v1/businesses?id=eq.$($tb.id)" -Headers $svcH -Body (@{ visibility = "unlisted" } | ConvertTo-Json) | Out-Null
 
 try {
+  # the world is built INSIDE the try (10 Oct 2026), so a failed setup still reaches the finally
+  $ownerA = New-EmailUser "srch-a-$stamp@example.com" "Owner A $stamp" "user"
+  $ownerB = New-EmailUser "srch-b-$stamp@example.com" "Owner B $stamp" "user"
+  $dancer = New-EmailUser "srch-d-$stamp@example.com" "$tag Dancer" "user"
+  $ta = New-Studio $ownerA.token "$tag Studio Kothrud" "Kothrud" "Pune"
+  Subscribe-Studio ([string]$ta.id)
+  $tb = New-Studio $ownerB.token "$tag Private Hall" "Andheri" "Mumbai"
+  Subscribe-Studio ([string]$tb.id)
+  Invoke-RestMethod -Method Patch -Uri "$base/rest/v1/businesses?id=eq.$($tb.id)" -Headers $svcH -Body (@{ visibility = "unlisted" } | ConvertTo-Json) | Out-Null
+
   $crew = Rpc (Api $dancer.token) "create_crew" @{ p_name = "$tag Crew"; p_city = "Pune"; p_style = "Hip-Hop"; p_member_ids = @() }
+  Register-ProofCrew $crew
   # !! THE EVENT HALF OF THIS PROOF WENT WITH EVENTS (29 Sep 2026, the user:
   # "remove Organization and Events completely"). It built a public event on an
   # org BUSINESS and a draft beside it, and asserted four things about them: that

@@ -76,7 +76,7 @@ const emailShape = z.string().trim().email("That is not an email address").max(2
 const createSchema = z.object({
   name: z.string().trim().min(1, "Name your crew first").max(64),
   city,
-  styles: z.array(style).min(1, "Pick a dance style").max(12, "Twelve styles at most"),
+  styles: z.array(style).min(1, "Pick a dance style").max(100, "100 styles at most"),
   phone: phoneShape,
   email: emailShape,
   memberIds: z.array(uuid).max(50),
@@ -122,7 +122,7 @@ export async function createCrewAction(input: z.input<typeof createSchema>): Pro
 /* THE LIST OF STYLES AND THE LINKS (26 Sep 2026) — the two doors the crew's home
    band writes through; both RPCs re-check that the caller leads the crew */
 export async function setCrewStylesAction(input: { crewId: string; styles: string[] }): Promise<CrewActionResult> {
-  const parsed = z.object({ crewId: uuid, styles: z.array(z.string().trim().min(1).max(40)).min(1, "A crew dances at least one style").max(12) }).safeParse(input);
+  const parsed = z.object({ crewId: uuid, styles: z.array(z.string().trim().min(1).max(40)).min(1, "A crew dances at least one style").max(100) }).safeParse(input);
   if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "Check the styles" };
   const supabase = await requireUser();
   try {

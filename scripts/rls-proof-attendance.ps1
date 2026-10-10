@@ -66,19 +66,22 @@ $stamp = Get-Date -Format "HHmmss"
 # it cannot take a seat (guard_person_only). The refused booking below is a third PERSON's, made
 # for this run through the admin API and deleted after.
 $cEmail = "att-c-$stamp@example.com"
-$cUser = Invoke-RestMethod -Method Post -Uri "$base/auth/v1/admin/users" -Headers $svcH -Body (@{ email = $cEmail; password = "Proof-passw0rd!"; email_confirm = $true } | ConvertTo-Json)
-Invoke-RestMethod -Method Post -Uri "$base/rest/v1/profiles" -Headers $svcH -Body (@{ id = $cUser.id; full_name = "Waitlisted $stamp"; role = "user"; city = "Pune"; created_by = $cUser.id; updated_by = $cUser.id } | ConvertTo-Json) | Out-Null
-$c = Invoke-RestMethod -Method Post -Uri "$base/auth/v1/token?grant_type=password" -Headers @{ apikey = $anon; "Content-Type" = "application/json" } -Body (@{ email = $cEmail; password = "Proof-passw0rd!" } | ConvertTo-Json)
 # a session inside the check-in window (opens 30 min before start)
 $soonStart = (Get-Date).AddMinutes(10).ToString("yyyy-MM-ddTHH:mm:sszzz")
 $soonEnd = (Get-Date).AddMinutes(70).ToString("yyyy-MM-ddTHH:mm:sszzz")
 $farStart = (Get-Date).AddDays(7).ToString("yyyy-MM-ddT19:00:00zzz")
 $farEnd = (Get-Date).AddDays(7).ToString("yyyy-MM-ddT20:00:00zzz")
 
-$ta = New-Studio $a.access_token "Att Proof Studio $stamp" "Kothrud" "Pune"
-Subscribe-Studio ([string]$ta.id)
-
 try {
+  # the world is built INSIDE the try, so a failure in setup still reaches the finally
+  $cUser = Invoke-RestMethod -Method Post -Uri "$base/auth/v1/admin/users" -Headers $svcH -Body (@{ email = $cEmail; password = "Proof-passw0rd!"; email_confirm = $true } | ConvertTo-Json)
+  Register-ProofUser $cUser
+  Invoke-RestMethod -Method Post -Uri "$base/rest/v1/profiles" -Headers $svcH -Body (@{ id = $cUser.id; full_name = "Waitlisted $stamp"; role = "user"; city = "Pune"; created_by = $cUser.id; updated_by = $cUser.id } | ConvertTo-Json) | Out-Null
+  $c = Invoke-RestMethod -Method Post -Uri "$base/auth/v1/token?grant_type=password" -Headers @{ apikey = $anon; "Content-Type" = "application/json" } -Body (@{ email = $cEmail; password = "Proof-passw0rd!" } | ConvertTo-Json)
+
+  $ta = New-Studio $a.access_token "Att Proof Studio $stamp" "Kothrud" "Pune"
+  Subscribe-Studio ([string]$ta.id)
+
   # ---- free class starting soon: the register itself -------------------------
   $cL = New-TimedClass (Api $a.access_token) $ta.id "Register Soon $stamp" 0 3 $soonStart $soonEnd $b.user.id
   $sL = Session-Of $cL.id
@@ -143,9 +146,8 @@ try {
   Check 10 "Direct insert into attendance is rejected" $directBlocked
 }
 finally {
-  Invoke-RestMethod -Method Delete -Uri "$base/rest/v1/businesses?id=eq.$($ta.id)" -Headers $svcH | Out-Null
-  try { Invoke-RestMethod -Method Delete -Uri "$base/auth/v1/admin/users/$($cUser.id)" -Headers $svcH | Out-Null } catch {}
-  "   (cleanup: proof studio and the throwaway person deleted)"
+  # the proof studio and the throwaway person, deleted and read back (proof-lib.ps1)
+  Remove-ProofWorld
 }
 
 if ($pass) { "`nALL ATTENDANCE CHECKS PASSED"; exit 0 } else { "`nATTENDANCE CHECKS FAILED"; exit 1 }

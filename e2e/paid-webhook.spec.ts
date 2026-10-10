@@ -269,7 +269,12 @@ test("cashfree webhook: bad signature rejected, capture books the seat, replay i
     //    under test is the one a real person uses.
     const page = await browser.newPage();
     try {
-      const ownerEmail = `e2e-owner-${Date.now()}@example.com`;
+      /* ⚠ ONE FIXED ADDRESS (10 Oct 2026). This account is the KEPT test-phone
+         owner, not a throwaway — and a fresh `e2e-owner-{now}` address per run
+         left it carrying a throwaway email the leftover guard rightly flags
+         (and the admin API will not take an email back off). The same address
+         every run is idempotent and is this account's own. */
+      const ownerEmail = "testphone.owner@example.com";
       const patched = await fetch(`${supabaseUrl}/auth/v1/admin/users/${owner.userId}`, {
         method: "PUT",
         headers: serviceHeaders,
