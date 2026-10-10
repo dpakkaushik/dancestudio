@@ -129,6 +129,7 @@ export function StatsScreen({
   backHref,
   subjectKind,
   isMe,
+  sessionsRead = isMe,
   canBrowseBoards,
   standings,
   boardRow,
@@ -169,6 +170,14 @@ export function StatsScreen({
    *  permission: it is what the reads can answer, and each column says so rather
    *  than drawing an empty shelf that reads as a zero. */
   isMe: boolean;
+  /** ⚠ THE SESSIONS WERE READ FOR THIS SUBJECT (11 Oct 2026, the user: "full
+   *  stats page should be visible when looking at someone's profile"). True for
+   *  the caller's own record and for a signed-in reader of a PERSON, whose
+   *  public sessions `person_session_history` hands back — so the number grid's
+   *  lists, the style shelf and the whole record draw for them too. ⚠ Somebody
+   *  else's rows are their PUBLIC classes only, so the grid can count fewer than
+   *  the figures above it, which the note under the grid says. */
+  sessionsRead?: boolean;
   /** ⚠ `dance_chart` is granted to `authenticated` only, so a signed-out reader
    *  gets the standings — public for a public entity — and is told where the
    *  boards are rather than meeting an error. */
@@ -385,7 +394,7 @@ export function StatsScreen({
    *  LEFT OUT rather than drawn as 0, because `person_dance_stats` returns no
    *  artists count at all (`publicPerson.ts` hard-codes it) and a zero nobody
    *  measured is not a measurement. */
-  const grid: Array<{ label: string; n: number; colour: string; rows: Array<[string, string]> | null }> = isMe
+  const grid: Array<{ label: string; n: number; colour: string; rows: Array<[string, string]> | null }> = sessionsRead
     ? small.map(([label, n, colour, rows]) => ({ label, n, colour, rows }))
     : isPerson
       ? [
@@ -394,7 +403,9 @@ export function StatsScreen({
         ]
       : [];
   const sessionsNote = isPerson
-    ? `${name.split(" ")[0]}'s own sessions are theirs to read — the record above is counted from them.`
+    ? sessionsRead
+      ? `The lists and graphs below are ${name.split(" ")[0]}'s sessions at public classes on DanceOS.`
+      : `${name.split(" ")[0]}'s own sessions are theirs to read — the record above is counted from them.`
     : `${name}'s sessions are read by its own people — the record above is counted from them.`;
 
   return (

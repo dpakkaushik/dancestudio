@@ -144,8 +144,12 @@ async function onboard(page: Page, name: string, city: string, style = "Hip-Hop"
   await confirmCrop(page);
   await expect(page.getByLabel("Your profile photo", { exact: true })).toBeVisible({ timeout: 20_000 });
   await page.getByRole("button", { name: "Continue", exact: true }).click();
-  // styles: the grid, one picked, and the button counts it
-  await expect(page.getByText("Your dance styles")).toBeVisible();
+  // the styles to LEARN (11 Oct 2026): one picked, so the private list is exercised
+  await page.getByText("Styles you want to learn").waitFor();
+  await page.getByRole("button", { name: "Kathak", exact: true }).click();
+  await page.getByRole("button", { name: "Continue · 1 to learn" }).click();
+  // styles they already dance: the grid, one picked, and the button counts it
+  await expect(page.getByText("Styles you already dance")).toBeVisible();
   await page.getByRole("button", { name: style, exact: true }).click();
   await page.getByRole("button", { name: "Continue · 1 style" }).click();
   // socials: optional for a person

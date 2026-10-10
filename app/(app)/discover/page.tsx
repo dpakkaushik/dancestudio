@@ -14,7 +14,10 @@ import { FollowedShelf, type FollowedTile } from "@/features/discovery/component
 import { PlaceChip } from "@/features/discovery/components/PlaceChip";
 import { StudioCard } from "@/features/discovery/components/StudioCard";
 import { ArtistI, ClassI, StudioI } from "@/features/discovery/components/discover-kit";
-import { anyStyleOk, filterClasses, filterCrews, filterBusinesses, filterStyleShelf, filtersToParams, parseFilters, radiusOf, ALL_CITIES } from "@/features/discovery/filters";
+import { anyStyleOk, filterClasses, filterCrews, filterBusinesses, filterStyleShelf, filtersToParams, parseFilters, radiusOf, recommendFirst, ALL_CITIES } from "@/features/discovery/filters";
+import { RecommendationSettings } from "@/features/discovery/components/RecommendationSettings";
+import { StyleRequest } from "@/features/discovery/components/StyleRequest";
+import { findMyLearnStyles } from "@/repositories/profiles";
 import { gradientOf } from "@/features/profiles/components/profile-kit";
 import { DOS_STYLE_NAMES } from "@/lib/constants/styles";
 import { INDIA_CENTRE, centreOf, findDiscoverCities } from "@/repositories/cities";
@@ -129,10 +132,12 @@ export default async function DiscoverPage({
      means "yourself", which is the permissive answer on purpose: this is a
      presentation gate, and failing it closed would take a booking away from
      somebody entitled to one. */
-  const [profile, cities, actingAs] = await Promise.all([
+  const [profile, cities, actingAs, learnStyles] = await Promise.all([
     user ? findProfileById(supabase, user.id) : Promise.resolve(null),
     findDiscoverCities(supabase),
     user ? resolveActingAs(supabase, params.as) : Promise.resolve(null),
+    /* the styles this person wants to LEARN (11 Oct 2026) — private, read through its own door */
+    user ? findMyLearnStyles(supabase) : Promise.resolve([] as string[]),
   ]);
   /* the raw value, kept only to carry onto the cards' own hrefs so the page a
      card opens agrees with the card that sent you */
@@ -213,7 +218,8 @@ export default async function DiscoverPage({
 
   const styleCount = new Map<string, number>();
   allClasses.forEach((c) => styleCount.set(c.style, (styleCount.get(c.style) ?? 0) + 1));
-  const styleOrder = [...DOS_STYLE_NAMES].sort((a, b) => (styleCount.get(b) ?? 0) - (styleCount.get(a) ?? 0));
+  /* the style rail puts the styles to learn first, in the person's own order (11 Oct 2026) */
+  const styleOrder = [...learnStyles.filter((x) => DOS_STYLE_NAMES.includes(x)), ...[...DOS_STYLE_NAMES].filter((x) => !learnStyles.includes(x)).sort((a, b) => (styleCount.get(b) ?? 0) - (styleCount.get(a) ?? 0))];
 
   /* ⚠ NO SECOND CITY FILTER HERE (2 Oct 2026): `findPublishedClasses` already
      narrows to the city a class is HELD in — the owner's, or the studio that
@@ -245,10 +251,10 @@ export default async function DiscoverPage({
     wantsBusinesses ? findPublishedStylesByBusiness(supabase, nearby.map((t) => t.id)) : Promise.resolve(new Map<string, string[]>()),
     wantsFollows && wantsCrews ? findMyFollowedCrews(supabase) : Promise.resolve([] as FollowedCrew[]),
   ]);
-  const crews = tab === "crews" ? filterCrews(crewsRaw, filters) : [];
+  const crews = tab === "crews" ? recommendFirst(filterCrews(crewsRaw, filters), learnStyles, filters, (c) => c.styles) : [];
   /* one aggregate call for the whole crews shelf — the count every card prints */
   const crewFollowers = wantsCrews ? await findCrewFollowerCounts(supabase, crews.map((c) => c.id)) : new Map<string, number>();
-  const classes = tab === "classes" ? inCity.filter((c) => taught.has(c.id)) : inCity;
+  const classes = tab === "classes" ? recommendFirst(inCity.filter((c) => taught.has(c.id)), learnStyles, filters, (c) => [c.style]) : inCity;
 
   /* the second round: what depends on the first — the seat counts, and WHO that
      teacher is: name and face, for the card's centre. A signed-out visitor may
@@ -261,12 +267,12 @@ export default async function DiscoverPage({
     tab === "classes" ? countEnrolledBySession(supabase, classes.map((c) => c.session?.id).filter(Boolean) as string[]) : Promise.resolve(new Map<string, number>()),
     tab === "classes" ? findClassArtists(supabase, classes.map((c) => c.id)) : Promise.resolve(new Map<string, ClassArtist>()),
   ]);
-  const businesses = wantsBusinesses ? filterBusinesses(nearby, filters, stylesByBusiness) : [];
+  const businesses = wantsBusinesses ? recommendFirst(filterBusinesses(nearby, filters, stylesByBusiness), learnStyles, filters, (b) => stylesByBusiness.get(b.id) ?? []) : [];
   const followed = following.filter((f) => f.businessType === "studio");
   /* an artist narrows by style through THEIR OWN styles — the ones on their profile */
-  const artists = wantsArtists ? artistsRaw.filter((a) => anyStyleOk(filters, a.styles)) : [];
+  const artists = wantsArtists ? recommendFirst(artistsRaw.filter((a) => anyStyleOk(filters, a.styles)), learnStyles, filters, (a) => a.styles) : [];
   /* the Styles tab's own shelf, narrowed by its own filters (2 Oct 2026) */
-  const styleShelf = tab === "styles" ? filterStyleShelf(stylesShelfOrder(), filters, styleCount) : [];
+  const styleShelf = tab === "styles" ? recommendFirst(filterStyleShelf(stylesShelfOrder(), filters, styleCount), learnStyles, filters, (x) => [x]) : [];
   /* the follower count sits at the foot of every card — a number, never a name (Step 15);
      the faces come from the businesses themselves (the nearby RPC carries none) */
   /* ⚠⚠ AND THE POSTERS THE CARD SWIPES THROUGH (27 Sep 2026, the user: "Studio
@@ -438,9 +444,16 @@ export default async function DiscoverPage({
           pair the Inbox reads too. ⚠ It still shares the chip's line and still
           ellipsises before it pushes the chip off. */}
       <TopPanel tint={SKY}>
-      <h1 data-testid="discover-title" style={{ ...TAB_TITLE, color: INK }}>
-        Discover
-      </h1>
+      {/* ⚠ THE GEAR TOP RIGHT IS RECOMMENDATION SETTINGS (11 Oct 2026, the user:
+          "discover should get a setting icon on top right with option to change
+          the dance styles you want to learn") — a signed-in person's alone, since
+          the list it edits is private to them */}
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10 }}>
+        <h1 data-testid="discover-title" style={{ ...TAB_TITLE, color: INK }}>
+          Discover
+        </h1>
+        {user ? <RecommendationSettings initial={learnStyles} /> : null}
+      </div>
       <div data-testid="discover-place-row" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, marginTop: 5, minWidth: 0 }}>
         <span data-testid="discover-sub" style={{ ...TAB_SUB, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
           Dance First, Think Later!
@@ -556,6 +569,8 @@ export default async function DiscoverPage({
           ))}
         </div>
       )}
+      {/* the foot of the Styles tab: ask for a style that is missing (11 Oct 2026) */}
+      {tab === "styles" && <StyleRequest signedIn={Boolean(user)} />}
 
       {tab === "crews" && crews.length > 0 && (
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>

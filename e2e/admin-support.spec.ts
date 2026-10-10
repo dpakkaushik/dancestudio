@@ -66,6 +66,11 @@ async function onboardOrg(page: Page, name: string, city: string) {
   await page.getByRole("dialog", { name: "Crop & preview" }).getByRole("button", { name: "Use this photo" }).click();
   await expect(page.getByLabel("Your profile photo", { exact: true })).toBeVisible({ timeout: 20_000 });
   await page.getByRole("button", { name: "Continue", exact: true }).click();
+  // the styles to LEARN (11 Oct 2026): one picked, so the private list is exercised
+  await page.getByText("Styles you want to learn").waitFor();
+  await page.getByRole("button", { name: "Kathak", exact: true }).click();
+  await page.getByRole("button", { name: "Continue · 1 to learn" }).click();
+  await page.getByText("Styles you already dance").waitFor();
   await page.getByRole("button", { name: "Hip-Hop", exact: true }).click();
   await page.getByRole("button", { name: "Continue · 1 style" }).click();
   await page.getByRole("button", { name: "Skip for now →" }).click();

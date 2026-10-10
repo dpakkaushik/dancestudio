@@ -6,7 +6,7 @@ import { HeaderGrid, type GridTile } from "@/features/media/components/HeaderGri
 import { PhotoLightbox } from "@/features/media/components/PhotoLightbox";
 import { addStudioProofPhotoAction, removeStudioProofPhotoAction } from "@/features/businesses/server-actions/studioVerification";
 import { GOLD, GREEN, INK, MUTED, SUB } from "@/lib/design/tokens";
-import { whyNotAPhoto } from "@/lib/media/photo";
+import { PHOTO_MAX_WORDS, whyNotAPhoto } from "@/lib/media/photo";
 import { PROOF_BUCKET, PROOF_MAX, PROOF_MIN, proofPath, type ProofPhoto } from "@/lib/media/proof";
 /* loaded on the press, not with the page (5 Oct 2026 — see lazyClient.ts) */
 import { browserSupabase } from "@/lib/supabase/lazyClient";
@@ -204,7 +204,7 @@ export function ProofPhotos({
       />
 
       {error ? <div style={{ fontSize: 10.5, color: "#F87171", marginTop: 8, lineHeight: 1.45 }}>{error}</div> : null}
-      {!error && canWrite ? <div style={{ fontSize: 9.5, color: MUTED, marginTop: 8 }}>JPEG, PNG or WebP · up to 5 MB each · pick several at once</div> : null}
+      {!error && canWrite ? <div style={{ fontSize: 9.5, color: MUTED, marginTop: 8 }}>JPEG, PNG or WebP · up to {PHOTO_MAX_WORDS} each · pick several at once</div> : null}
 
       {lightbox !== null ? (
         <PhotoLightbox

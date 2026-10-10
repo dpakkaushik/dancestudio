@@ -52,16 +52,23 @@ export function StylesRowEditor({
     setTimeout(() => setToast(null), 2600);
   };
 
-  const commit = (next: string[], said: string) =>
+  /* ⚠ OPTIMISTIC SINCE 11 Oct 2026: a drag drops the tile where the finger let
+     go, and a list that snapped back for the length of a round trip would read
+     as the drag failing. The new list is adopted at once and the old one put
+     back if the door refuses it. */
+  const commit = (next: string[], said: string) => {
+    const before = lists;
+    adopt({ ...lists, styles: next });
     start(async () => {
       const err = await save(next);
       if (err) {
+        adopt(before);
         fire(err);
         return;
       }
-      adopt({ ...lists, styles: next });
       fire(said);
     });
+  };
 
   return (
     <>

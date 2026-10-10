@@ -217,6 +217,16 @@ export const STYLE_INFO: Record<string, StyleInfo> = {
     ],
     notable: ["Saroj Khan", "Farah Khan", "Prabhu Deva", "Remo D'Souza", "Madhuri Dixit"],
   },
+  /* added 11 Oct 2026 at the user's word ("Add Bolly-Hop as a dance style") */
+  "Bolly-Hop": {
+    family: "Bollywood", origin: "Indian dance studios and film choreography", country: "India", era: "From the 2000s",
+    history: [
+      "Bollywood's expression and filmi storytelling danced on hip-hop grooves, bounce and isolations.",
+      "Grew out of studio classes and reality-TV choreography, where film songs met street foundations.",
+      "Danced to Hindi film tracks and remixes — common in sangeet sets, showcases and competition routines.",
+    ],
+    notable: [],
+  },
   "Hip-Hop": {
     family: ST, origin: "The Bronx, New York City", country: "United States", era: "Early 1970s",
     history: [

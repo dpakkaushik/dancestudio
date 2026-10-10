@@ -133,6 +133,9 @@ export function PublicPersonPage({
         <IdentityHero
           bare
           testId="person-hero"
+          /* REPORT, AN ICON AT THE TOP RIGHT (11 Oct 2026) — it was a line at the
+             page's foot. You cannot report yourself, and the RPC refuses it too. */
+          corner={isMe ? undefined : <ReportButton subjectKind="profile" subjectId={profile.id} subjectName={profile.fullName} signedIn={signedIn} />}
           name={profile.fullName}
           grad={ring}
           /* ⚠ `KIND_WORD`, THE MAP THE OTHER FOUR SCREENS READ (20 Sep 2026, the
@@ -296,8 +299,6 @@ export function PublicPersonPage({
           accent={RC}
         />
       </div>
-      {/* you cannot report yourself, and the RPC refuses it too (10 Sep 2026) */}
-      {isMe ? null : <ReportButton subjectKind="profile" subjectId={profile.id} subjectName={profile.fullName} signedIn={signedIn} />}
     </div>
   );
 }

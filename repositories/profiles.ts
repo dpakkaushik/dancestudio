@@ -227,8 +227,14 @@ export async function searchProfiles(
   const name = q.replace(/[%_,().]/g, "");
   const digits = q.replace(/\D/g, "");
   const clauses: string[] = [];
-  /* a term that is mostly digits is a number being typed, not a name */
-  if (name.length >= 2 && digits.length < 3) clauses.push(`full_name.ilike.%${name}%`);
+  /* a term that is mostly digits is a number being typed, not a name.
+     ⚠ "MOSTLY" (10 Oct 2026): the first cut tested `digits.length < 3`, so any
+     name carrying three digits ("Crew 2049", or the e2e's own random stamp) was
+     never searched by name at all and the picker answered "Nobody". A name is
+     skipped only when its digits outnumber its letters. */
+  const letters = q.replace(/[^\p{L}]/gu, "").length;
+  const looksLikeNumber = digits.length >= 3 && digits.length > letters;
+  if (name.length >= 2 && !looksLikeNumber) clauses.push(`full_name.ilike.%${name}%`);
   if (digits.length >= 10) {
     const { data: ids } = await supabase.rpc("find_people_by_phone", { p_number: digits });
     const found = ((ids ?? []) as Array<string | { find_people_by_phone: string }>)
@@ -376,4 +382,23 @@ export async function findAssistantPool(supabase: SupabaseClient, businessId: st
   const rows = (data ?? []) as ProfileRow[];
   const artists = await findArtistIds(supabase, rows.map((r) => r.id));
   return rows.map((r) => ({ ...toProfile(r), isArtist: artists.has(r.id), from: from.get(r.id) ?? "Team" }));
+}
+
+
+/** THE STYLES THIS PERSON WANTS TO LEARN (11 Oct 2026) — what Discover
+ *  recommends from. Private: the column has no client SELECT grant, so it is
+ *  read through `my_learn_styles()`, scoped to the caller inside. ⚠ An empty
+ *  list before the migration lands (PGRST202) rather than a broken page: a
+ *  preference must never be the reason Discover does not render. */
+export async function findMyLearnStyles(supabase: SupabaseClient): Promise<string[]> {
+  const { data, error } = await supabase.rpc("my_learn_styles");
+  if (error) return [];
+  return Array.isArray(data) ? (data as string[]) : [];
+}
+
+/** write them — trimmed, de-duplicated in order and capped at twelve by the door */
+export async function setMyLearnStyles(supabase: SupabaseClient, styles: string[]): Promise<string[]> {
+  const { data, error } = await supabase.rpc("set_my_learn_styles", { p_styles: styles });
+  if (error) throw new Error(error.message);
+  return Array.isArray(data) ? (data as string[]) : [];
 }

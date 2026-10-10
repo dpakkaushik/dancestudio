@@ -159,6 +159,27 @@ export function filterCrews(list: CrewSummary[], f: DiscoverFilters): CrewSummar
 /** `?city=all` — every city at once (2 Oct 2026, the user: "option to view for
  *  all cities together called all"). A value, never a city: the registry has no
  *  city called "all", and the reads are given no city at all. */
+/** RECOMMENDED FIRST (11 Oct 2026, the user: "discover should get a setting
+ *  icon … with option to change the dance styles you want to learn … called
+ *  recommendation settings"). A STABLE partition: whatever is in a style this
+ *  person wants to learn comes first, and inside each half the shelf keeps its
+ *  own order. ⚠ Only while the person has not narrowed or sorted the shelf
+ *  themselves — a choice they made outranks a guess about them — and nothing is
+ *  ever REMOVED: a recommendation reorders, it never hides. */
+export function recommendFirst<T>(list: T[], learn: readonly string[], f: DiscoverFilters, stylesOf: (x: T) => readonly string[]): T[] {
+  if (learn.length === 0 || f.sort !== "near" || f.styles.length > 0 || f.fams.length > 0) return list;
+  const want = new Set(learn);
+  const rank = (x: T): number => {
+    const hits = stylesOf(x).map((s) => learn.indexOf(s)).filter((i) => i >= 0);
+    return hits.length ? Math.min(...hits) : Number.POSITIVE_INFINITY;
+  };
+  const yes = list.filter((x) => stylesOf(x).some((s) => want.has(s)));
+  const no = list.filter((x) => !stylesOf(x).some((s) => want.has(s)));
+  /* among the recommended, the style placed first in the list leads */
+  const ordered = yes.map((x, i) => ({ x, i, r: rank(x) })).sort((a, b) => a.r - b.r || a.i - b.i).map((o) => o.x);
+  return [...ordered, ...no];
+}
+
 export const ALL_CITIES = "all";
 
 export const radiusOf =(f: DiscoverFilters): number => (f.dist === "any" ? 25 : Number(f.dist));

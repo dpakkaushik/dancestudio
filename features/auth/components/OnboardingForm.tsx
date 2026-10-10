@@ -7,7 +7,8 @@ import { AuthShell } from "@/features/auth/components/AuthShell";
 import { finishOnboardingAction, saveProfileBasicsAction } from "@/features/auth/server-actions/auth";
 import { CityPicker } from "@/features/geo/components/CityPicker";
 import { PhotoPicker, uploadPhotoFile } from "@/features/media/components/PhotoPicker";
-import { updateMyProfileAction } from "@/features/profiles/server-actions/profile";
+import { setMyLearnStylesAction, updateMyProfileAction } from "@/features/profiles/server-actions/profile";
+import { DragList } from "@/components/ui/DragList";
 import { DOS_STYLE_REG, dosStyleColor } from "@/lib/constants/styles";
 import { BTN_STYLE, DOS_DISPLAY, DOS_UI, INK, LINE, SKY, SUB } from "@/lib/design/tokens";
 import { dosToolPaint } from "@/lib/format/styleInk";
@@ -74,7 +75,7 @@ const asUrl = (v: string): string => {
   return /^https?:\/\//i.test(t) ? t : `https://${t}`;
 };
 
-type Step = "profile" | "styles" | "socials" | "proof" | "done";
+type Step = "profile" | "learn" | "styles" | "socials" | "proof" | "done";
 
 /** ONBOARDING — the prototype's screens (3781-3943), re-cut on 8 Sep 2026 for
  *  the two kinds of account the user decided on, again on 26 Sep 2026 when the
@@ -121,7 +122,7 @@ export function OnboardingForm({
   /* RESUMING: a row already exists when the page re-renders mid-flow (every server
      action refetches the route) or when somebody comes back the next morning —
      the form picks up from what the row holds rather than asking it all again */
-  const [step, setStep] = useState<Step>(existing ? (existing.avatarPath ? "styles" : "profile") : "profile");
+  const [step, setStep] = useState<Step>(existing ? (existing.avatarPath ? "learn" : "profile") : "profile");
   const [name, setName] = useState(existing?.fullName ?? "");
   const [city, setCity] = useState(existing?.city ?? "");
   const [avatarPath, setAvatarPath] = useState<string | null>(existing?.avatarPath ?? null);
@@ -134,6 +135,8 @@ export function OnboardingForm({
      and the one Continue makes the row, uploads it and moves on. */
   const [staged, setStaged] = useState<{ file: File; url: string } | null>(null);
   const [mine, setMine] = useState<string[]>(existing?.styles ?? []);
+  /* the styles to LEARN (11 Oct 2026) — private, so a resumed form starts empty */
+  const [learn, setLearn] = useState<string[]>([]);
   const [yt, setYt] = useState("");
   const [ig, setIg] = useState("");
   const [fb, setFb] = useState("");
@@ -149,7 +152,7 @@ export function OnboardingForm({
   const firstWord = fullName.split(" ")[0] ?? "";
   const handle = fullName.toLowerCase().replace(/[^a-z]/g, "") || "you";
   const face = photoUrl(avatarPath);
-  const total = 3;
+  const total = 4;
 
   /* the button says what is missing (3820-3821): the reason, not a grey nothing */
   /* the city is the user's "location" (requirement 2, 9 Sep 2026): asked before the row is made, required by the database too */
@@ -276,10 +279,10 @@ export function OnboardingForm({
                 URL.revokeObjectURL(staged.url);
                 setStaged(null);
                 setAvatarPath(up.path);
-                setStep("styles");
+                setStep("learn");
                 return;
               }
-              if (saved && avatarPath) setStep("styles");
+              if (saved && avatarPath) setStep("learn");
             });
           }}
           style={{ ...BTN_STYLE, background: ready ? SKY : LINE, color: ready ? "#fff" : SUB, marginTop: 4, transition: "all .2s" }}
@@ -290,56 +293,123 @@ export function OnboardingForm({
     );
   }
 
-  /* ─── STYLES (3860-3888) — a person's screen; an organization is not asked ─── */
-  if (step === "styles") {
-    return (
-      <AuthShell toast={toast} progress={[2, total]}>
-        <button type="button" aria-label="Back" onClick={() => setStep("profile")} style={{ fontSize: 20, cursor: "pointer", background: "none", border: "none", color: INK, padding: 0, fontFamily: "inherit" }}>
-          ←
-        </button>
-        <h1 style={{ fontSize: 24, fontWeight: 800, margin: "14px 0 4px", fontFamily: DOS_DISPLAY, letterSpacing: -0.5 }}>Your dance styles</h1>
-        <div style={{ fontSize: 13, color: SUB, marginBottom: 18 }}>Everyone starts as a dancer — this shapes your feed &amp; recommendations.</div>
-        <div style={{ fontSize: 12, fontWeight: 800, letterSpacing: 1.2, color: SUB, marginBottom: 8 }}>
-          🕺 STYLES YOU DANCE <span style={{ fontWeight: 600, letterSpacing: 0 }}>· how you&apos;d describe yourself</span>
-        </div>
-        {/* StyleGrid (3655-3659): every style in the registry, a coin and its name, ✓ when picked */}
-        <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 6 }}>
-          {DOS_STYLE_REG.map(([l]) => {
-            const on = mine.includes(l);
-            return (
-              <button type="button" key={l} aria-pressed={on} aria-label={l} onClick={() => setMine((v) => (on ? v.filter((x) => x !== l) : [...v, l]))} style={{ display: "flex", alignItems: "center", gap: 7, padding: "6px 13px 6px 6px", borderRadius: 999, cursor: "pointer", fontSize: 13, fontWeight: 750, background: on ? `${SKY}14` : "var(--card)", color: on ? SKY : SUB, border: `2px solid ${on ? SKY : LINE}`, transition: "all .15s", fontFamily: "inherit" }}>
-                <DosStyleCoin label={l} size={30} active={on} />
-                {l}
-                {on ? " ✓" : ""}
-              </button>
-            );
-          })}
-        </div>
-        {mine.length > 1 ? (
-          <>
-            <div style={{ fontSize: 11, fontWeight: 700, color: SUB, margin: "10px 0 6px" }}>Drag order with ↑↓ — this is the order shown on your profile.</div>
-            <div style={{ display: "flex", flexDirection: "column", gap: 6, marginBottom: 4 }}>
-              {mine.map((l, i, arr) => (
-                <div key={l} style={{ display: "flex", alignItems: "center", gap: 9, padding: "6px 10px", borderRadius: 12, background: "var(--card)", color: INK, border: `1.5px solid ${LINE}` }}>
-                  <Arrows i={i} n={arr.length} onMove={(dir) => setMine(move(arr, i, dir))} />
+  /* ─── THE TWO STYLE SCREENS (11 Oct 2026, the user: "Setting up profile should
+        show selecting dance styles twice once for which 1. Dance Styles they want
+        to learn and 2. Dance Styles they already know … in both pages … like a
+        drag and drop"). The prototype's one StyleGrid (3655-3659), drawn twice: the
+        styles to LEARN (private; what Discover recommends from; optional) and the
+        styles they already DANCE (on the profile; at least one — the database's
+        rule). Each picked list is arranged by pressing a tile and dragging it. ─── */
+  const styleScreen = (o: {
+    n: number;
+    back: Step;
+    title: string;
+    sub: string;
+    eyebrow: string;
+    eyebrowSub: string;
+    picked: string[];
+    setPicked: (next: string[]) => void;
+    orderWords: string;
+    button: string;
+    canGo: boolean;
+    go: () => void;
+  }) => (
+    <AuthShell toast={toast} progress={[o.n, total]}>
+      <button type="button" aria-label="Back" onClick={() => setStep(o.back)} style={{ fontSize: 20, cursor: "pointer", background: "none", border: "none", color: INK, padding: 0, fontFamily: "inherit" }}>
+        ←
+      </button>
+      <h1 style={{ fontSize: 24, fontWeight: 800, margin: "14px 0 4px", fontFamily: DOS_DISPLAY, letterSpacing: -0.5 }}>{o.title}</h1>
+      <div style={{ fontSize: 13, color: SUB, marginBottom: 18 }}>{o.sub}</div>
+      <div style={{ fontSize: 12, fontWeight: 800, letterSpacing: 1.2, color: SUB, marginBottom: 8 }}>
+        {o.eyebrow} <span style={{ fontWeight: 600, letterSpacing: 0 }}>· {o.eyebrowSub}</span>
+      </div>
+      {/* StyleGrid (3655-3659): every style in the registry, a coin and its name, ✓ when picked */}
+      <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 6 }}>
+        {DOS_STYLE_REG.map(([l]) => {
+          const on = o.picked.includes(l);
+          return (
+            <button type="button" key={l} aria-pressed={on} aria-label={l} onClick={() => o.setPicked(on ? o.picked.filter((x) => x !== l) : [...o.picked, l])} style={{ display: "flex", alignItems: "center", gap: 7, padding: "6px 13px 6px 6px", borderRadius: 999, cursor: "pointer", fontSize: 13, fontWeight: 750, background: on ? `${SKY}14` : "var(--card)", color: on ? SKY : SUB, border: `2px solid ${on ? SKY : LINE}`, transition: "all .15s", fontFamily: "inherit" }}>
+              <DosStyleCoin label={l} size={30} active={on} />
+              {l}
+              {on ? " ✓" : ""}
+            </button>
+          );
+        })}
+      </div>
+      {o.picked.length > 1 ? (
+        <>
+          <div style={{ fontSize: 11, fontWeight: 700, color: SUB, margin: "10px 0 6px" }}>{o.orderWords}</div>
+          <div style={{ marginBottom: 4 }}>
+            <DragList
+              items={o.picked}
+              keyOf={(l) => l}
+              nameOf={(l) => l}
+              gap={6}
+              onReorder={o.setPicked}
+              render={(l, grip) => (
+                <div style={{ display: "flex", alignItems: "center", gap: 9, padding: "6px 10px 6px 4px", borderRadius: 12, background: "var(--solid)", color: INK, border: `1.5px solid ${LINE}` }}>
+                  {grip}
                   <DosStyleCoin label={l} size={24} />
                   <span style={{ flex: 1, fontSize: 13, fontWeight: 700 }}>{l}</span>
                 </div>
-              ))}
-            </div>
-          </>
-        ) : null}
-        <button
-          type="button"
-          disabled={pending || mine.length === 0}
-          aria-disabled={mine.length === 0}
-          onClick={() => mine.length && writeProfile({ styles: mine, socials: [] }, () => setStep("socials"))}
-          style={{ ...BTN_STYLE, background: mine.length ? SKY : LINE, color: mine.length ? "#fff" : SUB, marginTop: 14 }}
-        >
-          {pending ? "Saving…" : mine.length ? `Continue · ${mine.length} ${mine.length === 1 ? "style" : "styles"}` : "Pick at least one style"}
-        </button>
-      </AuthShell>
-    );
+              )}
+            />
+          </div>
+        </>
+      ) : null}
+      <button
+        type="button"
+        disabled={pending || !o.canGo}
+        aria-disabled={!o.canGo}
+        onClick={() => o.canGo && o.go()}
+        style={{ ...BTN_STYLE, background: o.canGo ? SKY : LINE, color: o.canGo ? "#fff" : SUB, marginTop: 14 }}
+      >
+        {pending ? "Saving…" : o.button}
+      </button>
+    </AuthShell>
+  );
+
+  /* 1 · THE STYLES TO LEARN — optional, private, and what Discover recommends from */
+  if (step === "learn") {
+    return styleScreen({
+      n: 2,
+      back: "profile",
+      title: "Styles you want to learn",
+      sub: "Pick what you'd love to learn — Discover recommends classes from these. Only you see this list.",
+      eyebrow: "🎯 TO LEARN",
+      eyebrowSub: "change it any time from Discover",
+      picked: learn,
+      setPicked: setLearn,
+      orderWords: "Press and drag a style to reorder — the first is recommended first.",
+      button: learn.length ? `Continue · ${learn.length} to learn` : "Skip for now",
+      canGo: true,
+      go: () =>
+        start(async () => {
+          if (learn.length) {
+            const out = await setMyLearnStylesAction({ styles: learn });
+            if (out.error) return fire(out.error);
+          }
+          setStep("styles");
+        }),
+    });
+  }
+
+  /* 2 · THE STYLES THEY ALREADY DANCE — on the profile, at least one */
+  if (step === "styles") {
+    return styleScreen({
+      n: 3,
+      back: "learn",
+      title: "Styles you already dance",
+      sub: "How you'd describe yourself — these are shown on your profile.",
+      eyebrow: "🕺 YOU DANCE",
+      eyebrowSub: "how you'd describe yourself",
+      picked: mine,
+      setPicked: setMine,
+      orderWords: "Press and drag a style to reorder — this is the order shown on your profile.",
+      button: mine.length ? `Continue · ${mine.length} ${mine.length === 1 ? "style" : "styles"}` : "Pick at least one style",
+      canGo: mine.length > 0,
+      go: () => writeProfile({ styles: mine, socials: [] }, () => setStep("socials")),
+    });
   }
 
   /* ─── SOCIALS (3890-3913) — a PERSON's, and optional. An organization never
@@ -349,7 +419,7 @@ export function OnboardingForm({
   if (step === "socials") {
     const any = Boolean(yt.trim() || ig.trim() || fb.trim() || extras.some((x) => x.url.trim()));
     return (
-      <AuthShell toast={toast} progress={[3, total]}>
+      <AuthShell toast={toast} progress={[4, total]}>
         <button type="button" aria-label="Back" onClick={() => setStep("styles")} style={{ fontSize: 20, cursor: "pointer", background: "none", border: "none", color: INK, padding: 0, fontFamily: "inherit" }}>
           ←
         </button>

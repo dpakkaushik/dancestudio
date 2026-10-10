@@ -33,8 +33,14 @@ export const headerMaxFor = (kind: PersonKind): number => (kind === "artist" ? H
 /** what the bucket itself accepts (mirrored from the migration, so the browser
  *  can refuse a file before spending somebody's data on the upload) */
 export const PHOTO_TYPES = ["image/jpeg", "image/png", "image/webp"] as const;
-export const PHOTO_MAX_BYTES = 5 * 1024 * 1024;
-export const PHOTO_MAX_WORDS = "5 MB";
+/* ⚠ 25 MB since 11 Oct 2026 (the user: "profile photo more than 5 mb should be
+   around 25mb") — a phone's own camera writes 8–15 MB now. The bucket's limit
+   moves with it in `20261011090000`; until that is applied the BUCKET still
+   refuses past 5 MB, so a large picture is accepted here and refused there.
+   ⚠ What is actually STORED is still small: the cropper re-encodes to a
+   640²/1080×720 JPEG, so this ceiling only decides what may be PICKED. */
+export const PHOTO_MAX_BYTES = 25 * 1024 * 1024;
+export const PHOTO_MAX_WORDS = "25 MB";
 
 export type PhotoOwner =
   | { kind: "avatar"; id: string }

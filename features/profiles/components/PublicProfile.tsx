@@ -183,6 +183,9 @@ export function PublicProfile({
         <IdentityHero
           bare
           testId="public-hero"
+          /* REPORT, AN ICON AT THE TOP RIGHT (11 Oct 2026) — it was a line at the
+             page's foot. Not for its own members, who have the hub for anything wrong. */
+          corner={isMember ? undefined : <ReportButton subjectKind="business" subjectId={business.id} subjectName={business.name} signedIn={signedIn} />}
           name={business.name}
           grad={RG}
           eyebrow={business.type === "studio" ? "Studio" : "Artist"}
@@ -382,9 +385,6 @@ export function PublicProfile({
         {assistants.length ? <PeopleGroup title="Assistants" n={assistants.length}>{assistants.map((m) => teamChip(m, "Assistant"))}</PeopleGroup> : null}
         </InvertedPanel>
       </div>
-      {/* the quiet control at the foot of a public page (10 Sep 2026) — not for
-          its own members, who have the hub for anything that is wrong */}
-      {isMember ? null : <ReportButton subjectKind="business" subjectId={business.id} subjectName={business.name} signedIn={signedIn} />}
     </div>
   );
 }

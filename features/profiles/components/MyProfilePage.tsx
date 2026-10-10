@@ -56,7 +56,10 @@ import { ROLE_RING, RoleBadge, ScheduleBar, Sheet, followTint, initialsOf, type 
 
 /* the Following sheet's segments (11336), in the words for the kinds we have —
    Organizations and Crews joined on 19 Sep 2026, when both became followable */
-const FOLLOW_SEGS = ["All", "Users", "Artists", "Organizations", "Studios", "Crews"] as const;
+/* ⚠ "Organizations" went on 11 Oct 2026 (the user: "remove organization list
+   while clicking on follower and following lists") — nothing can be followed
+   under it since organizations were retired on 29 Sep, so it was an empty pill */
+const FOLLOW_SEGS = ["All", "Users", "Artists", "Studios", "Crews"] as const;
 type FollowSeg = (typeof FOLLOW_SEGS)[number];
 
 

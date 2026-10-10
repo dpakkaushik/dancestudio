@@ -119,6 +119,12 @@ export const STYLE_SPECS: Record<string, FigureSpec> = {
     hair: { s: "loose", c: HAIR }, gear: [{ k: "bindi", c: "#C1121F" }], wear: [{ k: "necklace" }, { k: "flowscarf", c: "#E8247A", c2: GOLD }],
     props: [{ k: "sparkle", hand: "a", c: "#FFF3B0" }],
   },
+  /* Bollywood's colour on hip-hop's clothes — a cap, a chain and a dupatta */
+  "Bolly-Hop": {
+    skin: SKIN.light, a: [-40, 150], b: [70, 48], la: [-14, 4], lb: [22, -8], lean: -3,
+    top: "#E8247A", sleeve: "long", legs: { c: "#2B2B33", w: 9 }, shoe: "#FFFFFF",
+    hair: { s: "loose", c: HAIR }, gear: [{ k: "capBack", c: GOLD }], wear: [{ k: "chain" }, { k: "flowscarf", c: GOLD, c2: "#E8247A" }],
+  },
 
   /* ── Street ── */
   "Hip-Hop": {

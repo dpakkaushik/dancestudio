@@ -55,50 +55,41 @@ export default async function LoginWelcomePage({ searchParams }: { searchParams:
           {/* a soft glow behind the mark, in its own three colours */}
           <span aria-hidden="true" style={{ position: "absolute", inset: -28, borderRadius: "50%", background: "radial-gradient(circle, rgba(168,85,247,.32), rgba(236,72,153,.14) 45%, transparent 70%)", filter: "blur(6px)" }} />
           <span style={{ position: "relative", display: "inline-flex" }}>
-            {/* bigger (10 Oct 2026, the user: "make logo and title bigger") */}
-            <DosMark size={108} />
+            {/* way bigger (10 Oct 2026, twice: "make logo and title bigger", then
+                "way bigger profile pic, app name and 5678") — it scales down on a
+                short or narrow phone so the buttons stay on the first screen */}
+            <DosMark size={150} />
           </span>
         </div>
-        <div style={{ marginTop: 16, fontSize: 36,fontWeight: 900, letterSpacing: -0.6, fontFamily: DOS_DISPLAY, animation: "dosRise .5s .05s ease both" }}>
+        <div style={{ marginTop: 18, fontSize: "clamp(42px, 13vw, 54px)", fontWeight: 900, letterSpacing: -1, lineHeight: 1, fontFamily: DOS_DISPLAY, animation: "dosRise .5s .05s ease both" }}>
           Dance<span style={{ color: SKY }}>OS</span>
         </div>
 
         {/* the count-in, BIG (3 Oct 2026, "5678 bigger") — every class starts
             on it, so it is the screen's beat rather than a caption */}
-        <div aria-hidden="true" style={{ display: "flex", alignItems: "center", gap: 14, marginTop: 16, fontSize: "clamp(28px, 8.4vw, 36px)", fontWeight: 900, letterSpacing: 0.5, fontFamily: DOS_DISPLAY, fontVariantNumeric: "tabular-nums" }}>
+        <div aria-hidden="true" style={{ display: "flex", alignItems: "center", gap: 16, marginTop: 18, fontSize: "clamp(40px, 12vw, 52px)", fontWeight: 900, letterSpacing: 0.5, lineHeight: 1, fontFamily: DOS_DISPLAY, fontVariantNumeric: "tabular-nums" }}>
           {["5", "6", "7", "8"].map((n, i) => (
-            <span key={n} style={{ display: "inline-flex", alignItems: "center", gap: 14, animation: `dosBeat 2.4s ease ${i * 0.3}s infinite` }}>
+            <span key={n} style={{ display: "inline-flex", alignItems: "center", gap: 16, animation: `dosBeat 2.4s ease ${i * 0.3}s infinite` }}>
               {n}
-              {i < 3 && <span style={{ color: LINE, fontSize: 26 }}>·</span>}
+              {i < 3 && <span style={{ color: LINE, fontSize: 34 }}>·</span>}
             </span>
           ))}
         </div>
-
-        {/* the screen's own `<h1>` (28 Sep 2026) — the welcome screen wears no
-            chrome at all, so this display line is the only thing naming it */}
-        <h1
-          style={{
-            fontSize: "clamp(30px, 9.2vw, 40px)",
-            fontWeight: 800,
-            lineHeight: 1.06,
-            letterSpacing: -1.1,
-            margin: "14px 0 10px",
-            fontFamily: DOS_DISPLAY,
-            animation: "dosRise .6s .1s ease both",
-          }}
-        >
-          The stage is yours.
-        </h1>
-        {/* no line under the headline (10 Oct 2026, the user) */}
       </div>
 
       {/* absorbs the slack on a tall screen instead of leaving a void above the band */}
       <div style={{ flex: 1.2, minHeight: 24 }} />
 
-      {/* THE LINE OVER THE BUTTONS (3 Oct 2026, the user: "Dance First, Think
-          Later! also there above start dancing and login") — the same words
-          Discover opens with, so the first page and the first tab speak alike */}
-      <div style={{ textAlign: "center", fontSize: 20, fontWeight: 900, letterSpacing: -0.3, fontFamily: DOS_DISPLAY, marginBottom: 14, animation: "dosRise .6s .25s ease both" }}>
+      {/* THE TWO LINES OVER THE BUTTONS (10 Oct 2026, the user: "the stage is
+          yours goes above and in same size as Dance first think later … written
+          in a similar way … S should be capital for stage"). One size, one
+          weight, the second half of each in the accent. "The Stage is yours." is
+          still the screen's `<h1>` (28 Sep 2026) — the welcome screen wears no
+          chrome, so it is the only thing naming it. */}
+      <h1 style={{ textAlign: "center", fontSize: 20, fontWeight: 900, letterSpacing: -0.3, lineHeight: 1.3, fontFamily: DOS_DISPLAY, margin: "0 0 2px", animation: "dosRise .6s .2s ease both" }}>
+        The Stage <span style={{ color: SKY }}>is yours.</span>
+      </h1>
+      <div style={{ textAlign: "center", fontSize: 20, fontWeight: 900, letterSpacing: -0.3, lineHeight: 1.3, fontFamily: DOS_DISPLAY, marginBottom: 14, animation: "dosRise .6s .25s ease both" }}>
         Dance First, <span style={{ color: SKY }}>Think Later!</span>
       </div>
 

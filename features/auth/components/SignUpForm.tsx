@@ -56,7 +56,7 @@ export function SignUpForm() {
               data-slot="link"
               className="rounded-full font-extrabold text-primary underline-offset-4 hover:underline focus-visible:ring-[2.5px] focus-visible:ring-ring focus-visible:outline-none"
             >
-              Sign in
+              Log In
             </Link>
           </p>
           {/* THE TWO WORDS ARE LINKS NOW (18 Sep 2026): the pages exist at /legal, so

@@ -105,6 +105,11 @@ async function onboard(page: Page, name: string, role: "User", city: string) {
   await page.getByRole("dialog", { name: "Crop & preview" }).getByRole("button", { name: "Use this photo" }).click();
   await expect(page.getByLabel("Your profile photo", { exact: true })).toBeVisible({ timeout: 20_000 });
   await page.getByRole("button", { name: "Continue", exact: true }).click();
+  // the styles to LEARN (11 Oct 2026): one picked, so the private list is exercised
+  await page.getByText("Styles you want to learn").waitFor();
+  await page.getByRole("button", { name: "Kathak", exact: true }).click();
+  await page.getByRole("button", { name: "Continue · 1 to learn" }).click();
+  await page.getByText("Styles you already dance").waitFor();
   await page.getByRole("button", { name: "Hip-Hop", exact: true }).click();
   await page.getByRole("button", { name: "Continue · 1 style" }).click();
   await page.getByRole("button", { name: "Skip for now →" }).click();
@@ -329,7 +334,8 @@ test.describe.serial("the admin panel: businesses and reports", () => {
   test("reporting needs an account, and says so", async () => {
     const res = await anon.goto(studioUrl);
     expect(res?.status()).toBe(200);
-    await expect(anon.getByText("Sign in to report this page.")).toBeVisible();
+    /* the report is an icon at the hero's top right since 11 Oct 2026 — signed out it is a link to sign in */
+    await expect(anon.getByRole("link", { name: "Sign in to report this page" })).toBeVisible();
     await expect(anon.getByRole("button", { name: /^Report / })).toHaveCount(0);
   });
 

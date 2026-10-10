@@ -104,7 +104,30 @@ export async function findMyHistory(supabase: SupabaseClient, limit = 200): Prom
   if (error) {
     throw new Error(`stats.history failed: ${error.message}`);
   }
-  return ((data ?? []) as HistRow[]).map((r) => ({
+  return ((data ?? []) as HistRow[]).map(histRowOf);
+}
+
+/** SOMEBODY ELSE'S SESSIONS (11 Oct 2026, the user: "full stats page should be
+ *  visible when looking at someone's profile. right now only top section
+ *  visible"). `person_session_history` — the same shape as the caller's own,
+ *  keyed on a person, and ⚠ PUBLIC CLASSES ONLY: a session counts here only on a
+ *  published (or completed) class of a LISTED, live business, so nothing a
+ *  private studio runs is published by it. Signed-in readers only.
+ *
+ *  ⚠ It degrades to an empty list rather than throwing, and that is deliberate:
+ *  until `20261011090000` is applied the function does not exist (PostgREST
+ *  answers PGRST202), and somebody's stats page must not 500 over the graphs
+ *  below its figures. Empty is what the screen drew before. */
+export async function findPersonHistory(supabase: SupabaseClient, userId: string, limit = 200): Promise<HistoryRow[]> {
+  const { data, error } = await supabase.rpc("person_session_history", { p_user_id: userId, p_limit: limit });
+  if (error) {
+    return [];
+  }
+  return ((data ?? []) as HistRow[]).map(histRowOf);
+}
+
+function histRowOf(r: HistRow): HistoryRow {
+  return {
     sessionId: r.session_id,
     side: r.side,
     classId: r.class_id,
@@ -123,7 +146,7 @@ export async function findMyHistory(supabase: SupabaseClient, limit = 200): Prom
     startsAt: r.starts_at,
     endsAt: r.ends_at,
     minutes: Number(r.minutes ?? 0),
-  }));
+  };
 }
 
 /** One board. Every row carries the population it was ranked out of. */

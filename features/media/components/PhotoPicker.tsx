@@ -4,7 +4,7 @@ import { useRouter } from "next/navigation";
 import { useRef, useState } from "react";
 import { addMyGalleryPhotoAction, setAssetPhotoAction, setCrewPhotoAction, setMyAvatarAction, setPosterAction, setBusinessPhotoAction, type PhotoActionResult } from "@/features/media/server-actions/photos";
 import { addStudioProofPhotoAction } from "@/features/businesses/server-actions/studioVerification";
-import { PHOTO_TYPES, photoPath, whyNotAPhoto, type PhotoOwner, MEDIA_BUCKET } from "@/lib/media/photo";
+import { PHOTO_MAX_WORDS, PHOTO_TYPES, photoPath, whyNotAPhoto, type PhotoOwner, MEDIA_BUCKET } from "@/lib/media/photo";
 import { PROOF_BUCKET } from "@/lib/media/proof";
 import { browserSupabase } from "@/lib/supabase/lazyClient";
 import { DOS_UI, INK, LINE, SUB } from "@/lib/design/tokens";
@@ -295,7 +295,7 @@ export function PhotoPicker({
         ) : null}
       </span>
       {error ? <span style={{ fontSize: 10, color: "#F87171", maxWidth: 260, lineHeight: 1.4 }}>{error}</span> : null}
-      {!error && !hasPhoto ? <span style={{ fontSize: 9.5, color: onLight ? "rgba(255,255,255,.75)" : SUB }}>JPEG, PNG or WebP · up to 5 MB</span> : null}
+      {!error && !hasPhoto ? <span style={{ fontSize: 9.5, color: onLight ? "rgba(255,255,255,.75)" : SUB }}>JPEG, PNG or WebP · up to {PHOTO_MAX_WORDS}</span> : null}
       {cropper}
     </span>
   );

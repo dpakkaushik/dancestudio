@@ -3,7 +3,7 @@ import { findDiscoverCities } from "@/repositories/cities";
 import { DOS_STYLE_NAMES } from "@/lib/constants/styles";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { photoUrl } from "@/lib/media/photo";
-import { findChart, findEntityChartRow, findMyHistory, findMyPlace, findMyStats } from "@/repositories/stats";
+import { findChart, findEntityChartRow, findMyHistory, findMyPlace, findMyStats, findPersonHistory } from "@/repositories/stats";
 import { EMPTY_STATS, parseChartMetric, type ChartSegment, type DanceStats, type Standing } from "@/types/stats";
 
 /* ⚠ "history" went on 2 Oct 2026 (the user: "remove history from stats for all
@@ -91,7 +91,8 @@ export async function StatsPageBody({ subject, query, basePath }: { subject: Sta
      grid are counted off them */
   const [ownStats, history, chart, myPlace, boardPlace, everywhere, inCity] = await Promise.all([
     isMe ? findMyStats(supabase) : Promise.resolve(null),
-    isMe ? findMyHistory(supabase) : Promise.resolve([]),
+    /* somebody else's PUBLIC sessions (11 Oct 2026) — a signed-in reader, a person */
+    isMe ? findMyHistory(supabase) : user && subject.kind === "person" ? findPersonHistory(supabase, subject.id) : Promise.resolve([]),
     tab === "charts" && canBrowseBoards ? findChart(supabase, { segment, city, style: styleFilter }) : Promise.resolve([]),
     isMe ? findMyPlace(supabase, "dancer", null) : Promise.resolve(null),
     /* where YOU stand on THIS board — a people board only, and only when it is
@@ -116,6 +117,7 @@ export async function StatsPageBody({ subject, query, basePath }: { subject: Sta
       backHref={subject.backHref}
       subjectKind={subject.kind}
       isMe={isMe}
+      sessionsRead={isMe || (Boolean(user) && subject.kind === "person")}
       canBrowseBoards={canBrowseBoards}
       standings={standings}
       boardRow={everywhere}

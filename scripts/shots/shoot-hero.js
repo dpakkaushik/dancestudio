@@ -99,7 +99,11 @@ async function onboard(page, name, city) {
   await useIt(page);
   await page.getByLabel("Your profile photo", { exact: true }).waitFor({ timeout: 20000 });
   await page.getByRole("button", { name: "Continue", exact: true }).click();
-  await page.getByText("Your dance styles").waitFor();
+  // the styles to LEARN (11 Oct 2026): one picked, so the private list is exercised
+  await page.getByText("Styles you want to learn").waitFor();
+  await page.getByRole("button", { name: "Kathak", exact: true }).click();
+  await page.getByRole("button", { name: "Continue · 1 to learn" }).click();
+  await page.getByText("Styles you already dance").waitFor();
   await page.getByRole("button", { name: "Hip-Hop", exact: true }).click();
   await page.getByRole("button", { name: "Continue · 1 style" }).click();
   await page.getByText("Your social links").waitFor();

@@ -21,7 +21,7 @@ export const DOS_STYLE_REG: ReadonlyArray<readonly [string, string]> = [
   ["Ghoomar", "#974811"], ["Kalbelia", "#C76F43"], ["Lavani", "#AE4072"],
   ["Bihu", "#50722C"], ["Giddha", "#E46696"], ["Sufi Whirling", "#4563F4"],
   /* Bollywood */
-  ["Bollywood", "#D4766B"],
+  ["Bollywood", "#D4766B"], ["Bolly-Hop", "#B5367E"],
   /* Street */
   ["Hip-Hop", "#0065A2"], ["Breaking", "#1A6C3A"], ["Popping", "#009AF6"],
   ["Locking", "#A58918"], ["House", "#00A855"], ["Waacking", "#808CD6"],

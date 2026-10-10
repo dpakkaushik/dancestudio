@@ -1,6 +1,7 @@
 "use client";
 
 import { Sheet, fieldLabel, sheetBtn } from "./profile-kit";
+import { DragList } from "@/components/ui/DragList";
 import { DOS_STYLE_NAMES, dosStyleColor } from "@/lib/constants/styles";
 import { CARD, INK, LINE, SUB } from "@/lib/design/tokens";
 
@@ -30,7 +31,13 @@ export function StylesSheet({
   lastWords,
   max = 12,
   onClose,
+  label = "Add a dance style",
+  title = "＋ Add a dance style",
+  allowEmpty = false,
+  intro,
 }: {
+  /** one line under the title saying what the list is for */
+  intro?: string;
   styles: string[];
   /** hand back the whole new list — the caller owns the door and the toast */
   onSave: (next: string[], said: string) => void;
@@ -39,45 +46,45 @@ export function StylesSheet({
   lastWords: string;
   max?: number;
   onClose: () => void;
+  /** the dialog's accessible name — the styles a person dances keep the old one */
+  label?: string;
+  title?: string;
+  /** a list with no floor — the styles somebody wants to LEARN (11 Oct 2026) */
+  allowEmpty?: boolean;
 }) {
-  const move = (arr: string[], i: number, dir: -1 | 1): string[] => {
-    const j = i + dir;
-    if (j < 0 || j >= arr.length) return arr;
-    const out = [...arr];
-    [out[i], out[j]] = [out[j], out[i]];
-    return out;
-  };
+  const locked = (arr: string[]) => !allowEmpty && arr.length === 1;
 
   return (
-    <Sheet label="Add a dance style" onClose={onClose} maxHeight="78vh">
-      <b style={{ fontSize: 16 }}>＋ Add a dance style</b>
-      <div style={{ fontSize: 12, color: SUB, margin: "4px 0 6px" }}>Reorder with ↑↓ — this is the order shown on the profile.</div>
-      <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-        {styles.map((s, i, arr) => (
-          <div key={s} style={{ display: "flex", alignItems: "center", gap: 9, padding: "9px 12px", borderRadius: 14, background: CARD, border: `1.5px solid ${LINE}` }}>
-            <span style={{ display: "inline-flex", flexDirection: "column", gap: 2, flexShrink: 0 }}>
-              <button type="button" aria-label={`Move ${s} up`} disabled={i === 0} onClick={() => onSave(move(arr, i, -1), "Order saved")} style={{ lineHeight: 1, fontSize: 10, padding: "1px 4px", borderRadius: 5, background: "none", border: "none", cursor: i === 0 ? "default" : "pointer", opacity: i === 0 ? 0.3 : 1, color: INK, fontFamily: "inherit" }}>
-                ▲
-              </button>
-              <button type="button" aria-label={`Move ${s} down`} disabled={i === arr.length - 1} onClick={() => onSave(move(arr, i, 1), "Order saved")} style={{ lineHeight: 1, fontSize: 10, padding: "1px 4px", borderRadius: 5, background: "none", border: "none", cursor: i === arr.length - 1 ? "default" : "pointer", opacity: i === arr.length - 1 ? 0.3 : 1, color: INK, fontFamily: "inherit" }}>
-                ▼
-              </button>
-            </span>
+    <Sheet label={label} onClose={onClose} maxHeight="78vh">
+      <b style={{ fontSize: 16 }}>{title}</b>
+      {intro ? <div style={{ fontSize: 12.5, color: INK, marginTop: 4, lineHeight: 1.45 }}>{intro}</div> : null}
+      {/* ⚠ DRAG, NOT ARROWS (11 Oct 2026, the user: "pressing on the tiles and
+          dragging them up and down … should be smooth") */}
+      <div style={{ fontSize: 12, color: SUB, margin: "4px 0 6px" }}>{styles.length > 1 ? "Press and drag a style to reorder — this is the order shown." : allowEmpty && styles.length === 0 ? "Nothing picked yet — add from the list below." : " "}</div>
+      <DragList
+        items={styles}
+        keyOf={(s) => s}
+        nameOf={(s) => s}
+        disabled={pending}
+        onReorder={(next) => onSave(next, "Order saved")}
+        render={(s, grip) => (
+          <div style={{ display: "flex", alignItems: "center", gap: 9, padding: "8px 12px 8px 6px", borderRadius: 14, background: "var(--solid)", border: `1.5px solid ${LINE}`, color: INK }} data-testid="style-row">
+            {grip}
             <span aria-hidden="true" style={{ width: 12, height: 12, borderRadius: 6, background: dosStyleColor(s), flexShrink: 0 }} />
             <b style={{ flex: 1, fontSize: 13.5, color: INK }}>{s}</b>
             <button
               type="button"
-              aria-label={arr.length === 1 ? `${s} is the last style — add another first` : `Remove ${s}`}
-              disabled={arr.length === 1}
-              title={arr.length === 1 ? lastWords : undefined}
-              onClick={() => onSave(arr.filter((x) => x !== s), `${s} removed`)}
-              style={{ opacity: arr.length === 1 ? 0.35 : 1, fontSize: 12, fontWeight: 800, color: "#EF4444", cursor: arr.length === 1 ? "default" : "pointer", flexShrink: 0, background: "none", border: "none", fontFamily: "inherit" }}
+              aria-label={locked(styles) ? `${s} is the last style — add another first` : `Remove ${s}`}
+              disabled={locked(styles)}
+              title={locked(styles) ? lastWords : undefined}
+              onClick={() => onSave(styles.filter((x) => x !== s), `${s} removed`)}
+              style={{ opacity: locked(styles) ? 0.35 : 1, fontSize: 12, fontWeight: 800, color: "#EF4444", cursor: locked(styles) ? "default" : "pointer", flexShrink: 0, background: "none", border: "none", fontFamily: "inherit" }}
             >
               Remove
             </button>
           </div>
-        ))}
-      </div>
+        )}
+      />
       {DOS_STYLE_NAMES.some((s) => !styles.includes(s)) ? (
         <>
           <div style={fieldLabel}>Add more styles</div>

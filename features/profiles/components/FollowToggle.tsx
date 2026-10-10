@@ -87,12 +87,14 @@ export function FollowToggle({
     setFollowers(out.state.followers);
   };
 
-  /* the BELL the chip wears — filled once you follow, so the two states read at
-     a glance the way the star's fill already did on the pill */
+  /* ⚠ A PLUS, NOT A BELL (11 Oct 2026, the user: "Bell button for following
+     should be a Plus now on all profiles"). A plus to follow, a tick once you
+     do — the two states read at a glance, and the accessible name is unchanged
+     ("Follow" / "Following") so every locator finds the same control. A bell
+     reads as "notifications", which is a different thing. */
   const bell = (on: boolean) => (
-    <svg width="21" height="21" viewBox="0 0 24 24" fill={on ? "currentColor" : "none"} stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-      <path d="M18 8.5a6 6 0 1 0-12 0c0 6-2 7.5-2 7.5h16s-2-1.5-2-7.5" />
-      <path d="M13.7 20a2 2 0 0 1-3.4 0" />
+    <svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" data-glyph={on ? "following" : "follow"}>
+      {on ? <path d="M5 12.5l4.5 4.5L19 7.5" /> : <path d="M12 5v14M5 12h14" />}
     </svg>
   );
 

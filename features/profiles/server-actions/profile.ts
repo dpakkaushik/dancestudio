@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
-import { findPhones, updateMyProfile } from "@/repositories/profiles";
+import { findPhones, setMyLearnStyles, updateMyProfile } from "@/repositories/profiles";
 
 /** The Profile tab's one write (S_profiletab: Edit profile 11364, the links
  *  sheet 11161, the styles sheet 11217 — three sheets, one record). Zod checks
@@ -87,5 +87,27 @@ export async function updateMyProfileAction(input: MyProfileInput): Promise<{ er
     return { error: null };
   } catch (error: unknown) {
     return { error: error instanceof Error ? error.message : "Could not save your profile" };
+  }
+}
+
+const learnSchema = z.object({ styles: z.array(z.string().trim().min(1).max(40)).max(12) });
+
+/** THE STYLES SOMEBODY WANTS TO LEARN (11 Oct 2026) — onboarding's first styles
+ *  step and Discover's Recommendation settings. Its own door, because the
+ *  column is private and `update_my_profile` takes the public profile. */
+export async function setMyLearnStylesAction(input: { styles: string[] }): Promise<{ error: string | null; styles?: string[] }> {
+  const parsed = learnSchema.safeParse(input);
+  if (!parsed.success) return { error: "Pick up to twelve styles" };
+  const supabase = await createSupabaseServerClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) redirect("/login");
+  try {
+    const styles = await setMyLearnStyles(supabase, parsed.data.styles);
+    revalidatePath("/discover");
+    return { error: null, styles };
+  } catch (error: unknown) {
+    return { error: error instanceof Error ? error.message : "Could not save your styles" };
   }
 }
