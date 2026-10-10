@@ -69,17 +69,6 @@ const toTimeInput = (iso: string) =>
  *  `react-hooks/purity` rule, and this file has paid for that lesson twice. */
 /** today in IST, in the shape `<input type="date">` wants — the floor on the picker */
 const istToday = () => istDatePart(new Date(Date.now()).toISOString(), { year: "numeric", month: "2-digit", day: "2-digit" });
-/** a weekly class runs at most this many sessions — `add_weekly_sessions`' cap */
-const MAX_WEEKS = 26;
-/** a YYYY-MM-DD date moved by whole days — calendar arithmetic, no clock */
-const shiftDate = (d: string, days: number) => new Date(Date.parse(`${d}T00:00:00Z`) + days * 86_400_000).toISOString().slice(0, 10);
-/** how many weekly sessions run from the first date to the last, both counted —
- *  the same count the server action and the database make */
-const sessionsBetween = (from: string, to: string) => Math.floor((Date.parse(`${to}T00:00:00Z`) - Date.parse(`${from}T00:00:00Z`)) / (7 * 86_400_000)) + 1;
-/** "Sat 14 Nov" for a YYYY-MM-DD date */
-const dayWords = (d: string) => new Date(`${d}T00:00:00Z`).toLocaleDateString("en-IN", { weekday: "short", day: "numeric", month: "short", timeZone: "UTC" });
-/** "Tuesday" for a YYYY-MM-DD date */
-const weekdayOf = (d: string) => new Date(`${d}T00:00:00Z`).toLocaleDateString("en-IN", { weekday: "long", timeZone: "UTC" });
 /** ⚠ THE START INSTANT, NOT THE DATE: a class at 19:00 today is already gone at
  *  20:00, and a date-only test waves that through. The same minute of slack the
  *  server's own rule carries, so the form and the action cannot disagree by a
@@ -291,18 +280,6 @@ export function ClassForm({
   const [style, setStyle] = useState<string>(existing?.style ?? "");
   const [level, setLevel] = useState<ClassLevel>(existing?.level ?? "all");
   const [date, setDate] = useState(existing?.session ? toDateInput(existing.session.startsAt) : "");
-  /* ── REPEATS WEEKLY (13 Oct 2026, the user: "On Add Class only, and Run longer
-     later"). One class, a session every week until the last date, at most 26 —
-     made in one transaction by `create_class_series`. A NEW class only: an
-     existing one is extended from its own page ("Run longer"). The last date is
-     CLAMPED on every render rather than corrected in an effect, so moving the
-     first date can never leave it before the first week or past the 26th. ── */
-  const [repeats, setRepeats] = useState(false);
-  const [repeatUntilRaw, setRepeatUntil] = useState("");
-  const repeatMin = date ? shiftDate(date, 7) : "";
-  const repeatMax = date ? shiftDate(date, 7 * (MAX_WEEKS - 1)) : "";
-  const repeatUntil = !date ? "" : !repeatUntilRaw ? shiftDate(date, 7 * 7) : repeatUntilRaw < repeatMin ? repeatMin : repeatUntilRaw > repeatMax ? repeatMax : repeatUntilRaw;
-  const repeatCount = repeats && date ? sessionsBetween(date, repeatUntil) : 1;
   const [startTime, setStartTime] = useState(existing?.session ? toTimeInput(existing.session.startsAt) : "19:00");
   const [endTime, setEndTime] = useState(existing?.session ? toTimeInput(existing.session.endsAt) : "20:00");
   const [roomId, setRoomId] = useState<string | null>(existing?.roomId ?? null);
@@ -518,7 +495,7 @@ export function ClassForm({
             between the two halves never drops what you already answered */}
         <input type="hidden" name="businessId" value={businessId} />
         {/* where a save lands — an artist's register is Your classes' Manage segment, in one hop (19 Sep 2026) */}
-        <input type="hidden" name="after" value={isArtist ? "/my-classes?show=manage" : `/business/${businessId}/classes`} />
+        <input type="hidden" name="after" value={isArtist ? "/my-classes" : `/business/${businessId}/classes`} />
         {/* which shell this form is in, so the action revalidates the register
             and hands back instead of redirecting over the sheet's own entry */}
         {sheet ? <input type="hidden" name="sheet" value="1" /> : null}
@@ -528,7 +505,6 @@ export function ClassForm({
         <input type="hidden" name="date" value={date} />
         <input type="hidden" name="startTime" value={startTime} />
         <input type="hidden" name="endTime" value={endTime} />
-        {!isEdit ? <input type="hidden" name="repeatUntil" value={repeats && date ? repeatUntil : ""} /> : null}
         <input type="hidden" name="roomId" value={roomId ?? ""} />
         <input type="hidden" name="room" value={room?.name ?? ""} />
         <input type="hidden" name="poster" value={poster ?? ""} />
@@ -582,42 +558,6 @@ export function ClassForm({
                 />
               </div>
             </div>
-
-            {!isEdit ? (
-              <div data-testid="class-repeats" style={{ marginTop: 10 }}>
-                <button
-                  type="button"
-                  role="switch"
-                  aria-checked={repeats}
-                  aria-label="Repeats weekly"
-                  onClick={() => setRepeats(!repeats)}
-                  style={{ display: "flex", alignItems: "center", gap: 10, width: "100%", textAlign: "left", background: CARD, border: `1.5px solid ${EL}`, borderRadius: 12, padding: "11px 12px", cursor: "pointer", fontFamily: "inherit", color: INK }}
-                >
-                  <span style={{ flex: 1, minWidth: 0, fontSize: 12.5, fontWeight: 800 }}>Repeats weekly</span>
-                  <span style={{ flexShrink: 0, width: 38, height: 22, borderRadius: 999, background: repeats ? "#22C55E" : EL, position: "relative", transition: "background .15s" }}>
-                    <span style={{ position: "absolute", top: 3, left: repeats ? 19 : 3, width: 16, height: 16, borderRadius: 999, background: "#fff", transition: "left .15s" }} />
-                  </span>
-                </button>
-                {repeats ? (
-                  <div style={{ marginTop: 8 }}>
-                    <div style={{ fontSize: 12, color: SUB, marginBottom: 4 }}>Until</div>
-                    <input
-                      type="date"
-                      min={repeatMin}
-                      max={repeatMax}
-                      value={repeatUntil}
-                      disabled={!date}
-                      onChange={(e) => setRepeatUntil(e.target.value)}
-                      aria-label="Repeats until"
-                      style={{ ...inputStyle, colorScheme: "dark" }}
-                    />
-                    <div data-testid="repeat-count" style={{ fontSize: 12, color: SUB, marginTop: 6 }}>
-                      {date ? `${repeatCount} sessions · every ${weekdayOf(date)} until ${dayWords(repeatUntil)}` : "Pick the first date"}
-                    </div>
-                  </div>
-                ) : null}
-              </div>
-            ) : null}
 
             <div style={labelStyle}>2 · DANCE STYLE</div>
             {/* the prototype's searchable picker (15336-15360), with the
@@ -1020,7 +960,6 @@ export function ClassForm({
                 <div style={{ borderRadius: 14, overflow: "hidden", background: CARD, border: `1.5px solid ${EL}` }}>
                   <div style={{ background: `${styleColor}40`, padding: "9px 10px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                     <span style={{ fontSize: 11.5, fontWeight: 800 }}>🕒 {startTime}–{endTime} · {date}</span>
-                    {repeats && !isEdit && date ? <span data-testid="confirm-repeats" style={{ fontSize: 11, fontWeight: 800 }}>Weekly · {repeatCount} sessions</span> : null}
                   </div>
                   <div style={{ background: `${styleColor}22`, padding: "9px 10px", display: "flex", alignItems: "center", gap: 10 }}>
                     <span style={{ display: "inline-flex", alignItems: "center", gap: 9, background: CARD, border: `1.5px solid ${styleColor}55`, borderRadius: 999, padding: "4px 14px 4px 5px" }}>

@@ -947,17 +947,15 @@ test.describe.serial("DanceOS, end to end", () => {
 
     // back on the register, and the class is a DRAFT waiting on the person asked
     await owner.waitForURL(/\/business\/[0-9a-f-]+\/classes$/);
-    /* ⚠ A STAGE BOARD (11 Oct 2026, the user's choice) — a draft whose teacher
-       has been asked and has not answered is WAITING FOR A YES */
-    await owner.getByRole("button", { name: /^Waiting, [1-9]\d* classes$/ }).click();
-    registerTile = owner.locator(`[aria-label="Open ${classTitle}"]`);
+    /* ⚠⚠ TO DO · UPCOMING · PAST (11 Oct 2026, the user's choice). A draft whose
+       teacher has not answered is in To do under WAITING ON OTHERS, wearing what
+       it waits on in a chip — and there is no Publish on it until they say yes */
+    await owner.getByTestId("classes-tab-todo").click();
+    const waiting = owner.getByTestId("todo-waiting");
+    registerTile = waiting.locator(`[aria-label="Open ${classTitle}"]`);
     await expect(registerTile).toBeVisible();
-    // the row wears the request it waits on, and Publish says why it cannot yet
-    // (the chip is drawn uppercase by CSS; the DOM text is the sentence itself)
-    // ⚠ in the shared ask words since 4 Oct 2026 — "{who} · Asked" (was "⏳ {who} asked")
-    await expect(owner.getByText(`${trainerName} · Asked`, { exact: true })).toBeVisible();
-    await owner.getByRole("button", { name: /^Publish — Publish waits for the teacher/ }).click();
-    await expect(owner.getByText("Publish waits for the teacher — nobody has accepted this class yet")).toBeVisible();
+    await expect(waiting.getByText(`Waiting on ${trainerName}`)).toBeVisible();
+    await expect(owner.getByRole("button", { name: `Publish ${classTitle}` })).toHaveCount(0);
 
     // ---- THE TEACHER SAYS YES, AND ONLY THEN CAN IT GO LIVE ----------------
     /* ⚠⚠ CLASS REQUESTS LIVE IN CLASSES (11 Oct 2026, the user's choice). The
@@ -972,30 +970,25 @@ test.describe.serial("DanceOS, end to end", () => {
     await expect(pointer).toContainText(/class request/);
     await pointer.click();
     await trainer.waitForURL(/\/my-classes$/);
-    await expect(trainer.getByTestId("needs-you")).toBeVisible();
-    // ⚠ ACCEPT, not Confirm (27 Sep 2026, the user: "class and event requests
-    // should have same cards with accept and reject buttons") — a class ask is
-    // an ASK, and the invitations to join are a second section with Join/Decline
-    await trainer.getByTestId("needs-you").getByRole("button", { name: `Accept ${classTitle}` }).click();
-    await expect(trainer.getByText(/✅ Accepted · /)).toBeVisible({ timeout: 15_000 });
-    // the answered ask leaves the strip, and the full history still holds it
+    /* the screen opens on To do because something waits on you, and the ask is
+       the class's own card under ASKED OF YOU with Decline · Accept on it */
+    const askedOfYou = trainer.getByTestId("todo-answer");
+    await expect(askedOfYou).toBeVisible();
+    await askedOfYou.getByRole("button", { name: `Accept ${classTitle}` }).click();
+    // the answered ask leaves To do, and the folded history keeps it
     await expect(trainer.getByRole("button", { name: `Accept ${classTitle}` })).toHaveCount(0, { timeout: 15_000 });
-    await trainer.getByTestId("see-all-requests").click();
-    await trainer.waitForURL(/\/my-classes\?show=requests$/);
-    await expect(trainer.getByTestId("class-requests")).toBeVisible();
-    // now the owner publishes from the register — the door the form no longer is
+    await expect(trainer.getByTestId("todo-answered")).toContainText("Answered");
+    // now the owner publishes from the class's own card — the door the form no longer is
     await owner.goto(`/business/${businessId}/classes`);
-    /* everybody has said yes, so the draft is READY TO PUBLISH — and the Needs-you
-       strip says so */
-    await expect(owner.getByTestId("needs-you").getByText(/ready to publish/)).toBeVisible();
-    await owner.getByRole("button", { name: /^Ready, [1-9]\d* classes$/ }).click();
-    await owner.getByRole("button", { name: "Publish", exact: true }).click();
-    await owner.getByRole("dialog", { name: "Publish this class?" }).getByRole("button", { name: "Publish it" }).click();
-    // the register stays on the tab you were reading — the class has moved to Upcoming
-    await expect(owner.getByRole("button", { name: /^Upcoming, [1-9]\d* classes$/ })).toBeVisible({ timeout: 15_000 });
-    await owner.getByRole("button", { name: /^Upcoming, [1-9]\d* classes$/ }).click();
-    registerTile = owner.locator(`[aria-label="Open ${classTitle}"]`);
-    await expect(registerTile).toBeVisible();
+    /* everybody has said yes, so the draft is READY TO PUBLISH under YOUR MOVE */
+    const yourMove = owner.getByTestId("todo-mine");
+    await expect(yourMove.getByText("Ready to publish")).toBeVisible();
+    await yourMove.getByRole("button", { name: `Publish ${classTitle}` }).click();
+    await owner.getByRole("alertdialog", { name: `Publish ${classTitle}?` }).getByRole("button", { name: "Publish", exact: true }).click();
+    // the class has moved to Upcoming
+    await owner.getByTestId("classes-tab-upcoming").click();
+    registerTile = owner.getByTestId("classes-upcoming").locator(`[aria-label="Open ${classTitle}"]`);
+    await expect(registerTile).toBeVisible({ timeout: 15_000 });
 
     // ---- the studio calendar (Step 14): the same session, on the schedule ---
     // Schedule lists every day with something on it, so the class three days
@@ -1088,7 +1081,7 @@ test.describe.serial("DanceOS, end to end", () => {
 
   test("the class page, its share link, and a learner booking from it", async () => {
     // ---- the class detail page + its booking link (Step 8) ----------------
-    await owner.goto(`/business/${businessId}/classes`);
+    await owner.goto(`/business/${businessId}/classes?tab=upcoming`);
     await registerTile.click();
     await owner.waitForURL(/\/c\/[a-z0-9-]+$/);
     shareSlug = owner.url().match(/\/c\/([a-z0-9-]+)$/)?.[1] ?? "";
@@ -1219,7 +1212,7 @@ test.describe.serial("DanceOS, end to end", () => {
     await owner.getByRole("button", { name: "Details" }).click();
 
     // the booking shows up on the learner's own list too
-    await learner.goto("/my-classes");
+    await learner.goto("/my-classes?tab=upcoming");
     await expect(learner.locator(`[aria-label="Open ${classTitle}"]`)).toBeVisible();
 
     // ⚠ THE CALENDAR CHIP IS OFF THIS PAGE (19 Sep 2026, the user: "Classes in
@@ -2108,13 +2101,15 @@ test.describe.serial("DanceOS, end to end", () => {
        up somewhere true-looking and wrong. */
     await owner.goto("/managed");
     await owner.waitForURL(/\/my-classes\?show=manage$/);
+    /* ⚠ and that old word still lands on something (11 Oct 2026): the Teaching chip */
+    await expect(owner.getByTestId("classes-tab-todo")).toBeVisible();
     await learner.goto("/managed");
     await learner.waitForURL(/\/my-classes\?show=manage$/);
 
     /* ── AND THE ROWS IT USED TO CARRY ARE STILL THERE, through the desks. This
        is the half that matters: removing a view is only safe while everything on
        it has another way in. ── */
-    await owner.goto(`/business/${businessId}/classes`);
+    await owner.goto(`/business/${businessId}/classes?tab=upcoming`);
     await expect(owner.locator(`[aria-label="Open ${classTitle}"]`)).toBeVisible();
     /* ⚠ and its DESK is one press from the row — the card itself, which opens
        the class page and its Attendance tab. The **Roster** pill this pressed
@@ -3353,26 +3348,20 @@ test.describe.serial("DanceOS, end to end", () => {
        top, while an ask waits on you (re-cut the same evening), so no column is
        pressed */
     await learner.goto("/my-classes");
-    const needsYou = learner.getByTestId("needs-you");
-    await expect(needsYou).toBeVisible({ timeout: 15_000 });
-    /* ⚠ A CLASS ASK IS A CLASS CARD SINCE 27 Sep 2026 (the user: "event and
-       class request cards should also look like class and event cards on
-       discover with accept and reject buttons"), so the row's own sentence —
-       "wants to list you as the artist on {class}" — is gone with the row. What
-       is drawn is the app's `ClassTile` for the class, with one line over it
-       saying who is asking and as what. Both are asserted, because the card
-       naming the right CLASS is the half the old wording carried. */
-    await expect(needsYou.getByText(`wants you as`)).toBeVisible({ timeout: 15_000 });
-    await expect(needsYou.getByTestId("needs-ask").filter({ hasText: "Salsa" })).toBeVisible();
+    /* ⚠ TO DO's ASKED OF YOU (11 Oct 2026): the class's own card, who is asking
+       in a chip, and Decline · Accept on it. The card naming the right CLASS is
+       the half the old row's sentence carried, so it is asserted */
+    const askedOfYou = learner.getByTestId("todo-answer");
+    await expect(askedOfYou).toBeVisible({ timeout: 15_000 });
+    await expect(askedOfYou.locator('[aria-label="Open Salsa · All levels"]')).toBeVisible();
     // and they say yes, so the only thing left in the way is the room
-    await needsYou.getByRole("button", { name: "Accept Salsa · All levels" }).click();
-    await expect(learner.getByText(/✅ Accepted · /)).toBeVisible({ timeout: 15_000 });
+    await askedOfYou.getByRole("button", { name: "Accept Salsa · All levels" }).click();
+    await expect(learner.getByRole("button", { name: "Accept Salsa · All levels" })).toHaveCount(0, { timeout: 15_000 });
 
-    await owner.goto(`/business/${businessId}/classes`);
-    /* the stage board (11 Oct 2026): everybody has said yes, so it is READY */
-    await owner.getByRole("button", { name: /^Ready, [1-9]\d* classes$/ }).click();
-    await owner.getByRole("button", { name: "Publish", exact: true }).click();
-    const sheet = owner.getByRole("dialog", { name: "Publish this class?" });
+    await owner.goto(`/business/${businessId}/classes?tab=todo`);
+    /* everybody has said yes, so the draft is READY, and Publish is on its card */
+    await owner.getByTestId("todo-mine").getByRole("button", { name: "Publish Salsa · All levels" }).click();
+    const sheet = owner.getByRole("alertdialog", { name: "That room is taken" });
     /* ⚠ FIFTEEN, NOT FIVE (21 Sep 2026) — and it is not a flake allowance, it is
        what this press actually waits on. The Publish button asks the room BEFORE
        it opens the sheet (`checkRoomClashAction`, F3), so the sheet does not
@@ -3380,14 +3369,13 @@ test.describe.serial("DanceOS, end to end", () => {
        that round trip is the whole of the default five seconds, and the failure
        reads as "no clash warning" when the DOM has no dialog in it at all. The
        siblings that wait on a server re-render already have fifteen. */
-    await expect(sheet.getByText(/ROOM ALREADY BUSY/)).toBeVisible({ timeout: 15_000 });
+    await expect(sheet).toBeVisible({ timeout: 15_000 });
     await expect(sheet.getByText(new RegExp(`Studio A already has ${classTitle} at`))).toBeVisible();
-    await expect(sheet.getByText(/A room is never double-booked/)).toBeVisible();
     // the primary button no longer offers what the database would refuse
-    await expect(sheet.getByRole("button", { name: "Publish it" })).toHaveCount(0);
-    await expect(sheet.getByRole("link", { name: "Change the slot" })).toBeVisible();
+    await expect(sheet.getByRole("button", { name: "Publish", exact: true })).toHaveCount(0);
+    await expect(sheet.getByRole("button", { name: "Change the slot" })).toBeVisible();
     // (exact: the chrome's own "Go back" chip matches a loose "Back")
-    await owner.getByRole("button", { name: "Back", exact: true }).click();
+    await sheet.getByRole("button", { name: "Back", exact: true }).click();
     // and it is still a DRAFT — not in any room, so it clashed with nothing.
     // Its name is derived ("Salsa · All levels"), and this studio has one Salsa class.
     const rows = (await (

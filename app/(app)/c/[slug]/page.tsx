@@ -84,13 +84,6 @@ const isLiveNow = (startsAt: string, endsAt: string): boolean => {
   return new Date(startsAt).getTime() <= now && now <= new Date(endsAt).getTime();
 };
 
-/** the weeks a weekly class still has to run, plus the one being looked at if it
- *  is already over (a past week's register is still somebody's to read) */
-const weeksAhead = <S extends { id: string; endsAt: string }>(all: S[], pickedId: string | null): S[] => {
-  const now = Date.now();
-  return all.filter((s) => Date.parse(s.endsAt) > now || s.id === pickedId);
-};
-
 /* where the clock stands on the session — the attendance strip only SAYS which
    moment you are in; the check-in window itself is enforced by the RPCs */
 const phaseOf = (startsAt: string | undefined, endsAt: string | undefined): "upcoming" | "live" | "ended" => {
@@ -113,7 +106,7 @@ export default async function ClassSharePage({
   searchParams: Promise<Record<string, string | undefined>>;
 }) {
   const { slug } = await params;
-  const { as, open, session: pickedSession } = await searchParams;
+  const { as, open } = await searchParams;
   /* the Classes screen's Running now card (11 Oct 2026) — a request, honoured by
      the page only when this viewer has a register */
   const openOn = open === "scan" ? "scan" : open === "register" ? "register" : null;
@@ -133,14 +126,9 @@ export default async function ClassSharePage({
   if (!loaded) {
     notFound();
   }
-  /* ⚠ ONE WEEK OF A WEEKLY CLASS (13 Oct 2026, the user: "Date chips on the class
-     page"). `?session=` picks a week; the class's own session — the next one not
-     yet ended — is the default. Everything below reads `danceClass.session`, so
-     swapping it here makes the seats, the booking bar, the phase, the passes and
-     the register all the PICKED week's. An id that is not one of this class's
-     live sessions is ignored rather than trusted. */
-  const picked = pickedSession ? (loaded.sessions ?? []).find((s) => s.id === pickedSession) ?? null : null;
-  const danceClass: PublicClassListing = picked ? { ...loaded, session: picked } : loaded;
+  /* ⚠ weekly classes and their `?session=` date chips went on 11 Oct 2026 at the
+     user's word; an old `?session=` link simply opens the class */
+  const danceClass: PublicClassListing = loaded;
 
   const sessionId = danceClass.session?.id ?? null;
   /* THE READS THAT NEED ONLY THE CLASS, STARTED NOW. Each carries a no-op catch
@@ -250,7 +238,7 @@ export default async function ClassSharePage({
      longer holds a round of its own. */
   const [receipt, register, paidUserIds, room, ownerId, routines, myRoutines, canSetRoutines, passesAll, actingAs, assistantPool, place, refunds, classMoney] = await Promise.all([
     myBooking && danceClass.priceInr > 0 ? findPaidReceiptByClassBooking(supabase, myBooking.id) : Promise.resolve(null),
-    mayRunRegister ? findClassRegister(supabase, danceClass.id, (danceClass.sessions?.length ?? 0) > 1 ? sessionId : null) : Promise.resolve(null),
+    mayRunRegister ? findClassRegister(supabase, danceClass.id) : Promise.resolve(null),
     mayRunRegister && sessionId && danceClass.priceInr > 0 ? findPaidUserIdsBySession(supabase, sessionId) : Promise.resolve(new Set<string>()),
     roomP,
     ownerIdP,
@@ -314,8 +302,6 @@ export default async function ClassSharePage({
       cannotBookWhy={actingAs && !canBookClass(actingAs) ? noBookingWords(actingAs) : null}
       passes={passes}
       openOn={openOn}
-      /* the weeks of a weekly class, as date chips; null for a one-session class */
-      seriesSessions={(danceClass.sessions?.length ?? 0) > 1 ? weeksAhead(danceClass.sessions!, danceClass.session?.id ?? null) : null}
     />
   );
 }

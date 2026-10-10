@@ -1,17 +1,14 @@
-import Link from "next/link";
 import { redirect } from "next/navigation";
 import { ClassForm } from "@/features/classes/components/ClassForm";
-import { ClassesManager } from "@/features/classes/components/ClassesManager";
-import { ClassesHome, type RunningItem } from "@/features/classes/components/ClassesHome";
-import { doorOpen, needLinksOf, runningWhen } from "@/features/classes/classesScreen";
-import { STAGES, type ClassStage } from "@/features/classes/stages";
-import { DeskHero, DOS_TOOLS } from "@/features/businesses/components/biz-kit";
+import { ClassesHome, type ClassItem } from "@/features/classes/components/ClassesHome";
+import { ClassTile } from "@/features/classes/components/ClassTile";
+import { groupWithDoor, tabFromAddress, type ClassesTab } from "@/features/classes/classesScreen";
+import { answeredRows, askToYouItem, askYouSentItem, draftItem, refundsItem, runActions } from "@/features/classes/classItems";
+import { DeskHero } from "@/features/businesses/components/biz-kit";
 import { RoomRequestSettings } from "@/features/inbox/components/AskSettings";
-import { InboxScreen } from "@/features/inbox/components/InboxScreen";
 import { buildRequests } from "@/features/inbox/requestItems";
-import { DeskTop } from "@/components/ui/DeskSections";
-import { DOS_UI, INK, LILAC } from "@/lib/design/tokens";
-import { countCheckedInBySession } from "@/repositories/attendance";
+import { DeskAddButton } from "@/features/settings/components/settings-kit";
+import { DOS_UI, INK, LILAC, SUB } from "@/lib/design/tokens";
 import { findRefundsByBusiness } from "@/repositories/refunds";
 import { findTakesRoomRequests } from "@/repositories/askSettings";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
@@ -21,16 +18,24 @@ import { countEnrolledBySession } from "@/repositories/classBookings";
 import { findRoomsByBusiness } from "@/repositories/rooms";
 import { findMyMemberships, runsTheBusiness } from "@/repositories/businesses";
 
-/* the clock lives outside the component (react-hooks/purity) — the register's
-   LIVE filter is arithmetic over the moment the page was served */
-const stampNowIso = (): string => new Date().toISOString();
+/* the clock lives outside the component (react-hooks/purity) */
+const stampNow = (): number => Date.now();
 
-/** A STUDIO's classes register. Since 18 Sep 2026 every row wears the request
- *  it waits on — the teacher asked and their answer — and Publish is offered
- *  only once the database would accept it. An ARTIST's register is not a page
- *  of its own any more: it is the Manage segment of Your classes (the user:
- *  "Manage class should not take to a separate page for artist"), so an artist
- *  page's address lands there (Rule 14). */
+const ROLES = [
+  { key: "all", word: "All" },
+  { key: "yours", word: "Yours" },
+  { key: "guest", word: "Guest artists" },
+];
+
+/** A STUDIO's classes — the same screen as Your classes (11 Oct 2026): To do ·
+ *  Upcoming · Past, with All · Yours · Guest artists as the chip row. To do is
+ *  the rooms artists asked for, the drafts and what each waits on, the refunds
+ *  to decide and the asks still out; every card carries its own buttons. The
+ *  room-request switch is behind the gear.
+ *  ⚠ Every write here is the OWNER's (RLS admits only the owner to `classes`
+ *  UPDATE); a manager sees the drafts with their state and no buttons.
+ *  ⚠ Old addresses keep landing (Rule 14): `?show=requests` and `?stage=` open
+ *  the tab they meant. An artist page's address is Your classes. */
 export default async function BusinessClassesPage({
   params,
   searchParams,
@@ -49,204 +54,138 @@ export default async function BusinessClassesPage({
     redirect("/login");
   }
 
-  /* membership check: RLS only returns businesses the user belongs to — and the
-     seat has to be one that RUNS the place (28 Sep 2026). The switcher stopped
-     listing a business a faculty seat is on, and a door closed only in the menu
-     that opens it is not closed. ⚠ The role rides the query that was already
-     being made: `findMyMemberships` is `findMyBusinesses` with the seat on it. */
+  /* the seat has to be one that RUNS the place (28 Sep 2026) */
   const seat = (await findMyMemberships(supabase)).find((m) => m.business.id === businessId);
   if (!seat || !runsTheBusiness(seat.memberRole)) {
     redirect("/business");
   }
   const business = seat.business;
-  /* ⚠ the hosting row's redirect to its events desk went with events (29 Sep 2026) */
   if (business.type === "artist_page") {
-    redirect("/my-classes?show=manage");
+    redirect("/my-classes");
   }
+  const owner = seat.memberRole === "owner";
 
-  /* ⚠ creating a class is the OWNER's since 18 Sep 2026 — `whyNoClass` asks
-     whether this BUSINESS may carry one, never whether YOU may make one, so the
-     seat decides the button. ⚠ It is the seat READ ABOVE (28 Sep 2026), not a
-     second `findMyMembershipRole` round trip: the guard had to know the role
-     anyway, so asking twice was a query this page stopped needing. */
-  const myRole = seat.memberRole;
-  const [classes, hosted] = await Promise.all([
-    findClassesByBusiness(supabase, businessId),
-    findClassesHostedByBusiness(supabase, businessId),
-  ]);
-  /* ⚠ the hosted classes' seats too (4 Oct 2026): their cards print "N/M Booked"
-     on the bar, and without a count they read 0 */
+  const [classes, hosted] = await Promise.all([findClassesByBusiness(supabase, businessId), findClassesHostedByBusiness(supabase, businessId)]);
   const sessionIds = [...classes, ...hosted.map((h) => h.danceClass)].map((c) => c.session?.id).filter(Boolean) as string[];
-  const [counts, state, artists, whyNoClass, venueRequests, sentAsks, takesRooms] = await Promise.all([
+  const [counts, state, whyNoClass, venueRequests, sentAsks, takesRooms, refunds] = await Promise.all([
     countEnrolledBySession(supabase, sessionIds),
     findClassPublishState(supabase, businessId).catch(() => new Map()),
-    /* the teacher each row's card wears in its centre (18 Sep 2026) — a draft
-       whose ask is unanswered has none, and falls back to the style square.
-       ⚠ The hosted classes ride the same read, so an artist's class in this
-       studio's room wears the artist's face too */
-    findClassArtists(supabase, [...classes.map((c) => c.id), ...hosted.map((h) => h.danceClass.id)]),
-    /* the database's sentence, if a new class would be refused here (18 Sep 2026) */
     findWhyNoClass(supabase, businessId),
-    /* ⚠⚠ WHO WANTS THIS STUDIO'S ROOMS (30 Sep 2026). A venue request is a class
-       owned by the ARTIST's page, so `findClassesByBusiness` above has never
-       returned one — the studio's own rooms were being committed and its classes
-       desk said nothing at all. The only place to answer was the Inbox. */
-    /* ⚠ every answer since 11 Oct 2026 — the Requests column keeps the
-       answered ones under Done rather than letting them vanish */
+    /* the rooms artists asked this studio for — every answer, so the answered
+       ones stay in To do's history */
     findVenueRequestsForBusinesses(supabase, [businessId], ["requested", "accepted", "declined"]).catch(() => []),
-    /* the asks this studio has SENT, every status and the withdrawn ones — the
-       live ones also let a row that says "⏳ {name} asked" take it back */
     findAskedClassPeopleForBusinesses(supabase, [businessId], ["asked", "confirmed", "rejected"], { withdrawn: true }).catch(() => []),
-    /* whether artists may ask this studio for a room (3 Oct 2026) — its switch
-       moved here from the Inbox with the requests (11 Oct 2026) */
     findTakesRoomRequests(supabase, businessId),
+    owner ? findRefundsByBusiness(supabase, businessId).catch(() => []) : Promise.resolve([]),
   ]);
-  const askedTeachers = Object.fromEntries(
-    sentAsks.filter((a) => a.kind === "artist" && a.status === "asked" && !a.withdrawn).map((a) => [a.classId, a.id])
-  );
-  /* ⚠⚠ THE REQUESTS COLUMN (11 Oct 2026, the user's choice: class requests live
-     in Classes only, with their settings). Rooms artists asked this studio for,
-     and the teachers and assistants it asked — answered with the Inbox's own
-     cards and RPCs, which are the ones that decide who may answer. */
   const { requestsIn, requestsOut } = buildRequests({ venueIn: venueRequests, classPeopleOut: sentAsks });
-  const reqArtists = Object.fromEntries(
-    await findClassArtists(supabase, [...new Set([...requestsIn, ...requestsOut].map((r) => r.danceClass?.id).filter((x): x is string => Boolean(x)))]).catch(() => new Map())
-  );
-  /* ⚠⚠ ONE SCREEN FOR A STUDIO AND A PERSON (11 Oct 2026, the user's choice):
-     the Needs-you strip, the Running now card and the stage board — the same
-     `ClassesHome` `/my-classes` stands on. `?show=requests` is the request
-     history; every other address (an old `?show=classes` too) is the screen. */
-  const show = sp.show === "requests" ? "requests" : "classes";
-  const nowIso = stampNowIso();
-  const nowMs = Date.parse(nowIso);
-  const rawStage = sp.stage ?? "";
-  const initialStage: ClassStage | "all" = (STAGES as string[]).includes(rawStage) ? (rawStage as ClassStage) : "all";
-  /* the classes whose door is open now — the studio's own and the artists'
-     classes in its rooms; whoever runs the studio runs those registers */
-  const live = [...classes.filter((c) => c.status !== "draft"), ...hosted.map((h) => h.danceClass)].filter((c) => c.session && doorOpen(c.session.startsAt, c.session.endsAt, nowMs));
-  const [inRoom, refunds] = await Promise.all([
-    countCheckedInBySession(supabase, live.map((c) => c.session!.id)),
-    /* the refunds waiting on a decision — the owner's to make */
-    myRole === "owner" ? findRefundsByBusiness(supabase, businessId).catch(() => []) : Promise.resolve([]),
+  const artists = await findClassArtists(supabase, [
+    ...new Set([...classes.map((c) => c.id), ...hosted.map((h) => h.danceClass.id), ...[...requestsIn, ...requestsOut].map((r) => r.danceClass?.id).filter((x): x is string => Boolean(x))]),
   ]);
-  const running: RunningItem[] = live
-    .sort((a, b) => a.session!.startsAt.localeCompare(b.session!.startsAt))
-    .map((c) => ({
-      key: c.id,
-      title: c.title,
-      path: `/c/${c.shareSlug}`,
-      when: runningWhen(c.session!.startsAt, c.session!.endsAt, nowMs),
-      started: Date.parse(c.session!.startsAt) <= nowMs,
-      booked: counts.get(c.session!.id) ?? 0,
-      capacity: c.capacity,
-      checkedIn: inRoom.get(c.session!.id) ?? 0,
-      canDoor: true,
-      role: c.businessId === businessId ? "Your class" : "At your studio",
-    }));
-  const stateObj = Object.fromEntries(state);
-  const needLinks = needLinksOf({
-    classes,
-    state: stateObj,
-    nowMs,
-    businessId,
-    canEdit: myRole === "owner",
-    readyHref: `/business/${businessId}/classes?stage=ready`,
-    refunds,
-    refundsHref: myRole === "owner" ? `/business/${businessId}/refunds` : null,
-  });
-  /* ⚠ ADD CLASS OPENS OVER THIS REGISTER (22 Sep 2026, the user: "all forms and
-     add buttons … should open form like how setting page or edit profile page
-     open from the same screen", then "from inside their respective sections").
-     The ROOMS the form offers are read only when the form is asked for — `?new=1`
-     — so the register costs exactly what it did before on every other visit, and
-     the owner-only rule is re-checked here because a query param is a thing
-     anybody can type. The old full-page `/business/{id}/classes/new` forwards
-     here since 5 Oct 2026 (next.config.ts). */
-  const rooms = opening && myRole === "owner" && !whyNoClass ? await findRoomsByBusiness(supabase, businessId).catch(() => []) : [];
-  const register = (
-      <ClassesManager
-        embedded
-        businessId={businessId}
-        classes={classes}
-        filledBySession={Object.fromEntries(counts)}
-        artists={Object.fromEntries(artists)}
-        publishState={stateObj}
-        initialStage={initialStage}
-        whyNoClass={whyNoClass}
-        canCreate={myRole === "owner"}
-        /* ⚠ THE SAME SEAT DECIDES EVERY WRITE ON THIS DESK (30 Sep 2026): RLS
-           admits only the owner to `classes` UPDATE, so Edit, Publish and Delete
-           are the owner's exactly as Create is. R55 let a MANAGER in here on
-           28 Sep and only Create was re-checked. */
-        canEdit={myRole === "owner"}
-        askedTeachers={askedTeachers}
-        /* the artists' classes this studio said yes to, filed in their tabs,
-           read-only — the class is the artist's to edit (2 Oct 2026) */
-        elsewhere={hosted.map((h) => ({
-          id: h.danceClass.id,
-          danceClass: h.danceClass,
-          artist: artists.get(h.danceClass.id) ?? null,
-          city: business.city ?? null,
-        }))}
-        elsewhereHead="ARTISTS IN YOUR ROOMS"
-        /* the studio's word for an artist's class in its room — "At your
-           studio", as its Home deck says (it read "Hosted" here) */
-        elsewhereRelation="atYourStudio"
-        nowIso={nowIso}
-      />
-  );
-  const waitingOut = requestsOut.filter((r) => r.status === "asked").length;
+  const artistOf = (id: string | undefined) => (id ? (artists.get(id) ?? null) : null);
+  const seatsOf = (id: string | undefined) => (id ? (counts.get(id) ?? 0) : 0);
+  const nowMs = stampNow();
+
+  const drafts = classes.filter((c) => c.status === "draft");
+  const draftIds = new Set(drafts.map((c) => c.id));
+
+  /* ── TO DO ─────────────────────────────────────────────────────────────── */
+  const todo: ClassItem[] = [
+    /* an artist wants one of the rooms — the owner answers; a manager reads it */
+    ...requestsIn
+      .filter((r) => r.status === "asked")
+      .map((r) => askToYouItem(r, artistOf(r.danceClass?.id), "guest", owner)),
+    ...drafts.map((c) =>
+      draftItem({
+        c,
+        businessId,
+        state: state.get(c.id),
+        askedTeacherId: sentAsks.find((a) => a.classId === c.id && a.kind === "artist" && a.status === "asked" && !a.withdrawn)?.id ?? null,
+        canEdit: owner,
+        artist: artistOf(c.id),
+        filled: seatsOf(c.session?.id),
+        role: "yours",
+      })
+    ),
+    ...[refundsItem(refunds, `/business/${businessId}/refunds`, "yours")].filter((x): x is ClassItem => x !== null),
+    ...requestsOut
+      .filter((r) => r.status === "asked" && r.kind === "classPerson" && !(r.danceClass && draftIds.has(r.danceClass.id)))
+      .map((r) => askYouSentItem(owner ? r : { ...r, classPersonId: undefined }, artistOf(r.danceClass?.id), "yours")),
+  ];
+
+  /* ── UPCOMING · PAST ───────────────────────────────────────────────────── */
+  const runs = [
+    ...classes.filter((c) => c.status !== "draft").map((c) => ({ c, role: "yours", relation: null })),
+    ...hosted.map((h) => ({ c: h.danceClass, role: "guest", relation: "atYourStudio" as const })),
+  ]
+    .map(({ c, role, relation }) => {
+      const group = groupWithDoor(c.session?.startsAt ?? null, c.session?.endsAt ?? null, nowMs);
+      const path = `/c/${c.shareSlug}`;
+      return {
+        key: `${role}-${c.id}`,
+        tab: (group === "past" ? "past" : "upcoming") as ClassesTab,
+        group,
+        role,
+        at: c.session?.startsAt ?? null,
+        node: (
+          <ClassTile
+            danceClass={c}
+            filled={seatsOf(c.session?.id)}
+            artist={artistOf(c.id)}
+            city={role === "guest" ? (business.city ?? null) : undefined}
+            href={path}
+            relation={relation}
+            /* whoever runs the studio runs its door — its own classes and the
+               guest artists' in its rooms */
+            actions={runActions({ group, path, title: c.title, canDoor: true, canShare: role === "yours" })}
+          />
+        ),
+      };
+    })
+    .sort((a, b) => (a.group === "past" && b.group === "past" ? (b.at ?? "").localeCompare(a.at ?? "") : (a.at ?? "9").localeCompare(b.at ?? "9")));
+
+  const items: ClassItem[] = [...todo, ...runs];
+
+  const waitsOnYou = todo.some((i) => i.section !== "waiting");
+  const tabAsked = tabFromAddress(sp.tab, sp.show, sp.stage);
+  const initialTab: ClassesTab = tabAsked ?? (waitsOnYou ? "todo" : "upcoming");
+  const initialRole = sp.role ?? "all";
+
+  const add = owner ? (
+    whyNoClass ? (
+      <div data-testid="why-no-class" style={{ fontSize: 12, color: SUB, lineHeight: 1.4 }}>
+        {whyNoClass}
+      </div>
+    ) : (
+      <DeskAddButton label="Add Class" href={`/business/${businessId}/classes?new=1`} />
+    )
+  ) : null;
+
+  /* the rooms the form offers are read only when the form is asked for */
+  const rooms = opening && owner && !whyNoClass ? await findRoomsByBusiness(supabase, businessId).catch(() => []) : [];
 
   return (
     <div style={{ background: LILAC, color: INK, maxWidth: 430, margin: "0 auto", fontFamily: DOS_UI, minHeight: "100vh", padding: "14px 16px 40px", boxSizing: "border-box" }}>
-      {/* ⚠⚠ ONE SCREEN (11 Oct 2026, the user's second pass that evening): the
-          rooms artists ask for are the top of Needs you, a class on the clock is
-          the Running-now card, and the register is the stage board. The whole
-          request history — with the room switch — is `?show=requests`. */}
-      {show === "requests" ? (
-        <>
-          <DeskTop style={{ paddingBottom: 12 }}>
-            <DeskHero tool="classes" as="h1" margin="0" />
-            <Link href={`/business/${businessId}/classes`} data-testid="back-to-classes" style={{ display: "inline-block", marginTop: 10, fontSize: 12, fontWeight: 800, color: "var(--text)", textDecoration: "none", padding: "8px 13px", borderRadius: 999, border: "1.5px solid var(--el)", background: "var(--card)" }}>
-              ‹ Back to classes
-            </Link>
-          </DeskTop>
-          <InboxScreen
-            embed
-            embedFor="studio"
-            accent={DOS_TOOLS.classes.c}
-            requestsIn={requestsIn}
-            requestsOut={requestsOut}
-            artists={reqArtists}
-            enquiriesIn={[]}
-            enquiriesOut={[]}
-            noEnquiries
-            nowIso={nowIso}
-            requestSettings={<RoomRequestSettings businessId={businessId} on={takesRooms} owner={myRole === "owner"} />}
-          />
-        </>
-      ) : (
-        <ClassesHome
-          key={initialStage}
-          mode="studio"
-          top={<DeskHero tool="classes" as="h1" margin="0" />}
-          asks={requestsIn.filter((r) => r.status === "asked")}
-          artists={reqArtists}
-          needLinks={needLinks}
-          running={running}
-          board={register}
-          requestsHref={`/business/${businessId}/classes?show=requests`}
-          requestsWaiting={waitingOut}
-          basePath={`/business/${businessId}/classes`}
-        />
-      )}
-      {opening && myRole === "owner" && !whyNoClass ? (
+      <ClassesHome
+        /* keyed on the ADDRESS, never the computed default — see /my-classes */
+        key={`${tabAsked ?? "auto"}-${initialRole}`}
+        mode="studio"
+        top={<DeskHero tool="classes" as="h1" margin="0" />}
+        add={add}
+        settings={<RoomRequestSettings businessId={businessId} on={takesRooms} owner={owner} startOpen />}
+        roles={ROLES}
+        items={items}
+        answered={answeredRows(requestsIn, requestsOut)}
+        initialTab={initialTab}
+        initialRole={initialRole}
+        basePath={`/business/${businessId}/classes`}
+      />
+      {opening && owner && !whyNoClass ? (
         <ClassForm
           businessId={businessId}
           businessType={business.type}
           rooms={rooms}
           isOwner
-          /* the owner may take their own class (26 Sep 2026) — this branch is owner-only */
           meId={user.id}
           studioPlace={[business.area, business.city].filter(Boolean).join(", ")}
           suggestedStyles={business.styles}

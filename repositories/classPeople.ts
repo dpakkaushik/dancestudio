@@ -205,8 +205,7 @@ interface MyAskRow extends ClassPersonRow {
  *  after accepting"). */
 const ASK_SELECT = `${CLAIM_COLUMNS}, deleted_at, business_id, classes (id, style, level, share_slug, room, price_inr, capacity, status, poster_path, venue_status, businesses!classes_business_id_fkey (name, city, type, profile_photo_path), venue:businesses!classes_venue_business_id_fkey (name, type, profile_photo_path), class_sessions (id, starts_at, ends_at, deleted_at))`;
 const toAsk = (r: MyAskRow): MyClassPersonAsk => {
-  /* a weekly class (13 Oct 2026): the week the ask is about is the next one
-     still to run, else the last — and never one called off on its own */
+  /* the session the ask is about: the live one still to run, else the last */
   const live = [...(r.classes!.class_sessions ?? [])].filter((s) => !s.deleted_at).sort((a, b) => a.starts_at.localeCompare(b.starts_at));
   const now = Date.now();
   const first = live.find((s) => Date.parse(s.ends_at) > now) ?? live[live.length - 1] ?? null;

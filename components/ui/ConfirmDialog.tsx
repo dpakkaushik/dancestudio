@@ -23,6 +23,7 @@ export function ConfirmDialog({
   goWord,
   busy = false,
   err = null,
+  tone = "danger",
   onKeep,
   onGo,
 }: {
@@ -33,6 +34,8 @@ export function ConfirmDialog({
   goWord: string;
   busy?: boolean;
   err?: string | null;
+  /** "go" for a press that is not a removal (publishing a class) */
+  tone?: "danger" | "go";
   onKeep: () => void;
   onGo: () => void;
 }) {
@@ -62,7 +65,7 @@ export function ConfirmDialog({
               type="button"
               onClick={onGo}
               disabled={busy}
-              style={{ flex: 1, padding: "11px 12px", borderRadius: 12, background: "#DC2626", border: "none", color: "#fff", fontSize: 12.5, fontWeight: 900, cursor: busy ? "not-allowed" : "pointer", fontFamily: "inherit" }}
+              style={{ flex: 1, padding: "11px 12px", borderRadius: 12, background: tone === "go" ? "var(--text)" : "#DC2626", border: "none", color: tone === "go" ? "var(--solid)" : "#fff", fontSize: 12.5, fontWeight: 900, cursor: busy ? "not-allowed" : "pointer", fontFamily: "inherit" }}
             >
               {busy ? "Working…" : goWord}
             </button>

@@ -309,14 +309,12 @@ async function personOpensAStudio(page, who, acc, stamp) {
   await page.getByRole("button", { name: "Save draft", exact: true }).last().click();
   await form.waitFor({ state: "detached", timeout: 20_000 }).catch(() => {});
   await page.goto(`${BASE}/business/${studioId}/classes`, { waitUntil: "networkidle" });
-  /* a new class is a DRAFT, and the register opens on Published — the Draft
-     segment is where its Publish pill is (the happy path presses the same pill) */
-  /* ⚠ THE STAGE BOARD since 11 Oct 2026: a draft whose teacher is the owner
-     themselves is READY — nothing to wait for — and its Publish is there */
-  await page.getByRole("button", { name: /^Ready, \d+ classes$/ }).click().catch(() => {});
-  const publish = page.getByRole("button", { name: "Publish", exact: true });
+  /* ⚠ TO DO · UPCOMING · PAST since 11 Oct 2026: a draft whose teacher is the
+     owner themselves is READY — nothing to wait for — so the screen opens on To
+     do and its card carries Publish */
+  const publish = page.getByTestId("todo-mine").getByTestId("card-publish");
   await publish.first().waitFor({ timeout: 15_000 }).catch(() => {});
-  check((await publish.count()) >= 1, `${who} · the register offers Publish with nothing in its way — nobody was asked (${(await page.getByRole("button", { name: /^Publish/ }).allTextContents().catch(() => [])).join(" | ") || "no Publish pill at all"})`);
+  check((await publish.count()) >= 1, `${who} · To do offers Publish with nothing in its way — nobody was asked (${(await page.getByTestId("card-state").allTextContents().catch(() => [])).join(" | ") || "no card state at all"})`);
   /* the log: an ask the studio made and its answer. ⚠ ON **DONE** SINCE 27 Sep
      2026 (the user: "sepreate section request, invites and enquiries which are
      already completed") — an answered ask still exists, which is the 19 Sep
@@ -324,13 +322,11 @@ async function personOpensAStudio(page, who, acc, stamp) {
      desk so Requests holds only what still needs somebody. */
   /* ⚠ IN THE CLASSES SECTION SINCE 11 Oct 2026 (class requests live there only)
      — its Requests column, the Done side */
-  await page.goto(`${BASE}/my-classes?show=requests`, { waitUntil: "networkidle" });
-  await page.getByRole("button", { name: "Done class requests" }).click().catch(() => {});
-  const inbox = await page.locator("body").innerText().catch(() => "");
-  /* ⚠ "Accepted", not "Confirmed" (27 Sep 2026): a class ask is drawn as the
-     app's own class card with Accept / Reject under it, so the answer it wears
-     uses the same verb as the button that gave it. */
-  check(/Hip-Hop/.test(inbox) && /accepted/i.test(inbox), `${who} · Classes › Requests keeps the line, wearing its answer`);
+  /* ⚠ AND SINCE THE SAME EVENING: To do's folded "Answered" list, wearing the word */
+  await page.goto(`${BASE}/my-classes?tab=todo`, { waitUntil: "networkidle" });
+  await page.getByTestId("todo-answered").locator("summary").click().catch(() => {});
+  const inbox = await page.getByTestId("todo-answered").innerText().catch(() => "");
+  check(/Hip-Hop/.test(inbox) && /confirmed/i.test(inbox), `${who} · Classes › To do keeps the line under Answered, wearing its answer (${inbox.slice(0, 80) || "no Answered list"})`);
   await page.goto(`${BASE}/notifications`, { waitUntil: "networkidle" });
   check(/You take Hip-Hop/.test(await page.locator("body").innerText().catch(() => "")), `${who} · and the bell says "You take …" — the log the user asked for`);
   return studioId;
@@ -426,15 +422,15 @@ async function personOpensAStudio(page, who, acc, stamp) {
     check(new URL(p2.url()).pathname === "/crews", `artist · the old /crews/new address forwards to the Crews hub (${new URL(p2.url()).pathname})`);
     check(await p2.getByRole("link", { name: "Add Crew", exact: true }).isVisible().catch(() => false), "artist · …one press from Add Crew");
 
-    /* ⚠ ADD CLASS IS THE ONE THE USER NAMED, and it opens from the section that
-       owns it — an artist's register is the Manage segment of Your classes, so
-       the href must keep `show=manage` or the list changes under the sheet. */
+    /* ADD CLASS opens over Classes. ⚠ One screen since 11 Oct 2026 — there is no
+       segment to keep; the old `?show=manage` address still lands, and the sheet
+       is `?new=1` on Classes */
     await p2.goto(`${BASE}/my-classes?show=manage`, { waitUntil: "networkidle" });
     await p2.getByRole("link", { name: "Add Class", exact: true }).click();
     const addClass = p2.getByRole("dialog", { name: "Add class" });
     await addClass.waitFor({ timeout: 15_000 }).catch(() => {});
-    check(await addClass.isVisible().catch(() => false), "artist · Add Class opens a sheet over the register");
-    check(new URL(p2.url()).search.includes("show=manage") && new URL(p2.url()).search.includes("new=1"), `artist · and it KEEPS the segment it was opened from (${new URL(p2.url()).search})`);
+    check(await addClass.isVisible().catch(() => false), "artist · Add Class opens a sheet over Classes");
+    check(new URL(p2.url()).search.includes("new=1"), `artist · the sheet is the address (${new URL(p2.url()).search})`);
     await p2.close();
 
     // ── 3. a person who OWNS A STUDIO

@@ -34,8 +34,7 @@ import type { Routine } from "@/repositories/routines";
 import { bookWithMembershipAction } from "@/features/memberships/server-actions/memberships";
 import type { PassForSession } from "@/repositories/memberships";
 import type { ClassPerson } from "@/types/classPerson";
-import type { ClassSession, PublicClassListing } from "@/types/class";
-import { SeriesControls } from "./SeriesControls";
+import type { PublicClassListing } from "@/types/class";
 import type { ClassBookingStatus } from "@/types/classBooking";
 import type { ClassMoney, PaidReceipt } from "@/types/payment";
 import type { RefundRequest } from "@/types/refund";
@@ -223,9 +222,6 @@ export interface ClassDetailProps {
    *  its register or its camera. A REQUEST: honoured only when this viewer has a
    *  register at all, and the camera only while check-in is still open. */
   openOn?: "register" | "scan" | null;
-  /** THE WEEKS OF A WEEKLY CLASS still to run (13 Oct 2026), drawn as date chips;
-   *  null for a class with one session */
-  seriesSessions?: ClassSession[] | null;
 }
 
 export function ClassDetail({
@@ -261,7 +257,6 @@ export function ClassDetail({
   cannotBookWhy = null,
   passes = [],
   openOn = null,
-  seriesSessions = null,
 }: ClassDetailProps) {
   const col = dosStyleColor(c.style);
   const dark = useSyncExternalStore(subscribeToHtmlClass, readIsDark, readServerIsDark);
@@ -803,27 +798,6 @@ export function ClassDetail({
             <div style={{ marginTop: 12 }}>
               <WhenTile startsAt={c.session?.startsAt ?? null} endsAt={c.session?.endsAt ?? null} tint={col} big extra={durNice} />
             </div>
-            {/* THE WEEKS, AND THE OWNER'S CALL-OFF AND RUN LONGER (13 Oct 2026) —
-                a one-session class draws only the owner's Run longer */}
-            {c.session ? (
-              <SeriesControls
-                /* ⚠ KEYED ON THE WEEK (13 Oct 2026): calling a week off REPLACES to
-                   the class's own link — the same route, so nothing unmounts and the
-                   dialog stayed open over the page. The next week arrives with a new
-                   id, the controls remount, and the dialog goes with them; by then
-                   the route has moved, so its history entry is not spent twice. */
-                key={c.session.id}
-                slug={c.shareSlug}
-                classId={c.id}
-                tint={col}
-                sessions={seriesSessions ?? [c.session]}
-                pickedId={c.session.id}
-                isOwner={isOwner}
-                over={done && !(seriesSessions && seriesSessions.length > 1)}
-                pickedOver={sessionPhase === "ended"}
-                totalLive={c.sessions?.length ?? 1}
-              />
-            ) : null}
 
             {/* THE SEATS WRITTEN ON THE BAR, THE PRICE BESIDE IT (4 Oct 2026). A
                 class that is over has no spots to offer, so the bar says so. */}

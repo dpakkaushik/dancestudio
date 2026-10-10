@@ -205,84 +205,58 @@ const BOOK_ON_PAGE = /^Book Now$/;
     const aheadSes = (await rows(owner.h, `class_sessions?class_id=eq.${ahead}&select=id`))[0].id;
     await rpc(learner.h, "book_class_session", { p_session_id: aheadSes });
 
-    /* ══ 1 · THE MANAGER'S REGISTER ═══════════════════════════════════════════ */
+    /* ══ 1 · THE MANAGER'S CLASSES SCREEN ═════════════════════════════════════
+       ⚠⚠ RE-CUT 11 Oct 2026 (the user's choice): To do · Upcoming · Past, the
+       buttons on every card. A manager reads every draft and what it waits on,
+       and is offered no write — RLS admits only the owner to `classes` UPDATE. */
     const mCtx = await browser.newContext();
     mCtx.on("weberror", (e) => errs.push(String(e.error())));
     const mPage = await signIn(mCtx, manager.email);
-    mPage.on("pageerror", (e) => errs.push(String(e)));
+    mPage.on("pageerror", (e) => errs.push(`${mPage.url()} ${e}`));
     await mPage.goto(`${BASE}/business/${studio.id}/classes`, { waitUntil: "networkidle" });
-    check(/\/classes$/.test(new URL(mPage.url()).pathname), "a MANAGER reaches the classes register — R55 let them in on 28 Sep");
+    check(/\/classes$/.test(new URL(mPage.url()).pathname), "a MANAGER reaches the classes screen — R55 let them in on 28 Sep");
+    check((await mPage.getByRole("link", { name: "Add Class", exact: true }).count()) === 0, "…with no Add Class — creating a class is the owner's");
+    check((await mPage.getByRole("link", { name: "Roster", exact: true }).count()) === 0, "…and no Roster pill (4 Oct 2026) — the card opens the class page, whose Attendance tab is the register");
+    await mPage.getByTestId("classes-tab-todo").click();
+    await mPage.waitForTimeout(300);
+    const mTodo = await text(mPage);
+    check(/Bhangra/.test(mTodo) && new RegExp(`Waiting on ${artist.name}`, "i").test(mTodo), "the draft is in To do, saying who it waits on — the desk is not hidden, only its writes");
+    check((await mPage.getByRole("link", { name: "Edit", exact: true }).count()) === 0, "⚠⚠ no Edit on a draft — the edit page redirects a manager away without a word");
+    check((await mPage.getByTestId("card-publish").count()) === 0 && (await mPage.getByTestId("card-withdraw").count()) === 0, "⚠⚠ no Publish and no Withdraw — RLS would answer both *Class not found or not yours to change*");
+    check((await mPage.getByRole("button", { name: "Delete", exact: true }).count()) === 0, "⚠⚠ …and no Delete anywhere");
 
-    const mBody = await text(mPage);
-    check(/Only the owner of this studio creates and changes its classes/.test(mBody), "…and reads, once, what is and is not theirs here");
-    check((await mPage.getByRole("link", { name: "Roster", exact: true }).count()) === 0, "…and there is no Roster pill (4 Oct 2026) — the card opens the class page, whose Attendance tab is the register");
-    check((await mPage.getByRole("button", { name: "Delete", exact: true }).count()) === 0, "⚠⚠ no Delete on a published row — the one that reported SUCCESS and deleted nothing");
-
-    /* ⚠ THE DRAFT TAB IS WHERE Edit AND Publish LIVE, so asserting their absence
-       on the Published tab proves nothing — "not drawn" and "not on this tab"
-       look identical from outside (the 28 Sep lesson about an absent control). */
-    /* ⚠ THE STAGE BOARD since 11 Oct 2026 — a draft whose teacher was asked and
-       has not answered is WAITING, a pill of its own */
-    await mPage.getByRole("button", { name: /^Waiting, \d+ classes$/ }).click();
-    await mPage.waitForTimeout(400);
-    check((await mPage.getByRole("link", { name: "Edit", exact: true }).count()) === 0, "⚠⚠ no Edit on a DRAFT either — the edit page redirects a manager away without a word");
-    /* ⚠ `/^Publish/` ALSO MATCHES THE "Published, 2 classes" TAB PILL — which
-       made this read 1 for the manager and, worse, made the owner's own version
-       below pass for the WRONG REASON. A check that can pass for the wrong
-       reason is not a check (11 Sep 2026). The control's accessible name is
-       "Publish", or "Publish — {the blocker}" when it cannot go yet. */
-    check((await mPage.getByRole("button", { name: /^Publish($| —)/ }).count()) === 0, "⚠⚠ no Publish — RLS answers it *Class not found or not yours to change*");
-    check((await mPage.getByRole("button", { name: "Delete", exact: true }).count()) === 0, "⚠⚠ …and no Delete here either");
-    check(/Bhangra/.test(await text(mPage)), "…while the draft itself is right there to read — the desk is not hidden, only its writes");
-
-    /* ══ 2 · THE COMPLETED TAB FILLS OFF THE CLOCK ════════════════════════════ */
+    /* ══ 2 · THE OWNER: TO DO, AND PAST FILLED OFF THE CLOCK ═══════════════════ */
     const oCtx = await browser.newContext();
     oCtx.on("weberror", (e) => errs.push(String(e.error())));
     const oPage = await signIn(oCtx, owner.email);
-    oPage.on("pageerror", (e) => errs.push(String(e)));
+    oPage.on("pageerror", (e) => errs.push(`${oPage.url()} ${e}`));
     await oPage.goto(`${BASE}/business/${studio.id}/classes`, { waitUntil: "networkidle" });
-
-    await oPage.getByRole("button", { name: /^Waiting, \d+ classes$/ }).click();
-    await oPage.waitForTimeout(400);
-    check((await oPage.getByRole("link", { name: "Edit", exact: true }).count()) > 0, "the OWNER is offered Edit on the same draft — the gate is the SEAT, not the screen");
-    check((await oPage.getByRole("button", { name: /^Publish($| —)/ }).count()) > 0, "…and Publish");
-    /* ⚠ AND NO DELETE ON THE ROW, FOR THE OWNER EITHER (4 Oct 2026, the user:
-       "delete class removed from class card and goes on top right of class
-       detail page"). It is the chip on the class page now — step 9 presses it. */
-    check((await oPage.getByRole("button", { name: "Delete", exact: true }).count()) === 0 && (await oPage.getByTestId("class-delete").count()) === 0, "…and NO Delete on the row — it lives on the class page's top right since 4 Oct 2026");
+    check((await oPage.getByRole("link", { name: "Add Class", exact: true }).count()) === 1, "the OWNER is offered Add Class");
+    const tabs = await oPage.getByRole("tab").evaluateAll((els) => els.map((e) => e.getAttribute("data-testid").replace("classes-tab-", "")));
+    check(tabs.join(",") === "todo,upcoming,past", `the tabs read To do · Upcoming · Past (${tabs.join(" · ")})`);
+    await oPage.getByTestId("classes-tab-todo").click();
+    await oPage.waitForTimeout(300);
+    const oWaiting = oPage.getByTestId("todo-waiting");
+    check((await oWaiting.getByRole("link", { name: "Edit", exact: true }).count()) > 0, "the owner is offered Edit on the same draft — the gate is the SEAT, not the screen");
+    check((await oWaiting.getByTestId("card-withdraw").count()) === 1, "⚠ …and Withdraw, to stop waiting on the teacher they asked");
+    check((await oPage.getByRole("button", { name: "Delete", exact: true }).count()) === 0 && (await oPage.getByTestId("class-delete").count()) === 0, "…and NO Delete on a card — it lives on the class page's top right since 4 Oct 2026");
     check((await oPage.getByRole("link", { name: "Refunds", exact: true }).count()) === 0, "…and no Refunds pill on any card either (4 Oct 2026)");
 
-    /* ⚠ THE STAGE BOARD since 11 Oct 2026 (the user's choice): every class is in
-       the stage it is in — Needs · Waiting · Ready · Upcoming · Running · Done —
-       and the class running right now has a pill of its own */
-    const completedPill = oPage.getByRole("button", { name: /^Done, \d+ classes$/ });
-    check(/Done, 1 classes/.test(await completedPill.getAttribute("aria-label")), `⚠⚠ Done counts the class that has RUN — nothing ever writes 'completed' (read "${await completedPill.getAttribute("aria-label")}")`);
-    const publishedPill = oPage.getByRole("button", { name: /^Upcoming, \d+ classes$/ });
-    check(/Upcoming, 1 classes/.test(await publishedPill.getAttribute("aria-label")), `…and it is OFF Upcoming, which held it for ever before (read "${await publishedPill.getAttribute("aria-label")}")`);
-    const runningPill = oPage.getByRole("button", { name: /^Running, \d+ classes$/ });
-    check(/Running, 1 classes/.test(await runningPill.getAttribute("aria-label")), `…while the class on the clock right now is Running (read "${await runningPill.getAttribute("aria-label")}")`);
-    const tabOrder = await oPage.getByTestId("stage-strip").locator("[data-testid^='stage-pill-']").evaluateAll((els) => els.map((e) => e.getAttribute("data-testid").replace("stage-pill-", "")));
-    check(tabOrder.join(",") === "all,needs,waiting,ready,upcoming,running,done", `the stages read All · Needs · Waiting · Ready · Upcoming · Running · Done, in that order (${tabOrder.join(" · ")})`);
-    /* ⚠ AND THE CLASS ON THE CLOCK IS ON THE RUNNING-NOW CARD, with the door's two buttons */
-    const runCard = oPage.getByTestId("running-card").filter({ hasText: /Salsa/ });
-    check((await runCard.count()) === 1, "the class running right now has the Running-now card on the studio's screen");
-    check((await runCard.getByTestId("running-scan").count()) === 1 && (await runCard.getByTestId("running-register").count()) === 1, "…with Scan and Register, which open the class page straight onto its door");
-    check(/\?open=scan$/.test((await runCard.getByTestId("running-scan").getAttribute("href")) || ""), "…Scan opening the scanner itself (?open=scan)");
+    await oPage.getByTestId("classes-tab-past").click();
+    await oPage.waitForTimeout(300);
+    check(/Kathak/.test(await oPage.getByTestId("classes-past").innerText().catch(() => "")), "⚠⚠ Past holds the class that has RUN — nothing ever writes 'completed', so the clock decides");
+    await oPage.getByTestId("classes-tab-upcoming").click();
+    await oPage.waitForTimeout(300);
+    const upBody = await oPage.getByTestId("classes-upcoming").innerText().catch(() => "");
+    check(!/Kathak/.test(upBody) && /Hip-Hop/.test(upBody), "…and it is OFF Upcoming, which holds the class still ahead");
+    /* ⚠ THE CLASS ON THE CLOCK IS PINNED AS NOW, with the door's two buttons on its card */
+    const nowGroup = oPage.getByTestId("timeline-now");
+    check(/Salsa/.test(await nowGroup.innerText().catch(() => "")), "the class running right now is pinned under Now");
+    check((await nowGroup.getByTestId("card-scan").count()) === 1 && (await nowGroup.getByTestId("card-register").count()) === 1, "…with Scan and Register on its card, which open the class page straight onto its door");
+    check(/\?open=scan$/.test((await nowGroup.getByTestId("card-scan").getAttribute("href")) || ""), "…Scan opening the scanner itself (?open=scan)");
+    check((await oPage.getByTestId("classes-settings").count()) === 1, "the room-request switch is behind the gear");
 
-    await completedPill.click();
-    await oPage.waitForTimeout(400);
-    const doneBody = await text(oPage);
-    check(/Kathak/.test(doneBody), "…and the class that ran is actually listed there");
-
-    /* ══ 3 · A ROOM REQUEST, ANSWERED FROM THE CLASSES DESK ═══════════════════ */
-    /* ⚠⚠ A REQUESTS COLUMN, ALWAYS (11 Oct 2026, the user's choice: class
-       requests live in Classes, in a fixed column with a badge) — it replaced the
-       register's fourth tab, which appeared only when something was asked */
-    /* ⚠⚠ RE-CUT 11 Oct 2026, the same evening: the column became the NEEDS-YOU
-       strip at the top of the one screen, and the whole history is one press away */
-    const reqCol = oPage.getByTestId("see-all-requests");
-    check((await reqCol.count()) === 1, "the studio's Classes screen carries See all requests ›");
-
+    /* ══ 3 · A ROOM REQUEST, ANSWERED ON ITS CARD ═════════════════════════════ */
     /* ⚠ THE ASKER HAS TO BE AN ARTIST PAGE, and the database is what says so:
        *"a studio holds its classes in its own rooms — a venue is for an artist's
        class"*. So the Artist plan is granted with the service role first, the
@@ -310,35 +284,32 @@ const BOOK_ON_PAGE = /^Book Now$/;
     });
 
     if (venueClassId) {
-      /* the ask arrives in NEEDS YOU, at the top of the studio's own screen */
       await oPage.goto(`${BASE}/business/${studio.id}/classes`, { waitUntil: "networkidle" });
-      const needs = oPage.getByTestId("needs-you");
-      check((await needs.getByTestId("needs-ask").count()) === 1, "⚠⚠ an artist asks for one of this studio's rooms and it is the first thing under Needs you");
-      const needBody = await needs.innerText();
-      check(new RegExp(`Cls Asker ${stamp}`).test(needBody) && /your room/.test(needBody), "…naming who wants a room, on the app's own class card");
-      /* the teacher the studio itself asked is still waiting — said beside the history link */
-      check(/1 waiting on somebody/.test(await text(oPage)), "…and what the studio asked of others and still waits on is said beside See all requests");
+      check((await oPage.getByTestId("classes-tab-todo").getAttribute("aria-selected")) === "true", "⚠⚠ the screen opens on To do while something waits on the studio");
+      const askedOf = oPage.getByTestId("todo-answer");
+      check((await askedOf.getByTestId("card-accept").count()) === 1, "an artist's room request is the first thing under Asked of you, Accept on its card");
+      check(new RegExp(`Cls Asker ${stamp} wants a room`, "i").test(await askedOf.innerText()), "…naming who wants a room, on the app's own class card");
+      /* ⚠ the old address lands on the tab it meant (Rule 14) */
       await oPage.goto(`${BASE}/business/${studio.id}/classes?show=requests`, { waitUntil: "networkidle" });
-      check((await oPage.getByTestId("class-requests").getByTestId("request-settings").count()) === 1, "…the history carries the room switch, moved here from the Inbox");
-      check((await oPage.getByTestId("back-to-classes").count()) === 1, "…and a way back to the classes");
-      await oPage.goto(`${BASE}/business/${studio.id}/classes`, { waitUntil: "networkidle" });
-      await needs.getByRole("button", { name: /^Accept / }).first().click();
-      await oPage.waitForTimeout(2000);
+      check((await oPage.getByTestId("classes-tab-todo").getAttribute("aria-selected")) === "true", "…and an old ?show=requests link opens To do");
+      await oPage.getByTestId("classes-settings").click();
+      check((await oPage.getByTestId("request-settings").count()) >= 1, "…the gear carries the room switch, moved here from the Inbox");
+      await oPage.goBack();
+      await oPage.waitForTimeout(300);
+      await oPage.getByTestId("todo-answer").getByTestId("card-accept").first().click();
+      await oPage.waitForTimeout(2500);
       const vs = (await rows(owner.h, `classes?id=eq.${venueClassId}&select=venue_status`))[0];
       check(vs.venue_status === "accepted", `…and one press holds the room, read back out of the database (venue_status "${vs.venue_status}")`);
+      const answeredText = await oPage.getByTestId("todo-answered").innerText().catch(() => "");
+      check(/answered/i.test(answeredText), `…the answered request folds into Answered rather than vanishing (${answeredText.slice(0, 60) || `none; tab ${await oPage.locator('[aria-selected="true"]').first().getAttribute("data-testid").catch(() => "?")}`})`);
     } else {
       check(false, "could not plant a venue request (artist page or class refused)");
     }
 
-    /* ══ 4 · AN ASK CAN BE TAKEN BACK FROM THE ROW THAT NAMES IT ══════════════ */
-    await oPage.goto(`${BASE}/business/${studio.id}/classes?show=classes`, { waitUntil: "networkidle" });
-    await oPage.getByRole("button", { name: /^Waiting, \d+ classes$/ }).click();
-    await oPage.waitForTimeout(400);
-    const draftBody = await text(oPage);
-    /* the chip reads "{name} · Asked" since the one word list of 4 Oct 2026 (it was "⏳ {name} asked") */
-    check(new RegExp(`${artist.name}\\s*·\\s*Asked`, "i").test(draftBody), "a draft says who it is waiting on");
-    const withdraw = oPage.getByRole("button", { name: "Withdraw ask" });
-    check((await withdraw.count()) === 1, "⚠ …and now offers to stop waiting, which only the Inbox could do before");
+    /* ══ 4 · AN ASK IS TAKEN BACK FROM THE CARD THAT NAMES IT ══════════════════ */
+    await oPage.goto(`${BASE}/business/${studio.id}/classes?tab=todo`, { waitUntil: "networkidle" });
+    const withdraw = oPage.getByTestId("todo-waiting").getByTestId("card-withdraw");
+    check((await withdraw.count()) === 1, "a waiting draft offers Withdraw on its own card");
     await withdraw.click();
     await oPage.waitForTimeout(2000);
     const stillAsked = await rows(owner.h, `class_people?class_id=eq.${asked}&deleted_at=is.null&select=id`);
@@ -348,12 +319,9 @@ const BOOK_ON_PAGE = /^Book Now$/;
     const lCtx = await browser.newContext();
     lCtx.on("weberror", (e) => errs.push(String(e.error())));
     const lPage = await signIn(lCtx, learner.email);
-    lPage.on("pageerror", (e) => errs.push(String(e)));
+    lPage.on("pageerror", (e) => errs.push(`${lPage.url()} ${e}`));
     /* ⚠ EVERY SHELF ASSERTION IS SCOPED TO THE CLASS'S OWN LINK, never to its
-       style word. `/classes` lists the whole city and production carries a demo
-       world with a Kathak class in it — matching on "Kathak" made a check that
-       passed or failed on somebody else's data, which is a check that measures
-       nothing. `a[href^="/c/{slug}"]` is this class and no other. */
+       style word — `a[href^="/c/{slug}"]` is this class and no other. */
     const slugOf = async (id) => (await rows(owner.h, `classes?id=eq.${id}&select=share_slug`))[0].share_slug;
     const [aheadSlug, ranSlug, liveSlug] = await Promise.all([slugOf(ahead), slugOf(ran), slugOf(live)]);
     const onShelf = async (page, slug) => (await page.locator(`a[href^="/c/${slug}"]`).count()) > 0;
@@ -361,20 +329,14 @@ const BOOK_ON_PAGE = /^Book Now$/;
     await lPage.goto(`${BASE}/classes`, { waitUntil: "networkidle" });
     check(await onShelf(lPage, aheadSlug), "the class that is AHEAD is on the Upcoming shelf");
     check(!(await onShelf(lPage, ranSlug)), "⚠⚠ the class that already RAN is not — it was listed under *Upcoming classes* with a Book button that always failed");
-    check(!(await onShelf(lPage, liveSlug)), "⚠ nor is the one running right now: it cannot be booked either, so a shelf whose job is *what can I book* has no business drawing it");
+    check(!(await onShelf(lPage, liveSlug)), "⚠ nor is the one running right now: it cannot be booked either");
 
     await lPage.goto(`${BASE}/c/${liveSlug}`, { waitUntil: "networkidle" });
     check((await lPage.getByTestId("class-already-started").count()) === 1, "⚠⚠ …and its own page SAYS it has started rather than offering a press the database refuses");
-    /* ⚠⚠ THIS ASKED FOR "Book a spot" UNTIL 30 Sep 2026 AND PASSED VACUOUSLY.
-       That is the SHELF's label (`EnrollButton`); the class page's own control
-       reads "Book free trial" on a free class and "Book this class" on a priced
-       one, so the count was 0 whether or not a bar was drawn. A check that can
-       pass for the wrong reason is not a check (11 Sep 2026). */
     check((await lPage.getByRole("button", { name: BOOK_ON_PAGE }).count()) === 0, "…with no Book button left to press");
 
     /* ══ 6 · A LEARNER'S SEAT IS NOT THE OWNER'S ══════════════════════════════ */
     await lPage.goto(`${BASE}/classes`, { waitUntil: "networkidle" });
-    /* the card's relation chip, in the shared word since 4 Oct 2026 (it read "Enrolled ✓") */
     const bookedChips = async (pg) => pg.getByTestId("relation-chip").filter({ hasText: /^Booked$/ }).count();
     check((await bookedChips(lPage)) >= 1, "the learner who booked reads Booked on their own seat's card");
 
@@ -383,54 +345,51 @@ const BOOK_ON_PAGE = /^Book Now$/;
     check((await bookedChips(oPage)) === 0, "⚠⚠ …and is NOT told they are enrolled on it — a learner's seat, read through the roster policy, was being drawn as the viewer's own");
     check((await oPage.getByRole("button", { name: "Cancel booking" }).count()) === 0, "…and is offered no Cancel aimed at somebody else's booking");
 
-    /* ══ 7 · THE PERSON ASKED ANSWERS IT WHERE THE CLASS IS ═══════════════════ */
+    /* ══ 7 · THE PERSON ASKED ANSWERS IT ON THE CLASS'S OWN CARD ══════════════ */
     const second = await draftClass(owner.h, studio.id, roomA[0].id, "Contemporary", 60 * 24 * 15, 60 * 24 * 15 + 60);
     await rpc(owner.h, "ask_class_person", { p_class_id: second, p_user_id: learner.id, p_kind: "artist" });
-    /* ⚠ THE CLASSES SECTION'S REQUESTS COLUMN since 11 Oct 2026 — and the page
-       OPENS on it while an ask waits, so no column is named in the address */
-    /* ⚠ NEEDS YOU since 11 Oct 2026 — the ask is at the top of the one screen */
     await lPage.goto(`${BASE}/my-classes`, { waitUntil: "networkidle" });
     const myBody = await text(lPage);
-    const myNeeds = lPage.getByTestId("needs-you");
-    check((await myNeeds.getByTestId("needs-ask").count()) === 1 && /Asked to teach/i.test(await myNeeds.innerText()), "⚠⚠ somebody asked to TAKE a class finds it first, under Needs you, on its own card");
+    check((await lPage.getByTestId("classes-tab-todo").getAttribute("aria-selected")) === "true", "⚠⚠ somebody asked to TAKE a class lands on To do");
+    const myAsk = lPage.getByTestId("todo-answer");
+    check((await myAsk.getByTestId("card-accept").count()) === 1 && /Asked to teach/i.test(await myAsk.innerText()), "…the ask on its own card under Asked of you, Accept on it");
     check(!/you say yes in your Inbox/.test(myBody), "⚠ …and nothing still sends them to the Inbox for something this screen does");
-    await lPage.goto(`${BASE}/my-classes?show=requests`, { waitUntil: "networkidle" });
-    check((await lPage.getByTestId("request-settings").count()) === 1, "…and See all requests carries the teach / assist switches, moved here from the Inbox");
+    await lPage.getByTestId("classes-settings").click();
+    check((await lPage.getByTestId("request-settings").count()) >= 1, "…and the gear carries the teach / assist switches, moved here from the Inbox");
+    await lPage.goBack();
     await lPage.goto(`${BASE}/inbox`, { waitUntil: "networkidle" });
     await lPage.getByRole("button", { name: /^Requests — / }).click().catch(() => {});
     const ptr = lPage.getByTestId("class-requests-pointer");
     check((await ptr.count()) === 1 && /1 class request/.test(await ptr.innerText()), "…and the Inbox keeps one line counting it and pointing to Classes");
     check((await ptr.getAttribute("href")) === "/my-classes", `…to the Classes screen itself (${await ptr.getAttribute("href")})`);
     await lPage.goto(`${BASE}/my-classes`, { waitUntil: "networkidle" });
-    await lPage.getByTestId("needs-you").getByRole("button", { name: /^Accept / }).first().click();
+    await lPage.getByTestId("todo-answer").getByTestId("card-accept").first().click();
     await lPage.waitForTimeout(2500);
     const seated = await rows(owner.h, `class_people?class_id=eq.${second}&status=eq.confirmed&deleted_at=is.null&select=user_id`);
     check(seated.length === 1 && seated[0].user_id === learner.id, "…one press and they are on it, read back out of the database");
 
-    /* ══ 7b · A CLASS TAKEN ELSEWHERE IS FILED IN ITS OWN COLUMN (1 Oct 2026) ══
-       It was one block under the register, so every tab ended on the same list.
-       The class just accepted is a DRAFT at somebody else's studio: it belongs
-       under Draft and nowhere else. */
-    /* ⚠ RE-CUT 11 Oct 2026: a class you TAKE is the Teaching column's — its own
-       column now, Upcoming · Past inside — and a user's columns are Booked ·
-       Teaching · Assisting · Requests, in that order, whatever they hold */
+    /* ══ 7b · ONE LIST, NARROWED BY CHIPS ════════════════════════════════════ */
     const [secondRow] = await rows(owner.h, `classes?id=eq.${second}&select=share_slug`);
-    /* ⚠ RE-CUT AGAIN 11 Oct 2026, the same evening: ONE TIMELINE with chips —
-       All · Booked · Teaching · Assisting for a user, Mine added for an artist */
-    await lPage.goto(`${BASE}/my-classes?show=teaching`, { waitUntil: "networkidle" });
+    await lPage.goto(`${BASE}/my-classes`, { waitUntil: "networkidle" });
+    /* ⚠ nothing waits on THEM now, so the screen opens on Upcoming — and To do
+       still holds what they wait on */
+    check((await lPage.getByTestId("classes-tab-upcoming").getAttribute("aria-selected")) === "true", "…nothing waits on them now, so Classes opens on Upcoming");
+    await lPage.getByTestId("classes-tab-todo").click();
+    await lPage.waitForTimeout(300);
+    const todoText = await lPage.getByTestId("classes-todo").innerText().catch(() => "");
+    check(/waiting on cls studio/i.test(todoText), `(${todoText.replace(/\s+/g, " ").slice(-90)}) ⚠ the class they said yes to, still a draft, waits in To do for the studio to publish — not in Upcoming with a Share button nobody else could open`);
+    await lPage.getByTestId("classes-tab-upcoming").click();
+    await lPage.waitForTimeout(300);
     const cols = await lPage.getByTestId("classes-chips").locator("button").evaluateAll((els) => els.map((e) => e.getAttribute("data-testid").replace("classes-chip-", "")));
-    check(cols.join(",") === "all,booked,teaching,assisting", `⚠⚠ a user's Classes reads All · Booked · Teaching · Assisting (${cols.join(" · ")})`);
-    check((await lPage.getByTestId("classes-chip-teaching").getAttribute("aria-pressed")) === "true", "…the address opening the Teaching chip");
-    check((await lPage.locator(`a[href="/c/${secondRow.share_slug}"]`).count()) > 0, "…and the class they just accepted is under Teaching");
-    await lPage.getByTestId("classes-chip-booked").click();
+    check(cols.join(",") === "all,booked,teaching", `⚠⚠ a chip is drawn only for what they have — All · Booked · Teaching (${cols.join(" · ")})`);
+    check(await onShelf(lPage, aheadSlug), "…Upcoming holds the class they booked");
+    await lPage.getByTestId("classes-chip-teaching").click();
     await lPage.waitForTimeout(300);
-    check((await lPage.locator(`a[href="/c/${secondRow.share_slug}"]`).count()) === 0 && /show=booked/.test(lPage.url()), "…and a chip narrows the timeline in place, the address following it");
-    await lPage.getByTestId("classes-chip-all").click();
-    await lPage.waitForTimeout(300);
-    check((await lPage.locator(`a[href="/c/${secondRow.share_slug}"]`).count()) > 0 && (await lPage.locator(`a[href^="/c/${aheadSlug}"]`).count()) > 0, "…All holding what they teach and what they booked on one timeline");
+    check(!(await onShelf(lPage, aheadSlug)) && /role=teaching/.test(lPage.url()), "…and a chip narrows it in place, the address following it");
     check((await lPage.getByRole("link", { name: "Add Class", exact: true }).count()) === 0 && (await lPage.getByTestId("why-no-class").count()) === 0, "…with no Create control, and no owner-only sentence about a studio they do not run");
     await lPage.goto(`${BASE}/my-classes?show=manage`, { waitUntil: "networkidle" });
-    check((await lPage.locator(`a[href="/c/${secondRow.share_slug}"]`).count()) > 0, "⚠ an old ?show=manage link still lands on what it held — Teaching, for somebody with no page (Rule 14)");
+    check((await lPage.getByTestId("classes-chip-teaching").getAttribute("aria-pressed")) === "true", "⚠ an old ?show=manage link still lands on what it held — Teaching (Rule 14)");
+    void secondRow;
 
     /* ══ 8 · NEXT SESSIONS ON THE PUBLIC PAGE (#0aj) ══════════════════════════
        The backlog row wanted the whole public schedule folded into the profile
@@ -492,24 +451,18 @@ const BOOK_ON_PAGE = /^Book Now$/;
       session_id: ranSes, class_id: ran, business_id: studio.id,
       user_id: learner.id, status: "enrolled", created_by: learner.id, updated_by: learner.id,
     }, "a seat on the class that ran");
-    /* ⚠ `?show=booked` — `SegmentedPanels` mounts only the shown panel, and a
-       person who runs something opens on Manage (the 29 Sep lesson) */
-    await lPage.goto(`${BASE}/my-classes?show=booked`, { waitUntil: "networkidle" });
+    /* ⚠ UPCOMING · PAST ARE TABS since 11 Oct 2026 — the class still ahead is on
+       Upcoming, the class that ran on Past, never both on one */
+    await lPage.goto(`${BASE}/my-classes?tab=upcoming&role=booked`, { waitUntil: "networkidle" });
     const ranCard = lPage.locator('[data-card="session"]').filter({ has: lPage.locator(`a[href^="/c/${ranSlug}"]`) });
     const aheadCard = lPage.locator('[data-card="session"]').filter({ has: lPage.locator(`a[href^="/c/${aheadSlug}"]`) });
-    /* ⚠ UPCOMING · COMPLETED ARE COLUMNS since 4 Oct 2026 (the user: "upcoming
-       and completed as columns under booked and assist classes"). Upcoming opens
-       first and is the only one mounted, so the class that ran is NOT on screen
-       until Completed is pressed — asserted, because a check that only looks at
-       the new place cannot tell you the old one was cleared. */
     check((await aheadCard.getByRole("button", { name: /Cancel/ }).count()) + (await aheadCard.getByRole("link", { name: /Cancel/ }).count()) > 0, "…while the class still AHEAD keeps its way out — the gate is the clock, not the list");
-    /* ⚠ ONE TIMELINE since 11 Oct 2026: the class that ran is under PAST, folded,
-       and the class still ahead under its own day — never both in one group */
-    const pastFold = lPage.getByTestId("timeline-past");
-    check((await pastFold.count()) === 1 && (await pastFold.evaluate((el) => el.open)) === false, "the timeline folds what is over under Past");
-    check((await pastFold.locator(`a[href^="/c/${aheadSlug}"]`).count()) === 0, "…and the class still ahead is not in it");
-    await pastFold.locator("summary").click();
-    check((await pastFold.locator(`a[href^="/c/${ranSlug}"]`).count()) === 1, "the learner's Past carries the class they took — it is the record");
+    check((await ranCard.count()) === 0, "…and the class that ran is not on Upcoming");
+    await lPage.getByTestId("classes-tab-past").click();
+    await lPage.waitForTimeout(300);
+    const pastList = lPage.getByTestId("classes-past");
+    check((await pastList.locator(`a[href^="/c/${aheadSlug}"]`).count()) === 0, "…the class still ahead is not on Past");
+    check((await pastList.locator(`a[href^="/c/${ranSlug}"]`).count()) === 1, "the learner's Past carries the class they took — it is the record");
     check((await ranCard.getByRole("button", { name: /Cancel/ }).count()) === 0 && (await ranCard.getByRole("link", { name: /Cancel/ }).count()) === 0, "⚠ …and offers no Cancel or refund on it");
 
     /* ══ 9 · CALLING A CLASS OFF GIVES THE MONEY BACK (#0b3) ══════════════════
@@ -648,7 +601,7 @@ const BOOK_ON_PAGE = /^Book Now$/;
 
     const bCtx = await browser.newContext();
     const bPage = await signIn(bCtx, buyer.email);
-    bPage.on("pageerror", (e) => errs.push(String(e)));
+    bPage.on("pageerror", (e) => errs.push(`${bPage.url()} ${e}`));
     await bPage.goto(`${BASE}/memberships`, { waitUntil: "networkidle" });
     const myPass = bPage.getByTestId("my-pass").filter({ hasText: `Shoot Pass ${stamp}` });
     check((await myPass.getByTestId("spent-on").count()) === 1, "the holder's own pass card carries SPENT ON under its bar");

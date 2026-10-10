@@ -110,10 +110,9 @@ const liveSessions = (rows: SessionRow[] | null) =>
     .sort((a, b) => a.starts_at.localeCompare(b.starts_at))
     .map((s) => ({ id: s.id, startsAt: s.starts_at, endsAt: s.ends_at }));
 
-/** THE SESSION A CARD IS ABOUT (13 Oct 2026, repeating classes): the first one
- *  that has not ended, else the last — so a weekly class reads as its next week
- *  while there is one, and as over only once its last week has run. For a class
- *  with one session this is that session, exactly as before. */
+/** THE SESSION A CARD IS ABOUT: the first live one that has not ended, else the
+ *  last. A class has one session (weekly classes went on 11 Oct 2026); the rule
+ *  is kept because it is exactly right for one and safe for any old row. */
 const firstSession = (rows: SessionRow[] | null) => {
   const live = liveSessions(rows);
   const now = Date.now();
@@ -137,7 +136,6 @@ const toClass = (row: ClassRow): DanceClass => ({
   capacity: row.capacity,
   status: row.status,
   session: firstSession(row.class_sessions),
-  sessions: liveSessions(row.class_sessions),
   venueBusinessId: row.venue_business_id ?? null,
   venueStatus: row.venue_status ?? null,
   lat: row.lat ?? null,
@@ -172,10 +170,6 @@ export interface CreateClassInput {
   /** whose pass may pay for a seat here (19 Sep 2026) — see the note on the write */
   allowsStudioMemberships: boolean;
   allowsArtistMemberships: boolean;
-  /** A WEEKLY CLASS (13 Oct 2026): repeat the first session every week until
-   *  this IST date (YYYY-MM-DD), at most 26 weeks — one class, many sessions,
-   *  made in ONE transaction by `create_class_series`. Null is a single session. */
-  repeatUntil?: string | null;
 }
 
 /** Atomic create: class + first session via the create_class_with_session RPC.
@@ -185,11 +179,7 @@ export async function createClassWithSession(
   supabase: SupabaseClient,
   input: CreateClassInput
 ): Promise<string> {
-  /* a weekly class goes through `create_class_series`, which is the same
-     creation door and then the weeks after it, so a series is never half-made */
-  const series = !!input.repeatUntil;
-  const { data, error } = await supabase.rpc(series ? "create_class_series" : "create_class_with_session", {
-    ...(series ? { p_repeat_until: input.repeatUntil } : {}),
+  const { data, error } = await supabase.rpc("create_class_with_session", {
     p_business_id: input.businessId,
     /* the column and the RPC argument still exist (Rule 4 — the overload lesson);
        what goes in is the label, never a typed name */
@@ -628,35 +618,9 @@ export async function softDeleteClass(
   };
 }
 
-/** RUN LONGER (13 Oct 2026): add a week at a time after the class's last live
- *  session, until `until` (an IST date, YYYY-MM-DD). The owner's alone, at most
- *  26 live sessions — both refused by `add_weekly_sessions` in its own words,
- *  passed through unchanged. Returns how many sessions were added. */
-export async function addWeeklySessions(
-  supabase: SupabaseClient,
-  classId: string,
-  until: string
-): Promise<number> {
-  const { data, error } = await supabase.rpc("add_weekly_sessions", { p_class_id: classId, p_until: until });
-  if (error) throw new Error(error.message);
-  return Number(data ?? 0);
-}
-
-/** CALL OFF ONE WEEK (13 Oct 2026): every seat on that one session cancelled,
- *  every paid one refunded (filed `pending`, the same call-off rule a whole class
- *  gets), the people holding one told, and the session soft-deleted. The owner's
- *  alone; the database refuses a session that is over and the last one still to
- *  come ("delete the class to call it off"), in words passed through unchanged. */
-export async function cancelClassSession(
-  supabase: SupabaseClient,
-  sessionId: string,
-  reason: string
-): Promise<ClassCallOff> {
-  const { data, error } = await supabase.rpc("cancel_class_session", { p_session_id: sessionId, p_reason: reason });
-  if (error) throw new Error(error.message);
-  const d = (data ?? {}) as { seats?: number; refunds?: number; amount_inr?: number };
-  return { seats: Number(d.seats ?? 0), refunds: Number(d.refunds ?? 0), amountInr: Number(d.amount_inr ?? 0) };
-}
+/* ⚠ WEEKLY CLASSES ARE GONE (11 Oct 2026, the user: "remove the weekly class
+   logic completely it just complicates a lot of things"). `addWeeklySessions`
+   and `cancelClassSession` went with them; a class is one session again. */
 
 /** The styles each business teaches, off its PUBLISHED classes — what Discover's
  *  style rail narrows a studio or artist by (Step 23). Public rows only, by RLS. */

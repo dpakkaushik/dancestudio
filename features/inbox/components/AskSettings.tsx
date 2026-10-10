@@ -18,8 +18,8 @@ import type { AskKind } from "@/repositories/askSettings";
  *  confirmed member at once and its register is built from who was asked, so
  *  refusing them would quietly take somebody off their own crew's register. */
 
-function Shell({ title, summary, testId, children }: { title: string; summary: string; testId: string; children: ReactNode }) {
-  const [open, setOpen] = useState(false);
+function Shell({ title, summary, testId, children, startOpen = false }: { title: string; summary: string; testId: string; children: ReactNode; startOpen?: boolean }) {
+  const [open, setOpen] = useState(startOpen);
   return (
     /* it stands in the Inbox's TOP squircle since 3 Oct 2026, under the columns,
        so the gap is above it rather than below */
@@ -57,7 +57,7 @@ const WORDS: Record<AskKind, { label: string; note: string }> = {
 };
 
 /** a person's switches for the kinds one column holds */
-export function PersonAskSettings({ section, off }: { section: "requests" | "invites"; off: AskKind[] }) {
+export function PersonAskSettings({ section, off, startOpen = false }: { section: "requests" | "invites"; off: AskKind[]; startOpen?: boolean }) {
   const router = useRouter();
   const [pending, start] = useTransition();
   const [err, setErr] = useState<string | null>(null);
@@ -84,6 +84,7 @@ export function PersonAskSettings({ section, off }: { section: "requests" | "inv
     <Shell
       title={section === "requests" ? "Request settings" : "Invite settings"}
       testId={section === "requests" ? "request-settings" : "invite-settings"}
+      startOpen={startOpen}
       summary={taking === kinds.length ? "Taking every kind" : taking === 0 ? `Not taking ${section}` : `Taking ${taking} of ${kinds.length} kinds`}
     >
       {kinds.map((k) => (
@@ -105,7 +106,7 @@ export function PersonAskSettings({ section, off }: { section: "requests" | "inv
 }
 
 /** a studio's one switch: whether artists may ask it for a room */
-export function RoomRequestSettings({ businessId, on, owner }: { businessId: string; on: boolean; owner: boolean }) {
+export function RoomRequestSettings({ businessId, on, owner, startOpen = false }: { businessId: string; on: boolean; owner: boolean; startOpen?: boolean }) {
   const router = useRouter();
   const [pending, start] = useTransition();
   const [err, setErr] = useState<string | null>(null);
@@ -127,7 +128,7 @@ export function RoomRequestSettings({ businessId, on, owner }: { businessId: str
   };
 
   return (
-    <Shell title="Request settings" testId="request-settings" summary={now ? "Taking room requests" : "Not taking room requests"}>
+    <Shell title="Request settings" testId="request-settings" startOpen={startOpen} summary={now ? "Taking room requests" : "Not taking room requests"}>
       {owner ? (
         <div style={{ opacity: pending ? 0.7 : 1 }}>
           <Switch on={now} label="Room requests from artists" onClick={flip} />

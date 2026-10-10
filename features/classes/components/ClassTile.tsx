@@ -440,22 +440,6 @@ export function ClassTile({ danceClass: c, filled = 0, artist, isToday = false, 
           <div style={{ marginTop: 10 }}>
             <WhenTile startsAt={c.session?.startsAt ?? null} endsAt={c.session?.endsAt ?? null} isToday={isToday} tint={bc} />
           </div>
-          {/* A WEEKLY CLASS SAYS SO (13 Oct 2026, the user: "Next date + 'Weekly ·
-              8 left' chip"). The tile above is the NEXT week; this counts that
-              week and every one after it — arithmetic on the sessions the read
-              already carries, so no clock is read here. */}
-          {(() => {
-            const all = c.sessions ?? [];
-            if (all.length < 2 || !c.session) return null;
-            const left = all.filter((s) => s.startsAt >= c.session!.startsAt).length;
-            return (
-              <div style={{ marginTop: 6 }}>
-                <span data-testid="class-series" style={{ display: "inline-flex", alignItems: "center", gap: 5, borderRadius: 999, padding: "3px 10px", background: `${bc}1f`, border: `1.5px solid ${bc}44`, fontSize: 11, fontWeight: 900, color: INK }}>
-                  ↻ Weekly · {left === 1 ? "last session" : `${left} left`}
-                </span>
-              </div>
-            );
-          })()}
           {/* THE SEATS WRITTEN ON THE BAR, THE PRICE BESIDE IT (4 Oct 2026, the
               user: "2/20 Booked · 18 Spots Left on the bar"): how full is the
               fill, the words say it in numbers, what it costs closes the line.

@@ -1,20 +1,16 @@
-import Link from "next/link";
 import { redirect } from "next/navigation";
 import { ClassForm } from "@/features/classes/components/ClassForm";
-import { ClassesManager } from "@/features/classes/components/ClassesManager";
-import { ClassesHome, type ClassesView, type RunningItem, type TimelineItem } from "@/features/classes/components/ClassesHome";
+import { ClassesHome, type ClassItem } from "@/features/classes/components/ClassesHome";
 import { ClassTile } from "@/features/classes/components/ClassTile";
-import { doorOpen, needLinksOf, runningWhen, timeGroupOf } from "@/features/classes/classesScreen";
-import { STAGES, type ClassStage } from "@/features/classes/stages";
+import { groupWithDoor, tabFromAddress, timeGroupOf, type ClassesTab, type TimeGroup } from "@/features/classes/classesScreen";
+import { answeredRows, askToYouItem, askYouSentItem, draftItem, refundsItem, runActions, unpublishedItem } from "@/features/classes/classItems";
 import { EnrollButton } from "@/features/classBookings/components/EnrollButton";
-import { DeskHero, DOS_TOOLS } from "@/features/businesses/components/biz-kit";
+import { DeskHero } from "@/features/businesses/components/biz-kit";
 import { PersonAskSettings } from "@/features/inbox/components/AskSettings";
-import { InboxScreen } from "@/features/inbox/components/InboxScreen";
 import { buildRequests, isClassAsk } from "@/features/inbox/requestItems";
-import { DeskTop } from "@/components/ui/DeskSections";
-import { DOS_UI, INK, LILAC } from "@/lib/design/tokens";
+import { DeskAddButton } from "@/features/settings/components/settings-kit";
+import { DOS_UI, INK, LILAC, SUB } from "@/lib/design/tokens";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
-import { countCheckedInBySession } from "@/repositories/attendance";
 import { findAskedClassPeopleForBusinesses, findClassArtists, findMyConfirmedClassPeople, findMyPendingClassPeople } from "@/repositories/classPeople";
 import { findClassPublishState, findClassesByBusiness, findMyVenueAsks, findWhyNoClass } from "@/repositories/classes";
 import { countEnrolledBySession, findMyClassBookings } from "@/repositories/classBookings";
@@ -38,8 +34,6 @@ const toTileClass = (e: MyClassBooking): DanceClass => ({
   style: e.style,
   level: e.level,
   room: e.room,
-  // the tile draws the room's NAME and its own poster from the title — the
-  // booking row carries neither id
   roomId: null,
   poster: null,
   posterPath: e.posterPath,
@@ -52,27 +46,27 @@ const toTileClass = (e: MyClassBooking): DanceClass => ({
   lat: null,
   lng: null,
   mapsUrl: null,
-  /* a card stands in for the class; whose pass pays is the class’s own answer,
-     read on its page — these carry the column defaults so the shape matches */
   allowsStudioMemberships: true,
   allowsArtistMemberships: false,
 });
 
+const ROLES = [
+  { key: "all", word: "All" },
+  { key: "booked", word: "Booked" },
+  { key: "teaching", word: "Teaching" },
+  { key: "assisting", word: "Assisting" },
+];
+
 /** YOUR CLASSES — the Home grid's Classes tile.
  *
- *  ⚠⚠ REIMAGINED 11 Oct 2026 (the user's four choices — `ClassesHome` says
- *  what each band is). The five columns of the morning (My classes · Teaching ·
- *  Assisting · Booked · Requests, each Upcoming · Past) are ONE TIMELINE with
- *  chips — All · Booked · Teaching · Assisting, and Mine for somebody with an
- *  artist page, which is the stage board of what they run. The asks waiting on
- *  you are the Needs-you strip on top; every ask, answered ones too, with the
- *  teach / assist switches, is `?show=requests`.
- *  ⚠ The old addresses keep landing (Rule 14): `?show=manage` is Mine for an
- *  artist and Teaching for anybody else, `?show=assist` is Assisting,
- *  `?show=requests` the request history. */
-type Show = ClassesView | "requests";
-
-export default async function MyClassesPage({ searchParams }: { searchParams: Promise<{ show?: string | string[]; kind?: string | string[]; new?: string | string[]; stage?: string | string[] }> }) {
+ *  ⚠⚠ RE-CUT 11 Oct 2026 (the user's choices): To do · Upcoming · Past, with
+ *  All · Booked · Teaching · Assisting as one chip row. Your own page's classes
+ *  and the ones you teach at a studio are ONE list (Teaching) — the card's two
+ *  halves already say whose class it is. Every card carries its own buttons. The
+ *  teach / assist switches are behind the gear.
+ *  ⚠ Old addresses keep landing (Rule 14): `?show=requests` is To do,
+ *  `?show=manage|mine` is Teaching, `?show=assist` is Assisting. */
+export default async function MyClassesPage({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
   const supabase = await createSupabaseServerClient();
   const {
     data: { user },
@@ -87,28 +81,20 @@ export default async function MyClassesPage({ searchParams }: { searchParams: Pr
     redirect("/");
   }
   const rawShow = one(params.show);
-  /* the Add class sheet, opened from Mine (22 Sep 2026) */
   const opening = one(params.new) === "1";
-  const rawStage = one(params.stage);
-  const initialStage: ClassStage | "all" = (STAGES as string[]).includes(rawStage ?? "") ? (rawStage as ClassStage) : "all";
 
   const ALL = ["asked", "confirmed", "rejected"] as const;
-  const [class_bookings, artistOn, assistantOn, memberships, asksIn, inboxOff] = await Promise.all([
+  const [bookings, artistOn, assistantOn, memberships, asksIn, inboxOff] = await Promise.all([
     findMyClassBookings(supabase),
     findMyConfirmedClassPeople(supabase, "artist"),
     findMyConfirmedClassPeople(supabase, "assistant"),
     findMyMemberships(supabase),
-    /* every ask put to you, answered and withdrawn ones too — the history keeps
-       them; the Needs-you strip draws only the ones still asked */
     findMyPendingClassPeople(supabase, [...ALL], { withdrawn: true }).catch(() => []),
     findMyInboxOff(supabase, user.id),
   ]);
   const myPage = memberships.find((m) => m.memberRole === "owner" && m.business.type === "artist_page")?.business ?? null;
-  const artist = Boolean(myPage);
 
-  /* the asks your own PAGE sent, its classes, what each still waits on, and its
-     refund queue. Read only when there is a page. */
-  const [asksOut, venueOut, myPageClasses, pageState, whyNoClass, pageRefunds] = myPage
+  const [asksOut, venueOut, pageClasses, pageState, whyNoClass, pageRefunds] = myPage
     ? await Promise.all([
         findAskedClassPeopleForBusinesses(supabase, [myPage.id], [...ALL], { withdrawn: true }).catch(() => []),
         findMyVenueAsks(supabase, [myPage.id]).catch(() => []),
@@ -120,204 +106,137 @@ export default async function MyClassesPage({ searchParams }: { searchParams: Pr
     : [[], [], [], new Map(), null, []];
 
   const { requestsIn, requestsOut } = buildRequests({ classPeopleIn: asksIn, classPeopleOut: asksOut, venueOut });
-  const waitingOnYou = requestsIn.filter((r) => r.status === "asked" && isClassAsk(r));
-  const waitingOut = requestsOut.filter((r) => r.status === "asked").length;
+  const classIn = requestsIn.filter(isClassAsk);
+  const classOut = requestsOut.filter(isClassAsk);
+
+  /* ⚠ YOUR OWN PAGE'S CLASSES ARE TEACHING — the confirmed artist rows for them
+     are left out so nothing is drawn twice */
+  const ownIds = new Set(pageClasses.map((c) => c.id));
+  const teaching = artistOn.filter((c) => !ownIds.has(c.classId));
+  const drafts = pageClasses.filter((c) => c.status === "draft");
+  const ownLive = pageClasses.filter((c) => c.status !== "draft");
+  const draftIds = new Set(drafts.map((c) => c.id));
+
+  const sessionIds = [...bookings.map((e) => e.sessionId), ...teaching.map((c) => c.sessionId), ...assistantOn.map((c) => c.sessionId), ...pageClasses.map((c) => c.session?.id ?? null)].filter((s): s is string => Boolean(s));
+  const reqClassIds = [...classIn, ...classOut].map((r) => r.danceClass?.id).filter((x): x is string => Boolean(x));
+  const [artists, seats] = await Promise.all([
+    findClassArtists(supabase, [...new Set([...bookings.map((e) => e.classId), ...teaching.map((c) => c.classId), ...assistantOn.map((c) => c.classId), ...reqClassIds, ...pageClasses.map((c) => c.id)])]),
+    countEnrolledBySession(supabase, [...new Set(sessionIds)]).catch(() => new Map<string, number>()),
+  ]);
+  const seatsOf = (sessionId: string | null | undefined) => (sessionId ? (seats.get(sessionId) ?? 0) : 0);
+  const artistOf = (classId: string | undefined) => (classId ? (artists.get(classId) ?? null) : null);
 
   const nowMs = stampNow();
-  const nowIso = new Date(nowMs).toISOString();
+  const relRole = (relation: string | null | undefined) => (relation === "askedToAssist" ? "assisting" : "teaching");
 
-  /* ⚠ YOUR OWN PAGE'S CLASSES ARE TEACHING TOO — you teach every one of them.
-     The confirmed artist rows for them are left out so nothing is drawn twice;
-     the drafts stay on the board (Mine), where their stage is the point. */
-  const ownIds = new Set(myPageClasses.map((c) => c.id));
-  const teaching = artistOn.filter((c) => !ownIds.has(c.classId));
-  const assisting = assistantOn;
-  const ownLive = myPageClasses.filter((c) => c.status !== "draft");
-
-  /* the teacher each card wears, the seats on each bar, and how many are in the
-     room for every class whose door is open — one read each */
-  const sessionIds = [
-    ...class_bookings.map((e) => e.sessionId),
-    ...teaching.map((c) => c.sessionId),
-    ...assisting.map((c) => c.sessionId),
-    ...myPageClasses.map((c) => c.session?.id ?? null),
-  ].filter((s): s is string => Boolean(s));
-  const reqClassIds = [...requestsIn, ...requestsOut].map((r) => r.danceClass?.id).filter((x): x is string => Boolean(x));
-  /* who runs the door on what: your own page's classes, and a class you are on
-     with the attendance job (an artist is born holding it, 28 Sep 2026) */
-  const doorRows: Array<{ key: string; title: string; slug: string; startsAt: string; endsAt: string; sessionId: string; capacity: number; canDoor: boolean; role: string }> = [
-    ...ownLive
-      .filter((c) => c.session && doorOpen(c.session.startsAt, c.session.endsAt, nowMs))
-      .map((c) => ({ key: `own-${c.id}`, title: c.title, slug: c.shareSlug, startsAt: c.session!.startsAt, endsAt: c.session!.endsAt, sessionId: c.session!.id, capacity: c.capacity, canDoor: true, role: "Your class" })),
-    ...teaching
-      .filter((c) => c.sessionId && doorOpen(c.startsAt, c.endsAt, nowMs))
-      .map((c) => ({ key: `teach-${c.id}`, title: c.classTitle, slug: c.classShareSlug, startsAt: c.startsAt!, endsAt: c.endsAt!, sessionId: c.sessionId!, capacity: c.classCapacity, canDoor: c.canAttendance, role: "Teaching" })),
-    ...assisting
-      .filter((c) => c.sessionId && doorOpen(c.startsAt, c.endsAt, nowMs))
-      .map((c) => ({ key: `assist-${c.id}`, title: c.classTitle, slug: c.classShareSlug, startsAt: c.startsAt!, endsAt: c.endsAt!, sessionId: c.sessionId!, capacity: c.classCapacity, canDoor: c.canAttendance, role: "Assisting" })),
+  /* ── TO DO ─────────────────────────────────────────────────────────────── */
+  const todo: ClassItem[] = [
+    ...classIn.filter((r) => r.status === "asked").map((r) => askToYouItem(r, artistOf(r.danceClass?.id), relRole(r.relation))),
+    ...drafts.map((c) =>
+      draftItem({
+        c,
+        businessId: myPage!.id,
+        state: pageState.get(c.id),
+        askedTeacherId: asksOut.find((a) => a.classId === c.id && a.kind === "artist" && a.status === "asked" && !a.withdrawn)?.id ?? null,
+        canEdit: true,
+        artist: artistOf(c.id),
+        filled: seatsOf(c.session?.id),
+        role: "teaching",
+      })
+    ),
+    ...(myPage ? [refundsItem(pageRefunds, `/business/${myPage.id}/refunds`, "teaching")].filter((x): x is ClassItem => x !== null) : []),
+    /* an ask you sent on a class that is already out (an assistant, mostly) — a
+       draft's own asks are on its card */
+    ...classOut
+      .filter((r) => r.status === "asked" && r.kind === "classPerson" && !(r.danceClass && draftIds.has(r.danceClass.id)))
+      .map((r) => askYouSentItem(r, artistOf(r.danceClass?.id), "teaching")),
+    /* a class you said yes to, still a draft at the studio that asked */
+    ...teaching.filter((c) => c.classStatus === "draft").map((c) => unpublishedItem({ key: `teach-${c.id}`, c: askToTileClass(c), artist: artistOf(c.classId), filled: seatsOf(c.sessionId), role: "teaching", relation: "teaching" })),
+    ...assistantOn.filter((c) => c.classStatus === "draft").map((c) => unpublishedItem({ key: `assist-${c.id}`, c: askToTileClass(c), artist: artistOf(c.classId), filled: seatsOf(c.sessionId), role: "assisting", relation: "assisting" })),
   ];
-  const [cardArtists, seats, inRoom] = await Promise.all([
-    findClassArtists(supabase, [...new Set([...class_bookings.map((e) => e.classId), ...teaching.map((c) => c.classId), ...assisting.map((c) => c.classId), ...reqClassIds, ...myPageClasses.map((c) => c.id)])]),
-    countEnrolledBySession(supabase, [...new Set(sessionIds)]).catch(() => new Map<string, number>()),
-    countCheckedInBySession(supabase, doorRows.filter((d) => d.canDoor).map((d) => d.sessionId)),
-  ]);
-  const seatsOf = (sessionId: string | null) => (sessionId ? (seats.get(sessionId) ?? 0) : 0);
 
-  const running: RunningItem[] = doorRows
-    .sort((a, b) => a.startsAt.localeCompare(b.startsAt))
-    .map((d) => ({
-      key: d.key,
-      title: d.title,
-      path: `/c/${d.slug}`,
-      when: runningWhen(d.startsAt, d.endsAt, nowMs),
-      started: Date.parse(d.startsAt) <= nowMs,
-      booked: seatsOf(d.sessionId),
-      capacity: d.capacity,
-      checkedIn: d.canDoor ? (inRoom.get(d.sessionId) ?? 0) : null,
-      canDoor: d.canDoor,
-      role: d.role,
-    }));
-
-  /* ── THE TIMELINE — one list, every card wearing what it is to you ───────── */
+  /* ── UPCOMING · PAST ───────────────────────────────────────────────────── */
+  type Timed = ClassItem & { at: string | null };
+  const timed = (key: string, group: TimeGroup, role: string, at: string | null, node: React.ReactNode): Timed => ({ key, tab: group === "past" ? "past" : "upcoming", group, role, at, node });
   const started = (startsAt: string | null) => startsAt !== null && Date.parse(startsAt) <= nowMs;
-  const timeline: TimelineItem[] = [
-    ...class_bookings.map((e) => {
+  const time: Timed[] = [
+    ...bookings.map((e) => {
       const group = timeGroupOf(e.startsAt, e.endsAt, nowMs);
-      return {
-        key: `booked-${e.id}`,
+      return timed(
+        `booked-${e.id}`,
         group,
-        rel: "booked" as const,
-        startsAt: e.startsAt,
-        node: (
-          <ClassTile
-            danceClass={toTileClass(e)}
-            filled={seatsOf(e.sessionId)}
-            artist={cardArtists.get(e.classId) ?? null}
-            city={e.businessCity}
-            href={`/c/${e.shareSlug}`}
-            relation="booked"
-            /* ⚠ A CLASS THAT IS OVER OFFERS NO WAY OUT OF ITS SEAT (4 Oct 2026);
-               a started one offers no Cancel (6 Oct 2026) */
-            actions={group === "past" ? undefined : <EnrollButton sessionId={e.sessionId} isFull={false} isSignedIn mine={{ id: e.id, status: e.status }} priceInr={e.priceInr} shareSlug={e.shareSlug} started={started(e.startsAt)} />}
-          />
-        ),
-      };
+        "booked",
+        e.startsAt,
+        <ClassTile
+          danceClass={toTileClass(e)}
+          filled={seatsOf(e.sessionId)}
+          artist={artistOf(e.classId)}
+          city={e.businessCity}
+          href={`/c/${e.shareSlug}`}
+          relation="booked"
+          /* ⚠ a class that is over offers no way out of its seat (4 Oct), a
+             started one no Cancel (6 Oct) */
+          actions={group === "past" ? undefined : <EnrollButton sessionId={e.sessionId} isFull={false} isSignedIn mine={{ id: e.id, status: e.status }} priceInr={e.priceInr} shareSlug={e.shareSlug} started={started(e.startsAt)} />}
+        />
+      );
     }),
-    ...ownLive.map((c) => ({
-      key: `own-${c.id}`,
-      group: timeGroupOf(c.session?.startsAt ?? null, c.session?.endsAt ?? null, nowMs),
-      rel: "teaching" as const,
-      startsAt: c.session?.startsAt ?? null,
-      node: <ClassTile danceClass={c} filled={seatsOf(c.session?.id ?? null)} artist={cardArtists.get(c.id) ?? null} href={`/c/${c.shareSlug}`} relation="teaching" />,
-    })),
-    ...teaching.map((c) => ({
-      key: `teach-${c.id}`,
-      group: timeGroupOf(c.startsAt, c.endsAt, nowMs),
-      rel: "teaching" as const,
-      startsAt: c.startsAt,
-      node: <ClassTile danceClass={askToTileClass(c)} filled={seatsOf(c.sessionId)} artist={cardArtists.get(c.classId) ?? null} city={c.businessCity} href={`/c/${c.classShareSlug}`} relation="teaching" />,
-    })),
-    ...assisting.map((c) => ({
-      key: `assist-${c.id}`,
-      group: timeGroupOf(c.startsAt, c.endsAt, nowMs),
-      rel: "assisting" as const,
-      startsAt: c.startsAt,
-      node: <ClassTile danceClass={askToTileClass(c)} filled={seatsOf(c.sessionId)} artist={cardArtists.get(c.classId) ?? null} city={c.businessCity} href={`/c/${c.classShareSlug}`} relation="assisting" />,
-    })),
-  ]
-    /* soonest first; what is past, most recent first */
-    .sort((a, b) => (a.group === "past" && b.group === "past" ? (b.startsAt ?? "").localeCompare(a.startsAt ?? "") : (a.startsAt ?? "9").localeCompare(b.startsAt ?? "9")))
-    .map(({ key, group, rel, node }) => ({ key, group, rel, node }));
+    ...ownLive.map((c) => {
+      const group = groupWithDoor(c.session?.startsAt ?? null, c.session?.endsAt ?? null, nowMs);
+      const path = `/c/${c.shareSlug}`;
+      return timed(`own-${c.id}`, group, "teaching", c.session?.startsAt ?? null, <ClassTile danceClass={c} filled={seatsOf(c.session?.id)} artist={artistOf(c.id)} href={path} relation="teaching" actions={runActions({ group, path, title: c.title, canDoor: true })} />);
+    }),
+    ...teaching.filter((c) => c.classStatus !== "draft").map((c) => {
+      const group = groupWithDoor(c.startsAt, c.endsAt, nowMs);
+      const path = `/c/${c.classShareSlug}`;
+      return timed(`teach-${c.id}`, group, "teaching", c.startsAt, <ClassTile danceClass={askToTileClass(c)} filled={seatsOf(c.sessionId)} artist={artistOf(c.classId)} city={c.businessCity} href={path} relation="teaching" actions={runActions({ group, path, title: c.classTitle, canDoor: c.canAttendance })} />);
+    }),
+    ...assistantOn.filter((c) => c.classStatus !== "draft").map((c) => {
+      const group = groupWithDoor(c.startsAt, c.endsAt, nowMs);
+      const path = `/c/${c.classShareSlug}`;
+      return timed(`assist-${c.id}`, group, "assisting", c.startsAt, <ClassTile danceClass={askToTileClass(c)} filled={seatsOf(c.sessionId)} artist={artistOf(c.classId)} city={c.businessCity} href={path} relation="assisting" actions={runActions({ group, path, title: c.classTitle, canDoor: c.canAttendance, canShare: false })} />);
+    }),
+  ].sort((a, b) => (a.group === "past" && b.group === "past" ? (b.at ?? "").localeCompare(a.at ?? "") : (a.at ?? "9").localeCompare(b.at ?? "9")));
+
+  const items: ClassItem[] = [...todo, ...time];
 
   /* ── WHERE THE PAGE OPENS ──────────────────────────────────────────────── */
-  const views: ClassesView[] = artist ? ["all", "booked", "teaching", "assisting", "mine"] : ["all", "booked", "teaching", "assisting"];
-  const fromOld: Show | null = rawShow === "assist" ? "assisting" : rawShow === "manage" ? (artist ? "mine" : "teaching") : null;
-  const named = (fromOld ?? ([...views, "requests"] as string[]).find((k) => k === rawShow) ?? null) as Show | null;
-  /* a stage named in the address is the board's — open Mine for it */
-  const show: Show = named ?? (artist && initialStage !== "all" ? "mine" : "all");
+  const roleFromAddress =
+    one(params.role) ?? (rawShow === "assist" ? "assisting" : rawShow === "manage" || rawShow === "mine" ? "teaching" : rawShow === "booked" || rawShow === "teaching" || rawShow === "assisting" ? rawShow : "all");
+  const waitsOnYou = todo.some((i) => i.section !== "waiting");
+  const tabAsked = tabFromAddress(one(params.tab), rawShow, one(params.stage));
+  const initialTab: ClassesTab = tabAsked ?? (waitsOnYou ? "todo" : "upcoming");
 
-  const state = Object.fromEntries(pageState);
-  const top = <DeskHero tool="classes" as="h1" margin="0" />;
-  const shell = (children: React.ReactNode) => (
-    <div style={{ background: LILAC, color: INK, maxWidth: 430, margin: "0 auto", fontFamily: DOS_UI, minHeight: "100vh", padding: "2px 16px 40px", boxSizing: "border-box" }}>{children}</div>
-  );
+  const add = myPage ? (
+    whyNoClass ? (
+      <div data-testid="why-no-class" style={{ fontSize: 12, color: SUB, lineHeight: 1.4 }}>
+        {whyNoClass}
+      </div>
+    ) : (
+      <DeskAddButton label="Add Class" href="/my-classes?new=1" />
+    )
+  ) : null;
 
-  /* ── THE REQUEST HISTORY — every ask, both ways, answered ones too ─────── */
-  if (show === "requests") {
-    return shell(
-      <>
-        <DeskTop style={{ paddingBottom: 12 }}>
-          {top}
-          <Link href="/my-classes" data-testid="back-to-classes" style={{ display: "inline-block", marginTop: 10, fontSize: 12, fontWeight: 800, color: "var(--text)", textDecoration: "none", padding: "8px 13px", borderRadius: 999, border: "1.5px solid var(--el)", background: "var(--card)" }}>
-            ‹ Back to classes
-          </Link>
-        </DeskTop>
-        <InboxScreen
-          embed
-          accent={DOS_TOOLS.classes.c}
-          requestsIn={requestsIn}
-          requestsOut={requestsOut}
-          artists={Object.fromEntries(cardArtists)}
-          enquiriesIn={[]}
-          enquiriesOut={[]}
-          noEnquiries
-          nowIso={nowIso}
-          requestSettings={<PersonAskSettings section="requests" off={inboxOff} />}
-        />
-      </>
-    );
-  }
-
-  const board =
-    myPage ? (
-      <ClassesManager
-        embedded
-        businessId={myPage.id}
-        classes={myPageClasses}
-        filledBySession={Object.fromEntries(seats)}
-        artists={Object.fromEntries(cardArtists)}
-        publishState={state}
-        whyNoClass={whyNoClass}
-        nowIso={nowIso}
-        initialStage={initialStage}
-      />
-    ) : null;
-
-  const needLinks = myPage
-    ? needLinksOf({
-        classes: myPageClasses,
-        state,
-        nowMs,
-        businessId: myPage.id,
-        canEdit: true,
-        readyHref: "/my-classes?show=mine&stage=ready",
-        refunds: pageRefunds,
-        refundsHref: `/business/${myPage.id}/refunds`,
-      })
-    : [];
-
-  return shell(
-    <>
+  return (
+    <div style={{ background: LILAC, color: INK, maxWidth: 430, margin: "0 auto", fontFamily: DOS_UI, minHeight: "100vh", padding: "2px 16px 40px", boxSizing: "border-box" }}>
       <ClassesHome
-        /* the key is the SERVER's answer: a link carrying a different `?show=`
-           must win over whatever chip this screen last showed */
-        key={`${show}-${initialStage}`}
+        /* the key is the ADDRESS's answer, so a link naming another tab wins over
+           whatever this screen last showed. ⚠ Never the computed default: answering
+           the last request re-reads the page, the default flips to Upcoming, and a
+           key on it would throw the person off To do the moment they pressed Accept */
+        key={`${tabAsked ?? "auto"}-${roleFromAddress}`}
         mode="person"
-        top={top}
-        asks={waitingOnYou}
-        artists={Object.fromEntries(cardArtists)}
-        needLinks={needLinks}
-        running={running}
-        timeline={timeline}
-        views={views}
-        initialView={show}
-        board={board}
-        requestsHref="/my-classes?show=requests"
-        requestsWaiting={waitingOut}
+        top={<DeskHero tool="classes" as="h1" margin="0" />}
+        add={add}
+        settings={<PersonAskSettings section="requests" off={inboxOff} startOpen />}
+        roles={ROLES}
+        items={items}
+        answered={answeredRows(classIn, classOut)}
+        initialTab={initialTab}
+        initialRole={roleFromAddress}
         basePath="/my-classes"
       />
 
-      {/* ⚠ ADD CLASS OPENS OVER THIS PAGE (22 Sep 2026), from Mine */}
+      {/* ⚠ ADD CLASS OPENS OVER THIS PAGE (22 Sep 2026) */}
       {opening && myPage && !whyNoClass ? (
         <ClassForm
           businessId={myPage.id}
@@ -326,11 +245,9 @@ export default async function MyClassesPage({ searchParams }: { searchParams: Pr
           isOwner
           suggestedStyles={myPage.styles}
           sheet
-          /* the studios this artist OWNS (26 Sep 2026): a class held in one of
-             them needs no request, and the form says so */
           ownedStudioIds={memberships.filter((m) => m.memberRole === "owner" && m.business.type === "studio").map((m) => m.business.id)}
         />
       ) : null}
-    </>
+    </div>
   );
 }
