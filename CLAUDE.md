@@ -2,7 +2,7 @@
 
 ## LAST SESSION (11 Oct 2026) — replaced on every push (Rule 13)
 
-> ### CLASS REQUESTS LIVE IN CLASSES, TEACHING AND ASSISTING ARE TWO COLUMNS, AND THE REGISTER READS DRAFTS · UPCOMING · PAST (11 Oct 2026, latest) — no migration · ⏳ PUSH STATUS IN THE NEXT LINE OF THIS BLOCK
+> ### CLASS REQUESTS LIVE IN CLASSES, TEACHING AND ASSISTING ARE TWO COLUMNS, AND THE REGISTER READS DRAFTS · UPCOMING · PAST (11 Oct 2026, latest) — no migration · ✅ PUSHED AND LIVE (`0ab78a5`: Vercel READY, alias confirmed on the sha through the API; ON THE LIVE SITE `stranger-smoke` **9/9** and the probe **46/46**)
 > The user asked for suggestions first (*"how to handle classes section with manage, booked and assist columns, published drafts and completed and if we mix request in this section only with request settings and handle approvals from here as well … for users, artist, studio"*), then chose, question by question: **class requests in Classes only** (the Inbox keeps a pointer), **Teaching · Assisting as two columns**, **Drafts · Upcoming · Past**, and **open on Requests when something waits** — then *"build it and push it to live"*. Row C145.
 > * **The columns, by profile** (fixed order, a count on each): a **user** — Booked · Teaching · Assisting · Requests; an **artist** — My classes (the register) · Teaching · Assisting · Booked · Requests (five wrap 3 + 2, `SegmentedNav`); a **studio** — Classes (the register) · Requests. Booked, Teaching and Assisting each keep Upcoming · Past. The page opens on **Requests while something waits on you**, else the first column. Old links still land: `?show=assist` → Assisting, `?show=manage` → My classes for an artist, Teaching for anybody else (Rule 14).
 > * **The Requests column** is the Inbox's own request cards (`InboxScreen embed`, so one ask cannot be answered two ways): the settings on top (a person's teach / assist switches; a studio's room-request switch), **To answer · Sent · Done**, Accept · Reject, Withdraw, and on a declined ask **"Ask someone else ›" / "Pick another studio ›"** opening the class's edit form (`editHref`, off the new `classBusinessId` on an ask). ⚠ The register's own Requests tab is gone (the column replaced it), and so are My classes' ASKED TO TAKE / ASSIST blocks.
@@ -13447,7 +13447,7 @@ for the database schema. **The UI is not redesigned** — see Rule 2.
 
 ### Progress tracker — update after EVERY push (Rule 11)
 
-- **CLASS REQUESTS IN CLASSES, TEACHING · ASSISTING, DRAFTS · UPCOMING · PAST — 11 Oct 2026, no step number — no migration.** Row C145. Detail at the top.
+- **CLASS REQUESTS IN CLASSES, TEACHING · ASSISTING, DRAFTS · UPCOMING · PAST — 11 Oct 2026, no step number — no migration, PUSHED AND LIVE (`0ab78a5`).** Row C145. Detail at the top.
 - **THE CALENDAR CLICK FOR CLICK LIKE GOOGLE'S — 10 Oct 2026, no step number — no migration, PUSHED AND LIVE (`1b61898`).** Row C144. Detail at the top.
 - **A RESPONSIVE PRICE BAR, DRAG BETWEEN TWO TILES, FOLLOWER COUNTS ON STYLES, GOOGLE CALENDAR'S TOP HALF AND SCHEDULE — 10 Oct 2026, no step number — no migration ⚠ (Rule 9: one service-role aggregate).** Rows C142, C143, R76; the leftovers swept. Detail at the top.
 - **DISCOVER OPENS ON CLASSES, YOUR STYLES AS A FOLLOWED SHELF, A SORT ON EVERY TAB, A TWO-ENDED PRICE BAR — 10 Oct 2026, no step number — no migration, PUSHED AND LIVE (`97db583`).** Rows C140, C141. Detail at the top.
