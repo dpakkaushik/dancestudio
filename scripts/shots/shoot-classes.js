@@ -252,7 +252,9 @@ const BOOK_ON_PAGE = /^Book Now$/;
     /* ⚠ THE CLASS ON THE CLOCK IS PINNED AS NOW, with the door's two buttons on its card */
     const nowGroup = oPage.getByTestId("timeline-now");
     check(/Salsa/.test(await nowGroup.innerText().catch(() => "")), "the class running right now is pinned under Now");
-    check((await nowGroup.getByTestId("card-scan").count()) === 1 && (await nowGroup.getByTestId("card-register").count()) === 1, "…with Scan and Register on its card, which open the class page straight onto its door");
+    /* ⚠ no Register on a card since 11 Oct 2026 (the user) — the card opens the
+       class page, whose Attendance tab is the register */
+    check((await nowGroup.getByTestId("card-scan").count()) === 1 && (await oPage.getByTestId("card-register").count()) === 0, "…with Scan on its card and no Register button anywhere on the screen");
     check(/\?open=scan$/.test((await nowGroup.getByTestId("card-scan").getAttribute("href")) || ""), "…Scan opening the scanner itself (?open=scan)");
     check((await oPage.getByTestId("classes-settings").count()) === 1, "the room-request switch is behind the gear");
 
@@ -381,7 +383,12 @@ const BOOK_ON_PAGE = /^Book Now$/;
     await lPage.getByTestId("classes-tab-upcoming").click();
     await lPage.waitForTimeout(300);
     const cols = await lPage.getByTestId("classes-chips").locator("button").evaluateAll((els) => els.map((e) => e.getAttribute("data-testid").replace("classes-chip-", "")));
-    check(cols.join(",") === "all,booked,teaching", `⚠⚠ a chip is drawn only for what they have — All · Booked · Teaching (${cols.join(" · ")})`);
+    /* ⚠ EVERY CHIP IS ALWAYS DRAWN, a 0 included (11 Oct 2026, the user) */
+    check(cols.join(",") === "all,booked,teaching,assisting,studio", `⚠⚠ every chip is drawn, a 0 included — All · Booked · Teaching · Assisting · By studios (${cols.join(" · ")})`);
+    check(/Assisting · 0/.test(await lPage.getByTestId("classes-chip-assisting").innerText().catch(() => "")), "…Assisting reads 0 rather than vanishing");
+    await lPage.goto(`${BASE}/my-classes?role=studio`, { waitUntil: "networkidle" });
+    check((await lPage.getByTestId("classes-chip-studio").getAttribute("aria-pressed").catch(() => null)) === "true", "…and an address asking for By studios lands on it");
+    await lPage.goto(`${BASE}/my-classes?tab=upcoming`, { waitUntil: "networkidle" });
     check(await onShelf(lPage, aheadSlug), "…Upcoming holds the class they booked");
     await lPage.getByTestId("classes-chip-teaching").click();
     await lPage.waitForTimeout(300);

@@ -18,7 +18,7 @@ import type { ClassesTab, TimeGroup } from "@/features/classes/classesScreen";
  *   TO DO     — what waits on you (answer an ask, publish or fix a draft, decide
  *               refunds), then what waits on others (Withdraw), then the answered
  *               asks folded. The count on the tab is only what waits on YOU.
- *   UPCOMING  — Now (green, Scan · Register on the card) · Today · This week · Later.
+ *   UPCOMING  — Now (green, Scan on the card) · Today · This week · Later.
  *   PAST      — newest first.
  *
  *  One chip row narrows any tab by what the class is to you — a person's All ·
@@ -39,8 +39,15 @@ export interface ClassItem {
   /** To do: whose move it is */
   section?: TodoSection;
   role: string;
+  /** chips on a second axis — "studio" for a class a STUDIO made (11 Oct 2026,
+   *  the user: "person should get filter for classes created by studio as
+   *  well"), which cuts across Booked · Teaching · Assisting */
+  tags?: string[];
   node: ReactNode;
 }
+
+/** does a chip take this item — its role, or one of its tags */
+const takes = (i: ClassItem, key: string) => i.role === key || Boolean(i.tags?.includes(key));
 
 export interface AnsweredRow {
   key: string;
@@ -133,8 +140,10 @@ export function ClassesHome({
   /* ⚠ a chip is drawn only for what this account HAS — a learner with nothing to
      teach gets no Teaching · 0 — and with one kind of class there is no row at
      all, because its one chip would say what All says */
-  const present = roles.filter((r) => r.key === "all" || items.some((i) => i.role === r.key));
-  const shownRoles = present.length > 2 ? present : [];
+  /* ⚠ EVERY CHIP IS ALWAYS DRAWN, a 0 included (11 Oct 2026, the user: "make
+     sure all filter chips even if 0 are always visible") — an empty one is
+     drawn quiet, so the row reads the same for everybody and a 0 is an answer */
+  const shownRoles = roles;
   const [tab, setTab] = useState<ClassesTab>(initialTab);
   const [role, setRole] = useState<string>(shownRoles.some((r) => r.key === initialRole) ? initialRole : "all");
   const [gear, setGear] = useState(false);
@@ -157,7 +166,7 @@ export function ClassesHome({
     write(tab, r);
   };
 
-  const byRole = (list: ClassItem[]) => (role === "all" ? list : list.filter((i) => i.role === role));
+  const byRole = (list: ClassItem[]) => (role === "all" ? list : list.filter((i) => takes(i, role)));
   const inTab = (t: ClassesTab) => items.filter((i) => i.tab === t);
   const countTab = (t: ClassesTab) => (t === "todo" ? inTab("todo").filter((i) => i.section !== "waiting").length : inTab(t).length);
   const shown = byRole(inTab(tab));
@@ -193,7 +202,7 @@ export function ClassesHome({
     shownRoles.length > 0 ? (
       <div role="group" aria-label="Show" data-testid="classes-chips" style={{ display: "flex", gap: 6, overflowX: "auto", scrollbarWidth: "none", paddingBottom: 2, marginTop: 10 }}>
         {shownRoles.map((r) => {
-          const n = r.key === "all" ? inTab(tab).length : inTab(tab).filter((i) => i.role === r.key).length;
+          const n = r.key === "all" ? inTab(tab).length : inTab(tab).filter((i) => takes(i, r.key)).length;
           return (
             <button key={r.key} type="button" aria-pressed={role === r.key} data-testid={`classes-chip-${r.key}`} onClick={() => pickRole(r.key)} style={chip(role === r.key, n === 0)}>
               {r.word} · {n}

@@ -234,20 +234,16 @@ export function DraftButtons({
   );
 }
 
-/** SCAN · REGISTER — the door of a class you run. The class page opens straight
- *  onto the camera or the list (`?open=`); it re-checks who may. */
-export function DoorButtons({ path, title, scan }: { path: string; title: string; scan: boolean }) {
+/** SCAN — the door of a class you run, while it is open. The class page opens
+ *  straight onto the camera (`?open=scan`) and re-checks who may.
+ *  ⚠ No Register button on a card (11 Oct 2026, the user: "remove register
+ *  button from class cards") — the card itself opens the class page, whose
+ *  Attendance tab is the register; `?open=register` still works for old links. */
+export function ScanButton({ path, title }: { path: string; title: string }) {
   return (
-    <>
-      {scan ? (
-        <Link href={`${path}?open=scan`} aria-label={`Scan a code at ${title}`} data-testid="card-scan" style={greenBtn}>
-          Scan
-        </Link>
-      ) : null}
-      <Link href={`${path}?open=register`} aria-label={`Open the register for ${title}`} data-testid="card-register" style={cardBtn(!scan)}>
-        Register
-      </Link>
-    </>
+    <Link href={`${path}?open=scan`} aria-label={`Scan a code at ${title}`} data-testid="card-scan" style={greenBtn}>
+      Scan
+    </Link>
   );
 }
 

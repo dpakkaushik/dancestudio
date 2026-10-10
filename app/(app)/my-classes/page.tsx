@@ -55,6 +55,10 @@ const ROLES = [
   { key: "booked", word: "Booked" },
   { key: "teaching", word: "Teaching" },
   { key: "assisting", word: "Assisting" },
+  /* a second axis (11 Oct 2026, the user: "person should get filter for classes
+     created by studio as well") — the classes a STUDIO made, whatever you are
+     on them; drawn only when it narrows the list */
+  { key: "studio", word: "By studios" },
 ];
 
 /** YOUR CLASSES — the Home grid's Classes tile.
@@ -197,7 +201,26 @@ export default async function MyClassesPage({ searchParams }: { searchParams: Pr
     }),
   ].sort((a, b) => (a.group === "past" && b.group === "past" ? (b.at ?? "").localeCompare(a.at ?? "") : (a.at ?? "9").localeCompare(b.at ?? "9")));
 
-  const items: ClassItem[] = [...todo, ...time];
+  /* which classes a STUDIO made — off the maker each read already carries; your
+     own page's classes are an artist's by definition */
+  const byStudio = new Set<string>([
+    ...bookings.filter((e) => e.owner?.kind === "studio").map((e) => e.classId),
+    ...[...teaching, ...assistantOn].filter((c) => c.owner?.kind === "studio").map((c) => c.classId),
+    ...[...classIn, ...classOut].filter((r) => r.danceClass?.owner?.kind === "studio").map((r) => r.danceClass!.id),
+  ]);
+  const classIdOf = new Map<string, string>([
+    ...bookings.map((e) => [`booked-${e.id}`, e.classId] as [string, string]),
+    ...teaching.map((c) => [`teach-${c.id}`, c.classId] as [string, string]),
+    ...assistantOn.map((c) => [`assist-${c.id}`, c.classId] as [string, string]),
+    /* the keys `askToYouItem` and `askYouSentItem` give their cards */
+    ...classIn.filter((r) => r.danceClass).map((r) => [`ask-${r.kind}-${r.id}`, r.danceClass!.id] as [string, string]),
+    ...classOut.filter((r) => r.danceClass).map((r) => [`sent-${r.kind}-${r.id}`, r.danceClass!.id] as [string, string]),
+  ]);
+  const studioMade = (i: ClassItem) => {
+    const id = classIdOf.get(i.key);
+    return id ? byStudio.has(id) : false;
+  };
+  const items: ClassItem[] = [...todo, ...time].map((i) => (studioMade(i) ? { ...i, tags: [...(i.tags ?? []), "studio"] } : i));
 
   /* ── WHERE THE PAGE OPENS ──────────────────────────────────────────────── */
   const roleFromAddress =

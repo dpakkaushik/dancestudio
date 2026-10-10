@@ -1,7 +1,7 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
 import { ClassTile } from "@/features/classes/components/ClassTile";
-import { AnswerButtons, DoorButtons, DraftButtons, ShareButton, StateChip, WithdrawButton, cardBtn } from "@/features/classes/components/ClassCardActions";
+import { AnswerButtons, DraftButtons, ScanButton, ShareButton, StateChip, WithdrawButton, cardBtn } from "@/features/classes/components/ClassCardActions";
 import type { AnsweredRow, ClassItem } from "@/features/classes/components/ClassesHome";
 import { draftStateOf, type TimeGroup } from "@/features/classes/classesScreen";
 import type { RequestItem } from "@/features/inbox/components/InboxScreen";
@@ -159,17 +159,13 @@ export function refundsItem(refunds: RefundLedgerRow[], href: string, role: stri
   };
 }
 
-/** THE BUTTONS ON A CLASS YOU RUN, by where it is in time: the door while it is
- *  open, the register and a share before, the register after */
+/** THE BUTTONS ON A CLASS YOU RUN, by where it is in time: Scan while the door
+ *  is open, Share before, nothing after — the card opens the class page, whose
+ *  Attendance tab is the register (no Register button since 11 Oct 2026) */
 export function runActions({ group, path, title, canDoor, canShare = true }: { group: TimeGroup; path: string; title: string; canDoor: boolean; canShare?: boolean }): ReactNode {
-  if (group === "now") return canDoor ? <DoorButtons path={path} title={title} scan /> : null;
-  if (group === "past") return canDoor ? <DoorButtons path={path} title={title} scan={false} /> : null;
-  return (
-    <>
-      {canShare ? <ShareButton path={path} title={title} /> : null}
-      {canDoor ? <DoorButtons path={path} title={title} scan={false} /> : null}
-    </>
-  );
+  if (group === "now") return canDoor ? <ScanButton path={path} title={title} /> : null;
+  if (group === "past") return null;
+  return canShare ? <ShareButton path={path} title={title} /> : null;
 }
 
 /** the answered asks, both ways, newest first — the folded history in To do */
