@@ -2,7 +2,7 @@
 
 ## LAST SESSION (11 Oct 2026) — replaced on every push (Rule 13)
 
-> ### THE CLASSES SCREEN REIMAGINED: NEEDS YOU, RUNNING NOW, ONE TIMELINE, AND A STAGE BOARD (11 Oct 2026, latest) — no migration · STAGE A of two
+> ### THE CLASSES SCREEN REIMAGINED: NEEDS YOU, RUNNING NOW, ONE TIMELINE, AND A STAGE BOARD (11 Oct 2026, latest) — no migration · STAGE A of two · ✅ PUSHED AND LIVE (`5679d85`: Vercel READY, alias confirmed on the sha through the API; ON THE LIVE SITE `stranger-smoke` **9/9** and the probe **84/84**)
 > The user asked for suggestions on reimagining the whole page, then chose: **one timeline + filter chips**, a **Needs-you strip** instead of a Requests column, and in the first build **the Running-now card, the stage board, and one screen for a studio and a person**. Row C146 (supersedes C145's columns).
 > * **Needs you** (`ClassesHome`): the asks still waiting on you on the class card with Accept · Reject (the Inbox's own RPCs); for what you run, a no that came back (→ the edit form), drafts ready to publish, refunds to decide (`needLinksOf`). Not drawn when empty. **See all requests ›** is `?show=requests` — the whole history with the switches; ⚠ the Inbox's pointer now opens the screen itself.
 > * **Running now**: a class you run whose door is open (30 min before → end), "N of M in", and **Scan / Register** opening the class page straight onto them (`?open=scan|register`, a new `ClassDetail openOn`). A seat that may not read the register gets "Open the class" and no count.
@@ -13456,7 +13456,7 @@ for the database schema. **The UI is not redesigned** — see Rule 2.
 
 ### Progress tracker — update after EVERY push (Rule 11)
 
-- **THE CLASSES SCREEN REIMAGINED — NEEDS YOU, RUNNING NOW, ONE TIMELINE, A STAGE BOARD — 11 Oct 2026, no step number — no migration (stage A; stage B, repeating classes, follows).** Row C146. Detail at the top.
+- **THE CLASSES SCREEN REIMAGINED — NEEDS YOU, RUNNING NOW, ONE TIMELINE, A STAGE BOARD — 11 Oct 2026, no step number — no migration (stage A; stage B, repeating classes, follows), PUSHED AND LIVE (`5679d85`).** Row C146. Detail at the top.
 - **CLASS REQUESTS IN CLASSES, TEACHING · ASSISTING, DRAFTS · UPCOMING · PAST — 11 Oct 2026, no step number — no migration, PUSHED AND LIVE (`0ab78a5`).** Row C145. Detail at the top.
 - **THE CALENDAR CLICK FOR CLICK LIKE GOOGLE'S — 10 Oct 2026, no step number — no migration, PUSHED AND LIVE (`1b61898`).** Row C144. Detail at the top.
 - **A RESPONSIVE PRICE BAR, DRAG BETWEEN TWO TILES, FOLLOWER COUNTS ON STYLES, GOOGLE CALENDAR'S TOP HALF AND SCHEDULE — 10 Oct 2026, no step number — no migration ⚠ (Rule 9: one service-role aggregate).** Rows C142, C143, R76; the leftovers swept. Detail at the top.
