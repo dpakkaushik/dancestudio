@@ -3,6 +3,8 @@
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { DeskBody, DeskTop } from "@/components/ui/DeskSections";
+import { Portal } from "@/components/ui/Portal";
+import { inkOn } from "@/components/ui/ToolCard";
 import { ClassTile } from "@/features/classes/components/ClassTile";
 import { DOS_TOOLS, dosToolPaint } from "@/features/businesses/components/biz-kit";
 import { DOS_LEVEL_LABEL, dosStyleColor } from "@/lib/constants/styles";
@@ -16,11 +18,11 @@ import {
   monthOfDay,
   monthShortOf,
 } from "@/lib/format/month";
-import { timeOf } from "@/lib/format/session";
+import { compactRangeOf, timeOf } from "@/lib/format/session";
 import { CLASS_RELATION, SIDE_RELATION } from "@/lib/format/classLabels";
 import { useCloseOnBack } from "@/lib/hooks/useCloseOnBack";
 import { tileClassOf, type CalendarEntry, type CalendarMonth, type CalendarPracticeEntry, type CalendarSide } from "@/types/calendar";
-import { PRACTICE_TINT, PRACTICE_WORD, practiceWhen } from "@/types/crewPractice";
+import { PRACTICE_WORD, practiceWhen } from "@/types/crewPractice";
 import { MonthGrid, TimeGrid, useSwipe, type GridItem, type MonthChip } from "./calendar-grid";
 
 /** The calendar, lifted from prototype S_profiletab in its `calendarOnly` dress
@@ -102,6 +104,61 @@ const VIEWS: Array<[View, string]> = [
   ["month", "Month"],
 ];
 const WEEK_LETTERS = ["M", "T", "W", "T", "F", "S", "S"];
+
+/* the bar's round controls — 40px, the size a thumb is owed */
+const ICON_BTN: React.CSSProperties = {
+  width: 40,
+  height: 40,
+  borderRadius: 20,
+  display: "inline-flex",
+  alignItems: "center",
+  justifyContent: "center",
+  background: "transparent",
+  border: "none",
+  color: INK,
+  cursor: "pointer",
+  flexShrink: 0,
+  padding: 0,
+};
+const SUMMARY_CHIP: React.CSSProperties = {
+  display: "inline-flex",
+  alignItems: "center",
+  gap: 5,
+  height: 28,
+  padding: "0 11px",
+  borderRadius: 999,
+  fontSize: 11.5,
+  fontWeight: 800,
+  background: "transparent",
+  color: SUB,
+  border: `1.5px solid ${LINE}`,
+  cursor: "pointer",
+  whiteSpace: "nowrap",
+  flexShrink: 0,
+  fontFamily: "inherit",
+};
+/* the icon beside each view in the drawer — Google's own four */
+const VIEW_ICON: Record<View, React.ReactNode> = {
+  sched: <path d="M4 6h16M4 12h16M4 18h10" />,
+  day: (
+    <>
+      <rect x="4" y="5" width="16" height="15" rx="2.5" />
+      <path d="M4 10h16M10 14h4" />
+    </>
+  ),
+  week: (
+    <>
+      <rect x="3" y="5" width="18" height="15" rx="2.5" />
+      <path d="M3 10h18M9 10v10M15 10v10" />
+    </>
+  ),
+  month: (
+    <>
+      <rect x="3" y="4" width="18" height="17" rx="2.5" />
+      <path d="M3 9h18M3 14h18M9 9v12M15 9v12" />
+    </>
+  ),
+};
 
 const pressKey = (fn: () => void) => (e: React.KeyboardEvent) => {
   if (e.key === "Enter" || e.key === " ") {
@@ -228,52 +285,24 @@ const practiceRow = (e: CalendarPracticeEntry): Row => ({
    its own with the am/pm under the figure. Still a pill (the user's 28 Sep word,
    and the e2e asserts the radius), still under 60px tall, and nothing on it is
    cut at 360px. */
-const PILL: React.CSSProperties = {
+/* ⚠ SUPERSEDED 10 Oct 2026: the outlined two-line pill above is now Google's
+   SOLID chip (see `pill` inside the component) — one block in the session's
+   own colour, the name and then the time and the place. */
+const CHIP: React.CSSProperties = {
   display: "flex",
-  alignItems: "center",
-  gap: 10,
+  flexDirection: "column",
+  justifyContent: "center",
+  gap: 2,
   minWidth: 0,
-  background: CARD,
-  border: `1.5px solid ${LINE}`,
-  borderRadius: 999,
-  padding: "7px 12px 7px 14px",
-  marginBottom: 7,
+  minHeight: 44,
+  boxSizing: "border-box",
+  borderRadius: 10,
+  padding: "7px 12px",
+  marginBottom: 6,
   textDecoration: "none",
-  color: INK,
 };
-const PILL_TIME_COL: React.CSSProperties = { flexShrink: 0, width: 36, display: "flex", flexDirection: "column", alignItems: "center", lineHeight: 1.05 };
-const PILL_TIME: React.CSSProperties = { fontSize: 12.5, fontWeight: 900, color: INK, fontVariantNumeric: "tabular-nums" };
-const PILL_AMPM: React.CSSProperties = { fontSize: 8.5, fontWeight: 900, letterSpacing: 0.6, color: MUTED, textTransform: "uppercase", marginTop: 2 };
-const PILL_TEXT: React.CSSProperties = { flex: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: 2 };
-const PILL_NAME: React.CSSProperties = { fontSize: 13.5, fontWeight: 900, letterSpacing: -0.2, lineHeight: 1.15, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" };
-const PILL_SUB: React.CSSProperties = { fontSize: 10.5, fontWeight: 700, color: SUB, lineHeight: 1.2, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" };
-/** "6:30 pm" → the figure and the half of the day, for the pill's time column.
- *  ⚠ `\s`, not a space: ICU separates the two with a NARROW no-break space
- *  (U+202F) on some runtimes, and a split on " " would leave the clock whole. */
-const clockParts = (iso: string): [string, string] => {
-  const t = timeOf(iso);
-  const m = /^(.*?)\s*([ap]\.?\s*m\.?)$/i.exec(t);
-  return m ? [m[1], m[2].replace(/[.\s]/g, "")] : [t, ""];
-};
-const pillDot = (tint: string): React.CSSProperties => ({ flexShrink: 0, width: 8, height: 8, borderRadius: 4, background: tint });
-/* ⚠ THE CHIP RIDES THE SECOND LINE (5 Oct 2026). On the right of the pill it
-   took ~75px from the one line that has to be whole, and at 360px "Contemporary"
-   still lost its last letters beside ASSISTING — so the style has the pill's
-   whole width and the chip leads the line under it, where the level and the
-   place are allowed to ellipsise. */
-const pillChip = (tint: string): React.CSSProperties => ({
-  flexShrink: 0,
-  fontSize: 8.5,
-  fontWeight: 900,
-  letterSpacing: 0.5,
-  lineHeight: 1.25,
-  textTransform: "uppercase",
-  padding: "1px 6px",
-  borderRadius: 999,
-  background: `${tint}1f`,
-  color: tint,
-});
-const PILL_LINE2: React.CSSProperties = { display: "flex", alignItems: "center", gap: 6, minWidth: 0 };
+const CHIP_NAME: React.CSSProperties = { fontSize: 13.5, fontWeight: 900, letterSpacing: -0.2, lineHeight: 1.15, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" };
+const CHIP_SUB: React.CSSProperties = { fontSize: 11, fontWeight: 700, lineHeight: 1.2, opacity: 0.88, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" };
 
 export interface CalendarScreenProps {
   /** personal: a person's own classes and practices; studio: the venue's
@@ -304,16 +333,59 @@ export function CalendarScreen({ mode, months, todayKey, entries, practices = []
   const inWindow = (dayKey: string) => idx(monthOfDay(dayKey)) >= 0;
 
   const [view, setView] = useState<View>("sched");
-  const [side, setSide] = useState<"all" | CalendarSide>("all");
-  /* THE HALF THIS TAB IS SHOWING. The prototype's Classes/Events switch became
-     real on 18 Sep 2026 and gained a third value on 27 Sep; ⚠ the EVENTS half
-     went on 29 Sep, so what is left is Classes and Practice. A crew's calendar
-     IS its practices, so a crew is never offered the switch at all. */
-  const [kind, setKind] = useState<"classes" | "practices">(isCrew ? "practices" : "classes");
-  const showPractices = isCrew || kind === "practices";
-  /* a person is offered the switch whenever every half can exist; a studio and
-     a public schedule have classes only */
-  const canSwitch = mode === "personal";
+  /* ⚠⚠ CLASSES AND PRACTICE TOGETHER, FILTERED LIKE GOOGLE'S "MY CALENDARS"
+     (10 Oct 2026, the user: "classe and practice together as well. manage the
+     upper hallf of calendar and filters also like googlke calendar"). The
+     Classes / Practice switch showed one half at a time, so a person with a class
+     at six and a practice at eight never saw their evening on one screen. Every
+     kind is ON by default and each is a checkbox in the drawer — Classes (with
+     Booked · Teaching · Assisting under it) and Practice — the way Google lists
+     the calendars it is overlaying. A crew's calendar IS its practices and a
+     studio's IS its classes, so neither is offered the two kinds. */
+  const [shown, setShown] = useState<Record<"classes" | "practices" | CalendarSide, boolean>>({ classes: true, practices: true, attending: true, assisting: true, hosting: true });
+  const flip = (k: keyof typeof shown) => setShown((s) => ({ ...s, [k]: !s[k] }));
+  const wantClasses = mode !== "crew" && (mode !== "personal" || shown.classes);
+  const wantPractices = isCrew || (mode === "personal" && shown.practices);
+  const [menuOpen, setMenuOpen] = useState(false);
+  useCloseOnBack(() => setMenuOpen(false), menuOpen);
+  /* what the drawer has switched off, in words, for the summary row under the bar */
+  const hiddenWords =
+    mode !== "personal"
+      ? []
+      : [
+          ...(!shown.classes ? ["Classes"] : (["attending", "hosting", "assisting"] as CalendarSide[]).filter((k) => !shown[k]).map((k) => CLASS_RELATION[SIDE_RELATION[k]].word)),
+          ...(!shown.practices ? ["Practice"] : []),
+        ];
+  const showAll = () => setShown({ classes: true, practices: true, attending: true, assisting: true, hosting: true });
+  /** one of Google's "My calendars" rows — a coloured checkbox, the name, and
+   *  what it counts in the view you are on. ⚠ The accessible name is "{name}: {n}"
+   *  (the side pills' own since Step 14), so a test and a screen reader find it
+   *  by the same words. */
+  const checkRow = (k: keyof typeof shown, label: string, n: number, tint: string, off: boolean, indent: boolean) => {
+    const on = shown[k] && !off;
+    return (
+      <button
+        key={k}
+        type="button"
+        role="checkbox"
+        aria-checked={shown[k]}
+        aria-disabled={off}
+        aria-label={`${label}: ${n}`}
+        onClick={() => !off && flip(k)}
+        style={{ display: "flex", alignItems: "center", gap: 14, width: "100%", height: 46, padding: indent ? "0 16px 0 46px" : "0 16px", borderRadius: 999, border: "none", background: "transparent", cursor: off ? "default" : "pointer", fontFamily: "inherit", textAlign: "left", opacity: off ? 0.45 : 1 }}
+      >
+        <span aria-hidden="true" style={{ width: 20, height: 20, borderRadius: 5, flexShrink: 0, display: "inline-flex", alignItems: "center", justifyContent: "center", background: on ? tint : "transparent", border: `2px solid ${tint}` }}>
+          {on ? (
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke={inkOn(tint)} strokeWidth="3.4" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M5 12.5l4.5 4.5L19 7.5" />
+            </svg>
+          ) : null}
+        </span>
+        <span style={{ flex: 1, fontSize: 14.5, fontWeight: 750, color: INK }}>{label}</span>
+        <span style={{ fontSize: 12.5, fontWeight: 900, color: MUTED, fontVariantNumeric: "tabular-nums" }}>{n}</span>
+      </button>
+    );
+  };
   const [sel, setSel] = useState(todayKey);
   const [mi, setMi] = useState(Math.max(0, idx(monthOfDay(todayKey))));
   const [panelOpen, setPanelOpen] = useState(false);
@@ -338,13 +410,12 @@ export function CalendarScreen({ mode, months, todayKey, entries, practices = []
   const jumped = useRef("");
 
   const isToday = (dayKey: string) => dayKey === todayKey;
-  /* the half this tab is showing: one axis at a time, never both mixed, because
-     a day with a class and a battle on it answers two different questions */
-  const half: Row[] = showPractices ? practices.map(practiceRow) : entries.map(classRow);
-  const roomScoped = half.filter((r) => room === null || r.room === room);
-  /* ⚠ THE SIDES ARE A CLASS IDEA and neither an event nor a practice has one —
-     nobody assists a battle, and nobody trains at their own crew's rehearsal */
-  const passes = (r: Row) => r.k !== "class" || side === "all" || r.side === side;
+  /* every kind that is switched on, merged into one list (10 Oct 2026) */
+  const half: Row[] = [...(wantClasses ? entries.map(classRow) : []), ...(wantPractices ? practices.map(practiceRow) : [])];
+  const roomScoped = half.filter((r) => room === null || r.k !== "class" || r.room === room);
+  /* ⚠ THE SIDES ARE A CLASS IDEA and a practice has none — nobody trains at
+     their own crew's rehearsal — so they narrow classes and nothing else */
+  const passes = (r: Row) => r.k !== "class" || mode !== "personal" || shown[r.side];
   const byDay = new Map<string, Row[]>();
   for (const r of roomScoped) {
     if (!passes(r)) continue;
@@ -376,14 +447,7 @@ export function CalendarScreen({ mode, months, todayKey, entries, practices = []
     SIDE_KEYS.map((k) => [k, classScoped.filter((e) => e.side === k).length])
   ) as Record<CalendarSide, number>;
   const practicesInScope = practices.filter((e) => inScope(e.dayKey)).length;
-  const scopeLabel =
-    view === "day"
-      ? `${dayNumberOf(sel)} ${monthShortOf(monthOfDay(sel))}`
-      : view === "week"
-        ? "this week"
-        : view === "month"
-          ? months[mi].monthName
-          : "everything";
+  const classesInScope = classScoped.length;
 
   /* ── MOVING THE SCHEDULE (9166-9188): in a list, "go to a date" means SCROLL
      to it — the day's row, or the first row after it, since a day with nothing
@@ -435,16 +499,19 @@ export function CalendarScreen({ mode, months, todayKey, entries, practices = []
       ? `${dayNumberOf(week[0])} ${monthShortOf(monthOfDay(week[0]))} – ${dayNumberOf(week[6])} ${monthShortOf(monthOfDay(week[6]))}`
       : view === "day"
         ? `${dowOf(sel)} ${dayNumberOf(sel)} ${G.monthName}`
-        : G.label;
+        : /* Google's own rule: the year only when it is not this one — "October 2026"
+             did not fit the bar beside four controls at 390px */
+          G.label.endsWith(todayKey.slice(0, 4)) ? G.monthName : G.label;
   const pickView = (v: View) => {
     setView(v);
     /* the panel shuts whenever the view changes — the thing it was picking a date for has changed */
     setPanelOpen(false);
+    setMenuOpen(false);
   };
 
   /* the schedule holds history too, so it is scrolled to today once drawn — and
      re-finds today when the list itself changes (8686-8705) */
-  const jumpKey = `${view}|${kind}|${side}|${room ?? ""}`;
+  const jumpKey = `${view}|${JSON.stringify(shown)}|${room ?? ""}`;
   useEffect(() => {
     if (view !== "sched" || jumped.current === jumpKey) return;
     const rows = Array.from(document.querySelectorAll<HTMLElement>('[id^="doscal-"]'));
@@ -466,16 +533,17 @@ export function CalendarScreen({ mode, months, todayKey, entries, practices = []
     return () => window.cancelAnimationFrame(id);
   }, [jumpKey, view]);
 
-  /* while the date panel is open the page beneath does not move (8683) */
+  /* while the date panel or the menu is open the page beneath does not move (8683) */
+  const frozen = panelOpen || menuOpen;
   useEffect(() => {
-    if (!panelOpen) return;
+    if (!frozen) return;
     const body = document.body;
     const prev = body.style.overflow;
     body.style.overflow = "hidden";
     return () => {
       body.style.overflow = prev;
     };
-  }, [panelOpen]);
+  }, [frozen]);
 
   const dayCell = (dayKey: string | null, i: number, showLetter: boolean) => {
     if (!dayKey || !inWindow(dayKey)) return <div key={`e${i}`} />;
@@ -537,39 +605,40 @@ export function CalendarScreen({ mode, months, todayKey, entries, practices = []
   /** ONE PILL — the time, the name, a dot in the thing's own colour, and one
    *  chip saying what it is to you. See `PILL` above for why, and for the one
    *  surface this is NOT used on. */
+  /** ⚠⚠ GOOGLE'S EVENT CHIP (10 Oct 2026, the user: "fix schedule view in
+   *  calendar make like google calendar"). A session is a SOLID block in its own
+   *  colour — the style's for a class, the Practice tool's for a practice — with
+   *  the name on the first line and the time and the place on the second, in the
+   *  ink that colour needs (`inkOn`). It replaces the outlined pill of 28 Sep:
+   *  on Google's Schedule the colour IS the kind, so nothing has to be read to
+   *  tell a class from a practice now that both share one list. What it is to
+   *  you (Booked · Teaching · Assisting, or the practice's answer) leads the
+   *  second line. A past session is faded, a draft is outlined dashed, a
+   *  called-off practice is struck through on a grey block. */
   const pill = (r: Row) => {
-    /* ⚠ an EVENT's pill was the first branch and went on 29 Sep 2026 */
+    /* the day, not the minute — the clock is the server's (`todayKey`), never read in render */
+    const past = r.dayKey < todayKey;
     if (r.k === "practice") {
       const e = r.e;
-      /* a called-off practice keeps its row and says so — the 27 Sep rule that
-         cancelling is a STATUS and never a delete, said on the calendar too */
-      const tint = e.cancelled ? MUTED : PRACTICE_TINT[e.standing];
-      const [clock, half] = clockParts(e.startsAt);
+      const bg = e.cancelled ? "#9CA3AF" : PRACTICE_C;
+      const ink = inkOn(bg);
       return (
         <Link
           key={r.id}
           data-testid="cal-pill"
+          data-kind="practice"
           href={e.href}
           aria-label={`${e.crewName} practice, ${practiceWhen(e.startsAt)}${e.cancelled ? " — called off" : ""}`}
-          style={{ ...PILL, opacity: e.cancelled ? 0.65 : 1 }}
+          style={{ ...CHIP, background: bg, color: ink, opacity: past ? 0.55 : 1 }}
         >
-          <span aria-hidden="true" style={pillDot(e.cancelled ? LINE : PRACTICE_C)} />
-          <span style={PILL_TIME_COL}>
-            <span style={PILL_TIME}>{clock}</span>
-            {half ? <span style={PILL_AMPM}>{half}</span> : null}
-          </span>
-          <span style={PILL_TEXT}>
-            <span style={PILL_NAME}>{e.crewName}</span>
-            <span style={PILL_LINE2}>
-              <span style={pillChip(tint)}>{e.cancelled ? "Called off" : PRACTICE_WORD[e.standing]}</span>
-              <span style={PILL_SUB}>{e.place}</span>
-            </span>
+          <span style={{ ...CHIP_NAME, textDecoration: e.cancelled ? "line-through" : "none" }}>{e.crewName} · Practice</span>
+          <span style={CHIP_SUB}>
+            {[e.cancelled ? "Called off" : PRACTICE_WORD[e.standing], compactRangeOf(e.startsAt, e.endsAt), e.place].filter(Boolean).join(" · ")}
           </span>
         </Link>
       );
     }
     const e = r.e;
-    const [clock, half] = clockParts(e.startsAt);
     /* where it is held: the studio that said yes for an artist's class, else the
        business that owns it — the place a person actually goes */
     const place = e.venue?.name ?? e.businessName;
@@ -592,26 +661,22 @@ export function CalendarScreen({ mode, months, todayKey, entries, practices = []
        class on the public schedule and on Discover. One control name for one
        act, so a screen reader and a locator both find the class by the name the
        app uses everywhere else rather than by the shape it is drawn in. */
+    const bg = dosStyleColor(e.style);
+    const ink = inkOn(bg);
+    /* what this class is to YOU on your own calendar; on a studio's, only a
+       draft says a word — a published class needs none */
+    const lead = mode === "personal" ? SIDES[e.side].name : draft ? "Draft" : null;
     return (
-      <Link key={r.id} data-testid="cal-pill" href={`/c/${e.shareSlug}`} aria-label={`Open ${e.title}`} style={PILL}>
-        <span aria-hidden="true" style={pillDot(dosStyleColor(e.style))} />
-        <span style={PILL_TIME_COL}>
-          <span style={PILL_TIME}>{clock}</span>
-          {half ? <span style={PILL_AMPM}>{half}</span> : null}
-        </span>
-        <span style={PILL_TEXT}>
-          <span style={PILL_NAME}>{e.style}</span>
-          <span style={PILL_LINE2}>
-            {/* what this class is to YOU on your own calendar; on a studio's,
-                only a draft is chipped — a published class needs no word */}
-            {mode === "personal" ? (
-              <span style={pillChip(SIDES[e.side].tint)}>{SIDES[e.side].name}</span>
-            ) : draft ? (
-              <span style={pillChip("#F59E0B")}>Draft</span>
-            ) : null}
-            {sub ? <span style={PILL_SUB}>{sub}</span> : null}
-          </span>
-        </span>
+      <Link
+        key={r.id}
+        data-testid="cal-pill"
+        data-kind="class"
+        href={`/c/${e.shareSlug}`}
+        aria-label={`Open ${e.title}`}
+        style={{ ...CHIP, background: bg, color: ink, opacity: past ? 0.55 : 1, outline: draft ? `2px dashed ${ink}` : "none", outlineOffset: -4 }}
+      >
+        <span style={CHIP_NAME}>{e.style}</span>
+        <span style={CHIP_SUB}>{[lead, compactRangeOf(e.startsAt, e.endsAt), sub].filter(Boolean).join(" · ")}</span>
       </Link>
     );
   };
@@ -713,18 +778,21 @@ export function CalendarScreen({ mode, months, todayKey, entries, practices = []
     /* ⚠ a crew's read "Nothing arranged on arrange one →" until 5 Oct 2026 — a
        sentence missing its middle, on the one calendar that opens empty most */
     <div style={emptyCard}>
-      {showPractices ? (isCrew ? "Nothing arranged yet — " : "No practice on — ") : mode === "personal" ? "Nothing booked — " : "Nothing scheduled — "}
+      {isCrew ? "Nothing arranged yet — " : mode === "personal" ? (wantClasses ? "Nothing booked — " : "No practice on — ") : "Nothing scheduled — "}
       <Link href={emptyHref} style={{ color: SKY, fontWeight: 800, textDecoration: "none" }}>
-        {showPractices ? (isCrew ? "arrange one →" : "open your crew →") : mode === "personal" ? "find a class →" : "add a class →"}
+        {isCrew ? "arrange one →" : mode === "personal" ? (wantClasses ? "find a class →" : "open your crew →") : "add a class →"}
       </Link>
     </div>
   );
 
-  /* the schedule: every day with something on it, past and future, opening on today */
+  /* the schedule: every day with something on it, past and future, opening on
+     today — and TODAY ITSELF EVEN WHEN NOTHING IS ON (10 Oct 2026, Google's own
+     Schedule: today always has its row, "Nothing planned" when empty, so you can
+     see where you are in the list) */
   const schedDays = months
     .flatMap((m) => Array.from({ length: m.days }, (_, i) => dayKeyFor(m.key, i + 1)))
     .map((dayKey) => ({ dayKey, items: agendaOf(dayKey) }))
-    .filter((x) => x.items.length > 0);
+    .filter((x) => x.items.length > 0 || (!isPublic && x.dayKey === todayKey));
   const firstToday = schedDays.findIndex((x) => x.dayKey >= todayKey);
 
   return (
@@ -816,7 +884,9 @@ export function CalendarScreen({ mode, months, todayKey, entries, practices = []
         ) : null}
 
         {/* one studio = one location — only rooms need filtering (9076-9098) */}
-        {(mode === "studio" || isPublic) && rooms.length > 0 ? (
+        {/* ⚠ a studio's rooms moved into the drawer (10 Oct 2026, Google's "My
+            calendars"); only a public schedule keeps this dropdown on the page */}
+        {isPublic && rooms.length > 0 ? (
           <div style={{ display: "flex", gap: 8, marginBottom: 10 }}>
             <div style={{ flex: 1, minWidth: 0, position: "relative" }}>
               <div
@@ -893,218 +963,91 @@ export function CalendarScreen({ mode, months, todayKey, entries, practices = []
           </div>
         ) : null}
 
-        {/* ── the segmented views (9116-9120). A public schedule is ONE view —
-            somebody looking at a studio's page came to see when they teach, not
-            to operate a calendar (9113) ── */}
-        {isPublic ? null : (
-        <div style={{ display: "flex", gap: 2, background: LINE, borderRadius: 12, padding: 3, marginBottom: 10 }}>
-          {VIEWS.map(([k, l]) => (
-            <div
-              key={k}
-              role="button"
-              tabIndex={0}
-              aria-pressed={view === k}
-              onKeyDown={pressKey(() => pickView(k))}
-              onClick={() => pickView(k)}
-              style={{
-                flex: 1,
-                textAlign: "center",
-                padding: "7px 4px",
-                borderRadius: 9,
-                cursor: "pointer",
-                fontSize: 11.5,
-                fontWeight: 800,
-                background: view === k ? "var(--solid)" : "transparent",
-                color: view === k ? INK : SUB,
-                boxShadow: view === k ? "0 1px 4px rgba(0,0,0,.3)" : "none",
-                transition: "all .15s",
-              }}
-            >
-              {l}
-            </div>
-          ))}
-        </div>
-        )}
-
-        {/* ── Train · Teach · Assist — the sides of the same calendar, each with
-            what it counts in the view you are in. Tapping one narrows every view
-            below; tapping it again clears (9121-9155, DosSidePill 6700). A
-            studio is a venue, not a person on the floor, so its calendar has no
-            sides. ── */}
-        {/* ── CLASSES · EVENTS (the prototype's own switch above the sides, 6836).
-            One axis at a time: the sides below belong to classes, and an event
-            is not something you train in, teach or assist on. ── */}
-        {/* ⚠ AND PRACTICE IS THE THIRD (27 Sep 2026) — a rehearsal is neither a
-            class nor an event, so it is neither a fourth side nor a kind of
-            event; the switch is the prototype's own answer to exactly this and
-            it takes a third value the way it took a second. */}
-        {canSwitch ? (
-          <div style={{ display: "flex", gap: 6, marginBottom: 8 }}>
-            {([["classes", "Classes", entries.length], ["practices", "Practice", practicesInScope]] as const).map(([k, label, n]) => {
-              const on = kind === k;
-              const tint = k === "practices" ? PRACTICE_C : TOOL_COLOUR;
-              return (
-                <div
-                  key={k}
-                  role="button"
-                  tabIndex={0}
-                  aria-pressed={on}
-                  aria-label={`${label}: ${n}`}
-                  onKeyDown={pressKey(() => setKind(k))}
-                  onClick={() => setKind(k)}
-                  style={{
-                    flex: 1,
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    gap: 7,
-                    padding: "9px 12px",
-                    borderRadius: 12,
-                    cursor: "pointer",
-                    userSelect: "none",
-                    background: on ? `${tint}1f` : CARD,
-                    border: `1.5px solid ${on ? tint : LINE}`,
-                  }}
-                >
-                  <span style={{ fontSize: 12.5, fontWeight: 900, letterSpacing: -0.15, color: on ? tint : SUB }}>{label}</span>
-                  <span style={{ fontSize: 11, fontWeight: 900, color: on ? tint : MUTED, fontVariantNumeric: "tabular-nums" }}>{n}</span>
-                </div>
-              );
-            })}
-          </div>
-        ) : null}
-
-        {/* ⚠ this was `mode === "personal" && !showEvents` (29 Sep 2026). The
-            sides were hidden on the EVENTS half alone — they were still drawn on
-            the practices half, counting CLASSES whichever tab is open, which is
-            what the counts' own comment above says they are for. With the events
-            half gone the second half of the test can only ever be true, so it is
-            dropped rather than re-pointed at practices, which would have been a
-            silent behaviour change. */}
-        {mode === "personal" ? (
-          <>
-            <div style={{ display: "flex", gap: 5, marginBottom: 5 }}>
-              {SIDE_KEYS.map((k) => {
-                const meta = SIDES[k];
-                const n = sideCounts[k];
-                const on = side === k;
-                const tap = () => setSide(on ? "all" : k);
-                return (
-                  <div
-                    key={k}
-                    role="button"
-                    tabIndex={0}
-                    aria-pressed={on}
-                    aria-label={`${meta.name}: ${n}`}
-                    onKeyDown={pressKey(tap)}
-                    onClick={tap}
-                    style={{
-                      flex: 1,
-                      minWidth: 0,
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      gap: 6,
-                      padding: "9px 11px",
-                      borderRadius: 999,
-                      cursor: "pointer",
-                      background: on ? meta.tint : CARD,
-                      border: `1.5px solid ${on ? meta.tint : LINE}`,
-                      transition: "background .15s",
-                      userSelect: "none",
-                    }}
-                  >
-                    <span style={{ fontSize: 14, fontWeight: 900, lineHeight: 1, color: on ? "#fff" : meta.tint, fontVariantNumeric: "tabular-nums", flexShrink: 0 }}>
-                      {n}
-                    </span>
-                    <span style={{ fontSize: 12.5, fontWeight: 800, lineHeight: 1, letterSpacing: -0.15, color: on ? "#fff" : SUB, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                      {meta.name}
-                    </span>
-                  </div>
-                );
-              })}
-            </div>
-            {/* ⚠ ONLY WHILE ONE SIDE IS PICKED (5 Oct 2026). With nothing picked
-                the line read "All three · everything" under every person's
-                calendar — a caption describing the default, in words nobody
-                uses. It earns its line when it says something the pills do
-                not: that the list below is narrowed, and how to undo it. */}
-            {side === "all" ? (
-              <div style={{ height: 3 }} />
-            ) : (
-              <div style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 9.5, color: MUTED, fontWeight: 700, marginBottom: 7 }}>
-                <span style={{ flex: 1, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                  {`${SIDES[side].name} only · ${scopeLabel} · tap again for all`}
-                </span>
-              </div>
-            )}
-          </>
-        ) : null}
-
+        {/* ⚠⚠ THE VIEW SWITCHER, THE CLASSES · PRACTICE SWITCH AND THE THREE SIDE
+            PILLS LEFT THE HEADER (10 Oct 2026, the user: "manage the upper half of
+            calendar and filters also like google calendar"). Google keeps its bar
+            to the menu, the month and today, and puts the views and "My
+            calendars" in the drawer the menu opens — so do we (`menuOpen`). */}
         {/* ── one date panel, on every view (9157-9300): it names where you are,
             steps forward and back, and folds open onto the month — or, in Week,
             that week — when you tap it. Picking a day closes it again. ── */}
-        <div style={{ position: "relative", marginTop: 8 }}>
-          <div
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: 3,
-              background: CARD,
-              border: `1.5px solid ${LINE}`,
-              borderRadius: 12,
-              padding: "5px 7px 5px 5px",
-            }}
-          >
-            <span
-              role="button"
-              tabIndex={0}
+        <div style={{ position: "relative", marginTop: isPublic ? 8 : 0 }}>
+          {/* ⚠⚠ GOOGLE'S BAR (10 Oct 2026): the menu, the month you are in (a press
+              drops the mini month), the two steps and today as a calendar page
+              with today's date on it. Nothing else — the views and the filters are
+              the drawer's, as Google keeps them. A public schedule has no menu:
+              it is one view with one filter. */}
+          <div style={{ display: "flex", alignItems: "center", gap: 2, minHeight: 48 }}>
+            {isPublic ? null : (
+              <button type="button" aria-label="Calendar menu" aria-expanded={menuOpen} onClick={() => setMenuOpen(true)} style={ICON_BTN}>
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" aria-hidden="true">
+                  <path d="M4 7h16M4 12h16M4 17h16" />
+                </svg>
+              </button>
+            )}
+            <button
+              type="button"
               aria-expanded={panelOpen}
               aria-label={`${panelOpen ? "Close" : "Open"} the ${unit} picker`}
-              onKeyDown={pressKey(() => setPanelOpen((o) => !o))}
               onClick={() => setPanelOpen((o) => !o)}
-              style={{ display: "inline-flex", alignItems: "center", gap: 7, flex: 1, minWidth: 0, cursor: "pointer", padding: "3px 5px", borderRadius: 9 }}
+              style={{ display: "inline-flex", alignItems: "center", gap: 5, flex: 1, minWidth: 0, cursor: "pointer", padding: "6px 6px", borderRadius: 10, background: "none", border: "none", color: INK, fontFamily: "inherit", textAlign: "left" }}
             >
-              <span aria-hidden="true" style={{ fontSize: 10, color: MUTED, lineHeight: 1, transform: panelOpen ? "rotate(180deg)" : "none", transition: "transform .18s" }}>
-                ▾
-              </span>
-              <b style={{ flex: 1, minWidth: 0, fontSize: 13.5, fontWeight: 800, letterSpacing: -0.2, fontFamily: DOS_DISPLAY, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                {title}
-              </b>
-            </span>
-            {/* ⚠ NO `TODAY` BADGE HERE (28 Sep 2026) — it stood beside the
-                button below, which already carries the word. See TODAY_INK. */}
-            <span
-              role="button"
-              tabIndex={0}
-              aria-label="Jump to today"
-              onKeyDown={pressKey(() => jumpTo(todayKey))}
-              onClick={() => jumpTo(todayKey)}
-              style={{ flexShrink: 0, fontSize: 10, fontWeight: 800, padding: "4px 10px", borderRadius: 999, cursor: "pointer", border: `1.5px solid ${LINE}`, color: SUB }}
-            >
-              Today
-            </span>
-            <span
-              role="button"
-              tabIndex={0}
-              aria-label={`Previous ${unit}`}
-              onKeyDown={pressKey(() => step(-1))}
-              onClick={() => step(-1)}
-              style={{ flexShrink: 0, color: canStep(-1) ? INK : LINE, fontWeight: 900, cursor: "pointer", padding: "0 6px", fontSize: 17 }}
-            >
-              ‹
-            </span>
-            <span
-              role="button"
-              tabIndex={0}
-              aria-label={`Next ${unit}`}
-              onKeyDown={pressKey(() => step(1))}
-              onClick={() => step(1)}
-              style={{ flexShrink: 0, color: canStep(1) ? INK : LINE, fontWeight: 900, cursor: "pointer", padding: "0 6px", fontSize: 17 }}
-            >
-              ›
-            </span>
+              <b style={{ minWidth: 0, fontSize: 20, fontWeight: 800, letterSpacing: -0.5, fontFamily: DOS_DISPLAY, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{title}</b>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" style={{ flexShrink: 0, color: MUTED, transform: panelOpen ? "rotate(180deg)" : "none", transition: "transform .18s" }}>
+                <path d="M6 9l6 6 6-6" />
+              </svg>
+            </button>
+            <button type="button" aria-label={`Previous ${unit}`} disabled={!canStep(-1)} onClick={() => step(-1)} style={{ ...ICON_BTN, color: canStep(-1) ? INK : LINE }}>
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                <path d="M15 6l-6 6 6 6" />
+              </svg>
+            </button>
+            <button type="button" aria-label={`Next ${unit}`} disabled={!canStep(1)} onClick={() => step(1)} style={{ ...ICON_BTN, color: canStep(1) ? INK : LINE }}>
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                <path d="M9 6l6 6-6 6" />
+              </svg>
+            </button>
+            {/* ⚠ TODAY IS A CALENDAR PAGE WITH TODAY'S DATE ON IT (Google's own
+                control), not the word — the word was said twice on this bar once
+                (28 Sep 2026) and the page says it without a word at all */}
+            <button type="button" aria-label="Jump to today" data-testid="cal-today" onClick={() => jumpTo(todayKey)} style={ICON_BTN}>
+              <svg width="26" height="26" viewBox="0 0 26 26" fill="none" aria-hidden="true">
+                <rect x="3" y="4.5" width="20" height="18" rx="3.5" stroke="currentColor" strokeWidth="2" />
+                <path d="M3 9.5h20" stroke="currentColor" strokeWidth="2" />
+                <path d="M8.5 2.5v4M17.5 2.5v4" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+                <text x="13" y="19.6" textAnchor="middle" fontSize="9.5" fontWeight="900" fill="currentColor" fontFamily="inherit">
+                  {dayNumberOf(todayKey)}
+                </text>
+              </svg>
+            </button>
           </div>
+          {/* the view you are on and what the drawer has narrowed — one quiet row,
+              each a door back into the drawer, so a hidden kind is never a mystery */}
+          {isPublic ? null : (
+            <div style={{ display: "flex", alignItems: "center", gap: 6, padding: "0 4px 4px", overflowX: "auto", scrollbarWidth: "none" }}>
+              <button type="button" aria-label={`Change view — ${VIEWS.find(([k]) => k === view)?.[1] ?? ""}`} onClick={() => setMenuOpen(true)} style={SUMMARY_CHIP}>
+                {VIEWS.find(([k]) => k === view)?.[1]}
+                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                  <path d="M6 9l6 6 6-6" />
+                </svg>
+              </button>
+              {mode === "studio" && rooms.length > 0 ? (
+                <button type="button" aria-label="Filter by room" onClick={() => setMenuOpen(true)} style={SUMMARY_CHIP}>
+                  {room ?? "All rooms"}
+                </button>
+              ) : null}
+              {hiddenWords.length ? (
+                <>
+                  <span data-testid="cal-filtered" style={{ fontSize: 11, fontWeight: 700, color: MUTED, whiteSpace: "nowrap" }}>
+                    Hidden: {hiddenWords.join(", ")}
+                  </span>
+                  <button type="button" onClick={showAll} style={{ ...SUMMARY_CHIP, borderStyle: "dashed" }}>
+                    Show all
+                  </button>
+                </>
+              ) : null}
+            </div>
+          )}
           {panelOpen ? (
             <>
               <div aria-hidden="true" onClick={() => setPanelOpen(false)} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,.5)", zIndex: 130 }} />
@@ -1281,51 +1224,79 @@ export function CalendarScreen({ mode, months, todayKey, entries, practices = []
         </>
       ) : null}
 
+      {/* ⚠⚠ GOOGLE'S SCHEDULE VIEW (10 Oct 2026, the user: "fix schedule view in
+          calendar make like google calendar, classes and practice together as
+          well"). A banner where each month begins, the week's range above each
+          week, and per day a date column — the weekday over the number, today's
+          number in a filled circle — beside that day's sessions as solid chips,
+          classes and practices in one list in the order they happen. Today keeps
+          its row when nothing is on ("Nothing planned today"), so the list always
+          says where you are; the old "Today" divider went, because the circle
+          says it. A public schedule keeps its cards and draws none of this. */}
       {view === "sched" ? (
-        <div style={{ paddingTop: 10 }}>
+        <div data-testid="cal-view-sched" style={{ paddingTop: isPublic ? 10 : 6 }}>
           {schedDays.length === 0 ? nothing : null}
           {schedDays.map(({ dayKey, items }, gi) => {
+            const prev = gi > 0 ? schedDays[gi - 1].dayKey : null;
+            const mk = monthOfDay(dayKey);
+            const monthStarts = !isPublic && (!prev || monthOfDay(prev) !== mk);
+            const wk = addDays(dayKey, -mondayIndexOf(dayKey));
+            const weekStarts = !isPublic && (!prev || addDays(prev, -mondayIndexOf(prev)) !== wk);
+            const we = addDays(wk, 6);
+            const today = isToday(dayKey);
             const past = dayKey < todayKey;
+            const m = months[idx(mk)];
             return (
               <div key={dayKey}>
-                {gi === firstToday && firstToday > 0 ? (
-                  <div style={{ display: "flex", alignItems: "center", gap: 9, margin: "4px 0 10px", scrollMarginTop: 70 }}>
-                    <span style={{ flex: 1, height: 1, background: LINE }} />
-                    <span style={{ fontSize: 9, fontWeight: 900, letterSpacing: 0.8, color: TODAY_INK, textTransform: "uppercase" }}>Today</span>
-                    <span style={{ flex: 1, height: 1, background: LINE }} />
+                {monthStarts && m ? (
+                  <div
+                    data-testid="cal-month-banner"
+                    style={{ position: "relative", overflow: "hidden", height: 66, borderRadius: 16, margin: gi === 0 ? "4px 0 10px" : "18px 0 10px", background: toolPaint(TOOL_COLOUR), color: "#fff", display: "flex", alignItems: "flex-end", padding: "0 16px 11px" }}
+                  >
+                    <span aria-hidden="true" style={{ position: "absolute", right: -24, top: -34, width: 120, height: 120, borderRadius: 60, background: "rgba(255,255,255,.14)" }} />
+                    <span aria-hidden="true" style={{ position: "absolute", right: 46, bottom: -40, width: 80, height: 80, borderRadius: 40, background: "rgba(255,255,255,.1)" }} />
+                    <b style={{ position: "relative", fontFamily: DOS_DISPLAY, fontSize: 20, fontWeight: 800, letterSpacing: -0.4 }}>{m.label}</b>
                   </div>
                 ) : null}
-                {/* the day gutter is the owner calendar's spine (9346). On a
-                    public schedule the card already carries the day, the date
-                    and the month in its own left column, so the gutter would
-                    print the date twice */}
+                {weekStarts ? (
+                  <div data-testid="cal-week-range" style={{ fontSize: 11.5, fontWeight: 800, color: MUTED, padding: "4px 0 8px 58px", letterSpacing: 0.2 }}>
+                    {dayNumberOf(wk)} {monthShortOf(monthOfDay(wk))} – {dayNumberOf(we)} {monthShortOf(monthOfDay(we))}
+                  </div>
+                ) : null}
                 <div
                   id={`doscal-${dayKey}`}
                   ref={gi === firstToday ? todayRef : null}
-                  style={{ display: "flex", gap: isPublic ? 0 : 10, marginBottom: 8, opacity: past ? 0.62 : 1, scrollMarginTop: 180 }}
+                  data-today={today ? "true" : undefined}
+                  style={{ display: "flex", gap: isPublic ? 0 : 12, alignItems: "flex-start", marginBottom: isPublic ? 8 : 10, scrollMarginTop: 180 }}
                 >
                   {isPublic ? null : (
-                  <div style={{ width: 46, textAlign: "center", paddingTop: 6, flexShrink: 0 }}>
-                    <div style={{ fontSize: 9.5, fontWeight: 800, color: isToday(dayKey) ? TODAY_INK : MUTED }}>{dowOf(dayKey)}</div>
-                    <div
-                      style={{
-                        fontSize: 16,
-                        fontWeight: 900,
-                        width: 30,
-                        height: 30,
-                        lineHeight: "30px",
-                        margin: "2px auto 0",
-                        borderRadius: 15,
-                        color: isToday(dayKey) ? "var(--solid)" : INK,
-                        background: isToday(dayKey) ? TODAY_INK : "transparent",
-                      }}
-                    >
-                      {dayNumberOf(dayKey)}
+                    <div style={{ width: 46, textAlign: "center", flexShrink: 0, paddingTop: 2 }}>
+                      <div style={{ fontSize: 10.5, fontWeight: 900, letterSpacing: 0.6, textTransform: "uppercase", color: today ? TODAY_INK : MUTED }}>{dowOf(dayKey)}</div>
+                      <div
+                        style={{
+                          fontSize: 21,
+                          fontWeight: today ? 900 : 700,
+                          width: 38,
+                          height: 38,
+                          lineHeight: "38px",
+                          margin: "1px auto 0",
+                          borderRadius: 19,
+                          fontVariantNumeric: "tabular-nums",
+                          color: today ? "var(--solid)" : past ? MUTED : INK,
+                          background: today ? TODAY_INK : "transparent",
+                        }}
+                      >
+                        {dayNumberOf(dayKey)}
+                      </div>
                     </div>
-                    <div style={{ fontSize: 8.5, color: MUTED }}>{monthShortOf(monthOfDay(dayKey)).toUpperCase()}</div>
-                  </div>
                   )}
-                  <div style={{ flex: 1, minWidth: 0 }}>{items.map(card)}</div>
+                  <div style={{ flex: 1, minWidth: 0, paddingTop: isPublic ? 0 : 3 }}>
+                    {items.length ? (
+                      items.map(card)
+                    ) : (
+                      <div style={{ minHeight: 44, display: "flex", alignItems: "center", fontSize: 12.5, fontWeight: 700, color: MUTED, borderBottom: `1.5px solid ${LINE}` }}>Nothing planned today</div>
+                    )}
+                  </div>
                 </div>
               </div>
             );
@@ -1333,6 +1304,106 @@ export function CalendarScreen({ mode, months, todayKey, entries, practices = []
         </div>
       ) : null}
       </CalendarBody>
+
+      {/* ⚠⚠ THE DRAWER — Google Calendar's menu (10 Oct 2026). The views, then
+          "My calendars": the kinds on this calendar as coloured checkboxes, each
+          with what it counts in the view you are on. Portalled, because the bar
+          is sticky (a stacking context) and the drawer must cover the app's own
+          top bar too; back closes it (`useCloseOnBack`). */}
+      {menuOpen && !isPublic ? (
+        <Portal>
+          <div aria-hidden="true" onClick={() => setMenuOpen(false)} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,.45)", zIndex: 900 }} />
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-label="Calendar menu"
+            style={{
+              position: "fixed",
+              top: 0,
+              bottom: 0,
+              left: 0,
+              width: "min(320px, 84vw)",
+              zIndex: 910,
+              background: "var(--solid)",
+              color: INK,
+              fontFamily: DOS_UI,
+              boxShadow: "8px 0 32px rgba(0,0,0,.35)",
+              borderRadius: "0 22px 22px 0",
+              padding: "18px 12px 24px",
+              overflowY: "auto",
+              animation: "dosDrawerIn .22s ease-out",
+              boxSizing: "border-box",
+            }}
+          >
+            <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "0 6px 12px" }}>
+              <span aria-hidden="true" style={{ width: 30, height: 30, borderRadius: 9, background: toolPaint(TOOL_COLOUR), flexShrink: 0 }} />
+              <b style={{ flex: 1, fontFamily: DOS_DISPLAY, fontSize: 19, fontWeight: 800, letterSpacing: -0.4 }}>Calendar</b>
+              <button type="button" aria-label="Close the menu" onClick={() => setMenuOpen(false)} style={ICON_BTN}>
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" aria-hidden="true">
+                  <path d="M6 6l12 12M18 6L6 18" />
+                </svg>
+              </button>
+            </div>
+            {VIEWS.map(([k, l]) => {
+              const on = view === k;
+              return (
+                <button
+                  key={k}
+                  type="button"
+                  aria-pressed={on}
+                  onClick={() => pickView(k)}
+                  style={{ display: "flex", alignItems: "center", gap: 16, width: "100%", height: 48, padding: "0 16px", borderRadius: 999, border: "none", cursor: "pointer", fontFamily: "inherit", fontSize: 14.5, fontWeight: on ? 900 : 700, background: on ? `${TOOL_COLOUR}26` : "transparent", color: on ? INK : SUB, textAlign: "left" }}
+                >
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                    {VIEW_ICON[k]}
+                  </svg>
+                  {l}
+                </button>
+              );
+            })}
+            {mode === "personal" || (mode === "studio" && rooms.length > 0) ? <div style={{ height: 1.5, background: LINE, margin: "12px 8px" }} /> : null}
+            {mode === "personal" ? (
+              <>
+                <div style={{ fontSize: 11, fontWeight: 900, letterSpacing: 1, color: MUTED, textTransform: "uppercase", padding: "4px 16px 6px" }}>My calendars</div>
+                {checkRow("classes", "Classes", classesInScope, TOOL_COLOUR, false, false)}
+                {SIDE_KEYS.map((k) => checkRow(k, SIDES[k].name, sideCounts[k], SIDES[k].tint, !shown.classes, true))}
+                {checkRow("practices", "Practice", practicesInScope, PRACTICE_C, false, false)}
+                {hiddenWords.length ? (
+                  <button type="button" onClick={showAll} style={{ ...SUMMARY_CHIP, margin: "10px 16px 0" }}>
+                    Show everything
+                  </button>
+                ) : null}
+              </>
+            ) : null}
+            {mode === "studio" && rooms.length > 0 ? (
+              <>
+                <div style={{ fontSize: 11, fontWeight: 900, letterSpacing: 1, color: MUTED, textTransform: "uppercase", padding: "4px 16px 6px" }}>Rooms</div>
+                {[null, ...rooms].map((o) => {
+                  const on = room === o;
+                  return (
+                    <button
+                      key={o ?? "all"}
+                      type="button"
+                      role="radio"
+                      aria-checked={on}
+                      onClick={() => {
+                        setRoom(o);
+                        setMenuOpen(false);
+                      }}
+                      style={{ display: "flex", alignItems: "center", gap: 14, width: "100%", height: 46, padding: "0 16px", borderRadius: 999, border: "none", background: on ? `${TOOL_COLOUR}1f` : "transparent", cursor: "pointer", fontFamily: "inherit", fontSize: 14, fontWeight: on ? 900 : 700, color: INK, textAlign: "left" }}
+                    >
+                      <span aria-hidden="true" style={{ width: 18, height: 18, borderRadius: 9, border: `2px solid ${on ? TOOL_COLOUR : MUTED}`, display: "inline-flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                        {on ? <span style={{ width: 8, height: 8, borderRadius: 4, background: TOOL_COLOUR }} /> : null}
+                      </span>
+                      {o ?? "All rooms"}
+                    </button>
+                  );
+                })}
+              </>
+            ) : null}
+          </div>
+        </Portal>
+      ) : null}
 
       {/* ⚠⚠ THE COMPOSE BUTTON IS GONE ALTOGETHER (29 Sep 2026), and it went in
           two halves a week apart. "Add class" left a STUDIO's calendar on

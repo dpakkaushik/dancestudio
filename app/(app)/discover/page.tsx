@@ -7,6 +7,7 @@ import { CrewI } from "@/features/crews/components/crew-kit";
 import { EnrollButton } from "@/features/classBookings/components/EnrollButton";
 import { CompactCard } from "@/features/discovery/components/CompactCard";
 import { StyleCard, StyleI } from "@/features/styles/components/StyleCard";
+import { findStyleFollowerCounts } from "@/repositories/styleFollowers";
 import { styleSlug, stylesShelfOrder } from "@/lib/constants/styleInfo";
 import { dosStyleColor } from "@/lib/constants/styles";
 import { DiscoverFilters } from "@/features/discovery/components/DiscoverFilters";
@@ -278,7 +279,7 @@ export default async function DiscoverPage({
     });
   }
   const minOf = (list: number[] | undefined): number | null => (list && list.length ? Math.min(...list) : null);
-  const [crewsRaw, taught, stylesByBusiness, followedCrews, followerCounts, facts, shotsByBusiness, teachersOfAll] = await Promise.all([
+  const [crewsRaw, taught, stylesByBusiness, followedCrews, followerCounts, facts, shotsByBusiness, teachersOfAll, styleFollowers] = await Promise.all([
     tab === "crews" ? findCrewsByCity(supabase, cityQ) : Promise.resolve([]),
     tab === "classes" ? findClassesWithArtist(supabase, inCity.map((c) => c.id)) : Promise.resolve(new Set<string>()),
     wantsBusinesses ? findPublishedStylesByBusiness(supabase, nearbyIds) : Promise.resolve(new Map<string, string[]>()),
@@ -287,6 +288,8 @@ export default async function DiscoverPage({
     wantsBusinesses ? findBusinessCardFacts(supabase, [...nearbyIds, ...followedIds]) : Promise.resolve(new Map<string, BusinessCardFacts>()),
     wantsBusinesses ? findStudioHeaderPhotosMany(supabase, nearbyIds) : Promise.resolve(new Map<string, HeaderPhoto[]>()),
     wantsArtists && priceAsked ? findClassArtists(supabase, allClasses.map((c) => c.id)) : Promise.resolve(new Map<string, ClassArtist>()),
+    /* the follower pill on every style tile (10 Oct 2026) — an aggregate, never a name */
+    tab === "styles" ? findStyleFollowerCounts() : Promise.resolve(new Map<string, number>()),
   ]);
   const pricesByArtist = new Map<string, number[]>();
   allClasses.forEach((c) => {
@@ -334,7 +337,7 @@ export default async function DiscoverPage({
   const priceCeil = priceCeilOf(allClasses.map((c) => c.priceInr));
   const followed = following.filter((f) => f.businessType === "studio");
   /* the Styles tab's own shelf, narrowed by its own filters (2 Oct 2026) */
-  const styleShelf = tab === "styles" ? recommendFirst(filterStyleShelf(stylesShelfOrder(), filters, styleCount), learnStyles, filters, (x) => [x]) : [];
+  const styleShelf = tab === "styles" ? recommendFirst(filterStyleShelf(stylesShelfOrder(), filters, styleCount, styleFollowers), learnStyles, filters, (x) => [x]) : [];
   /* the follower count sits at the foot of every card — a number, never a name (Step 15);
      the faces come from the businesses themselves (the nearby RPC carries none) */
   /* ⚠⚠ AND THE POSTERS THE CARD SWIPES THROUGH (27 Sep 2026, the user: "Studio
@@ -645,7 +648,7 @@ export default async function DiscoverPage({
       {tab === "styles" && (
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
           {styleShelf.map((s) => (
-            <StyleCard key={s} style={s} classes={styleCount.get(s) ?? 0} city={city} />
+            <StyleCard key={s} style={s} classes={styleCount.get(s) ?? 0} city={city} followers={styleFollowers.get(s) ?? 0} />
           ))}
         </div>
       )}

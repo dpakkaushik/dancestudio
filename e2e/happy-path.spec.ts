@@ -987,9 +987,14 @@ test.describe.serial("DanceOS, end to end", () => {
     await owner.getByRole("link", { name: "Calendar", exact: true }).click();
     await owner.waitForURL(/\/business\/[0-9a-f-]+\/calendar$/);
     await expect(owner.locator(`[aria-label="Open ${classTitle}"]`)).toBeVisible();
-    await owner.getByRole("button", { name: "Month", exact: true }).click();
+    /* ⚠ THE VIEWS ARE IN THE DRAWER (10 Oct 2026, the user: "manage the upper
+       half of calendar and filters also like google calendar") — the bar's ☰
+       opens Google's menu, and picking a view closes it */
+    await owner.getByRole("button", { name: "Calendar menu" }).click();
+    await owner.getByRole("dialog", { name: "Calendar menu" }).getByRole("button", { name: "Month", exact: true }).click();
     await expect(owner.getByText("nothing on")).toBeVisible();
-    await owner.getByRole("button", { name: "Day", exact: true }).click();
+    await owner.getByRole("button", { name: "Calendar menu" }).click();
+    await owner.getByRole("dialog", { name: "Calendar menu" }).getByRole("button", { name: "Day", exact: true }).click();
     await expect(owner.getByText("8 am")).toBeVisible();
     await owner.goto(`/business/${businessId}/classes`);
 
@@ -1202,23 +1207,28 @@ test.describe.serial("DanceOS, end to end", () => {
     // Teaching · Assisting, where they read Train · Teach · Assist)
     await learner.goto("/calendar");
     await expect(learner.locator(`[aria-label="Open ${classTitle}"]`)).toBeVisible();
-    await expect(learner.getByRole("button", { name: "Booked: 1" })).toBeVisible();
-    await expect(learner.getByRole("button", { name: "Teaching: 0" })).toBeVisible();
+    /* the sides are "My calendars" checkboxes in the drawer since 10 Oct 2026 */
+    await learner.getByRole("button", { name: "Calendar menu" }).click();
+    const calMenu = learner.getByRole("dialog", { name: "Calendar menu" });
+    await expect(calMenu.getByRole("checkbox", { name: "Booked: 1" })).toBeVisible();
+    await expect(calMenu.getByRole("checkbox", { name: "Teaching: 0" })).toBeVisible();
+    await calMenu.getByRole("button", { name: "Close the menu" }).click();
+    await expect(calMenu).toHaveCount(0);
 
-    /* ⚠ THE CALENDAR DRAWS PILLS (28 Sep 2026, the user: "calendar should only
-       have pills with infor instead of cards"). The accessible name is the SAME
-       `Open {class}` the card carries on the public schedule — one control name
-       for one act — so what separates them is the shape, and that is what this
-       asserts. The other end of it is in the follows segment below, where the
-       same class on `/…/schedule` must still be a CARD. */
+    /* ⚠ A SESSION IS GOOGLE'S SOLID CHIP (10 Oct 2026, superseding the 28 Sep
+       pill: "fix schedule view in calendar make like google calendar"). The
+       accessible name is still the SAME `Open {class}` the card carries on the
+       public schedule — so what separates them is the shape: a short filled
+       block, not a card. The other end is in the follows segment below, where
+       the same class on `/…/schedule` must still be a CARD. */
     const calPill = learner.getByTestId("cal-pill").first();
     await expect(calPill).toBeVisible();
     const pillShape = await calPill.evaluate((el) => ({
-      radius: getComputedStyle(el).borderTopLeftRadius,
+      bg: getComputedStyle(el).backgroundColor,
       h: Math.round(el.getBoundingClientRect().height),
     }));
-    expect(pillShape.radius).toBe("999px");
-    expect(pillShape.h).toBeLessThan(60);
+    expect(pillShape.bg).not.toMatch(/rgba\(0, 0, 0, 0\)|transparent/);
+    expect(pillShape.h).toBeLessThan(64);
 
     /* ⚠⚠ AND "TODAY" IS SAID ONCE, AND IS NOT BLUE (28 Sep 2026, the user:
        "should not repeat today teice it appears in blue which it should not on
@@ -1231,7 +1241,10 @@ test.describe.serial("DanceOS, end to end", () => {
     const todayWords = await learner.evaluate(() =>
       [...document.querySelectorAll("span,div,b")].filter((el) => el.children.length === 0 && /^today$/i.test((el.textContent || "").trim())).length
     );
-    expect(todayWords).toBe(1);
+    /* ⚠ since 10 Oct 2026 the bar's today control is a calendar page with the
+       date on it and the schedule marks today with a filled circle, so the bare
+       word appears at most once (it may not appear at all) */
+    expect(todayWords).toBeLessThanOrEqual(1);
     const blueToday = await learner.evaluate(() =>
       [...document.querySelectorAll("span,div,b")]
         .filter((el) => el.children.length === 0 && /^today$/i.test((el.textContent || "").trim()))

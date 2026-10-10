@@ -96,7 +96,9 @@ export const SORTS_FOR: Record<string, Array<[SortBy, string]>> = {
   studios: [["near", "Nearest"], ["popular", "Most followed"], ["price", "Lowest class price"], ["az", "A–Z"]],
   artists: [["near", "Recommended"], ["popular", "Most followed"], ["price", "Lowest class price"], ["az", "A–Z"]],
   crews: [["near", "Recommended"], ["popular", "Most followed"], ["members", "Most members"], ["az", "A–Z"]],
-  styles: [["near", "Classical first"], ["popular", "Most classes"], ["az", "A–Z"]],
+  /* "members" on Styles is the people who follow it (10 Oct 2026, the follower
+     pill on every style tile) — a style's membership is the people who carry it */
+  styles: [["near", "Classical first"], ["popular", "Most classes"], ["members", "Most followed"], ["az", "A–Z"]],
 };
 
 /** the tabs a price means something on: a class's own price, and the classes a
@@ -204,11 +206,12 @@ export const anyStyleOk = (f: DiscoverFilters, styles: readonly string[]): boole
 
 /** THE STYLES TAB'S OWN LIST (2 Oct 2026, the user: "also add filters on style
  *  section on discover") — family, style, "has classes here", and its order */
-export function filterStyleShelf(shelfOrder: readonly string[], f: DiscoverFilters, classCount: Map<string, number>): string[] {
+export function filterStyleShelf(shelfOrder: readonly string[], f: DiscoverFilters, classCount: Map<string, number>, followers: Map<string, number> = new Map()): string[] {
   const want = effectiveStyles(f);
   const out = shelfOrder.filter((s) => (!want || want.includes(s)) && (!f.has || (classCount.get(s) ?? 0) > 0));
   if (f.sort === "az") return [...out].sort((a, b) => a.localeCompare(b));
   if (f.sort === "popular") return [...out].sort((a, b) => (classCount.get(b) ?? 0) - (classCount.get(a) ?? 0));
+  if (f.sort === "members") return [...out].sort((a, b) => (followers.get(b) ?? 0) - (followers.get(a) ?? 0));
   return out;
 }
 const minutesOf = (startsAt: string, endsAt: string): number => Math.round((new Date(endsAt).getTime() - new Date(startsAt).getTime()) / 60000);

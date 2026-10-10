@@ -394,7 +394,7 @@ export function DiscoverFilters({ tab, city, filters, styleOrder, tabs, as = nul
             {isPricedTab(tab) ? (
               <Row label={tab === "classes" ? "PRICE" : "CLASS PRICE"}>
                 <PriceRange
-                  key={`${filters.pmin ?? "-"}:${filters.pmax ?? "-"}:${priceCeil}`}
+                  key={priceCeil}
                   ceil={priceCeil}
                   min={filters.pmin}
                   max={filters.pmax}

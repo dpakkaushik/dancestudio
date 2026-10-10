@@ -344,13 +344,13 @@ export function OnboardingForm({
               items={o.picked}
               keyOf={(l) => l}
               nameOf={(l) => l}
-              gap={6}
+              gap={10}
               onReorder={o.setPicked}
-              render={(l, grip) => (
-                <div style={{ display: "flex", alignItems: "center", gap: 9, padding: "6px 10px 6px 4px", borderRadius: 12, background: "var(--solid)", color: INK, border: `1.5px solid ${LINE}` }}>
+              render={(l, grip, dragging) => (
+                <div style={{ display: "flex", alignItems: "center", gap: 10, minHeight: 58, padding: "6px 14px 6px 4px", borderRadius: 16, background: "var(--solid)", color: INK, border: `2px solid ${dragging ? SKY : LINE}`, boxSizing: "border-box" }}>
                   {grip}
-                  <DosStyleCoin label={l} size={24} />
-                  <span style={{ flex: 1, fontSize: 13, fontWeight: 700 }}>{l}</span>
+                  <DosStyleCoin label={l} size={32} />
+                  <span style={{ flex: 1, fontSize: 15, fontWeight: 750 }}>{l}</span>
                 </div>
               )}
             />

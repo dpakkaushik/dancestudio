@@ -246,18 +246,20 @@ const tomorrowIst = () => {
        chip and the place on the second — because one line cut every name at
        390px. These checks match the words, so they read either shape. */
     check(await leader.getByText(/Studio 4, Baner/).first().isVisible().catch(() => false), "the CREW's calendar carries it");
-    check((await leader.getByRole("button", { name: /^Classes:/ }).count()) === 0, "…and is never offered the Classes · Practice switch — a crew's calendar IS its practices");
+    /* ⚠ 10 Oct 2026: the filters are Google's "My calendars" checkboxes in the
+       drawer the bar's ☰ opens, and a crew's drawer offers views only */
+    await leader.getByRole("button", { name: "Calendar menu" }).click();
+    check((await leader.getByRole("checkbox", { name: /^Classes:/ }).count()) === 0, "…and is never offered Classes · Practice — a crew's calendar IS its practices");
+    await leader.getByRole("button", { name: "Close the menu" }).click();
     await member.goto(`${BASE}/calendar`, { waitUntil: "networkidle" });
-    const switchBtn = member.getByRole("button", { name: /^Practice: 1$/ });
-    check((await switchBtn.count()) === 1, "a PERSON's calendar offers Practice as the third half, counting one");
-    await switchBtn.click();
-    await member.waitForTimeout(800);
-    check(await member.getByText(/Studio 4, Baner/).first().isVisible().catch(() => false), "…and the practice is on it");
-    check(await member.getByText(crewName).first().isVisible().catch(() => false), "…naming WHICH crew, which the pill carries where the card said the word Practice");
-    /* ⚠ "Coming", not "COMING": the card uppercased in JS and the pill does it in
-       CSS, so the DOM text is the word itself — which is the right way round,
-       because a screen reader should not spell it out. */
-    check(await member.getByText("Coming", { exact: true }).first().isVisible().catch(() => false), "…wearing what they said");
+    /* ⚠ CLASSES AND PRACTICE TOGETHER (10 Oct 2026, the user): the practice is
+       on a person's schedule without pressing anything, and the drawer counts it */
+    check(await member.getByText(/Studio 4, Baner/).first().isVisible().catch(() => false), "a PERSON's calendar shows the practice beside the classes, with nothing pressed");
+    await member.getByRole("button", { name: "Calendar menu" }).click();
+    check((await member.getByRole("checkbox", { name: /^Practice: 1$/ }).count()) === 1, "…and the drawer's Practice checkbox counts one");
+    await member.getByRole("button", { name: "Close the menu" }).click();
+    check(await member.getByText(new RegExp(crewName)).first().isVisible().catch(() => false), "…naming WHICH crew");
+    check(await member.getByText(/^Coming ·/).first().isVisible().catch(() => false), "…wearing what they said");
 
     /* ── 6 · THE MEMBER CAN SEE IT AND ANSWER IT (28 Sep 2026, the user: *"no
        way to check practices you have been a part of fix that"*).
@@ -316,8 +318,6 @@ const tomorrowIst = () => {
        used to carry the crew's PUBLIC page — true, and useless: that page says
        nothing about practices and can answer none. */
     await member.goto(`${BASE}/calendar`, { waitUntil: "networkidle" });
-    await member.getByRole("button", { name: /^Practice: 1$/ }).click();
-    await member.waitForTimeout(800);
     const memberHref = await member.evaluate(() => {
       const a = [...document.querySelectorAll("a")].find((x) => /Studio 4, Baner/.test(x.textContent || ""));
       return a ? a.getAttribute("href") : null;

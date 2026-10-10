@@ -66,13 +66,15 @@ export function StylesSheet({
         items={styles}
         keyOf={(s) => s}
         nameOf={(s) => s}
-        disabled={pending}
+        gap={10}
+        /* ⚠ never `disabled={pending}` — the save is optimistic, and a list that
+           locked for the length of a round trip ignored the second drag (10 Oct 2026) */
         onReorder={(next) => onSave(next, "Order saved")}
-        render={(s, grip) => (
-          <div style={{ display: "flex", alignItems: "center", gap: 9, padding: "8px 12px 8px 6px", borderRadius: 14, background: "var(--solid)", border: `1.5px solid ${LINE}`, color: INK }} data-testid="style-row">
+        render={(s, grip, dragging) => (
+          <div style={{ display: "flex", alignItems: "center", gap: 10, minHeight: 58, padding: "6px 14px 6px 4px", borderRadius: 16, background: "var(--solid)", border: `2px solid ${dragging ? dosStyleColor(s) : LINE}`, color: INK, boxSizing: "border-box" }} data-testid="style-row">
             {grip}
-            <span aria-hidden="true" style={{ width: 12, height: 12, borderRadius: 6, background: dosStyleColor(s), flexShrink: 0 }} />
-            <b style={{ flex: 1, fontSize: 13.5, color: INK }}>{s}</b>
+            <span aria-hidden="true" style={{ width: 30, height: 30, borderRadius: 9, background: dosStyleColor(s), flexShrink: 0 }} />
+            <b style={{ flex: 1, fontSize: 15.5, color: INK }}>{s}</b>
             <button
               type="button"
               aria-label={locked(styles) ? `${s} is the last style — add another first` : `Remove ${s}`}
