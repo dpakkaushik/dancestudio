@@ -7,14 +7,15 @@ import { CrewI } from "@/features/crews/components/crew-kit";
 import { EnrollButton } from "@/features/classBookings/components/EnrollButton";
 import { CompactCard } from "@/features/discovery/components/CompactCard";
 import { StyleCard, StyleI } from "@/features/styles/components/StyleCard";
-import { stylesShelfOrder } from "@/lib/constants/styleInfo";
+import { styleSlug, stylesShelfOrder } from "@/lib/constants/styleInfo";
+import { dosStyleColor } from "@/lib/constants/styles";
 import { DiscoverFilters } from "@/features/discovery/components/DiscoverFilters";
 import { DiscoverTabs } from "@/features/discovery/components/DiscoverTabs";
 import { FollowedShelf, type FollowedTile } from "@/features/discovery/components/FollowedShelf";
 import { PlaceChip } from "@/features/discovery/components/PlaceChip";
 import { StudioCard } from "@/features/discovery/components/StudioCard";
 import { ArtistI, ClassI, StudioI } from "@/features/discovery/components/discover-kit";
-import { anyStyleOk, filterClasses, filterCrews, filterBusinesses, filterStyleShelf, filtersToParams, parseFilters, radiusOf, recommendFirst, ALL_CITIES } from "@/features/discovery/filters";
+import { anyPriceOk, anyStyleOk, filterClasses, filterCrews, filterBusinesses, filterStyleShelf, filtersToParams, parseFilters, priceCeilOf, priceRangeOn, radiusOf, recommendFirst, sortShelf, ALL_CITIES } from "@/features/discovery/filters";
 import { RecommendationSettings } from "@/features/discovery/components/RecommendationSettings";
 import { StyleRequest } from "@/features/discovery/components/StyleRequest";
 import { findMyLearnStyles } from "@/repositories/profiles";
@@ -55,16 +56,19 @@ const parsePage = (raw: string | undefined): number => {
 
 const EL = "var(--el)";
 
-/** ENTITY_TABS (prototype 4149) — the prototype's order, opening on Studios.
- *  The URL words are the ones the app has always used, so every existing link
- *  keeps working. ⚠ The Events tab went with events on 29 Sep 2026; `?tab=events`
- *  is not a tab any more and falls through to Studios, which is what an unknown
- *  word has always done. */
+/** ENTITY_TABS (prototype 4149). The URL words are the ones the app has always
+ *  used, so every existing link keeps working. ⚠ The Events tab went with events
+ *  on 29 Sep 2026; `?tab=events` is not a tab any more and falls through to the
+ *  first tab, which is what an unknown word has always done. */
+/* ⚠⚠ CLASSES FIRST, AND DISCOVER OPENS ON IT (10 Oct 2026, the user: "classes
+   to be the first option on discover before Studios"). The prototype opened on
+   Studios; what most people come here to find is a class to take, so the shelf
+   that answers that leads. A link carrying `?tab=studios` still opens Studios. */
 const TABS = [
+  ["classes", "Classes", ClassI],
   ["studios", "Studios", StudioI],
   ["artists", "Artists", ArtistI],
   ["crews", "Crews", CrewI],
-  ["classes", "Classes", ClassI],
   /* ⚠ STYLES (2 Oct 2026, the user: "New section in discover called Styles").
      Its shelf is every style in the registry, each opening its own page; it
      reads nothing of its own — the class list this page already reads for the
@@ -152,7 +156,7 @@ export default async function DiscoverPage({
   const allCities = city === ALL_CITIES;
   const cityQ: string | null = allCities ? null : city || null;
   const placeWord = allCities ? "all cities" : city;
-  const tab = TABS.some(([k]) => k === params.tab) ? (params.tab as string) : "studios";
+  const tab = TABS.some(([k]) => k === params.tab) ? (params.tab as string) : "classes";
   /* WHERE "NEAR" IS MEASURED FROM (11 Sep 2026). The city's centre, unless the
      person has pressed Near me and their own point is in the address — in which
      case the distances on the cards are distances to THEM. A malformed or
@@ -254,7 +258,27 @@ export default async function DiscoverPage({
      already has its faces, counts and posters. */
   const followedIds = following.filter((f) => f.businessType === "studio").map((f) => f.businessId);
   const nearbyIds = nearby.map((t) => t.id);
-  const [crewsRaw, taught, stylesByBusiness, followedCrews, followerCounts, facts, shotsByBusiness] = await Promise.all([
+  /* ⚠ WHAT A STUDIO'S AND AN ARTIST'S CLASSES COST (10 Oct 2026) — for the price
+     range and the "Lowest class price" sort. Off the class list this page has
+     already read, so a studio costs nothing more to price: its own classes, and
+     the classes it ACCEPTED in its rooms. An artist needs to know which classes
+     they teach, which is one read — made only when a price is actually asked. */
+  const priceAsked = priceRangeOn(filters) || filters.sort === "price";
+  const pricesByBusiness = new Map<string, number[]>();
+  if (wantsBusinesses && priceAsked) {
+    const add = (id: string | null, p: number) => {
+      if (!id) return;
+      const list = pricesByBusiness.get(id) ?? [];
+      list.push(p);
+      pricesByBusiness.set(id, list);
+    };
+    allClasses.forEach((c) => {
+      add(c.businessId, c.priceInr);
+      if (c.venueStatus === "accepted" && c.venueBusinessId !== c.businessId) add(c.venueBusinessId, c.priceInr);
+    });
+  }
+  const minOf = (list: number[] | undefined): number | null => (list && list.length ? Math.min(...list) : null);
+  const [crewsRaw, taught, stylesByBusiness, followedCrews, followerCounts, facts, shotsByBusiness, teachersOfAll] = await Promise.all([
     tab === "crews" ? findCrewsByCity(supabase, cityQ) : Promise.resolve([]),
     tab === "classes" ? findClassesWithArtist(supabase, inCity.map((c) => c.id)) : Promise.resolve(new Set<string>()),
     wantsBusinesses ? findPublishedStylesByBusiness(supabase, nearbyIds) : Promise.resolve(new Map<string, string[]>()),
@@ -262,8 +286,17 @@ export default async function DiscoverPage({
     wantsBusinesses ? findFollowerCounts(supabase, nearbyIds) : Promise.resolve(new Map<string, number>()),
     wantsBusinesses ? findBusinessCardFacts(supabase, [...nearbyIds, ...followedIds]) : Promise.resolve(new Map<string, BusinessCardFacts>()),
     wantsBusinesses ? findStudioHeaderPhotosMany(supabase, nearbyIds) : Promise.resolve(new Map<string, HeaderPhoto[]>()),
+    wantsArtists && priceAsked ? findClassArtists(supabase, allClasses.map((c) => c.id)) : Promise.resolve(new Map<string, ClassArtist>()),
   ]);
-  const crews = tab === "crews" ? recommendFirst(filterCrews(crewsRaw, filters), learnStyles, filters, (c) => c.styles) : [];
+  const pricesByArtist = new Map<string, number[]>();
+  allClasses.forEach((c) => {
+    const who = teachersOfAll.get(c.id)?.userId;
+    if (!who) return;
+    const list = pricesByArtist.get(who) ?? [];
+    list.push(c.priceInr);
+    pricesByArtist.set(who, list);
+  });
+  const crewsFiltered = tab === "crews" ? recommendFirst(filterCrews(crewsRaw, filters), learnStyles, filters, (c) => c.styles) : [];
   const classes = tab === "classes" ? recommendFirst(inCity.filter((c) => taught.has(c.id)), learnStyles, filters, (c) => [c.style]) : inCity;
 
   /* the second round: what depends on the first — the seat counts, and WHO that
@@ -274,17 +307,31 @@ export default async function DiscoverPage({
      ⚠ The host cards (18 Sep 2026) and what this person already held (27 Sep)
      went with events on 29 Sep. */
   /* an artist narrows by style through THEIR OWN styles — the ones on their profile */
-  const artists = wantsArtists ? recommendFirst(artistsRaw.filter((a) => anyStyleOk(filters, a.styles)), learnStyles, filters, (a) => a.styles) : [];
+  const artistsFiltered = wantsArtists ? recommendFirst(artistsRaw.filter((a) => anyStyleOk(filters, a.styles) && anyPriceOk(filters, pricesByArtist.get(a.id))), learnStyles, filters, (a) => a.styles) : [];
   /* ⚠ one round for every tab's per-card counts (10 Oct 2026): the crews' and the
      artists' follower counts used to be two more rounds of their own */
   const [counts, classArtists, crewFollowers, personCounts] = await Promise.all([
     tab === "classes" ? countEnrolledBySession(supabase, classes.map((c) => c.session?.id).filter(Boolean) as string[]) : Promise.resolve(new Map<string, number>()),
     tab === "classes" ? findClassArtists(supabase, classes.map((c) => c.id)) : Promise.resolve(new Map<string, ClassArtist>()),
     /* one aggregate call for the whole crews shelf — the count every card prints */
-    wantsCrews ? findCrewFollowerCounts(supabase, crews.map((c) => c.id)) : Promise.resolve(new Map<string, number>()),
-    wantsArtists ? findPersonFollowerCounts(supabase, artists.map((a) => a.id)) : Promise.resolve(new Map<string, { followers: number; following: number }>()),
+    wantsCrews ? findCrewFollowerCounts(supabase, crewsFiltered.map((c) => c.id)) : Promise.resolve(new Map<string, number>()),
+    wantsArtists ? findPersonFollowerCounts(supabase, artistsFiltered.map((a) => a.id)) : Promise.resolve(new Map<string, { followers: number; following: number }>()),
   ]);
-  const businesses = wantsBusinesses ? recommendFirst(filterBusinesses(nearby, filters, stylesByBusiness), learnStyles, filters, (b) => stylesByBusiness.get(b.id) ?? []) : [];
+  /* ⚠ THE SORT IS THE LAST THING DONE TO A SHELF (10 Oct 2026), after the
+     recommendation (which stands aside whenever a sort is picked) and after the
+     counts a "Most booked" / "Most followed" order needs */
+  const classesShown = tab === "classes" ? sortShelf(classes, filters.sort, { popular: (c) => (c.session ? counts.get(c.session.id) ?? 0 : 0) }) : classes;
+  const artists = sortShelf(artistsFiltered, filters.sort, { name: (a) => a.name, popular: (a) => personCounts.get(a.id)?.followers ?? 0, price: (a) => minOf(pricesByArtist.get(a.id)) });
+  const crews = sortShelf(crewsFiltered, filters.sort, { name: (c) => c.name, popular: (c) => crewFollowers.get(c.id) ?? 0, members: (c) => c.members });
+  const businesses = wantsBusinesses
+    ? sortShelf(recommendFirst(filterBusinesses(nearby, filters, stylesByBusiness, pricesByBusiness), learnStyles, filters, (b) => stylesByBusiness.get(b.id) ?? []), filters.sort, {
+        name: (b) => b.name,
+        popular: (b) => followerCounts.get(b.id) ?? 0,
+        price: (b) => minOf(pricesByBusiness.get(b.id)),
+      })
+    : [];
+  /* the bar's right end: the dearest class in this city (10 Oct 2026) */
+  const priceCeil = priceCeilOf(allClasses.map((c) => c.priceInr));
   const followed = following.filter((f) => f.businessType === "studio");
   /* the Styles tab's own shelf, narrowed by its own filters (2 Oct 2026) */
   const styleShelf = tab === "styles" ? recommendFirst(filterStyleShelf(stylesShelfOrder(), filters, styleCount), learnStyles, filters, (x) => [x]) : [];
@@ -329,7 +376,7 @@ export default async function DiscoverPage({
      failed measurement. */
   const shownIds =
     tab === "classes"
-      ? classes.map((c) => c.id)
+      ? classesShown.map((c) => c.id)
       : tab === "crews"
         ? crews.map((c) => c.id)
         : wantsArtists
@@ -371,9 +418,30 @@ export default async function DiscoverPage({
         grad: gradientOf(f.businessName),
       }));
 
+  /* ⚠⚠ ON THE STYLES TAB, "FOLLOWED BY YOU" IS YOUR OWN STYLES (10 Oct 2026, the
+     user: "styles you add to your profile and styles you want to learn should
+     come in the followed by you section for the styles"). The styles you dance
+     first, in your own order, then the ones you want to learn; a style on both
+     lists is ONE tile that says both, never two. A signed-in person's alone —
+     both lists are theirs, and the learn list is private (R73). */
+  const danced = (profile?.styles ?? []).filter((s) => DOS_STYLE_NAMES.includes(s));
+  const learnOnly = learnStyles.filter((s) => DOS_STYLE_NAMES.includes(s) && !danced.includes(s));
+  const styleTiles: FollowedTile[] =
+    tab === "styles" && user
+      ? [...danced, ...learnOnly].map((s) => ({
+          id: `style-${s}`,
+          name: s,
+          kind: "style" as const,
+          href: withAs(`/styles/${styleSlug(s)}`, asRaw),
+          photo: null,
+          grad: [dosStyleColor(s), `${dosStyleColor(s)}99`] as [string, string],
+          style: s,
+          tag: danced.includes(s) ? (learnStyles.includes(s) ? "Dance · Learn" : "You dance") : "To learn",
+        }))
+      : [];
   const shelfHead = tab === "styles" ? "Dance styles" : tab === "classes" ? "Upcoming classes" : tab === "artists" ? "Artists" : tab === "crews" ? "Crews" : "Studios near you";
-  const shelfCount = tab === "styles" ? styleShelf.length : tab === "classes" ? classes.length : tab === "crews" ? crews.length : tab === "artists" ? artists.length : businesses.length;
-  const narrowed = filters.styles.length > 0 || filters.fams.length > 0 || Object.keys(params).some((k) => ["sort", "dist", "when", "dur", "price", "has", "cat", "fmt", "q"].includes(k));
+  const shelfCount = tab === "styles" ? styleShelf.length : tab === "classes" ? classesShown.length : tab === "crews" ? crews.length : tab === "artists" ? artists.length : businesses.length;
+  const narrowed = filters.styles.length > 0 || filters.fams.length > 0 || Object.keys(params).some((k) => ["sort", "dist", "when", "dur", "price", "pmin", "pmax", "has", "cat", "fmt", "q"].includes(k));
   /* the shelf's foot (18 Sep 2026): the Studios and Artists shelves are paged —
      "Next page" while a FULL page came back (a shorter one is the end), "Previous"
      past the first; every other filter rides along in the address */
@@ -473,11 +541,12 @@ export default async function DiscoverPage({
       </div>
 
       {/* the search box, the five tabs, the style rail, Filters + quick chips, the filter sheet (Step 23) */}
-      <DiscoverFilters tab={tab} city={city} filters={filters} styleOrder={styleOrder} tabs={tabTiles} as={asRaw} />
+      <DiscoverFilters tab={tab} city={city} filters={filters} styleOrder={styleOrder} tabs={tabTiles} as={asRaw} priceCeil={priceCeil} />
       </TopPanel>
 
       {/* "Followed by you" (FollowedRow 4112, mounted 4767) — Studios and Artists, for a signed-in person */}
       {wantsFollows ? <FollowedShelf rows={followedTiles} /> : null}
+      {styleTiles.length > 0 ? <FollowedShelf rows={styleTiles} /> : null}
 
       {/* ⚠ THE SHELF STANDS ON ITS OWN INVERTED GROUND (21 Sep 2026, the user:
           "give similar dark and light opposite theme like tools on the discover
@@ -504,7 +573,7 @@ export default async function DiscoverPage({
         }
       >
       {tab === "classes" &&
-        classes.map((c) => {
+        classesShown.map((c) => {
           const filled = c.session ? counts.get(c.session.id) ?? 0 : 0;
           return (
             <ClassTile

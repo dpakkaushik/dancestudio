@@ -13,7 +13,8 @@ import { STYLE_FAMILIES, styleInfo, stylesOfFamilies } from "@/lib/constants/sty
 import { DOS_DISPLAY } from "@/lib/design/tokens";
 import { useCloseOnBack } from "@/lib/hooks/useCloseOnBack";
 import type { SearchHit, SearchKind } from "@/repositories/search";
-import { ALL_CITIES, filtersOnCount, filtersToParams, type DiscoverFilters, type Dist, type Dur, type PriceBand, type SortBy, type When } from "../filters";
+import { ALL_CITIES, SORTS_FOR, filtersOnCount, filtersToParams, isPricedTab, type DiscoverFilters, type Dist, type Dur, type SortBy, type When } from "../filters";
+import { PriceRange } from "./PriceRange";
 
 /** Step 23's controls, lifted from prototype S_discover: the one search box
  *  ("Search" — "the placeholder listed the same five things a third time",
@@ -78,7 +79,7 @@ export function DosStyleTile({ label, color, on, tap, aria, small }: { label: st
   );
 }
 
-export function DiscoverFilters({ tab, city, filters, styleOrder, tabs, as = null }: { tab: string; city: string; filters: DiscoverFilters; styleOrder: string[]; tabs?: React.ReactNode; /** ⚠ WHICH PROFILE IS READING THIS SHELF — carried through every href this control builds (27 Sep 2026). Dropping it on a style tap would have quietly restored the Book button a studio is not supposed to have: the gate is only as durable as the least careful link on the page. */ as?: string | null }) {
+export function DiscoverFilters({ tab, city, filters, styleOrder, tabs, as = null, priceCeil = 500 }: { tab: string; city: string; filters: DiscoverFilters; styleOrder: string[]; tabs?: React.ReactNode; /** ⚠ WHICH PROFILE IS READING THIS SHELF — carried through every href this control builds (27 Sep 2026). Dropping it on a style tap would have quietly restored the Book button a studio is not supposed to have: the gate is only as durable as the least careful link on the page. */ as?: string | null; /** the price bar's right end — the dearest class in this city, worked out by the page (10 Oct 2026) */ priceCeil?: number }) {
   const router = useRouter();
   const [q, setQ] = useState("");
   const [searchOn, setSearchOn] = useState(false);
@@ -140,12 +141,16 @@ export function DiscoverFilters({ tab, city, filters, styleOrder, tabs, as = nul
     const inFams = new Set(stylesOfFamilies(fams));
     go({ ...filters, fams, styles: fams.length ? filters.styles.filter((s) => inFams.has(s)) : filters.styles });
   };
-  const reset = () => go({ ...filters, styles: [], fams: [], has: false, sort: "near", dist: "any", when: "any", dur: "any", prices: [] });
+  const reset = () => go({ ...filters, styles: [], fams: [], has: false, sort: "near", dist: "any", when: "any", dur: "any", prices: [], pmin: null, pmax: null });
 
-  const isBiz = tab === "studios" || tab === "artists";
   const isStyles = tab === "styles";
   const onN = filtersOnCount(filters, tab);
-  const freeOn = filters.prices.length === 1 && filters.prices[0] === "free";
+  /* ⚠ FREE IS THE PRICE BAR AT ₹0 now (10 Oct 2026) — the quick chip and the bar
+     are one control in two shapes, so they can never disagree. An old link's
+     `price=free` still reads as on, and pressing the chip clears it too. */
+  const oldFree = filters.prices.length === 1 && filters.prices[0] === "free";
+  const freeOn = filters.pmax === 0 || oldFree;
+  const flipFree = () => go({ ...filters, prices: [], pmin: null, pmax: freeOn ? null : 0 });
   /* the styles the sheet offers: the picked families' own, or all of them */
   const offered = filters.fams.length ? styleOrder.filter((s) => filters.fams.includes(styleInfo(s).family)) : styleOrder;
   /* ⚠ THE THIRD CHIP WAS "BATTLES" ON THE EVENTS TAB (29 Sep 2026) — the one
@@ -174,7 +179,7 @@ export function DiscoverFilters({ tab, city, filters, styleOrder, tabs, as = nul
       ]
     : tab === "classes"
       ? [
-          ["free", "Free", freeOn, () => go({ ...filters, prices: freeOn ? [] : ["free"] })],
+          ["free", "Free", freeOn, flipFree],
           ["soon", "Starting soon", filters.sort === "soon", () => flipSort("soon")],
           ["morn", "Morning", filters.when === "morning", () => flipWhen("morning")],
           ["eve", "Evening", filters.when === "evening", () => flipWhen("evening")],
@@ -184,8 +189,16 @@ export function DiscoverFilters({ tab, city, filters, styleOrder, tabs, as = nul
         ? [
             ["d2", "Within 2 km", filters.dist === "2", () => flipDist("2")],
             ["near", "Within 5 km", filters.dist === "5", () => flipDist("5")],
+            ["popular", "Most followed", filters.sort === "popular", () => flipSort("popular")],
           ]
-        : [];
+        : tab === "artists"
+          ? [["popular", "Most followed", filters.sort === "popular", () => flipSort("popular")]]
+          : tab === "crews"
+            ? [
+                ["popular", "Most followed", filters.sort === "popular", () => flipSort("popular")],
+                ["members", "Most members", filters.sort === "members", () => flipSort("members")],
+              ]
+            : [];
   /* the families, one tap each — a picked one leaves this row and becomes its
      removable pill below, so it is never shown twice */
   const QUICK_FAMS: Array<[string, string]> = [
@@ -365,18 +378,30 @@ export function DiscoverFilters({ tab, city, filters, styleOrder, tabs, as = nul
                 );
               })}
             </Row>
-            {isStyles ? (
-              <>
-                <Row label="SHOW">{pick<"all" | "has">([["all", "Every style"], ["has", city === ALL_CITIES ? "With classes" : `With classes in ${city}`]], filters.has ? "has" : "all", (v) => go({ ...filters, has: v === "has" }))}</Row>
-                <Row label="SORT BY">{pick<SortBy>([["near", "Classical first"], ["popular", "Most classes"], ["az", "A–Z"]], filters.sort, (v) => go({ ...filters, sort: v }))}</Row>
-              </>
-            ) : (
-              <Row label="SORT BY">{pick<SortBy>([["near", "Nearest"], ["soon", "Earliest"], ["price", "Cheapest"]], filters.sort, (v) => go({ ...filters, sort: v }))}</Row>
-            )}
-            {isBiz ? <Row label="DISTANCE">{pick<Dist>([["any", "Any"], ["2", "Within 2 km"], ["5", "Within 5 km"], ["10", "Within 10 km"]], filters.dist, (v) => go({ ...filters, dist: v }))}</Row> : null}
-            {!isBiz && !isStyles && tab !== "crews" ? <Row label="TIME OF DAY">{pick<When>([["any", "Any"], ["morning", "Morning"], ["afternoon", "Afternoon"], ["evening", "Evening"]], filters.when, (v) => go({ ...filters, when: v }))}</Row> : null}
+            {isStyles ? <Row label="SHOW">{pick<"all" | "has">([["all", "Every style"], ["has", city === ALL_CITIES ? "With classes" : `With classes in ${city}`]], filters.has ? "has" : "all", (v) => go({ ...filters, has: v === "has" }))}</Row> : null}
+            {/* ⚠ EVERY TAB SORTS, IN ITS OWN WORDS (10 Oct 2026) — the classes'
+                Nearest is gone, because a class carries no distance and the word
+                promised an order the list never had */}
+            <Row label="SORT BY">{pick<SortBy>(SORTS_FOR[tab] ?? SORTS_FOR.classes, (SORTS_FOR[tab] ?? []).some(([s]) => s === filters.sort) ? filters.sort : "near", (v) => go({ ...filters, sort: v }))}</Row>
+            {/* a distance is only measured on the Studios shelf (the radius search) */}
+            {tab === "studios" ? <Row label="DISTANCE">{pick<Dist>([["any", "Any"], ["2", "Within 2 km"], ["5", "Within 5 km"], ["10", "Within 10 km"]], filters.dist, (v) => go({ ...filters, dist: v }))}</Row> : null}
+            {tab === "classes" ? <Row label="TIME OF DAY">{pick<When>([["any", "Any"], ["morning", "Morning"], ["afternoon", "Afternoon"], ["evening", "Evening"]], filters.when, (v) => go({ ...filters, when: v }))}</Row> : null}
             {tab === "classes" ? <Row label="DURATION">{pick<Dur>([["any", "Any"], ["60", "Up to 1 h"], ["90", "Up to 1½ h"], ["120", "Up to 2 h"]], filters.dur, (v) => go({ ...filters, dur: v }))}</Row> : null}
-            {!isBiz && !isStyles && tab !== "crews" ? <Row label="PRICE">{multi<PriceBand>([["free", "Free"], ["paid", "Paid"]], filters.prices, (v) => go({ ...filters, prices: v }))}</Row> : null}
+            {/* THE PRICE BAR (10 Oct 2026, the user: "a price range bar which can
+                slide from both ends … according to the relevant section"): a
+                class's own price; for a studio or an artist, a class they teach in
+                the range. A crew and a style have no price, so no bar. */}
+            {isPricedTab(tab) ? (
+              <Row label={tab === "classes" ? "PRICE" : "CLASS PRICE"}>
+                <PriceRange
+                  key={`${filters.pmin ?? "-"}:${filters.pmax ?? "-"}:${priceCeil}`}
+                  ceil={priceCeil}
+                  min={filters.pmin}
+                  max={filters.pmax}
+                  onCommit={(pmin, pmax) => go({ ...filters, prices: [], pmin, pmax })}
+                />
+              </Row>
+            ) : null}
             {/* ⚠ TYPE OF EVENT and COMPETING AS were the sheet's last two rows
                 and went with events (29 Sep 2026). The prototype's own rule
                 still holds for the four that are left: a row is offered only
