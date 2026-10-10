@@ -2,7 +2,7 @@
 
 ## LAST SESSION (10 Oct 2026) — replaced on every push (Rule 13)
 
-> ### THE CALENDAR IS GOOGLE CALENDAR'S DAY · WEEK · MONTH, A STYLE PAGE OPENS ON ITS CLASSES, AND THE CLASS PAGE WAITS THREE ROUNDS NOT FIVE (10 Oct 2026, latest) — no migration · ⚠ one throwaway admin row revoked on production (soft delete) · committed locally, NOT pushed
+> ### THE CALENDAR IS GOOGLE CALENDAR'S DAY · WEEK · MONTH, A STYLE PAGE OPENS ON ITS CLASSES, AND THE CLASS PAGE WAITS THREE ROUNDS NOT FIVE (10 Oct 2026, latest) — no migration · ⚠ one throwaway admin row revoked on production (soft delete) · ✅ PUSHED AND LIVE (`491f38e`: Vercel READY, alias confirmed on the sha through the API; ON THE LIVE SITE `stranger-smoke` **9/9** and the calendar + style probe **47/47**)
 > The user: *"left- 1st one solve. dont check replit. dance style page- remove find classes button from below and add a column called classes alongside details and rankings showing all class cards for that style. this should be the first setion on dance style page. fix calender and makit same as google calender. fix pages for day, week, month, redesign it accordingly. with current calendar functions in mind. make sure calendar in smooth."* "1st one" is the previous chat's first leftover: the class page's 4–5 serial reads (read out of that chat's transcript, which died on "Prompt is too long").
 > * **The class page** (`app/(app)/c/[slug]/page.tsx`): the class and the session are read together; every read that needs only the class (room, owner, routines, the picker's routines, the routine permission, acting-as, the place + geocode, the passes) STARTS the moment the class is known, with a no-op catch, and is awaited beside the reads that needed the seat; the refund queue's reconcile-then-read is one chain inside that last round. **5–6 rounds in a row → 3.** The passes are asked for whether or not a seat is held and dropped after.
 > * **The style page** (`/styles/{slug}`, row C139): **Classes · Details · Rankings**, Classes the default (`?show=details` / `?show=rankings` open the others) — every published class of the style still to come, every city, soonest first, drawn as Discover's `ClassTile` + `EnrollButton`, a class with no confirmed teacher left off (Discover's rule). `findPublishedClasses` gained an optional `style` argument (narrowed in the query). The Find classes button is gone.
@@ -10795,7 +10795,6 @@ summary; the report has the evidence.
 ## NEXT TO DO — replaced on every push (Rule 13)
 
 0br. **WHAT IS LEFT (10 Oct 2026, after the calendar / style page / class page slice).**
-   * **Push it** — committed locally, not pushed; no migration, so it is a plain push and the Vercel read-back.
    * **The user's word on the four leftovers** from the last chat's interrupted e2e run: the LISTED "E2E Studio mv2hgi8w" (visible on Bollywood's Classes column) and three `e2e-*-mv2hgi8w@example.com` profiles — `node scripts/cleanup-proof-leftovers.js --show-kept` then `--apply`. (The throwaway admin row is already revoked.)
    * A real touch swipe and the red NOW line on a phone.
    * The class-page speed item from #0bq is DONE (5–6 rounds → 3); the per-page `getUser()` stays the user's choice.
@@ -13408,7 +13407,7 @@ for the database schema. **The UI is not redesigned** — see Rule 2.
 
 ### Progress tracker — update after EVERY push (Rule 11)
 
-- **THE CALENDAR AS GOOGLE CALENDAR, A STYLE PAGE'S CLASSES COLUMN, THE CLASS PAGE IN THREE ROUNDS — 10 Oct 2026, no step number — no migration, committed locally.** Rows C138, C139. The whole e2e suite 56/56. Detail at the top.
+- **THE CALENDAR AS GOOGLE CALENDAR, A STYLE PAGE'S CLASSES COLUMN, THE CLASS PAGE IN THREE ROUNDS — 10 Oct 2026, no step number — no migration, PUSHED AND LIVE (`491f38e`).** Rows C138, C139. The whole e2e suite 56/56. Detail at the top.
 - **FASTER PAGES AND EIGHT FORWARD-ONLY PAGES DELETED — 10 Oct 2026, no step number ⚠ (Rule 9: the proxy's session refresh, one public function) — `20261012090000` APPLIED (dry run 30/30, live read-back 10/10), PUSHED AND LIVE (`23609f6`, `stranger-smoke` 9/9 on the live site).** The proxy verifies the session locally, Discover / Inbox / Home make fewer rounds in a row, signed poster URLs are reused, `nearby_businesses` drops PostGIS, and eight page files that only forwarded are gone with every address still answering (four in `next.config.ts`, four in the proxy). Row R75. Detail at the top.
 - **NO LIMIT ON DANCE STYLES, LEFTOVERS CLEARED, THE SELF-CLEANING HARNESS COMMITTED — 10 Oct 2026, no step number ⚠ (Rule 9) — `20261011100000` APPLIED (dry run 24/24), proofs 30/30 with the guard OK.** Row R74. Detail at the top.
 - **STYLES TO LEARN, A FULL STATS PAGE FOR ANYBODY, 25 MB PHOTOS, DRAG TO REORDER, BOLLY-HOP, A PLUS, REPORT FROM THE TOP, A BIGGER FRONT PAGE — 10 Oct 2026, no step number ⚠ (Rule 9) — `20261011090000` APPLIED (dry run 28/28), the whole suite 56/56, PUSHED.** Rows R73, C137. A pre-existing people-search bug (a name with 3+ digits was never searched) fixed on the way. Detail at the top.
