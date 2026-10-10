@@ -27,7 +27,9 @@ const ACTIONS: Record<string, { says: string; tone: string }> = {
   "subscription.grant": { says: "granted a subscription to", tone: "#22C55E" },
   "subscription.end": { says: "ended the subscription of", tone: "#EF4444" },
   /* 6 Oct 2026 — a rejected studio's first period, given back (decision 2) */
-  "subscription.refund": { says: "refunded the first period of", tone: "#F59E0B" },
+  "subscription.refund": { says: "sent back the first period of", tone: "#F59E0B" },
+  /* 10 Oct 2026 — an account that left through "Delete my account", put back */
+  "account.restore": { says: "restored the account of", tone: "#22C55E" },
   "plan.grant": { says: "granted the Artist plan to", tone: "#22C55E" },
   "plan.end": { says: "ended the Artist plan of", tone: "#EF4444" },
   "plan.price": { says: "changed the price of", tone: "#F59E0B" },

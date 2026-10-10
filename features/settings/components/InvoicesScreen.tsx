@@ -68,6 +68,12 @@ export function InvoicesScreen({ rows, side }: { rows: InvoiceRow[]; side: "mine
                   <div data-testid="part-refunded" style={{ fontSize: 9, fontWeight: 900, color: TONE.refunded, textTransform: "uppercase" }}>Part refunded</div>
                   <div style={{ fontSize: 9.5, color: "var(--sub)", marginTop: 1 }}>{rupees(r.refundedInr)} refunded</div>
                 </>
+              ) : r.refundProcessing ? (
+                /* ⚠ accepted by Cashfree, not yet paid out (10 Oct 2026) — still a paid receipt */
+                <>
+                  <div style={{ fontSize: 9, fontWeight: 900, color: TONE.paid, textTransform: "uppercase" }}>{r.status}</div>
+                  <div data-testid="refund-processing" style={{ fontSize: 9.5, color: "var(--sub)", marginTop: 1 }}>Refund processing</div>
+                </>
               ) : (
                 <div style={{ fontSize: 9, fontWeight: 900, color: TONE[r.status], textTransform: "uppercase" }}>{r.status}</div>
               )}

@@ -7,7 +7,6 @@ import { dosStyleColor, DOS_LEVEL_LABEL } from "@/lib/constants/styles";
 import { DOS_DISPLAY, GREEN, INK, LINE, MUTED, SUB } from "@/lib/design/tokens";
 import { dosStyleInk } from "@/lib/format/styleInk";
 import { compactRangeOf, dateParts, timeOf } from "@/lib/format/session";
-import { photoUrl } from "@/lib/media/photo";
 import { CLASS_RELATION, type ClassRelation } from "@/lib/format/classLabels";
 import type { ClassOwner, DanceClass } from "@/types/class";
 import { useDosDark } from "./poster";
@@ -305,9 +304,9 @@ export function ClassTile({ danceClass: c, filled = 0, artist, isToday = false, 
   /* what a status says, beside the spots — not a fourth band */
   const note = c.status === "draft" ? "Draft" : c.status === "completed" ? "Completed" : null;
 
-  /* ⚠ THE UPLOADED POSTER, ON THE CARD (3 Oct 2026). Cropped 3:2, shown as a
-     2:1 strip over the head; a class with no picture draws nothing here. */
-  const posterSrc = photoUrl(c.posterPath ?? null);
+  /* ⚠ NO POSTER ON THE CARD (10 Oct 2026, the user: "no poster on class cards
+     only inside card details"). The 3 Oct strip is gone from every card; the
+     class page's sleeve is the one place the poster is drawn. */
 
   /* WHERE THE CLASS STANDS IN TIME — Live, or the deck's Completed / Upcoming —
      a solid pill on the title line beside the relation chip, where every other
@@ -393,13 +392,6 @@ export function ClassTile({ danceClass: c, filled = 0, artist, isToday = false, 
       {href ? <Link href={href} aria-label={`Open ${c.title}`} style={{ position: "absolute", inset: 0, zIndex: 0 }} /> : null}
 
       <div style={{ position: "relative", zIndex: 1, pointerEvents: href ? "none" : "auto" }}>
-        {posterSrc ? (
-          <div data-testid="card-poster" style={{ aspectRatio: "2 / 1", overflow: "hidden", background: `${bc}22` }}>
-            {/* eslint-disable-next-line @next/next/no-img-element -- a public bucket URL whose box this card already decides; next/image would add a loader to every card on a shelf */}
-            <img src={posterSrc} alt="" aria-hidden="true" loading="lazy" style={{ display: "block", width: "100%", height: "100%", objectFit: "cover" }} />
-          </div>
-        ) : null}
-
         {/* BAND 1 — the two profiles, the maker's shaded */}
         <div data-testid="class-head" style={{ display: "flex", alignItems: "stretch" }}>
           <Half

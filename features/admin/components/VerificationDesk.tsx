@@ -199,12 +199,14 @@ export function VerificationDesk({
             router.refresh();
             return fire(`${name} not approved and its subscription ended — but the first month was NOT refunded: ${back.error}`);
           }
+          /* "sent", not "refunded": the money has moved only once Cashfree says so
+             (10 Oct 2026) — the money desk shows it until then */
           refunded = back.amountInr ? `₹${back.amountInr.toLocaleString("en-IN")}` : "the first month";
         }
       }
       setRejecting(null);
       setNote("");
-      fire(end ? `${name} not approved, its subscription ended${refunded ? ` and ${refunded} refunded` : ""}` : `${name} not approved`);
+      fire(end ? `${name} not approved, its subscription ended${refunded ? ` and ${refunded} sent back through Cashfree` : ""}` : `${name} not approved`);
       router.refresh();
     });
   };

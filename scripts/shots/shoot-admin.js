@@ -70,6 +70,8 @@ const PAGES = [
   ["reach-email", "/admin/reach?tab=email"],
   ["reach-email-q", "/admin/reach?tab=email&q=nobody%40example.com"],
   ["accounts", "/admin/accounts"],
+  /* the people who left through "Delete my account", and Restore (10 Oct 2026) */
+  ["accounts-left", "/admin/accounts?tab=left"],
   ["businesses", "/admin/businesses"],
   ["audit", "/admin/audit"],
 ];

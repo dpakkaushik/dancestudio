@@ -4,13 +4,13 @@ import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
-import { suspendAccountAction, unsuspendAccountAction } from "@/features/admin/server-actions/accounts";
+import { restoreAccountAction, suspendAccountAction, unsuspendAccountAction } from "@/features/admin/server-actions/accounts";
 import { grantSubscriptionAction } from "@/features/admin/server-actions/subscriptions";
 import { adminOpenSupportThreadAction } from "@/features/support/server-actions/support";
 import { VerifiedTick } from "@/features/settings/components/settings-kit";
 import { INK, SUB } from "@/lib/design/tokens";
 import { photoUrl } from "@/lib/media/photo";
-import type { AdminAccount } from "@/repositories/adminPanel";
+import type { AdminAccount, LeftAccount } from "@/repositories/adminPanel";
 import type { OwnerStanding } from "@/repositories/orgStanding";
 import { agoWords } from "@/types/notification";
 import { AdminGlyph, DESK_TINT } from "./admin-glyphs";
@@ -55,12 +55,15 @@ export function AccountsDesk({
   q,
   tab,
   counts,
+  left,
   page,
   total,
   nowIso,
 }: {
   /** ONE PAGE of the accounts on this tab */
   accounts: AdminAccount[];
+  /** ONE PAGE of the accounts that left (the Left tab only) */
+  left: LeftAccount[];
   /** what each owner on this page runs, counted off the businesses list */
   standing: Record<string, OwnerStanding>;
   q: string;
@@ -75,6 +78,7 @@ export function AccountsDesk({
   const [suspending, setSuspending] = useState<string | null>(null);
   const [writing, setWriting] = useState<string | null>(null);
   const [granting, setGranting] = useState<string | null>(null);
+  const [restoring, setRestoring] = useState<string | null>(null);
   const [months, setMonths] = useState(12);
   const [reason, setReason] = useState("");
   const [subject, setSubject] = useState("");
@@ -89,6 +93,7 @@ export function AccountsDesk({
     setSuspending(null);
     setWriting(null);
     setGranting(null);
+    setRestoring(null);
     setReason("");
     setSubject("");
     setBody("");
@@ -108,6 +113,16 @@ export function AccountsDesk({
       const out = await unsuspendAccountAction({ accountId: a.id, note: null });
       if (out.error) return fire(out.error);
       fire(`${a.fullName} is active again`);
+      router.refresh();
+    });
+
+  /* putting back an account that left (10 Oct 2026) — the reason is read by them */
+  const restore = (l: LeftAccount) =>
+    start(async () => {
+      const out = await restoreAccountAction({ accountId: l.id, reason: reason.trim() });
+      if (out.error) return fire(out.error);
+      close();
+      fire(`${l.fullName} is back — they can sign in again`);
       router.refresh();
     });
 
@@ -160,12 +175,78 @@ export function AccountsDesk({
           { key: "all", label: "All", count: counts.all },
           { key: "artists", label: "Artists", count: counts.artists },
           { key: "suspended", label: "Suspended", count: counts.suspended, tone: "#EF4444" },
+          { key: "left", label: "Left", count: counts.left },
         ]}
       />
       <SearchBar action={base} q={q} keep={{ tab }} placeholder="Search a name, email or city…" />
-      <CountLine shown={accounts.length} total={total} what={tab === "all" ? "accounts" : tab === "artists" ? "on the Artist plan" : tab} q={q} />
+      <CountLine
+        shown={tab === "left" ? left.length : accounts.length}
+        total={total}
+        what={tab === "all" ? "accounts" : tab === "artists" ? "on the Artist plan" : tab === "left" ? "that left" : tab}
+        q={q}
+      />
 
-      {accounts.length === 0 ? (
+      {tab === "left" ? (
+        /* ACCOUNTS THAT LEFT THROUGH "DELETE MY ACCOUNT" (10 Oct 2026, the user:
+           "Restore button"). Restoring brings back the profile and the artist
+           page the same act closed, and lifts the sign-in ban; every seat, crew
+           place and class ask they left stays closed. */
+        left.length === 0 ? (
+          <div style={{ fontSize: 11.5, color: SUB, lineHeight: 1.55 }}>Nobody has left.</div>
+        ) : (
+          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+            {left.map((l) => (
+              <div key={l.id} data-testid="admin-left-account" style={{ background: CARD, border: `1.5px solid ${EL}`, borderLeft: `4px solid ${MUTED}`, borderRadius: 16, padding: "11px 12px" }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 11 }}>
+                  <Face name={l.fullName} path={l.avatarPath} />
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <b style={{ fontSize: 13, display: "block", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{l.fullName}</b>
+                    <div style={{ fontSize: 10.5, color: SUB, marginTop: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                      {l.email ?? "no email"}
+                      {l.city ? ` · ${l.city}` : ""}
+                    </div>
+                    <div style={{ display: "flex", gap: 4, marginTop: 5, flexWrap: "wrap" }}>
+                      <span style={{ ...chip, background: "var(--el)", color: SUB }}>LEFT {agoWords(l.leftAt, nowIso).toUpperCase()}</span>
+                    </div>
+                  </div>
+                </div>
+                {restoring === l.id ? (
+                  <div style={{ marginTop: 9 }}>
+                    <label htmlFor={`back-${l.id}`} style={{ display: "block", fontSize: 9.5, fontWeight: 900, letterSpacing: 1, color: MUTED, marginBottom: 5 }}>WHY — THEY READ THIS</label>
+                    <textarea
+                      id={`back-${l.id}`}
+                      value={reason}
+                      onChange={(e) => setReason(e.target.value)}
+                      rows={2}
+                      maxLength={300}
+                      placeholder="They asked to come back, in a sentence."
+                      style={{ width: "100%", boxSizing: "border-box", background: "var(--bg)", border: `1.5px solid ${EL}`, borderRadius: 10, padding: "8px 10px", fontSize: 12, color: INK, fontFamily: "inherit", resize: "vertical" }}
+                    />
+                    <div style={{ display: "flex", gap: 6, marginTop: 7 }}>
+                      <button type="button" disabled={pending || reason.trim().length < 3} onClick={() => restore(l)} style={{ ...btn, background: "#15803D", color: "#fff", border: "none", opacity: reason.trim().length < 3 ? 0.5 : 1 }} aria-label={`Confirm restoring ${l.fullName}`}>
+                        {pending ? "Restoring…" : "Restore"}
+                      </button>
+                      <button type="button" onClick={close} style={btn}>Cancel</button>
+                    </div>
+                    <div style={{ fontSize: 10, color: MUTED, marginTop: 6, lineHeight: 1.45 }}>
+                      Their profile and their own artist page come back and they can sign in. Seats, crew places and classes they left stay closed.
+                    </div>
+                  </div>
+                ) : (
+                  <div style={{ display: "flex", gap: 6, marginTop: 9, flexWrap: "wrap" }}>
+                    <button type="button" onClick={() => { close(); setRestoring(l.id); }} style={{ ...btn, color: "#15803D" }} aria-label={`Restore ${l.fullName}`}>
+                      Restore account
+                    </button>
+                    {l.threadId ? (
+                      <Link href={`/admin/support/${l.threadId}`} style={{ ...btn, display: "inline-flex", alignItems: "center", textDecoration: "none" }}>Their request</Link>
+                    ) : null}
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        )
+      ) : accounts.length === 0 ? (
         <div style={{ fontSize: 11.5, color: SUB, lineHeight: 1.55 }}>Nobody matches that.</div>
       ) : (
         <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>

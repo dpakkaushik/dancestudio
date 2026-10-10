@@ -1,5 +1,7 @@
 import type { Metadata } from "next";
 import { AdminShell } from "@/features/admin/components/AdminShell";
+import { FirstMonthRefunds } from "@/features/admin/components/FirstMonthRefunds";
+import { reconcileSubscriptionRefunds } from "@/services/subscriptionRefundRail";
 import { MoneyDesk, type MoneyTab } from "@/features/admin/components/MoneyDesk";
 import { requireAdmin } from "@/features/admin/server/adminGuard";
 import {
@@ -37,7 +39,10 @@ export default async function AdminPaymentsPage({
   const status = params.status && allowed.includes(params.status) ? params.status : null;
   const q = params.q?.trim() || null;
 
-  const [summary, payments, refunds, payouts] = await Promise.all([
+  /* first-month refunds land when Cashfree says so — asked when this desk opens (10 Oct 2026) */
+  await reconcileSubscriptionRefunds("all");
+
+  const [summary,payments, refunds, payouts] = await Promise.all([
     findAdminMoneySummary(supabase),
     tab === "payments"
       ? findAdminPayments(supabase, { q, status, limit: 200 })
@@ -52,6 +57,7 @@ export default async function AdminPaymentsPage({
 
   return (
     <AdminShell badges={badges}>
+      <FirstMonthRefunds />
       <MoneyDesk
         tab={tab}
         summary={summary.rows}

@@ -7,6 +7,7 @@ import { isCashfreeConfigured, refundCashfreePayment } from "@/lib/cashfree/api"
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { bookWithMembership, buyMembership, deleteMembership, returnMembershipPass, saveMembership } from "@/repositories/memberships";
 import { attachProviderRefund } from "@/repositories/payments";
+import { reportRefundSendFailures } from "@/services/refundRail";
 
 /** MEMBERSHIPS — the writes (19 Sep 2026). Zod checks the shape; every rule
  *  that matters is the RPC's: who may sell, who may buy, whether a class takes
@@ -120,9 +121,12 @@ export async function returnMembershipPassAction(input: { passId: string }): Pro
     if (isCashfreeConfigured() && refund.provider === "cashfree" && refund.providerOrderId) {
       try {
         const cf = await refundCashfreePayment({ providerOrderId: refund.providerOrderId, refundId: refund.id, amountInr: refund.amountInr, note: "Membership returned unused" });
-        await attachProviderRefund(supabase, refund.id, String(cf.cf_refund_id));
+        /* the money is with Cashfree; a failed bind is reconciled when the ledger opens */
+        await attachProviderRefund(supabase, refund.id, String(cf.cf_refund_id)).catch(() => {});
         return { error: null, message: `Returned — your ${amount} refund is on its way` };
       } catch {
+        /* refused — the seller's ledger offers the retry; tell its owners (10 Oct 2026) */
+        await reportRefundSendFailures([refund.id]);
         return { error: null, message: `Returned — your ${amount} refund is queued` };
       }
     }

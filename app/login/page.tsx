@@ -55,10 +55,11 @@ export default async function LoginWelcomePage({ searchParams }: { searchParams:
           {/* a soft glow behind the mark, in its own three colours */}
           <span aria-hidden="true" style={{ position: "absolute", inset: -28, borderRadius: "50%", background: "radial-gradient(circle, rgba(168,85,247,.32), rgba(236,72,153,.14) 45%, transparent 70%)", filter: "blur(6px)" }} />
           <span style={{ position: "relative", display: "inline-flex" }}>
-            <DosMark size={84} />
+            {/* bigger (10 Oct 2026, the user: "make logo and title bigger") */}
+            <DosMark size={108} />
           </span>
         </div>
-        <div style={{ marginTop: 14, fontSize: 28, fontWeight: 900, letterSpacing: -0.6, fontFamily: DOS_DISPLAY, animation: "dosRise .5s .05s ease both" }}>
+        <div style={{ marginTop: 16, fontSize: 36,fontWeight: 900, letterSpacing: -0.6, fontFamily: DOS_DISPLAY, animation: "dosRise .5s .05s ease both" }}>
           Dance<span style={{ color: SKY }}>OS</span>
         </div>
 
@@ -88,17 +89,7 @@ export default async function LoginWelcomePage({ searchParams }: { searchParams:
         >
           The stage is yours.
         </h1>
-        <div
-          style={{
-            fontSize: "clamp(13.5px, 3.8vw, 15.5px)",
-            color: SUB,
-            lineHeight: 1.5,
-            fontWeight: 600,
-            animation: "dosRise .6s .2s ease both",
-          }}
-        >
-          Find classes. Build your crew. Get paid to dance.
-        </div>
+        {/* no line under the headline (10 Oct 2026, the user) */}
       </div>
 
       {/* absorbs the slack on a tall screen instead of leaving a void above the band */}
@@ -141,9 +132,7 @@ export default async function LoginWelcomePage({ searchParams }: { searchParams:
         >
           Log In
         </Link>
-        <p style={{ marginTop: 2, fontSize: 12.5, color: SUB, textAlign: "center", lineHeight: 1.5 }}>
-          New here? Start Dancing takes a minute.
-        </p>
+        {/* no line under Log In (10 Oct 2026, the user) */}
       </div>
 
       <div style={{ display: "flex", gap: 7, margin: "24px 0 0", animation: "dosRise .6s .4s ease both" }}>

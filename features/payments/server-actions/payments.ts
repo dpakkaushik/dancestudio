@@ -26,6 +26,7 @@ import {
   findMyOrder,
 } from "@/repositories/payments";
 import { findProfileById } from "@/repositories/profiles";
+import { reportRefundSendFailures, sendOrderRefunds } from "@/services/refundRail";
 import type { CheckoutPayload, PaymentOrder } from "@/types/payment";
 
 /** Step 9 money actions on the Cashfree rail (swapped 28 Aug 2026). The flow:
@@ -297,31 +298,19 @@ export async function confirmCheckoutAction(input: { orderId: string }): Promise
     if (applied.outcome === "enrolled" || applied.outcome === "granted" || applied.outcome === "paid") {
       return { outcome: "booked", error: null };
     }
-    if (applied.outcome === "refunded") {
-      /* a membership's own refusal (`apply_membership_payment`) files the refund
-         row without handing its id back — the ledger shows it to send */
-      return { outcome: "refund_pending", error: null };
-    }
     if (applied.outcome === "duplicate") {
       return applied.order_status === "paid"
         ? { outcome: "booked", error: null }
         : { outcome: "refund_pending", error: null };
     }
-    if (applied.outcome === "refund_pending") {
-      // the seat could not be granted — send the money straight back
-      if (applied.refund_id) {
-        try {
-          const refund = await refundCashfreePayment({
-            providerOrderId: order.providerOrderId,
-            refundId: applied.refund_id,
-            amountInr: Math.round(success.payment_amount),
-            note: "Seat could not be granted",
-          });
-          await attachProviderRefund(supabase, applied.refund_id, String(refund.cf_refund_id));
-        } catch {
-          // the refund row stays 'pending' — the ledger keeps it visible
-        }
-      }
+    if (applied.outcome === "refund_pending" || applied.outcome === "refunded") {
+      /* ⚠ MONEY. It could not be granted — a class seat filled, or a
+         membership's last place went under the lock (`apply_membership_payment`
+         answers `refunded` and hands back no refund id, so until 10 Oct 2026 its
+         money waited for somebody to press the desk's button). Every unsent
+         refund on this order goes now; the webhook may get there first, and the
+         send reads Cashfree back rather than sending twice. */
+      await sendOrderRefunds(admin, order.providerOrderId, "Could not be granted");
       return { outcome: "refund_pending", error: null };
     }
     return { outcome: null, error: "That payment could not be matched to a booking" };
@@ -374,12 +363,17 @@ export async function cancelBookingAction(input: {
           amountInr: refund.amountInr,
           note: parsed.data.reason,
         });
-        await attachProviderRefund(supabase, refund.id, String(cf.cf_refund_id));
+        /* the money is with Cashfree now; a failed bind is reconciled when the
+           ledger opens, and must not be reported as a refused send */
+        await attachProviderRefund(supabase, refund.id, String(cf.cf_refund_id)).catch(() => {});
         return {
           message: `Cancelled — your ₹${refund.amountInr.toLocaleString("en-IN")} refund is on its way`,
           error: null,
         };
       } catch {
+        /* the row stays pending and unsent — tell the studio, whose ledger
+           carries the Send through Cashfree button (10 Oct 2026) */
+        await reportRefundSendFailures([refund.id]);
         return { message: "Cancelled — your refund is queued", error: null };
       }
     }

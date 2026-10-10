@@ -11,16 +11,21 @@ import type { AdminAccount } from "@/repositories/adminPanel";
  *  the Businesses desk beside the studios. What is worth a tab here is the
  *  Artist plan, which is a fact about a PERSON. An old `?tab=orgs` bookmark
  *  degrades to All. */
-export type AccountTab = "all" | "artists" | "suspended";
-export const ACCOUNT_TABS: ReadonlyArray<AccountTab> = ["all", "artists", "suspended"];
+export type AccountTab = "all" | "artists" | "suspended" | "left";
+export const ACCOUNT_TABS: ReadonlyArray<AccountTab> = ["all", "artists", "suspended", "left"];
 
 export interface AccountCounts {
   all: number;
   /** people on the Artist plan */
   artists: number;
   suspended: number;
+  /** accounts that left through "Delete my account" (10 Oct 2026) — a
+   *  DIFFERENT list: their profiles are deleted, so `admin_accounts` never
+   *  returns them, and the Left tab reads `admin_left_accounts` instead */
+  left: number;
 }
 
-/** the tab an account belongs on — one place, so the counts and the list agree */
+/** the tab a LIVE account belongs on — one place, so the counts and the list
+ *  agree. Nobody live is on Left. */
 export const onAccountTab = (a: AdminAccount, tab: AccountTab): boolean =>
-  tab === "all" ? true : tab === "suspended" ? Boolean(a.suspendedAt) : a.hasPlan;
+  tab === "all" ? true : tab === "suspended" ? Boolean(a.suspendedAt) : tab === "left" ? false : a.hasPlan;

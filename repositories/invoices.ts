@@ -46,6 +46,9 @@ export interface InvoiceRow {
   kind: InvoiceKind;
   /** where the row opens — the class page, or the plan; an EVENT row has none */
   href: string | null;
+  /** a first-month refund Cashfree has accepted and not yet paid out (10 Oct
+   *  2026) — the receipt stays PAID until Cashfree says the money moved */
+  refundProcessing?: boolean;
 }
 
 interface OrderPaymentRow {
@@ -74,11 +77,13 @@ interface SubscriptionPaymentRow {
   created_at: string;
   kind: "subscription_auth" | "subscription_charge";
   subscriptions: { kind: "artist" | "studio"; businesses: { name: string } | null } | null;
+  subscription_refunds?: Array<{ status: string; deleted_at: string | null }> | null;
 }
 
 const ORDER_SELECT =
   "id, amount_inr, method, status, created_at, refunds (amount_inr, status, deleted_at), profiles (full_name), orders!inner (enquiry_part, classes (style, level, share_slug), events (title, share_slug), businesses (name), enquiry_quotes (enquiry_id, enquiries (type_key)))";
-const SUBSCRIPTION_SELECT = "id, amount_inr, method, status, created_at, kind, subscriptions (kind, businesses (name))";
+const SUBSCRIPTION_SELECT =
+  "id, amount_inr, method, status, created_at, kind, subscriptions (kind, businesses (name)), subscription_refunds (status, deleted_at)";
 
 /** ⚠ THE LABEL FOLLOWS THE MONEY (3 Oct 2026). What came back is summed off the
  *  processed refund ROWS, and the receipt reads REFUNDED only once they cover the
@@ -145,6 +150,8 @@ const toSubscriptionRow = (r: SubscriptionPaymentRow): InvoiceRow => {
     paidAt: r.created_at,
     kind: "subscription",
     href: artist ? "/subscription" : "/business",
+    refundProcessing:
+      r.status === "captured" && (r.subscription_refunds ?? []).some((x) => x.status === "pending" && !x.deleted_at),
   };
 };
 

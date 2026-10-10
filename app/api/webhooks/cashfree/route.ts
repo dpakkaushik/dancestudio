@@ -1,6 +1,7 @@
 import { revalidatePath } from "next/cache";
 import { NextResponse } from "next/server";
-import { isCashfreeConfigured, refundCashfreePayment, rupeesToPaise } from "@/lib/cashfree/api";
+import { rupeesToPaise } from "@/lib/cashfree/api";
+import { sendOrderRefunds } from "@/services/refundRail";
 import { cashfreeEventId, verifyCashfreeWebhook } from "@/lib/cashfree/signature";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import {
@@ -131,15 +132,14 @@ export async function POST(req: Request) {
         amountPaise: rupeesToPaise(p.payment_amount),
         method: p.payment_group ?? null,
       });
-      // seat could not be granted (filled up / closed order / wrong amount) —
-      // push the money back; the ledgered 'pending' row survives an API failure
-      if (applied.outcome === "refund_pending" && applied.refund_id && isCashfreeConfigured()) {
-        try {
-          await refundCashfreePayment({ providerOrderId: o.order_id, refundId: applied.refund_id, amountInr: Math.round(p.payment_amount), note: "Seat could not be granted" });
-        } catch {
-          // refund row stays pending — visible in the ledger
-        }
-      }
+      /* ⚠ MONEY. A capture that could not be honoured — a class seat filled up,
+         a closed order, a wrong amount, a membership whose last place went under
+         the lock — filed a `pending` refund on this order. Every such refund is
+         sent now, whichever subject filed it (a membership's applier hands back
+         no refund id, which is why the old inline send never reached one), its
+         reference is BOUND so the ledger can reconcile it, and a refusal is
+         reported to the studio's owners (10 Oct 2026). */
+      await sendOrderRefunds(admin, o.order_id, "Could not be granted");
       result = applied;
       /* Discover's Classes shelf — `/classes` was its second copy until 5 Oct 2026 */
       revalidatePath("/discover");

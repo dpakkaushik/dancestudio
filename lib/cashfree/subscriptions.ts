@@ -183,6 +183,17 @@ export async function refundCashfreeSubscriptionPayment(params: {
   });
 }
 
+/** ONE SUBSCRIPTION REFUND, READ BACK (10 Oct 2026). Keyed on OUR merchant
+ *  refund id (`dos_subref_…`); the sandbox answers an unknown one with 400
+ *  `refund_not_found`, read off it before a line was written. `refund_status`
+ *  is SUCCESS when the money moved; FAILED / CANCELLED mean it did not. */
+export async function fetchCashfreeSubscriptionRefund(
+  providerSubscriptionId: string,
+  refundId: string
+): Promise<{ refund_id?: string; cf_refund_id?: string; refund_status?: string; refund_amount?: number }> {
+  return cf(`/subscriptions/${encodeURIComponent(providerSubscriptionId)}/refunds/${encodeURIComponent(refundId)}`);
+}
+
 /** Stop future charges. What was paid for stands — access runs to period end on our side. */
 export async function cancelCashfreeSubscription(providerSubscriptionId: string): Promise<CashfreeSubscription> {
   return cf<CashfreeSubscription>(`/subscriptions/${encodeURIComponent(providerSubscriptionId)}/manage`, {

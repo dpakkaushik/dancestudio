@@ -4,7 +4,7 @@ import { ACCOUNT_TABS, onAccountTab, type AccountTab } from "@/features/admin/co
 import { AdminShell } from "@/features/admin/components/AdminShell";
 import { PAGE_SIZE, pageOf, sliceForPage } from "@/features/admin/components/desk-kit";
 import { requireAdmin } from "@/features/admin/server/adminGuard";
-import { findAdminAccounts, findAdminBusinesses, findAdminDashboard } from "@/repositories/adminPanel";
+import { findAdminAccounts, findAdminBusinesses, findAdminDashboard, findAdminLeftAccounts } from "@/repositories/adminPanel";
 import { ownerStandingOf } from "@/repositories/orgStanding";
 
 export const metadata: Metadata = { title: "Accounts — DanceOS admin" };
@@ -23,15 +23,22 @@ export default async function AdminAccountsPage({ searchParams }: { searchParams
   const tab: AccountTab = ACCOUNT_TABS.includes(params.tab as AccountTab) ? (params.tab as AccountTab) : "all";
   const page = pageOf(params.page);
 
-  const [pulse, all, businesses] = await Promise.all([
+  const [pulse, all, businesses, leftAll] = await Promise.all([
     findAdminDashboard(supabase),
     findAdminAccounts(supabase, { q: term || null, limit: 500 }),
     /* every business, so an owner's count is whole whatever the search term was;
        answers empty rather than failing the desk over a figure on a chip */
     findAdminBusinesses(supabase, { limit: 500 }).catch(() => []),
+    /* accounts that left (10 Oct 2026) — always read, because the tab carries its count */
+    findAdminLeftAccounts(supabase),
   ]);
   const matching = all.filter((a) => onAccountTab(a, tab));
   const accounts = sliceForPage(matching, page, PAGE_SIZE);
+  const needle = term.toLowerCase();
+  const leftMatching = needle
+    ? leftAll.filter((l) => [l.fullName, l.email ?? "", l.city ?? ""].some((s) => s.toLowerCase().includes(needle)))
+    : leftAll;
+  const left = sliceForPage(leftMatching, page, PAGE_SIZE);
   const standingMap = ownerStandingOf(businesses);
 
   return (
@@ -48,9 +55,11 @@ export default async function AdminAccountsPage({ searchParams }: { searchParams
           all: pulse.accounts.users + pulse.accounts.orgs + pulse.accounts.suspended,
           artists: pulse.accounts.artists,
           suspended: pulse.accounts.suspended,
+          left: leftAll.length,
         }}
+        left={left}
         page={page}
-        total={matching.length}
+        total={tab === "left" ? leftMatching.length : matching.length}
         nowIso={nowIso}
       />
     </AdminShell>

@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { InvoicesScreen } from "@/features/settings/components/InvoicesScreen";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { findMyInvoices } from "@/repositories/invoices";
+import { reconcileSubscriptionRefunds } from "@/services/subscriptionRefundRail";
 
 export const metadata: Metadata = { title: "Invoices — DanceOS" };
 
@@ -13,6 +14,8 @@ export default async function InvoicesPage() {
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) redirect("/login");
+  /* a first-month refund lands when Cashfree says so — asked when this opens */
+  await reconcileSubscriptionRefunds({ mine: user.id });
   const rows = await findMyInvoices(supabase);
   return <InvoicesScreen rows={rows} side="mine" />;
 }

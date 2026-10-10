@@ -50,6 +50,19 @@ const endSchema = z.object({
   reason: z.string().trim().min(3).max(300),
 });
 
+/** how many first-month refunds on this subscription Cashfree has already
+ *  FAILED — each later attempt needs a fresh merchant refund id. Read with the
+ *  service role: the caller is an admin, re-checked by the RPC that follows. */
+async function countFailedFirstPeriodRefunds(subscriptionId: string): Promise<number> {
+  const { count, error } = await createSupabaseAdminClient()
+    .from("subscription_refunds")
+    .select("id", { count: "exact", head: true })
+    .eq("subscription_id", subscriptionId)
+    .eq("status", "failed");
+  if (error) throw new Error(`subscription refunds read failed: ${error.message}`);
+  return count ?? 0;
+}
+
 const refresh = () => {
   revalidatePath("/admin");
   revalidatePath("/admin/plans");
@@ -150,7 +163,11 @@ export async function refundFirstPeriodAction(input: unknown): Promise<{ error: 
     const payments = await fetchCashfreeSubscriptionPayments(row.providerSubscriptionId);
     const auth = payments.find((p) => p.payment_type === "AUTH" && p.payment_status === "SUCCESS");
     if (!auth) return { error: "Cashfree holds no successful first-period payment on this mandate" };
-    const refundId = `dos_subref_${auth.payment_id.replace(/[^A-Za-z0-9_-]/g, "")}`.slice(0, 40);
+    /* ⚠ A REFUND THAT FAILED AT CASHFREE MAY BE FOLLOWED BY ANOTHER (10 Oct
+       2026) — and Cashfree refuses a merchant refund id it has seen, so each
+       attempt after a failed one carries its number */
+    const failed = await countFailedFirstPeriodRefunds(row.id);
+    const refundId = `${`dos_subref_${auth.payment_id.replace(/[^A-Za-z0-9_-]/g, "")}`.slice(0, 37)}${failed > 0 ? `_${failed + 1}` : ""}`;
     const out = await refundCashfreeSubscriptionPayment({
       providerSubscriptionId: row.providerSubscriptionId,
       paymentId: auth.payment_id,
@@ -158,9 +175,12 @@ export async function refundFirstPeriodAction(input: unknown): Promise<{ error: 
       amountInr: auth.payment_amount,
       note: "DanceOS first month back",
     });
+    /* ⚠ OUR merchant id is what is recorded, because it is what Cashfree's
+       refund read is keyed on — the ledger asks with it until the money lands */
+    void out;
     const { data, error } = await supabase.rpc("admin_record_first_period_refund", {
       p_subscription_id: row.id,
-      p_provider_refund_id: out.cf_refund_id ?? out.refund_id ?? refundId,
+      p_provider_refund_id: refundId,
       p_reason: parsed.data.reason,
     });
     if (error) {
@@ -168,6 +188,7 @@ export async function refundFirstPeriodAction(input: unknown): Promise<{ error: 
     }
     refresh();
     revalidatePath("/invoices");
+    revalidatePath("/admin/payments");
     return { error: null, amountInr: Number((data as { amount_inr?: number } | null)?.amount_inr ?? auth.payment_amount) };
   } catch (e) {
     return { error: e instanceof Error ? e.message : "Could not refund that" };

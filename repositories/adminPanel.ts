@@ -147,6 +147,47 @@ export async function findAdminAccounts(
   }));
 }
 
+/** AN ACCOUNT THAT LEFT THROUGH "DELETE MY ACCOUNT" (10 Oct 2026) — the
+ *  Accounts desk's Left tab. `admin_left_accounts` is a platform admin's alone
+ *  and answers anybody else with nothing. */
+export interface LeftAccount {
+  id: string;
+  fullName: string;
+  email: string | null;
+  avatarPath: string | null;
+  city: string | null;
+  leftAt: string;
+  threadId: string | null;
+}
+
+export async function findAdminLeftAccounts(supabase: SupabaseClient): Promise<LeftAccount[]> {
+  const { data, error } = await supabase.rpc("admin_left_accounts");
+  if (error) {
+    /* the read lands with 20261010090000 — before it, the tab is empty, not a 500 */
+    if (error.code === "PGRST202") return [];
+    throw new Error(`admin.leftAccounts failed: ${error.message}`);
+  }
+  return ((data ?? []) as Array<{
+    user_id: string; full_name: string; email: string | null; profile_photo_path: string | null;
+    city: string | null; left_at: string; thread_id: string | null;
+  }>).map((r) => ({
+    id: r.user_id,
+    fullName: r.full_name,
+    email: r.email,
+    avatarPath: r.profile_photo_path,
+    city: r.city,
+    leftAt: r.left_at,
+    threadId: r.thread_id,
+  }));
+}
+
+export async function restoreAccount(supabase: SupabaseClient, accountId: string, reason: string): Promise<void> {
+  const { error } = await supabase.rpc("admin_restore_account", { p_user_id: accountId, p_reason: reason });
+  if (error) {
+    throw new Error(error.message);
+  }
+}
+
 export async function suspendAccount(supabase: SupabaseClient, accountId: string, reason: string): Promise<void> {
   const { error } = await supabase.rpc("admin_suspend_account", { p_account_id: accountId, p_reason: reason });
   if (error) {

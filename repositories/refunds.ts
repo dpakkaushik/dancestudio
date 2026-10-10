@@ -170,7 +170,14 @@ export async function findRefundsByClass(
  *  business's ledger, or the caller's own (30 Sep 2026). Every shape names its
  *  scope out loud: `refunds` admits a business's members to the whole studio's
  *  rows, and RLS is a ceiling, not a scope. */
-export type RefundRailScope = { classId: string } | { businessId: string } | { mine: string };
+export type RefundRailScope =
+  | { classId: string }
+  | { businessId: string }
+  | { mine: string }
+  /** one order on the rail — what a capture that could not be honoured files a
+   *  refund against (10 Oct 2026); read with the SERVICE ROLE by the capture
+   *  paths only, on the order Cashfree just told them about */
+  | { providerOrderId: string };
 
 /** A `pending` refund as the rail needs it: which of its ids it carries. */
 export interface RailRefund {
@@ -205,7 +212,13 @@ const toRail = (r: RailRow): RailRefund => ({
 /* the scope column and value, stated once; the embed prefix is how a scope on
    `refunds` names the order it hangs off (the audit understands the prefix) */
 const railScopeColumn = (scope: RefundRailScope): [string, string] =>
-  "classId" in scope ? ["orders.class_id", scope.classId] : "businessId" in scope ? ["orders.business_id", scope.businessId] : ["user_id", scope.mine];
+  "classId" in scope
+    ? ["orders.class_id", scope.classId]
+    : "businessId" in scope
+      ? ["orders.business_id", scope.businessId]
+      : "providerOrderId" in scope
+        ? ["orders.provider_order_id", scope.providerOrderId]
+        : ["user_id", scope.mine];
 
 /** `pending` refunds that carry a rail reference — the ones whose outcome only
  *  Cashfree knows. Small, usually empty, and read before a ledger is drawn. */
