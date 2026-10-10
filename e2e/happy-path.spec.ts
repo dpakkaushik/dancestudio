@@ -992,10 +992,17 @@ test.describe.serial("DanceOS, end to end", () => {
        opens Google's menu, and picking a view closes it */
     await owner.getByRole("button", { name: "Calendar menu" }).click();
     await owner.getByRole("dialog", { name: "Calendar menu" }).getByRole("button", { name: "Month", exact: true }).click();
-    await expect(owner.getByText("nothing on")).toBeVisible();
-    await owner.getByRole("button", { name: "Calendar menu" }).click();
-    await owner.getByRole("dialog", { name: "Calendar menu" }).getByRole("button", { name: "Day", exact: true }).click();
+    /* ⚠ A DAY IN THE MONTH OPENS THAT DAY (10 Oct 2026, Google's own click) —
+       the picked day's list under the grid, and its "nothing on", went */
+    const monthGrid = owner.getByTestId("cal-monthgrid");
+    await expect(monthGrid).toBeVisible();
+    await monthGrid.locator('button[aria-pressed="true"]').click();
+    await expect(owner.getByTestId("cal-timegrid")).toHaveAttribute("data-days", "1");
     await expect(owner.getByText("8 am")).toBeVisible();
+    /* and Google's fifth view, three days from the one you are on */
+    await owner.getByRole("button", { name: "Calendar menu" }).click();
+    await owner.getByRole("dialog", { name: "Calendar menu" }).getByRole("button", { name: "3 days", exact: true }).click();
+    await expect(owner.getByTestId("cal-timegrid")).toHaveAttribute("data-days", "3");
     await owner.goto(`/business/${businessId}/classes`);
 
     // ---- the earnings desk reads that same ledger (Step 13) ---------------

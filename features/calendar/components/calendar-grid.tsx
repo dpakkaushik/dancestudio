@@ -161,6 +161,8 @@ export function TimeGrid({ days, itemsOf, todayKey, hourH, onDay, selected }: Ti
   const [lo, hi] = hourRange(all);
   const height = (hi - lo) * hourH;
   const narrow = days.length > 1;
+  /* a week's seven columns get one letter and a small date; three days have the room Google gives them */
+  const tight = days.length > 3;
   const gutter = narrow ? 34 : 46;
   const top = (min: number) => ((min - lo * 60) / 60) * hourH;
 
@@ -174,15 +176,15 @@ export function TimeGrid({ days, itemsOf, todayKey, hourH, onDay, selected }: Ti
           const on = selected === d && !today;
           const head = (
             <>
-              <div style={{ fontSize: 10, fontWeight: 800, letterSpacing: 0.4, color: today ? INK : MUTED, textTransform: "uppercase" }}>{narrow ? dowOf(d).slice(0, 1) : dowOf(d)}</div>
+              <div style={{ fontSize: 10, fontWeight: 800, letterSpacing: 0.4, color: today ? INK : MUTED, textTransform: "uppercase" }}>{tight ? dowOf(d).slice(0, 1) : dowOf(d)}</div>
               <div
                 style={{
                   margin: "3px auto 0",
-                  width: narrow ? 28 : 40,
-                  height: narrow ? 28 : 40,
-                  lineHeight: narrow ? "28px" : "40px",
+                  width: tight ? 28 : 36,
+                  height: tight ? 28 : 36,
+                  lineHeight: tight ? "28px" : "36px",
                   borderRadius: 999,
-                  fontSize: narrow ? 13 : 20,
+                  fontSize: tight ? 13 : narrow ? 17 : 20,
                   fontWeight: 800,
                   fontVariantNumeric: "tabular-nums",
                   color: today ? "var(--solid)" : INK,

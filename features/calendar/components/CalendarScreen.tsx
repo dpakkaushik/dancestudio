@@ -96,10 +96,14 @@ const PRACTICE_C = DOS_TOOLS.practice.c;
  *  today. */
 const TODAY_INK = INK;
 
-type View = "sched" | "day" | "week" | "month";
+/* ⚠ "3 days" is Google's own fifth view (10 Oct 2026, the user: "check google
+   calendar properly … every section of it should be like google calendar") —
+   a time grid of the picked day and the two after it, stepping three at a time */
+type View = "sched" | "day" | "three" | "week" | "month";
 const VIEWS: Array<[View, string]> = [
   ["sched", "Schedule"],
   ["day", "Day"],
+  ["three", "3 days"],
   ["week", "Week"],
   ["month", "Month"],
 ];
@@ -146,10 +150,16 @@ const VIEW_ICON: Record<View, React.ReactNode> = {
       <path d="M4 10h16M10 14h4" />
     </>
   ),
-  week: (
+  three: (
     <>
       <rect x="3" y="5" width="18" height="15" rx="2.5" />
       <path d="M3 10h18M9 10v10M15 10v10" />
+    </>
+  ),
+  week: (
+    <>
+      <rect x="3" y="5" width="18" height="15" rx="2.5" />
+      <path d="M3 10h18M6.6 10v10M10.2 10v10M13.8 10v10M17.4 10v10" />
     </>
   ),
   month: (
@@ -389,6 +399,10 @@ export function CalendarScreen({ mode, months, todayKey, entries, practices = []
   const [sel, setSel] = useState(todayKey);
   const [mi, setMi] = useState(Math.max(0, idx(monthOfDay(todayKey))));
   const [panelOpen, setPanelOpen] = useState(false);
+  /* the month the mini month is SHOWING — it steps on its own, apart from the calendar */
+  const [pm, setPm] = useState(Math.max(0, idx(monthOfDay(todayKey))));
+  /* the month the Schedule has been scrolled to — Google's bar follows the list */
+  const [schedMonth, setSchedMonth] = useState<string | null>(null);
   /* which way the last step went — the next day, week or month slides in from that side */
   const [slide, setSlide] = useState<0 | 1 | -1>(0);
   useCloseOnBack(() => setPanelOpen(false), panelOpen);
@@ -430,6 +444,11 @@ export function CalendarScreen({ mode, months, todayKey, entries, practices = []
   const G = months[view === "month" ? mi : Math.max(0, idx(monthOfDay(sel)))];
   const weekStart = addDays(sel, -mondayIndexOf(sel));
   const week = Array.from({ length: 7 }, (_, i) => addDays(weekStart, i));
+  /* Google's 3-day view starts ON the picked day, not on a Monday */
+  const three = [sel, addDays(sel, 1), addDays(sel, 2)];
+  /* how far one step moves a time-grid view */
+  const stride = view === "week" ? 7 : view === "three" ? 3 : 1;
+  const isGrid = view === "day" || view === "three" || view === "week";
 
   /* the sides' counts follow the view: today's, this week's, this month's, or
      everything — and they count CLASSES, whichever tab is open, because that is
@@ -439,6 +458,8 @@ export function CalendarScreen({ mode, months, todayKey, entries, practices = []
       ? dayKey === sel
       : view === "week"
         ? dayKey >= week[0] && dayKey <= week[6]
+        : view === "three"
+          ? dayKey >= three[0] && dayKey <= three[2]
         : view === "month"
           ? monthOfDay(dayKey) === months[mi].key
           : true;
@@ -469,8 +490,8 @@ export function CalendarScreen({ mode, months, todayKey, entries, practices = []
     });
   };
   const step = (dir: 1 | -1) => {
-    if (view === "week" || view === "day") {
-      const p = addDays(sel, (view === "week" ? 7 : 1) * dir);
+    if (isGrid) {
+      const p = addDays(sel, stride * dir);
       if (!inWindow(p)) return;
       setSlide(dir);
       setSel(p);
@@ -489,25 +510,71 @@ export function CalendarScreen({ mode, months, todayKey, entries, practices = []
     if (view === "sched") jumpTo(dayKeyFor(months[n].key, 1));
     else setSel(landing);
   };
-  const canStep = (dir: 1 | -1) =>
-    view === "week" || view === "day"
-      ? inWindow(addDays(sel, (view === "week" ? 7 : 1) * dir))
-      : mi + dir >= 0 && mi + dir < months.length;
-  const unit = view === "week" ? "week" : view === "day" ? "day" : "month";
-  const title =
-    view === "week"
-      ? `${dayNumberOf(week[0])} ${monthShortOf(monthOfDay(week[0]))} – ${dayNumberOf(week[6])} ${monthShortOf(monthOfDay(week[6]))}`
-      : view === "day"
-        ? `${dowOf(sel)} ${dayNumberOf(sel)} ${G.monthName}`
-        : /* Google's own rule: the year only when it is not this one — "October 2026"
-             did not fit the bar beside four controls at 390px */
-          G.label.endsWith(todayKey.slice(0, 4)) ? G.monthName : G.label;
+  const canStep = (dir: 1 | -1) => (isGrid ? inWindow(addDays(sel, stride * dir)) : mi + dir >= 0 && mi + dir < months.length);
+  const unit = view === "week" ? "week" : view === "three" ? "3 days" : view === "day" ? "day" : "month";
+  /* ⚠⚠ THE BAR NAMES THE MONTH, IN EVERY VIEW (10 Oct 2026) — Google's own bar.
+     It read "Sat 10 October" in Day and "6 Oct – 12 Oct" in Week; Google keeps
+     the bar to the MONTH you are in (both months when a week or three days span
+     two — "Sep – Oct") and lets the grid's own day headers say the date. The
+     year only when it is not this one. */
+  const yearOf = (dayKey: string) => dayKey.slice(0, 4);
+  const thisYear = yearOf(todayKey);
+  const monthWord = (dayKey: string) => months[Math.max(0, idx(monthOfDay(dayKey)))].monthName;
+  const span = view === "week" ? [week[0], week[6]] : view === "three" ? [three[0], three[2]] : null;
+  const title = span
+    ? monthOfDay(span[0]) === monthOfDay(span[1])
+      ? monthWord(span[0]) + (yearOf(span[0]) === thisYear ? "" : ` ${yearOf(span[0])}`)
+      : `${monthShortOf(monthOfDay(span[0]))} – ${monthShortOf(monthOfDay(span[1]))}`
+    : G.label.endsWith(thisYear)
+      ? G.monthName
+      : G.label;
   const pickView = (v: View) => {
+    setSlide(0);
     setView(v);
     /* the panel shuts whenever the view changes — the thing it was picking a date for has changed */
     setPanelOpen(false);
     setMenuOpen(false);
   };
+  /** ⚠ A DAY OPENS ITS DAY (10 Oct 2026, Google's own clicks): the date in the
+   *  Schedule's column, a week's or three days' header, and a day in the Month
+   *  grid all go to that day's time grid. */
+  const openDay = (d: string) => {
+    setSlide(0);
+    setSel(d);
+    const j = idx(monthOfDay(d));
+    if (j >= 0) setMi(j);
+    setPanelOpen(false);
+    setView("day");
+  };
+  /* in Schedule the bar names the month the LIST is at, as you scroll it */
+  const schedM = view === "sched" && schedMonth ? months[idx(schedMonth)] : null;
+  const barTitle = schedM ? (schedM.label.endsWith(thisYear) ? schedM.monthName : schedM.label) : title;
+  const togglePanel = () => {
+    if (!panelOpen) setPm(Math.max(0, view === "month" ? mi : schedM ? idx(schedM.key) : idx(monthOfDay(sel))));
+    setPanelOpen((o) => !o);
+  };
+  useEffect(() => {
+    if (view !== "sched" || isPublic) return;
+    let raf = 0;
+    const read = () => {
+      raf = 0;
+      const pinned = document.querySelector<HTMLElement>("[data-dos-sticky]");
+      const floor = (pinned ? pinned.getBoundingClientRect().bottom : 0) + 12;
+      const heads = Array.from(document.querySelectorAll<HTMLElement>("[data-month-key]"));
+      let cur: string | null = heads[0]?.dataset.monthKey ?? null;
+      for (const n of heads) if (n.getBoundingClientRect().top <= floor) cur = n.dataset.monthKey ?? cur;
+      setSchedMonth((p) => (p === cur ? p : cur));
+    };
+    const onScroll = () => {
+      if (!raf) raf = window.requestAnimationFrame(read);
+    };
+    onScroll();
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => {
+      window.removeEventListener("scroll", onScroll);
+      if (raf) window.cancelAnimationFrame(raf);
+    };
+  }, [view, isPublic]);
 
   /* the schedule holds history too, so it is scrolled to today once drawn — and
      re-finds today when the list itself changes (8686-8705) */
@@ -534,7 +601,9 @@ export function CalendarScreen({ mode, months, todayKey, entries, practices = []
   }, [jumpKey, view]);
 
   /* while the date panel or the menu is open the page beneath does not move (8683) */
-  const frozen = panelOpen || menuOpen;
+  /* ⚠ only the drawer freezes the page now — the mini month opens IN the page
+     (Google's), so the schedule under it may still be scrolled */
+  const frozen = menuOpen;
   useEffect(() => {
     if (!frozen) return;
     const body = document.body;
@@ -764,6 +833,8 @@ export function CalendarScreen({ mode, months, todayKey, entries, practices = []
   const swipe = useSwipe((dir) => {
     if (canStep(dir)) step(dir);
   });
+  /* the mini month swipes between months on its own, as Google's does */
+  const panelSwipe = useSwipe((dir) => setPm((p) => Math.min(months.length - 1, Math.max(0, p + dir))));
 
   const nothing = isPublic ? (
     <div style={emptyCard}>
@@ -972,11 +1043,15 @@ export function CalendarScreen({ mode, months, todayKey, entries, practices = []
             steps forward and back, and folds open onto the month — or, in Week,
             that week — when you tap it. Picking a day closes it again. ── */}
         <div style={{ position: "relative", marginTop: isPublic ? 8 : 0 }}>
-          {/* ⚠⚠ GOOGLE'S BAR (10 Oct 2026): the menu, the month you are in (a press
-              drops the mini month), the two steps and today as a calendar page
-              with today's date on it. Nothing else — the views and the filters are
-              the drawer's, as Google keeps them. A public schedule has no menu:
-              it is one view with one filter. */}
+          {/* ⚠⚠ GOOGLE'S BAR, RE-CUT (10 Oct 2026, the user: "the pill below 3 bar
+              and month on top left should look different. check google calendar
+              properly"). The menu, then the MONTH as plain words with a small
+              caret — Google's own title, not a display headline — then the two
+              steps and today as a calendar page with today's date on it. The row
+              of pills under it (the view you were on, Hidden: …) is GONE: Google
+              draws no such row, the drawer highlights the view you are in, and a
+              narrowed calendar says so in one quiet line only while it IS
+              narrowed. */}
           <div style={{ display: "flex", alignItems: "center", gap: 2, minHeight: 48 }}>
             {isPublic ? null : (
               <button type="button" aria-label="Calendar menu" aria-expanded={menuOpen} onClick={() => setMenuOpen(true)} style={ICON_BTN}>
@@ -988,25 +1063,31 @@ export function CalendarScreen({ mode, months, todayKey, entries, practices = []
             <button
               type="button"
               aria-expanded={panelOpen}
-              aria-label={`${panelOpen ? "Close" : "Open"} the ${unit} picker`}
-              onClick={() => setPanelOpen((o) => !o)}
-              style={{ display: "inline-flex", alignItems: "center", gap: 5, flex: 1, minWidth: 0, cursor: "pointer", padding: "6px 6px", borderRadius: 10, background: "none", border: "none", color: INK, fontFamily: "inherit", textAlign: "left" }}
+              aria-label={`${panelOpen ? "Close" : "Open"} the date picker — ${barTitle}`}
+              data-testid="cal-title"
+              onClick={togglePanel}
+              style={{ display: "inline-flex", alignItems: "center", gap: 4, minWidth: 0, cursor: "pointer", padding: "6px 8px 6px 6px", borderRadius: 999, background: panelOpen ? LINE : "none", border: "none", color: INK, fontFamily: DOS_UI, textAlign: "left", transition: "background .15s" }}
             >
-              <b style={{ minWidth: 0, fontSize: 20, fontWeight: 800, letterSpacing: -0.5, fontFamily: DOS_DISPLAY, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{title}</b>
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" style={{ flexShrink: 0, color: MUTED, transform: panelOpen ? "rotate(180deg)" : "none", transition: "transform .18s" }}>
-                <path d="M6 9l6 6 6-6" />
+              <span style={{ minWidth: 0, fontSize: 21, fontWeight: 600, letterSpacing: -0.3, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{barTitle}</span>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" style={{ flexShrink: 0, transform: panelOpen ? "rotate(180deg)" : "none", transition: "transform .18s" }}>
+                <path d="M7 10l5 5 5-5z" />
               </svg>
             </button>
-            <button type="button" aria-label={`Previous ${unit}`} disabled={!canStep(-1)} onClick={() => step(-1)} style={{ ...ICON_BTN, color: canStep(-1) ? INK : LINE }}>
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                <path d="M15 6l-6 6 6 6" />
-              </svg>
-            </button>
-            <button type="button" aria-label={`Next ${unit}`} disabled={!canStep(1)} onClick={() => step(1)} style={{ ...ICON_BTN, color: canStep(1) ? INK : LINE }}>
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                <path d="M9 6l6 6-6 6" />
-              </svg>
-            </button>
+            <span style={{ flex: 1 }} />
+            {view === "sched" ? null : (
+              <>
+                <button type="button" aria-label={`Previous ${unit}`} disabled={!canStep(-1)} onClick={() => step(-1)} style={{ ...ICON_BTN, width: 34, color: canStep(-1) ? SUB : LINE }}>
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                    <path d="M15 6l-6 6 6 6" />
+                  </svg>
+                </button>
+                <button type="button" aria-label={`Next ${unit}`} disabled={!canStep(1)} onClick={() => step(1)} style={{ ...ICON_BTN, width: 34, color: canStep(1) ? SUB : LINE }}>
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                    <path d="M9 6l6 6-6 6" />
+                  </svg>
+                </button>
+              </>
+            )}
             {/* ⚠ TODAY IS A CALENDAR PAGE WITH TODAY'S DATE ON IT (Google's own
                 control), not the word — the word was said twice on this bar once
                 (28 Sep 2026) and the page says it without a word at all */}
@@ -1021,108 +1102,61 @@ export function CalendarScreen({ mode, months, todayKey, entries, practices = []
               </svg>
             </button>
           </div>
-          {/* the view you are on and what the drawer has narrowed — one quiet row,
-              each a door back into the drawer, so a hidden kind is never a mystery */}
-          {isPublic ? null : (
-            <div style={{ display: "flex", alignItems: "center", gap: 6, padding: "0 4px 4px", overflowX: "auto", scrollbarWidth: "none" }}>
-              <button type="button" aria-label={`Change view — ${VIEWS.find(([k]) => k === view)?.[1] ?? ""}`} onClick={() => setMenuOpen(true)} style={SUMMARY_CHIP}>
-                {VIEWS.find(([k]) => k === view)?.[1]}
-                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                  <path d="M6 9l6 6 6-6" />
-                </svg>
-              </button>
-              {mode === "studio" && rooms.length > 0 ? (
-                <button type="button" aria-label="Filter by room" onClick={() => setMenuOpen(true)} style={SUMMARY_CHIP}>
-                  {room ?? "All rooms"}
-                </button>
-              ) : null}
-              {hiddenWords.length ? (
-                <>
-                  <span data-testid="cal-filtered" style={{ fontSize: 11, fontWeight: 700, color: MUTED, whiteSpace: "nowrap" }}>
-                    Hidden: {hiddenWords.join(", ")}
-                  </span>
-                  <button type="button" onClick={showAll} style={{ ...SUMMARY_CHIP, borderStyle: "dashed" }}>
-                    Show all
-                  </button>
-                </>
-              ) : null}
-            </div>
-          )}
-          {panelOpen ? (
-            <>
-              <div aria-hidden="true" onClick={() => setPanelOpen(false)} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,.5)", zIndex: 130 }} />
-              <div
-                role="dialog"
-                aria-label={`Pick a day in ${title}`}
-                style={{
-                  position: "absolute",
-                  left: 0,
-                  right: 0,
-                  top: "calc(100% + 6px)",
-                  zIndex: 140,
-                  background: "var(--solid)",
-                  border: `1.5px solid ${LINE}`,
-                  borderRadius: 16,
-                  padding: "10px 9px 9px",
-                  boxShadow: "0 18px 46px rgba(0,0,0,.55)",
-                }}
+          {/* WHAT IS NARROWED, ONLY WHILE IT IS — one quiet line, no pills; each
+              part a door into the drawer, so a hidden kind is never a mystery */}
+          {!isPublic && (hiddenWords.length || (mode === "studio" && room)) ? (
+            <div data-testid="cal-filtered" style={{ display: "flex", alignItems: "center", gap: 6, padding: "0 8px 6px", fontSize: 11.5, fontWeight: 700, color: MUTED, whiteSpace: "nowrap", overflow: "hidden" }}>
+              <span style={{ overflow: "hidden", textOverflow: "ellipsis" }}>
+                {mode === "studio" && room ? `Showing ${room}` : `Hidden: ${hiddenWords.join(", ")}`}
+              </span>
+              <button
+                type="button"
+                onClick={mode === "studio" && room ? () => setMenuOpen(true) : showAll}
+                style={{ background: "none", border: "none", padding: 0, cursor: "pointer", fontFamily: "inherit", fontSize: 11.5, fontWeight: 800, color: INK, textDecoration: "underline", textUnderlineOffset: 3 }}
               >
-                {/* ⚠ IN MONTH THE PANEL PICKS A MONTH (10 Oct 2026) — the month grid
-                    itself is the page now, so a second copy of it in the panel
-                    would be the same grid twice; every other view gets Google's
-                    mini month */}
-                {view === "month" ? (
-                  <div style={{ display: "grid", gridTemplateColumns: "repeat(3, minmax(0, 1fr))", gap: 6 }}>
-                    {months.map((m, j) => {
-                      const on = j === mi;
-                      const pick = () => {
-                        setSlide(j > mi ? 1 : j < mi ? -1 : 0);
-                        setMi(j);
-                        setSel(monthOfDay(todayKey) === m.key ? todayKey : dayKeyFor(m.key, 1));
-                        setPanelOpen(false);
-                      };
-                      return (
-                        <div
-                          key={m.key}
-                          role="button"
-                          tabIndex={0}
-                          aria-pressed={on}
-                          onKeyDown={pressKey(pick)}
-                          onClick={pick}
-                          style={{
-                            textAlign: "center",
-                            padding: "9px 4px",
-                            borderRadius: 10,
-                            cursor: "pointer",
-                            fontSize: 11.5,
-                            fontWeight: 800,
-                            color: on ? "var(--solid)" : INK,
-                            background: on ? INK : "transparent",
-                            border: `1.5px solid ${on ? INK : LINE}`,
-                          }}
-                        >
-                          {m.label}
-                        </div>
-                      );
-                    })}
-                  </div>
-                ) : (
-                  <>
-                    <div style={{ display: "grid", gridTemplateColumns: "repeat(7,1fr)", marginBottom: 6 }}>
-                      {WEEK_LETTERS.map((d, i) => (
-                        <div key={i} style={{ textAlign: "center", fontSize: 9.5, fontWeight: 800, letterSpacing: 0.4, color: i > 4 ? LINE : MUTED }}>
-                          {d}
-                        </div>
-                      ))}
-                    </div>
-                    <div style={{ display: "grid", gridTemplateColumns: "repeat(7,1fr)", rowGap: 3 }}>
-                      {Array.from({ length: G.offset }, (_, i) => <div key={`e${i}`} />)}
-                      {Array.from({ length: G.days }, (_, i) => dayCell(dayKeyFor(G.key, i + 1), i, false))}
-                    </div>
-                  </>
-                )}
+                {mode === "studio" && room ? "Change" : "Show all"}
+              </button>
+            </div>
+          ) : null}
+          {/* ⚠⚠ THE MINI MONTH OPENS UNDER THE BAR AND PUSHES THE PAGE DOWN
+              (10 Oct 2026, Google's own) — it floated over the page on a scrim
+              before. It is the same mini month in EVERY view (Month used to get a
+              grid of month names instead), it steps on its own with a swipe or
+              its two arrows, and a day pressed jumps the calendar there and
+              folds it shut. */}
+          {panelOpen ? (
+            <div
+              {...panelSwipe}
+              role="dialog"
+              aria-label={`Pick a day in ${months[pm].label}`}
+              data-testid="cal-minimonth"
+              style={{ padding: "4px 4px 8px", animation: "dosCalDrop .18s ease-out", touchAction: "pan-y" }}
+            >
+              <div style={{ display: "flex", alignItems: "center", gap: 2, padding: "0 4px 6px" }}>
+                <b style={{ flex: 1, fontSize: 13, fontWeight: 800 }}>{months[pm].label}</b>
+                <button type="button" aria-label="Previous month in the picker" disabled={pm === 0} onClick={() => setPm((p) => Math.max(0, p - 1))} style={{ ...ICON_BTN, width: 32, height: 32, color: pm === 0 ? LINE : SUB }}>
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                    <path d="M15 6l-6 6 6 6" />
+                  </svg>
+                </button>
+                <button type="button" aria-label="Next month in the picker" disabled={pm === months.length - 1} onClick={() => setPm((p) => Math.min(months.length - 1, p + 1))} style={{ ...ICON_BTN, width: 32, height: 32, color: pm === months.length - 1 ? LINE : SUB }}>
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                    <path d="M9 6l6 6-6 6" />
+                  </svg>
+                </button>
               </div>
-            </>
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(7,1fr)", marginBottom: 4 }}>
+                {WEEK_LETTERS.map((d, i) => (
+                  <div key={i} style={{ textAlign: "center", fontSize: 10, fontWeight: 800, letterSpacing: 0.4, color: MUTED }}>
+                    {d}
+                  </div>
+                ))}
+              </div>
+              <div key={months[pm].key} style={{ display: "grid", gridTemplateColumns: "repeat(7,1fr)", rowGap: 2 }}>
+                {Array.from({ length: months[pm].offset }, (_, i) => <div key={`e${i}`} />)}
+                {Array.from({ length: months[pm].days }, (_, i) => dayCell(dayKeyFor(months[pm].key, i + 1), (months[pm].offset + i) % 7, false))}
+              </div>
+            </div>
           ) : null}
         </div>
       </div>
@@ -1138,7 +1172,7 @@ export function CalendarScreen({ mode, months, todayKey, entries, practices = []
           steps and jumps, and a sideways swipe steps too. Schedule is untouched:
           it was already Google's own Schedule view. ⚠ Each view is keyed on what
           it shows, so a step slides the new one in from the side it came from. */}
-      {view === "week" || view === "day" || view === "month" ? (
+      {isGrid || view === "month" ? (
         <div
           {...swipe}
           key={`${view}|${view === "month" ? months[mi].key : view === "week" ? week[0] : sel}`}
@@ -1162,14 +1196,10 @@ export function CalendarScreen({ mode, months, todayKey, entries, practices = []
               todayKey={todayKey}
               hourH={48}
               selected={sel}
-              onDay={(d) => {
-                setSlide(0);
-                setSel(d);
-                setMi(idx(monthOfDay(d)));
-                setView("day");
-              }}
+              onDay={openDay}
             />
           ) : null}
+          {view === "three" ? <TimeGrid days={three.filter(inWindow)} itemsOf={gridItemsOf} todayKey={todayKey} hourH={52} onDay={openDay} /> : null}
           {view === "month" ? (
             <MonthGrid
               monthKey={months[mi].key}
@@ -1181,14 +1211,7 @@ export function CalendarScreen({ mode, months, todayKey, entries, practices = []
               inWindow={inWindow}
               todayKey={todayKey}
               selected={sel}
-              onPick={(d) => {
-                setSel(d);
-                const j = idx(monthOfDay(d));
-                if (j >= 0 && j !== mi) {
-                  setSlide(j > mi ? 1 : -1);
-                  setMi(j);
-                }
-              }}
+              onPick={openDay}
             />
           ) : null}
         </div>
@@ -1197,31 +1220,12 @@ export function CalendarScreen({ mode, months, todayKey, entries, practices = []
       {/* ── THE MONTH (9314-9327): the grid lives in the shared panel; what is
           left here is what the month is FOR — the day you picked, named and
           counted, with its sessions under it ── */}
-      {view === "month" ? (
-        <>
-          {/* THE DAY YOU TAPPED, UNDER THE GRID — Google's month on a phone
-              lists the picked day's sessions beneath it; "Open day" goes to that
-              day's time grid */}
-          <div style={{ display: "flex", alignItems: "baseline", gap: 8, margin: "14px 2px 9px" }}>
-            <b style={{ fontSize: 12.5, fontWeight: 800, letterSpacing: 0.3 }}>
-              {dowOf(sel)} {dayNumberOf(sel)} {months[Math.max(0, idx(monthOfDay(sel)))].monthName}
-            </b>
-            <span style={{ fontSize: 10.5, color: MUTED, fontWeight: 700 }}>
-              {agenda.length ? `${agenda.length} session${agenda.length === 1 ? "" : "s"}` : "nothing on"}
-            </span>
-            <span
-              role="button"
-              tabIndex={0}
-              aria-label="Open this day"
-              onKeyDown={pressKey(() => pickView("day"))}
-              onClick={() => pickView("day")}
-              style={{ marginLeft: "auto", fontSize: 10.5, fontWeight: 800, color: SUB, cursor: "pointer", padding: "3px 9px", borderRadius: 999, border: `1.5px solid ${LINE}` }}
-            >
-              Open day ›
-            </span>
-          </div>
-          {agenda.length === 0 ? nothing : agenda.map(card)}
-        </>
+      {/* ⚠ NO LIST UNDER THE MONTH ANY MORE (10 Oct 2026): Google's month fills
+          the screen and a day pressed OPENS that day (`openDay`) — the picked
+          day's list under the grid, with its "Open day ›", was a second way to
+          the same place. A month with nothing in it says so under the grid. */}
+      {view === "month" && Array.from({ length: months[mi].days }, (_, i) => dayKeyFor(months[mi].key, i + 1)).every((d) => agendaOf(d).length === 0) ? (
+        <div style={{ ...emptyCard, marginTop: 12 }}>Nothing on in {months[mi].monthName}</div>
       ) : null}
 
       {/* ⚠⚠ GOOGLE'S SCHEDULE VIEW (10 Oct 2026, the user: "fix schedule view in
@@ -1248,14 +1252,22 @@ export function CalendarScreen({ mode, months, todayKey, entries, practices = []
             const m = months[idx(mk)];
             return (
               <div key={dayKey}>
+                {/* ⚠⚠ A MONTH IS MARKED BY ITS NAME, NOT A BLUE TILE (10 Oct 2026, the
+                    user: "blue tile on every month in schedule should not have the
+                    blue heading color should just be marked in separate way"). The
+                    month's name set large in the page's own ink, the year beside it
+                    quieter, and a rule running to the edge — a chapter break in the
+                    list rather than a coloured card standing in it. `data-month-key`
+                    is how the bar follows the list as it scrolls. */}
                 {monthStarts && m ? (
                   <div
                     data-testid="cal-month-banner"
-                    style={{ position: "relative", overflow: "hidden", height: 66, borderRadius: 16, margin: gi === 0 ? "4px 0 10px" : "18px 0 10px", background: toolPaint(TOOL_COLOUR), color: "#fff", display: "flex", alignItems: "flex-end", padding: "0 16px 11px" }}
+                    data-month-key={m.key}
+                    style={{ display: "flex", alignItems: "baseline", gap: 8, margin: gi === 0 ? "8px 0 12px" : "26px 0 12px" }}
                   >
-                    <span aria-hidden="true" style={{ position: "absolute", right: -24, top: -34, width: 120, height: 120, borderRadius: 60, background: "rgba(255,255,255,.14)" }} />
-                    <span aria-hidden="true" style={{ position: "absolute", right: 46, bottom: -40, width: 80, height: 80, borderRadius: 40, background: "rgba(255,255,255,.1)" }} />
-                    <b style={{ position: "relative", fontFamily: DOS_DISPLAY, fontSize: 20, fontWeight: 800, letterSpacing: -0.4 }}>{m.label}</b>
+                    <b style={{ fontFamily: DOS_DISPLAY, fontSize: 24, fontWeight: 800, letterSpacing: -0.6, color: INK }}>{m.monthName}</b>
+                    <span style={{ fontSize: 13, fontWeight: 700, color: MUTED }}>{m.label.replace(m.monthName, "").trim()}</span>
+                    <span aria-hidden="true" style={{ flex: 1, height: 0, borderTop: `1.5px solid ${LINE}`, alignSelf: "center", marginLeft: 4 }} />
                   </div>
                 ) : null}
                 {weekStarts ? (
@@ -1269,8 +1281,15 @@ export function CalendarScreen({ mode, months, todayKey, entries, practices = []
                   data-today={today ? "true" : undefined}
                   style={{ display: "flex", gap: isPublic ? 0 : 12, alignItems: "flex-start", marginBottom: isPublic ? 8 : 10, scrollMarginTop: 180 }}
                 >
+                  {/* ⚠ THE DATE OPENS ITS DAY (Google's Schedule: tap the date, see
+                      that day's time grid) */}
                   {isPublic ? null : (
-                    <div style={{ width: 46, textAlign: "center", flexShrink: 0, paddingTop: 2 }}>
+                    <button
+                      type="button"
+                      aria-label={`Open ${dowOf(dayKey)} ${dayNumberOf(dayKey)} ${m?.monthName ?? ""}`.trim()}
+                      onClick={() => openDay(dayKey)}
+                      style={{ width: 46, textAlign: "center", flexShrink: 0, background: "none", border: "none", cursor: "pointer", color: INK, font: "inherit", padding: "2px 0 0" }}
+                    >
                       <div style={{ fontSize: 10.5, fontWeight: 900, letterSpacing: 0.6, textTransform: "uppercase", color: today ? TODAY_INK : MUTED }}>{dowOf(dayKey)}</div>
                       <div
                         style={{
@@ -1288,7 +1307,7 @@ export function CalendarScreen({ mode, months, todayKey, entries, practices = []
                       >
                         {dayNumberOf(dayKey)}
                       </div>
-                    </div>
+                    </button>
                   )}
                   <div style={{ flex: 1, minWidth: 0, paddingTop: isPublic ? 0 : 3 }}>
                     {items.length ? (
@@ -1352,7 +1371,7 @@ export function CalendarScreen({ mode, months, todayKey, entries, practices = []
                   type="button"
                   aria-pressed={on}
                   onClick={() => pickView(k)}
-                  style={{ display: "flex", alignItems: "center", gap: 16, width: "100%", height: 48, padding: "0 16px", borderRadius: 999, border: "none", cursor: "pointer", fontFamily: "inherit", fontSize: 14.5, fontWeight: on ? 900 : 700, background: on ? `${TOOL_COLOUR}26` : "transparent", color: on ? INK : SUB, textAlign: "left" }}
+                  style={{ display: "flex", alignItems: "center", gap: 16, width: "100%", height: 48, padding: "0 16px", borderRadius: 999, border: "none", cursor: "pointer", fontFamily: "inherit", fontSize: 14.5, fontWeight: on ? 900 : 700, background: on ? "rgba(127,127,127,.16)" : "transparent", color: on ? INK : SUB, textAlign: "left" }}
                 >
                   <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
                     {VIEW_ICON[k]}
