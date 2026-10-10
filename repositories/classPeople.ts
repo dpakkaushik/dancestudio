@@ -194,7 +194,7 @@ interface MyAskRow extends ClassPersonRow {
     venue_status: "requested" | "accepted" | "declined" | null;
     businesses: { name: string; city: string | null; type: string | null; profile_photo_path: string | null } | null;
     venue: { name: string; type: string | null; profile_photo_path: string | null } | null;
-    class_sessions: Array<{ id: string; starts_at: string; ends_at: string }> | null;
+    class_sessions: Array<{ id: string; starts_at: string; ends_at: string; deleted_at?: string | null }> | null;
   } | null;
 }
 
@@ -203,9 +203,13 @@ interface MyAskRow extends ClassPersonRow {
  *  class cards in same way" — and the ask's own STATUS, so an answered ask can
  *  still be listed in the Inbox ("enquiries and requests don't get removed
  *  after accepting"). */
-const ASK_SELECT = `${CLAIM_COLUMNS}, deleted_at, business_id, classes (id, style, level, share_slug, room, price_inr, capacity, status, poster_path, venue_status, businesses!classes_business_id_fkey (name, city, type, profile_photo_path), venue:businesses!classes_venue_business_id_fkey (name, type, profile_photo_path), class_sessions (id, starts_at, ends_at))`;
+const ASK_SELECT = `${CLAIM_COLUMNS}, deleted_at, business_id, classes (id, style, level, share_slug, room, price_inr, capacity, status, poster_path, venue_status, businesses!classes_business_id_fkey (name, city, type, profile_photo_path), venue:businesses!classes_venue_business_id_fkey (name, type, profile_photo_path), class_sessions (id, starts_at, ends_at, deleted_at))`;
 const toAsk = (r: MyAskRow): MyClassPersonAsk => {
-  const first = [...(r.classes!.class_sessions ?? [])].sort((a, b) => a.starts_at.localeCompare(b.starts_at))[0] ?? null;
+  /* a weekly class (13 Oct 2026): the week the ask is about is the next one
+     still to run, else the last — and never one called off on its own */
+  const live = [...(r.classes!.class_sessions ?? [])].filter((s) => !s.deleted_at).sort((a, b) => a.starts_at.localeCompare(b.starts_at));
+  const now = Date.now();
+  const first = live.find((s) => Date.parse(s.ends_at) > now) ?? live[live.length - 1] ?? null;
   return {
     ...toClassPerson(r),
     withdrawn: Boolean(r.deleted_at) && r.status === "asked",

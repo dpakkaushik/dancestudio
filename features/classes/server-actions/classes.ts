@@ -7,6 +7,8 @@ import { DOS_STYLE_NAMES } from "@/lib/constants/styles";
 import { MAX_SESSION_MINUTES } from "@/types/class";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import {
+  addWeeklySessions,
+  cancelClassSession,
   createClassWithSession,
   softDeleteClass,
   updateClassDetails,
@@ -112,14 +114,27 @@ const startsInFuture = {
   message: "That start has already gone — pick a date and time ahead",
 };
 
+/** A WEEKLY CLASS (13 Oct 2026): how many sessions "every week until {date}"
+ *  makes, counting the first. The same arithmetic `add_weekly_sessions` does in
+ *  IST, so the form's count, this refusal and the database cannot disagree. */
+const weeksUntil = (date: string, until: string) =>
+  Math.floor((Date.parse(`${until}T00:00:00Z`) - Date.parse(`${date}T00:00:00Z`)) / (7 * 86_400_000)) + 1;
+
 const createClassSchema = classFields
   .extend({
     businessId: z.string().uuid(),
     status: z.enum(["draft", "published"]),
+    repeatUntil: z.string().regex(DATE_RE, "Pick the last date").optional(),
   })
   .refine(endsAfterStart.check, { message: endsAfterStart.message })
   .refine(atMostFiveHours.check, { message: atMostFiveHours.message })
-  .refine(startsInFuture.check, { message: startsInFuture.message });
+  .refine(startsInFuture.check, { message: startsInFuture.message })
+  .refine((d) => !d.repeatUntil || weeksUntil(d.date, d.repeatUntil) >= 2, {
+    message: "The last date has to be at least a week after the first",
+  })
+  .refine((d) => !d.repeatUntil || weeksUntil(d.date, d.repeatUntil) <= 26, {
+    message: "A class repeats for at most 26 weeks — pick an earlier end date",
+  });
 
 const updateClassSchema = classFields
   .extend({
@@ -194,6 +209,7 @@ export async function createClassAction(
     ...readFields(formData),
     businessId: formData.get("businessId"),
     status: formData.get("status"),
+    repeatUntil: (formData.get("repeatUntil") as string) || undefined,
   });
   if (!parsed.success) {
     return { error: parsed.error.issues[0]?.message ?? "Invalid input" };
@@ -225,6 +241,7 @@ export async function createClassAction(
       mapsUrl: d.mapsUrl ?? null,
       allowsStudioMemberships: d.allowsStudioMemberships,
       allowsArtistMemberships: d.allowsArtistMemberships,
+      repeatUntil: d.repeatUntil ?? null,
     });
     // the asks go out once the class they are about exists
     if (people) {
@@ -366,6 +383,59 @@ export async function deleteClassAction(
   revalidatePath(`/business/${parsed.data.businessId}/refunds`);
   revalidatePath(`/business/${parsed.data.businessId}/earnings`);
   return { error: null };
+}
+
+const sessionCallOffSchema = z.object({
+  classId: z.string().uuid(),
+  sessionId: z.string().uuid(),
+  slug: z.string().min(1).max(120),
+});
+
+/** CALL OFF ONE WEEK of a weekly class (13 Oct 2026, the user: one session can
+ *  be cancelled on its own, with call-off refunds). The database decides who may
+ *  and which session may go; this sends the refunds it filed to the rail, as the
+ *  whole-class delete does, so none sits "awaiting the rail" for ever. */
+export async function cancelClassSessionAction(input: unknown): Promise<ClassActionState & { seats?: number; refunds?: number }> {
+  const parsed = sessionCallOffSchema.safeParse(input);
+  if (!parsed.success) return { error: "Invalid session" };
+  const supabase = await requireUser();
+  let done;
+  try {
+    done = await cancelClassSession(supabase, parsed.data.sessionId, "The studio called this session off");
+  } catch (error: unknown) {
+    return { error: error instanceof Error ? error.message : "Could not call it off" };
+  }
+  if (done.refunds > 0) {
+    await sendUnsentRefunds(supabase, { classId: parsed.data.classId }, "The studio called this session off");
+  }
+  revalidatePath(`/c/${parsed.data.slug}`);
+  revalidatePath("/my-classes");
+  revalidatePath("/calendar");
+  return { error: null, seats: done.seats, refunds: done.refunds };
+}
+
+const runLongerSchema = z.object({
+  classId: z.string().uuid(),
+  until: z.string().regex(DATE_RE, "Pick the last date"),
+  slug: z.string().min(1).max(120),
+});
+
+/** RUN LONGER (13 Oct 2026): more weeks after the last session — the owner's,
+ *  at most 26 live sessions, both kept by `add_weekly_sessions` in its words. */
+export async function runLongerAction(input: unknown): Promise<ClassActionState & { added?: number }> {
+  const parsed = runLongerSchema.safeParse(input);
+  if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "Invalid date" };
+  const supabase = await requireUser();
+  let added = 0;
+  try {
+    added = await addWeeklySessions(supabase, parsed.data.classId, parsed.data.until);
+  } catch (error: unknown) {
+    return { error: error instanceof Error ? error.message : "Could not add the weeks" };
+  }
+  revalidatePath(`/c/${parsed.data.slug}`);
+  revalidatePath("/my-classes");
+  revalidatePath("/calendar");
+  return { error: null, added };
 }
 
 const posterSchema = z.object({

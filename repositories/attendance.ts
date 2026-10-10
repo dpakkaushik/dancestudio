@@ -54,17 +54,23 @@ const nameOf = (r: RegisterQueryRow): string =>
 
 export async function findClassRegister(
   supabase: SupabaseClient,
-  classId: string
+  classId: string,
+  /** ONE SESSION'S REGISTER (13 Oct 2026): a weekly class has a seat per week,
+   *  so the register is the session's, not the class's. Null reads them all —
+   *  which for a one-session class is the same thing. */
+  sessionId: string | null = null
 ): Promise<ClassRegister> {
-  const read = (cols: string) =>
-    supabase
+  const read = (cols: string) => {
+    const q = supabase
       .from("class_bookings")
       .select(cols)
-      .eq("class_id", classId)
+      .eq("class_id", classId);
+    return (sessionId ? q.eq("session_id", sessionId) : q)
       .eq("status", "enrolled")
       .is("deleted_at", null)
       .order("created_at", { ascending: true })
       .limit(500);
+  };
   const BASE = "id, user_id, attendee_name, status, created_by, profiles (full_name, profile_photo_path), attendance (id, deleted_at)";
   /* ⚠ `door_paid_at` arrives with 20261002140000; until it is applied the read
      answers "column does not exist", so it falls back to the read without it

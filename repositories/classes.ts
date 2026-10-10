@@ -14,6 +14,8 @@ interface SessionRow {
   id: string;
   starts_at: string;
   ends_at: string;
+  /** a session called off on its own (`cancel_class_session`, 13 Oct 2026) */
+  deleted_at?: string | null;
 }
 
 interface ClassRow {
@@ -91,17 +93,31 @@ const venueOf = (row: PublicClassRow) => ({
 });
 
 /* no `title` in the read: the label is derived from style and level (types/class.ts) */
-const SESSION_EMBED = "class_sessions (id, starts_at, ends_at)";
+/* ⚠ `deleted_at` is read so a session called off ON ITS OWN (a weekly class,
+   13 Oct 2026) drops out here — before that date a class's sessions were only
+   ever deleted with the class, so nothing needed to look */
+const SESSION_EMBED = "class_sessions (id, starts_at, ends_at, deleted_at)";
 const CLASS_COLUMNS =
   `id, business_id, share_slug, style, level, room, room_id, poster, poster_path, price_inr, capacity, status, venue_business_id, venue_status, lat, lng, maps_url, allows_studio_memberships, allows_artist_memberships, ${SESSION_EMBED}`;
 /** the same columns with the session INNER-joined, so a read can filter on when
  *  the class actually runs — see `findPublishedClasses` (30 Sep 2026) */
-const CLASS_COLUMNS_DATED = CLASS_COLUMNS.replace(SESSION_EMBED, "class_sessions!inner (id, starts_at, ends_at)");
+const CLASS_COLUMNS_DATED = CLASS_COLUMNS.replace(SESSION_EMBED, "class_sessions!inner (id, starts_at, ends_at, deleted_at)");
 
+/** every live session, soonest first */
+const liveSessions = (rows: SessionRow[] | null) =>
+  [...(rows ?? [])]
+    .filter((s) => !s.deleted_at)
+    .sort((a, b) => a.starts_at.localeCompare(b.starts_at))
+    .map((s) => ({ id: s.id, startsAt: s.starts_at, endsAt: s.ends_at }));
+
+/** THE SESSION A CARD IS ABOUT (13 Oct 2026, repeating classes): the first one
+ *  that has not ended, else the last — so a weekly class reads as its next week
+ *  while there is one, and as over only once its last week has run. For a class
+ *  with one session this is that session, exactly as before. */
 const firstSession = (rows: SessionRow[] | null) => {
-  const live = [...(rows ?? [])].sort((a, b) => a.starts_at.localeCompare(b.starts_at));
-  const s = live[0];
-  return s ? { id: s.id, startsAt: s.starts_at, endsAt: s.ends_at } : null;
+  const live = liveSessions(rows);
+  const now = Date.now();
+  return live.find((s) => Date.parse(s.endsAt) > now) ?? live[live.length - 1] ?? null;
 };
 
 const toClass = (row: ClassRow): DanceClass => ({
@@ -121,6 +137,7 @@ const toClass = (row: ClassRow): DanceClass => ({
   capacity: row.capacity,
   status: row.status,
   session: firstSession(row.class_sessions),
+  sessions: liveSessions(row.class_sessions),
   venueBusinessId: row.venue_business_id ?? null,
   venueStatus: row.venue_status ?? null,
   lat: row.lat ?? null,
@@ -155,6 +172,10 @@ export interface CreateClassInput {
   /** whose pass may pay for a seat here (19 Sep 2026) — see the note on the write */
   allowsStudioMemberships: boolean;
   allowsArtistMemberships: boolean;
+  /** A WEEKLY CLASS (13 Oct 2026): repeat the first session every week until
+   *  this IST date (YYYY-MM-DD), at most 26 weeks — one class, many sessions,
+   *  made in ONE transaction by `create_class_series`. Null is a single session. */
+  repeatUntil?: string | null;
 }
 
 /** Atomic create: class + first session via the create_class_with_session RPC.
@@ -164,7 +185,11 @@ export async function createClassWithSession(
   supabase: SupabaseClient,
   input: CreateClassInput
 ): Promise<string> {
-  const { data, error } = await supabase.rpc("create_class_with_session", {
+  /* a weekly class goes through `create_class_series`, which is the same
+     creation door and then the weeks after it, so a series is never half-made */
+  const series = !!input.repeatUntil;
+  const { data, error } = await supabase.rpc(series ? "create_class_series" : "create_class_with_session", {
+    ...(series ? { p_repeat_until: input.repeatUntil } : {}),
     p_business_id: input.businessId,
     /* the column and the RPC argument still exist (Rule 4 — the overload lesson);
        what goes in is the label, never a typed name */
@@ -601,6 +626,36 @@ export async function softDeleteClass(
     refunds: Number(calledOff?.refunds ?? 0),
     amountInr: Number(calledOff?.amount_inr ?? 0),
   };
+}
+
+/** RUN LONGER (13 Oct 2026): add a week at a time after the class's last live
+ *  session, until `until` (an IST date, YYYY-MM-DD). The owner's alone, at most
+ *  26 live sessions — both refused by `add_weekly_sessions` in its own words,
+ *  passed through unchanged. Returns how many sessions were added. */
+export async function addWeeklySessions(
+  supabase: SupabaseClient,
+  classId: string,
+  until: string
+): Promise<number> {
+  const { data, error } = await supabase.rpc("add_weekly_sessions", { p_class_id: classId, p_until: until });
+  if (error) throw new Error(error.message);
+  return Number(data ?? 0);
+}
+
+/** CALL OFF ONE WEEK (13 Oct 2026): every seat on that one session cancelled,
+ *  every paid one refunded (filed `pending`, the same call-off rule a whole class
+ *  gets), the people holding one told, and the session soft-deleted. The owner's
+ *  alone; the database refuses a session that is over and the last one still to
+ *  come ("delete the class to call it off"), in words passed through unchanged. */
+export async function cancelClassSession(
+  supabase: SupabaseClient,
+  sessionId: string,
+  reason: string
+): Promise<ClassCallOff> {
+  const { data, error } = await supabase.rpc("cancel_class_session", { p_session_id: sessionId, p_reason: reason });
+  if (error) throw new Error(error.message);
+  const d = (data ?? {}) as { seats?: number; refunds?: number; amount_inr?: number };
+  return { seats: Number(d.seats ?? 0), refunds: Number(d.refunds ?? 0), amountInr: Number(d.amount_inr ?? 0) };
 }
 
 /** The styles each business teaches, off its PUBLISHED classes — what Discover's

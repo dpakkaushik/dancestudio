@@ -76,8 +76,13 @@ export interface DanceClass {
   priceInr: number;
   capacity: number;
   status: ClassStatus;
-  /** The next (or only) dated occurrence — null only for legacy rows. */
+  /** The next (or only) dated occurrence — null only for legacy rows. For a
+   *  WEEKLY class (13 Oct 2026) it is the first live session that has not ended,
+   *  else the last one, so a series is "over" only once its last week has run. */
   session: ClassSession | null;
+  /** EVERY live session, soonest first (13 Oct 2026, repeating classes). One for
+   *  an ordinary class; optional so a hand-built class needs no change. */
+  sessions?: ClassSession[];
   /** an artist's class held in a STUDIO's room: that studio, and its answer (18 Sep 2026) */
   venueBusinessId: string | null;
   venueStatus: VenueStatus | null;
