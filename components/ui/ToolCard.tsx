@@ -126,6 +126,7 @@ export function ToolFace({
   return (
     <span
       aria-hidden="true"
+      data-tc="face"
       style={{
         width: size,
         height: size,
@@ -202,15 +203,15 @@ export function ToolHead({
       <span style={{ flex: 1, minWidth: 0, display: "block" }}>
         <span style={{ display: "block", fontSize: 9.5, fontWeight: 900, letterSpacing: 0.8, textTransform: "uppercase", color: eyebrowTint ?? tint, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{eyebrow}</span>
         <span style={{ display: "flex", alignItems: "center", gap: 5, minWidth: 0, marginTop: 2 }}>
-          <span style={{ minWidth: 0, fontFamily: DOS_DISPLAY, fontSize: 18, fontWeight: 800, letterSpacing: -0.4, lineHeight: 1.18, color: INK, display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden", overflowWrap: "anywhere" }}>{name}</span>
+          <span data-tc="name" style={{ minWidth: 0, fontFamily: DOS_DISPLAY, fontSize: 18, fontWeight: 800, letterSpacing: -0.4, lineHeight: 1.18, color: INK, display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden", overflowWrap: "anywhere" }}>{name}</span>
           {afterName}
         </span>
-        {sub ? <span style={{ display: "block", fontSize: 11.5, color: SUB, marginTop: 3, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{sub}</span> : null}
+        {sub ? <span data-tc="sub" style={{ display: "block", fontSize: 11.5, color: SUB, marginTop: 3, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{sub}</span> : null}
       </span>
     </>
   );
   return (
-    <div style={{ display: "flex", alignItems: "center", gap: 13, padding: "14px 14px 13px", background: `linear-gradient(135deg, ${tint}24, ${tint}08 62%, transparent)` }}>
+    <div data-tc="head" style={{ display: "flex", alignItems: "center", gap: 13, padding: "14px 14px 13px", background: `linear-gradient(135deg, ${tint}24, ${tint}08 62%, transparent)` }}>
       {href ? (
         <Link href={href} aria-label={hrefLabel} style={{ flex: 1, minWidth: 0, display: "flex", alignItems: "center", gap: 13, color: INK, textDecoration: "none", pointerEvents: "auto" }}>
           {who}
@@ -227,7 +228,7 @@ export function ToolHead({
 
 /** BAND 2's container — the tool's own fields, under a hairline from the head */
 export function ToolBody({ children, style }: { children: ReactNode; style?: CSSProperties }) {
-  return <div style={{ padding: "12px 14px", borderTop: "1.5px solid var(--el)", ...style }}>{children}</div>;
+  return <div data-tc="body" style={{ padding: "12px 14px", borderTop: "1.5px solid var(--el)", ...style }}>{children}</div>;
 }
 
 /** the OBJECT the card is about, when it is not the profile — a pass's name, a
@@ -237,7 +238,7 @@ export function ToolTitle({ kicker, children, after, size = 16 }: { kicker?: Rea
     <div style={{ display: "flex", alignItems: "flex-start", gap: 10 }}>
       <div style={{ flex: 1, minWidth: 0 }}>
         {kicker ? <div style={{ fontSize: 9, fontWeight: 900, letterSpacing: 0.8, color: MUTED, textTransform: "uppercase", marginBottom: 3 }}>{kicker}</div> : null}
-        <div style={{ fontSize: size, fontWeight: 900, letterSpacing: size > 18 ? -0.5 : -0.25, lineHeight: size > 18 ? 1.15 : 1.25, overflowWrap: "anywhere" }}>{children}</div>
+        <div data-tc="title" style={{ fontSize: size, fontWeight: 900, letterSpacing: size > 18 ? -0.5 : -0.25, lineHeight: size > 18 ? 1.15 : 1.25, overflowWrap: "anywhere" }}>{children}</div>
       </div>
       {after}
     </div>
@@ -256,7 +257,7 @@ export interface ToolFact {
 export function ToolFacts({ items, tint, style }: { items: ToolFact[]; tint: string; style?: CSSProperties }) {
   if (items.length === 0) return null;
   return (
-    <div style={{ display: "grid", gridTemplateColumns: `repeat(${items.length}, minmax(0, 1fr))`, gap: 6, ...style }}>
+    <div data-tc="facts" style={{ display: "grid", gridTemplateColumns: `repeat(${items.length}, minmax(0, 1fr))`, gap: 6, ...style }}>
       {items.map((f) => (
         <div key={f.label} style={{ borderRadius: 12, background: `${tint}0f`, border: "1.5px solid var(--el)", padding: "8px 6px 7px", textAlign: "center", minWidth: 0 }}>
           <div data-testid={f.testId} style={{ fontSize: 15.5, fontWeight: 900, lineHeight: 1.1, color: f.tint ?? INK, fontVariantNumeric: "tabular-nums", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
@@ -276,7 +277,7 @@ export function ToolLive({ children, style }: { children: ReactNode; style?: CSS
 
 /** BAND 3 — the buttons, on their own bar */
 export function ToolActions({ children }: { children: ReactNode }) {
-  return <div style={{ display: "flex", flexWrap: "wrap", gap: 8, padding: "10px 12px 12px", borderTop: "1.5px solid var(--el)", pointerEvents: "auto" }}>{children}</div>;
+  return <div data-tc="actions" style={{ display: "flex", flexWrap: "wrap", gap: 8, padding: "10px 12px 12px", borderTop: "1.5px solid var(--el)", pointerEvents: "auto" }}>{children}</div>;
 }
 
 /** THE CARD — the three bands in one frame. `href` stretches one link over it. */
@@ -300,6 +301,7 @@ export function ToolCard({
   return (
     <div
       data-testid={testId}
+      data-tc="card"
       style={{
         position: "relative",
         background: "var(--card)",

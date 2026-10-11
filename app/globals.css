@@ -541,3 +541,26 @@ a:focus-visible:not([data-slot]) {
     animation: none !important;
   }
 }
+
+/* ── LIST VIEW (12 Oct 2026) — the same cards, folded to a row. The chrome stamps
+   `data-dos-view="list"` on #dos-main on a tool's list page when the person has
+   chosen it (features/shell/viewMode.ts); `ToolCard` and `ClassTile` carry the
+   `data-tc` marks. !important because the cards are styled inline. ── */
+#dos-main[data-dos-view="list"] [data-tc="card"],
+#dos-main[data-dos-view="list"] [data-card="session"] { margin-bottom: 8px !important; border-radius: 16px !important; }
+#dos-main[data-dos-view="list"] [data-tc="head"] { padding: 9px 12px !important; gap: 10px !important; background: transparent !important; }
+#dos-main[data-dos-view="list"] [data-tc="head"] a { gap: 10px !important; }
+#dos-main[data-dos-view="list"] [data-tc="face"] { width: 36px !important; height: 36px !important; border-radius: 11px !important; font-size: 12px !important; }
+#dos-main[data-dos-view="list"] [data-tc="name"] { font-size: 15px !important; -webkit-line-clamp: 1 !important; }
+#dos-main[data-dos-view="list"] [data-tc="sub"] { display: none !important; }
+#dos-main[data-dos-view="list"] [data-tc="facts"] { display: none !important; }
+#dos-main[data-dos-view="list"] [data-tc="body"] { padding: 7px 12px 9px !important; }
+#dos-main[data-dos-view="list"] [data-tc="body"]:has(> [data-tc="facts"]:only-child) { display: none !important; }
+#dos-main[data-dos-view="list"] [data-tc="title"] { font-size: 14px !important; letter-spacing: -0.2px !important; }
+#dos-main[data-dos-view="list"] [data-tc="actions"] { padding: 6px 10px 9px !important; gap: 6px !important; }
+#dos-main[data-dos-view="list"] [data-tc="actions"] > a,
+#dos-main[data-dos-view="list"] [data-tc="actions"] > button { padding-top: 6px !important; padding-bottom: 6px !important; font-size: 11px !important; }
+#dos-main[data-dos-view="list"] [data-tc="classhead"],
+#dos-main[data-dos-view="list"] [data-tc="seatrow"] [data-testid="class-seat-bar"] { display: none !important; }
+#dos-main[data-dos-view="list"] [data-testid="class-title"] { font-size: 18px !important; }
+#dos-main[data-dos-view="list"] [data-tc="seatrow"] { margin-top: 6px !important; justify-content: flex-end; }

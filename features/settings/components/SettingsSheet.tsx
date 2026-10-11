@@ -1,11 +1,20 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState, useTransition, type CSSProperties, type ReactNode } from "react";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { requestAccountDeletionAction } from "@/features/auth/server-actions/auth";
-import { DOS_UI, INK, MUTED, RED, SUB } from "@/lib/design/tokens";
+import { DISC_RADIUS, DOS_DISPLAY, DOS_UI, INK, MUTED, RED, SUB } from "@/lib/design/tokens";
+
+const initialsOf = (name: string) =>
+  name
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((w) => w[0]!.toUpperCase())
+    .join("") || "·";
 import type { ArtistPlan } from "@/repositories/plans";
 import type { Profile, ProfileRole } from "@/types/profile";
 import type { Business } from "@/types/business";
@@ -156,7 +165,11 @@ export function SettingsSheet({
   isAdmin = false,
   inline = false,
   onBack,
+  photo = null,
 }: {
+  /** the picture of the profile these settings are for (12 Oct 2026) — the
+   *  switcher row's own, so the head and the chip show one face */
+  photo?: string | null;
   open: boolean;
   /** ⚠ DRAWN INSIDE THE PROFILE DRAWER (12 Oct 2026, the user: "settings page
    *  open should be smoother now since it has moved now can change the way we
@@ -249,13 +262,26 @@ export function SettingsSheet({
         ) : (
           <div style={{ width: 40, height: 4, borderRadius: 2, background: "var(--el)", margin: "0 auto 12px" }} />
         )}
-        <div style={{ borderRadius: 18, padding: "14px 16px 13px", background: "linear-gradient(135deg,#64748B,#0EA5E9)", color: "#fff", marginBottom: 4 }}>
-          <div style={{ fontSize: 19, fontWeight: 900 }}>Settings</div>
-          {/* ⚠ WHOSE (21 Sep 2026). While this sheet could only ever be your own
-              it needed no label; now that the gear opens the settings of the
-              profile you are IN, a sheet that does not say which one is a sheet
-              you can change the wrong thing from. */}
-          {whose ? <div style={{ fontSize: 11, opacity: 0.9, marginTop: 2 }}>{whose}</div> : null}
+        {/* ⚠ THE HEADING, RE-CUT (12 Oct 2026, the user: "settings heading needs a
+            revamp and can drop the blue background. name and profile pic in
+            settings page as well on top right"). No coloured slab: the word in
+            the display face on the sheet's own ground, a hairline under it, and
+            WHOSE settings these are — the name and the picture — at the right.
+            ⚠ WHOSE (21 Sep 2026) is still the point: the gear opens the settings
+            of the profile you are IN, so the sheet must say which one. */}
+        <div data-testid="settings-head" style={{ display: "flex", alignItems: "center", gap: 12, padding: "4px 2px 14px", marginBottom: 4, borderBottom: "1.5px solid var(--el)" }}>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ fontSize: 9.5, fontWeight: 900, letterSpacing: 1.4, color: MUTED, textTransform: "uppercase" }}>Your settings</div>
+            <h2 style={{ margin: "2px 0 0", fontFamily: DOS_DISPLAY, fontSize: 26, fontWeight: 800, letterSpacing: -0.7, lineHeight: 1.1, color: INK }}>Settings</h2>
+          </div>
+          {whose ? (
+            <div data-testid="settings-whose" style={{ display: "flex", alignItems: "center", gap: 9, minWidth: 0, maxWidth: "55%" }}>
+              <span style={{ minWidth: 0, textAlign: "right", fontSize: 13, fontWeight: 800, lineHeight: 1.2, color: INK, overflow: "hidden", textOverflow: "ellipsis", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical" }}>{whose}</span>
+              <span aria-hidden="true" style={{ width: 44, height: 44, borderRadius: 44 * DISC_RADIUS, flexShrink: 0, overflow: "hidden", position: "relative", display: "inline-flex", alignItems: "center", justifyContent: "center", background: "var(--el)", color: INK, fontSize: 15, fontWeight: 900, boxShadow: "0 0 0 2px var(--solid), 0 0 0 3.5px var(--el)" }}>
+                {photo ? <Image src={photo} alt="" fill sizes="44px" style={{ objectFit: "cover" }} /> : initialsOf(whose)}
+              </span>
+            </div>
+          ) : null}
         </div>
 
         {/* ══ A STUDIO'S OWN SETTINGS (21 Sep 2026, the user: "Studio-Invoices

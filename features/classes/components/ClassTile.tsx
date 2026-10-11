@@ -411,7 +411,7 @@ export function ClassTile({ danceClass: c, filled = 0, artist, isToday = false, 
 
       <div style={{ position: "relative", zIndex: 1, pointerEvents: href ? "none" : "auto" }}>
         {/* BAND 1 — the two profiles, the maker's shaded */}
-        <div data-testid="class-head" style={{ display: "flex", alignItems: "stretch" }}>
+        <div data-testid="class-head" data-tc="classhead" style={{ display: "flex", alignItems: "stretch" }}>
           <Half
             side="artist"
             tint={bc}
@@ -462,7 +462,7 @@ export function ClassTile({ danceClass: c, filled = 0, artist, isToday = false, 
               user: "2/20 Booked · 18 Spots Left on the bar"): how full is the
               fill, the words say it in numbers, what it costs closes the line.
               A status (Draft / Completed) rides on the bar when it has one. */}
-          <div style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 10, minWidth: 0 }}>
+          <div data-tc="seatrow" style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 10, minWidth: 0 }}>
             <SeatBar taken={filled} cap={c.capacity} tint={bc} note={note} leftWord={finished === "Closed" ? "Never published" : finished === "Completed" ? "Class over" : undefined} />
             {/* ₹300 is the number you compare; "per session" belongs on the
                 page's booking bar, not beside every figure (8127-8132) */}

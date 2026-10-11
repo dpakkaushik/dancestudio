@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { Inter_Tight, Sora } from "next/font/google";
 import "./globals.css";
+import { Haptics } from "@/components/ui/Haptics";
 
 const sora = Sora({ subsets: ["latin"], variable: "--font-sora" });
 const interTight = Inter_Tight({ subsets: ["latin"], variable: "--font-inter-tight" });
@@ -75,6 +76,7 @@ export default function RootLayout({
           </span>
         </div>
         <script dangerouslySetInnerHTML={{ __html: BOOT_JS }} />
+        <Haptics />
         {children}
       </body>
     </html>

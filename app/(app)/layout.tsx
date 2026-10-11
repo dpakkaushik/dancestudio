@@ -9,6 +9,7 @@ import { findMyArtistPlan } from "@/repositories/plans";
 import { findProfileById } from "@/repositories/profiles";
 import { findMyMemberships, runsTheBusiness } from "@/repositories/businesses";
 import { findMyLayout } from "@/repositories/layout";
+import { viewsOf } from "@/features/shell/viewMode";
 import { crewTilesFor, studioTilesFor, tilesFor } from "@/features/home/tiles";
 import { arrangeTiles, toolsLayoutKey } from "@/features/home/toolOrder";
 
@@ -129,7 +130,7 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
     : null;
 
   return (
-    <AppChrome unread={adminOnly ? 0 : unread} adminOnly={adminOnly} switcher={switcher} settings={settings}>
+    <AppChrome unread={adminOnly ? 0 : unread} adminOnly={adminOnly} switcher={switcher} settings={settings} views={viewsOf(layout)}>
       {children}
     </AppChrome>
   );

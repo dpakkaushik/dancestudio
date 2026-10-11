@@ -15,7 +15,7 @@ import { createBusinessAction, type BusinessActionState } from "@/features/busin
 import { centreOf } from "@/repositories/cities";
 import { DosStyleMultiPicker } from "@/components/ui/DosStyleKit";
 import { ToolActions, ToolBody, ToolCard, ToolChip, ToolFacts, ToolHead, ToolLive, toolBtn } from "@/components/ui/ToolCard";
-import { DOS_DISPLAY, DOS_UI, INK, LILAC, MUTED, SUB } from "@/lib/design/tokens";
+import { DOS_UI, INK, LILAC, MUTED, SUB, TAB_TITLE } from "@/lib/design/tokens";
 import { FORM_TITLE } from "@/components/ui/formTitle";
 
 import { useCloseOnBack } from "@/lib/hooks/useCloseOnBack";
@@ -24,7 +24,7 @@ import { priceWords, type PlanCatalogRow } from "@/repositories/plans";
 import type { StudioSubscriptionState } from "@/repositories/subscriptions";
 import type { MyMembership } from "@/repositories/businesses";
 import type { LearnedFrom } from "@/repositories/classBookings";
-import { DOS_TOOLS, SHEET_ANIMATION, dosToolPaint } from "./biz-kit";
+import { DOS_TOOLS, SHEET_ANIMATION } from "./biz-kit";
 import { InviteHeadButtons, TeamInvites, type AnsweredInviteRow, type TeamInviteRow } from "@/features/inbox/components/JoinInvites";
 import type { AskKind } from "@/repositories/askSettings";
 
@@ -488,40 +488,10 @@ export function BusinessHub({
           sections
           top={
         <>
-        <div
-          style={{
-            borderRadius: 22,
-            padding: "15px 17px 14px",
-            marginBottom: 0,
-            position: "relative",
-            overflow: "hidden",
-            color: "#fff",
-            background: dosToolPaint(ACCENT),
-          }}
-        >
-          <div
-            style={{
-              position: "absolute",
-              right: -28,
-              top: -32,
-              width: 130,
-              height: 130,
-              borderRadius: 65,
-              background: "rgba(255,255,255,.13)",
-            }}
-          />
+        {/* the tool's hue, not a colour bar (12 Oct 2026) — `DeskHero`'s note */}
+        <div data-testid="desk-hero" style={{ margin: "-14px -14px 0", padding: "16px 16px 6px", borderRadius: "21px 21px 0 0", position: "relative", color: INK, background: `linear-gradient(180deg, ${ACCENT}66 0%, ${ACCENT}26 60%, transparent 100%)` }}>
           {/* the page's own `<h1>` — the chrome no longer prints a drill page's name (28 Sep 2026) */}
-          <h1
-            style={{
-              margin: 0,
-              fontSize: 21,
-              fontWeight: 800,
-              letterSpacing: -0.5,
-              position: "relative",
-              fontFamily: DOS_DISPLAY,
-              lineHeight: 1.18,
-            }}
-          >
+          <h1 style={{ ...TAB_TITLE, color: INK, position: "relative" }}>
             {DOS_TOOLS.studios.name}
           </h1>
           {/* the "team" invite switch, moved here from the Inbox with the

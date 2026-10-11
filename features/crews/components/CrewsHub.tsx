@@ -1,11 +1,11 @@
 import Link from "next/link";
-import { DOS_DISPLAY, DOS_UI, INK, LILAC, SUB } from "@/lib/design/tokens";
+import { DOS_UI, INK, LILAC, SUB, TAB_TITLE } from "@/lib/design/tokens";
 import { CREW_TINT, type CrewSummary } from "@/types/crew";
 import { DeskAddButton } from "@/features/settings/components/settings-kit";
 import { SegmentedPanels } from "@/features/shell/components/SegmentedNav";
 import { DeskBody, DeskTop } from "@/components/ui/DeskSections";
 import { ToolActions, ToolBody, ToolCard, ToolChip, ToolFacts, ToolHead, toolBtn } from "@/components/ui/ToolCard";
-import { CrewI, dosToolPaint } from "./crew-kit";
+import { CrewI } from "./crew-kit";
 import { ReclaimCrewButton } from "./ReclaimCrewButton";
 import { CrewInvites, InviteHeadButtons, type CrewInviteRow } from "@/features/inbox/components/JoinInvites";
 import type { AnsweredInviteRow } from "@/features/inbox/inviteRows";
@@ -164,10 +164,9 @@ export function CrewsHub({
   const hasCrew = led.length > 0 || member.length > 0 || asks.length > 0;
   /* the heading — the same paint, and the same word, as the tile you pressed */
   const hero = (
-    <div style={{ borderRadius: 22, padding: "15px 17px 14px", marginBottom: 0, position: "relative", overflow: "hidden", color: "#fff", background: dosToolPaint(accent) }}>
-      <div style={{ position: "absolute", right: -28, top: -32, width: 130, height: 130, borderRadius: 65, background: "rgba(255,255,255,.13)" }} />
+    <div data-testid="desk-hero" style={{ margin: "-14px -14px 0", padding: "16px 16px 6px", borderRadius: "21px 21px 0 0", position: "relative", color: INK, background: `linear-gradient(180deg, ${accent}66 0%, ${accent}26 60%, transparent 100%)` }}>
       {/* the page's own `<h1>` — the chrome no longer prints a drill page's name (28 Sep 2026) */}
-      <h1 style={{ margin: 0, fontSize: 21, fontWeight: 800, letterSpacing: -0.5, position: "relative", fontFamily: DOS_DISPLAY, lineHeight: 1.18 }}>Crews</h1>
+      <h1 style={{ ...TAB_TITLE, color: INK, position: "relative" }}>Crews</h1>
       {/* the "crew" invite switch, moved here from the Inbox with the asks (11 Oct
           2026), and the asks already answered — the top-right pair Classes wears */}
       <InviteHeadButtons

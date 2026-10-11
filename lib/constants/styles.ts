@@ -11,36 +11,45 @@
  * went (counted first), so nothing a person has saved names a style that is no
  * longer here. The database holds styles as free text, so nothing there moved.
  */
+/* ⚠ A RICH PALETTE, NOT THE PROTOTYPE'S NEON (12 Oct 2026, the user: "can we use
+   more subtle colors for the dance styles instead of the neon ones to give it a
+   rich and premium look in different colors for every style though. make it
+   look rich and luxurious"). Every style keeps a colour of its own, but they
+   are jewel and earth tones now — garnet, amethyst, jade, lapis, saffron rust,
+   oxblood, antique gold — deep enough that white reads on every one of them, and
+   still apart from each other within a family. Each family keeps a register:
+   the classical forms are jewels, the folk forms are spice and earth, street is
+   slate and moss, the studio styles are ink and dusk. */
 export const DOS_STYLE_REG: ReadonlyArray<readonly [string, string]> = [
-  /* Indian classical */
-  ["Bharatanatyam", "#DA545B"], ["Kathak", "#A87DDA"], ["Kathakali", "#57A05F"],
-  ["Kuchipudi", "#BF68D9"], ["Manipuri", "#BC0C3C"], ["Mohiniyattam", "#00946F"],
-  ["Odissi", "#FF42BC"], ["Sattriya", "#BC864B"], ["Semi-classical", "#E5499D"],
-  /* Indian folk */
-  ["Bhangra", "#F06705"], ["Garba", "#CD3300"], ["Dandiya Raas", "#AF3020"],
-  ["Ghoomar", "#974811"], ["Kalbelia", "#C76F43"], ["Lavani", "#AE4072"],
-  ["Bihu", "#50722C"], ["Giddha", "#E46696"], ["Sufi Whirling", "#4563F4"],
+  /* Indian classical — jewels */
+  ["Bharatanatyam", "#9E3B45"], ["Kathak", "#6B4E8A"], ["Kathakali", "#3E6B4E"],
+  ["Kuchipudi", "#8A4F7D"], ["Manipuri", "#7A2638"], ["Mohiniyattam", "#2E6E62"],
+  ["Odissi", "#A8577A"], ["Sattriya", "#8C6A3E"], ["Semi-classical", "#9C5A6E"],
+  /* Indian folk — spice and earth */
+  ["Bhangra", "#B5652E"], ["Garba", "#A2452C"], ["Dandiya Raas", "#8E3A2F"],
+  ["Ghoomar", "#7A4A2A"], ["Kalbelia", "#9A5F45"], ["Lavani", "#8E3F5F"],
+  ["Bihu", "#5A6B34"], ["Giddha", "#B0697A"], ["Sufi Whirling", "#3F5A8C"],
   /* Bollywood */
-  ["Bollywood", "#D4766B"], ["Bolly-Hop", "#B5367E"],
-  /* Street */
-  ["Hip-Hop", "#0065A2"], ["Breaking", "#1A6C3A"], ["Popping", "#009AF6"],
-  ["Locking", "#A58918"], ["House", "#00A855"], ["Waacking", "#808CD6"],
-  ["Krump", "#C53562"],
+  ["Bollywood", "#B0605A"], ["Bolly-Hop", "#8B3D6B"],
+  /* Street — slate, moss, steel */
+  ["Hip-Hop", "#2F4F6E"], ["Breaking", "#36593F"], ["Popping", "#3D6E8C"],
+  ["Locking", "#8A7536"], ["House", "#2F7058"], ["Waacking", "#5E6398"],
+  ["Krump", "#93364D"],
   /* Global street */
-  ["Dancehall", "#5D7000"], ["Afrobeats", "#625499"], ["Reggaeton", "#F4104C"],
-  ["K-pop", "#534FC0"],
+  ["Dancehall", "#5E6B2A"], ["Afrobeats", "#5B4C82"], ["Reggaeton", "#A63A4C"],
+  ["K-pop", "#4A4E95"],
   /* Latin */
-  ["Salsa", "#CB687B"], ["Bachata", "#FE4F7A"], ["Samba", "#CB8000"],
+  ["Salsa", "#A85A60"], ["Bachata", "#A34F68"], ["Samba", "#A8762E"],
   /* Ballroom */
-  ["Ballroom", "#9570EA"], ["Tango", "#FF158A"],
-  /* Studio */
-  ["Contemporary", "#009ECE"], ["Modern", "#833EAC"], ["Jazz", "#966200"],
-  ["Jazz Funk", "#6C5E12"], ["Ballet", "#8D447B"], ["Tap", "#CB0020"],
-  ["Lyrical", "#005FC3"], ["Commercial", "#8A50A2"], ["Heels", "#9F3C51"],
+  ["Ballroom", "#6E5A9A"], ["Tango", "#8C2F4E"],
+  /* Studio — ink and dusk */
+  ["Contemporary", "#3A6A7A"], ["Modern", "#6A4A80"], ["Jazz", "#8A6A34"],
+  ["Jazz Funk", "#6B6230"], ["Ballet", "#94657C"], ["Tap", "#7E2E35"],
+  ["Lyrical", "#3E5E8E"], ["Commercial", "#75507E"], ["Heels", "#8E4252"],
   /* World */
-  ["Flamenco", "#B40096"], ["Belly Dance", "#C079B4"],
+  ["Flamenco", "#9A2F5A"], ["Belly Dance", "#946488"],
   /* Fitness & open */
-  ["Zumba", "#869A00"], ["Freestyle", "#6E88FF"], ["Open format", "#A03992"],
+  ["Zumba", "#6F7E2E"], ["Freestyle", "#4F6E9E"], ["Open format", "#7E4A7A"],
 ] as const;
 
 export const DOS_STYLE_NAMES: readonly string[] = DOS_STYLE_REG.map(([name]) => name);
@@ -49,7 +58,7 @@ const STYLE_COLOR_BY_LABEL: Record<string, string> = Object.fromEntries(DOS_STYL
 
 /** A style's colour — ask the registry, never a copy on the record (prototype line 1684). */
 export const dosStyleColor = (style: string): string =>
-  STYLE_COLOR_BY_LABEL[style] ?? "#6E88FF";
+  STYLE_COLOR_BY_LABEL[style] ?? "#4F6E9E";
 
 /** Class levels — prototype S_classform LEVELS (DanceOSApp.jsx:15125-15126). */
 export const DOS_LEVELS = [

@@ -787,7 +787,11 @@ export function ClassDetail({
           card's own components, so the page and the card cannot describe one
           class two ways. ── */}
       <div style={{ padding: "0 16px 10px", position: "relative", zIndex: 1, background: "var(--bg)" }}>
-        <div style={{ height: 1, background: "var(--el)", margin: "16px 0 18px" }} />
+        {/* THE LINE UNDER THE POSTER IS A SQUIRCLE EDGE (12 Oct 2026, the user: "the
+            line between them … needs to be squircle") — the top bar's own bottom
+            edge turned over: a 1.5px line whose ends curve away at 26px, in place
+            of the flat hairline. */}
+        <div aria-hidden="true" data-testid="class-poster-edge" style={{ height: 26, margin: "16px -4px -8px", borderTop: "1.5px solid var(--el)", borderLeft: "1.5px solid var(--el)", borderRight: "1.5px solid var(--el)", borderRadius: "26px 26px 0 0" }} />
         <div
           data-testid="class-page-card"
           style={{

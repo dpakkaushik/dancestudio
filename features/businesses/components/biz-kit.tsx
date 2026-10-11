@@ -1,5 +1,5 @@
 import type { CSSProperties, ReactNode } from "react";
-import { DOS_DISPLAY } from "@/lib/design/tokens";
+import { INK, TAB_TITLE } from "@/lib/design/tokens";
 import { dosToolPaint } from "@/lib/format/styleInk";
 
 /** The business desks' shared chrome, lifted from the prototype's BizShell and
@@ -199,42 +199,33 @@ export const SheetHandle = () => (
  *  the pages whose only heading it is. */
 export function DeskHero({ tool, margin = "12px 0 0", as = "div" }: { tool: DosToolKey; margin?: string; as?: "div" | "h1" }) {
   const T = DOS_TOOLS[tool];
-  const title: CSSProperties = {
-    margin: 0,
-    fontSize: 21,
-    fontWeight: 800,
-    letterSpacing: -0.5,
-    position: "relative",
-    fontFamily: DOS_DISPLAY,
-    lineHeight: 1.18,
-  };
+  /* ⚠ NO COLOUR BAR (12 Oct 2026, the user: "from all tool page headings use
+     the heading font style used for Discover and inbox in same size and remove
+     the color bar behind heading and replace it with the color hue how its done
+     on discover"). The title is `TAB_TITLE` in ink — Discover's and the Inbox's
+     own — and the tool's colour is a HUE washing down from the top of the panel
+     the heading stands in, exactly `TopPanel`'s tint. The negative margins reach
+     the panel's 14px padding so the wash starts at its rounded top edge; only
+     the caller's BOTTOM margin is kept. */
+  const parts = margin.trim().split(/\s+/);
+  const bottom = parts.length >= 3 ? parts[2] : parts.length === 2 ? parts[0] : parts[0];
+  const title: CSSProperties = { ...TAB_TITLE, color: INK, position: "relative" };
   return (
     <div
+      data-testid="desk-hero"
       style={{
-        margin,
-        borderRadius: 22,
-        padding: "15px 17px 14px",
-        color: "#fff",
+        margin: `-14px -14px ${bottom}`,
+        borderRadius: "21px 21px 0 0",
+        padding: "16px 16px 6px",
         position: "relative",
-        overflow: "hidden",
-        background: dosToolPaint(T.c),
+        background: `linear-gradient(180deg, ${T.c}66 0%, ${T.c}26 60%, transparent 100%)`,
       }}
     >
-      <div
-        style={{
-          position: "absolute",
-          right: -28,
-          top: -32,
-          width: 130,
-          height: 130,
-          borderRadius: 65,
-          background: "rgba(255,255,255,.13)",
-        }}
-      />
       {as === "h1" ? <h1 style={title}>{T.name}</h1> : <div style={title}>{T.name}</div>}
     </div>
   );
 }
+
 
 /** The canonical toast (2977-2982). "The toast used to be var(--el) — 13% white
  *  laid over the page, so whatever row it landed on read straight through the

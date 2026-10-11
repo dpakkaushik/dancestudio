@@ -32,9 +32,9 @@ export const HEAD_BTN: CSSProperties = {
   width: 38,
   height: 38,
   borderRadius: 19,
-  border: "none",
-  background: "rgba(255,255,255,.22)",
-  color: "#fff",
+  border: "1.5px solid var(--chip-line)",
+  background: "var(--chip-bg)",
+  color: "var(--text)",
   display: "inline-flex",
   alignItems: "center",
   justifyContent: "center",
@@ -69,7 +69,7 @@ export function AnsweredButton({ count, testId, label, onClick }: { count: numbe
     <button type="button" aria-label={`${label} (${count})`} data-testid={testId} onClick={onClick} style={HEAD_BTN}>
       <AnsweredIcon />
       {count > 0 ? (
-        <span style={{ position: "absolute", top: -3, right: -3, minWidth: 17, height: 17, padding: "0 4px", boxSizing: "border-box", borderRadius: 999, background: "#fff", color: "#111", fontSize: 10, fontWeight: 900, display: "inline-flex", alignItems: "center", justifyContent: "center", fontVariantNumeric: "tabular-nums" }}>
+        <span style={{ position: "absolute", top: -3, right: -3, minWidth: 17, height: 17, padding: "0 4px", boxSizing: "border-box", borderRadius: 999, background: "var(--text)", color: "var(--solid)", fontSize: 10, fontWeight: 900, display: "inline-flex", alignItems: "center", justifyContent: "center", fontVariantNumeric: "tabular-nums" }}>
           {count}
         </span>
       ) : null}
