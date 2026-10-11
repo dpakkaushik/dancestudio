@@ -948,16 +948,16 @@ test.describe.serial("DanceOS, end to end", () => {
     // step 2 — people & price. Free trial: the ₹300 default would route booking
     // through Razorpay (Step 9), which the paid-webhook spec covers.
     await owner.getByLabel("Price per session").fill("0");
-    // ---- IT IS SAVED AS A DRAFT AND PUBLISHES ON THE YES (11 Oct 2026) -----
-    // The form still offers no Publish button for a studio; what it carries now
-    // is the switch "Publish as soon as everyone says yes", ON by default — left
-    // on here, so the teacher's yes below publishes the class with nobody pressing.
+    // ---- IT IS SAVED AS A DRAFT, AND PUBLISHING IS A PRESS (11 Oct 2026) ---
+    // The form offers no Publish button for a studio, and NO "Publish as soon as
+    // everyone says yes" switch — the user: "no auto publish required". The
+    // teacher's yes below leaves it a draft; the owner presses Publish after.
     await expect(owner.getByRole("button", { name: "Publish class" })).toHaveCount(0);
-    await expect(owner.getByText("Publish as soon as everyone says yes").first()).toBeVisible();
+    await expect(owner.getByText("Publish as soon as everyone says yes")).toHaveCount(0);
     // the form's one sentence says what the save will do (saveSentence, 11 Oct 2026)
-    await expect(owner.getByText(new RegExp(`${trainerName} is asked\\. It goes on Discover the moment they say yes`)).first()).toBeVisible();
-    // ⚠ "SAVE" (11 Oct 2026): one form, one button — who is asked and whether it
-    // publishes are the form's fields, not its button's name ("Send request" until today)
+    await expect(owner.getByText(new RegExp(`${trainerName} is asked\\. Publish it from Classes once they say yes`)).first()).toBeVisible();
+    // ⚠ "SAVE" (11 Oct 2026): one form, one button — who is asked is the form's
+    // field, not its button's name ("Send request" until today)
     await owner.getByRole("button", { name: "Save", exact: true }).click();
     await owner.getByRole("dialog", { name: "Save this class?" }).getByRole("button", { name: "Save", exact: true }).click();
 
@@ -1000,15 +1000,18 @@ test.describe.serial("DanceOS, end to end", () => {
     await expect(answeredSheet.getByTestId("answered-reply").first()).toContainText(/Confirmed/i);
     await trainer.goBack();
     await expect(answeredSheet).toHaveCount(0);
-    /* ⚠⚠ INVERTED 11 Oct 2026: the teacher's yes PUBLISHED the class
-       (`publish_class_if_ready`, run by the confirm trigger, because "Publish as
-       soon as everyone says yes" was left on). The owner presses nothing: there is
-       no Ready to publish row and no Publish button left in YOUR MOVE */
+    /* ⚠⚠ THE YES LEAVES IT A DRAFT (11 Oct 2026, the user: "no auto publish
+       required"). It moves to To do › YOURS as Ready to publish, with Publish on
+       its card — and the owner's press, behind its one question, is what puts it
+       on sale */
     await owner.goto(`/business/${businessId}/classes`);
+    await owner.getByTestId("classes-tab-todo").click();
     const yourMove = owner.getByTestId("todo-mine");
+    await expect(yourMove.getByText("Ready to publish").first()).toBeVisible({ timeout: 15_000 });
+    await yourMove.getByRole("button", { name: `Publish ${classTitle}` }).click();
+    await owner.getByRole("alertdialog", { name: `Publish ${classTitle}?` }).getByRole("button", { name: "Publish", exact: true }).click();
     await expect(owner.getByRole("button", { name: `Publish ${classTitle}` })).toHaveCount(0, { timeout: 15_000 });
-    await expect(yourMove.getByText("Ready to publish")).toHaveCount(0);
-    // the class is already on Upcoming
+    // and the class is on Upcoming
     await owner.getByTestId("classes-tab-upcoming").click();
     registerTile = owner.getByTestId("classes-upcoming").locator(`[aria-label="Open ${classTitle}"]`);
     await expect(registerTile).toBeVisible({ timeout: 15_000 });
@@ -3365,8 +3368,6 @@ test.describe.serial("DanceOS, end to end", () => {
     await owner.getByLabel("Search DanceOS for who takes this class").fill(learnerName);
     await owner.getByRole("button", { name: `${learnerName} takes this class` }).click();
     await owner.getByLabel("Price per session").fill("0");
-    /* "Publish as soon as everyone says yes" is LEFT ON (its default), which is
-       what this segment now proves fails safely: the yes lands, the room does not */
     await owner.getByRole("button", { name: "Save", exact: true }).click();
     await owner.getByRole("dialog", { name: "Save this class?" }).getByRole("button", { name: "Save", exact: true }).click();
     await owner.waitForURL(/\/business\/[0-9a-f-]+\/classes$/);
@@ -3387,19 +3388,8 @@ test.describe.serial("DanceOS, end to end", () => {
     await askedOfYou.getByRole("button", { name: "Accept Salsa · All levels" }).click();
     await expect(learner.getByRole("button", { name: "Accept Salsa · All levels" })).toHaveCount(0, { timeout: 15_000 });
 
-    /* 11 Oct 2026: THE YES TRIED TO PUBLISH IT AND THE ROOM SAID NO. The confirm
-       trigger ran `publish_class_if_ready`, which met the room clash, swallowed it
-       and told the owner in the database's own words — so the class is still a
-       draft and the owner holds "Salsa · All levels could not publish itself" */
-    await expect(async () => {
-      const note = (await (
-        await fetch(
-          `${supabaseUrl}/rest/v1/notifications?user_id=eq.${ownerId}&title=eq.${encodeURIComponent("Salsa · All levels could not publish itself")}&deleted_at=is.null&select=id`,
-          { headers: adminHeaders }
-        )
-      ).json()) as Array<{ id: string }>;
-      expect(note.length).toBeGreaterThanOrEqual(1);
-    }).toPass({ timeout: 15_000 });
+    /* the yes leaves it a DRAFT (11 Oct 2026: nothing publishes by itself) — the
+       owner's Publish press below is where the room is asked */
     const stillDraft = (await (
       await fetch(`${supabaseUrl}/rest/v1/classes?business_id=eq.${businessId}&title=eq.${encodeURIComponent("Salsa · All levels")}&select=status`, { headers: adminHeaders })
     ).json()) as Array<{ status: string }>;
@@ -3407,8 +3397,7 @@ test.describe.serial("DanceOS, end to end", () => {
 
     await owner.goto(`/business/${businessId}/classes?tab=todo`);
     /* everybody has said yes, so the draft is READY, and Publish is on its card
-       TODO(11 Oct): confirm a draft whose auto-publish failed still offers
-       `Publish Salsa · All levels` in `todo-mine` (the press is what opens the clash sheet) */
+       (the press is what opens the clash sheet) */
     await owner.getByTestId("todo-mine").getByRole("button", { name: "Publish Salsa · All levels" }).click();
     const sheet = owner.getByRole("alertdialog", { name: "That room is taken" });
     /* ⚠ FIFTEEN, NOT FIVE (21 Sep 2026) — and it is not a flake allowance, it is

@@ -290,7 +290,7 @@ async function personOpensAStudio(page, who, acc, stamp) {
      is asserted where it belongs — `guard_business_visibility`, in the proofs. */
   check((await page.getByTestId("studio-subscription").filter({ hasText: name }).getByRole("button", { name: /^Subscribe/ }).count()) > 0, `${who} · and Subscribe IS offered before the badge — paying comes first now`);
 
-  /* the owner takes their own class: nobody is asked, it publishes itself (11 Oct 2026), the Inbox keeps the line */
+  /* the owner takes their own class: nobody is asked, the owner presses Publish (nothing publishes by itself — 11 Oct 2026), the Inbox keeps the line */
   // TODO(11 Oct): "Continue" (two steps) and the room pick "Floor 1" are unconfirmed on the one form; the WHO switch's "You" is "I take this class myself" / `self-teacher` (confirmed).
   await page.goto(`${BASE}/business/${studioId}/classes?new=1`, { waitUntil: "networkidle" });
   const form = page.getByRole("dialog", { name: "Add class" });
@@ -310,15 +310,22 @@ async function personOpensAStudio(page, who, acc, stamp) {
   await form.getByRole("button", { name: "Save", exact: true }).click();
   await page.getByRole("dialog", { name: "Save this class?" }).getByRole("button", { name: "Save", exact: true }).click();
   await form.waitFor({ state: "detached", timeout: 20_000 }).catch(() => {});
+  /* a class whose teacher is the owner themselves has nothing to wait for, but
+     it is still saved a DRAFT — nothing publishes by itself (11 Oct 2026, the
+     user: "no auto publish required"). It is in To do › Yours with Publish on
+     its card, and one press puts it on Upcoming. */
+  await page.goto(`${BASE}/business/${studioId}/classes?tab=todo`, { waitUntil: "networkidle" });
+  const ownPublish = page.getByTestId("todo-mine").getByTestId("card-publish");
+  await ownPublish.first().waitFor({ timeout: 15_000 }).catch(() => {});
+  check((await ownPublish.count()) >= 1, `${who} · the owner's own class waits in To do with Publish on its card — nobody was asked, one press left`);
+  await ownPublish.first().click().catch(() => {});
+  /* the card's Publish asks first ("Publish {class}?", Not yet / Publish) */
+  await page.getByRole("alertdialog", { name: /^Publish .*\?$/ }).getByRole("button", { name: "Publish", exact: true }).click({ timeout: 15_000 }).catch(() => {});
+  await page.waitForTimeout(2500);
   await page.goto(`${BASE}/business/${studioId}/classes?tab=upcoming`, { waitUntil: "networkidle" });
-  /* 11 Oct 2026: INVERTED — a class whose teacher is the owner themselves has
-     nothing to wait for, so it PUBLISHES ITSELF at creation (auto_publish, on
-     by default). It is on Upcoming, and To do offers no Publish for it. */
   const upList = page.getByTestId("classes-upcoming");
   await upList.waitFor({ timeout: 15_000 }).catch(() => {});
-  check(/Hip-Hop/.test(await upList.innerText().catch(() => "")), `${who} · the owner's own class published itself and is on Upcoming — nobody was asked, nothing to press`);
-  await page.goto(`${BASE}/business/${studioId}/classes?tab=todo`, { waitUntil: "networkidle" });
-  check((await page.getByTestId("todo-mine").getByTestId("card-publish").count()) === 0, `${who} · …and To do carries no Publish for it`);
+  check(/Hip-Hop/.test(await upList.innerText().catch(() => "")), `${who} · …and the press puts it on Upcoming`);
   /* the log: an ask the studio made and its answer. ⚠ ON **DONE** SINCE 27 Sep
      2026 (the user: "sepreate section request, invites and enquiries which are
      already completed") — an answered ask still exists, which is the 19 Sep

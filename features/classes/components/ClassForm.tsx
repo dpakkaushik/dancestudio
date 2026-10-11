@@ -302,9 +302,6 @@ export function ClassForm({
   /* WHICH MEMBERSHIPS PAY FOR A SEAT HERE (19 Sep 2026) — the database is what
      enforces it when a pass is spent */
   const [allowsStudioMem, setAllowsStudioMem] = useState(existing?.allowsStudioMemberships ?? true);
-  /* ⚠ PUBLISH AS SOON AS EVERYONE SAYS YES (11 Oct 2026, `classes.auto_publish`):
-     on by default; off means the owner publishes from Classes by hand */
-  const [autoPublish, setAutoPublish] = useState(existing?.autoPublish ?? true);
 
   /* ── WHERE (11 Oct 2026): the business type decides the answers ── */
   /* an EXISTING class opens on whichever it actually has: a class already at a
@@ -482,13 +479,13 @@ export function ClassForm({
     atStudio && venue && !ownVenue ? venue.name : null,
   ].filter((n): n is string => Boolean(n));
   const noTeacher = !selfTeacher && !other;
-  const saveSentence = !autoPublish
-    ? "Saved as a draft — publish it from Classes when you are ready."
-    : noTeacher
-      ? "Saved as a draft — nobody is asked yet. Pick who takes it and it goes on Discover once they say yes."
-      : askedNames.length
-        ? `${askedNames.join(" and ")} ${askedNames.length > 1 ? "are" : "is"} asked. It goes on Discover the moment they ${askedNames.length > 1 ? "both " : ""}say yes.`
-        : "It goes on Discover now.";
+  /* no auto-publish (11 Oct 2026, the user: "no auto publish required") —
+     every save is a draft, and Publish on Classes puts it on Discover */
+  const saveSentence = noTeacher
+    ? "Saved as a draft — nobody is asked yet. Pick who takes it, then publish it from Classes."
+    : askedNames.length
+      ? `${askedNames.join(" and ")} ${askedNames.length > 1 ? "are" : "is"} asked. Publish it from Classes once they say yes.`
+      : "Saved as a draft — publish it from Classes when you are ready.";
 
   return (
     <FormPage
@@ -521,7 +518,6 @@ export function ClassForm({
         <input type="hidden" name="priceInr" value={priceInr} />
         <input type="hidden" name="capacity" value={capacity} />
         <input type="hidden" name="allowsStudioMemberships" value={allowsStudioMem ? "1" : ""} />
-        <input type="hidden" name="autoPublish" value={autoPublish ? "1" : ""} />
         <input type="hidden" name="people" value={peoplePayload} />
         {/* WHERE: the venue, or the map link (18 Sep 2026) */}
         <input type="hidden" name="venueBusinessId" value={atStudio && venue ? venue.id : ""} />
@@ -752,11 +748,6 @@ export function ClassForm({
                 );
               })}
             </div>
-
-            {/* ── ON DISCOVER (11 Oct 2026): the draft publishes itself when the
-                last yes lands, unless this is off ── */}
-            <div style={labelStyle}>10 · ON DISCOVER</div>
-            <SwitchRow word="Publish as soon as everyone says yes" on={autoPublish} onFlip={() => setAutoPublish(!autoPublish)} />
           </>
         )}
 

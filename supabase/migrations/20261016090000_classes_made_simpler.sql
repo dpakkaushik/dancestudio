@@ -4,13 +4,8 @@
 --
 -- What the user chose, and what each costs here:
 --
---   1. AUTO-PUBLISH. `classes.auto_publish` (default on) and
---      `publish_class_if_ready(class)`: the moment the last yes lands — the
---      teacher's, or the studio's for its room — a draft that is ready
---      publishes itself and the owners are told. Fired from class_people
---      (a confirmed artist) and from classes (an accepted venue), and at the
---      end of creating or editing. A refusal (the room is busy, the capacity
---      is over the room's) never breaks the yes: it is caught and said.
+--   1. NO AUTO-PUBLISH — the user, 11 Oct 2026: "no auto publish required".
+--      Publishing stays a press of Publish; nothing here publishes a class.
 --   2. ONE CLOSED STATE. `respond_to_class_ask` refuses a yes once the class
 --      has started ("the request is closed"); a no is soft-deleted as well as
 --      marked, so a closed ask is a closed ask. `close_stale_drafts()` on a
@@ -38,9 +33,9 @@
 --      (default 12, `set_refund_window`), read by `_cancel_one_class_booking`.
 --
 -- Bodies are edited OUT OF THE CATALOG by asserted anchor (`_dos_swap`) where
--- the signature stands; `create_class_with_session`, `update_class_with_session`
--- and `book_class_session` are dropped and re-created because they gain an
--- argument, with every grant restated. Nothing is backfilled: the two live
+-- the signature stands; `create_class_with_session` and `update_class_with_session`
+-- are replaced in place (same signatures, grants kept) and `book_class_session`
+-- is dropped and re-created because it gains an argument, grants restated. Nothing is backfilled: the two live
 -- seats a runner holds on their own class stay (a record); the seven live
 -- visiting_faculty seats stay (a seat is a seat). No begin/commit (Rule 18).
 -- ═══════════════════════════════════════════════════════════════════════════
@@ -59,11 +54,6 @@ $fn$;
 
 -- ── columns and checks ──────────────────────────────────────────────────────
 
-alter table public.classes
-  add column auto_publish boolean not null default true;
-comment on column public.classes.auto_publish is
-  'Publish as soon as everyone says yes (11 Oct 2026). Off = the owner publishes by hand.';
-
 alter table public.business_members
   add column pay_per_session_inr integer not null default 0
     constraint business_members_pay_check check (pay_per_session_inr between 0 and 200000);
@@ -80,102 +70,6 @@ comment on column public.businesses.refund_window_hours is
 alter table public.class_sessions
   add constraint class_sessions_length_check
   check (deleted_at is not null or ends_at <= starts_at + interval '5 hours');
-
--- ── 1 · auto-publish ────────────────────────────────────────────────────────
-
-create function public.publish_class_if_ready(p_class_id uuid)
-returns boolean
-language plpgsql
-security definer
-set search_path = ''
-as $fn$
-declare
-  v_class public.classes;
-  v_type text;
-  v_teacher boolean;
-  v_why text;
-begin
-  select * into v_class from public.classes c
-   where c.id = p_class_id and c.deleted_at is null and c.status = 'draft' and c.auto_publish
-   for update;
-  if not found then
-    return false;
-  end if;
-  -- a class with no session still ahead has nothing to publish
-  if not exists (select 1 from public.class_sessions s
-                  where s.class_id = v_class.id and s.deleted_at is null and s.starts_at > now()) then
-    return false;
-  end if;
-  select b.type into v_type from public.businesses b where b.id = v_class.business_id;
-  v_teacher := exists (
-    select 1 from public.class_people cp
-     where cp.class_id = v_class.id and cp.kind = 'artist' and cp.status = 'confirmed' and cp.deleted_at is null);
-  v_why := public.class_publish_blocker(v_type, v_class.venue_business_id, v_class.venue_status,
-                                        v_class.lat, v_class.maps_url, v_class.capacity, v_teacher);
-  if v_why is not null then
-    return false;
-  end if;
-
-  begin
-    update public.classes set status = 'published' where id = v_class.id;
-    perform public.notify_business_owners(v_class.business_id, 'class',
-      coalesce(v_class.title, 'Your class') || ' is on Discover',
-      'The last yes came in and it published itself.',
-      '/c/' || coalesce(v_class.share_slug, ''));
-    return true;
-  exception
-    -- the room is busy, the capacity is over the room''s: the yes stands, the
-    -- publish does not, and the owner is told why in the database''s own words
-    when others then
-      perform public.notify_business_owners(v_class.business_id, 'class',
-        coalesce(v_class.title, 'Your class') || ' could not publish itself',
-        left(sqlerrm, 280),
-        '/c/' || coalesce(v_class.share_slug, ''));
-      return false;
-  end;
-end;
-$fn$;
-comment on function public.publish_class_if_ready(uuid) is
-  'Publishes a ready draft whose auto_publish is on; tells the owners either way (11 Oct 2026). Executable by no client role.';
-revoke all on function public.publish_class_if_ready(uuid) from public, anon, authenticated;
-
-create function public.publish_when_person_confirmed()
-returns trigger
-language plpgsql
-security definer
-set search_path = ''
-as $fn$
-begin
-  if new.status = 'confirmed' and new.kind = 'artist' and new.deleted_at is null then
-    perform public.publish_class_if_ready(new.class_id);
-  end if;
-  return null;
-end;
-$fn$;
-revoke all on function public.publish_when_person_confirmed() from public, anon, authenticated;
-
-create trigger zz_publish_when_person_confirmed
-  after insert or update of status on public.class_people
-  for each row execute function public.publish_when_person_confirmed();
-
-create function public.publish_when_venue_accepted()
-returns trigger
-language plpgsql
-security definer
-set search_path = ''
-as $fn$
-begin
-  if new.venue_status = 'accepted' and old.venue_status is distinct from 'accepted' then
-    perform public.publish_class_if_ready(new.id);
-  end if;
-  return null;
-end;
-$fn$;
-revoke all on function public.publish_when_venue_accepted() from public, anon, authenticated;
-
-create trigger zz_publish_when_venue_accepted
-  after update of venue_status on public.classes
-  for each row execute function public.publish_when_venue_accepted();
 
 -- ── 2 · one closed state ────────────────────────────────────────────────────
 
@@ -724,11 +618,9 @@ begin$a$, '_cancel_one_class_booking');
 end
 $do$;
 
--- ── 1 again · create and update carry the switch (and a manager may call them) ──
+-- ── 5 again · a manager creates and edits classes (same signatures) ─────────
 
-drop function public.create_class_with_session(uuid,text,text,text,text,integer,integer,text,timestamptz,timestamptz,uuid,text,uuid,double precision,double precision,text);
-
-create function public.create_class_with_session(p_business_id uuid, p_title text, p_style text, p_level text, p_room text, p_price_inr integer, p_capacity integer, p_status text, p_starts_at timestamptz, p_ends_at timestamptz, p_room_id uuid default null, p_poster text default null, p_venue_business_id uuid default null, p_lat double precision default null, p_lng double precision default null, p_maps_url text default null, p_auto_publish boolean default true)
+create or replace function public.create_class_with_session(p_business_id uuid, p_title text, p_style text, p_level text, p_room text, p_price_inr integer, p_capacity integer, p_status text, p_starts_at timestamptz, p_ends_at timestamptz, p_room_id uuid default null, p_poster text default null, p_venue_business_id uuid default null, p_lat double precision default null, p_lng double precision default null, p_maps_url text default null)
 returns public.classes
 language plpgsql
 security definer
@@ -787,11 +679,11 @@ begin
   end if;
 
   insert into public.classes (business_id, title, style, level, room, room_id, poster,
-                              price_inr, capacity, status, auto_publish,
+                              price_inr, capacity, status,
                               venue_business_id, venue_status, lat, lng, maps_url,
                               created_by, updated_by)
   values (p_business_id, trim(p_title), trim(p_style), p_level, nullif(trim(p_room), ''), p_room_id, p_poster,
-          coalesce(p_price_inr, 0), p_capacity, p_status, coalesce(p_auto_publish, true),
+          coalesce(p_price_inr, 0), p_capacity, p_status,
           p_venue_business_id,
           case when p_venue_business_id is null then null
                when public.runs_business(p_venue_business_id) then 'accepted'
@@ -811,19 +703,13 @@ begin
     values (v_class.id, p_business_id, v_user, 'artist', 'confirmed', true, true, 0, v_user, v_user);
   end if;
 
-  -- 11 Oct 2026: nothing left to wait for (an artist at their own pin, or in
-  -- a studio they run) and the switch is on — it is on Discover already
-  perform public.publish_class_if_ready(v_class.id);
-  select * into v_class from public.classes c where c.id = v_class.id;
   return v_class;
 end;
 $fn$;
-revoke all on function public.create_class_with_session(uuid,text,text,text,text,integer,integer,text,timestamptz,timestamptz,uuid,text,uuid,double precision,double precision,text,boolean) from public, anon;
-grant execute on function public.create_class_with_session(uuid,text,text,text,text,integer,integer,text,timestamptz,timestamptz,uuid,text,uuid,double precision,double precision,text,boolean) to authenticated, service_role;
+revoke all on function public.create_class_with_session(uuid,text,text,text,text,integer,integer,text,timestamptz,timestamptz,uuid,text,uuid,double precision,double precision,text) from public, anon;
+grant execute on function public.create_class_with_session(uuid,text,text,text,text,integer,integer,text,timestamptz,timestamptz,uuid,text,uuid,double precision,double precision,text) to authenticated, service_role;
 
-drop function public.update_class_with_session(uuid,text,text,text,text,integer,integer,timestamptz,timestamptz,uuid,text,uuid,double precision,double precision,text,boolean,boolean);
-
-create function public.update_class_with_session(p_class_id uuid, p_title text, p_style text, p_level text, p_room text, p_price_inr integer, p_capacity integer, p_starts_at timestamptz, p_ends_at timestamptz, p_room_id uuid, p_poster text, p_venue_business_id uuid, p_lat double precision, p_lng double precision, p_maps_url text, p_allows_studio_memberships boolean, p_allows_artist_memberships boolean, p_auto_publish boolean default null)
+create or replace function public.update_class_with_session(p_class_id uuid, p_title text, p_style text, p_level text, p_room text, p_price_inr integer, p_capacity integer, p_starts_at timestamptz, p_ends_at timestamptz, p_room_id uuid, p_poster text, p_venue_business_id uuid, p_lat double precision, p_lng double precision, p_maps_url text, p_allows_studio_memberships boolean, p_allows_artist_memberships boolean)
 returns void
 language plpgsql
 security definer
@@ -861,8 +747,7 @@ begin
     lng                       = p_lng,
     maps_url                  = p_maps_url,
     allows_studio_memberships = p_allows_studio_memberships,
-    allows_artist_memberships = p_allows_artist_memberships,
-    auto_publish              = coalesce(p_auto_publish, auto_publish)
+    allows_artist_memberships = p_allows_artist_memberships
   where id = p_class_id and deleted_at is null;
 
   update public.class_sessions set
@@ -880,13 +765,10 @@ begin
          where x.class_id = p_class_id and x.deleted_at is null and x.ends_at > now()) a
   where s.class_id = p_class_id and s.deleted_at is null and s.ends_at > now()
     and a.anchor_start is not null;
-
-  -- 11 Oct 2026: an edit that leaves nothing to wait for publishes a ready draft
-  perform public.publish_class_if_ready(p_class_id);
 end;
 $fn$;
-revoke all on function public.update_class_with_session(uuid,text,text,text,text,integer,integer,timestamptz,timestamptz,uuid,text,uuid,double precision,double precision,text,boolean,boolean,boolean) from public, anon;
-grant execute on function public.update_class_with_session(uuid,text,text,text,text,integer,integer,timestamptz,timestamptz,uuid,text,uuid,double precision,double precision,text,boolean,boolean,boolean) to authenticated, service_role;
+revoke all on function public.update_class_with_session(uuid,text,text,text,text,integer,integer,timestamptz,timestamptz,uuid,text,uuid,double precision,double precision,text,boolean,boolean) from public, anon;
+grant execute on function public.update_class_with_session(uuid,text,text,text,text,integer,integer,timestamptz,timestamptz,uuid,text,uuid,double precision,double precision,text,boolean,boolean) to authenticated, service_role;
 
 -- ── 7 · one booking door, one door at the door ──────────────────────────────
 

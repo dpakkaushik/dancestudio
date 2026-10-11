@@ -53,7 +53,7 @@ module.exports = async (c, { check }) => {
   /* ── 1 · the columns and the CHECK ── */
   const cols = await q(`select column_name from information_schema.columns where table_schema='public' and
     ((table_name='classes' and column_name='auto_publish') or (table_name='business_members' and column_name='pay_per_session_inr') or (table_name='businesses' and column_name='refund_window_hours'))`);
-  check(cols.length === 3, `the three columns exist (${cols.length})`);
+  check(cols.length === 2 && !cols.some((c) => c.column_name === "auto_publish"), `the two columns exist and there is no auto_publish (${cols.length})`);
   await as(owner, "service_role");
   const long = await refused(`insert into public.class_sessions (class_id, business_id, starts_at, ends_at, created_by, updated_by)
     select c.id, c.business_id, now() + interval '2 days', now() + interval '2 days 6 hours', $1, $1 from public.classes c where c.deleted_at is null limit 1`, [owner], "class_sessions_length_check");
@@ -64,8 +64,8 @@ module.exports = async (c, { check }) => {
   const made = await allowed(`select public.create_class_with_session($1, 'Dry · All levels', 'Hip-Hop', 'all', 'Hall', 0, 10, 'draft', $2, $3, $4)`,
     [studio, ts(48), ts(49), room]);
   check(made === 1, `⚠ a MANAGER creates a class (${made})`);
-  const [cls] = await q(`select c.id, c.status, c.auto_publish, c.share_slug from public.classes c where c.business_id = $1 and c.title = 'Dry · All levels'`, [studio]);
-  check(cls && cls.status === "draft" && cls.auto_publish === true, `born a draft with auto_publish on (${cls?.status}, ${cls?.auto_publish})`);
+  const [cls] = await q(`select c.id, c.status, c.share_slug from public.classes c where c.business_id = $1 and c.title = 'Dry · All levels'`, [studio]);
+  check(cls && cls.status === "draft", `born a draft (${cls?.status})`);
   const askRes = await allowed(`select public.ask_class_person($1, $2, 'artist')`, [cls.id, teacher]);
   check(askRes === 1, `⚠ a manager names the teacher (${askRes})`);
   const powers = await refused(`select public.set_class_person_powers((select id from public.class_people where class_id = $1 and user_id = $2 and deleted_at is null), true, true)`, [cls.id, teacher], "owner");
@@ -85,7 +85,7 @@ module.exports = async (c, { check }) => {
   const payByManager = await refused(`select public.set_member_pay($1, $2, 1)`, [studio, teacher], "only the owner");
   check(payByManager === true, `a manager cannot set the rate (${payByManager})`);
 
-  /* ── 1 · the last yes publishes it ── */
+  /* ── 1 · the yes does NOT publish it (no auto-publish); a manager publishes ── */
   await as(stranger);
   const notYours = await refused(`select public.respond_to_class_ask($1, true)`, [ask.id], "not yours to answer");
   check(notYours === true, `only the person asked answers (${notYours})`);
@@ -94,18 +94,22 @@ module.exports = async (c, { check }) => {
   check(yes === 1, `the teacher says yes (${yes})`);
   await asNobody();
   const [after] = await q(`select status from public.classes where id = $1`, [cls.id]);
-  check(after.status === "published", `⚠⚠ the last yes PUBLISHED it (${after.status})`);
-  const told = await q(`select count(*)::int n from public.notifications where user_id = $1 and title like '% is on Discover'`, [owner]);
-  check(told[0].n === 1, `…and the owner was told (${told[0].n})`);
+  check(after.status === "draft", `⚠ the yes leaves it a draft — nothing publishes by itself (${after.status})`);
+  await as(manager);
+  const pub = await allowed(`update public.classes set status = 'published' where id = $1`, [cls.id]);
+  check(pub === 1, `⚠ a MANAGER publishes it by hand (${pub})`);
+  await asNobody();
+  const [pubd] = await q(`select status from public.classes where id = $1`, [cls.id]);
+  check(pubd.status === "published", `…and it is published (${pubd.status})`);
   await as(teacher);
   const twice = await refused(`select public.respond_to_class_ask($1, false)`, [ask.id], "already been answered");
   check(twice === true, `an answered ask cannot be answered again (${twice})`);
 
   /* ── 2 · a no is closed; a late yes is refused ── */
   await as(manager);
-  const made2 = await allowed(`select public.create_class_with_session($1, 'Dry Two · All levels', 'Hip-Hop', 'all', 'Hall', 300, 10, 'draft', $2, $3, $4, null, null, null, null, null, false)`,
+  const made2 = await allowed(`select public.create_class_with_session($1, 'Dry Two · All levels', 'Hip-Hop', 'all', 'Hall', 300, 10, 'draft', $2, $3, $4)`,
     [studio, ts(72), ts(73), room]);
-  check(made2 === 1, `a second class, auto_publish OFF (${made2})`);
+  check(made2 === 1, `a second class (${made2})`);
   const [cls2] = await q(`select id from public.classes where business_id = $1 and title = 'Dry Two · All levels'`, [studio]);
   await q(`select public.ask_class_person($1, $2, 'artist')`, [cls2.id, teacher]);
   const [ask2] = await q(`select id from public.class_people where class_id = $1 and user_id = $2 and deleted_at is null`, [cls2.id, teacher]);
@@ -122,9 +126,6 @@ module.exports = async (c, { check }) => {
   await as(teacher);
   const yes2 = await allowed(`select public.respond_to_class_ask($1, true)`, [ask3.id]);
   check(yes2 === 1, `a fresh ask is answered (${yes2})`);
-  await asNobody();
-  const [still] = await q(`select status from public.classes where id = $1`, [cls2.id]);
-  check(still.status === "draft", `⚠ with auto_publish OFF it stays a draft (${still.status})`);
   // a late yes: a draft whose session is in the past (planted by the service role)
   await as(manager);
   const made3 = await allowed(`select public.create_class_with_session($1, 'Dry Three · All levels', 'Hip-Hop', 'all', 'Hall', 0, 10, 'draft', $2, $3, $4)`, [studio, ts(96), ts(97), room]);
@@ -208,7 +209,7 @@ module.exports = async (c, { check }) => {
 
   /* ── nothing else moved ── */
   await asNobody();
-  for (const f of ["publish_class_if_ready(uuid)", "close_stale_drafts()", "guard_venue_answer()", "guard_not_own_class()", "publish_when_person_confirmed()", "publish_when_venue_accepted()"]) {
+  for (const f of ["close_stale_drafts()", "guard_venue_answer()", "guard_not_own_class()"]) {
     const g = await q(`select has_function_privilege('authenticated', $1::regprocedure, 'execute') a, has_function_privilege('anon', $1::regprocedure, 'execute') n`, [`public.${f}`]);
     check(!g[0].a && !g[0].n, `${f} is executable by no client role`);
   }

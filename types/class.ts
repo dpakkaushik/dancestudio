@@ -90,12 +90,6 @@ export interface DanceClass {
    *  membership is spent — the business's own passes, and the teacher's. */
   allowsStudioMemberships: boolean;
   allowsArtistMemberships: boolean;
-  /** PUBLISH AS SOON AS EVERYONE SAYS YES (11 Oct 2026, `classes.auto_publish`,
-   *  default on): the database publishes a ready draft the moment the last yes
-   *  lands. ⚠ Optional on the type only because a few places build a
-   *  `DanceClass` by hand for a card (a booking, a calendar row) and have no
-   *  such fact; every repository read fills it. Absent reads as on. */
-  autoPublish?: boolean;
 }
 
 /** WHERE A CLASS STANDS IN ITS OWN LIFE (30 Sep 2026).

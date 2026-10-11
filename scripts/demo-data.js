@@ -328,9 +328,8 @@ async function seed() {
   const teachAndPublish = async (ownerH, cls, teacher, payInr = 0) => {
     const ask = await rpc(ownerH, "ask_class_person", { p_class_id: cls.id, p_user_id: teacher.id, p_kind: "artist", p_pay_per_session_inr: payInr });
     await rpc(teacher.h, "respond_to_class_ask", { p_class_person_id: ask.id, p_accept: true });
-    /* 11 Oct 2026: the yes PUBLISHES the class on its own (auto_publish, on by
-       default) — this PATCH is a no-op kept for a class that could not (its room
-       busy); a status change is allowed on a published class */
+    /* the yes leaves it a DRAFT (11 Oct 2026: nothing publishes by itself) — the
+       owner's press is what publishes it */
     await patch(ownerH, `classes?id=eq.${cls.id}`, { status: "published" });
     return cls;
   };
@@ -384,7 +383,7 @@ async function seed() {
   await patch(rhea.h, `classes?id=eq.${rheaOwn.id}`, { status: "published" });
   /* the venue's room, by id — a listed studio's rooms are anyone's to read */
   const roomIdOf = async (t, name) => (await rows(H_ANON, `rooms?business_id=eq.${t.id}&name=eq.${encodeURIComponent(name)}&deleted_at=is.null&select=id`))[0].id;
-  /* Aditya asks Sector 29 for Hall B — the studio says yes, the class publishes, and its page names Sector 29 as the place */
+  /* Aditya asks Sector 29 for Hall B — the studio says yes, Aditya publishes it, and its page names Sector 29 as the place */
   const adityaAtS29 = await mkClass(aditya.h, adityaPage.id, { style: "Hip-Hop", room: "Hall B", roomId: await roomIdOf(s29, "Hall B"), venue: s29.id, capacity: 12, starts: at(5, "18:00"), ends: at(5, "19:00") });
   await rpc(rhythm.h, "respond_to_venue_request", { p_class_id: adityaAtS29.id, p_accept: true });
   await patch(aditya.h, `classes?id=eq.${adityaAtS29.id}`, { status: "published" });

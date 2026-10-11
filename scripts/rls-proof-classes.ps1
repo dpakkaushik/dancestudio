@@ -121,27 +121,33 @@ $studioClear = ($null -eq $whyStudio) -or ("$whyStudio" -eq "null") -or ("$whySt
 "9. why_no_class: a studio -> nothing ('$whyStudio') $(if ($studioClear) {'-- OK'} else {'-- !!! FAILED !!!'})"
 if (-not $studioClear) { $pass = $false }
 
-# 10. 11 Oct 2026: A YES PUBLISHES A READY DRAFT ITSELF (classes.auto_publish,
-# default ON, migration 20261016090000). Every other class in this harness is
-# made with the switch OFF (proof-lib's Seat-Teacher / New-Published-Class), so
-# this is the one place the auto-publish is proven: the owner names B to teach
-# through the real ask, B says yes through the real answer, and nobody presses
-# Publish. Then the closed-state rules on the same ask: a second answer is
-# refused, and B - now running the class - cannot book a seat on it.
+# 10. 11 Oct 2026: A TEACHER'S YES LEAVES THE CLASS A DRAFT - nothing publishes
+# by itself (the user: "no auto publish required"). The owner names B to teach
+# through the real ask, B says yes through the real answer, and the class is
+# STILL a draft; then the owner presses Publish (the owner or a manager may -
+# this proof has no manager seat to hand, so the owner stands in). Then the
+# closed-state rules on the same ask: a second answer is refused, and B - now
+# running the published class - cannot book a seat on it.
 $autoDay = (Get-Date).AddDays(31).ToString("yyyy-MM-dd")
 $autoBody = $clsBody.Clone()
-$autoBody["p_title"] = "Hip-Hop - Beginner auto $stamp"
+$autoBody["p_title"] = "Hip-Hop - Beginner yes $stamp"
 $autoBody["p_starts_at"] = "${autoDay}T19:00:00+05:30"; $autoBody["p_ends_at"] = "${autoDay}T20:00:00+05:30"
-$autoBody["p_auto_publish"] = $true
 try {
   $auto = Invoke-RestMethod -Method Post -Uri "$base/rest/v1/rpc/create_class_with_session" -Headers (Api $a.access_token) -Body ($autoBody | ConvertTo-Json)
   $ask = Invoke-RestMethod -Method Post -Uri "$base/rest/v1/rpc/ask_class_person" -Headers (Api $a.access_token) -Body (@{ p_class_id = $auto.id; p_user_id = $b.user.id; p_kind = "artist" } | ConvertTo-Json)
   $beforeYes = [string](@(Invoke-RestMethod -Uri "$base/rest/v1/classes?id=eq.$($auto.id)&select=status" -Headers $svcH)[0].status)
   Invoke-RestMethod -Method Post -Uri "$base/rest/v1/rpc/respond_to_class_ask" -Headers (Api $b.access_token) -Body (@{ p_class_person_id = $ask.id; p_accept = $true } | ConvertTo-Json) | Out-Null
   $afterYes = [string](@(Invoke-RestMethod -Uri "$base/rest/v1/classes?id=eq.$($auto.id)&select=status" -Headers $svcH)[0].status)
-  $autoOk = ($beforeYes -eq "draft") -and ($afterYes -eq "published")
-  "10a. A ready draft with auto_publish on: '$beforeYes' before the teacher's yes, '$afterYes' after $(if ($autoOk) {'-- PUBLISHED ITSELF, OK'} else {'-- !!! FAILED !!!'})"
+  $autoOk = ($beforeYes -eq "draft") -and ($afterYes -eq "draft")
+  "10a. A draft is '$beforeYes' before the teacher's yes and '$afterYes' after $(if ($autoOk) {'-- STILL A DRAFT, NO AUTO-PUBLISH, OK'} else {'-- !!! FAILED !!!'})"
   if (-not $autoOk) { $pass = $false }
+
+  # and the press is what publishes it - through RLS, as the owner
+  Invoke-RestMethod -Method Patch -Uri "$base/rest/v1/classes?id=eq.$($auto.id)" -Headers (Api $a.access_token) -Body '{"status":"published"}' | Out-Null
+  $afterPress = [string](@(Invoke-RestMethod -Uri "$base/rest/v1/classes?id=eq.$($auto.id)&select=status" -Headers $svcH)[0].status)
+  $pressOk = ($afterPress -eq "published")
+  "10a2. The owner presses Publish after the yes: '$afterPress' $(if ($pressOk) {'-- OK'} else {'-- !!! FAILED !!!'})"
+  if (-not $pressOk) { $pass = $false }
 
   try {
     Invoke-RestMethod -Method Post -Uri "$base/rest/v1/rpc/respond_to_class_ask" -Headers (Api $b.access_token) -Body (@{ p_class_person_id = $ask.id; p_accept = $false } | ConvertTo-Json) | Out-Null
@@ -164,7 +170,7 @@ try {
     if (-not $okOwn) { $pass = $false }
   }
 } catch {
-  "10. The auto-publish world could not be built ($(ErrBody $_)) -- !!! FAILED !!!"; $pass = $false
+  "10. The ask-and-yes world could not be built ($(ErrBody $_)) -- !!! FAILED !!!"; $pass = $false
 }
 
 # THE STUDIO THIS RUN MADE GOES (10 Oct 2026): it is LISTED, so left behind it

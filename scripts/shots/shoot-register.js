@@ -173,10 +173,8 @@ const valueOf = (page, label) => page.getByLabel(label).inputValue();
        their OWN class is seated confirmed by `ask_class_person` itself (26 Sep),
        so this is one call and no answer. */
     await rpc(owner.h, "ask_class_person", { p_class_id: cls.id, p_user_id: owner.id, p_kind: "artist", p_pay_per_session_inr: 0 });
-    /* 11 Oct 2026: the class is born with auto_publish on, so the owner's own
-       confirmed row PUBLISHES it on the spot (zz_publish_when_person_confirmed);
-       the PATCH below is a no-op kept so a class created the old way still gets
-       there. A status change stays allowed on a published class. */
+    /* and then the owner presses Publish: a confirmed row publishes nothing by
+       itself (11 Oct 2026, the user: "no auto publish required") */
     await patch(owner.h, `classes?id=eq.${cls.id}`, { status: "published" });
 
     const session = (await rows(owner.h, `class_sessions?class_id=eq.${cls.id}&select=id&deleted_at=is.null`))[0];
@@ -539,14 +537,15 @@ const valueOf = (page, label) => page.getByLabel(label).inputValue();
       "⚠ the class form has no session-pay field — pay lives on the Team desk now"
     );
 
-    /* 11 Oct 2026: and the switch that publishes it on the last yes, ON by default */
+    /* 11 Oct 2026: and NO switch that publishes it on the last yes — the user:
+       "no auto publish required". Publishing is always a press of Publish. */
     check(
-      (await page.getByText("Publish as soon as everyone says yes", { exact: false }).count()) >= 1,
-      "the form carries \"Publish as soon as everyone says yes\" (on by default)"
+      (await page.getByText("Publish as soon as everyone says yes", { exact: false }).count()) === 0,
+      "⚠ the form carries no \"Publish as soon as everyone says yes\" switch — nothing publishes by itself"
     );
 
-    /* 11 Oct 2026: THE WORD IS "Save" — one form, one button; who is asked and
-       whether it publishes are the form's fields, not its button's name. */
+    /* 11 Oct 2026: THE WORD IS "Save" — one form, one button; who is asked is
+       the form's field, not its button's name. */
     const sendBtn = page.getByRole("button", { name: "Save", exact: true });
     await sendBtn.waitFor({ timeout: 20000 });
     check(true, "the form's own button reads Save");
@@ -571,11 +570,13 @@ const valueOf = (page, label) => page.getByLabel(label).inputValue();
     check(Boolean(asked), "the studio's request reached the person by name");
     check(asked.can_attendance === true, "⚠⚠ the claim is BORN holding attendance — the rule is on the row, so every door that makes one gets it");
     await rpc(stranger.h, "respond_to_class_ask", { p_class_person_id: asked.id, p_accept: true });
-    /* 11 Oct 2026: a studio class publishes ITSELF on its teacher's yes
-       (auto_publish, on by default on the form — "Publish as soon as everyone
-       says yes"); the owner no longer presses Publish. */
+    /* 11 Oct 2026: the teacher's yes leaves the class a DRAFT (the user: "no auto
+       publish required") — the owner's press is what publishes it */
     const afterYes = (await rows(owner.h, `classes?id=eq.${asked.class_id}&select=status`))[0];
-    check(afterYes && afterYes.status === "published", `⚠⚠ the teacher's yes PUBLISHED the class on its own (status "${afterYes && afterYes.status}")`);
+    check(afterYes && afterYes.status === "draft", `⚠⚠ the teacher's yes left the class a DRAFT — nothing publishes by itself (status "${afterYes && afterYes.status}")`);
+    await patch(owner.h, `classes?id=eq.${asked.class_id}`, { status: "published" });
+    const afterPress = (await rows(owner.h, `classes?id=eq.${asked.class_id}&select=status`))[0];
+    check(afterPress && afterPress.status === "published", `…and the owner's Publish publishes it (status "${afterPress && afterPress.status}")`);
     /* 11 Oct 2026: and accepting made NO visiting_faculty seat — the register
        below opens off the class row alone */
     const vfSeat = await rows(H_SERVICE, `business_members?business_id=eq.${studio.id}&user_id=eq.${stranger.id}&deleted_at=is.null&select=member_role`);

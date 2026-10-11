@@ -194,9 +194,9 @@ const BOOK_ON_PAGE = /^Book Now$/;
     const ran = await draftClass(owner.h, studio.id, roomB[0].id, "Kathak", -180, -120);
     const live = await draftClass(owner.h, studio.id, roomB[0].id, "Salsa", -10, 50);
     for (const id of [ahead, ran, live]) {
-      /* the owner takes their own class — confirmed at birth (26 Sep 2026).
-         11 Oct 2026: that confirmed row PUBLISHES the class on its own (auto_publish
-         is on by default); the PATCH below is a no-op kept for the old path. */
+      /* the owner takes their own class — confirmed at birth (26 Sep 2026) —
+         and then presses Publish: a confirmed row publishes nothing by itself
+         (11 Oct 2026, the user: "no auto publish required") */
       await rpc(owner.h, "ask_class_person", { p_class_id: id, p_user_id: owner.id, p_kind: "artist" });
       await patch(owner.h, `classes?id=eq.${id}`, { status: "published" }, `publish ${id}`);
     }
@@ -383,10 +383,11 @@ const BOOK_ON_PAGE = /^Book Now$/;
     await lPage.waitForTimeout(2500);
     const seated = await rows(owner.h, `class_people?class_id=eq.${second}&status=eq.confirmed&deleted_at=is.null&select=user_id`);
     check(seated.length === 1 && seated[0].user_id === learner.id, "…one press and they are on it, read back out of the database");
-    /* 11 Oct 2026: the yes PUBLISHED the class on its own (auto_publish, on by
-       default), and it made NO visiting_faculty seat on the studio's team */
+    /* 11 Oct 2026: the yes leaves the class a DRAFT (nothing publishes by itself —
+       the user: "no auto publish required"), and it made NO visiting_faculty seat
+       on the studio's team */
     const secondNow = (await rows(owner.h, `classes?id=eq.${second}&select=status`))[0];
-    check(secondNow && secondNow.status === "published", `⚠⚠ …and their yes published the class itself (status "${secondNow && secondNow.status}")`);
+    check(secondNow && secondNow.status === "draft", `⚠⚠ …and their yes left the class a DRAFT — publishing is a press (status "${secondNow && secondNow.status}")`);
     const lSeat = await rows(H_SERVICE, `business_members?business_id=eq.${studio.id}&user_id=eq.${learner.id}&deleted_at=is.null&select=member_role`);
     check(lSeat.length === 0, `⚠ …and no seat on the studio's team came with the yes (found ${lSeat.length})`);
 
@@ -396,13 +397,18 @@ const BOOK_ON_PAGE = /^Book Now$/;
     /* ⚠ nothing waits on THEM now, so the screen opens on Upcoming — and To do
        still holds what they wait on */
     check((await lPage.getByTestId("classes-tab-upcoming").getAttribute("aria-selected")) === "true", "…nothing waits on them now, so Classes opens on Upcoming");
-    /* 11 Oct 2026: INVERTED — the class they said yes to published itself, so it
-       is NOT waiting in To do for the studio any more; it is on Upcoming, where
-       a class they teach belongs. (It read "waiting on cls studio" until today.) */
+    /* the class they said yes to is still a DRAFT, so it waits in To do — on
+       the studio, which has the Publish to press */
     await lPage.getByTestId("classes-tab-todo").click();
     await lPage.waitForTimeout(300);
     const todoText = await lPage.getByTestId("classes-todo").innerText().catch(() => "");
-    check(!/waiting on cls studio/i.test(todoText), `(${todoText.replace(/\s+/g, " ").slice(-90)}) ⚠ the class they said yes to is not waiting in To do — their yes published it`);
+    check(/waiting on cls studio/i.test(todoText), `(${todoText.replace(/\s+/g, " ").slice(-90)}) ⚠ the class they said yes to waits in To do, on the studio — their yes published nothing`);
+    /* ⚠⚠ and a MANAGER publishes it by hand (11 Oct 2026 — a manager may publish
+       now; the owner's press was the only one before) */
+    await patch(manager.h, `classes?id=eq.${second}`, { status: "published" }, "the manager publishes the class").catch((e) => check(false, `the manager's publish was refused — ${e.message}`));
+    const secondPub = (await rows(owner.h, `classes?id=eq.${second}&select=status`))[0];
+    check(secondPub && secondPub.status === "published", `⚠⚠ …and a MANAGER's press publishes it (status "${secondPub && secondPub.status}")`);
+    await lPage.reload({ waitUntil: "networkidle" });
     await lPage.getByTestId("classes-tab-upcoming").click();
     await lPage.waitForTimeout(300);
     check(await onShelf(lPage, secondRow.share_slug), "…it is on Upcoming instead, as a class they teach");
@@ -705,10 +711,10 @@ const BOOK_ON_PAGE = /^Book Now$/;
 
     /* ══ 10b · AN EDIT ASKS THE TEACHER AGAIN (11 Oct 2026, the user: "if anything
        has been edited should send a new request for confirmation") ═══════════ */
-    /* 11 Oct 2026: `second` PUBLISHED itself on its teacher's yes, and a published
-       class's price, style, room, capacity and times are FIXED now
+    /* 11 Oct 2026: `second` was published by the manager's press in 7b, and a
+       published class's price, style, room, capacity and times are FIXED now
        (guard_published_class_fixed) — so the re-ask is proven on a DRAFT whose
-       teacher said yes with auto_publish turned off, and the published class is
+       teacher said yes (a yes publishes nothing), and the published class is
        asserted refused instead. */
     let fixedWhy = "ACCEPTED";
     try {
@@ -719,7 +725,6 @@ const BOOK_ON_PAGE = /^Book Now$/;
     check(/A published class cannot be edited/.test(fixedWhy), `⚠⚠ a PUBLISHED class's price cannot be changed — delete it and add a new one (${fixedWhy.slice(0, 110)})`);
 
     const reconfirm = await draftClass(owner.h, studio.id, roomA[0].id, "Bollywood", atIst(20, 18), atIst(20, 18) + 60);
-    await patch(H_SERVICE, `classes?id=eq.${reconfirm}`, { auto_publish: false }, "keep the draft a draft on the yes");
     const rcAsk = await rpc(owner.h, "ask_class_person", { p_class_id: reconfirm, p_user_id: learner.id, p_kind: "artist" });
     await rpc(learner.h, "respond_to_class_ask", { p_class_person_id: rcAsk.id, p_accept: true });
     await oPage.goto(`${BASE}/business/${studio.id}/classes/${reconfirm}/edit`, { waitUntil: "networkidle" });

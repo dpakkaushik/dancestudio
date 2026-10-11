@@ -149,9 +149,9 @@ test("cashfree webhook: bad signature rejected, capture books the seat, replay i
        ⚠ 11 Oct 2026: the TEACHER IS THE OWNER, no longer the learner — a person
        confirmed on a class runs it and `create_payment_order` refuses them a seat
        ("You run this class — it is not yours to book"), so the learner who pays
-       below must not be the one seated. And the confirmed insert now PUBLISHES the
-       class itself (`zz_publish_when_person_confirmed`, auto_publish defaults
-       true), so the owner's PATCH below is a no-op kept as the register's press. */
+       below must not be the one seated. The confirmed insert publishes NOTHING by
+       itself (11 Oct 2026, the user: "no auto publish required") — the owner's
+       PATCH below is the press that publishes it, and it is read back. */
     const seated = await fetch(`${supabaseUrl}/rest/v1/class_people`, {
       method: "POST",
       headers: serviceHeaders,
@@ -175,6 +175,9 @@ test("cashfree webhook: bad signature rejected, capture books the seat, replay i
       body: JSON.stringify({ status: "published" }),
     });
     if (!published.ok) throw new Error(`could not publish the class: ${published.status} ${await published.text()}`);
+    // a PATCH that RLS refuses is 0 rows and a 2xx — so the status is read back
+    const [afterPress] = await rows<{ status: string }>(serviceHeaders, `classes?id=eq.${created.id}&select=status`);
+    if (afterPress?.status !== "published") throw new Error(`the owner's publish did not land: status "${afterPress?.status}"`);
     const sessions = await rows<{ id: string }>(serviceHeaders, `class_sessions?class_id=eq.${created.id}&select=id`);
     const sessionId = sessions[0].id;
 
