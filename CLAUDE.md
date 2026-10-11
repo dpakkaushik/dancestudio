@@ -8,6 +8,7 @@
 > * **No NEXT SESSIONS on a person's Home or a studio's own home** — the reads are dropped; the public pages and the Profile tab keep the rail.
 > * **A membership on sale reads two labelled boxes** — CLASSES/HOURS (`unitWord`) and VALID FOR ("60 days from purchase" / "Until used up") — `membership-size`, `membership-validity`.
 > * **Routine card: Song above Video**, full-width, stacked (supersedes C162's side-by-side).
+> * **Assets, Rooms, Students and Team have no middle section** (the user: *"the middle section … should be merged with the top section and should not shrink on changing view to list"*): their figures (and Rooms' studio block) sit inside the `DeskTop`, and every list-view rule in `globals.css` carries `:not(:is([data-testid="desk-top"], [data-testid="desk-middle"], [data-testid="top-panel"]) *)`, so nothing in a top panel folds when the list view is on. A probe **28/28** (both themes: inside the top, no `desk-middle`, the same size in list view).
 > * **Verified:** typecheck 0 · lint 0 · build green · a probe **26/26** on `:3100` (both themes: the five hue headings, no "Your settings", no NEXT SESSIONS on either home, the membership boxes, Song above Video, no sideways scroll, no page error). ⚠ The whole e2e suite was not re-run.
 
 > ### HAPTICS, A RICH STYLE PALETTE, CARD · LIST PER TOOL, A NEW SETTINGS HEAD, HUE HEADINGS AND A SQUIRCLE EDGE UNDER THE POSTER (12 Oct 2026) — no migration · ✅ PUSHED (see the commit after `1a63458`)

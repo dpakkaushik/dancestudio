@@ -7,7 +7,7 @@ import { FigureHead } from "@/components/ui/FigureHead";
 import { FormConfirm, FormSummary } from "@/components/ui/FormPage";
 import { PhotoLightbox } from "@/features/media/components/PhotoLightbox";
 import { photoUrl } from "@/lib/media/photo";
-import { DeskBody, DeskMiddle, DeskTop } from "@/components/ui/DeskSections";
+import { DeskBody, DeskTop } from "@/components/ui/DeskSections";
 import { ToolActions, ToolBody, ToolCard, ToolFacts, ToolHead, toolBtn } from "@/components/ui/ToolCard";
 import { removeAssetAction } from "@/features/assets/server-actions/assets";
 import { DOS_TOOLS, DeskHero, BizToast } from "@/features/businesses/components/biz-kit";
@@ -82,27 +82,25 @@ export function AssetsDesk({ businessId, assets }: { businessId: string; busines
 
   return (
     <div style={{ background: LILAC, color: INK, maxWidth: 430, margin: "0 auto", fontFamily: DOS_UI, minHeight: "100vh", padding: "0 16px 40px", boxSizing: "border-box" }}>
-      <DeskTop style={{ paddingBottom: 2 }}>
-        {/* ⚠ THE TOP SECTION (3 Oct 2026, C116) — the hero and Add, nothing between */}
+      <DeskTop>
+        {/* ⚠ THE TOP SECTION (3 Oct 2026, C116) — the hero and Add */}
         <DeskHero tool="assets" as="h1" margin="0 0 12px" />
         {/* ⚠ "Add Asset", capital A (4 Oct 2026, the user) */}
         <DeskAddButton label="Add Asset" href="?new=1" />
-      </DeskTop>
-
-      {/* ⚠ THE MIDDLE SECTION (4 Oct 2026, the user: "total assets count and total
-          amount in middle section below add asset button"). COUNTED off the very
-          cards below them, never stored (Step 25's rule). Items is every piece
-          across the listings — the quantity the user asked for, summed. */}
-      <DeskMiddle>
+        {/* ⚠ THE FIGURES ARE PART OF THE TOP SECTION (12 Oct 2026, the user: "the
+            middle section … should be merged with the top section and should not
+            shrink on changing view to list"). COUNTED off the very cards below,
+            never stored (Step 25's rule). */}
         <ToolFacts
           tint={TINT}
+          style={{ marginTop: 12 }}
           items={[
             { label: assets.length === 1 ? "Asset" : "Assets", value: assets.length, testId: "assets-count" },
             { label: pieces === 1 ? "Item" : "Items", value: pieces, testId: "assets-items" },
             { label: "Total value", value: rupees(total), testId: "assets-total" },
           ]}
         />
-      </DeskMiddle>
+      </DeskTop>
 
       {/* ⚠ THE LOWER SECTION — a card per asset, its picture as the card's face */}
       <DeskBody head={<FigureHead margin="0 0 8px" title={<span style={eyebrow}>INVENTORY</span>} />}>

@@ -546,21 +546,21 @@ a:focus-visible:not([data-slot]) {
    `data-dos-view="list"` on #dos-main on a tool's list page when the person has
    chosen it (features/shell/viewMode.ts); `ToolCard` and `ClassTile` carry the
    `data-tc` marks. !important because the cards are styled inline. ── */
-#dos-main[data-dos-view="list"] [data-tc="card"],
-#dos-main[data-dos-view="list"] [data-card="session"] { margin-bottom: 8px !important; border-radius: 16px !important; }
-#dos-main[data-dos-view="list"] [data-tc="head"] { padding: 9px 12px !important; gap: 10px !important; background: transparent !important; }
-#dos-main[data-dos-view="list"] [data-tc="head"] a { gap: 10px !important; }
-#dos-main[data-dos-view="list"] [data-tc="face"] { width: 36px !important; height: 36px !important; border-radius: 11px !important; font-size: 12px !important; }
-#dos-main[data-dos-view="list"] [data-tc="name"] { font-size: 15px !important; -webkit-line-clamp: 1 !important; }
-#dos-main[data-dos-view="list"] [data-tc="sub"] { display: none !important; }
-#dos-main[data-dos-view="list"] [data-tc="facts"] { display: none !important; }
-#dos-main[data-dos-view="list"] [data-tc="body"] { padding: 7px 12px 9px !important; }
-#dos-main[data-dos-view="list"] [data-tc="body"]:has(> [data-tc="facts"]:only-child) { display: none !important; }
-#dos-main[data-dos-view="list"] [data-tc="title"] { font-size: 14px !important; letter-spacing: -0.2px !important; }
-#dos-main[data-dos-view="list"] [data-tc="actions"] { padding: 6px 10px 9px !important; gap: 6px !important; }
-#dos-main[data-dos-view="list"] [data-tc="actions"] > a,
-#dos-main[data-dos-view="list"] [data-tc="actions"] > button { padding-top: 6px !important; padding-bottom: 6px !important; font-size: 11px !important; }
-#dos-main[data-dos-view="list"] [data-tc="classhead"],
-#dos-main[data-dos-view="list"] [data-tc="seatrow"] [data-testid="class-seat-bar"] { display: none !important; }
-#dos-main[data-dos-view="list"] [data-testid="class-title"] { font-size: 18px !important; }
-#dos-main[data-dos-view="list"] [data-tc="seatrow"] { margin-top: 6px !important; justify-content: flex-end; }
+#dos-main[data-dos-view="list"] [data-tc="card"]:not(:is([data-testid="desk-top"], [data-testid="desk-middle"], [data-testid="top-panel"]) *),
+#dos-main[data-dos-view="list"] [data-card="session"]:not(:is([data-testid="desk-top"], [data-testid="desk-middle"], [data-testid="top-panel"]) *) { margin-bottom: 8px !important; border-radius: 16px !important; }
+#dos-main[data-dos-view="list"] [data-tc="head"]:not(:is([data-testid="desk-top"], [data-testid="desk-middle"], [data-testid="top-panel"]) *) { padding: 9px 12px !important; gap: 10px !important; background: transparent !important; }
+#dos-main[data-dos-view="list"] [data-tc="head"] a:not(:is([data-testid="desk-top"], [data-testid="desk-middle"], [data-testid="top-panel"]) *) { gap: 10px !important; }
+#dos-main[data-dos-view="list"] [data-tc="face"]:not(:is([data-testid="desk-top"], [data-testid="desk-middle"], [data-testid="top-panel"]) *) { width: 36px !important; height: 36px !important; border-radius: 11px !important; font-size: 12px !important; }
+#dos-main[data-dos-view="list"] [data-tc="name"]:not(:is([data-testid="desk-top"], [data-testid="desk-middle"], [data-testid="top-panel"]) *) { font-size: 15px !important; -webkit-line-clamp: 1 !important; }
+#dos-main[data-dos-view="list"] [data-tc="sub"]:not(:is([data-testid="desk-top"], [data-testid="desk-middle"], [data-testid="top-panel"]) *) { display: none !important; }
+#dos-main[data-dos-view="list"] [data-tc="facts"]:not(:is([data-testid="desk-top"], [data-testid="desk-middle"], [data-testid="top-panel"]) *) { display: none !important; }
+#dos-main[data-dos-view="list"] [data-tc="body"]:not(:is([data-testid="desk-top"], [data-testid="desk-middle"], [data-testid="top-panel"]) *) { padding: 7px 12px 9px !important; }
+#dos-main[data-dos-view="list"] [data-tc="body"]:has(> [data-tc="facts"]:only-child):not(:is([data-testid="desk-top"], [data-testid="desk-middle"], [data-testid="top-panel"]) *) { display: none !important; }
+#dos-main[data-dos-view="list"] [data-tc="title"]:not(:is([data-testid="desk-top"], [data-testid="desk-middle"], [data-testid="top-panel"]) *) { font-size: 14px !important; letter-spacing: -0.2px !important; }
+#dos-main[data-dos-view="list"] [data-tc="actions"]:not(:is([data-testid="desk-top"], [data-testid="desk-middle"], [data-testid="top-panel"]) *) { padding: 6px 10px 9px !important; gap: 6px !important; }
+#dos-main[data-dos-view="list"] [data-tc="actions"] > a:not(:is([data-testid="desk-top"], [data-testid="desk-middle"], [data-testid="top-panel"]) *),
+#dos-main[data-dos-view="list"] [data-tc="actions"] > button:not(:is([data-testid="desk-top"], [data-testid="desk-middle"], [data-testid="top-panel"]) *) { padding-top: 6px !important; padding-bottom: 6px !important; font-size: 11px !important; }
+#dos-main[data-dos-view="list"] [data-tc="classhead"]:not(:is([data-testid="desk-top"], [data-testid="desk-middle"], [data-testid="top-panel"]) *),
+#dos-main[data-dos-view="list"] [data-tc="seatrow"] [data-testid="class-seat-bar"]:not(:is([data-testid="desk-top"], [data-testid="desk-middle"], [data-testid="top-panel"]) *) { display: none !important; }
+#dos-main[data-dos-view="list"] [data-testid="class-title"]:not(:is([data-testid="desk-top"], [data-testid="desk-middle"], [data-testid="top-panel"]) *) { font-size: 18px !important; }
+#dos-main[data-dos-view="list"] [data-tc="seatrow"]:not(:is([data-testid="desk-top"], [data-testid="desk-middle"], [data-testid="top-panel"]) *) { margin-top: 6px !important; justify-content: flex-end; }

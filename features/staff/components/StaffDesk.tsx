@@ -19,7 +19,7 @@ import {
 } from "@/features/staff/server-actions/staff";
 import Link from "next/link";
 import { DeskAddButton } from "@/features/settings/components/settings-kit";
-import { DeskBody, DeskMiddle, DeskTop } from "@/components/ui/DeskSections";
+import { DeskBody, DeskTop } from "@/components/ui/DeskSections";
 import { ToolActions, ToolBody, ToolCard, ToolChip, ToolFace, ToolFacts, ToolHead, toolBtn } from "@/components/ui/ToolCard";
 import { DOS_TOOLS, DeskHero, SheetHandle, sheetBody, sheetWrap } from "@/features/businesses/components/biz-kit";
 import { DOS_UI, INK, LILAC, MUTED, SUB } from "@/lib/design/tokens";
@@ -291,7 +291,7 @@ export function StaffDesk({
           nothing on screen ever shows it drifting.
           ⚠ AND IT NAMES THE BUSINESS, which the other two desks already did: an
           organization runs several studios, and the tool hero names the tool. */}
-      <DeskTop style={{ paddingBottom: 4 }}>
+      <DeskTop>
       {/* ⚠ THE TOP SECTION (3 Oct 2026, C116) — the hero, whose team it is, and Add */}
       {/* ⚠ NOTHING BETWEEN THE HEADING AND THE BUTTON (4 Oct 2026, the user) */}
       {/* ⚠ THE ANSWERED INVITES SIT IN THE HERO'S TOP RIGHT (11 Oct 2026), the
@@ -344,6 +344,17 @@ export function StaffDesk({
           </button>
         </div>
       ) : null}
+      {/* ⚠ THE FIGURES ARE PART OF THE TOP SECTION (12 Oct 2026, the user: "the
+          middle section … should be merged with the top section") — counted off
+          the roster below, never stored; My Team's alone */}
+      {col === "artists" && artistTeams ? null : (
+        <div style={{ marginTop: 12 }}>
+          <ToolFacts tint={DOS_TOOLS.team.c} items={[{ label: team.length === 1 ? "Member" : "Total members", value: team.length, testId: "team-total" }]} />
+          {roleRows.map((row, i) => (
+            <ToolFacts key={i} tint={DOS_TOOLS.team.c} style={{ marginTop: 6 }} items={row} />
+          ))}
+        </div>
+      )}
       </DeskTop>
 
       {col === "artists" && artistTeams ? (
@@ -352,16 +363,6 @@ export function StaffDesk({
         </DeskBody>
       ) : (
       <>
-      {/* ⚠ THE MIDDLE SECTION (4 Oct 2026, the user: "section in between with
-          total members count below count member role wise") — counted off the
-          roster below, never stored */}
-      <DeskMiddle>
-        <ToolFacts tint={DOS_TOOLS.team.c} items={[{ label: team.length === 1 ? "Member" : "Total members", value: team.length, testId: "team-total" }]} />
-        {roleRows.map((row, i) => (
-          <ToolFacts key={i} tint={DOS_TOOLS.team.c} style={{ marginTop: 6 }} items={row} />
-        ))}
-      </DeskMiddle>
-
       <DeskBody style={{ paddingBottom: 4 }}>
       {/* ⚠ THE LOWER SECTION (3 Oct 2026, C116) — the roster and what it says */}
       {/* ── THE ROSTER, GROUPED BY LABEL (20 Sep 2026) ──────────────────────

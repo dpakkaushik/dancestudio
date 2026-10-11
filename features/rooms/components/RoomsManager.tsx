@@ -4,7 +4,7 @@ import { useState } from "react";
 import { createRoomAction, deleteRoomAction, updateRoomAction } from "@/features/rooms/server-actions/rooms";
 import { RoomForm, type RoomDraft } from "@/features/rooms/components/RoomForm";
 import { DOS_TOOLS, DeskHero } from "@/features/businesses/components/biz-kit";
-import { DeskBody, DeskMiddle, DeskTop } from "@/components/ui/DeskSections";
+import { DeskBody, DeskTop } from "@/components/ui/DeskSections";
 import { ToolActions, ToolBody, ToolCard, ToolFace, ToolFacts, ToolHead, toolBtn } from "@/components/ui/ToolCard";
 import { DOS_AMENITIES } from "@/lib/constants/amenities";
 import { DOS_DISPLAY, DOS_UI } from "@/lib/design/tokens";
@@ -151,7 +151,7 @@ export function RoomsManager({
 
   return (
     <div style={{ maxWidth: 430, margin: "0 auto", padding: "0 16px 40px", fontFamily: DOS_UI, color: "var(--text)" }}>
-      <DeskTop style={{ paddingBottom: 2 }}>
+      <DeskTop>
         {/* the shared tool hero — the page's own `<h1>` (22 Sep 2026) */}
         <DeskHero tool="rooms" as="h1" margin="0 0 12px" />
         {/* ⚠ only for somebody who may actually edit one (21 Sep 2026) */}
@@ -162,11 +162,9 @@ export function RoomsManager({
         ) : (
           <DeskAddButton label="Add room" onClick={() => setSheet({ mode: "new" })} />
         )}
-      </DeskTop>
-
-      {/* THE STUDIO — between the Add room button and the cards (4 Oct 2026) */}
-      <DeskMiddle>
-        <div data-testid="rooms-studio" style={{ display: "flex", alignItems: "center", gap: 12 }}>
+        {/* THE STUDIO — under the Add room button, part of the top section since
+            12 Oct 2026 (the user: "merged with the top section") */}
+        <div data-testid="rooms-studio" style={{ display: "flex", alignItems: "center", gap: 12, marginTop: 14 }}>
           <ToolFace name={businessName} photoPath={businessPhotoPath} tint={TINT} size={52} />
           <div style={{ flex: 1, minWidth: 0 }}>
             <div style={{ fontSize: 9.5, fontWeight: 900, letterSpacing: 0.8, textTransform: "uppercase", color: TINT }}>Studio</div>
@@ -185,7 +183,7 @@ export function RoomsManager({
             })()}
           </div>
         </div>
-      </DeskMiddle>
+      </DeskTop>
 
       <DeskBody>
         {list.map((r) => {

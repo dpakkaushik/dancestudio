@@ -6,10 +6,10 @@ import { deleteLeadAction } from "@/features/leads/server-actions/leads";
 import { DeskAddButton } from "@/features/settings/components/settings-kit";
 import { DOS_TOOLS, DeskHero } from "@/features/businesses/components/biz-kit";
 import { columnTab, columnTrack } from "@/components/ui/ColumnTabs";
-import { DeskBody, DeskMiddle, DeskTop } from "@/components/ui/DeskSections";
+import { DeskBody, DeskTop } from "@/components/ui/DeskSections";
 import { FigureHead } from "@/components/ui/FigureHead";
 import { ToolActions, ToolBody, ToolCard, ToolChip, ToolFacts, ToolHead, toolBtn } from "@/components/ui/ToolCard";
-import { DOS_UI, INK, LILAC, SUB } from "@/lib/design/tokens";
+import { DOS_UI, INK, LILAC, SUB } from "@/lib/design/tokens";
 import { FORM_TITLE } from "@/components/ui/formTitle";
 import { useCloseOnBack } from "@/lib/hooks/useCloseOnBack";
 import type { Student } from "@/repositories/students";
@@ -119,7 +119,7 @@ export function StudentsDesk({
 
   return (
     <div style={{ background: LILAC, color: INK, maxWidth: 430, margin: "0 auto", fontFamily: DOS_UI, minHeight: "100vh", padding: "0 16px 40px", boxSizing: "border-box" }}>
-      <DeskTop style={{ paddingBottom: 4 }}>
+      <DeskTop>
       {/* ⚠ THE TOP SECTION (3 Oct 2026, C116) — the hero, Invite, the search and what the list is */}
       <DeskHero tool="students" as="h1" margin="0 0 12px" />
 
@@ -133,20 +133,16 @@ export function StudentsDesk({
       {/* ⚠ NO EXPLANATION UNDER THE SEARCH (3 Oct 2026, the user: "remove the
           extra detail below search bar in students") — the empty state still says
           how somebody becomes a student, which is the one place it is needed */}
+      {/* ⚠ THE FIGURES ARE PART OF THE TOP SECTION (12 Oct 2026, the user) —
+          counted off the very cards below, never stored */}
+      <ToolFacts
+        tint={TINT}
+        items={[
+          { label: "Total Students", value: students.length, testId: "students-total" },
+          { label: "Membership Students", value: members, testId: "students-members" },
+        ]}
+      />
       </DeskTop>
-
-      {/* ⚠ THE MIDDLE SECTION (4 Oct 2026, the user: "Total Students count and Total
-          membership students count in a seprate section above cards how its done
-          for assets") — counted off the very cards below, never stored */}
-      <DeskMiddle>
-        <ToolFacts
-          tint={TINT}
-          items={[
-            { label: "Total Students", value: students.length, testId: "students-total" },
-            { label: "Membership Students", value: members, testId: "students-members" },
-          ]}
-        />
-      </DeskMiddle>
 
       <DeskBody>
       {/* ⚠ THE LOWER SECTION (3 Oct 2026, C116) — the students themselves */}
