@@ -172,6 +172,28 @@ async function fillBusinessContact(page: Page, email: string) {
   await page.locator('input[name="contact_email"]').fill(email);
 }
 
+/** THE TOOLS AND THE GEAR ARE IN THE DRAWER THE PROFILE PICTURE OPENS (12 Oct
+ *  2026, the user: "take the tools from the home section under the profile
+ *  switcher … dark and light mode like toggle on top of this section with
+ *  settings on its right"). Opens it if it is shut — pressed until it answers,
+ *  because a press before hydration is not a press — and hands it back. A tile
+ *  pressed in it navigates, which closes it; `closeTools` is for the checks that
+ *  only read it and then carry on with the page underneath. */
+async function tools(page: Page): Promise<Locator> {
+  const drawer = page.getByTestId("profile-drawer");
+  await expect(async () => {
+    if (!(await drawer.isVisible())) await page.getByTestId("profile-switcher").click();
+    await expect(drawer).toBeVisible({ timeout: 3000 });
+  }).toPass({ timeout: 20_000 });
+  return drawer;
+}
+async function closeTools(page: Page): Promise<void> {
+  const drawer = page.getByTestId("profile-drawer");
+  if (await drawer.isVisible()) await page.mouse.click(8, 420);
+  await expect(drawer).toHaveCount(0);
+}
+
+
 /** A segmented pill and a notification stack are both div[role="button"]
  *  carrying an onClick, so neither does anything until React has hydrated — and
  *  Playwright's own waiting cannot see that: a server-rendered div is already
@@ -572,7 +594,7 @@ test.describe.serial("DanceOS, end to end", () => {
     await owner.goto(`/business/${studioId}`);
     await expect(owner.getByTestId("studio-verification")).toHaveCount(0);
     await expect(owner.getByTestId("studio-subscription")).toHaveCount(0);
-    await owner.getByRole("button", { name: "Settings", exact: true }).click();
+    await (await tools(owner)).getByRole("button", { name: "Settings", exact: true }).click();
     const studioSettings = owner.getByRole("dialog", { name: "Settings" });
     await expect(studioSettings).toBeVisible();
     await expect(studioSettings).toContainText("THIS STUDIO");
@@ -651,7 +673,7 @@ test.describe.serial("DanceOS, end to end", () => {
     await expect(owner.getByTestId("studio-verification")).toHaveCount(0);
     /* and Settings, opened from the STUDIO, is where it went — badged verified
        now, which is the state the tile's own badge reads */
-    await owner.getByRole("button", { name: "Settings", exact: true }).click();
+    await (await tools(owner)).getByRole("button", { name: "Settings", exact: true }).click();
     const afterBadge = owner.getByRole("dialog", { name: "Settings" });
     await expect(afterBadge.getByText("Verification", { exact: true })).toBeVisible();
     await expect(afterBadge).toContainText("verified");
@@ -708,7 +730,8 @@ test.describe.serial("DanceOS, end to end", () => {
     await owner.waitForURL(/\/business\/[0-9a-f-]+$/);
     businessId = owner.url().match(/\/business\/([0-9a-f-]+)$/)?.[1] ?? null;
     await expect(owner.getByRole("heading", { name: studioName, exact: true })).toBeVisible();
-    await expect(owner.getByText("Studio Tools")).toBeVisible();
+    await expect((await tools(owner)).getByText("Studio Tools")).toBeVisible();
+    await closeTools(owner);
     /* ⚠ ONE EMPTY-DAY CARD FOR EVERY KIND OF HOME (21 Sep 2026, the user: "when
        todays schedule blank just shouw card with Heading Nothing On Today's
        Schedule, no bottons below"). It used to say three different sentences —
@@ -776,7 +799,7 @@ test.describe.serial("DanceOS, end to end", () => {
     expect(await proofRows(), "a pressed ✕ has not touched the database").toBe(before);
     await postersSheet.getByRole("button", { name: "Cancel" }).click();
     expect(await proofRows(), "and Cancel left every picture exactly where it was").toBe(before);
-    await owner.getByRole("link", { name: "Classes", exact: true }).click();
+    await (await tools(owner)).getByRole("link", { name: "Classes", exact: true }).click();
     await owner.waitForURL(/\/business\/[0-9a-f-]+\/classes$/);
 
     // ---- the room came with the studio; give it an amenity (Step 11) ------
@@ -784,7 +807,7 @@ test.describe.serial("DanceOS, end to end", () => {
     // classes heading … should be removed") — every door it held is a tile on the
     // studio's own home, which is where this goes now.
     await owner.goto(`/business/${businessId}`);
-    await owner.getByRole("link", { name: "Rooms", exact: true }).click();
+    await (await tools(owner)).getByRole("link", { name: "Rooms", exact: true }).click();
     await owner.waitForURL(/\/business\/[0-9a-f-]+\/rooms$/);
     /* amenities live with the room and show up on the public class page.
        ⚠ A ROOM IS EDITED ONLY THROUGH ITS FORM since 4 Oct 2026 (the user: "edit
@@ -1043,7 +1066,7 @@ test.describe.serial("DanceOS, end to end", () => {
     // out is there; Month opens on today, which honestly has nothing on.
     // (18 Sep 2026: from the studio's own home, the register's chip rail being gone)
     await owner.goto(`/business/${businessId}`);
-    await owner.getByRole("link", { name: "Calendar", exact: true }).click();
+    await (await tools(owner)).getByRole("link", { name: "Calendar", exact: true }).click();
     await owner.waitForURL(/\/business\/[0-9a-f-]+\/calendar$/);
     await expect(owner.locator(`[aria-label="Open ${classTitle}"]`)).toBeVisible();
     /* ⚠ THE VIEWS ARE IN THE DRAWER (10 Oct 2026, the user: "manage the upper
@@ -1068,7 +1091,7 @@ test.describe.serial("DanceOS, end to end", () => {
     // Owner-only, and it is the pay side of the prototype's S_earn — not a
     // payroll desk: the studio settles by bank or UPI and records it here.
     await owner.goto(`/business/${businessId}`);
-    await owner.getByRole("link", { name: "Earnings", exact: true }).click();
+    await (await tools(owner)).getByRole("link", { name: "Earnings", exact: true }).click();
     await owner.waitForURL(/\/business\/[0-9a-f-]+\/earnings$/);
     await expect(owner.getByText(/DanceOS does not move this money/)).toBeVisible();
     // 18 Sep 2026: the trainer is ON the ledger from here, because accepting the
@@ -1626,8 +1649,8 @@ test.describe.serial("DanceOS, end to end", () => {
        crew") — no Enquiry button on its home, and no Earnings tile, which counted
        its enquiry money and nothing else */
     await expect(learner.getByRole("button", { name: /Enquiry/ })).toHaveCount(0);
-    await expect(learner.getByRole("link", { name: "Earnings", exact: true })).toHaveCount(0);
-    await learner.getByRole("link", { name: "Team", exact: true }).click();
+    await expect((await tools(learner)).getByRole("link", { name: "Earnings", exact: true })).toHaveCount(0);
+    await (await tools(learner)).getByRole("link", { name: "Team", exact: true }).click();
     await learner.waitForURL(/\/crews\/[0-9a-f-]+\/manage\/team$/);
     // ASKED IS NOT JOINED: the desk says the trainer has not answered, and counts one member
     await expect(learner.getByText("⏳ Waiting on them to confirm")).toBeVisible();
@@ -2348,7 +2371,7 @@ test.describe.serial("DanceOS, end to end", () => {
     const settings = trainer.getByRole("dialog", { name: "Settings" });
     await expect(async () => {
       if (!(await settings.isVisible())) {
-        await trainer.getByRole("button", { name: "Settings", exact: true }).click();
+        await (await tools(trainer)).getByRole("button", { name: "Settings", exact: true }).click();
       }
       /* ⚠ SIX seconds per press, not two (3 Oct 2026): the gear PUSHES
          `?settings=1`, which is a server round trip for this page, and a local
@@ -2466,7 +2489,8 @@ test.describe.serial("DanceOS, end to end", () => {
     await expect(settings2.getByRole("button", { name: "Artist tools" })).toHaveCount(0);
     await expect(settings2.getByRole("link", { name: /Subscription/ })).toHaveCount(0);
     await trainer.goto("/");
-    await expect(trainer.getByRole("link", { name: "Subscription", exact: true })).toHaveAttribute("href", "/subscription");
+    await expect((await tools(trainer)).getByRole("link", { name: "Subscription", exact: true })).toHaveAttribute("href", "/subscription");
+    await closeTools(trainer);
     // 10 Sep 2026: ENDING means stop renewing, the way every real subscription
     // works — the tools stay on until the period paid for is over, so the badge
     // still reads ARTIST, and the plan's own screen says it is ending. The ROLE
@@ -2597,7 +2621,8 @@ test.describe.serial("DanceOS, end to end", () => {
     // (the head's own cyan "All bookings" link went on 18 Sep 2026 with every other
     // blue button; the Classes tile in the grid beneath the shelf is that door now)
     await expect(learner.getByRole("link", { name: "All bookings", exact: true })).toHaveCount(0);
-    await expect(learner.getByRole("link", { name: "Classes", exact: true })).toHaveAttribute("href", "/my-classes");
+    await expect((await tools(learner)).getByRole("link", { name: "Classes", exact: true })).toHaveAttribute("href", "/my-classes");
+    await closeTools(learner);
 
     // the trainer accepted this class back in segment 1 — a class cannot be
     // published until they do (18 Sep 2026) — so the session is on their day from
@@ -2622,8 +2647,9 @@ test.describe.serial("DanceOS, end to end", () => {
     await owner.goto("/");
     await expect(owner.getByRole("link", { name: "Classes at this studio" })).toHaveCount(0);
     await expect(owner.getByRole("link", { name: "Open the studio calendar" })).toHaveCount(0);
-    await expect(owner.getByRole("link", { name: "Students", exact: true })).toHaveCount(0);
-    await expect(owner.getByRole("link", { name: "Studios", exact: true })).toBeVisible();
+    await expect((await tools(owner)).getByRole("link", { name: "Students", exact: true })).toHaveCount(0);
+    await expect((await tools(owner)).getByRole("link", { name: "Studios", exact: true })).toBeVisible();
+    await closeTools(owner);
     // Stats is the chip beside the QR in the hero since 18 Sep 2026, not a tile — still one link called Stats
     await expect(owner.getByRole("link", { name: "Stats", exact: true })).toBeVisible();
     /* ⚠ the organization's own home carrying its Events tile was checked here
@@ -2633,8 +2659,8 @@ test.describe.serial("DanceOS, end to end", () => {
     // the studio's question — what is running in its rooms — is asked on the STUDIO's own home
     await owner.goto(`/business/${businessId}`);
     await expect(owner.getByTestId("deck-card").first().getByText("At your studio", { exact: true })).toBeVisible();
-    await expect(owner.getByRole("link", { name: "Classes", exact: true })).toHaveAttribute("href", `/business/${businessId}/classes`);
-    await expect(owner.getByRole("link", { name: "Calendar", exact: true })).toHaveAttribute("href", `/business/${businessId}/calendar`);
+    await expect((await tools(owner)).getByRole("link", { name: "Classes", exact: true })).toHaveAttribute("href", `/business/${businessId}/classes`);
+    await expect((await tools(owner)).getByRole("link", { name: "Calendar", exact: true })).toHaveAttribute("href", `/business/${businessId}/calendar`);
   });
 
   test("the wiring slice: a tick, two numbers, a followers list and two buttons that had no door", async () => {
@@ -2810,7 +2836,7 @@ test.describe.serial("DanceOS, end to end", () => {
        sold from "the first business you own", so an organization's second studio
        could not be reached at all. */
     await owner.goto(`/business/${businessId}`);
-    await owner.getByRole("link", { name: "Memberships", exact: true }).click();
+    await (await tools(owner)).getByRole("link", { name: "Memberships", exact: true }).click();
     await owner.waitForURL(new RegExp(`/business/${businessId}/memberships$`));
     await expect(owner.getByRole("heading", { name: "Memberships" })).toBeVisible();
     /* ⚠ NOTHING BETWEEN THE HEADING AND THE BUTTON (4 Oct 2026, the user: "remove
@@ -2956,7 +2982,7 @@ test.describe.serial("DanceOS, end to end", () => {
     const assetName = `E2E PA system ${stamp}`;
 
     await owner.goto(`/business/${businessId}`);
-    await owner.getByRole("link", { name: "Assets", exact: true }).click();
+    await (await tools(owner)).getByRole("link", { name: "Assets", exact: true }).click();
     await owner.waitForURL(new RegExp(`/business/${businessId}/assets$`));
     await expect(owner.getByRole("heading", { level: 1, name: "Assets" })).toBeVisible();
     /* ⚠ no "What {studio} owns" line any more (4 Oct 2026, the user: "remove text
@@ -3549,7 +3575,7 @@ test.describe.serial("DanceOS, end to end", () => {
        mode; Settings carries NO Edit crew tile any more — both ends asserted */
     await learner.goto(`/crews/${crewId}/manage`);
     await expect(learner.getByRole("button", { name: "Edit crew" })).toHaveCount(0);
-    await learner.getByRole("button", { name: "Settings", exact: true }).click();
+    await (await tools(learner)).getByRole("button", { name: "Settings", exact: true }).click();
     const crewSettings = learner.getByRole("dialog", { name: "Settings" });
     await expect(crewSettings.getByText("THIS CREW")).toBeVisible();
     await expect(crewSettings.getByRole("link", { name: "Edit crew", exact: true })).toHaveCount(0);

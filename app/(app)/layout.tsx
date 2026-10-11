@@ -8,6 +8,9 @@ import { findMyUnreadCount } from "@/repositories/notifications";
 import { findMyArtistPlan } from "@/repositories/plans";
 import { findProfileById } from "@/repositories/profiles";
 import { findMyMemberships, runsTheBusiness } from "@/repositories/businesses";
+import { findMyLayout } from "@/repositories/layout";
+import { crewTilesFor, studioTilesFor, tilesFor } from "@/features/home/tiles";
+import { arrangeTiles, toolsLayoutKey } from "@/features/home/toolOrder";
 
 /** Every signed-in surface lives in this group and wears the app chrome (top bar +
  *  tab bar). Auth screens (/login, /onboarding, /auth) stay outside it.
@@ -39,7 +42,7 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
   const {
     data: { user },
   } = await supabase.auth.getUser();
-  const [profile, unread, memberships, ledCrews, plan, isAdmin] = await Promise.all([
+  const [profile, unread, memberships, ledCrews, plan, isAdmin, layout] = await Promise.all([
     user ? findProfileById(supabase, user.id) : Promise.resolve(null),
     user ? findMyUnreadCount(supabase).catch(() => 0) : Promise.resolve(0),
     user ? findMyMemberships(supabase).catch(() => []) : Promise.resolve([]),
@@ -49,6 +52,8 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
        and Settings is in the chrome, so the answer is needed wherever the gear
        is. It rides this batch, so it costs no extra round trip. */
     user ? amIPlatformAdmin(supabase).catch(() => false) : Promise.resolve(false),
+    /* every grid's arrangement, for the tools in the drawer (12 Oct 2026) */
+    user ? findMyLayout(supabase, user.id).catch(() => ({}) as Record<string, string[]>) : Promise.resolve({} as Record<string, string[]>),
   ]);
   /* a platform admin with no profile is ADMIN ONLY (9 Sep 2026): the chrome draws
      no tab bar and no bell for it — every tab needs a profile, and the queue is
@@ -75,20 +80,26 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
    *  students" when it no longer gives them a door to it. */
   const runsA = memberships.filter((m) => runsTheBusiness(m.memberRole));
 
+  /* EACH PROFILE'S TOOLS RIDE ITS SWITCHER ROW (12 Oct 2026, the user: "take the
+     tools from the home section under the profile switcher ? in one line for
+     each tile"). Built here, in the order this account arranged them. */
+  const ordered = (tiles: ReturnType<typeof tilesFor>, key: string | null) => arrangeTiles(tiles, key ? layout[key] : null);
+  const ownPageId = memberships.find((m) => m.memberRole === "owner" && m.business.type === "artist_page")?.business.id ?? null;
+  const personKind = plan?.active ? "artist" : "user";
   const switcher: SwitcherItem[] = [];
   if (profile) {
     /* each row carries its PICTURE (2 Oct 2026, the user: "profile switcher on
        right side with profile photo at extreme right") — the chip wears the one
        you are in, and initials stand in where there is none */
-    switcher.push({ key: "me", href: "/", label: profile.fullName, sub: plan?.active ? "Artist" : "User", kind: "me", photo: photoUrl(profile.avatarPath ?? undefined) });
+    switcher.push({ key: "me", href: "/", label: profile.fullName, sub: plan?.active ? "Artist" : "User", kind: "me", photo: photoUrl(profile.avatarPath ?? undefined), tiles: ordered(tilesFor(personKind, ownPageId), toolsLayoutKey(personKind)) });
     for (const m of runsA) {
       /* ⚠ the organization arm went with organizations (29 Sep 2026) */
       if (m.business.type === "studio") {
-        switcher.push({ key: m.business.id, href: `/business/${m.business.id}`, label: m.business.name, sub: "Studio", kind: "studio", photo: photoUrl(m.business.photoPath ?? undefined) });
+        switcher.push({ key: m.business.id, href: `/business/${m.business.id}`, label: m.business.name, sub: "Studio", kind: "studio", photo: photoUrl(m.business.photoPath ?? undefined), tiles: ordered(studioTilesFor(m.business.id, m.memberRole), toolsLayoutKey("studio", m.business.id)) });
       }
     }
     for (const c of ledCrews) {
-      switcher.push({ key: c.id, href: `/crews/${c.id}/manage`, label: c.name, sub: "Crew", kind: "crew", photo: photoUrl(c.photo ?? undefined) });
+      switcher.push({ key: c.id, href: `/crews/${c.id}/manage`, label: c.name, sub: "Crew", kind: "crew", photo: photoUrl(c.photo ?? undefined), tiles: ordered(crewTilesFor(c.id), toolsLayoutKey("crew", c.id)) });
     }
   }
 

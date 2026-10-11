@@ -67,6 +67,16 @@ let fail = 0;
 const check = (ok, what) => { console.log(`${ok ? "PASS" : "FAIL"}  ${what}`); if (ok) pass += 1; else fail += 1; };
 const rest = async (q) => (await fetch(`${supabaseUrl}/rest/v1/${q}`, { headers: adminHeaders })).json();
 
+/* the tools live in the profile drawer since 12 Oct 2026 */
+async function openDrawer(page) {
+  const drawer = page.getByTestId("profile-drawer");
+  for (let i = 0; i < 8 && !(await drawer.isVisible().catch(() => false)); i++) {
+    await page.getByTestId("profile-switcher").click().catch(() => {});
+    await page.waitForTimeout(500);
+  }
+  return drawer;
+}
+
 async function signUp(page, email) {
   const res = await fetch(`${supabaseUrl}/auth/v1/admin/generate_link`, { method: "POST", headers: adminHeaders, body: JSON.stringify({ type: "magiclink", email }) });
   if (!res.ok) throw new Error(`generate_link ${res.status} ${await res.text()}`);
@@ -334,7 +344,7 @@ const enterEdit = async (page) => {
        tile was a third door to a job whose controls sit on the pictures. The
        ROUTE stays (Rule 14) and is driven further down this file. */
     check((await owner.getByRole("link", { name: "Media", exact: true }).count()) === 0, "studio home: NO Media tile — the pictures are edited on the pictures (21 Sep 2026)");
-    check((await owner.getByRole("link", { name: "Assets", exact: true }).getAttribute("href")) === `/business/${studioId}/assets`, "studio home: the Assets tile opens THIS studio's desk");
+    check((await (await openDrawer(owner)).getByRole("link", { name: "Assets", exact: true }).getAttribute("href")) === `/business/${studioId}/assets`, "studio home: the Assets tile opens THIS studio's desk");
     check((await owner.getByRole("link", { name: "Stats", exact: true }).count()) === 1, "studio home: one Stats door — the chip beside the QR (it left the grid on 18 Sep 2026)");
     /* ⚠ AND THE CHIPS ARE IN THE FIGURES ROW, NOT THE HERO'S RIGHT EDGE (20 Sep
        2026, the user: "should be placed in same row as follower following numbers
@@ -414,7 +424,7 @@ const enterEdit = async (page) => {
        owner pressing it was told the feature does not exist while it was live
        one address away. Driven from the tile, because the tile is what was
        broken. */
-    check((await owner.getByRole("link", { name: "Memberships", exact: true }).getAttribute("href")) === `/business/${studioId}/memberships`, "studio home: the Memberships tile opens THIS studio's desk (21 Sep 2026)");
+    check((await (await openDrawer(owner)).getByRole("link", { name: "Memberships", exact: true }).getAttribute("href")) === `/business/${studioId}/memberships`, "studio home: the Memberships tile opens THIS studio's desk (21 Sep 2026)");
     await owner.goto(`${BASE}/business/${studioId}/memberships`);
     await owner.getByRole("heading", { name: "Memberships" }).waitFor({ timeout: 15000 });
     check((await owner.getByText("Class packs and plans this studio sells").count()) === 0, "studio memberships: not the 'nothing here yet' shrug any more");

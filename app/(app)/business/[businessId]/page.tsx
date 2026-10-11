@@ -1,13 +1,9 @@
 import { redirect } from "next/navigation";
-import type { Tile } from "@/features/home/components/home-kit";
-import { toolsLayoutKey } from "@/features/home/toolOrder";
-import { DOS_TOOLS } from "@/features/businesses/components/biz-kit";
 import { StudioHome } from "@/features/businesses/components/StudioHome";
 import { photoUrl } from "@/lib/media/photo";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { findPublishedStylesByBusiness } from "@/repositories/classes";
 import { findFollowerCounts } from "@/repositories/follows";
-import { findMyToolOrder } from "@/repositories/layout";
 import { findStudioDeck } from "@/repositories/home";
 import { findPublicStudioTeam, findPublicBusiness } from "@/repositories/publicProfile";
 import { studioTeamRows } from "@/features/profiles/teamFollowing";
@@ -78,7 +74,7 @@ export default async function StudioHomePage({ params, searchParams }: { params:
      policy and set_business_profile_photo admit (20260829230000) */
   const canEditPhoto = isOwner || memberRole === "trainer";
   const nowIso = stampNowIso();
-  const [photos, deck, roomCounts, stylesByBusiness, editable, followerCounts, team, toolOrder] = await Promise.all([
+  const [photos, deck, roomCounts, stylesByBusiness, editable, followerCounts, team] = await Promise.all([
     /* the header pictures — the photos of its space, as shown to DanceOS;
        signed, and since 15 Sep 2026 readable by the whole team */
     findStudioProofPhotos(supabase, businessId),
@@ -96,9 +92,6 @@ export default async function StudioHomePage({ params, searchParams }: { params:
        studio has nothing to follow WITH, so the honest count is the account that
        runs it; `public_studio_team` already names the owner */
     findPublicStudioTeam(supabase, businessId).catch(() => []),
-    /* ⚠ HOW THIS MEMBER HAS ARRANGED THIS STUDIO'S TOOLS (22 Sep 2026), keyed by
-       the STUDIO so two people on one team each get their own */
-    findMyToolOrder(supabase, user.id, toolsLayoutKey("studio", businessId)),
   ]);
   /* ⚠ A STUDIO'S FOLLOWING IS ITS TEAM (2 Oct 2026, the user: "following for
      crew and studio should by default show list of team members") — the team
@@ -108,38 +101,6 @@ export default async function StudioHomePage({ params, searchParams }: { params:
   /* ⚠⚠ THE THREE STANDING READS ARE GONE FROM THIS ROUTE (21 Sep 2026): the
      verification, the subscription and the price list are read by the pages
      that show them, in the studio's own Settings. */
-
-  /* A STUDIO'S GRID, IN THE USER'S ORDER (18 Sep 2026, deviation row R18):
-     Classes · Calendar · Team · Students · Earnings · Memberships · Assets ·
-     Rooms. Earnings, Memberships and Assets are the OWNER's, and the Students
-     tile is not drawn for a seat that may not read them (21 Sep 2026). MEDIA is
-     off the grid (21 Sep 2026); STATS is the chip beside the QR (18 Sep). */
-  const desk = (path: string) => `/business/${businessId}/${path}`;
-  const tiles: Tile[] = [
-    { name: DOS_TOOLS.classes.name, href: desk("classes"), k: "classesmod", c: DOS_TOOLS.classes.c },
-    { name: DOS_TOOLS.calendar.name, href: desk("calendar"), k: "calendar", c: DOS_TOOLS.calendar.c },
-    { name: DOS_TOOLS.team.name, href: desk("staff"), k: "team", c: DOS_TOOLS.team.c },
-    ...(memberRole === "visiting_faculty" || memberRole === "assistant"
-      ? []
-      : ([{ name: DOS_TOOLS.students.name, href: desk("students"), k: "students", c: DOS_TOOLS.students.c }] as Tile[])),
-    ...(isOwner ? [{ name: DOS_TOOLS.earn.name, href: desk("earnings"), k: "earn", c: DOS_TOOLS.earn.c } as Tile] : []),
-    ...(isOwner
-      ? ([
-          { name: DOS_TOOLS.memberships.name, href: desk("memberships"), k: "memberships", c: DOS_TOOLS.memberships.c },
-          { name: DOS_TOOLS.assets.name, href: desk("assets"), k: "assets", c: DOS_TOOLS.assets.c },
-        ] as Tile[])
-      : []),
-    { name: DOS_TOOLS.rooms.name, href: desk("rooms"), k: "rooms", c: DOS_TOOLS.rooms.c },
-    /* ⚠ NO ENQUIRIES TILE (2 Oct 2026): a studio's enquiries are its INBOX tab's
-       third desk again — the user: "shift back enquiries to inbox from home tools
-       for all profiles" */
-    /* THE STUDIO'S OWN MANDATE IS A TILE ON ITS HOME (26 Sep 2026, the user:
-       "studio and organization subscription managed separately from their
-       subscription options … subscriptions also become an option on home tab
-       for all profiles and is removed from settings for all") — the owner's,
-       because only the owner starts or stops it */
-    ...(isOwner ? [{ name: DOS_TOOLS.subscription.name, href: desk("subscription"), k: "subscription", c: DOS_TOOLS.subscription.c } as Tile] : []),
-  ];
 
   return (
     <StudioHome
@@ -157,8 +118,6 @@ export default async function StudioHomePage({ params, searchParams }: { params:
       styles={business.styles.length ? business.styles : (stylesByBusiness.get(businessId) ?? [])}
       followers={followerCounts.get(businessId) ?? 0}
       followingRows={studioTeamRows(team)}
-      tiles={tiles}
-      order={toolOrder}
     />
   );
 }

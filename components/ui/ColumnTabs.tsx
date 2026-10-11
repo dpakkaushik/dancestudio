@@ -17,11 +17,7 @@ export const columnTrack = (wrap = false): CSSProperties => ({
   gap: 4,
   padding: 4,
   borderRadius: wrap ? 22 : 999,
-  /* ⚠ OUTLINED LIKE THE SECTION IT SITS IN (12 Oct 2026, the user: "all columns
-     should have outline of the section they are in") — the squircles' own 1.5px
-     `--el` edge around the track, and on every column inside it */
-  background: "var(--card)",
-  border: "1.5px solid var(--el)",
+  background: "var(--el)",
   ...(wrap ? { flexWrap: "wrap", rowGap: 4 } : null),
 });
 
@@ -31,7 +27,7 @@ export const columnTab = (on: boolean, wrap = false): CSSProperties => ({
   minWidth: 0,
   padding: "9px 4px",
   borderRadius: 999,
-  border: on ? "1.5px solid var(--text)" : "1.5px solid var(--el)",
+  border: "none",
   cursor: "pointer",
   fontFamily: "inherit",
   fontSize: 12.5,

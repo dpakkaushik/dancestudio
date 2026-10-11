@@ -65,16 +65,10 @@ async function signIn(page, acc) {
  *  home (`/business/{id}`) since 26 Sep 2026, when an organization became one */
 async function pressEveryTile(page, who, expectedNames, startPath = "/") {
   await page.goto(`${BASE}${startPath}`, { waitUntil: "networkidle" });
-  const panel = page.getByRole("navigation", { name: /tools/i }).or(page.locator("[data-tools-grid]"));
-  // the grid is whatever links sit under the Tools heading; read them off the page
-  const tiles = await page.evaluate(() => {
-    const head = [...document.querySelectorAll("*")].find((e) => /Tools$/.test((e.textContent || "").trim()) && e.children.length === 0);
-    const root = head ? head.closest("div")?.parentElement : null;
-    const scope = root || document.body;
-    return [...scope.querySelectorAll("a[href]")]
-      .map((a) => ({ name: (a.textContent || "").trim(), href: a.getAttribute("href") }))
-      .filter((t) => t.name && t.href && !t.href.startsWith("http"));
-  });
+  /* ⚠ THE TOOLS LIVE IN THE DRAWER THE PROFILE PICTURE OPENS SINCE 12 Oct 2026
+     (the user: "take the tools from the home section under the profile
+     switcher … in one line for each tile"), so read them off its Tools nav */
+  const tiles = await readDrawerTools(page);
   const names = tiles.map((t) => t.name);
   console.log(`\n── ${who}: ${names.join(" · ")}`);
   for (const want of expectedNames) {
@@ -100,87 +94,36 @@ async function pressEveryTile(page, who, expectedNames, startPath = "/") {
   }
 }
 
-/** ARRANGING A GRID, END TO END (22 Sep 2026) — the control on top of the
- *  storage `20260922090000` applied, driven the way somebody would.
- *
- *  ⚠ THE CHECK THAT MATTERS IS THE RELOAD. The user's own answer to where the
- *  order lives was **"on the account, all devices"**, so an arrangement that
- *  only holds in React state would pass every other assertion here and be
- *  exactly the feature they did not ask for. */
+/** open the profile drawer (pressed until it answers ? a press before
+ *  hydration is not a press) and read its Tools links */
+async function openDrawer(page) {
+  const drawer = page.getByTestId("profile-drawer");
+  for (let i = 0; i < 8 && !(await drawer.isVisible().catch(() => false)); i++) {
+    await page.getByTestId("profile-switcher").click().catch(() => {});
+    await page.waitForTimeout(500);
+  }
+  return drawer;
+}
+async function readDrawerTools(page) {
+  const drawer = await openDrawer(page);
+  const tiles = await drawer.getByRole("navigation", { name: "Tools" }).locator("a[href]").evaluateAll((as) =>
+    as.map((a) => ({ name: a.getAttribute("aria-label") || (a.textContent || "").trim(), href: a.getAttribute("href") }))
+      .filter((t) => t.name && t.href && !t.href.startsWith("http")));
+  await page.keyboard.press("Escape").catch(() => {});
+  await page.waitForTimeout(200);
+  return tiles;
+}
+
+/** THE GRID LEFT HOME FOR THE DRAWER (12 Oct 2026). Asserted at both ends: the
+ *  home carries no tool grid and no Arrange control, and the drawer lists the
+ *  tools one to a line. ? The arranging UI went with the grid; a stored order
+ *  is still applied (`arrangeTiles` in the layout). */
 async function arrangeGrid(page, who, url) {
   await page.goto(url, { waitUntil: "networkidle" });
-  const read = () => page.evaluate(() => {
-    const head = [...document.querySelectorAll("*")].find((e) => /Tools$/.test((e.textContent || "").trim()) && e.children.length === 0);
-    const root = head ? head.closest("div")?.parentElement : null;
-    return [...(root || document.body).querySelectorAll("a[href]")].map((a) => (a.textContent || "").trim()).filter(Boolean);
-  });
-
-  const before = await read();
-  /** ⚠ ARRANGING IS BEHIND THE PENCIL SINCE 27 Sep 2026 (C64, the user: "arrange
-   *  tools on home also part of edit on top right"). Both ends are asserted,
-   *  because a check that only looks at the new place cannot tell you the old
-   *  one was cleared: the control is ABSENT in read mode, and appears when the
-   *  corner pencil is pressed — with the ⊕s and the ＋s, which is the point of
-   *  one toggle rather than a control per editor. */
-  /* ⚠ ON THE HEAD SINCE 27 Sep 2026 (the user: "arrange tools options in top
-     left with tools heading"), and reading "Arrange" — beside a heading that
-     already says "Studio Tools", "Arrange tools" repeats the word next to it.
-     Both ends are still asserted: absent in read mode, there behind the
-     pencil. */
-  const arrange = page.getByRole("button", { name: "Arrange", exact: true });
-  check((await arrange.count()) === 0, `${who} · read mode offers no "Arrange" — the home has no control on it`);
-  /* the corner pencil TOGGLES, and a reload puts the home back in read mode —
-     so every press of Arrange below opens edit mode again first */
-  const openEdit = async () => {
-    await page.getByRole("button", { name: "Edit profile", exact: true }).click();
-    await page.waitForTimeout(300);
-  };
-  await openEdit();
-  await page.waitForTimeout(300);
-  check(await arrange.isVisible().catch(() => false), `${who} · the pencil brings it out, ON THE TOOLS HEADING (C65)`);
-  await arrange.click();
-
-  /* the arranging list is ONE COLUMN, which is why the arrows are honest: in a
-     two-up grid "up" would mean up-AND-right */
-  const up = page.getByRole("button", { name: `Move ${before[1]} up` });
-  check(await up.isVisible().catch(() => false), `${who} · every row carries its own named arrows ("Move ${before[1]} up")`);
-  const topUp = page.getByRole("button", { name: `Move ${before[0]} up` });
-  check(await topUp.isDisabled().catch(() => false), `${who} · and the first row's ▲ is disabled — a move off the top is not offered`);
-
-  await up.click();
-  await page.getByRole("button", { name: "Done", exact: true }).click();
-  await page.waitForTimeout(600);
-  const after = await read();
-  check(after[0] === before[1] && after[1] === before[0], `${who} · the grid is re-ordered (${before[0]}·${before[1]} -> ${after[0]}·${after[1]})`);
-
-  /* ⚠ THE ONE THAT PROVES THE FEATURE */
-  await page.reload({ waitUntil: "networkidle" });
-  const reloaded = await read();
-  check(reloaded.join("|") === after.join("|"), `${who} · and it SURVIVES a reload — the order is on the account (${reloaded.slice(0, 2).join(" · ")})`);
-  check(reloaded.length === before.length, `${who} · with every tile still drawn (${reloaded.length} of ${before.length}) — an arrangement never costs a door`);
-
-  /* Reset forgets the key rather than storing an empty list.
-     ⚠ THE FIRST OF THESE TWO IS THE ONE THAT CAUGHT A REAL DEFECT: Reset used to
-     derive "the default" from the tiles it was HANDED, which are already
-     arranged once somebody has arranged them — so it stored exactly the right
-     thing and the list did not move until the next navigation. Reset is only
-     honest if it is visible before a reload. */
-  await openEdit();
-  await page.getByRole("button", { name: "Arrange", exact: true }).click();
-  await page.getByRole("button", { name: "Reset to default", exact: true }).click();
-  await page.waitForTimeout(600);
-  await page.getByRole("button", { name: "Done", exact: true }).click();
-  await page.waitForTimeout(400);
-  const resetNow = await read();
-  check(resetNow.join("|") === before.join("|"), `${who} · Reset moves the grid AT ONCE, not on the next navigation (${resetNow.slice(0, 2).join(" · ")})`);
-  await page.reload({ waitUntil: "networkidle" });
-  const reset = await read();
-  check(reset.join("|") === before.join("|"), `${who} · Reset puts the code's own order back, and that survives a reload too`);
-  /* nothing to reset, so nothing is offered — a control that can only be a no-op */
-  await openEdit();
-  await page.getByRole("button", { name: "Arrange", exact: true }).click();
-  check((await page.getByRole("button", { name: "Reset to default", exact: true }).count()) === 0, `${who} · and Reset is not offered when there is nothing to reset`);
-  await page.getByRole("button", { name: "Done", exact: true }).click();
+  check((await page.getByText(/^(User|Artist|Studio|Crew|Organization) Tools$/).count()) === 0, `${who} ? the home carries no tool grid any more`);
+  check((await page.getByRole("button", { name: "Arrange", exact: true }).count()) === 0, `${who} ? and no Arrange control`);
+  const tiles = await readDrawerTools(page);
+  check(tiles.length >= 3, `${who} ? the drawer lists the tools, one to a line (${tiles.length})`);
 }
 
 /** A PERSON OPENS A STUDIO, AND TAKES THEIR OWN CLASS IN IT (26 Sep 2026, the
@@ -264,7 +207,7 @@ async function personOpensAStudio(page, who, acc, stamp) {
 
   /* THIS STUDIO in its own Settings — verification progress and the subscription */
   await page.goto(`${BASE}/business/${studioId}`, { waitUntil: "networkidle" });
-  await page.getByRole("button", { name: "Settings", exact: true }).click();
+  await (await openDrawer(page)).getByRole("button", { name: "Settings", exact: true }).click();
   const sheet = page.getByRole("dialog", { name: "Settings" });
   await sheet.waitFor({ state: "visible", timeout: 15_000 });
   const sTxt = await sheet.innerText();
@@ -274,7 +217,7 @@ async function personOpensAStudio(page, who, acc, stamp) {
   check(!/Subscription/.test(sTxt), `${who} · and NO Subscription tile in Settings — it is on the studio's home`);
   await page.keyboard.press("Escape");
   await page.goto(`${BASE}/business/${studioId}`, { waitUntil: "networkidle" });
-  check((await page.getByRole("link", { name: "Subscription", exact: true }).getAttribute("href").catch(() => null)) === `/business/${studioId}/subscription`, `${who} · the studio's home carries a Subscription tile onto its own mandate`);
+  check((await readDrawerTools(page)).some((t) => t.name === "Subscription" && t.href === `/business/${studioId}/subscription`), `${who} · the studio's drawer carries a Subscription tile onto its own mandate`);
   /* ⚠ ONLY THE ARTIST PLAN ON /subscription SINCE 4 Oct 2026 (the user: "Only
      Artist subscription for User/ artist") — the studio's subscription is on its
      OWN Subscription tile, which is where its Cancel Subscription lives (Rule 9) */
@@ -483,9 +426,8 @@ async function personOpensAStudio(page, who, acc, stamp) {
     const sres = await p3.goto(`${BASE}/studio/${studio.id}/stats`, { waitUntil: "domcontentloaded" });
     check((sres ? sres.status() : 0) < 400, "studio · and that board answers");
     await p3.goto(`${BASE}/business/${studio.id}`, { waitUntil: "networkidle" });
-    const stiles = await p3.evaluate(() => [...document.querySelectorAll("a[href]")]
-      .map((a) => ({ name: (a.textContent || "").trim(), href: a.getAttribute("href") }))
-      .filter((t) => t.href && t.href.includes("/business/") && t.name));
+    /* the studio's tools are in the drawer since 12 Oct 2026 */
+    const stiles = (await readDrawerTools(p3)).filter((t) => t.href.includes("/business/"));
     console.log(`\n── studio home: ${[...new Set(stiles.map((t) => t.name))].join(" · ")}`);
     /* ⚠⚠ WHERE THIS STUDIO STANDS IS IN ITS OWN SETTINGS (21 Sep 2026, the user:
        "Studio-Invoices subscription and refunds to be managed from settings" and
@@ -504,7 +446,7 @@ async function personOpensAStudio(page, who, acc, stamp) {
       "studio · and the Refunds door — one place per subject, never two"
     );
     /* THE GEAR, ON A STUDIO'S OWN PAGE, OPENS THE STUDIO'S SETTINGS */
-    await p3.getByRole("button", { name: "Settings", exact: true }).click();
+    await (await openDrawer(p3)).getByRole("button", { name: "Settings", exact: true }).click();
     const sheet = p3.getByRole("dialog", { name: "Settings" });
     await sheet.waitFor({ state: "visible", timeout: 15_000 });
     const sTxt = await sheet.innerText();
@@ -617,15 +559,15 @@ async function personOpensAStudio(page, who, acc, stamp) {
     await p3.goto(`${BASE}/business/${studio.id}/rooms`, { waitUntil: "networkidle" });
     const drill = await p3.evaluate(() => ({
       switcher: document.querySelectorAll('[aria-haspopup="menu"]').length,
-      gear: [...document.querySelectorAll("button")].filter((b) => b.getAttribute("aria-label") === "Settings").length,
+      gear: 0,
       back: [...document.querySelectorAll('[aria-label="Go back"]')].length,
     }));
     check(drill.switcher === 1, `drill page · the switcher is here, once (${drill.switcher})`);
-    check(drill.gear === 1, `drill page · and the gear (${drill.gear})`);
     check(drill.back === 1, `drill page · and the back chip is NOT what the mark replaced (${drill.back})`);
-    await p3.getByRole("button", { name: /^Switch profile/ }).click();
-    const menu = p3.getByRole("menu", { name: "Your profiles" });
+    await openDrawer(p3);
+    const menu = p3.getByTestId("profile-drawer");
     await menu.waitFor({ state: "visible", timeout: 15_000 });
+    check(await menu.getByRole("button", { name: "Settings", exact: true }).isVisible(), "drill page · and the gear, inside the drawer");
     const mTxt = await menu.innerText();
     check(mTxt.includes("HERE") && mTxt.includes(studio.name), "drill page · and it opens on the studio you are in, marked HERE");
     check(mTxt.includes("Log out"), "drill page · with Log out, reachable from anywhere");

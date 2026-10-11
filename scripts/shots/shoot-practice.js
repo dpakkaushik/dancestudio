@@ -57,6 +57,16 @@ const useIt = async (page, n = 1) => {
   await d.waitFor({ state: "detached" });
 };
 
+/* the tools live in the profile drawer since 12 Oct 2026 */
+async function openDrawer(page) {
+  const drawer = page.getByTestId("profile-drawer");
+  for (let i = 0; i < 8 && !(await drawer.isVisible().catch(() => false)); i++) {
+    await page.getByTestId("profile-switcher").click().catch(() => {});
+    await page.waitForTimeout(500);
+  }
+  return drawer;
+}
+
 async function signUp(page, email) {
   const r = await fetch(`${supabaseUrl}/auth/v1/admin/generate_link`, { method: "POST", headers: H, body: JSON.stringify({ type: "magiclink", email }) });
   if (!r.ok) throw new Error(`generate_link ${r.status} ${await r.text()}`);
@@ -152,9 +162,10 @@ const tomorrowIst = () => {
 
     /* ── 1 · THE TWO TILES ── */
     await leader.goto(`${BASE}/crews/${crewId}/manage`, { waitUntil: "networkidle" });
-    const practiceTile = leader.getByRole("link", { name: "Practice", exact: true });
+    const drawer = await openDrawer(leader);
+    const practiceTile = drawer.getByRole("link", { name: "Practice", exact: true });
     check((await practiceTile.count()) === 1, "crew home: a Practice tile (27 Sep 2026, the user's own word)");
-    check((await leader.getByRole("link", { name: "Calendar", exact: true }).count()) === 1, "crew home: and a Calendar tile beside it");
+    check((await drawer.getByRole("link", { name: "Calendar", exact: true }).count()) === 1, "crew home: and a Calendar tile beside it");
     await practiceTile.click();
     await leader.waitForURL(/\/manage\/practice$/, { timeout: 20000 });
     check(await leader.getByRole("heading", { level: 1, name: "Practice" }).isVisible().catch(() => false), "practice desk: headed Practice — a drill page with its own title, not the path segment");

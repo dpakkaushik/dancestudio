@@ -53,6 +53,16 @@ export async function findMyToolOrder(
   return order && order.length > 0 ? order : null;
 }
 
+/** EVERY GRID'S ORDER AT ONCE (12 Oct 2026) — the drawer in the chrome draws
+ *  the tools of every profile this account can switch to, so the layout reads the
+ *  whole object once rather than once per grid. Same failure rule: an error is an
+ *  empty object, never a broken chrome. */
+export async function findMyLayout(supabase: SupabaseClient, userId: string): Promise<Record<string, string[]>> {
+  const { data, error } = await supabase.from("profiles").select("layout").eq("id", userId).is("deleted_at", null).maybeSingle();
+  if (error || !data) return {};
+  return toLayout((data as { layout: unknown }).layout);
+}
+
 /** Store one grid's order, or forget it.
  *
  *  ⚠ An EMPTY order is how the door is told to forget the key — the migration's

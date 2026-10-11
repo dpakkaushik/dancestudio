@@ -13,9 +13,6 @@ import { StatsChip } from "@/features/profiles/components/StatsChip";
 import { amIPlatformAdmin } from "@/repositories/admin";
 import { headerMaxFor, photoUrl } from "@/lib/media/photo";
 import { CARD, DOS_UI, GOLD, INK, LILAC, SUB } from "@/lib/design/tokens";
-import { BizSection } from "@/features/home/components/home-kit";
-import { toolsLayoutKey } from "@/features/home/toolOrder";
-import { findMyToolOrder } from "@/repositories/layout";
 import { TodayShelf } from "@/features/home/components/TodayShelf";
 import { HomeBand } from "@/features/profiles/components/HomeBand";
 import { HeaderEditButton, PicturesButton } from "@/features/profiles/components/PicturesSheet";
@@ -138,8 +135,7 @@ export default async function HomePage() {
      studio's desks are on the studio's own home.
      ⚠ It is worked out HERE rather than beside the grid since 22 Sep 2026,
      because the batch below needs it: the arrangement is keyed by kind. */
-  const homeKind = isArtist ? "artist" : "user";
-  const [header, deck, pageId, followers, followingPeople, followedBusinesses, followedCrews, toolOrder, teams] = await Promise.all([
+  const [header, deck, pageId, followers, followingPeople, followedBusinesses, followedCrews, teams] = await Promise.all([
     findPersonHeaderPhotos(supabase, user.id, headerMax),
     deckP,
     !isArtist ? Promise.resolve(null) : ensureArtistPage(supabase, profile, memberships),
@@ -147,11 +143,6 @@ export default async function HomePage() {
     followingPeopleP,
     followedBusinessesP,
     followedCrewsP,
-    /* ⚠ THIS PERSON'S OWN ARRANGEMENT OF THE TOOL GRID (22 Sep 2026). It rides
-       the batch that is already being awaited, so Home costs no extra round
-       trip for it, and it answers null rather than throwing — a preference must
-       never be the reason a Home does not render. */
-    findMyToolOrder(supabase, user.id, toolsLayoutKey(homeKind)),
     teamsP,
   ]);
   const { businesses: followingBusinesses, crews: followingCrews } = withTeamFollows({ businesses: followedBusinesses, crews: followedCrews }, teams);
@@ -388,7 +379,12 @@ export default async function HomePage() {
         {/* ── run your business — the prototype's BizSection (7342-7344, 2497-2583). It is the
             sheet that covers the deck, so it is opaque and it is above. ── */}
         <div style={{ position: "relative", zIndex: 1, background: LILAC }}>
-            <BizSection kind={homeKind} pageId={pageId} order={toolOrder}>
+            {/* ⚠ THE TOOL GRID LEFT HOME (12 Oct 2026, the user: "take the tools from
+                the home section under the profile switcher from top right in one
+                line for each tile"). The tools are the drawer the profile picture
+                opens, for every profile; what stays here is the one sentence that is
+                about this account's own tools. */}
+            <div style={{ padding: "12px 16px 0" }}>
               {/* THE PAGE COULD NOT BE MADE (18 Sep 2026): the plan is live and Home just
                   tried to provision the page the artist tools run through, and the
                   database said no — a refusal Home swallows so it never fails on it.
@@ -409,7 +405,7 @@ export default async function HomePage() {
                   invites to join a team and crew from the crew and studio tabs at
                   home"). An invitation is answered on the Studios hub's Team column,
                   Join · Decline on the card; the Inbox counts it in one line. */}
-            </BizSection>
+            </div>
         </div>
       </div>
     </div>

@@ -229,13 +229,13 @@ html.light .dos-invert {
   --dos-safe-top: 0px;
   --dos-safe-bottom: 0px;
   --dos-bar: 54px;
-  --dos-top: 70px;
+  --dos-top: 78px; /* 78 since 12 Oct 2026, "top bar becomes a bit more bigger" */
 }
 @supports (top: env(safe-area-inset-top)) {
   :root {
     --dos-safe-top: env(safe-area-inset-top, 0px);
     --dos-safe-bottom: env(safe-area-inset-bottom, 0px);
-    --dos-top: calc(70px + env(safe-area-inset-top, 0px));
+    --dos-top: calc(78px + env(safe-area-inset-top, 0px));
   }
 }
 
@@ -378,6 +378,20 @@ a:focus-visible:not([data-slot]) {
 }
 @media (prefers-reduced-motion: reduce) {
   [data-anim="approved"] {
+    animation: none !important;
+  }
+}
+/* the profile drawer slides in from the right (12 Oct 2026) */
+@keyframes dosDrawerIn {
+  from {
+    transform: translateX(100%);
+  }
+  to {
+    transform: translateX(0);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  [data-testid="profile-drawer"] {
     animation: none !important;
   }
 }

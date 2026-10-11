@@ -8,6 +8,7 @@ import { Portal } from "@/components/ui/Portal";
 import { DosMark } from "@/components/ui/DosMark";
 import { LogOutConfirm } from "@/features/auth/components/LogOutConfirm";
 import { SettingsSheet, type SettingsProfile } from "@/features/settings/components/SettingsSheet";
+import { ToolGlyph, TOOLS_HEADING, type Tile } from "@/features/home/components/tool-grid";
 import { DOS_UI, INK, RED } from "@/lib/design/tokens";
 import type { ArtistPlan } from "@/repositories/plans";
 import type { Profile, ProfileRole } from "@/types/profile";
@@ -151,6 +152,9 @@ export interface SwitcherItem {
   kind: "me" | "studio" | "crew";
   /** its picture, or null for initials (2 Oct 2026) */
   photo?: string | null;
+  /** ITS TOOLS (12 Oct 2026) — drawn one per line in the drawer the picture
+   *  opens, in the order this account arranged them. Built by the layout. */
+  tiles?: Tile[];
 }
 
 const SWITCH_TINT: Record<SwitcherItem["kind"], string> = { me: "#5AC8FA", studio: "#3B82F6", crew: "#DC2626" };
@@ -216,9 +220,10 @@ const readServerTheme = (): "dark" | "light" => "dark";
 /* ⚠ 44px since 2 Oct 2026 ("make the top bar a bit bigger") — the full 44 a finger
    is given, in a 70px bar, so the 13px of air above and below is unchanged. */
 const chipStyle: React.CSSProperties = {
-  width: 44,
-  height: 44,
-  borderRadius: 22,
+  /* 46 since 12 Oct 2026, in the 78px bar */
+  width: 46,
+  height: 46,
+  borderRadius: 23,
   flexShrink: 0,
   cursor: "pointer",
   display: "flex",
@@ -531,7 +536,13 @@ export function AppChrome({
           background: "var(--hdr-bg)",
           backdropFilter: "blur(18px) saturate(1.4)",
           WebkitBackdropFilter: "blur(18px) saturate(1.4)",
-          borderBottom: "1.5px solid var(--hdr-line)",
+          /* ⚠ THE BAR'S BOTTOM EDGE IS A SQUIRCLE (12 Oct 2026, the user: "top bar
+             becomes a bit more bigger and its outline at bootom of top bar also
+             becomes squircle") — the outline runs down both sides and round the
+             bottom corners rather than straight across */
+          border: "1.5px solid var(--hdr-line)",
+          borderTop: "none",
+          borderRadius: "0 0 26px 26px",
         }}
       >
         {/* ⚠⚠ THE BACK CHIP COMES FIRST ON A DRILL PAGE, AND THE LOGO IS ALWAYS
@@ -620,7 +631,7 @@ export function AppChrome({
               alignItems: "center",
               alignContent: "flex-start",
               columnGap: 9,
-              height: 42,
+              height: 46,
               overflow: "hidden",
               /* ⚠⚠ THE MARK WAS CLIPPED ON ITS LEFT EDGE (11 Oct 2026). It sat at
                  `marginLeft: -2` inside this `overflow: hidden` row, so its left
@@ -636,10 +647,10 @@ export function AppChrome({
               flex: 1,
             }}
           >
-            <span style={{ flexShrink: 0, display: "inline-flex", alignItems: "center", height: 42, lineHeight: 0 }}>
-              <DosMark size={33} />
+            <span style={{ flexShrink: 0, display: "inline-flex", alignItems: "center", height: 46, lineHeight: 0 }}>
+              <DosMark size={36} />
             </span>
-            <span data-testid="wordmark" style={{ flexShrink: 0, fontSize: 23, lineHeight: "42px", fontWeight: 900, letterSpacing: -0.3, color: INK, fontFamily: DOS_UI, whiteSpace: "nowrap" }}>
+            <span data-testid="wordmark" style={{ flexShrink: 0, fontSize: 25, lineHeight: "46px", fontWeight: 900, letterSpacing: -0.3, color: INK, fontFamily: DOS_UI, whiteSpace: "nowrap" }}>
               Dance<span style={{ color: "#EC4899" }}>OS</span>
             </span>
           </span>
@@ -661,65 +672,15 @@ export function AppChrome({
             ) : null}
           </Link>
           )}
-          <span
-            role="button"
-            tabIndex={0}
-            aria-label={theme === "dark" ? "Switch to light theme" : "Switch to dark theme"}
-            {...tapHandlers}
-            onClick={(e) => { if (wasSwipe(e)) return; toggleTheme(); }}
-            onKeyDown={(e) => {
-              if (e.key === "Enter" || e.key === " ") {
-                e.preventDefault();
-                toggleTheme();
-              }
-            }}
-            style={chipStyle}
-          >
-            {/* ⚠ the light-theme hexes on this pair — and on the bell badge's ring
-                above — are the light PAGE, not brand colours, so they moved with
-                it on 21 Sep: the ring is the header's own ground (#FAF8F5) and
-                the moon is the page's ink (#17150F). They are literals because
-                the pair is chosen from JS by theme rather than by a variable,
-                which is exactly why a palette change has to come looking for
-                them. */}
-            {theme === "dark" ? (
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#FAFAFA" strokeWidth="1.9" strokeLinecap="round">
-                <circle cx="12" cy="12" r="4" />
-                <path d="M12 2.5v2.5M12 19v2.5M2.5 12H5M19 12h2.5M5.3 5.3l1.8 1.8M16.9 16.9l1.8 1.8M18.7 5.3l-1.8 1.8M7.1 16.9l-1.8 1.8" />
-              </svg>
-            ) : (
-              <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#17150F" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M20.5 14.5A8.5 8.5 0 1 1 9.5 3.5a7 7 0 0 0 11 11z" />
-              </svg>
-            )}
-          </span>
-          {/* ⚠ THE SWITCHER CHIP IS GONE FROM HERE (21 Sep 2026, later the same
-              day): the control is inside the DanceOS mark on the left, which is
-              now drawn on every screen. It lived here for a few hours because
-              that was the only way to make it constant while the mark was
-              drawn on six screens; moving the mark is the better answer, and
-              two switchers would be one too many. Its one virtue — saying which
-              profile you are in without being opened — moved with it, as the
-              tinted dot on the mark. */}
-          {/* the gear opens Settings for THE PROFILE YOU ARE IN (21 Sep 2026);
-              an admin-only account has no profile at all, so its one control is the way out */}
+          {/* ⚠ THE THEME CHIP AND THE GEAR LEFT THE BAR (12 Oct 2026, the user:
+              "dark and light mode like toggle on top of this section with settings
+              on its right") — they head the drawer the picture opens now. An
+              admin-only account has no drawer, so its Sign out stays here. */}
           {adminOnly ? (
             <button type="button" aria-label="Sign out" aria-haspopup="dialog" onClick={() => setConfirmOut(true)} style={{ ...chipStyle, width: "auto", padding: "0 13px", fontSize: 12, fontWeight: 800, cursor: "pointer", fontFamily: "inherit", color: INK, border: "none" }}>
               Sign out
             </button>
-          ) : (
-          /* ⚠ A BUTTON, NOT A LINK TO `/profile?settings=1` (21 Sep 2026). The
-             gear used to navigate to ONE page and let that page open the sheet,
-             which is why Settings could only ever be that page's subject. It
-             opens the sheet over whatever you are looking at now, so the sheet
-             is the studio's while you are in a studio. */
-          <button type="button" {...tapHandlers} onClick={(e) => { if (wasSwipe(e)) return; openSettings(); }} aria-label="Settings" aria-expanded={settingsOpen} style={{ ...chipStyle, border: "none", cursor: "pointer", padding: 0, fontFamily: "inherit" }}>
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={INK} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-              <circle cx="12" cy="12" r="3.2" />
-              <path d="M19 12a7 7 0 0 0-.1-1.2l2-1.5-2-3.4-2.3 1a7 7 0 0 0-2-1.2L14.2 3h-4l-.4 2.7a7 7 0 0 0-2 1.2l-2.3-1-2 3.4 2 1.5A7 7 0 0 0 5 12c0 .4 0 .8.1 1.2l-2 1.5 2 3.4 2.3-1a7 7 0 0 0 2 1.2l.4 2.7h4l.4-2.7a7 7 0 0 0 2-1.2l2.3 1 2-3.4-2-1.5c.1-.4.1-.8.1-1.2z" />
-            </svg>
-          </button>
-          )}
+          ) : null}
           {/* THE PROFILE SWITCHER — the picture of the profile you are in, at the
               extreme right beside Settings (2 Oct 2026). Its ring is that kind's
               colour, so it still answers "which profile am I?" without opening. */}
@@ -748,7 +709,7 @@ export function AppChrome({
               style={{ ...chipStyle, padding: 0, overflow: "hidden", fontFamily: "inherit", touchAction: "none", WebkitTouchCallout: "none", WebkitUserSelect: "none", userSelect: "none", border: `2px solid ${hereItem ? SWITCH_TINT[hereItem.kind] : "var(--chip-line)"}`, background: hereItem ? `linear-gradient(135deg,${SWITCH_TINT[hereItem.kind]},${SWITCH_TINT[hereItem.kind]}88)` : "var(--chip-bg)" }}
             >
               {hereItem?.photo ? (
-                <Image src={hereItem.photo} alt="" width={44} height={44} draggable={false} style={{ width: "100%", height: "100%", objectFit: "cover", display: "block", pointerEvents: "none" }} />
+                <Image src={hereItem.photo} alt="" width={46} height={46} draggable={false} style={{ width: "100%", height: "100%", objectFit: "cover", display: "block", pointerEvents: "none" }} />
               ) : (
                 <span aria-hidden="true" style={{ color: "#fff", fontSize: 12.5, fontWeight: 900 }}>{hereItem ? initialsOf(hereItem.label) : "?"}</span>
               )}
@@ -763,21 +724,78 @@ export function AppChrome({
           it is a PLACE the system back gesture closes. ── */}
       {activeSettings ? <SettingsSheet open={settingsOpen} onClose={closeSettings} active={activeSettings} isAdmin={settings?.isAdmin ?? false} /> : null}
 
-      {/* ── THE PROFILE SWITCHER, dropped from the mark (18 Sep 2026). Portalled: the
-          top bar is a transformed element, so a fixed backdrop drawn inside it would
-          cover the bar and nothing else. The one you are on is marked; every row is
-          a door, and a navigation closes the menu by changing the pathname. ── */}
+      {/* ── THE DRAWER THE PICTURE OPENS (12 Oct 2026, the user: "take the tools
+          from the home section under the profile switcher from top right in one
+          line for each tile. coming from right side now this entire section.
+          dark and light mode like toggle on top of this section with settings on
+          its right"). It slides in from the right edge of the app's column and
+          holds, top to bottom: the theme toggle with the gear beside it, the
+          profiles you can switch to, the TOOLS of the profile you are in — one
+          row per tile, in the order this account arranged them — and Log out.
+          The tools left the three homes for it. Portalled, because the top bar is
+          a transformed element and a fixed scrim drawn inside it would cover the
+          bar alone. A navigation changes the pathname, which closes it. ── */}
       {menuOpen && !adminOnly ? (
         <Portal>
-          <div onClick={() => setOpenFor(null)} style={{ position: "fixed", inset: 0, zIndex: 700, background: "rgba(0,0,0,.28)" }} />
-          <div
-            role="menu"
-            aria-label="Your profiles"
-            style={{ position: "fixed", top: "calc(var(--dos-top) + 6px)", left: "50%", transform: "translateX(-50%)", width: "100%", maxWidth: 430, boxSizing: "border-box", padding: "0 12px", zIndex: 710, pointerEvents: "none", fontFamily: DOS_UI, display: "flex", justifyContent: "flex-end" }}
-          >
-            {/* anchored under the chip that opened it, at the right (2 Oct 2026) */}
-            <div style={{ pointerEvents: "auto", width: 300, maxWidth: "100%", background: "var(--solid)", color: "var(--text)", border: "1.5px solid var(--el)", borderRadius: 18, boxShadow: "0 18px 48px rgba(0,0,0,.45)", padding: 6, animation: "dosSheetUp .18s ease" }}>
-              <div style={{ fontSize: 9.5, fontWeight: 900, letterSpacing: 1.2, color: "var(--muted)", padding: "8px 10px 6px" }}>SWITCH PROFILE</div>
+          <div onClick={() => setOpenFor(null)} style={{ position: "fixed", inset: 0, zIndex: 700, background: "rgba(0,0,0,.4)" }} />
+          <div style={{ position: "fixed", top: 0, bottom: 0, left: "50%", transform: "translateX(-50%)", width: "100%", maxWidth: 430, zIndex: 710, pointerEvents: "none", display: "flex", justifyContent: "flex-end" }}>
+            <div
+              role="dialog"
+              aria-modal="true"
+              aria-label="Profiles and tools"
+              data-testid="profile-drawer"
+              onKeyDown={(e) => { if (e.key === "Escape") setOpenFor(null); }}
+              style={{ pointerEvents: "auto", width: "86%", maxWidth: 340, height: "100%", overflowY: "auto", boxSizing: "border-box", background: "var(--solid)", color: "var(--text)", borderLeft: "1.5px solid var(--el)", borderRadius: "26px 0 0 26px", boxShadow: "-18px 0 48px rgba(0,0,0,.4)", padding: "calc(var(--dos-safe-top) + 14px) 12px calc(var(--dos-safe-bottom) + 18px)", fontFamily: DOS_UI, animation: "dosDrawerIn .22s ease" }}
+            >
+              {/* the theme toggle, with Settings on its right */}
+              <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 14 }}>
+                <div role="group" aria-label="Theme" style={{ flex: 1, display: "flex", padding: 4, gap: 4, borderRadius: 999, background: "var(--el)" }}>
+                  {(["light", "dark"] as const).map((t) => {
+                    const on = theme === t;
+                    return (
+                      <button
+                        key={t}
+                        type="button"
+                        aria-pressed={on}
+                        aria-label={on ? `${t === "dark" ? "Dark" : "Light"} theme — on` : `Switch to ${t} theme`}
+                        onClick={() => { if (!on) toggleTheme(); }}
+                        style={{ flex: 1, height: 38, borderRadius: 999, border: "none", cursor: "pointer", fontFamily: "inherit", fontSize: 12.5, fontWeight: 900, display: "flex", alignItems: "center", justifyContent: "center", gap: 6, background: on ? "var(--text)" : "transparent", color: on ? "var(--solid)" : "var(--sub)" }}
+                      >
+                        {t === "light" ? (
+                          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true">
+                            <circle cx="12" cy="12" r="4" />
+                            <path d="M12 2.5v2.5M12 19v2.5M2.5 12H5M19 12h2.5M5.3 5.3l1.8 1.8M16.9 16.9l1.8 1.8M18.7 5.3l-1.8 1.8M7.1 16.9l-1.8 1.8" />
+                          </svg>
+                        ) : (
+                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                            <path d="M20.5 14.5A8.5 8.5 0 1 1 9.5 3.5a7 7 0 0 0 11 11z" />
+                          </svg>
+                        )}
+                        {t === "light" ? "Light" : "Dark"}
+                      </button>
+                    );
+                  })}
+                </div>
+                {/* the gear opens Settings for THE PROFILE YOU ARE IN (21 Sep 2026);
+                    the drawer folds first so the sheet is not drawn over it */}
+                <button
+                  type="button"
+                  onClick={() => { setOpenFor(null); openSettings(); }}
+                  aria-label="Settings"
+                  aria-expanded={settingsOpen}
+                  style={{ ...chipStyle, width: 46, height: 46, borderRadius: 23, cursor: "pointer", padding: 0, fontFamily: "inherit" }}
+                >
+                  <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="var(--text)" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                    <circle cx="12" cy="12" r="3.2" />
+                    <path d="M19 12a7 7 0 0 0-.1-1.2l2-1.5-2-3.4-2.3 1a7 7 0 0 0-2-1.2L14.2 3h-4l-.4 2.7a7 7 0 0 0-2 1.2l-2.3-1-2 3.4 2 1.5A7 7 0 0 0 5 12c0 .4 0 .8.1 1.2l-2 1.5 2 3.4 2.3-1a7 7 0 0 0 2 1.2l.4 2.7h4l.4-2.7a7 7 0 0 0 2-1.2l2.3 1 2-3.4-2-1.5c.1-.4.1-.8.1-1.2z" />
+                  </svg>
+                </button>
+              </div>
+
+              {/* the rows keep the switcher's own roles — a menu of profiles, each a
+                  menuitem, Log out the last — while the tools stay links */}
+              <div role="menu" aria-label="Your profiles">
+              <div style={{ fontSize: 9.5, fontWeight: 900, letterSpacing: 1.2, color: "var(--muted)", padding: "0 6px 6px" }}>SWITCH PROFILE</div>
               {switcher.map((item) => {
                 const here = isHere(item);
                 const tint = SWITCH_TINT[item.kind];
@@ -790,7 +808,7 @@ export function AppChrome({
                     aria-label={`${item.label} — ${item.sub}${here ? " — you are here" : ""}`}
                     {...tapHandlers}
                     onClick={(e) => { if (wasSwipe(e)) return; setOpenFor(null); }}
-                    style={{ display: "flex", alignItems: "center", gap: 10, padding: "9px 10px", borderRadius: 13, textDecoration: "none", color: "var(--text)", background: here ? "var(--el)" : "transparent" }}
+                    style={{ display: "flex", alignItems: "center", gap: 10, padding: "8px 8px", borderRadius: 14, textDecoration: "none", color: "var(--text)", background: here ? "var(--el)" : "transparent" }}
                   >
                     <span aria-hidden="true" style={{ width: 34, height: 34, borderRadius: 10, flexShrink: 0, overflow: "hidden", display: "inline-flex", alignItems: "center", justifyContent: "center", background: `linear-gradient(135deg,${tint},${tint}88)`, color: "#fff", fontSize: 12, fontWeight: 900 }}>
                       {item.photo ? <Image src={item.photo} alt="" width={34} height={34} style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} /> : initialsOf(item.label)}
@@ -803,39 +821,56 @@ export function AppChrome({
                   </Link>
                 );
               })}
-              {/* ⚠ LOG OUT LIVES HERE NOW (21 Sep 2026, the user: "shift log out
-                  from setting to profile switcher"). It is the right home for
-                  it: this menu is the one place in the app that is ABOUT which
-                  account you are, so ending the session is the last thing on
-                  that list rather than the last thing on a list of settings.
-                  ⚠ And it is why the menu opens for somebody with a single
-                  profile, and why the chip is drawn on every screen — the way
-                  out must not be reachable only from the Profile tab. */}
-              <div style={{ height: 1, background: "var(--el)", margin: "6px 10px" }} />
-              {/* ⚠ IT ASKS FIRST (3 Oct 2026, the user: "should not log out
-                  without confirmation") — this row opens `LogOutConfirm`, and
-                  only the confirm's own button submits `signOutAction`. The menu
-                  closes as the confirm opens, so the two never stack. */}
-              <div style={{ display: "block" }}>
-                <button
-                  type="button"
-                  role="menuitem"
-                  aria-haspopup="dialog"
-                  {...tapHandlers}
-                  onClick={(e) => {
-                    if (wasSwipe(e)) return;
-                    setOpenFor(null);
-                    setConfirmOut(true);
-                  }}
-                  style={{ display: "flex", alignItems: "center", gap: 10, padding: "9px 10px", borderRadius: 13, width: "100%", background: "transparent", border: "none", cursor: "pointer", fontFamily: "inherit", color: RED, textAlign: "left" }}
-                >
-                  <span aria-hidden="true" style={{ width: 34, height: 34, borderRadius: 10, flexShrink: 0, display: "inline-flex", alignItems: "center", justifyContent: "center", background: `${RED}1f` }}>
-                    <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke={RED} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                      <path d="M15 17l5-5-5-5M20 12H9M11 4H6a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h5" />
-                    </svg>
-                  </span>
-                  <span style={{ fontSize: 13, fontWeight: 900 }}>Log out</span>
-                </button>
+
+              {/* THE TOOLS OF THE PROFILE YOU ARE IN — one line each */}
+              {hereItem?.tiles && hereItem.tiles.length > 0 ? (
+                <>
+                  <div style={{ height: 1.5, background: "var(--el)", margin: "12px 6px" }} />
+                  <div data-testid="drawer-tools-head" style={{ fontSize: 9.5, fontWeight: 900, letterSpacing: 1.2, color: "var(--muted)", padding: "0 6px 6px", textTransform: "uppercase" }}>
+                    {TOOLS_HEADING[hereItem.kind === "me" ? (settings?.plan?.active ? "artist" : "user") : hereItem.kind]}
+                  </div>
+                  <nav aria-label="Tools" style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+                    {hereItem.tiles.map((t) => (
+                      <Link
+                        key={t.name}
+                        href={t.href}
+                        aria-label={t.name}
+                        {...tapHandlers}
+                        onClick={(e) => { wasSwipe(e); }}
+                        style={{ display: "flex", alignItems: "center", gap: 11, padding: "7px 8px", borderRadius: 14, textDecoration: "none", color: "var(--text)", background: pathname === t.href || pathname.startsWith(`${t.href}/`) ? "var(--el)" : "transparent" }}
+                      >
+                        <ToolGlyph k={t.k} c={t.c} size={34} />
+                        <span style={{ flex: 1, minWidth: 0, fontSize: 14, fontWeight: 900, letterSpacing: -0.2, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{t.name}</span>
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--muted)" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                          <path d="M9.5 5.5 16 12l-6.5 6.5" />
+                        </svg>
+                      </Link>
+                    ))}
+                  </nav>
+                </>
+              ) : null}
+
+              {/* LOG OUT, last (21 Sep 2026), and it asks first (3 Oct 2026) */}
+              <div style={{ height: 1.5, background: "var(--el)", margin: "12px 6px" }} />
+              <button
+                type="button"
+                role="menuitem"
+                aria-haspopup="dialog"
+                {...tapHandlers}
+                onClick={(e) => {
+                  if (wasSwipe(e)) return;
+                  setOpenFor(null);
+                  setConfirmOut(true);
+                }}
+                style={{ display: "flex", alignItems: "center", gap: 10, padding: "8px 8px", borderRadius: 14, width: "100%", background: "transparent", border: "none", cursor: "pointer", fontFamily: "inherit", color: RED, textAlign: "left" }}
+              >
+                <span aria-hidden="true" style={{ width: 34, height: 34, borderRadius: 10, flexShrink: 0, display: "inline-flex", alignItems: "center", justifyContent: "center", background: `${RED}1f` }}>
+                  <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke={RED} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M15 17l5-5-5-5M20 12H9M11 4H6a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h5" />
+                  </svg>
+                </span>
+                <span style={{ fontSize: 13, fontWeight: 900 }}>Log out</span>
+              </button>
               </div>
             </div>
           </div>

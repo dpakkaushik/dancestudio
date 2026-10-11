@@ -1,9 +1,6 @@
 import Link from "next/link";
 import { WelcomeFromUrl } from "@/components/ui/WelcomeBow";
 import { TopPanel } from "@/components/ui/TopPanel";
-import { ArrangeTools } from "@/features/home/components/ArrangeTools";
-import type { Tile } from "@/features/home/components/home-kit";
-import { arrangeTiles, orderOf, toolsLayoutKey } from "@/features/home/toolOrder";
 import type { HeroShot } from "@/features/profiles/components/HeroRail";
 import { HeroDot, HeroFact, HeroId, IdentityHero } from "@/features/profiles/components/hero-kit";
 import { memberNoWords } from "@/types/profile";
@@ -19,7 +16,6 @@ import { ContactEditButton } from "@/features/profiles/components/ContactEditor"
 import { EditDetailsChip, EditModeButton, EditModeProvider } from "@/features/profiles/components/EditMode";
 import { RecordListsProvider } from "@/features/profiles/components/RecordLists";
 import { CrewLinksRow, CrewStylesRow } from "./CrewBand";
-import { DOS_TOOLS } from "@/features/businesses/components/biz-kit";
 import { DOS_UI, INK, LILAC } from "@/lib/design/tokens";
 import { photoUrl } from "@/lib/media/photo";
 import type { HeaderPhoto } from "@/repositories/headerPhotos";
@@ -44,27 +40,10 @@ import { CrewPicturesButton, CrewPostersButton } from "./CrewPictures";
  *  five, new today), the city, the style, the email — and the eye opens the
  *  crew's page as a stranger sees it. The picker that sat under the hero moved
  *  into the sheet, where every other picture in the app is changed. */
-export function CrewHome({ crew, members, header = [], followers = 0, order = null, editOpen = false }: { crew: Crew; members: CrewMember[]; header?: HeaderPhoto[]; /** how many follow this crew — `crew_follower_counts`, aggregate-only (20 Sep 2026) */ followers?: number; /** this leader's own arrangement of THIS crew's tools (22 Sep 2026) */ order?: string[] | null; /** `?edit=1`, which Settings' "Edit crew" navigates here with (22 Sep 2026) — the leader's alone, and `requireLedCrew` is what has already said so */ editOpen?: boolean }) {
+export function CrewHome({ crew, members, header = [], followers = 0, editOpen = false }: { crew: Crew; members: CrewMember[]; header?: HeaderPhoto[]; /** how many follow this crew — `crew_follower_counts`, aggregate-only (20 Sep 2026) */ followers?: number; /** `?edit=1`, which Settings' "Edit crew" navigates here with (22 Sep 2026) — the leader's alone, and `requireLedCrew` is what has already said so */ editOpen?: boolean }) {
   const asked = members.filter((m) => m.status === "asked").length;
-  const tiles: Tile[] = [
-    { name: DOS_TOOLS.team.name, href: `/crews/${crew.id}/manage/team`, k: "team", c: DOS_TOOLS.team.c },
-    /* ⚠ THE EVENTS TILE WENT WITH EVENTS (29 Sep 2026) — it opened the battle
-       record, the second half of the prototype's S_crewmanage switch */
-    /* ⚠ NO ENQUIRIES TILE (2 Oct 2026): a crew's enquiries are its INBOX tab's
-       third desk again (the user: "shift back enquiries to inbox from home tools
-       for all profiles") */
-    /* ⚠ PRACTICE AND CALENDAR (27 Sep 2026, the user: "crew should also get an
-       option on home tab called Practice … practice also get added to calendar.
-       crews should also have a calendar tab"). Both are the LEADER's desks —
-       `requireLedCrew` fronts every route under `/crews/{id}/manage`, and the
-       database asks again on every write. ⚠ A crew's calendar IS its practices:
-       it teaches no class, so it is never offered the Classes · Practice
-       switch — which read Classes · Events · Practice until 29 Sep 2026. */
-    { name: DOS_TOOLS.practice.name, href: `/crews/${crew.id}/manage/practice`, k: "practice", c: DOS_TOOLS.practice.c },
-    { name: DOS_TOOLS.calendar.name, href: `/crews/${crew.id}/manage/calendar`, k: "calendar", c: DOS_TOOLS.calendar.c },
-    /* ⚠ NO EARNINGS TILE since 4 Oct 2026 — it counted the crew's enquiry money
-       and nothing else, and a crew takes no enquiries any more */
-  ];
+  /* ⚠ THE TOOLS LEFT THIS HOME (12 Oct 2026) for the drawer the profile picture
+     opens — `crewTilesFor` in features/home/tiles.ts */
   const shots: HeroShot[] = header.filter((h) => h.url).map((h, i) => ({ key: h.id, src: h.url as string, alt: `Header picture ${i + 1} of ${crew.name}`, signed: h.signed }));
   const whatsapp = whatsappHrefOf(crew.socials);
   return (
@@ -225,14 +204,6 @@ export function CrewHome({ crew, members, header = [], followers = 0, order = nu
         <ContactEditButton target={{ kind: "crew", crew, socials: crew.socials }} />
         </TopPanel>
 
-        <div style={{ position: "relative", zIndex: 1, background: LILAC }}>
-          {/* arranged on the server, so the first paint is already in this
-              leader's own order (22 Sep 2026). ⚠ The key carries the CREW's id,
-              so two people who lead crews each arrange their own — and a crew's
-              two tiles are the smallest grid in the app, which is exactly why
-              the control is offered rather than assumed unnecessary. */}
-          <ArrangeTools kind="crew" tiles={arrangeTiles(tiles, order)} defaultOrder={orderOf(tiles)} layoutKey={toolsLayoutKey("crew", crew.id)} arranged={Boolean(order && order.length > 0)} />
-        </div>
       </div>
       {/* the form Settings sends you to, over the home it belongs to */}
       {editOpen ? <CrewEditFromUrl crew={crew} /> : null}

@@ -1,9 +1,6 @@
 import Link from "next/link";
 import { TopPanel } from "@/components/ui/TopPanel";
-import { ArrangeTools } from "@/features/home/components/ArrangeTools";
-import type { Tile } from "@/features/home/components/home-kit";
 import type { FollowListResult } from "@/features/profiles/server-actions/followLists";
-import { arrangeTiles, orderOf, toolsLayoutKey } from "@/features/home/toolOrder";
 import { TodayShelf } from "@/features/home/components/TodayShelf";
 import { BusinessEditFromUrl } from "@/features/profiles/components/BusinessEditSheet";
 import type { HeroShot } from "@/features/profiles/components/HeroRail";
@@ -78,10 +75,6 @@ export function StudioHome({
    *  it costs one row and names nobody. */
   followers = 0,
   followingRows = [],
-  tiles,
-  /** this member's own arrangement of THIS studio's tools (22 Sep 2026) — keyed
-   *  by the studio, so two people on one team each arrange it for themselves */
-  order = null,
   /** ⚠ `?edit=1` ON THIS HOME'S OWN ADDRESS (22 Sep 2026) — Settings' "Edit
    *  studio" tile navigates here with it, the way its Invoices, Refunds and
    *  Payments siblings navigate to their desks. A QUERY PARAMETER IS A REQUEST
@@ -101,8 +94,6 @@ export function StudioHome({
   followers?: number;
   /** ⚠ the studio's TEAM, which is what its Following lists (2 Oct 2026) */
   followingRows?: FollowListResult["rows"];
-  tiles: Tile[];
-  order?: string[] | null;
   editOpen?: boolean;
   /** ⚠ `standing` is GONE (21 Sep 2026, later the same day): where this studio
    *  stands with DanceOS — its verification and its subscription, and the door
@@ -383,15 +374,6 @@ export function StudioHome({
             `/subscription`; the reads that fed them left this page's route with
             them. */}
 
-        {/* ── STUDIO TOOLS (7590-7620): the same tile language as Home's grid, and
-            every door is THIS studio's ── */}
-        <div style={{ position: "relative", zIndex: 1, background: LILAC }}>
-          {/* arranged on the server so the first paint is already this member's
-              own order (22 Sep 2026); the panel and its heading are
-              `ArrangeTools`' own since 27 Sep, so the Arrange control sits on
-              the head rather than under the grid */}
-          <ArrangeTools kind="studio" tiles={arrangeTiles(tiles, order)} defaultOrder={orderOf(tiles)} layoutKey={toolsLayoutKey("studio", business.id)} arranged={Boolean(order && order.length > 0)} />
-        </div>
       </div>
       {/* the form Settings sends you to, over the home it belongs to (C54's
           shape). Drawn only for somebody the OWNER read admitted. */}
