@@ -112,7 +112,7 @@ export function PayFlow({
       setError(out.error);
       return;
     }
-    onDone("🎉 Booked — your free trial is confirmed");
+    onDone("🎉 Booked — your place is confirmed");
     router.refresh();
   };
 
@@ -351,7 +351,7 @@ export function PayFlow({
               opacity: busy ? 0.6 : 1,
             }}
           >
-            {busy ? "One moment…" : isFree ? "Confirm free trial" : `Pay ${priceText}`}
+            {busy ? "One moment…" : isFree ? "Confirm booking" : `Pay ${priceText}`}
           </div>
         </div>
         {/* ⚠ THE WAY OUT OF A WINDOW THAT NEVER REPORTS BACK (2 Oct 2026). On a

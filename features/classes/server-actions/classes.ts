@@ -375,7 +375,7 @@ export async function publishClassAction(
        would put a class on sale that has already happened */
     const c = await findClassById(supabase, parsed.data.classId);
     if (c?.session && Date.parse(c.session.startsAt) <= Date.now()) {
-      return { error: "Its date has passed — add a new class instead." };
+      return { error: "Its date has passed — pick a new date first." };
     }
     await updateClassStatus(supabase, parsed.data.classId, "published");
   } catch (error: unknown) {

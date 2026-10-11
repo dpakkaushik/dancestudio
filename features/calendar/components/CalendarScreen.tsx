@@ -725,7 +725,10 @@ export function CalendarScreen({ mode, months, todayKey, entries, practices = []
        includes drafts and the pill drew them exactly like a published class, so
        a class nobody can book looked bookable on the screen the rooms are
        planned from */
-    const draft = mode !== "personal" && e.classStatus === "draft";
+    /* ⚠ AND ON YOUR OWN CALENDAR TOO (11 Oct 2026, B20): a draft you teach read
+       "Teaching" like a class people can book; it says Draft, and Closed once its
+       date has gone without a publish */
+    const draft = e.classStatus === "draft";
     /* ⚠ `Open {title}` — the SAME accessible name `ClassTile` gives the same
        class on the public schedule and on Discover. One control name for one
        act, so a screen reader and a locator both find the class by the name the
@@ -734,7 +737,7 @@ export function CalendarScreen({ mode, months, todayKey, entries, practices = []
     const ink = inkOn(bg);
     /* what this class is to YOU on your own calendar; on a studio's, only a
        draft says a word — a published class needs none */
-    const lead = mode === "personal" ? SIDES[e.side].name : draft ? "Draft" : null;
+    const lead = draft ? (past ? "Closed" : "Draft") : mode === "personal" ? SIDES[e.side].name : null;
     return (
       <Link
         key={r.id}
@@ -770,14 +773,15 @@ export function CalendarScreen({ mode, months, todayKey, entries, practices = []
     const isPractice = r.k === "practice";
     const cancelled = isPractice && r.e.cancelled;
     const tint = isPractice ? (cancelled ? MUTED : PRACTICE_C) : dosStyleColor(r.style);
-    const draft = r.k === "class" && mode !== "personal" && r.e.classStatus === "draft";
+    const draft = r.k === "class" && r.e.classStatus === "draft";
+    const draftWord = draft ? (r.dayKey < todayKey ? "Closed" : "Draft") : null;
     const name = isPractice ? r.e.crewName : r.style;
     const when = `${timeOf(r.startsAt)}${narrow ? "" : ` – ${timeOf(r.endsAt)}`}`;
     const third =
       r.k === "class"
         ? mode === "personal"
-          ? SIDES[r.side].name
-          : [draft ? "Draft" : null, room === null ? r.e.room : null].filter(Boolean).join(" · ")
+          ? draftWord ?? SIDES[r.side].name
+          : [draftWord, room === null ? r.e.room : null].filter(Boolean).join(" · ")
         : cancelled
           ? "Called off"
           : PRACTICE_WORD[r.e.standing];

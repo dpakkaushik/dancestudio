@@ -18,6 +18,8 @@ import type { ClassArtist } from "@/types/classPerson";
 import type { ClassBookingStatus } from "@/types/classBooking";
 import type { PublicClassListing } from "@/types/class";
 import type { ChartRow, ChartSegment } from "@/types/stats";
+import { resolveActingAs } from "@/repositories/actingAs";
+import { canBookClass, noBookingWords } from "@/types/profile";
 
 /** A DANCE STYLE'S OWN PAGE (2 Oct 2026, the user: "page opens dance style —
  *  column 1: Photos, info, History, country, and Notable names — max 5 names,
@@ -77,6 +79,10 @@ export default async function StylePage({
   const boards = boardsList ? (Object.fromEntries(boardsList) as Record<ChartSegment, ChartRow[]>) : null;
   const ids = styleClassesRaw.map((c) => c.id);
   const sessionIds = styleClassesRaw.map((c) => c.session?.id).filter(Boolean) as string[];
+  /* ⚠ THE PROFILE YOU ARE ACTING AS (11 Oct 2026, B23) — Discover's own gate: a
+     studio or a crew books no class, so a card says so instead of Book Now */
+  const actingAs = user ? await resolveActingAs(supabase, sp.as).catch(() => null) : null;
+  const noClass = actingAs && !canBookClass(actingAs) ? noBookingWords(actingAs) : null;
   const [taught, counts, classArtists, ranIds] = await Promise.all([
     findClassesWithArtist(supabase, ids).catch(() => new Set<string>()),
     countEnrolledBySession(supabase, sessionIds).catch(() => new Map<string, number>()),
@@ -193,7 +199,7 @@ export default async function StylePage({
                       mine={mine.get(c.session.id) ?? null}
                       priceInr={c.priceInr}
                       shareSlug={c.shareSlug}
-                      cannotBookWhy={ranIds.has(c.id) ? "You run this class" : null}
+                      cannotBookWhy={noClass ?? (ranIds.has(c.id) ? "You run this class" : null)}
                     />
                   ) : null
                 }

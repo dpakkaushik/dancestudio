@@ -179,9 +179,12 @@ try {
     ($m5.refunded -eq 300) -and ($m5.owed -eq 300))
 
   # 7. the rival's own paid class money never lands in ours
+  # 11 Oct 2026 (20261017090000): an OVERLAPPING booking is refused at every door,
+  # and learner 5 already holds a seat on our class at $tmr - so the rival's class
+  # runs two hours later, where the two cannot clash.
   $rcls = Rpc (Api $rival.token) "create_class_with_session" @{ p_business_id = $tb.id; p_title = "Rival Class $stamp";
     p_style = "Bollywood"; p_level = "all"; p_room = $null; p_price_inr = 300; p_capacity = 10;
-    p_status = "draft"; p_starts_at = $tmr.ToString("yyyy-MM-ddTHH:mm:00zzz"); p_ends_at = $tmr.AddHours(1).ToString("yyyy-MM-ddTHH:mm:00zzz") }
+    p_status = "draft"; p_starts_at = $tmr.AddHours(2).ToString("yyyy-MM-ddTHH:mm:00zzz"); p_ends_at = $tmr.AddHours(3).ToString("yyyy-MM-ddTHH:mm:00zzz") }
   Publish-Class ([string]$rcls.id) ([string]$trainer.id) (Api $rival.token)
   $rsid = (Get-Rows $svcH "class_sessions?class_id=eq.$($rcls.id)&select=id")[0].id
   Buy-Seat $learners[4] $rsid "RIV$stamp" | Out-Null

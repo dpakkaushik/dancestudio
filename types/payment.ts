@@ -76,6 +76,10 @@ export interface ClassMoney {
    *  passes. The figures were always right; the screen simply would not explain
    *  itself, which on a money screen is its own defect. */
   passSeats: number;
+  /** ⚠ SEATS PAID AT THE DOOR (11 Oct 2026, B9): live bookings whose
+   *  `door_paid_at` is set. The register records cash it was handed — DanceOS
+   *  moved none of it — so it is its own line, never folded into "Came in". */
+  doorPaidSeats: number;
 }
 
 /** cancel_class_booking_with_reason's money outcome, when the seat was paid for. */

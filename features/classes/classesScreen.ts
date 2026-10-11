@@ -54,7 +54,9 @@ export interface DraftState {
 }
 
 export const draftStateOf = (st: ClassPublishState | undefined): DraftState => {
-  if (!st) return { kind: "ready", chip: "Ready to publish", tint: "#22C55E" };
+  /* ⚠ B26 (11 Oct 2026): no state means the READ failed, not that nothing is
+     missing — unknown is never "ready", so no Publish is offered on a guess */
+  if (!st) return { kind: "waiting", chip: "Could not check — open it", tint: "#F59E0B" };
   if (st.venueStatus === "declined") return { kind: "fix", chip: `${st.venueName ?? "The studio"} said no`, tint: "#F87171", fix: "studio" };
   if (st.teacherStatus === "rejected") return { kind: "fix", chip: `${st.teacherName ?? "The teacher"} said no`, tint: "#F87171", fix: "teacher" };
   if (st.teacherStatus === "asked") return { kind: "waiting", chip: `Waiting on ${st.teacherName ?? "the teacher"}`, tint: "#F59E0B" };

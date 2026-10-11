@@ -62,6 +62,14 @@ interface Bucket {
   refunded: number;
   refundCount: number;
   methods: Map<string, { amount: number; count: number }>;
+  /** seats paid at the door (B9, 11 Oct 2026) */
+  door: number;
+  doorCount: number;
+}
+
+interface DoorRow {
+  door_paid_at: string;
+  classes: { price_inr: number | null } | null;
 }
 
 /** The rail's word for the method (Cashfree's payment_group: upi, credit_card,
@@ -85,6 +93,8 @@ const emptyBucket = (): Bucket => ({
   refunded: 0,
   refundCount: 0,
   methods: new Map(),
+  door: 0,
+  doorCount: 0,
 });
 
 export async function findBusinessIncome(
@@ -96,7 +106,7 @@ export async function findBusinessIncome(
   const keys = Array.from({ length: PAST_MONTHS + 1 }, (_, back) => shiftMonthKey(currentKey, back));
   const fromIso = monthStartIso(keys[keys.length - 1]);
 
-  const [paymentsRes, refundsRes, openRes] = await Promise.all([
+  const [paymentsRes, refundsRes, openRes, doorRes] = await Promise.all([
     supabase
       .from("payments")
       .select("amount_inr, status, method, created_at, orders (membership_id, enquiry_quote_id)")
@@ -137,12 +147,24 @@ export async function findBusinessIncome(
       .in("status", ["requested", "pending"])
       .is("deleted_at", null)
       .limit(MAX_INCOME_ROWS),
+    /* ⚠ B9 (11 Oct 2026): cash the register recorded at the door, by the month
+       it was marked paid. A seat is the class's price — the register's own rule. */
+    supabase
+      .from("class_bookings")
+      .select("door_paid_at, classes!inner (price_inr)")
+      .eq("business_id", businessId)
+      .eq("status", "enrolled")
+      .not("door_paid_at", "is", null)
+      .is("deleted_at", null)
+      .gte("door_paid_at", fromIso)
+      .limit(MAX_INCOME_ROWS),
   ]);
 
   for (const [what, res] of [
     ["payments", paymentsRes],
     ["refunds", refundsRes],
     ["open", openRes],
+    ["door", doorRes],
   ] as const) {
     if (res.error) {
       throw new Error(`income.findBusinessIncome(${what}) failed: ${res.error.message}`);
@@ -180,6 +202,14 @@ export async function findBusinessIncome(
     bucket.refundCount += 1;
   }
 
+  const door = (doorRes.data ?? []) as unknown as DoorRow[];
+  for (const d of door) {
+    const bucket = buckets.get(monthKeyOf(d.door_paid_at));
+    if (!bucket) continue;
+    bucket.door += d.classes?.price_inr ?? 0;
+    bucket.doorCount += 1;
+  }
+
   const months: MonthIncome[] = keys.map((key) => {
     const bucket = buckets.get(key) ?? emptyBucket();
     const byMethod: MethodShare[] = [...bucket.methods.entries()]
@@ -196,6 +226,8 @@ export async function findBusinessIncome(
       refundedInr: bucket.refunded,
       refundCount: bucket.refundCount,
       byMethod,
+      doorCashInr: bucket.door,
+      doorSeatCount: bucket.doorCount,
     };
   });
 
@@ -205,6 +237,9 @@ export async function findBusinessIncome(
     openRefundsInr: open.reduce((a, r) => a + r.amount_inr, 0),
     openRefundCount: open.length,
     complete:
-      payments.length < MAX_INCOME_ROWS && refunds.length < MAX_INCOME_ROWS && open.length < MAX_INCOME_ROWS,
+      payments.length < MAX_INCOME_ROWS &&
+      refunds.length < MAX_INCOME_ROWS &&
+      open.length < MAX_INCOME_ROWS &&
+      door.length < MAX_INCOME_ROWS,
   };
 }

@@ -93,7 +93,11 @@ export default async function InboxPage({ searchParams }: { searchParams: Promis
     findMyPendingCrewAsks(supabase, [...ALL], { withdrawn: true }),
     findAskedForMyCrews(supabase, [...ALL], { withdrawn: true }),
   ]);
-  const classAsksWaiting = classPeopleIn.filter((c) => c.status === "asked" && !c.withdrawn).length;
+  /* ⚠ an ask whose class has STARTED waits on nobody (B15, 11 Oct 2026) — it is
+     Expired under Classes › Answered, so the pointer does not count it */
+  const classAsksWaiting = classPeopleIn.filter(
+    (c) => c.status === "asked" && !c.withdrawn && !(c.startsAt && Date.parse(c.startsAt) <= Date.parse(nowIso))
+  ).length;
 
   /* ⚠ THE PRACTICES THIS PERSON HAS BEEN ASKED TO (27 Sep 2026). Only the ones
      still AHEAD: a rehearsal that has happened is not a yes or a no you owe

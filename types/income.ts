@@ -34,6 +34,11 @@ export interface MonthIncome {
   refundedInr: number;
   refundCount: number;
   byMethod: MethodShare[];
+  /** ⚠ CASH THE DOOR TOOK (11 Oct 2026, B9): seats marked Paid at the door this
+   *  month × the class's price. DanceOS moved none of it, so it is NOT in
+   *  `grossInr` (which counts captured payments) — it is its own line. */
+  doorCashInr: number;
+  doorSeatCount: number;
 }
 
 export interface BusinessIncome {

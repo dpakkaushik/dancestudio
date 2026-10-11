@@ -194,7 +194,8 @@ const DESKS = [...RUN_DESKS, ...OWNER_DESKS];
        one, and `SegmentedPanels` mounts only the shown panel, so the list is not
        in the DOM at all until the column is asked for — the same trap that made
        shoot-practice stale for a day when Practice became a column. */
-    /* ⚠ and the THIRD column since 3 Oct 2026 — Manage · Team · Student */
+    /* ⚠ and the THIRD column since 3 Oct 2026 — Manage · Team · Student; the
+       Student column went on 11 Oct 2026, so the hub is Manage · Team */
     await fPage.goto(`${BASE}/business?show=team`, { waitUntil: "networkidle" });
     const hub = (await fPage.locator("body").innerText()).replace(/\s+/g, " ");
     check(/STUDIOS YOU HAVE TAUGHT AT/.test(hub) && hub.includes("Seat Studio"), "the hub still lists the studio under STUDIOS YOU HAVE TAUGHT AT");

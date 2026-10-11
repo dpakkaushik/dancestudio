@@ -4,6 +4,7 @@ import { useState } from "react";
 import { dosKey } from "@/features/classes/components/ShareSheet";
 import { cancelBookingAction } from "@/features/payments/server-actions/payments";
 import { DOS_DISPLAY, DOS_UI } from "@/lib/design/tokens";
+import { refundPolicySentence, refundSideNow, windowWords } from "@/lib/format/refundPolicy";
 import { useCloseOnBack } from "@/lib/hooks/useCloseOnBack";
 
 /** Cancelling is two things, and only one of them is about money — lifted from
@@ -30,12 +31,45 @@ export interface RefundSheetProps {
    *  the number `_cancel_one_class_booking` decides by; 12 unless the studio set
    *  another. The class page reads it with `findRefundWindowHours`. */
   refundWindowHours?: number;
+  /** when the session starts — so the sheet can say which side of the window
+   *  the learner is on NOW, not only what the rule is (B7, 11 Oct 2026) */
+  startsAt?: string | null;
+  /** how the seat was paid for: money, a membership pass's hours, or nothing.
+   *  A pass follows the money's window (D6); a free seat has nothing to return. */
+  paidWith?: "money" | "pass" | "free";
 }
 
-export function RefundSheet({ classBookingId, title, timeText, amountInr, onClose, onDone, refundWindowHours = 12 }: RefundSheetProps) {
+/* the clock is read once, when the sheet opens — never during render */
+const nowMs = (): number => Date.now();
+
+export function RefundSheet({
+  classBookingId,
+  title,
+  timeText,
+  amountInr,
+  onClose,
+  onDone,
+  refundWindowHours = 12,
+  startsAt = null,
+  paidWith = "money",
+}: RefundSheetProps) {
   const win = Math.max(0, Math.round(refundWindowHours));
+  const [openedAt] = useState(nowMs);
+  const startMs = startsAt ? new Date(startsAt).getTime() : NaN;
+  const side = Number.isFinite(startMs) ? refundSideNow(win, startMs - openedAt) : null;
+  const what = paidWith === "pass" ? "Your pass hours" : "Your money";
   const moneyLine =
-    win === 0 ? "in full until the class starts" : `in full ${win} h or more ahead; inside ${win} h the studio decides`;
+    paidWith === "free"
+      ? "nothing to return — this seat was free"
+      : side === "automatic"
+        ? paidWith === "pass"
+          ? "come back to your pass automatically — you are outside the window"
+          : `₹${amountInr.toLocaleString("en-IN")} comes back automatically — you are outside the window`
+        : side === "studio"
+          ? paidWith === "pass"
+            ? `are kept — you are inside the ${windowWords(win)} window`
+            : `you are inside the ${windowWords(win)} window, so the studio decides`
+          : refundPolicySentence(win);
   useCloseOnBack(onClose);
   const [own, setOwn] = useState(false);
   const [why, setWhy] = useState("");
@@ -84,7 +118,7 @@ export function RefundSheet({ classBookingId, title, timeText, amountInr, onClos
           {(
             [
               ["Your place", "goes back on sale straight away"],
-              ["Your money", moneyLine],
+              [what, moneyLine],
             ] as Array<[string, string]>
           ).map(([k, v]) => (
             <div key={k} style={{ display: "flex", gap: 10, padding: "4px 0" }}>
@@ -122,9 +156,11 @@ export function RefundSheet({ classBookingId, title, timeText, amountInr, onClos
             }}
           >
             {r}
-            <span style={{ marginLeft: "auto", fontFamily: DOS_MONO, fontSize: 11, color: "var(--sub)" }}>
-              ₹{amountInr.toLocaleString("en-IN")}
-            </span>
+            {paidWith === "money" && amountInr > 0 ? (
+              <span style={{ marginLeft: "auto", fontFamily: DOS_MONO, fontSize: 11, color: "var(--sub)" }}>
+                ₹{amountInr.toLocaleString("en-IN")}
+              </span>
+            ) : null}
           </div>
         ))}
         {!own ? (

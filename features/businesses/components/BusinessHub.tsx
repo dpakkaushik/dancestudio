@@ -1,6 +1,5 @@
 "use client";
 
-import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useActionState, useState } from "react";
@@ -9,7 +8,6 @@ import { StudioVerificationStrip } from "@/features/businesses/components/Studio
 import type { StudioVerificationState } from "@/repositories/studioVerification";
 import { DeskAddButton, VerifiedTick } from "@/features/settings/components/settings-kit";
 import { SegmentedPanels } from "@/features/shell/components/SegmentedNav";
-import { photoUrl } from "@/lib/media/photo";
 import { dosKey } from "@/features/classes/components/ShareSheet";
 import { CityPicker } from "@/features/geo/components/CityPicker";
 import { LocationPicker } from "@/features/geo/components/LocationPicker";
@@ -125,20 +123,13 @@ export function BusinessHub({
   cityCentres = [],
   studioVerification = {},
   userId = null,
-  attended = [],
-  teachersByStudio = {},
   show = "own",
 }: {
-  /** who taught you at each studio you learned at, keyed by studio id (1 Oct 2026) */
-  teachersByStudio?: Record<string, LearnedFrom[]>;
-  /** ⚠ WHICH COLUMN IS OPEN (29 Sep 2026) — `?show=team` / `?show=learned`, the
-   *  URL as the state, like every other segmented desk in the app. */
-  show?: "own" | "team" | "learned";
+  /** ⚠ WHICH COLUMN IS OPEN (29 Sep 2026) — `?show=team`, the URL as the state,
+   *  like every other segmented desk in the app. The Student column went on
+   *  11 Oct 2026. */
+  show?: "own" | "team";
   memberships: MyMembership[];
-  /** THE STUDIOS YOU HAVE TAKEN CLASSES AT (18 Sep 2026, the user's Home grid:
-   *  a person's Studios tile lists them) — every business behind one of your
-   *  bookings, once each. */
-  attended?: MyMembership["business"][];
   roomCounts: Record<string, number>;
   /* ⚠ `role` went on 29 Sep 2026 with organizations: it only ever separated an
      organization's hub from a person's, and `ProfileRole` is `"user"` alone now
@@ -263,9 +254,6 @@ export function BusinessHub({
   const mine = memberships.filter((m) => m.memberRole === "owner").map((m) => m.business);
   const theirs = memberships.filter((m) => m.memberRole !== "owner").map((m) => m.business);
   const myStudios = mine.filter((t) => t.type === "studio");
-  /* where a person has LEARNT: every studio behind one of their bookings, less
-     the ones they teach at or own — a studio is listed once, under one heading */
-  const learnt = attended.filter((t) => !theirs.some((x) => x.id === t.id) && !mine.some((x) => x.id === t.id));
 
   /* ⚠ THE SHEET OPENS A STUDIO, FOR ANYBODY (26 Sep 2026, the user: "Move Studio
      creation from org and allow user and artist to create studios now from
@@ -450,18 +438,6 @@ export function BusinessHub({
   /* a studio somebody teaches at: the same card without the studio's paperwork */
   const plainCard = (t: MyMembership["business"]) => otherCard(t, "you teach here");
 
-  /* ⚠⚠ A STUDIO YOU LEARNED AT CARRIES WHO TAUGHT YOU THERE (1 Oct 2026, the
-     user: *"where you learned in studios should have studio list and collapsible
-     teacher list in it to see the record of from who you learned where"*). The
-     same card, and under its identity a disclosure — "Learned from N teachers"
-     — that opens onto each teacher with how many of your classes they took. It
-     sits ABOVE the card's stretched link (z-index 2), like the studio card's own
-     work, so pressing it opens the list rather than the studio's page. */
-  const learnedCard = (t: MyMembership["business"]) => {
-    const teachers = teachersByStudio[t.id] ?? [];
-    return otherCard(t, "you learnt here", teachers, teachers.length > 0 ? <ToolLive><LearnedFromList studio={t.name} teachers={teachers} /></ToolLive> : null);
-  };
-
   const setRoom = (i: number, patch: Partial<RoomDraft>) =>
     setRooms((rs) => rs.map((r, j) => (j === i ? { ...r, ...patch } : r)));
 
@@ -549,7 +525,10 @@ export function BusinessHub({
           segments={[
             { key: "own", href: "/business", label: "Manage", n: myStudios.length, aria: "The studios you own" },
             { key: "team", href: "/business?show=team", label: "Team", n: theirs.length, aria: "The studios whose team you are on" },
-            { key: "learned", href: "/business?show=learned", label: "Student", n: learnt.length, aria: "The studios you have learned at" },
+            /* ⚠ THE STUDENT COLUMN IS GONE (11 Oct 2026, the user: "remove student
+               column from studios inside studio page"). `?show=learned` lands on
+               Manage (Rule 14). The studios a person learns at are still the
+               Classes tab's Booked list and their own Stats. */
           ]}
           panels={[
             {
@@ -634,21 +613,6 @@ export function BusinessHub({
                         ? "The studios whose team you are on will be listed here — accept a class at one and it appears."
                         : "The studios whose team you are on will be listed here."}
                     </div>
-                  )}
-                </>
-              ),
-            },
-            {
-              key: "learned",
-              node: (
-                <>
-                  {learnt.length > 0 ? (
-                    <>
-                      <Head>STUDIOS YOU HAVE LEARNT AT</Head>
-                      {learnt.map((t) => learnedCard(t))}
-                    </>
-                  ) : (
-                    <div style={{ fontSize: 11.5, color: SUB, padding: "4px 2px 0" }}>The studios you learn at will be listed here once you have booked a class.</div>
                   )}
                 </>
               ),
@@ -905,54 +869,3 @@ export function BusinessHub({
   );
 }
 
-/** WHO TAUGHT YOU AT ONE STUDIO, folded shut until asked (1 Oct 2026). A real
- *  `<button aria-expanded>` with the list it controls, so a screen reader hears
- *  the same disclosure a finger opens; each teacher is a door to their profile. */
-function LearnedFromList({ studio, teachers }: { studio: string; teachers: LearnedFrom[] }) {
-  const [open, setOpen] = useState(false);
-  const id = `learned-${studio.replace(/[^a-z0-9]+/gi, "-").toLowerCase()}`;
-  const day = (iso: string) => new Intl.DateTimeFormat("en-IN", { timeZone: "Asia/Kolkata", day: "numeric", month: "short", year: "numeric" }).format(new Date(iso));
-  return (
-    <div style={{ position: "relative", zIndex: 2, marginTop: 10, borderTop: "1.5px solid var(--el)", paddingTop: 8 }} data-testid="learned-from">
-      <button
-        type="button"
-        aria-expanded={open}
-        aria-controls={id}
-        aria-label={`${open ? "Hide" : "Show"} who taught you at ${studio}`}
-        onClick={() => setOpen((o) => !o)}
-        style={{ display: "flex", alignItems: "center", gap: 6, width: "100%", background: "none", border: "none", padding: "2px 0", color: SUB, fontSize: 11, fontWeight: 800, cursor: "pointer", fontFamily: "inherit", textAlign: "left" }}
-      >
-        <span style={{ flex: 1 }}>
-          Learned from {teachers.length} teacher{teachers.length === 1 ? "" : "s"}
-        </span>
-        <span aria-hidden="true" style={{ transition: "transform .15s", transform: open ? "rotate(90deg)" : "none" }}>›</span>
-      </button>
-      {open ? (
-        <div id={id} style={{ marginTop: 6 }}>
-          {teachers.map((a) => {
-            const src = photoUrl(a.avatarPath);
-            return (
-              <Link
-                key={a.userId}
-                href={`/person/${a.userId}`}
-                aria-label={`${a.name} — ${a.classes} class${a.classes === 1 ? "" : "es"} at ${studio}`}
-                style={{ display: "flex", alignItems: "center", gap: 9, padding: "6px 0", color: INK, textDecoration: "none" }}
-              >
-                <span style={{ width: 30, height: 30, borderRadius: 9, flexShrink: 0, position: "relative", overflow: "hidden", background: "var(--el)", display: "inline-flex", alignItems: "center", justifyContent: "center", fontSize: 11, fontWeight: 900, color: SUB }}>
-                  {src ? <Image src={src} alt="" fill sizes="30px" style={{ objectFit: "cover" }} /> : a.name.split(/\s+/).map((w) => w[0]).slice(0, 2).join("").toUpperCase()}
-                </span>
-                <span style={{ flex: 1, minWidth: 0 }}>
-                  <span style={{ display: "block", fontSize: 12.5, fontWeight: 800, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{a.name}</span>
-                  <span style={{ display: "block", fontSize: 10, color: MUTED, marginTop: 1 }}>
-                    {a.classes} class{a.classes === 1 ? "" : "es"} · last {day(a.last)}
-                  </span>
-                </span>
-                <span aria-hidden="true" style={{ color: MUTED, fontSize: 13 }}>›</span>
-              </Link>
-            );
-          })}
-        </div>
-      ) : null}
-    </div>
-  );
-}

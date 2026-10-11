@@ -6,14 +6,15 @@ import { groupWithDoor, tabFromAddress, timeGroupOf, type ClassesTab, type TimeG
 import { answeredItems, askExpired, askToYouItem, askYouSentItem, closedDraftItem, draftItem, hasPassed, refundsItem, runActions, unpublishedItem } from "@/features/classes/classItems";
 import { EnrollButton } from "@/features/classBookings/components/EnrollButton";
 import { DeskHero } from "@/features/businesses/components/biz-kit";
-import { TakingRequestsSwitch } from "@/features/classes/components/ClassCardActions";
+import { StateChip, TakingRequestsSwitch } from "@/features/classes/components/ClassCardActions";
+import { cardBtn } from "@/features/classes/cardStyles";
 import { buildRequests, isClassAsk } from "@/features/inbox/requestItems";
 import { DeskAddButton } from "@/features/settings/components/settings-kit";
 import { DOS_UI, INK, LILAC, SUB } from "@/lib/design/tokens";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { findAskedClassPeopleForBusinesses, findClassArtists, findMyConfirmedClassPeople, findMyPendingClassPeople } from "@/repositories/classPeople";
 import { findClassPublishState, findClassesByBusiness, findMyVenueAsks, findWhyNoClass } from "@/repositories/classes";
-import { countEnrolledBySession, findMyClassBookings } from "@/repositories/classBookings";
+import { countEnrolledBySession, findMyCancelledBookings, findMyClassBookings, type MyCancelledBooking } from "@/repositories/classBookings";
 import { findMyMemberships, runsTheBusiness } from "@/repositories/businesses";
 import { findMyInboxOff } from "@/repositories/askSettings";
 import { findRefundsByBusiness } from "@/repositories/refunds";
@@ -23,6 +24,24 @@ import type { MyClassBooking } from "@/types/classBooking";
 
 /* the clock lives outside the component (react-hooks/purity) */
 const stampNow = (): number => Date.now();
+
+/** the history chip on a cancelled booking — who cancelled, and the money (D11) */
+const historyWord = (e: MyCancelledBooking): string => {
+  const who = e.calledOff ? "Called off" : "Cancelled";
+  switch (e.refund) {
+    case "refunded":
+      return `${who} · refunded`;
+    case "processing":
+      return `${who} · refund processing`;
+    case "asked":
+      return `${who} · refund asked`;
+    case "declined":
+    case "none":
+      return `${who} · no refund`;
+    default:
+      return who;
+  }
+};
 
 const toTileClass = (e: MyClassBooking): DanceClass => ({
   id: e.classId,
@@ -86,8 +105,9 @@ export default async function MyClassesPage({ searchParams }: { searchParams: Pr
   const opening = one(params.new) === "1";
 
   const ALL = ["asked", "confirmed", "rejected"] as const;
-  const [bookings, artistOn, assistantOn, memberships, asksIn, inboxOff] = await Promise.all([
+  const [bookings, cancelled, artistOn, assistantOn, memberships, asksIn, inboxOff] = await Promise.all([
     findMyClassBookings(supabase),
+    findMyCancelledBookings(supabase).catch(() => []),
     findMyConfirmedClassPeople(supabase, "artist"),
     findMyConfirmedClassPeople(supabase, "assistant"),
     findMyMemberships(supabase),
@@ -170,7 +190,8 @@ export default async function MyClassesPage({ searchParams }: { searchParams: Pr
 
   /* ── CLOSED: drafts whose date passed — Past, no buttons ───────────────── */
   const closed: Array<ClassItem & { at: string | null }> = [
-    ...closedDrafts.map((c) => ({ ...closedDraftItem({ key: `draft-${c.id}`, c, artist: artistOf(c.id), filled: seatsOf(c.session?.id), role: "teaching" }), at: c.session?.startsAt ?? null })),
+    /* your own page's closed drafts: Pick a new date · Delete (D3) */
+    ...closedDrafts.map((c) => ({ ...closedDraftItem({ key: `draft-${c.id}`, c, artist: artistOf(c.id), filled: seatsOf(c.session?.id), role: "teaching", canEdit: true }), at: c.session?.startsAt ?? null })),
     ...teachDraft.filter((c) => hasPassed(c.startsAt, nowMs)).map((c) => ({ ...closedDraftItem({ key: `teach-${c.id}`, c: askToTileClass(c), artist: artistOf(c.classId), filled: seatsOf(c.sessionId), role: "teaching", relation: "teaching" }), at: c.startsAt })),
     ...assistDraft.filter((c) => hasPassed(c.startsAt, nowMs)).map((c) => ({ ...closedDraftItem({ key: `assist-${c.id}`, c: askToTileClass(c), artist: artistOf(c.classId), filled: seatsOf(c.sessionId), role: "assisting", relation: "assisting" }), at: c.startsAt })),
   ];
@@ -196,10 +217,40 @@ export default async function MyClassesPage({ searchParams }: { searchParams: Pr
           relation="booked"
           /* ⚠ a class that is over offers no way out of its seat (4 Oct), a
              started one no Cancel (6 Oct) */
-          actions={group === "past" ? undefined : <EnrollButton sessionId={e.sessionId} isFull={false} isSignedIn mine={{ id: e.id, status: e.status }} priceInr={e.priceInr} shareSlug={e.shareSlug} started={started(e.startsAt)} />}
+          actions={
+            group === "past" ? undefined : (
+              <>
+                <EnrollButton sessionId={e.sessionId} isFull={false} isSignedIn mine={{ id: e.id, status: e.status }} priceInr={e.priceInr} shareSlug={e.shareSlug} started={started(e.startsAt)} />
+                {/* D11: the seat into the person's own calendar app */}
+                <a href={`/c/${e.shareSlug}/ics`} download data-testid="add-to-calendar" aria-label={`Add ${e.title} to your calendar`} style={cardBtn(false)}>
+                  Add to calendar
+                </a>
+              </>
+            )
+          }
         />
       );
     }),
+    /* ⚠ BOOKING HISTORY (11 Oct 2026, D11): a cancelled seat stays in Past with
+       what became of its money, instead of vanishing */
+    ...cancelled.map((e) =>
+      timed(
+        `cancelled-${e.id}`,
+        "past",
+        "booked",
+        e.startsAt,
+        <div data-testid="booking-history">
+          <ClassTile
+            danceClass={toTileClass(e)}
+            artist={artistOf(e.classId)}
+            city={e.businessCity}
+            href={`/c/${e.shareSlug}`}
+            relation="booked"
+            actions={<StateChip word={historyWord(e)} tint={e.refund === "refunded" ? "#22C55E" : e.refund === "processing" || e.refund === "asked" ? "#F59E0B" : "#858585"} />}
+          />
+        </div>
+      )
+    ),
     ...ownLive.filter((c) => c.session !== null).map((c) => {
       const group = groupWithDoor(c.session?.startsAt ?? null, c.session?.endsAt ?? null, nowMs);
       const path = `/c/${c.shareSlug}`;

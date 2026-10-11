@@ -4,11 +4,11 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
-import { askClassPerson, respondToClassAsk, setClassPersonPowers, withdrawClassAsk } from "@/repositories/classPeople";
+import { askClassPerson, respondToClassAsk, setClassPersonPay, setClassPersonPowers, stepDownFromClass, withdrawClassAsk } from "@/repositories/classPeople";
 import { findAssistantPool } from "@/repositories/profiles";
 
 /** Step 11 people actions. Consent is the whole point: the studio ASKS (only
- *  its own team, owner/trainer only) and the person asked is the only one who
+ *  its own team, the people who run it) and the person asked is the only one who
  *  can answer — both enforced in the RPCs, not here. */
 
 export interface ClassPersonActionResult {
@@ -119,6 +119,51 @@ export async function withdrawClassAskAction(input: { classPersonId: string }): 
     return { error: null };
   } catch (error: unknown) {
     return { error: error instanceof Error ? error.message : "Could not take them off" };
+  }
+}
+
+const stepDownSchema = z.object({
+  classPersonId: z.string().uuid(),
+  reason: z.string().trim().max(300).optional(),
+});
+
+/** STEP DOWN (11 Oct 2026, D4) — only the person themself, only before the class
+ *  starts; both re-checked by `step_down_from_class`. */
+export async function stepDownFromClassAction(input: { classPersonId: string; reason?: string }): Promise<ClassPersonActionResult> {
+  const parsed = stepDownSchema.safeParse(input);
+  if (!parsed.success) {
+    return { error: "Invalid request" };
+  }
+  const supabase = await requireUser();
+  try {
+    await stepDownFromClass(supabase, parsed.data.classPersonId, parsed.data.reason ? parsed.data.reason : null);
+    revalidatePeopleSurfaces();
+    revalidatePath("/my-classes");
+    return { error: null };
+  } catch (error: unknown) {
+    return { error: error instanceof Error ? error.message : "Could not step down" };
+  }
+}
+
+const paySchema = z.object({
+  classPersonId: z.string().uuid(),
+  payPerSessionInr: z.number().int().min(0).max(1_000_000),
+});
+
+/** WHAT A SESSION PAYS THIS PERSON ON THIS CLASS (11 Oct 2026, D2) — the
+ *  OWNER's number; `set_class_person_pay` refuses anybody else. */
+export async function setClassPersonPayAction(input: { classPersonId: string; payPerSessionInr: number }): Promise<ClassPersonActionResult> {
+  const parsed = paySchema.safeParse(input);
+  if (!parsed.success) {
+    return { error: "Enter a whole rupee amount, 0 or more" };
+  }
+  const supabase = await requireUser();
+  try {
+    await setClassPersonPay(supabase, parsed.data.classPersonId, parsed.data.payPerSessionInr);
+    revalidatePeopleSurfaces();
+    return { error: null };
+  } catch (error: unknown) {
+    return { error: error instanceof Error ? error.message : "Could not set the rate" };
   }
 }
 

@@ -25,6 +25,10 @@
  *      `findMyEnrolledSessionIds` filtered on neither `user_id` nor the
  *      business, and `class_bookings` lets a member read the whole roster.
  *   7. A person ASKED to take a class answers it in the Classes section.
+ *  13. (11 Oct 2026, 20261017090000) The teacher steps down from the class page,
+ *      the booking bar then reads "Waiting for a new teacher", a draft whose
+ *      date passed is a closed card with Pick a new date + Delete, and a booked
+ *      card's Add to calendar answers text/calendar.
  *
  *   npm run build && npx next start -p 3100
  *   NODE_PATH=$(pwd)/node_modules DANCEOS_BASE_URL=http://localhost:3100 \
@@ -111,7 +115,11 @@ const atIst = (days, hour) => {
  *  20260930130000 — the form's own 28 Sep rule, kept by the row), and this
  *  script used to ask the RPC for `-180` minutes directly, which is exactly the
  *  door that migration closes. */
-const draftClass = async (h, businessId, roomId, style, fromMin, toMin) => {
+/* ⚠ 11 Oct 2026 (20261017090000, B12): A CLASS THAT HAS STARTED TAKES NO NEW
+   ASK — so a past class's teacher has to be asked while it is still AHEAD.
+   `beforeBackdate` runs between the create and the back-dating for exactly that
+   (the ask, the yes and the publish). */
+const draftClass = async (h, businessId, roomId, style, fromMin, toMin, beforeBackdate) => {
   const past = fromMin < 0;
   const c = await rpc(h, "create_class_with_session", {
     p_business_id: businessId,
@@ -131,6 +139,7 @@ const draftClass = async (h, businessId, roomId, style, fromMin, toMin) => {
     p_lng: null,
     p_maps_url: null,
   });
+  if (beforeBackdate) await beforeBackdate(c.id);
   if (past) {
     await patch(H_SERVICE, `class_sessions?class_id=eq.${c.id}`, { starts_at: iso(fromMin), ends_at: iso(toMin) }, "back-date the session");
   }
@@ -190,16 +199,17 @@ const BOOK_ON_PAGE = /^Book Now$/;
 
     /* three classes: one ahead, one that has ALREADY RUN, one LIVE right now.
        ⚠ different rooms, because a published class holds its room. */
-    const ahead = await draftClass(owner.h, studio.id, roomA[0].id, "Hip-Hop", 60 * 24 * 5, 60 * 24 * 5 + 60);
-    const ran = await draftClass(owner.h, studio.id, roomB[0].id, "Kathak", -180, -120);
-    const live = await draftClass(owner.h, studio.id, roomB[0].id, "Salsa", -10, 50);
-    for (const id of [ahead, ran, live]) {
-      /* the owner takes their own class — confirmed at birth (26 Sep 2026) —
-         and then presses Publish: a confirmed row publishes nothing by itself
-         (11 Oct 2026, the user: "no auto publish required") */
+    /* the owner takes their own class — confirmed at birth (26 Sep 2026) — and
+       then presses Publish: a confirmed row publishes nothing by itself (11 Oct
+       2026, the user: "no auto publish required"). ⚠ Both happen BEFORE the
+       session is back-dated: a started class takes no new ask (20261017090000). */
+    const takeAndPublish = async (id) => {
       await rpc(owner.h, "ask_class_person", { p_class_id: id, p_user_id: owner.id, p_kind: "artist" });
       await patch(owner.h, `classes?id=eq.${id}`, { status: "published" }, `publish ${id}`);
-    }
+    };
+    const ahead = await draftClass(owner.h, studio.id, roomA[0].id, "Hip-Hop", 60 * 24 * 5, 60 * 24 * 5 + 60, takeAndPublish);
+    const ran = await draftClass(owner.h, studio.id, roomB[0].id, "Kathak", -180, -120, takeAndPublish);
+    const live = await draftClass(owner.h, studio.id, roomB[0].id, "Salsa", -10, 50, takeAndPublish);
     /* a draft whose teacher has been ASKED and not answered */
     const asked = await draftClass(owner.h, studio.id, roomA[0].id, "Bhangra", atIst(9, 18), atIst(9, 18) + 60);
     await rpc(owner.h, "ask_class_person", { p_class_id: asked, p_user_id: artist.id, p_kind: "artist" });
@@ -623,6 +633,11 @@ const BOOK_ON_PAGE = /^Book Now$/;
        classes and WHO holds one, and never which classes WHICH person spent
        theirs on; the holder's own card had a bar and no history. */
     const passCls = await draftClass(owner.h, studio.id, roomA[0].id, "Bharatanatyam", 60 * 24 * 6, 60 * 24 * 6 + 60);
+    /* ⚠ PRICED (11 Oct 2026, 20261017090000): a pass is not spent on a FREE class
+       any more — book_with_membership refuses "this class is free — book it
+       without a pass" and passes_for_session offers none — so the class a unit is
+       spent on has a price, set while it is still a draft */
+    await patch(owner.h, `classes?id=eq.${passCls}`, { price_inr: 300 }, "price the pass class");
     await rpc(owner.h, "ask_class_person", { p_class_id: passCls, p_user_id: owner.id, p_kind: "artist" });
     await patch(owner.h, `classes?id=eq.${passCls}`, { status: "published" }, "publish the pass class");
     const passSes = (await rows(owner.h, `class_sessions?class_id=eq.${passCls}&select=id`))[0].id;
@@ -784,6 +799,84 @@ const BOOK_ON_PAGE = /^Book Now$/;
       (await lPage.getByRole("button", { name: BOOK_ON_PAGE }).count()) === 0,
       "⚠⚠ …and the person TAKING a class is offered no seat on it, though they are a member and not the owner"
     );
+
+    /* ══ 13 · THE CLASSES MADE FINAL (11 Oct 2026, 20261017090000) ═════════════
+       Four controls the migration added a database half to, each a thing that is
+       drawn or not drawn — so only a browser answers them:
+         a. the TEACHER steps down from their own class page, behind a confirm;
+         b. a published class whose teacher left says "Waiting for a new teacher"
+            on its booking bar instead of offering Book Now (D4), the database
+            refusing the press too — and its runners are offered Ask a new teacher;
+         c. a DRAFT whose date passed unpublished is a closed card in Past with
+            "Pick a new date" and Delete (D3);
+         d. a booked card's Add to calendar answers text/calendar (D11). */
+    const stepCls = await draftClass(owner.h, studio.id, roomB[0].id, "Kathak", atIst(25, 18), atIst(25, 18) + 60);
+    const stepAsk = await rpc(owner.h, "ask_class_person", { p_class_id: stepCls, p_user_id: artist.id, p_kind: "artist" });
+    await rpc(artist.h, "respond_to_class_ask", { p_class_person_id: stepAsk.id, p_accept: true });
+    await patch(owner.h, `classes?id=eq.${stepCls}`, { status: "published" }, "publish the step-down class");
+    const stepSlug = await slugOf(stepCls);
+    const stepSes = (await rows(owner.h, `class_sessions?class_id=eq.${stepCls}&select=id`))[0].id;
+
+    // a. the teacher's own page offers Step down, and it lands
+    const aCtx = await browser.newContext();
+    aCtx.on("weberror", (e) => errs.push(String(e.error())));
+    const aPage = await signIn(aCtx, artist.email);
+    aPage.on("pageerror", (e) => errs.push(`${aPage.url()} ${e}`));
+    await aPage.goto(`${BASE}/c/${stepSlug}`, { waitUntil: "networkidle" });
+    const stepBtn = aPage.getByTestId("step-down");
+    check((await stepBtn.count()) === 1, "⚠ the confirmed TEACHER is offered Step down on their own class page");
+    await stepBtn.click();
+    const stepDialog = aPage.getByRole("alertdialog", { name: /Step down from/ });
+    await stepDialog.waitFor({ timeout: 10000 }).catch(() => {});
+    check(/booking pauses/i.test(await stepDialog.innerText().catch(() => "")), "…behind a confirm that says booking pauses until a new teacher says yes");
+    await stepDialog.getByRole("button", { name: "Step down", exact: true }).click().catch((e) => check(false, `could not press Step down — ${e.message}`));
+    await aPage.waitForTimeout(2500);
+    const stepRow = await rows(H_SERVICE, `class_people?id=eq.${stepAsk.id}&select=status,deleted_at`);
+    check(stepRow[0] && stepRow[0].deleted_at !== null && stepRow[0].status === "confirmed", `…and their confirmed row is CLOSED, read back out of the database (${JSON.stringify(stepRow[0] || null)})`);
+    const waits = await rpc(owner.h, "class_waits_for_teacher", { p_class_id: stepCls });
+    check(waits === true, `…which the database reads as a class waiting for a new teacher (${waits})`);
+
+    // b. the booking bar says so, the database refuses the press, the runner can ask again
+    await bPage.goto(`${BASE}/c/${stepSlug}`, { waitUntil: "networkidle" });
+    check((await bPage.getByTestId("waiting-for-teacher").count()) === 1 && /Waiting for a new teacher/.test(await bPage.getByTestId("waiting-for-teacher").innerText()), "⚠⚠ the booking bar reads Waiting for a new teacher");
+    check((await bPage.getByRole("button", { name: BOOK_ON_PAGE }).count()) === 0, "…with no Book Now to press");
+    let waitingBook = "ACCEPTED";
+    try {
+      await rpc(buyer.h, "book_class_session", { p_session_id: stepSes });
+    } catch (e) {
+      waitingBook = e.message;
+    }
+    check(/waiting for a new teacher/i.test(waitingBook), `…and the database refuses the booking in the same words (${waitingBook.slice(0, 90)})`);
+    await oPage.goto(`${BASE}/c/${stepSlug}`, { waitUntil: "networkidle" });
+    check((await oPage.getByTestId("ask-new-teacher").count()) === 1, "…while the owner is offered Ask a new teacher on the class page");
+
+    // c. a draft whose date passed unpublished is a closed card in Past
+    const closedId = await draftClass(owner.h, studio.id, roomA[0].id, "Bollywood", -60 * 24 * 2, -60 * 24 * 2 + 60);
+    await oPage.goto(`${BASE}/business/${studio.id}/classes?tab=past`, { waitUntil: "networkidle" });
+    const newDate = oPage.locator(`[data-testid="closed-new-date"][href$="/classes/${closedId}/edit"]`);
+    check((await newDate.count()) === 1, "⚠⚠ a draft whose date passed is in Past with Pick a new date, opening its edit form");
+    const closedCard = oPage.locator('[data-card="session"]').filter({ has: newDate });
+    const closedDel = closedCard.getByTestId("closed-delete");
+    check((await closedDel.count()) === 1, "…and Delete beside it");
+    await closedDel.click().catch((e) => check(false, `could not press Delete — ${e.message}`));
+    const delDialog = oPage.getByRole("alertdialog", { name: /^Delete / });
+    await delDialog.waitFor({ timeout: 10000 }).catch(() => {});
+    await delDialog.getByRole("button", { name: "Delete", exact: true }).click().catch((e) => check(false, `could not confirm the delete — ${e.message}`));
+    await oPage.waitForTimeout(2500);
+    const closedRow = await rows(H_SERVICE, `classes?id=eq.${closedId}&select=deleted_at`);
+    check(closedRow[0] && closedRow[0].deleted_at !== null, "…and one confirmed press deletes it, read back out of the database");
+
+    // d. the booked card's Add to calendar answers a real calendar file
+    await lPage.goto(`${BASE}/my-classes?tab=upcoming&role=booked`, { waitUntil: "networkidle" });
+    const icsCard = lPage.locator('[data-card="session"]').filter({ has: lPage.locator(`a[href^="/c/${aheadSlug}"]`) });
+    const icsLink = icsCard.getByTestId("add-to-calendar");
+    check((await icsLink.count()) === 1, "⚠ a booked card carries Add to calendar");
+    const icsHref = (await icsLink.getAttribute("href").catch(() => null)) || "";
+    check(icsHref === `/c/${aheadSlug}/ics`, `…pointing at the class's own .ics (${icsHref})`);
+    const icsRes = await lCtx.request.get(`${BASE}${icsHref}`);
+    const icsType = icsRes.headers()["content-type"] || "";
+    const icsBody = await icsRes.text();
+    check(icsRes.status() === 200 && /text\/calendar/.test(icsType) && /BEGIN:VCALENDAR/.test(icsBody) && /BEGIN:VEVENT/.test(icsBody), `…which answers text/calendar with one event (${icsRes.status()} ${icsType})`);
 
     check(errs.length === 0, `no page error on any of it${errs.length ? ` — ${errs.slice(0, 3).join(" | ")}` : ""}`);
   } catch (error) {

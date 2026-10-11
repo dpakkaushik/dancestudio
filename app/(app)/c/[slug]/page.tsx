@@ -10,7 +10,9 @@ import { resolveActingAs } from "@/repositories/actingAs";
 import { canSetClassRoutines, findClassRoutines, findMyRoutines } from "@/repositories/routines";
 import { findClassRegister } from "@/repositories/attendance";
 import { findClassPeopleByClass } from "@/repositories/classPeople";
-import { findClassBySlug } from "@/repositories/classes";
+import { findClassBySlug, findClassPublishState } from "@/repositories/classes";
+import { draftStateOf } from "@/features/classes/classesScreen";
+import { findProfileById } from "@/repositories/profiles";
 import { countEnrolledBySession, findMyEnrolledSessionIds } from "@/repositories/classBookings";
 import { findClassMoney, findPaidReceiptByClassBooking, findPaidUserIdsBySession } from "@/repositories/payments";
 import { findRefundsByClass } from "@/repositories/refunds";
@@ -154,7 +156,11 @@ export default async function ClassSharePage({
      depends only on the class's id, so it was always parallelisable. What it
      BUYS is that the viewer's own classPerson is known BEFORE the batch that decides
      whether to fetch the register — see `mayRunRegister` below. */
-  const [counts, mine, seat, classPeople] = await Promise.all([
+  /* ⚠ THE VENUE'S DOOR (11 Oct 2026, D7): an artist's class held in a studio's
+     room — once the studio said yes — may be run at the door by that studio's
+     owner or managers. Their seat on the VENUE is read beside the class's own. */
+  const venueId = danceClass.venueStatus === "accepted" && danceClass.venueBusinessId && danceClass.venueBusinessId !== danceClass.businessId ? danceClass.venueBusinessId : null;
+  const [counts, mine, seat, classPeople, venueSeat] = await Promise.all([
     sessionId ? countEnrolledBySession(supabase, [sessionId]) : Promise.resolve(new Map<string, number>()),
     user
       ? findMyEnrolledSessionIds(supabase)
@@ -164,6 +170,7 @@ export default async function ClassSharePage({
        the Team desk gave Attendance to. Same query, no extra round trip. */
     user ? findMySeat(supabase, danceClass.businessId) : Promise.resolve(null),
     findClassPeopleByClass(supabase, danceClass.id),
+    user && venueId ? findMySeat(supabase, venueId).catch(() => null) : Promise.resolve(null),
   ]);
 
   const filled = sessionId ? counts.get(sessionId) ?? 0 : 0;
@@ -205,10 +212,14 @@ export default async function ClassSharePage({
   /* ⚠ 11 Oct 2026: the class row alone decides for somebody with no seat — no
      `visiting_faculty` seat is made on accept any more — and the standing grant
      counts on its own, exactly as `can_run_register_for_class` reads them */
-  const mayRunRegister =
+  const mayRunOwnRegister =
     canManage ||
     Boolean(seat?.canAttendance) ||
     (myClassPerson?.status === "confirmed" && myClassPerson.canAttendance);
+  /* the venue's runners run the DOOR and see no money (D7) */
+  const venueRunner = runsTheBusiness(venueSeat?.role ?? null);
+  const mayRunRegister = mayRunOwnRegister || venueRunner;
+  const doorOnly = venueRunner && !mayRunOwnRegister;
   /* the people who run the business (owner or manager, 11 Oct 2026) or the
      confirmed teacher add assistants; the jobs stay the owner's */
   const canAddAssistant = runs || (myClassPerson?.kind === "artist" && myClassPerson.status === "confirmed");
@@ -247,10 +258,13 @@ export default async function ClassSharePage({
      viewer's own class row go out TOGETHER, beside the ones started above —
      the refund queue's reconcile-then-read is one chain inside it, so it no
      longer holds a round of its own. */
-  const [receipt, register, paidUserIds, room, ownerId, routines, myRoutines, canSetRoutines, passesAll, actingAs, assistantPool, place, refunds, classMoney, refundWindowHours] = await Promise.all([
+  const phase = phaseOf(danceClass.session?.startsAt, danceClass.session?.endsAt);
+  const [receipt, register, paidUserIds, room, ownerId, routines, myRoutines, canSetRoutines, passesAll, actingAs, assistantPool, place, refunds, classMoney, refundWindowHours, publishState, viewerName] = await Promise.all([
     myBooking && danceClass.priceInr > 0 ? findPaidReceiptByClassBooking(supabase, myBooking.id) : Promise.resolve(null),
-    mayRunRegister ? findClassRegister(supabase, danceClass.id) : Promise.resolve(null),
-    mayRunRegister && sessionId && danceClass.priceInr > 0 ? findPaidUserIdsBySession(supabase, sessionId) : Promise.resolve(new Set<string>()),
+    /* a venue runner's read is the database's call — a refusal is no tab, never an error page */
+    mayRunRegister ? (doorOnly ? findClassRegister(supabase, danceClass.id).catch(() => null) : findClassRegister(supabase, danceClass.id)) : Promise.resolve(null),
+    /* who paid online is money, which a venue runner does not see (D7) */
+    mayRunOwnRegister && sessionId && danceClass.priceInr > 0 ? findPaidUserIdsBySession(supabase, sessionId) : Promise.resolve(new Set<string>()),
     roomP,
     ownerIdP,
     /* WHAT THIS CLASS IS TAUGHT FROM (19 Sep 2026): the routines on it, the
@@ -274,9 +288,20 @@ export default async function ClassSharePage({
     /* THE STUDIO'S OWN REFUND WINDOW (11 Oct 2026) — the POLICY row and the
        refund sheet print the number the database refunds by */
     refundWindowP,
+    /* B16 (11 Oct 2026): a draft's own page offers Publish — the same answer
+       the register's card reads (`classes_publish_state`), for the runners alone */
+    runs && danceClass.status === "draft" && phase === "upcoming"
+      ? findClassPublishState(supabase, danceClass.businessId)
+          .then((m) => m.get(danceClass.id) ?? null)
+          .catch(() => null)
+      : Promise.resolve(null),
+    /* the name on the booked card's QR (B21) */
+    myBooking && user ? findProfileById(supabase, user.id).then((p) => p?.fullName ?? null).catch(() => null) : Promise.resolve(null),
   ]);
   /* a viewer who already holds a seat is offered no pass */
   const passes = myBooking ? [] : passesAll;
+  /* what the refund sheet says comes back (D6): the money, a pass's hours, or nothing */
+  const paidWith: "money" | "pass" | "free" = danceClass.priceInr === 0 ? "free" : receipt ? "money" : "pass";
 
   return (
     <ClassDetail
@@ -288,7 +313,7 @@ export default async function ClassSharePage({
       canManage={canManage}
       mine={myBooking}
       receipt={receipt}
-      sessionPhase={phaseOf(danceClass.session?.startsAt, danceClass.session?.endsAt)}
+      sessionPhase={phase}
       register={register}
       classPeople={classPeople}
       myClassPerson={myClassPerson}
@@ -318,6 +343,12 @@ export default async function ClassSharePage({
       cannotBookWhy={actingAs && !canBookClass(actingAs) ? noBookingWords(actingAs) : null}
       passes={passes}
       openOn={openOn}
+      doorOnly={doorOnly}
+      draftState={publishState ? draftStateOf(publishState) : runs && danceClass.status === "draft" && phase === "upcoming" ? draftStateOf(undefined) : null}
+      askedTeacherId={publishState?.teacherStatus === "asked" ? (classPeople.find((cl) => cl.kind === "artist" && cl.status === "asked")?.id ?? null) : null}
+      paidWith={paidWith}
+      viewerId={user?.id ?? null}
+      viewerName={viewerName}
     />
   );
 }

@@ -87,12 +87,15 @@ function New-EmailUser($email, $name, $role) {
     email = $email; password = "Proof-passw0rd!" } | ConvertTo-Json)
   return [pscustomobject]@{ id = $u.id; email = $email; name = $name; token = $tok.access_token }
 }
-# a published class with a future session, its teacher seated and then erased
-function New-Class($headers, $tenantId, $title, $cap, $hoursFromNow, $lengthHours, $teacherId) {
+# a published class with a future session, its teacher seated and then erased.
+# !! PRICED by default since 11 Oct 2026 (20261017090000, B8): a pass is never
+# offered for, nor spent on, a FREE class - so a class this proof spends a pass on
+# has to cost something. Check 13 passes 0 on purpose.
+function New-Class($headers, $tenantId, $title, $cap, $hoursFromNow, $lengthHours, $teacherId, $price = 300) {
   $starts = [DateTime]::UtcNow.AddHours($hoursFromNow)
   $c = Invoke-RestMethod -Method Post -Uri "$base/rest/v1/rpc/create_class_with_session" -Headers $headers -Body (@{
     p_business_id = $tenantId; p_title = $title; p_style = "Hip-Hop"; p_level = "beginner"
-    p_room = "Studio A"; p_price_inr = 0; p_capacity = $cap; p_status = "draft"
+    p_room = "Studio A"; p_price_inr = $price; p_capacity = $cap; p_status = "draft"
     p_starts_at = $starts.ToString("o"); p_ends_at = $starts.AddHours($lengthHours).ToString("o") } | ConvertTo-Json)
   Publish-Class ([string]$c.id) $teacherId $headers
   $s = Get-Rows $svcH "class_sessions?class_id=eq.$([string]$c.id)&select=id"
@@ -241,6 +244,29 @@ try {
   $stillUsed = Pass-Of $p1Id
   Check 12 "Nobody writes a membership ($wSale), mints a pass ($wPass), or tops one up by hand (still $($stillUsed.units_used) used)" (
     ($wSale -ne "") -and ($wPass -ne "") -and ([decimal]$stillUsed.units_used -eq 1))
+
+  # -- 13. A PASS IS NEVER SPENT ON A FREE CLASS (11 Oct 2026, B8) -------------
+  # 20261017090000: passes_for_session offers nothing for a free class, and
+  # book_with_membership refuses it in words - a free seat is booked without one.
+  $freeCls = New-Class (Api $org.token) $studioId "MemProof Free $stamp" 3 96 1 $learner.id 0
+  $freeOffered = Rpc-Rows (Api $learner.token) "passes_for_session" @{ p_session_id = $freeCls.sessionId }
+  $freeSpend = Fails { Rpc (Api $learner.token) "book_with_membership" @{ p_session_id = $freeCls.sessionId; p_pass_id = $p1Id } }
+  $afterFree = Pass-Of $p1Id
+  Check 13 "A FREE class offers no pass ($($freeOffered.Count)) and refuses one ('$freeSpend'); the pass is untouched ($($afterFree.units_used) used)" (
+    ($freeOffered.Count -eq 0) -and ($freeSpend -match "this class is free") -and ([decimal]$afterFree.units_used -eq 1))
+
+  # -- 14. INSIDE THE REFUND WINDOW THE HOURS ARE KEPT (11 Oct 2026, D6) -------
+  # Check 8 cancelled 48 hours ahead and got the unit back; four hours ahead is
+  # inside the studio's 12-hour window, so cancelling keeps what was spent - the
+  # same rule money follows. (A studio's call-off always gives them back.)
+  $soonCls = New-Class (Api $org.token) $studioId "MemProof Soon $stamp" 3 4 1 $learner.id
+  $soonBk = Rpc (Api $learner.token) "book_with_membership" @{ p_session_id = $soonCls.sessionId; p_pass_id = $p1Id }
+  $spentSoon = Pass-Of $p1Id
+  Rpc (Api $learner.token) "cancel_class_booking_with_reason" @{ p_class_booking_id = [string]$soonBk.id; p_reason = "Travelling" } | Out-Null
+  $keptSoon = Pass-Of $p1Id
+  $keptUse = Get-Rows $svcH "membership_uses?class_booking_id=eq.$([string]$soonBk.id)&deleted_at=is.null&select=id"
+  Check 14 "Spent four hours ahead ($($spentSoon.units_used) used) and cancelled inside the window: the unit is KEPT ($($keptSoon.units_used) used, use row $($keptUse.Count))" (
+    ([decimal]$spentSoon.units_used -eq 2) -and ([decimal]$keptSoon.units_used -eq 2) -and ($keptUse.Count -eq 1))
 
   if ($pass) { "ALL MEMBERSHIP CHECKS PASSED" } else { "-- FAIL: see above" }
 }

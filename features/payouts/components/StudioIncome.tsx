@@ -152,6 +152,13 @@ export function GrossCard({ income }: { income: BusinessIncome }) {
           [money(current.refundedInr), "Refunded", RED],
         ]}
       />
+      {current.doorCashInr > 0 ? (
+        <div data-testid="door-cash" style={{ fontSize: 11, color: SUB, margin: "-4px 0 10px", fontWeight: 700 }}>
+          Collected at the door: <b style={{ color: GREEN }}>{money(current.doorCashInr)}</b> ·{" "}
+          {current.doorSeatCount} {current.doorSeatCount === 1 ? "seat" : "seats"} marked paid on the register — cash
+          DanceOS did not handle, so it is not in the gross above.
+        </div>
+      ) : null}
       {!income.complete ? (
         <div style={{ fontSize: 10.5, color: SUB, margin: "-4px 0 10px" }}>
           Counting the latest 4,000 rows only — older payments are not in these totals.
@@ -261,6 +268,7 @@ function downloadStatement(businessName: string, month: MonthIncome) {
     [],
     ["Gross collected", month.grossInr],
     ["Net settled", net],
+    ["Collected at the door (cash, not in gross)", month.doorCashInr],
     ["Payments", month.paymentCount],
     ["Refunds processed", month.refundCount],
     [],
@@ -387,6 +395,17 @@ export function MonthStatements({
                   <b>Net settled</b>
                   <b style={{ color: GREEN, fontFamily: DOS_MONO }}>{money(net)}</b>
                 </div>
+                {m.doorCashInr > 0 ? (
+                  <div
+                    data-testid="statement-door-cash"
+                    style={{ display: "flex", justifyContent: "space-between", fontSize: 11.5, paddingTop: 6 }}
+                  >
+                    <span style={{ color: SUB }}>
+                      Collected at the door · {m.doorSeatCount} {m.doorSeatCount === 1 ? "seat" : "seats"} (cash)
+                    </span>
+                    <b style={{ color: GREEN }}>{money(m.doorCashInr)}</b>
+                  </div>
+                ) : null}
                 <div
                   role="button"
                   tabIndex={0}

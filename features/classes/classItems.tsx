@@ -1,7 +1,8 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
 import { ClassTile } from "@/features/classes/components/ClassTile";
-import { AnswerButtons, DraftButtons, ScanButton, ShareButton, StateChip, WithdrawButton, cardBtn } from "@/features/classes/components/ClassCardActions";
+import { AnswerButtons, ClosedDraftButtons, DraftButtons, ScanButton, ShareButton, StateChip, WithdrawButton } from "@/features/classes/components/ClassCardActions";
+import { cardBtn } from "@/features/classes/cardStyles";
 import type { AnsweredCard, ClassItem } from "@/features/classes/components/ClassesHome";
 import { draftStateOf, type TimeGroup } from "@/features/classes/classesScreen";
 import type { RequestItem } from "@/features/inbox/components/InboxScreen";
@@ -179,15 +180,26 @@ export const hasPassed = (iso: string | null | undefined, nowMs: number): boolea
  *  and is filed with the answered ones as Closed. */
 export const askExpired = (r: RequestItem, nowMs: number): boolean => r.status === "asked" && hasPassed(r.danceClass?.session?.startsAt, nowMs);
 
-/** a draft whose date passed without it ever being published — Past, closed,
- *  nothing to press. ⚠ Not deleted: it is the record that the class was planned */
-export function closedDraftItem({ key, c, artist, filled, role, relation }: { key: string; c: DanceClass; artist: ClassArtist | null; filled: number; role: string; relation?: "teaching" | "assisting" }): ClassItem {
+/** a draft whose date passed without it ever being published — Past, Closed.
+ *  ⚠ Not deleted: it is the record that the class was planned (D3, 11 Oct 2026).
+ *  The people who run it are offered "Pick a new date" and Delete; anybody else
+ *  (a teacher who said yes to it) sees the word alone. */
+export function closedDraftItem({ key, c, artist, filled, role, relation, canEdit = false }: { key: string; c: DanceClass; artist: ClassArtist | null; filled: number; role: string; relation?: "teaching" | "assisting"; canEdit?: boolean }): ClassItem {
   return {
     key,
     tab: "past",
     group: "past",
     role,
-    node: <ClassTile danceClass={c} filled={filled} artist={artist} href={`/c/${c.shareSlug}`} relation={relation ?? null} actions={<StateChip word="Closed" tint="#858585" />} />,
+    node: (
+      <ClassTile
+        danceClass={c}
+        filled={filled}
+        artist={artist}
+        href={`/c/${c.shareSlug}`}
+        relation={relation ?? null}
+        actions={<ClosedDraftButtons businessId={c.businessId} classId={c.id} title={c.title} canEdit={canEdit} />}
+      />
+    ),
   };
 }
 

@@ -108,9 +108,7 @@ export async function findMyClassBookings(supabase: SupabaseClient): Promise<MyC
   if (!user) return [];
   const { data, error } = await supabase
     .from("class_bookings")
-    .select(
-      "id, status, session_id, class_id, class_sessions (starts_at, ends_at), classes (share_slug, style, level, room, price_inr, capacity, status, poster_path, venue_status, venue:businesses!classes_venue_business_id_fkey (name, type, profile_photo_path)), businesses (name, city, type, profile_photo_path)"
-    )
+    .select(MY_BOOKING_SELECT)
     .eq("user_id", user.id)
     .eq("status", "enrolled")
     .is("deleted_at", null)
@@ -120,7 +118,14 @@ export async function findMyClassBookings(supabase: SupabaseClient): Promise<MyC
   if (error) {
     throw new Error(`class_bookings.findMine failed: ${error.message}`);
   }
-  return (data as unknown as MyClassBookingRow[])
+  return mapMyBookings(data as unknown as MyClassBookingRow[]).sort((a, b) => a.startsAt.localeCompare(b.startsAt));
+}
+
+const MY_BOOKING_SELECT =
+  "id, status, session_id, class_id, class_sessions (starts_at, ends_at), classes (share_slug, style, level, room, price_inr, capacity, status, poster_path, venue_status, venue:businesses!classes_venue_business_id_fkey (name, type, profile_photo_path)), businesses (name, city, type, profile_photo_path)";
+
+function mapMyBookings(rows: MyClassBookingRow[]): MyClassBooking[] {
+  return rows
     .filter((r) => r.classes && r.class_sessions)
     .map((r) => ({
       id: r.id,
@@ -142,8 +147,76 @@ export async function findMyClassBookings(supabase: SupabaseClient): Promise<MyC
       businessCity: r.businesses?.city ?? null,
       owner: classOwnerOf(r.businesses),
       venue: r.classes!.venue_status === "accepted" ? classOwnerOf(r.classes!.venue) : null,
-    }))
-    .sort((a, b) => a.startsAt.localeCompare(b.startsAt));
+    }));
+}
+
+/** What happened to the money on a cancelled booking — the history chip. */
+export type BookingRefundWord = "free" | "none" | "asked" | "processing" | "refunded" | "declined";
+
+export interface MyCancelledBooking extends MyClassBooking {
+  refund: BookingRefundWord;
+  /** the studio called the class off, rather than the learner cancelling */
+  calledOff: boolean;
+}
+
+/** ⚠ BOOKING HISTORY (11 Oct 2026, D11): a cancelled seat used to vanish from
+ *  the learner's Booked list. These are the cancelled ones, newest first, each
+ *  with what became of its money — read off the person's OWN order and refunds
+ *  (the payer's policies). Says `user_id` out loud.
+ *  ⚠ A class the studio DELETED is unreadable to a learner (the public policy
+ *  hides deleted classes), so a called-off class whose row is gone cannot be
+ *  drawn as a card — a class merely cancelled is. */
+export async function findMyCancelledBookings(supabase: SupabaseClient): Promise<MyCancelledBooking[]> {
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return [];
+  const { data, error } = await supabase
+    .from("class_bookings")
+    .select(MY_BOOKING_SELECT)
+    .eq("user_id", user.id)
+    .eq("status", "cancelled")
+    .is("deleted_at", null)
+    .order("updated_at", { ascending: false })
+    .limit(40);
+  if (error) {
+    throw new Error(`class_bookings.findMyCancelled failed: ${error.message}`);
+  }
+  const rows = mapMyBookings(data as unknown as MyClassBookingRow[]);
+  if (rows.length === 0) return [];
+  const { data: orders } = await supabase
+    .from("orders")
+    .select("class_booking_id, status, refunds (status, reason, deleted_at)")
+    .in(
+      "class_booking_id",
+      rows.map((r) => r.id)
+    )
+    .eq("user_id", user.id);
+  type OrderRow = { class_booking_id: string; status: string; refunds: Array<{ status: string; reason: string | null; deleted_at: string | null }> | null };
+  const byBooking = new Map<string, OrderRow>();
+  for (const o of (orders ?? []) as unknown as OrderRow[]) {
+    if (o.status === "created") continue;
+    byBooking.set(o.class_booking_id, o);
+  }
+  return rows.map((r) => {
+    const o = byBooking.get(r.id);
+    const refunds = (o?.refunds ?? []).filter((x) => !x.deleted_at);
+    const live = refunds.find((x) => x.status === "processed") ?? refunds.find((x) => x.status !== "failed") ?? refunds[0];
+    const refund: BookingRefundWord = !o
+      ? r.priceInr > 0
+        ? "none"
+        : "free"
+      : !live
+        ? "none"
+        : live.status === "processed"
+          ? "refunded"
+          : live.status === "requested"
+            ? "asked"
+            : live.status === "declined"
+              ? "declined"
+              : "processing";
+    return { ...r, refund, calledOff: Boolean(live?.reason && /studio cancelled/i.test(live.reason)) };
+  });
 }
 
 /** THE STUDIOS YOU HAVE TAKEN CLASSES AT (18 Sep 2026, the user's Home grid: a
@@ -158,7 +231,12 @@ export async function findMyClassBookings(supabase: SupabaseClient): Promise<MyC
  *  section to be removed from profiles") and this was nearly deleted with it —
  *  typecheck caught that the **Studios hub** (`/business`, R22's "STUDIOS YOU
  *  HAVE LEARNT AT") reads it too, which a grep scoped to `repositories/` had
- *  missed. A tile the user has not asked about is still a caller. */
+ *  missed. A tile the user has not asked about is still a caller.
+ *
+ *  ⚠ NO CALLER since 11 Oct 2026 — the Studios hub's Student column went at the
+ *  user's word ("remove student column from studios inside studio page"). Kept,
+ *  with `findTeachersByStudioAttended` below, so the column is a screen away
+ *  rather than a rebuild if it is ever asked for back. */
 export async function findStudiosAttended(supabase: SupabaseClient, userId: string): Promise<Business[]> {
   const { data, error } = await supabase
     .from("class_bookings")

@@ -80,8 +80,13 @@ function SessionList($user) { return Rows (Api $user.token) "my_session_history"
 # 18 Sep 2026: a class is born a draft and published once a teacher has accepted.
 # $teacherId is seated as that teacher; the proof's own asks below replace the row
 # where it cares who teaches (ask_class_person closes the live artist row first).
+#
+# 11 Oct 2026 (20261017090000): an OVERLAPPING booking is refused at every door,
+# and the dancer books three of these - so each starts 20 days out shifted by its
+# own $hoursAgo, which keeps them as far apart in the future as they will be in
+# the past (30h / 26h / 22h ago never overlap).
 function New-Class($owner, $tenantId, $title, $style, $cap, $hoursAgo, $lenH, $teacherId) {
-  $future = (Get-Date).AddDays(20)
+  $future = (Get-Date).AddDays(20).AddHours(-1 * $hoursAgo)
   $c = Rpc (Api $owner.token) "create_class_with_session" @{ p_business_id = $tenantId; p_title = $title; p_style = $style;
     p_level = "all"; p_room = $null; p_price_inr = 0; p_capacity = $cap; p_status = "draft";
     p_starts_at = $future.ToString("yyyy-MM-ddTHH:00:00zzz"); p_ends_at = $future.AddHours($lenH).ToString("yyyy-MM-ddTHH:00:00zzz") }

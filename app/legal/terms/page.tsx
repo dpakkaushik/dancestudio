@@ -1,5 +1,7 @@
 import type { Metadata } from "next";
 import { LegalDoc } from "@/features/legal/components/LegalDoc";
+import { refundPolicySentence } from "@/lib/format/refundPolicy";
+import { DEFAULT_REFUND_WINDOW_HOURS } from "@/repositories/refundWindow";
 
 export const metadata: Metadata = {
   title: "Terms of Use — DanceOS",
@@ -32,7 +34,7 @@ export default function TermsPage() {
       <ul>
         <li>A seat in a class or at an event is yours once the booking is confirmed and, for a priced one, once the payment has landed. A booking that waits for payment holds no seat.</li>
         <li>Payments are processed by Cashfree Payments India Pvt. Ltd. DanceOS never sees or stores your card number or UPI credentials.</li>
-        <li>Each studio sets its own refund window — 12 hours unless the studio sets another — and it is shown on every class page. Cancelling a paid class booking at least that long before it starts refunds you automatically. Inside the window the studio decides, and tells you through the app. Refunds go back the way you paid, on the payment provider&apos;s timeline.</li>
+        <li>Each studio sets its own refund window — {DEFAULT_REFUND_WINDOW_HOURS} hours unless the studio sets another — and it is shown on every class page. By default: {refundPolicySentence(DEFAULT_REFUND_WINDOW_HOURS)} A window of zero hours means {refundPolicySentence(0).toLowerCase()} Inside the window the studio decides, and tells you through the app. A membership pass follows the same window: before it the hours come back to the pass, inside it they are kept. A studio calling a class off always refunds. Refunds go back the way you paid, on the payment provider&apos;s timeline.</li>
         <li>There is no waitlist. A class that is full takes no more bookings; if somebody cancels, the seat goes back on sale for anybody to book.</li>
         <li>Prices are set by the studio, artist or organiser and are shown before you pay.</li>
       </ul>

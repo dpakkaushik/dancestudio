@@ -39,7 +39,12 @@ import type { PublicClassListing } from "@/types/class";
 import type { ClassBookingStatus } from "@/types/classBooking";
 import type { ClassMoney, PaidReceipt } from "@/types/payment";
 import type { RefundRequest } from "@/types/refund";
-import { AddAssistant, AssistantControls } from "./ClassTeamControls";
+import { AddAssistant, AskNewTeacher, AssistantControls, RateControl, StepDownButton } from "./ClassTeamControls";
+import { ClosedDraftButtons, DraftButtons } from "./ClassCardActions";
+import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
+import { ProfileShare } from "@/features/profiles/components/ProfileShare";
+import { refundPolicyWords } from "@/lib/format/refundPolicy";
+import type { DraftState } from "@/features/classes/classesScreen";
 import { ScanSheet, type ScanOutcome } from "@/features/people/components/ScanSheet";
 import type { PoolHit } from "@/features/people/components/PeoplePicker";
 import { ClassShare } from "./ClassShare";
@@ -139,7 +144,7 @@ export interface ClassDetailProps {
   isSignedIn: boolean;
   /** Viewer belongs to the class's business — sees the asks and the share. */
   isMember: boolean;
-  /** Viewer is owner/trainer — sees the draft footer's Edit class. */
+  /** Viewer runs the business (owner, manager) — sees the draft footer. */
   canManage: boolean;
   mine: { id: string; status: ClassBookingStatus } | null;
   /** The captured payment behind the viewer's booking — feeds the invoice. */
@@ -231,6 +236,20 @@ export interface ClassDetailProps {
    *  edit drafts, publish, delete and name the teacher. Money, powers and pay
    *  stay the OWNER's (`isOwner`). */
   runsBusiness?: boolean;
+  /** ⚠ THE VENUE'S DOOR (11 Oct 2026, D7): an owner or manager of the studio an
+   *  artist's class is held at runs its register — scan, check in, walk-ins,
+   *  door cash — and sees no money: no Earnings, no Refunds, no "paid online". */
+  doorOnly?: boolean;
+  /** a runner's draft: what stands between it and Publish (B16) — the register
+   *  card's own state, so the page offers the same button */
+  draftState?: DraftState | null;
+  /** the teacher's unanswered ask on a draft, so Withdraw is offered (B16) */
+  askedTeacherId?: string | null;
+  /** what a cancel gives back (D6) — money, a pass's hours, or nothing */
+  paidWith?: "money" | "pass" | "free";
+  /** the viewer — their own QR on the booked card (B21) */
+  viewerId?: string | null;
+  viewerName?: string | null;
 }
 
 export function ClassDetail({
@@ -268,6 +287,12 @@ export function ClassDetail({
   openOn = null,
   refundWindowHours = 12,
   runsBusiness = false,
+  doorOnly = false,
+  draftState = null,
+  askedTeacherId = null,
+  paidWith,
+  viewerId = null,
+  viewerName = null,
 }: ClassDetailProps) {
   /* the people who RUN the business — the owner always is one */
   const runs = runsBusiness || isOwner;
@@ -431,6 +456,16 @@ export function ClassDetail({
      so nothing on this page offers to (11 Oct 2026, the user: "classes which have
      not got approval and dates have crossed … should be just closed directly") */
   const closedDraft = isDraft && sessionPhase !== "upcoming";
+  /* ⚠⚠ WAITING FOR A NEW TEACHER (11 Oct 2026, D4). A PUBLISHED class whose
+     teacher stepped down — or whose seat or ask was closed — has no confirmed
+     artist, and every booking door refuses it ("This class is waiting for a new
+     teacher") until somebody new says yes. The bar says so first. */
+  const waitingForTeacher = !isDraft && !done && sessionPhase === "upcoming" && !artist;
+  /* STEP DOWN (D4): the person themself, confirmed, before the class starts —
+     never somebody who runs the business (it is their class) */
+  const mayStepDown = !runs && myClassPerson?.status === "confirmed" && sessionPhase === "upcoming";
+  /* the Decline on an ask asks first (B17) */
+  const [declineOpen, setDeclineOpen] = useState(false);
 
   /* THE PLACE IS THE VENUE (19 Sep 2026, the user: "right Studio inside the class
      section"): an artist's class held in a studio's room names THE STUDIO THAT
@@ -662,7 +697,9 @@ export function ClassDetail({
         {/* ⚠ TOP LEFT of the poster, not top right (4 Oct 2026, #0bg): the owner's
             Delete chip sits on the PAGE's top right, and at 360–430px the two
             landed on each other. Both pressed, and it read cramped. */}
-        {canManage && !done ? (
+        {/* ⚠ THE PEOPLE WHO RUN IT (B11, 11 Oct 2026) — a trainer was offered a
+            sheet whose every press the database refused */}
+        {runs && !done ? (
           <button
             type="button"
             aria-label="Change the poster"
@@ -685,7 +722,7 @@ export function ClassDetail({
           over"). The register's row no longer carries it. ── */}
       {runs && !done ? (
         <div style={{ position: "absolute", top: 12, right: 16, zIndex: 3 }}>
-          <ClassDeleteChip classId={c.id} businessId={c.businessId} title={c.title} isDraft={isDraft} enrolled={filled} />
+          <ClassDeleteChip classId={c.id} businessId={c.businessId} title={c.title} isDraft={isDraft} enrolled={filled} priceInr={c.priceInr} paidSeats={paidUserIds.length} />
         </div>
       ) : null}
 
@@ -695,7 +732,9 @@ export function ClassDetail({
           "remove refunds button on class cards") — the Refunds tab under the
           card is the queue, one press away, and a second door to it here was
           the same subject twice. ── */}
-      {(done || assisting) && (
+      {/* ⚠ B19: a DRAFT whose date passed was never a class that ran — it is
+          "Closed" (its badge and footer say so), never "Class completed" */}
+      {((done && !isDraft) || assisting) && (
         <div style={{ padding: "14px 16px 0", position: "relative", zIndex: 1, background: "var(--bg)" }}>
           <div
             data-testid={done ? "class-over-band" : "class-assisting-band"}
@@ -812,8 +851,11 @@ export function ClassDetail({
               <span style={{ marginLeft: "auto", marginTop: 5, flexShrink: 0, display: "inline-flex", alignItems: "center", gap: 6 }}>
                 {liveNow && !done ? (
                   <span style={{ display: "inline-flex", alignItems: "center", gap: 4, fontSize: 9, fontWeight: 900, letterSpacing: 0.7, textTransform: "uppercase", padding: "4px 9px", borderRadius: 999, background: GREEN, color: "#fff" }}>Live</span>
-                ) : done ? (
+                ) : done && !isDraft ? (
                   <span style={{ fontSize: 9, fontWeight: 900, letterSpacing: 0.7, textTransform: "uppercase", padding: "4px 9px", borderRadius: 999, background: "var(--el)", color: "var(--sub)" }}>Completed</span>
+                ) : closedDraft ? (
+                  /* B19: one word for a draft whose date passed — "Closed" */
+                  <span style={{ fontSize: 9, fontWeight: 900, letterSpacing: 0.7, textTransform: "uppercase", padding: "4px 9px", borderRadius: 999, background: "var(--el)", color: "var(--sub)" }}>Closed</span>
                 ) : isDraft ? (
                   <span style={{ fontSize: 9, fontWeight: 900, letterSpacing: 0.7, textTransform: "uppercase", padding: "4px 9px", borderRadius: 999, background: "rgba(245,158,11,.18)", color: "#F59E0B" }}>Draft</span>
                 ) : null}
@@ -828,6 +870,9 @@ export function ClassDetail({
               <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 8, marginTop: 8, minWidth: 0 }}>
                 {/* the powers are the OWNER's alone (11 Oct 2026) */}
                 {isOwner && !done && artist ? <AssistantControls classPerson={artist} isOwner={isOwner} col={col} remove={false} /> : null}
+                {/* WHAT A SESSION PAYS THEM HERE (D2) — the owner's number; not on
+                    a class the owner teaches themself */}
+                {isOwner && !done && artist && artist.id !== myClassPerson?.id ? <RateControl classPersonId={artist.id} rate={artist.payPerSessionInr} name={artist.personName} /> : null}
                 {/* a published class is fixed (11 Oct 2026) — only a draft changes
                     its artist, and a MANAGER may name one too */}
                 {runs && !done && isDraft && c.businessType === "studio" ? (
@@ -835,6 +880,33 @@ export function ClassDetail({
                     Change artist
                   </Link>
                 ) : null}
+              </div>
+            ) : null}
+
+            {/* ⚠ WAITING FOR A NEW TEACHER (D4) — said on the card to everybody;
+                the people who run it ask somebody from here, unless an ask is
+                already out (it is the dimmed half above) */}
+            {waitingForTeacher ? (
+              <div data-testid="waiting-for-teacher-band" style={{ marginTop: 10, padding: "10px 12px", borderRadius: 14, background: "rgba(245,158,11,.12)", border: "1.5px solid rgba(245,158,11,.4)" }}>
+                <div style={{ fontSize: 12.5, fontWeight: 900, color: "#F59E0B" }}>Waiting for a new teacher</div>
+                <div style={{ fontSize: 10.5, color: "var(--sub)", marginTop: 2, lineHeight: 1.45 }}>
+                  {askedArtist
+                    ? `${askedArtist.personName} has been asked. Booking opens again when they say yes.`
+                    : runs
+                      ? "Booking is paused. Ask somebody to take it — or delete it, and everybody booked is refunded."
+                      : "Booking is paused until the studio finds somebody to take it."}
+                </div>
+                {runs && !askedArtist ? <AskNewTeacher classId={c.id} col={col} exclude={classPeople.filter((cl) => cl.status !== "rejected").map((cl) => cl.userId)} /> : null}
+              </div>
+            ) : null}
+
+            {/* STEP DOWN (D4) — the person themself, before it starts */}
+            {mayStepDown && myClassPerson ? (
+              <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 10 }}>
+                <span style={{ flex: 1, minWidth: 0, fontSize: 11, color: "var(--sub)" }}>
+                  {myClassPerson.kind === "artist" ? "You are taking this class." : "You are assisting on this class."}
+                </span>
+                <StepDownButton classPersonId={myClassPerson.id} kind={myClassPerson.kind} published={!isDraft} title={c.title} />
               </div>
             ) : null}
 
@@ -846,7 +918,7 @@ export function ClassDetail({
             {/* THE SEATS WRITTEN ON THE BAR, THE PRICE BESIDE IT (4 Oct 2026). A
                 class that is over has no spots to offer, so the bar says so. */}
             <div style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 10, minWidth: 0 }}>
-              <SeatBar taken={filled} cap={c.capacity} tint={col} height={30} leftWord={done ? "Class over" : undefined} />
+              <SeatBar taken={filled} cap={c.capacity} tint={col} height={30} leftWord={closedDraft ? "Never published" : done ? "Class over" : undefined} />
               <span
                 data-testid="class-fact-price"
                 style={{
@@ -949,7 +1021,7 @@ export function ClassDetail({
                 tabIndex={0}
                 onKeyDown={dosKey}
                 aria-label="Decline this ask"
-                onClick={() => void answerAsk(myClassPerson.id, false)}
+                onClick={() => setDeclineOpen(true)}
                 style={{
                   flex: 1,
                   textAlign: "center",
@@ -986,6 +1058,23 @@ export function ClassDetail({
                 Yes, I&rsquo;m in
               </span>
             </div>
+            {/* ⚠ a no is asked first (B17, 11 Oct 2026) — it cannot be taken back,
+                the studio has to ask again */}
+            {declineOpen ? (
+              <ConfirmDialog
+                title={`Decline ${c.title}?`}
+                body={`${c.businessName} is told, and would have to ask you again.`}
+                keepWord="Keep it"
+                goWord="Decline"
+                tone="danger"
+                busy={opPending === myClassPerson.id}
+                onKeep={() => setDeclineOpen(false)}
+                onGo={() => {
+                  setDeclineOpen(false);
+                  void answerAsk(myClassPerson.id, false);
+                }}
+              />
+            ) : null}
           </div>
         )}
 
@@ -997,12 +1086,14 @@ export function ClassDetail({
             offered the bar now, so gating their own booked card on membership
             would have taken the seat AND hidden it — no code, no invoice and no
             way to cancel. Whoever may book may see what they booked. */}
-        {mine && !runsThisClass && !done && booked && (
+        {/* ⚠ AND AFTER THE CLASS TOO (B21, 11 Oct 2026): the invoice is still
+            wanted once it has run, so the card stays — with no cancel half */}
+        {mine && !runsThisClass && booked && (
           <div style={{ background: "linear-gradient(135deg, rgba(34,197,94,.16), rgba(34,197,94,.04)), var(--card)", border: "1.5px solid rgba(34,197,94,.42)", borderRadius: 20, padding: "13px 14px", marginBottom: 12 }}>
             <div style={{ display: "flex", alignItems: "center", gap: 7, minWidth: 0 }}>
               <span style={{ width: 9, height: 9, borderRadius: 5, background: GREEN, flexShrink: 0 }} />
               <span style={{ fontFamily: DOS_DISPLAY, fontSize: 14, fontWeight: 900, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                You’re booked
+                {done ? "You were booked" : "You’re booked"}
               </span>
               <span style={{ fontFamily: DOS_MONO, fontSize: 10, color: "var(--muted)", marginLeft: "auto", flexShrink: 0 }}>
                 {bookingCodeOf(mine.id)}
@@ -1014,9 +1105,33 @@ export function ClassDetail({
                 scanner reads — so the line says where that is, and the mono
                 string above it is what it always really was: a reference for
                 this booking, not a credential. */}
-            <div style={{ fontSize: 9.5, color: "var(--muted)", marginTop: 3 }}>
-              Your own profile QR is what gets you in — it is on your profile.
-            </div>
+            {/* ⚠ AND IT OPENS HERE (B21, 11 Oct 2026) — the line used to send the
+                person to their profile to find the code; the app's own QR chip
+                opens it in place, and says "Class confirmed" when the door scans it */}
+            {!done ? (
+              <div style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 6 }}>
+                <div style={{ flex: 1, minWidth: 0, fontSize: 10, color: "var(--muted)", lineHeight: 1.4 }}>
+                  Your own profile QR is what gets you in — show it at the door.
+                </div>
+                {viewerId ? (
+                  <span data-testid="booked-my-qr" style={{ flexShrink: 0 }}>
+                    <ProfileShare path={`/person/${viewerId}`} name={viewerName ?? "Your profile"} watchCheckIn />
+                  </span>
+                ) : null}
+              </div>
+            ) : null}
+            {/* ADD TO CALENDAR (D11) — the class as an .ics, before it runs */}
+            {!done ? (
+              <a
+                href={`/c/${c.shareSlug}/ics`}
+                download
+                data-testid="add-to-calendar"
+                aria-label={`Add ${c.title} to your calendar`}
+                style={{ display: "inline-block", marginTop: 8, fontSize: 11, fontWeight: 800, color: "var(--text)", textDecoration: "underline", textUnderlineOffset: 3 }}
+              >
+                Add to calendar
+              </a>
+            ) : null}
             {/* one bordered pill, two segments, a hairline between */}
             <div
               style={{
@@ -1055,7 +1170,11 @@ export function ClassDetail({
                   session is live the seat cannot be handed back, so the half that
                   cancels says so instead — `_cancel_one_class_booking` refuses it
                   in the same words */}
-              {sessionPhase === "live" ? (
+              {done ? (
+                <span style={{ flex: 1, display: "inline-flex", alignItems: "center", justifyContent: "center", padding: "10px 6px", fontSize: 10.5, fontWeight: 800, color: "var(--muted)", textAlign: "center" }}>
+                  Completed
+                </span>
+              ) : sessionPhase === "live" ? (
                 <span
                   data-testid="class-started-no-cancel"
                   style={{ flex: 1, display: "inline-flex", alignItems: "center", justifyContent: "center", padding: "10px 6px", fontSize: 10.5, fontWeight: 800, color: "var(--muted)", textAlign: "center" }}
@@ -1308,8 +1427,11 @@ export function ClassDetail({
               /* ⚠ (11 Oct 2026, `20261016090000`) withdrawing an ASK is anybody's who
                  runs the class — a manager included — but taking a CONFIRMED assistant
                  off it stays the owner's, or the teacher's who asked them */
-              const mayRemove = asked || isOwner || (canAddAssistant && !runs);
-              const controls = cl.kind === "assistant" && (isOwner || (canAddAssistant && mayRemove));
+              /* ⚠ B13 (11 Oct 2026): the database lets the people who RUN the
+                 business remove a confirmed assistant, so a manager is offered it
+                 too — and nobody changes the team of a class that is over */
+              const mayRemove = !done && (asked || canAddAssistant);
+              const controls = !done && cl.kind === "assistant" && (isOwner || canAddAssistant);
               /* the owner's toggles ARE the jobs, so the static pills are for
                  everybody else — one statement of what they hold, never two */
               const showHolds = !(controls && isOwner && !asked);
@@ -1353,15 +1475,22 @@ export function ClassDetail({
                   {controls ? (
                     <div style={{ padding: "9px 12px 10px", borderTop: "1.5px solid var(--el)" }}>
                       <AssistantControls classPerson={cl} isOwner={isOwner} col={col} remove={mayRemove} bar />
+                      {/* what a session pays them here (D2) — the owner's */}
+                      {isOwner ? (
+                        <div style={{ marginTop: 7 }}>
+                          <RateControl classPersonId={cl.id} rate={cl.payPerSessionInr} name={cl.personName} />
+                        </div>
+                      ) : null}
                     </div>
                   ) : null}
                 </div>
               );
             })}
-            {assistants.length === 0 && pendingAssistants.length === 0 && !canAddAssistant ? <div style={{ fontSize: 11.5, color: "var(--muted)", padding: "10px 12px", borderRadius: 14, border: "1.5px dashed var(--el)", textAlign: "center" }}>No assistants on this class.</div> : null}
+            {assistants.length === 0 && pendingAssistants.length === 0 && !(canAddAssistant && sessionPhase === "upcoming") ? <div style={{ fontSize: 11.5, color: "var(--muted)", padding: "10px 12px", borderRadius: 14, border: "1.5px dashed var(--el)", textAlign: "center" }}>No assistants on this class.</div> : null}
             {/* the owner, or the person taking the class, asks somebody — from here,
-                not from the form (18 Sep 2026) */}
-            {canAddAssistant ? <AddAssistant classId={c.id} col={col} exclude={classPeople.filter((cl) => cl.status !== "rejected").map((cl) => cl.userId)} pool={assistantPool} /> : null}
+                not from the form (18 Sep 2026). ⚠ Not once it has started (B12):
+                `ask_class_person` refuses an ask on a started class. */}
+            {canAddAssistant && sessionPhase === "upcoming" ? <AddAssistant classId={c.id} col={col} exclude={classPeople.filter((cl) => cl.status !== "rejected").map((cl) => cl.userId)} pool={assistantPool} /> : null}
             {assisting ? (
               <div style={{ fontSize: 10.5, color: "var(--sub)", marginTop: 8, paddingTop: 8, borderTop: "1.5px solid var(--el)" }}>
                 You are assisting on this class{canAtt || canRef ? ` — you hold ${[canAtt ? "attendance" : null, canRef ? "refunds" : null].filter(Boolean).join(" and ")}.` : "."}
@@ -1388,7 +1517,7 @@ export function ClassDetail({
                 promise what the refund does not do */}
             <Row
               k="Refund"
-              v={isFree ? "Not applicable — free" : refundWindowHours <= 0 ? "No automatic refund — the studio decides" : `Refund until ${refundWindowHours} h before start`}
+              v={isFree ? "Not applicable — free" : refundPolicyWords(refundWindowHours)}
             />
             {/* ── MEMBERSHIPS (19 Sep 2026, the user: "Memberships should be
                 allowed … in Class form and Policy section in Class Detail as
@@ -1632,7 +1761,14 @@ export function ClassDetail({
                    booked in. A seat the person booked themselves is the rail's. */
                 const doorSeat = r.atDoor && !paidOnline && !isFree;
                 const paid = paidOnline || (doorSeat && r.doorPaidAt !== null);
-                const meta = isFree
+                /* ⚠ the venue's door sees no money (D7): who paid online is not
+                   theirs to read, so a seat is "booked" and a door seat says what
+                   the door itself collected */
+                const meta = doorOnly && !doorSeat
+                  ? r.walkIn
+                    ? "walk-in"
+                    : "booked"
+                  : isFree
                   ? r.walkIn
                     ? "walk-in"
                     : "free seat"
@@ -1666,7 +1802,7 @@ export function ClassDetail({
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <div style={{ fontSize: 12, fontWeight: 800 }}>{r.learnerName}</div>
                       {/* the payment meta (12126-12127): what the seat cost and whether it is in */}
-                      <div data-testid="register-money" style={{ fontSize: 9.5, color: !isFree && !paid ? "#F59E0B" : paid && doorSeat ? "#22C55E" : "var(--sub)" }}>{meta}</div>
+                      <div data-testid="register-money" style={{ fontSize: 9.5, color: doorOnly && !doorSeat ? "var(--sub)" : !isFree && !paid ? "#F59E0B" : paid && doorSeat ? "#22C55E" : "var(--sub)" }}>{meta}</div>
                     </div>
                   </>
                 );
@@ -1812,7 +1948,8 @@ export function ClassDetail({
         >
           {!isSignedIn ? (
             <Link
-              href="/login"
+              /* back to THIS class after signing in (B21) */
+              href={`/login/email?next=${encodeURIComponent(`/c/${c.shareSlug}`)}`}
               style={{
                 display: "flex",
                 alignItems: "center",
@@ -1837,6 +1974,16 @@ export function ClassDetail({
             <div data-testid="org-cannot-book" style={{ display: "flex", alignItems: "center", gap: 10, padding: "13px 14px", borderRadius: 16, background: "var(--card)", border: "1.5px solid var(--el)" }}>
               <span aria-hidden="true" style={{ flexShrink: 0, fontSize: 15 }}>🏛</span>
               <div style={{ fontSize: 11, color: "var(--sub)", lineHeight: 1.45 }}>{cannotBookWhy ?? "This profile does not book classes. Switch to your own to take a place."}</div>
+            </div>
+          ) : waitingForTeacher && !booked ? (
+            /* ⚠ D4: the database refuses every booking door on a published class
+               with no confirmed teacher — the bar says so before the press */
+            <div data-testid="waiting-for-teacher" style={{ display: "flex", alignItems: "center", gap: 10, padding: "13px 14px", borderRadius: 16, background: "rgba(245,158,11,.12)", border: "1.5px solid rgba(245,158,11,.4)" }}>
+              <span aria-hidden="true" style={{ flexShrink: 0, fontSize: 15 }}>⏳</span>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ fontSize: 13, fontWeight: 900, color: "#F59E0B" }}>Waiting for a new teacher</div>
+                <div style={{ fontSize: 10.5, color: "var(--sub)", marginTop: 1 }}>Booking opens again once somebody says yes to taking it.</div>
+              </div>
             </div>
           ) : sessionPhase === "live" && !booked ? (
             /* ⚠⚠ A CLASS THAT HAS STARTED CANNOT BE BOOKED, AND NOW SAYS SO
@@ -1923,7 +2070,8 @@ export function ClassDetail({
             <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
               <div style={{ flexShrink: 0 }}>
                 <div style={{ fontSize: 9, fontWeight: 900, letterSpacing: 0.8, color: "var(--muted)" }}>
-                  {isFree ? "FREE TRIAL" : "PER SESSION"}
+                  {/* "FREE", not "FREE TRIAL" (B21) — a free class is not a trial of anything */}
+                  {isFree ? "FREE" : "PER SESSION"}
                 </div>
                 <div style={{ fontSize: 17, fontWeight: 900, letterSpacing: -0.3, lineHeight: 1.15 }}>{price}</div>
               </div>
@@ -2015,8 +2163,36 @@ export function ClassDetail({
             {closedDraft ? "CLOSED · ITS DATE HAS PASSED" : "YOUR DRAFT · PUBLISH TO OPEN BOOKINGS"}
           </div>
           {closedDraft ? (
-            <div data-testid="draft-closed" style={{ fontSize: 12.5, color: "var(--sub)", lineHeight: 1.45 }}>
-              It was never published. Add a new class for another date.
+            <>
+              <div data-testid="draft-closed" style={{ fontSize: 12.5, color: "var(--sub)", lineHeight: 1.45, marginBottom: 9 }}>
+                It was never published. Pick a new date to bring it back, or delete it.
+              </div>
+              {/* D3 (11 Oct 2026): a closed draft is KEPT — the card's own two
+                  buttons, so the page and the card offer one thing */}
+              <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 8 }}>
+                <ClosedDraftButtons businessId={c.businessId} classId={c.id} title={c.title} canEdit />
+              </div>
+            </>
+          ) : draftState ? (
+            /* ⚠ B16 (11 Oct 2026): a draft's own page offers what its card offers
+               — Publish behind its question when it is ready, the fix when
+               somebody said no, Withdraw while an ask is out */
+            <div data-testid="draft-actions" style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 8 }}>
+              <DraftButtons
+                businessId={c.businessId}
+                classId={c.id}
+                title={c.title}
+                when={whenText}
+                capacity={c.capacity}
+                room={c.room}
+                roomId={c.roomId ?? null}
+                startsAt={c.session?.startsAt ?? null}
+                endsAt={c.session?.endsAt ?? null}
+                isVenueClass={Boolean(c.venueBusinessId)}
+                state={draftState}
+                askedTeacherId={askedTeacherId}
+                canEdit
+              />
             </div>
           ) : (
           <Link
@@ -2098,7 +2274,7 @@ export function ClassDetail({
                 and it IS the poster everywhere the class is drawn; take it down
                 and the drawn sleeve comes back, which is why the designs stay
                 below rather than being replaced. */}
-            {canManage ? (
+            {runs ? (
               <div style={{ marginBottom: 14 }}>
                 <div style={{ fontSize: 9.5, fontWeight: 900, letterSpacing: 0.8, color: "var(--muted)", margin: "0 0 8px" }}>YOUR OWN</div>
                 <PhotoPicker
@@ -2158,6 +2334,8 @@ export function ClassDetail({
           timeText={whenText}
           amountInr={receipt?.amountInr ?? 0}
           refundWindowHours={refundWindowHours}
+          startsAt={c.session?.startsAt ?? null}
+          paidWith={paidWith ?? (isFree ? "free" : receipt ? "money" : "pass")}
           onClose={() => setRefundOpen(false)}
           onDone={(msg) => {
             setRefundOpen(false);

@@ -130,7 +130,10 @@ try {
   Check 7 "Studio owner reads the order ($($ordA.Count)); anon reads none ($($ordAnon.Count))" (($ordA.Count -eq 1) -and ($ordAnon.Count -eq 0))
 
   # 8. a capture landing on a full class refunds instead of overbooking
-  $c2 = New-Class (Api $a.access_token) $ta.id "One Seat $stamp" 300 1 7 $b.user.id
+  # 11 Oct 2026 (20261017090000): an OVERLAPPING booking is refused at every door
+  # and B holds class 1 at 7 pm on day 7 - so this class, and class 4 below, run
+  # on days of their own
+  $c2 = New-Class (Api $a.access_token) $ta.id "One Seat $stamp" 300 1 8 $b.user.id
   $s2 = Session-Of $c2.id
   $oB = Rpc (Api $b.access_token) "create_payment_order" @{ p_session_id = $s2 }
   Rpc (Api $b.access_token) "attach_provider_order" @{ p_order_id = $oB.id; p_provider_order_id = "order_B2$stamp" } | Out-Null
@@ -166,7 +169,7 @@ try {
 
   # 12. NO WAITLIST since 4 Oct 2026: a full free class refuses the next person,
   #     and a cancel puts the seat back on sale rather than promoting anybody
-  $c4 = New-Class (Api $a.access_token) $ta.id "Free Cypher $stamp" 0 1 7 $b.user.id
+  $c4 = New-Class (Api $a.access_token) $ta.id "Free Cypher $stamp" 0 1 9 $b.user.id
   $s4 = Session-Of $c4.id
   $e4b = Rpc (Api $b.access_token) "book_class_session" @{ p_session_id = $s4 }
   $fullRefused = $false

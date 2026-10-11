@@ -7,7 +7,8 @@ import { dosStyleColor, DOS_LEVEL_LABEL } from "@/lib/constants/styles";
 import { DOS_DISPLAY, GREEN, INK, LINE, MUTED, SUB } from "@/lib/design/tokens";
 import { dosStyleInk } from "@/lib/format/styleInk";
 import { compactRangeOf, dateParts, timeOf } from "@/lib/format/session";
-import { CLASS_RELATION, type ClassRelation } from "@/lib/format/classLabels";
+import { CLASS_RELATION, finishedWord, type ClassRelation } from "@/lib/format/classLabels";
+import { useNowMs } from "@/lib/hooks/useNowMs";
 import type { ClassOwner, DanceClass } from "@/types/class";
 import { useDosDark } from "./poster";
 
@@ -298,11 +299,17 @@ export function ClassTile({ danceClass: c, filled = 0, artist, isToday = false, 
   const ink = dosStyleInk(bc, dark);
   const priceAmt = c.priceInr === 0 ? "Free" : `₹${c.priceInr}`;
   const levelWord = DOS_LEVEL_LABEL[c.level] ?? c.level;
-  const isPast = c.status === "completed";
+  /* ⚠ ONE WORD FOR A FINISHED CLASS, FROM THE SESSION'S END (11 Oct 2026, B19):
+     "Completed" for a published class that ran, "Closed" for a draft whose date
+     passed — never `status` alone, which nothing ever moves to 'completed'. A
+     finished card is dimmed and its bar offers no spots (not bookable-looking). */
+  const nowMs = useNowMs();
+  const finished = nowMs === null ? (c.status === "completed" ? "Completed" : null) : finishedWord(c, nowMs);
+  const isPast = finished !== null;
   /* A CLASS IS ITS STYLE (8032-8036): the heading is the dance style, always. */
   const headText = c.style || c.title || "Class";
   /* what a status says, beside the spots — not a fourth band */
-  const note = c.status === "draft" ? "Draft" : c.status === "completed" ? "Completed" : null;
+  const note = finished ?? (c.status === "draft" ? "Draft" : null);
 
   /* ⚠ NO POSTER ON THE CARD (10 Oct 2026, the user: "no poster on class cards
      only inside card details"). The 3 Oct strip is gone from every card; the
@@ -445,7 +452,7 @@ export function ClassTile({ danceClass: c, filled = 0, artist, isToday = false, 
               fill, the words say it in numbers, what it costs closes the line.
               A status (Draft / Completed) rides on the bar when it has one. */}
           <div style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 10, minWidth: 0 }}>
-            <SeatBar taken={filled} cap={c.capacity} tint={bc} note={note} />
+            <SeatBar taken={filled} cap={c.capacity} tint={bc} note={note} leftWord={finished === "Closed" ? "Never published" : finished === "Completed" ? "Class over" : undefined} />
             {/* ₹300 is the number you compare; "per session" belongs on the
                 page's booking bar, not beside every figure (8127-8132) */}
             <span data-testid="class-fact-price" style={{ flexShrink: 0, fontSize: 16, fontWeight: 900, letterSpacing: -0.3, color: INK, fontVariantNumeric: "tabular-nums" }}>{priceAmt}</span>

@@ -49,6 +49,22 @@ export const ASK_STATUS_WORD = {
   withdrawn: "Withdrawn",
 } as const;
 
+/** ⚠ ONE WORD FOR A FINISHED CLASS, FROM THE SESSION'S END (11 Oct 2026, B19).
+ *  `status = 'completed'` is never written by anything, so a class that ran
+ *  stayed "published" and the card never said it was over. The word comes from
+ *  the clock instead: a PUBLISHED class whose session has ended is "Completed",
+ *  a DRAFT whose start has passed is "Closed" (it was never published), and
+ *  anything else is null — not finished. The clock is handed in. */
+export function finishedWord(
+  c: { status: string; session: { startsAt: string; endsAt: string } | null },
+  nowMs: number
+): "Completed" | "Closed" | null {
+  if (c.status === "completed") return "Completed";
+  if (!c.session) return null;
+  if (c.status === "draft") return Date.parse(c.session.startsAt) <= nowMs ? "Closed" : null;
+  return Date.parse(c.session.endsAt) <= nowMs ? "Completed" : null;
+}
+
 /** the calendar's three sides speak the card's words (`CalendarSide` is the
  *  stored key; this is only what is printed) */
 export const SIDE_RELATION = {

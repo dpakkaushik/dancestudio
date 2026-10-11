@@ -147,6 +147,12 @@ const valueOf = (page, label) => page.getByLabel(label).inputValue();
       p_styles: ["Hip-Hop"],
     });
     made.businesses.push(studio.id);
+    /* a real room row (11 Oct 2026): the one class form asks "Your room" and a
+       studio with no room row reads "Add a room first — or use a map link".
+       One room, so the form picks it already — nothing to press. */
+    await call("POST", "/rest/v1/rooms", { ...owner.h, Prefer: "return=minimal" }, {
+      business_id: studio.id, name: "Studio A", capacity: 20, created_by: owner.id, updated_by: owner.id,
+    }, "room");
 
     /* a class whose session is AHEAD, so the learner may book it; it is moved
        onto the clock afterwards, which is the seeder's own trick for a register

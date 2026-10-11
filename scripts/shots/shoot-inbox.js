@@ -221,6 +221,21 @@ const pressed = async (loc) => (await loc.getAttribute("aria-pressed").catch(() 
     check(kms === 0, `no distance is printed nationwide (${kms})`);
     await gp.goto(`${BASE}/discover?city=all&tab=crews`, { waitUntil: "networkidle" });
     check(/in all cities/.test(await gp.getByTestId("shelf-count").innerText().catch(() => "")), "crews: read across every city");
+
+    /* ── A CLASS ASK POINTS AT CLASSES, NOT THE INBOX (11 Oct 2026, 20261017090000,
+       B14). Class requests left the Inbox for Classes on 11 Oct, and the
+       notification that tells somebody they were asked used to keep naming
+       /inbox. It names /my-classes?tab=todo now, where the ask is answered.
+       Planted LAST, so the Inbox checks above read a world with no class ask in it. */
+    const day = new Date(Date.now() + 9 * 86400000).toISOString().slice(0, 10);
+    const cls = await call("POST", "/rest/v1/rpc/create_class_with_session", owner.h, {
+      p_business_id: studio.id, p_title: "Hip-Hop · All levels", p_style: "Hip-Hop", p_level: "all", p_room: null,
+      p_price_inr: 0, p_capacity: 8, p_status: "draft", p_starts_at: `${day}T19:00:00+05:30`, p_ends_at: `${day}T20:00:00+05:30`,
+    });
+    await call("POST", "/rest/v1/rpc/ask_class_person", owner.h, { p_class_id: cls.id, p_user_id: sender.id, p_kind: "artist" });
+    const askNote = await call("GET", `/rest/v1/notifications?user_id=eq.${sender.id}&kind=eq.people&deleted_at=is.null&select=title,href&order=created_at.desc&limit=1`, svc);
+    check(askNote[0] && /wants you as the artist taking/.test(askNote[0].title), `the person asked to teach is told (${askNote[0] ? askNote[0].title : "nothing"})`);
+    check(askNote[0] && askNote[0].href === "/my-classes?tab=todo", `⚠ …and the notification opens Classes' To do, where it is answered — not the Inbox (${askNote[0] ? askNote[0].href : "—"})`);
   } catch (e) {
     check(false, `run died: ${e.message}`);
   } finally {

@@ -284,7 +284,7 @@ export async function findClassMoney(
   supabase: SupabaseClient,
   classId: string
 ): Promise<ClassMoney> {
-  const [paymentsRes, refundsRes, passesRes] = await Promise.all([
+  const [paymentsRes, refundsRes, passesRes, doorRes] = await Promise.all([
     supabase
       .from("payments")
       /* payments carry no class_id — the join through orders is the same spine
@@ -313,12 +313,24 @@ export async function findClassMoney(
       .eq("class_id", classId)
       .is("deleted_at", null)
       .limit(MAX_MONEY_ROWS),
+    /* ⚠ CASH THE DOOR TOOK (11 Oct 2026, B9) — a live seat whose `door_paid_at`
+       is stamped. The register is the only place it was ever recorded, so it was
+       in no total at all. A count; the page multiplies by the price. */
+    supabase
+      .from("class_bookings")
+      .select("id")
+      .eq("class_id", classId)
+      .eq("status", "enrolled")
+      .not("door_paid_at", "is", null)
+      .is("deleted_at", null)
+      .limit(MAX_MONEY_ROWS),
   ]);
 
   for (const [what, res] of [
     ["payments", paymentsRes],
     ["refunds", refundsRes],
     ["membership uses", passesRes],
+    ["door seats", doorRes],
   ] as const) {
     if (res.error) {
       throw new Error(`payments.findClassMoney(${what}) failed: ${res.error.message}`);
@@ -334,6 +346,7 @@ export async function findClassMoney(
     refundedInr: sum(refunds.filter((r) => r.status === "processed")),
     owedInr: sum(refunds.filter((r) => r.status === "requested" || r.status === "pending")),
     passSeats: (passesRes.data ?? []).length,
+    doorPaidSeats: (doorRes.data ?? []).length,
   };
 }
 

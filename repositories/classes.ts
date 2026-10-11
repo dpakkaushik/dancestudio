@@ -419,7 +419,7 @@ export async function findClassBySlug(
   };
 }
 
-/** Draft → published, or published → completed. RLS admits owners/trainers only. */
+/** Draft → published. RLS admits the people who run the business (owner, manager). */
 export async function updateClassStatus(
   supabase: SupabaseClient,
   classId: string,
@@ -556,7 +556,12 @@ export async function softDeleteClass(
      already happened. The class page draws no Delete once it is over; this is
      the server's half, and the held migration `20261004170000` is the
      database's. */
-  if (mine.session && Date.parse(mine.session.endsAt) <= Date.now()) {
+  /* ⚠ A DRAFT IS EXEMPT (11 Oct 2026): a closed draft — its date passed before
+     it was published — is deleted from Past (D3), and a draft never held a seat
+     (`book_class_session` refuses one), so there is nothing to call off, cancel
+     or refund. Only a class that was ON SALE is final once it is over. */
+  const isDraft = mine.status === "draft";
+  if (!isDraft && mine.session && Date.parse(mine.session.endsAt) <= Date.now()) {
     throw new Error("This class is over — it can no longer be cancelled or refunded");
   }
 
@@ -580,10 +585,12 @@ export async function softDeleteClass(
      ⚠ The refusal is passed through in the DATABASE'S OWN WORDS rather than
      reworded here — a refusal in the database's words is not an explanation to
      be tidied away (27 Sep 2026). */
-  const { data: calledOff, error: callOffError } = await supabase.rpc(
-    "cancel_class_bookings_for_class",
-    { p_class_id: classId, p_reason: "The studio cancelled this class" }
-  );
+  const { data: calledOff, error: callOffError } = isDraft
+    ? { data: null, error: null }
+    : await supabase.rpc("cancel_class_bookings_for_class", {
+        p_class_id: classId,
+        p_reason: "The studio cancelled this class",
+      });
   if (callOffError) {
     throw new Error(callOffError.message);
   }
@@ -616,7 +623,9 @@ export async function softDeleteClass(
      that was not deleted. One extra read, on the rarest action on this desk.
      A WRITE WHOSE STATUS NOBODY READS IS NOT A WRITE — this file's own lesson. */
   if (await findClassById(supabase, classId)) {
-    throw new Error("Only the owner of this studio can delete its classes");
+    /* B24 (11 Oct 2026): a manager may delete too since 11 Oct — the words say
+       who may, not "only the owner" */
+    throw new Error("Only the people who run this studio can delete its classes");
   }
 
   /* audit-ok: same two reasons — a soft-deleted row is unreadable, and the

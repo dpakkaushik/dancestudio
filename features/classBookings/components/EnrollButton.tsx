@@ -1,7 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { useActionState } from "react";
+import { startTransition, useActionState, useState } from "react";
+import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import {
   cancelClassBookingAction,
   enrollAction,
@@ -84,12 +85,14 @@ export function EnrollButton({
 }) {
   const [enrollState, enrollForm, enrollPending] = useActionState(enrollAction, initialState);
   const [cancelState, cancelForm, cancelPending] = useActionState(cancelClassBookingAction, initialState);
+  const [confirmOpen, setConfirmOpen] = useState(false);
   const error = enrollState.error || cancelState.error;
   const isPaid = priceInr > 0;
 
   if (!isSignedIn) {
     return (
-      <Link href="/login" style={{ ...btn(true), textDecoration: "none", display: "block" }}>
+      /* back to THIS class after signing in (B21) */
+      <Link href={`/login/email?next=${encodeURIComponent(`/c/${shareSlug}`)}`} style={{ ...btn(true), textDecoration: "none", display: "block" }}>
         Sign in to book
       </Link>
     );
@@ -125,13 +128,29 @@ export function EnrollButton({
                 Cancel / refund ›
               </Link>
             ) : (
-              <form action={cancelForm} style={{ flex: 1, display: "flex" }}>
-                <input type="hidden" name="classBookingId" value={mine.id} />
-                <button type="submit" disabled={cancelPending} style={btn(false)}>
-                  {cancelPending ? "Cancelling…" : "Cancel booking"}
-                </button>
-              </form>
+              /* ⚠ ASKED FIRST (B17, 11 Oct 2026) — it was one tap, and a seat
+                 given up on a full class may not be there to take back */
+              <button type="button" disabled={cancelPending} onClick={() => setConfirmOpen(true)} style={btn(false)}>
+                {cancelPending ? "Cancelling…" : "Cancel booking"}
+              </button>
             )}
+            {confirmOpen ? (
+              <ConfirmDialog
+                title="Cancel this booking?"
+                body="Your seat goes back on sale — if the class fills, it may not be there to take back."
+                keepWord="Keep it"
+                goWord="Cancel booking"
+                tone="danger"
+                busy={cancelPending}
+                onKeep={() => setConfirmOpen(false)}
+                onGo={() => {
+                  const fd = new FormData();
+                  fd.set("classBookingId", mine.id);
+                  setConfirmOpen(false);
+                  startTransition(() => cancelForm(fd));
+                }}
+              />
+            ) : null}
           </>
         ) : isFull ? (
           /* ⚠ NO WAITLIST (4 Oct 2026, the user: "remove waitlist mechanism").

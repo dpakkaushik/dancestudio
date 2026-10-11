@@ -60,8 +60,12 @@ export function ClassEarnings({
   figures,
   earningsHref,
 }: ClassEarningsProps) {
-  const { collectedInr, refundedInr, owedInr, passSeats } = figures;
-  const net = collectedInr - refundedInr;
+  const { collectedInr, refundedInr, owedInr, passSeats, doorPaidSeats } = figures;
+  /* ⚠ CASH THE DOOR TOOK (11 Oct 2026, B9): seats marked Paid on the register.
+     DanceOS moved none of it, so it is a line of its own and is NOT in "Came
+     in" — but it is money the class made, so it is in what the session made. */
+  const doorInr = doorPaidSeats * priceInr;
+  const net = collectedInr + doorInr - refundedInr;
 
   return (
     <div style={{ padding: "12px 16px 0", position: "relative", zIndex: 1, background: "var(--bg)" }}>
@@ -113,6 +117,11 @@ export function ClassEarnings({
             <Line label="Paid with a pass" value={`${passSeats} ${passSeats === 1 ? "seat" : "seats"}`} tint="var(--sub)" />
           ) : null}
           <Line label="Came in" value={money(collectedInr)} tint={GREEN} />
+          {doorInr ? (
+            <div data-testid="door-cash">
+              <Line label={`Collected at the door · ${doorPaidSeats} ${doorPaidSeats === 1 ? "seat" : "seats"}`} value={money(doorInr)} tint={GREEN} />
+            </div>
+          ) : null}
           {refundedInr ? (
             <Line label="Refunded" value={`−${money(refundedInr)}`} tint={SOFT_RED} />
           ) : null}

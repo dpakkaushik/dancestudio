@@ -6,6 +6,7 @@ import { z } from "zod";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { ONBOARDING_COOKIE } from "@/lib/auth/onboarding";
+import { safeNext } from "@/lib/auth/safeNext";
 import { LIMITS, clientKey, withinLimit } from "@/lib/rateLimit";
 import { emailSchema } from "@/features/auth/types/email";
 import {
@@ -130,7 +131,11 @@ export async function signInWithPasswordAction(
      sometimes"). A server action's redirect PUSHES by default, so the sign-in
      form stayed one entry behind Home — and a back swipe landed on it, which
      reads exactly like being logged out while the session was fine. */
-  redirect(profile ? "/" : "/onboarding", RedirectType.replace);
+  /* ⚠ `next` (11 Oct 2026, B21): "Sign in to book" on a class page comes back
+     to that class. Only an in-app path is honoured (`safeNext`); onboarding
+     still comes first for an account that has none. */
+  const next = safeNext(formData.get("next"));
+  redirect(profile ? (next ?? "/") : "/onboarding", RedirectType.replace);
 }
 
 /** FORGOT PASSWORD — sends a recovery link, which lands on /login/reset.

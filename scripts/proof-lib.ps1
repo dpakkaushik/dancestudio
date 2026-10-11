@@ -336,7 +336,12 @@ function Seat-Teacher($classId, $teacherUserId) {
   # one live artist per class (a partial unique index), so an existing one is
   # closed first - and a proof that asks its OWN artist later closes this one the
   # same way, through ask_class_person. Neither can collide with the other.
-  Invoke-RestMethod -Method Patch -Uri "$base/rest/v1/class_people?class_id=eq.$classId&kind=eq.artist&deleted_at=is.null" -Headers $svcH -Body (@{ deleted_at = (Get-Date).ToUniversalTime().ToString("o") } | ConvertTo-Json) | Out-Null
+  # 11 Oct 2026 (20261017090000): the old row is ERASED, not soft-deleted. A
+  # soft-deleted CONFIRMED artist on a published class is exactly what
+  # class_waits_for_teacher reads as "the teacher left", and every booking door
+  # then refuses with "This class is waiting for a new teacher". Nothing
+  # references class_people by FK, so a hard delete strands nothing.
+  Invoke-RestMethod -Method Delete -Uri "$base/rest/v1/class_people?class_id=eq.$classId&kind=eq.artist" -Headers $svcH | Out-Null
   # can_attendance FALSE on purpose: seating a teacher must not hand anybody the
   # register, or a proof about who may run it would be proving this helper instead
   Invoke-RestMethod -Method Post -Uri "$base/rest/v1/class_people" -Headers $svcH -Body (@{

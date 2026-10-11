@@ -71,6 +71,10 @@ $soonStart = (Get-Date).AddMinutes(10).ToString("yyyy-MM-ddTHH:mm:sszzz")
 $soonEnd = (Get-Date).AddMinutes(70).ToString("yyyy-MM-ddTHH:mm:sszzz")
 $farStart = (Get-Date).AddDays(7).ToString("yyyy-MM-ddT19:00:00zzz")
 $farEnd = (Get-Date).AddDays(7).ToString("yyyy-MM-ddT20:00:00zzz")
+# 11 Oct 2026 (20261017090000): an OVERLAPPING booking is refused at every door, and
+# B already holds a seat on the soon class - so the paid one-seat class runs after it
+$paidStart = (Get-Date).AddMinutes(90).ToString("yyyy-MM-ddTHH:mm:sszzz")
+$paidEnd = (Get-Date).AddMinutes(150).ToString("yyyy-MM-ddTHH:mm:sszzz")
 
 try {
   # the world is built INSIDE the try, so a failure in setup still reaches the finally
@@ -115,7 +119,7 @@ try {
   Check 5 "Check-in before the window is rejected" $windowBlocked
 
   # ---- paid class, one seat: the owner's queue -------------------------------
-  $cP = New-TimedClass (Api $a.access_token) $ta.id "Paid One Seat $stamp" 300 1 $soonStart $soonEnd $b.user.id
+  $cP = New-TimedClass (Api $a.access_token) $ta.id "Paid One Seat $stamp" 300 1 $paidStart $paidEnd $b.user.id
   $sP = Session-Of $cP.id
   $oB = Rpc (Api $b.access_token) "create_payment_order" @{ p_session_id = $sP }
   Rpc (Api $b.access_token) "attach_provider_order" @{ p_order_id = $oB.id; p_provider_order_id = "order_ATT$stamp" } | Out-Null

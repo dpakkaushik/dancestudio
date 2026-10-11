@@ -961,7 +961,7 @@ test.describe.serial("DanceOS, end to end", () => {
     await expect(owner.getByRole("button", { name: "Publish class" })).toHaveCount(0);
     await expect(owner.getByText("Publish as soon as everyone says yes")).toHaveCount(0);
     // the form's one sentence says what the save will do (saveSentence, 11 Oct 2026)
-    await expect(owner.getByText(new RegExp(`${trainerName} is asked\\. Publish it from Classes once they say yes`)).first()).toBeVisible();
+    await expect(owner.getByText(new RegExp(`${trainerName} is asked\\. Publish it once they say yes`)).first()).toBeVisible();
     // ⚠ "SAVE" (11 Oct 2026): one form, one button — who is asked is the form's
     // field, not its button's name ("Send request" until today)
     await owner.getByRole("button", { name: "Save", exact: true }).click();
@@ -1226,7 +1226,8 @@ test.describe.serial("DanceOS, end to end", () => {
     await learner.getByRole("button", { name: "Book Now", exact: true }).click();
     const confirmSheet = learner.getByRole("dialog", { name: "Confirm — no payment" });
     await expect(confirmSheet).toBeVisible();
-    await confirmSheet.getByRole("button", { name: "Confirm free trial" }).click();
+    /* "Confirm booking" since 11 Oct 2026 (B21) — a free class is not a trial of anything */
+    await confirmSheet.getByRole("button", { name: "Confirm booking" }).click();
     /* ⚠ FIFTEEN, NOT FIVE (28 Sep 2026). Confirming writes the seat through an
        RPC and the page re-renders on the SERVER, so this is a round trip after a
        mutation — the one shape in this suite that outruns the default five
@@ -1238,7 +1239,7 @@ test.describe.serial("DanceOS, end to end", () => {
     /* ⚠ "Tap the poster above for your code" until 29 Sep 2026, when the poster
        stopped being a ticket. What gets somebody through a door is their OWN
        profile code, which the register's scanner reads. */
-    await expect(learner.getByText("Your own profile QR is what gets you in — it is on your profile.")).toBeVisible();
+    await expect(learner.getByText("Your own profile QR is what gets you in — show it at the door.")).toBeVisible();
     // and the owner's register now reads the seat's meta: a free seat
     await owner.reload();
     await owner.getByRole("button", { name: "Attendance", exact: true }).click();
@@ -1824,7 +1825,15 @@ test.describe.serial("DanceOS, end to end", () => {
     await expect(owner.getByRole("button", { name: /^Bookings — \d+ updates?$/ })).toBeVisible();
     // a row opens the thing it is about: the crew ask the trainer answered
     await trainer.goto("/notifications");
-    await trainer.getByRole("button", { name: /^People — \d+ updates?$/ }).click();
+    /* ⚠ 11 Oct 2026 (20261017090000, D10): a seat somebody books THEMSELVES tells
+       the class's confirmed TEACHER as well as the people who run the studio — and
+       the trainer said yes to teaching this class before it could be published, so
+       the learner's seat is on their Bookings stack too, opening the class page.
+       Read FIRST: one stack is open at a time, so opening Bookings after People
+       folded People shut and its Clear all was not there to press. */
+    await pressPill(trainer, /^Bookings — \d+ updates?$/, "aria-expanded");
+    await expect(trainer.getByText(`${learnerName} booked ${classTitle}`).first()).toBeVisible();
+    await pressPill(trainer, /^People — \d+ updates?$/, "aria-expanded");
     await expect(trainer.getByText(`${crewName} wants you on the roster`)).toBeVisible();
     // and clearing a stack empties it for good (soft-deleted, gone from the screen)
     await trainer.getByRole("button", { name: "Clear all People" }).click();

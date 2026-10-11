@@ -31,6 +31,7 @@ import {
 } from "@/components/ui/FormPage";
 import { DOS_LEVELS, DOS_LEVEL_LABEL, dosClassLabel, dosStyleColor } from "@/lib/constants/styles";
 import { INK, LILAC, SUB } from "@/lib/design/tokens";
+import { refundPolicyWords } from "@/lib/format/refundPolicy";
 import type { ClassPerson } from "@/types/classPerson";
 import { MAX_SESSION_MINUTES, type ClassLevel, type DanceClass, type PosterChoice } from "@/types/class";
 import type { Room } from "@/types/room";
@@ -171,7 +172,7 @@ function RoomList({ rooms, roomId, onPick, emptyWords }: { rooms: Room[]; roomId
   );
 }
 
-/** a switch row — the memberships switch and the auto-publish switch read one look */
+/** a switch row — the memberships switch */
 function SwitchRow({ word, on, onFlip }: { word: string; on: boolean; onFlip: () => void }) {
   return (
     <button
@@ -214,9 +215,9 @@ type WhoKind = "me" | "other";
  *     through the app's one people search and asked. A studio opens on somebody
  *     else, an artist page on you.
  *  Pay is not on the form any more: an ask with no rate takes the seat's
- *  (`business_members.pay_per_session_inr`). And a draft PUBLISHES ITSELF the
- *  moment the last yes lands, unless the switch on the last step is off — the
- *  database's `publish_class_if_ready`. */
+ *  (`business_members.pay_per_session_inr`), and the owner sets a class's own
+ *  rate on the class page. Every save is a DRAFT; publishing is a press of
+ *  Publish (no auto-publish, at the user's word). */
 /** the chips a business with no styles of its own is offered — the commonest
  *  across the cities DanceOS runs in; `DosStylePicker` drops any name the
  *  registry does not hold, so a renamed style cannot draw a dead chip */
@@ -237,8 +238,11 @@ export function ClassForm({
   meId = null,
   ownedStudioIds = [],
   suggestedStyles = [],
+  refundWindowHours = 12,
 }: {
   businessId: string;
+  /** the business's own refund window (B7) — the confirm prints its policy line */
+  refundWindowHours?: number;
   /** the styles this business already teaches (`businesses.styles`), drawn as
    *  one-tap chips over the style picker (3 Oct 2026). Empty → a short list of
    *  the commonest styles, so the chips are never absent on a first class. */
@@ -447,7 +451,9 @@ export function ClassForm({
             ? "End after the start"
           : tooLong
             ? "A session can be at most 5 hours"
-          : atRoom && rooms.length > 0 && !roomId
+          : atRoom && rooms.length === 0
+            ? "Add a room first — or use a map link"
+          : atRoom && !roomId
             ? "Pick a room"
             : atStudio && !venue
               ? "Pick a studio"
@@ -474,25 +480,38 @@ export function ClassForm({
 
   /* ⚠ ONE SENTENCE FOR WHAT A SAVE DOES (11 Oct 2026) — the confirm sheet and
      the last step's note read it, so they cannot disagree */
+  /* ⚠ B24 (11 Oct 2026): a person who ALREADY said yes is not "asked" again
+     unless the time or the place moved — the action re-asks only then */
+  const placeOrTimeMoved =
+    !existing ||
+    !keptItsOwnStart ||
+    (existing.session ? endTime !== toTimeInput(existing.session.endsAt) : true) ||
+    (atPlace ? mapsUrl.trim() !== (existing.mapsUrl ?? "") : roomId !== existing.roomId) ||
+    (atStudio ? venue?.id !== existing.venueBusinessId : Boolean(existing.venueBusinessId));
+  const teacherSaidYes = Boolean(
+    !selfTeacher && other && artistClassPerson && artistClassPerson.userId === other.id && artistClassPerson.status === "confirmed"
+  );
+  const venueSaidYes = Boolean(atStudio && venue && existing?.venueBusinessId === venue.id && existing?.venueStatus === "accepted");
   const askedNames = [
-    !selfTeacher && other ? other.name : null,
-    atStudio && venue && !ownVenue ? venue.name : null,
+    !selfTeacher && other && !(teacherSaidYes && !placeOrTimeMoved) ? other.name : null,
+    atStudio && venue && !ownVenue && !(venueSaidYes && !placeOrTimeMoved) ? venue.name : null,
   ].filter((n): n is string => Boolean(n));
   const noTeacher = !selfTeacher && !other;
   /* no auto-publish (11 Oct 2026, the user: "no auto publish required") —
-     every save is a draft, and Publish on Classes puts it on Discover */
+     every save is a draft, and Publish — on Classes or on the class's own page —
+     puts it on Discover */
   const saveSentence = noTeacher
-    ? "Saved as a draft — nobody is asked yet. Pick who takes it, then publish it from Classes."
+    ? "Saved as a draft — nobody is asked yet. Pick who takes it, then publish it."
     : askedNames.length
-      ? `${askedNames.join(" and ")} ${askedNames.length > 1 ? "are" : "is"} asked. Publish it from Classes once they say yes.`
-      : "Saved as a draft — publish it from Classes when you are ready.";
+      ? `${askedNames.join(" and ")} ${askedNames.length > 1 ? "are" : "is"} asked. Publish it once they say yes.`
+      : "Saved as a draft — publish it when you are ready.";
 
   return (
     <FormPage
       title={isEdit ? "Edit class" : "Add class"}
       steps={STEPS}
       step={step}
-      sub={isEdit ? "Changing the time, the place or the pay asks everyone again." : undefined}
+      sub={isEdit ? "Changing the time or the place asks everyone again." : undefined}
       sheet={sheet}
       onClose={() => router.back()}
       onBack={() => (step > 0 ? setStep(step - 1) : router.back())}
@@ -830,7 +849,7 @@ export function ClassForm({
                   <div style={{ fontSize: 12, color: SUB, marginTop: 4 }}>● {whereWords} · cap {capacity}</div>
                   {atRoom && studioPlace ? <div style={{ fontSize: 12, color: SUB, marginTop: 4 }}>📍 {studioPlace}</div> : null}
                   <div style={{ fontSize: 12, marginTop: 4, fontWeight: 800, color: priceInr === 0 ? "#22C55E" : INK }}>{priceInr === 0 ? "FREE" : `₹${priceInr}/session`}</div>
-                  {priceInr > 0 ? <div style={{ fontSize: 11.5, marginTop: 4, color: "#22C55E", fontWeight: 700 }}>↩️ Refund until 12 h before start</div> : null}
+                  {priceInr > 0 ? <div style={{ fontSize: 11.5, marginTop: 4, color: "#22C55E", fontWeight: 700 }}>↩️ {refundPolicyWords(refundWindowHours)}</div> : null}
                 </div>
               </div>
             );

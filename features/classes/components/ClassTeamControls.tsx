@@ -2,7 +2,14 @@
 
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
-import { askClassPersonAction, setClassPersonPowersAction, withdrawClassAskAction } from "@/features/classPeople/server-actions/classPeople";
+import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
+import {
+  askClassPersonAction,
+  setClassPersonPayAction,
+  setClassPersonPowersAction,
+  stepDownFromClassAction,
+  withdrawClassAskAction,
+} from "@/features/classPeople/server-actions/classPeople";
 import { PeoplePicker, type PoolHit } from "@/features/people/components/PeoplePicker";
 import type { ClassPerson } from "@/types/classPerson";
 
@@ -80,12 +87,163 @@ export function AddAssistant({ classId, col, exclude, pool }: { classId: string;
             }
           />
           <div style={{ fontSize: 10.5, color: "var(--muted)", marginTop: 6, lineHeight: 1.45 }}>
-            {pending ? "Asking…" : "They are asked, and answer in their Inbox. Nobody is added by this."}
+            {pending ? "Asking…" : "They are asked, and answer in their Classes. Nobody is added by this."}
           </div>
           {err ? <div role="alert" style={{ fontSize: 11.5, color: "#F87171", marginTop: 6 }}>{err}</div> : null}
         </div>
       ) : null}
     </div>
+  );
+}
+
+/** ⚠ ASK A NEW TEACHER (11 Oct 2026, D4). A PUBLISHED class whose teacher stepped
+ *  down is waiting — booking is paused by the database — and the people who run
+ *  the business ask somebody else from its page. Anybody on DanceOS may be asked
+ *  to teach (R19), so the picker searches all of it; when they say yes, booking
+ *  resumes by itself. */
+export function AskNewTeacher({ classId, col, exclude }: { classId: string; col: string; exclude: string[] }) {
+  const router = useRouter();
+  const [open, setOpen] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
+  const [pending, start] = useTransition();
+  return (
+    <div style={{ marginTop: 10 }}>
+      <button
+        type="button"
+        data-testid="ask-new-teacher"
+        aria-expanded={open}
+        onClick={() => setOpen((v) => !v)}
+        style={{ width: "100%", padding: "11px 14px", borderRadius: 999, border: "none", background: "var(--text)", color: "var(--solid)", fontWeight: 900, fontSize: 12.5, cursor: "pointer", fontFamily: "inherit" }}
+      >
+        {open ? "Close" : "Ask a new teacher"}
+      </button>
+      {open ? (
+        <div style={{ marginTop: 8 }}>
+          <PeoplePicker
+            title="WHO SHOULD TAKE THIS CLASS"
+            placeholder="A name or a mobile number…"
+            ariaLabel="Search DanceOS for a new teacher"
+            actionWord="Ask ›"
+            actionColor={col}
+            exclude={exclude}
+            pickLabel={(p) => `Ask ${p.fullName} to take this class`}
+            onPick={(p) =>
+              start(async () => {
+                setErr(null);
+                const res = await askClassPersonAction({ classId, userId: p.id, kind: "artist" });
+                if (res.error) setErr(res.error);
+                else {
+                  setOpen(false);
+                  router.refresh();
+                }
+              })
+            }
+          />
+          <div style={{ fontSize: 10.5, color: "var(--muted)", marginTop: 6, lineHeight: 1.45 }}>
+            {pending ? "Asking…" : "Booking opens again when they say yes."}
+          </div>
+        </div>
+      ) : null}
+      {err ? <div role="alert" style={{ fontSize: 11.5, color: "#F87171", marginTop: 6 }}>{err}</div> : null}
+    </div>
+  );
+}
+
+/** STEP DOWN (11 Oct 2026, D4): the person themself, before the class starts,
+ *  behind a confirm that says what follows. */
+export function StepDownButton({ classPersonId, kind, published, title }: { classPersonId: string; kind: "artist" | "assistant"; published: boolean; title: string }) {
+  const router = useRouter();
+  const [open, setOpen] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
+  const [pending, start] = useTransition();
+  const body =
+    kind === "artist"
+      ? published
+        ? "The studio is told, booking pauses until they find a new teacher, and the people booked are told."
+        : "The studio is told, and the class waits for a new teacher."
+      : "The studio and the teacher are told.";
+  return (
+    <>
+      <button
+        type="button"
+        data-testid="step-down"
+        aria-label={`Step down from ${title}`}
+        onClick={() => setOpen(true)}
+        style={{ ...pill(false, "#F87171"), color: "#F87171" }}
+      >
+        Step down
+      </button>
+      {open ? (
+        <ConfirmDialog
+          title={`Step down from ${title}?`}
+          body={body}
+          keepWord="Stay on it"
+          goWord="Step down"
+          busy={pending}
+          err={err}
+          tone="danger"
+          onKeep={() => setOpen(false)}
+          onGo={() =>
+            start(async () => {
+              setErr(null);
+              const res = await stepDownFromClassAction({ classPersonId });
+              if (res.error) setErr(res.error);
+              else {
+                setOpen(false);
+                router.refresh();
+              }
+            })
+          }
+        />
+      ) : null}
+    </>
+  );
+}
+
+/** WHAT A SESSION PAYS THEM ON THIS CLASS (11 Oct 2026, D2) — the OWNER's
+ *  number, on the person's own row; a team member's seat rate filled it in when
+ *  they were asked. Saved on blur or Enter; the database refuses anybody else. */
+export function RateControl({ classPersonId, rate, name }: { classPersonId: string; rate: number; name: string }) {
+  const router = useRouter();
+  const [text, setText] = useState(String(rate));
+  const [err, setErr] = useState<string | null>(null);
+  const [pending, start] = useTransition();
+  const save = () => {
+    const n = text.trim() === "" ? 0 : Number(text);
+    if (!Number.isInteger(n) || n < 0) {
+      setErr("Whole rupees, 0 or more");
+      return;
+    }
+    if (n === rate) return;
+    start(async () => {
+      setErr(null);
+      const res = await setClassPersonPayAction({ classPersonId, payPerSessionInr: n });
+      if (res.error) setErr(res.error);
+      else router.refresh();
+    });
+  };
+  return (
+    <label data-testid="class-person-rate" style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 10.5, fontWeight: 800, color: "var(--sub)" }}>
+      ₹
+      <input
+        type="text"
+        inputMode="numeric"
+        value={text}
+        aria-label={`What a session pays ${name}`}
+        disabled={pending}
+        onChange={(e) => setText(e.target.value.replace(/[^0-9]/g, "").slice(0, 7))}
+        onBlur={save}
+        onKeyDown={(e) => {
+          if (e.key === "Enter") {
+            e.preventDefault();
+            save();
+          }
+        }}
+        style={{ width: 64, padding: "5px 8px", borderRadius: 999, border: "1.5px solid var(--el)", background: "var(--card)", color: "var(--text)", fontSize: 11, fontWeight: 800, fontFamily: "inherit" }}
+      />
+      / session
+      {err ? <span role="alert" style={{ color: "#F87171" }}>{err}</span> : null}
+    </label>
   );
 }
 

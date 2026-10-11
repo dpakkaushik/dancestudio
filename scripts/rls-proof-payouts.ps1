@@ -145,8 +145,11 @@ try {
     ($claim.pay_per_session_inr -eq 900) -and ($claim.status -eq "asked"))
 
   # 2. a trainer may put people on a class, but may not attach money to it
+  #    (asked on c2, which is still AHEAD: c1 has started by now, and since
+  #    20261017090000 a started class refuses ANY new ask - so asking on c1 would
+  #    pass this check for the wrong reason)
   $trainerRateBlocked = Expect-Fail {
-    Rpc (Api $trainer.token) "ask_class_person" @{ p_class_id = $c1.id; p_user_id = $ghost.id;
+    Rpc (Api $trainer.token) "ask_class_person" @{ p_class_id = $c2.id; p_user_id = $ghost.id;
       p_kind = "assistant"; p_can_attendance = $false; p_can_refunds = $false; p_pay_per_session_inr = 700 }
   }
   Check 2 "A trainer cannot attach a rate to an ask" $trainerRateBlocked

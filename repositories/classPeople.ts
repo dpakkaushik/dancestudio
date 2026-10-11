@@ -389,6 +389,20 @@ export async function respondToClassAsk(
   }
 }
 
+/** STEP DOWN (11 Oct 2026, D4): a confirmed teacher or assistant takes themself
+ *  off a class that has not started. On a PUBLISHED class whose teacher steps
+ *  down the database pauses booking and tells the runners and the people booked;
+ *  the RPC decides all of it (`step_down_from_class`). */
+export async function stepDownFromClass(supabase: SupabaseClient, classPersonId: string, reason: string | null): Promise<void> {
+  const { error } = await supabase.rpc("step_down_from_class", {
+    p_class_person_id: classPersonId,
+    p_reason: reason,
+  });
+  if (error) {
+    throw new Error(error.message);
+  }
+}
+
 export async function withdrawClassAsk(supabase: SupabaseClient, classPersonId: string): Promise<void> {
   const { error } = await supabase.rpc("withdraw_class_ask", { p_class_person_id: classPersonId });
   if (error) {

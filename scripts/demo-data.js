@@ -367,7 +367,10 @@ async function seed() {
   /* Bounce, New Delhi — Aditya teaches here too, from outside the team (11 Oct
      2026: his yes no longer seats him `visiting_faculty` — the class row is all
      he needs to run its register) */
-  const bounceBolly = await teachAndPublish(bounceCo.h, await mkClass(bounceCo.h, bounce.id, { style: "Bollywood", room: "Hall 1", capacity: 18, starts: at(3, "19:00"), ends: at(3, "20:00") }), aditya, 1000);
+  /* ⚠ 20:00, not 19:00 (17 Oct 2026, 20261017090000): an overlapping booking is
+     refused at every door, and Kabir and Rohit hold this one AND a seat on Sector
+     29's Bollywood (day 3, 18:30-19:30) — paid and pass-spent below */
+  const bounceBolly = await teachAndPublish(bounceCo.h, await mkClass(bounceCo.h, bounce.id, { style: "Bollywood", room: "Hall 1", capacity: 18, starts: at(3, "20:00"), ends: at(3, "21:00") }), aditya, 1000);
   const pastBounce = await teachAndPublish(bounceCo.h, await mkClass(bounceCo.h, bounce.id, { style: "Contemporary", level: "intermediate", room: "Hall 1", capacity: 12, starts: at(40, "18:00"), ends: at(40, "19:00") }), meera, 1500);
   /* Namma, Bengaluru */
   const nammaBreaking = await teachAndPublish(namma.h, await mkClass(namma.h, nammaStudio.id, { style: "Breaking", level: "beginner", room: "Main Floor", capacity: 14, starts: at(2, "18:00"), ends: at(2, "19:00") }), karan, 900);
@@ -731,10 +734,13 @@ async function seed() {
   await take(nikhil, dlfHours);
   await take(kabir, s29Trial);
 
-  /* and who has spent one — a seat booked with the pass rather than paid for */
-  await spend(rohit, rohitTrial.id, sHiphop);
-  await spend(priya, priyaTrial.id, sHiphop);
-  log("Rohit and Priya took Trial 3 and spent one each on Hip-Hop at Sector 29 (1 of 3) · Nikhil holds 20 DLF hours unspent · Kabir holds Trial 3 unspent");
+  /* and who has spent one — a seat booked with the pass rather than paid for.
+     ⚠ On the PRICED Bollywood (₹300), not the free Hip-Hop: a pass is not spent
+     on a free class (17 Oct 2026, 20261017090000). Neither holds a booking that
+     overlaps day 3, 18:30-19:30 (Rohit's Bounce Bollywood starts at 20:00). */
+  await spend(rohit, rohitTrial.id, sBolly);
+  await spend(priya, priyaTrial.id, sBolly);
+  log("Rohit and Priya took Trial 3 and spent one each on Bollywood at Sector 29 (1 of 3) · Nikhil holds 20 DLF hours unspent · Kabir holds Trial 3 unspent");
 
   /* ────────────────────────────────────────────────────────────────────────
      THE PLATFORM — a support thread, a report

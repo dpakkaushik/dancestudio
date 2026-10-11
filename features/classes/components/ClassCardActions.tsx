@@ -4,11 +4,12 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState, type CSSProperties } from "react";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
-import { checkRoomClashAction, publishClassAction, respondToVenueRequestAction, type RoomClash } from "@/features/classes/server-actions/classes";
+import { checkRoomClashAction, deleteClassAction, publishClassAction, respondToVenueRequestAction, type RoomClash } from "@/features/classes/server-actions/classes";
 import { respondToClassAskAction, withdrawClassAskAction } from "@/features/classPeople/server-actions/classPeople";
 import type { DraftState } from "@/features/classes/classesScreen";
 import { setInboxOffAction, setRoomRequestsAction } from "@/features/inbox/server-actions/askSettings";
 import { Switch } from "@/features/profiles/components/ContactEditor";
+import { cardBtn } from "@/features/classes/cardStyles";
 
 /** ⚠⚠ THE BUTTONS ON A CLASS CARD (11 Oct 2026, the user: "write buttons on class
  *  cards for doing proper action"). At most two per card, chosen by what the
@@ -16,23 +17,8 @@ import { Switch } from "@/features/profiles/components/ContactEditor";
  *  Each button refreshes the page it is on when its press lands, so the card
  *  moves to the tab it now belongs to. */
 
-export const cardBtn = (primary: boolean): CSSProperties => ({
-  flex: "1 1 0",
-  minWidth: 0,
-  textAlign: "center",
-  padding: "11px 12px",
-  borderRadius: 999,
-  fontSize: 13,
-  fontWeight: 900,
-  fontFamily: "inherit",
-  cursor: "pointer",
-  textDecoration: "none",
-  whiteSpace: "nowrap",
-  border: primary ? "none" : "1.5px solid var(--el)",
-  /* `--text` on `--solid`, never `--bg`: a card can sit inside an inverted panel */
-  background: primary ? "var(--text)" : "var(--card)",
-  color: primary ? "var(--solid)" : "var(--text)",
-});
+/* `cardBtn` lives in `features/classes/cardStyles.ts` (a plain module) so the
+   server-built cards can call it too */
 
 const greenBtn: CSSProperties = { ...cardBtn(true), background: "#22C55E", color: "#04220f" };
 
@@ -59,6 +45,8 @@ export function AnswerButtons({ title, classPersonId, venueClassId }: { title: s
   const router = useRouter();
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
+  /* ⚠ B17 (11 Oct 2026): a no cannot be taken back, so it asks first */
+  const [declining, setDeclining] = useState(false);
   const answer = async (accept: boolean) => {
     if (busy) return;
     setBusy(true);
@@ -68,17 +56,81 @@ export function AnswerButtons({ title, classPersonId, venueClassId }: { title: s
       : await respondToClassAskAction({ classPersonId: classPersonId!, accept });
     setBusy(false);
     if (out.error) setErr(out.error);
-    else router.refresh();
+    else {
+      setDeclining(false);
+      router.refresh();
+    }
   };
   return (
     <>
-      <button type="button" disabled={busy} aria-label={`Decline ${title}`} data-testid="card-decline" onClick={() => void answer(false)} style={cardBtn(false)}>
+      <button type="button" disabled={busy} aria-label={`Decline ${title}`} data-testid="card-decline" onClick={() => setDeclining(true)} style={cardBtn(false)}>
         Decline
       </button>
       <button type="button" disabled={busy} aria-label={`Accept ${title}`} data-testid="card-accept" onClick={() => void answer(true)} style={cardBtn(true)}>
         {busy ? "…" : "Accept"}
       </button>
-      <ErrorLine text={err} />
+      <ErrorLine text={declining ? null : err} />
+      {declining ? (
+        <ConfirmDialog
+          title={`Decline ${title}?`}
+          body={venueClassId ? "The artist is told your room is not free, and picks another." : "They are told you said no, and can ask somebody else. You cannot take it back."}
+          keepWord="Keep it"
+          goWord="Decline"
+          busy={busy}
+          err={err}
+          onKeep={() => setDeclining(false)}
+          onGo={() => void answer(false)}
+        />
+      ) : null}
+    </>
+  );
+}
+
+/** ⚠ A CLOSED DRAFT'S TWO WAYS ON (11 Oct 2026, D3): its date passed before it
+ *  was published. It is KEPT as a record; "Pick a new date" opens the edit form
+ *  (the save may move it into the future) and Delete takes it away. */
+export function ClosedDraftButtons({ businessId, classId, title, canEdit }: { businessId: string; classId: string; title: string; canEdit: boolean }) {
+  const router = useRouter();
+  const [asking, setAsking] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
+  if (!canEdit) return <StateChip word="Closed" tint="#858585" />;
+  const remove = async () => {
+    setBusy(true);
+    setErr(null);
+    const fd = new FormData();
+    fd.set("classId", classId);
+    fd.set("businessId", businessId);
+    const out = await deleteClassAction({ error: null }, fd);
+    setBusy(false);
+    if (out.error) {
+      setErr(out.error);
+      return;
+    }
+    setAsking(false);
+    router.refresh();
+  };
+  return (
+    <>
+      <StateChip word="Closed" tint="#858585" />
+      <button type="button" data-testid="closed-delete" aria-label={`Delete ${title}`} onClick={() => setAsking(true)} style={cardBtn(false)}>
+        Delete
+      </button>
+      <Link href={`/business/${businessId}/classes/${classId}/edit`} data-testid="closed-new-date" aria-label={`Pick a new date for ${title}`} style={cardBtn(true)}>
+        Pick a new date
+      </Link>
+      {asking ? (
+        <ConfirmDialog
+          title={`Delete ${title}?`}
+          body="It was never published, so nobody holds a seat. It goes for good."
+          keepWord="Keep it"
+          goWord="Delete"
+          busy={busy}
+          err={err}
+          onKeep={() => setAsking(false)}
+          onGo={() => void remove()}
+        />
+      ) : null}
     </>
   );
 }

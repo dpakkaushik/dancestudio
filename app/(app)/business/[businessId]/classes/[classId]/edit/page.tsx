@@ -5,6 +5,7 @@ import { findClassPeopleByClass } from "@/repositories/classPeople";
 import { findClassById } from "@/repositories/classes";
 import { findRoomsByBusiness } from "@/repositories/rooms";
 import { findBusinessName, findMyMemberships } from "@/repositories/businesses";
+import { findRefundWindowHours } from "@/repositories/refundWindow";
 
 /** Edit class — the owner or a manager (11 Oct 2026), like Add class. */
 export default async function EditClassPage({
@@ -47,12 +48,16 @@ export default async function EditClassPage({
   /* ⚠ `findDiscoverCities` LEFT THIS LIST WITH THE MAP PICKER (20 Sep 2026) —
      it centred a map this form no longer draws. One round trip fewer on every
      edit. */
-  const [rooms, classPeople, venueName] = await Promise.all([
+  /* ⚠ A CLOSED DRAFT IS EDITABLE (11 Oct 2026, D3): its date passed and it was
+     never published — "Pick a new date" opens this form, and the save may move
+     it into the future */
+  const [rooms, classPeople, venueName, refundWindowHours] = await Promise.all([
     business.type === "studio" ? findRoomsByBusiness(supabase, businessId) : Promise.resolve([]),
     findClassPeopleByClass(supabase, classId),
     /* the studio an artist asked for a room, BY NAME — the form used to reopen on
        "the studio you asked" because only the id was on the row (18 Sep 2026) */
     danceClass.venueBusinessId ? findBusinessName(supabase, danceClass.venueBusinessId).catch(() => null) : Promise.resolve(null),
+    findRefundWindowHours(supabase, businessId),
   ]);
 
   return (
@@ -68,6 +73,7 @@ export default async function EditClassPage({
       ownedStudioIds={memberships.filter((m) => (m.memberRole === "owner" || m.memberRole === "manager") && m.business.type === "studio").map((m) => m.business.id)}
       studioPlace={[business.area, business.city].filter(Boolean).join(", ")}
       suggestedStyles={business.styles}
+      refundWindowHours={refundWindowHours}
     />
   );
 }

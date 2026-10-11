@@ -126,8 +126,10 @@ try {
   $asked = Mine $trainer "people"
   Rpc (Api $trainer.token) "respond_to_class_ask" @{ p_class_person_id = $claim.id; p_accept = $true } | Out-Null
   $answered = Mine $owner "people"
-  Check 4 "The trainer was told they were asked ($(Titles $asked)); the studio was told the answer ($(Titles $answered))" (
-    ($asked.Count -eq 1) -and ($asked[0].title -like "*wants you as the artist taking*") -and ($asked[0].href -eq "/inbox") -and
+  # 11 Oct 2026 (20261017090000, B14): an ask points at CLASSES, where it is
+  # answered - /my-classes?tab=todo - not the Inbox it used to name
+  Check 4 "The trainer was told they were asked ($(Titles $asked)) and pointed at Classes ($($asked[0].href)); the studio was told the answer ($(Titles $answered))" (
+    ($asked.Count -eq 1) -and ($asked[0].title -like "*wants you as the artist taking*") -and ($asked[0].href -eq "/my-classes?tab=todo") -and
     ($answered.Count -eq 1) -and ($answered[0].title -like "*confirmed Notif Class*"))
 
   # 5. NO WAITLIST since 4 Oct 2026 (20261004160000): the full class refuses L2

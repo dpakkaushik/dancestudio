@@ -1,5 +1,6 @@
 import { PasswordSignIn } from "@/features/auth/components/PasswordSignIn";
 import { leaveIfSignedIn } from "@/lib/auth/leaveIfSignedIn";
+import { safeNext } from "@/lib/auth/safeNext";
 
 /** Sign in — email + password (7 Sep 2026).
  *
@@ -10,9 +11,10 @@ import { leaveIfSignedIn } from "@/lib/auth/leaveIfSignedIn";
 export default async function EmailLoginPage({
   searchParams,
 }: {
-  searchParams: Promise<{ error?: string }>;
+  searchParams: Promise<{ error?: string; next?: string }>;
 }) {
   await leaveIfSignedIn();
-  const { error } = await searchParams;
-  return <PasswordSignIn initialError={error ?? null} />;
+  const { error, next } = await searchParams;
+  /* `next` (11 Oct 2026, B21) — only an in-app path survives `safeNext` */
+  return <PasswordSignIn initialError={error ?? null} next={safeNext(next)} />;
 }

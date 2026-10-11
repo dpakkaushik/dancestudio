@@ -28,6 +28,8 @@ export function ClassDeleteChip({
   title,
   isDraft,
   enrolled,
+  priceInr = 0,
+  paidSeats = 0,
 }: {
   classId: string;
   businessId: string;
@@ -35,6 +37,11 @@ export function ClassDeleteChip({
   isDraft: boolean;
   /** live seats on the class — what the question has to say about money */
   enrolled: number;
+  /** the seat price — a free class has nothing to refund (B18, 11 Oct 2026) */
+  priceInr?: number;
+  /** seats paid ONLINE — the ones a call-off sends money back for; a pass gets
+   *  its hours back and a door seat was collected by hand */
+  paidSeats?: number;
 }) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
@@ -57,14 +64,33 @@ export function ClassDeleteChip({
     /* a deleted class no longer resolves at its own link: with people refunded
        the next screen is where those refunds are settled (the sentence promises
        it), and with nobody on it, the register it came off */
-    router.replace(enrolled > 0 ? `/business/${businessId}/refunds` : `/business/${businessId}/classes`);
+    router.replace(paid > 0 ? `/business/${businessId}/refunds` : `/business/${businessId}/classes`);
   };
 
+  /* ⚠ HONEST PER CASE (11 Oct 2026, B18). It said "must be refunded" and sent
+     the owner to the refunds desk for a FREE class too, where there was nothing
+     to settle. Three cases now: nobody booked; booked but nothing paid online
+     (free seats, passes, door cash); paid seats, which the call-off refunds
+     through Cashfree by itself. */
+  const paid = priceInr > 0 ? Math.min(paidSeats, enrolled) : 0;
+  const ppl = (n: number) => `${n} ${n === 1 ? "person" : "people"}`;
   const ask = isDraft
     ? { title: "Delete this draft?", body: `${title} has never been published, so nobody has booked it — deleting it takes it off your list for good.`, word: "Delete draft" }
-    : enrolled > 0
-      ? { title: "Delete this published class?", body: `${title} · ${enrolled} enrolled ${enrolled === 1 ? "student" : "students"} must be refunded — you'll settle each refund on the next screen.`, word: "Delete & manage refunds" }
-      : { title: "Delete this published class?", body: `${title} comes off the listing immediately. Nobody has booked it, so there is nothing to refund.`, word: "Delete class" };
+    : enrolled === 0
+      ? { title: "Delete this published class?", body: `${title} comes off the listing immediately. Nobody has booked it, so there is nothing to refund.`, word: "Delete class" }
+      : paid > 0
+        ? {
+            title: "Delete this published class?",
+            body: `${title} · ${paid} enrolled ${paid === 1 ? "student" : "students"} must be refunded — the refunds go out through Cashfree by themselves, and you can follow them on the next screen. Everybody booked is told${enrolled > paid ? ", and a pass gets its hours back" : ""}.`,
+            word: "Delete & manage refunds",
+          }
+        : {
+            title: "Delete this published class?",
+            body: priceInr > 0
+              ? `${title} · ${ppl(enrolled)} booked. Nobody paid online, so nothing goes back through Cashfree — a pass gets its hours back. Everybody booked is told.`
+              : `${title} · ${ppl(enrolled)} booked. It is free, so there is nothing to refund — their seats are cancelled and they are told.`,
+            word: "Delete class",
+          };
 
   return (
     <>

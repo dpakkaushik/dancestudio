@@ -153,7 +153,7 @@ export default async function BusinessClassesPage({
         ),
       };
     })
-    .concat(closedDrafts.map((c) => ({ ...closedDraftItem({ key: `draft-${c.id}`, c, artist: artistOf(c.id), filled: seatsOf(c.session?.id), role: "yours" }), tab: "past" as ClassesTab, group: "past" as const, at: c.session?.startsAt ?? null })))
+    .concat(closedDrafts.map((c) => ({ ...closedDraftItem({ key: `draft-${c.id}`, c, artist: artistOf(c.id), filled: seatsOf(c.session?.id), role: "yours", canEdit: true }), tab: "past" as ClassesTab, group: "past" as const, at: c.session?.startsAt ?? null })))
     .sort((a, b) => (a.group === "past" && b.group === "past" ? (b.at ?? "").localeCompare(a.at ?? "") : (a.at ?? "9").localeCompare(b.at ?? "9")));
 
   const items: ClassItem[] = [...todo, ...runs];

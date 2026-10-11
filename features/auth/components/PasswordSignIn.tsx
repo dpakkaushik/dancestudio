@@ -29,7 +29,7 @@ const initialState: AuthActionState = { error: null };
  *  out any account created before the 8-character rule, the demo users
  *  included — length governs what you may CHOOSE, not what you may type to
  *  prove who you are (see types/password.ts). */
-export function PasswordSignIn({ initialError = null }: { initialError?: string | null }) {
+export function PasswordSignIn({ initialError = null, next = null }: { initialError?: string | null; next?: string | null }) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [touched, setTouched] = useState(false);
@@ -67,6 +67,8 @@ export function PasswordSignIn({ initialError = null }: { initialError?: string 
       </p>
 
       <form action={formAction} noValidate>
+        {/* where to come back to after signing in (B21) — re-checked by the action */}
+        {next ? <input type="hidden" name="next" value={next} /> : null}
         <div className="mb-3.5">
           <Label htmlFor={fieldId} className="mb-2 text-xs tracking-[0.5px]">
             Email address

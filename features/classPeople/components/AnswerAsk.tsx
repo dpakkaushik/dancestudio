@@ -2,6 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { respondToClassAskAction } from "@/features/classPeople/server-actions/classPeople";
 import { INK, LILAC, SUB } from "@/lib/design/tokens";
 
@@ -45,6 +46,7 @@ export function AnswerAsk({
   const router = useRouter();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [confirmOpen, setConfirmOpen] = useState(false);
 
   const answer = async (accept: boolean) => {
     setBusy(true);
@@ -58,9 +60,25 @@ export function AnswerAsk({
   return (
     <>
       <span style={{ flexBasis: "100%", fontSize: 10.5, color: SUB, lineHeight: 1.45 }}>{line}</span>
-      <button type="button" disabled={busy} onClick={() => answer(false)} style={pill(true)}>
+      {/* ⚠ a no is asked first (B17, 11 Oct 2026) */}
+      <button type="button" disabled={busy} onClick={() => setConfirmOpen(true)} style={pill(true)}>
         {busy ? "…" : "Reject"}
       </button>
+      {confirmOpen ? (
+        <ConfirmDialog
+          title="Say no to this class?"
+          body="They are told, and would have to ask you again."
+          keepWord="Keep it"
+          goWord="Say no"
+          tone="danger"
+          busy={busy}
+          onKeep={() => setConfirmOpen(false)}
+          onGo={() => {
+            setConfirmOpen(false);
+            void answer(false);
+          }}
+        />
+      ) : null}
       <button type="button" disabled={busy} onClick={() => answer(true)} style={{ ...pill(false), background: INK, color: LILAC }}>
         {busy ? "…" : "Accept"}
       </button>
