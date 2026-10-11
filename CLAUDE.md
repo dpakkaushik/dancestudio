@@ -2,7 +2,7 @@
 
 ## LAST SESSION (12 Oct 2026) — replaced on every push (Rule 13)
 
-> ### THE TOOLS LIVE IN THE PROFILE DRAWER, THE THEME AND THE GEAR WITH THEM, A TALLER SQUIRCLE BAR, AND THE COLUMN OUTLINE REVERTED (12 Oct 2026, latest) — no migration · ⚠ COMMITTED, NOT PUSHED (waits on the user's word)
+> ### THE TOOLS LIVE IN THE PROFILE DRAWER, THE THEME AND THE GEAR WITH THEM, A TALLER SQUIRCLE BAR, AND THE COLUMN OUTLINE REVERTED (12 Oct 2026, latest) — no migration · ✅ PUSHED AND LIVE (`3bd1878`: Vercel READY, alias confirmed on the sha through the API; ON THE LIVE SITE `stranger-smoke` **9/9**)
 > The user: *"remove the outline from the columns revert back to previous one . … take the tools from the home section under the profile switcher from top right in one line for each tile. coming from right side now this entire section. dark and light mode like toggle on top of this section with settiongs on its right. top bar becomes a bit more bigger and its outline at bootom of top bar also becomes squircle. for all profiles."* Rows C165–C167; C161 reverted.
 > * **`ColumnTabs` is back to the pre-`b9993fa` look** (an `--el` track, no edge on the columns).
 > * **The profile picture opens a DRAWER from the right** (`profile-drawer`, portalled, 86% / max 340px, `dosDrawerIn`): on top a **Light · Dark** toggle (`role="group" aria-label="Theme"`) with the **Settings gear on its right**; then SWITCH PROFILE (the old menu, still `role="menu" aria-label="Your profiles"` with menuitem rows); then the **current profile's tools, one row each** (`<nav aria-label="Tools">`, glyph + name + chevron); then Log out. The tools are computed in the LAYOUT for every switcher row (`features/home/tiles.ts`: `tilesFor`, `studioTilesFor` by seat, `crewTilesFor`), ordered by the stored `profiles.layout`, and the drawer shows the HERE row's.
@@ -10970,7 +10970,7 @@ summary; the report has the evidence.
 
 ## NEXT TO DO — replaced on every push (Rule 13)
 
-0c0. **THE DRAWER (12 Oct 2026) — not pushed; and the Arrange control is gone.** Push on the user's word (typecheck, lint, build, `git push`, read Vercel's list for the sha, `stranger-smoke`). There is no way left to arrange the tools; if wanted, ▲▼ rows in the drawer behind an "Arrange" link would restore it.
+0c0. **THE DRAWER IS LIVE (`3bd1878`) — and the Arrange control is gone.** There is no way left to arrange the tools; if wanted, ▲▼ rows in the drawer behind an "Arrange" link would restore it.
 
 0bz. **WHAT THE TEAM SPLIT LEAVES (12 Oct 2026).** Nothing is pending in the database. The three `tiles.*@example.com` leftover profiles still fail the guard — `node scripts/cleanup-proof-leftovers.js --show-kept`, then `--apply` on the user's word. An answered team invite from before `20261020090000` carries its type now (the RPC reads it live), so nothing is left behind there.
 
@@ -13630,7 +13630,7 @@ for the database schema. **The UI is not redesigned** — see Rule 2.
 
 ### Progress tracker — update after EVERY push (Rule 11)
 
-- **THE TOOLS IN THE PROFILE DRAWER, THE THEME AND GEAR WITH THEM, A 78px SQUIRCLE BAR, THE COLUMN OUTLINE REVERTED — 12 Oct 2026, no step number — no migration, committed, NOT pushed.** Rows C165–C167. Detail at the top.
+- **THE TOOLS IN THE PROFILE DRAWER, THE THEME AND GEAR WITH THEM, A 78px SQUIRCLE BAR, THE COLUMN OUTLINE REVERTED — 12 Oct 2026, no step number — no migration, PUSHED AND LIVE (`3bd1878`).** Rows C165–C167. Detail at the top.
 - **ONE FORM HEADING, NO SUBHEADINGS, A FOLLOW LIST IS A PAGE — 12 Oct 2026, no step number — no migration — PUSHED AND LIVE (`2e12d9a`).** Rows C157–C159. Detail at the top.
 - **INVITE FACES, THE CLASS PAGE'S PLACE, OUTLINED COLUMNS, WIDE ROUTINE MEDIA, AN ENQUIRY GEAR, A RINGED TAB — 12 Oct 2026, no step number — no migration, PUSHED AND LIVE (`b9993fa`).** Rows C160–C164. Detail at the top.
 - **ADD ABOVE THE COLUMNS, ROUTINE MEDIA ON THE HEAD, ROOM CAPACITY, A MEMBERSHIP BAR, TEAM AS MY TEAM · ARTIST TEAMS — 12 Oct 2026, no step number ⚠ (Rule 9) — `20261020090000` APPLIED.** Rows C155, C156. Detail at the top.
