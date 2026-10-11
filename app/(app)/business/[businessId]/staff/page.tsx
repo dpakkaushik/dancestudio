@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { StaffDesk } from "@/features/staff/components/StaffDesk";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { findSentInvites } from "@/repositories/invites";
+import { findProfilePhotoPaths } from "@/repositories/profiles";
 import { sentTeamAnsweredRow } from "@/features/inbox/inviteRows";
 import { findBusinessPayLedger } from "@/repositories/payouts";
 import { findMyMemberships, findBusinessTeam, runsTheBusiness } from "@/repositories/businesses";
@@ -58,9 +59,13 @@ export default async function BusinessStaffPage({
   /* each member's Classes figure (4 Oct 2026, the user: "Paid Payments and Classes
      for - Team Member Cards") — the Member Detail page's own rule, one batch for
      the desk; a failed read draws no figure rather than a wrong one */
-  const invites = sent.filter((i) => i.status === "pending");
+  /* the person asked wears their own picture (12 Oct 2026) — one read for every
+     invite the desk sent; an address-only invite has no person and keeps initials */
+  const faces = await findProfilePhotoPaths(supabase, sent.map((i) => i.userId ?? "")).catch(() => ({}) as Record<string, string | null>);
+  const faceOf = (i: (typeof sent)[number]) => (i.userId ? (faces[i.userId] ?? null) : null);
+  const invites = sent.filter((i) => i.status === "pending").map((i) => ({ ...i, photoPath: faceOf(i) }));
   const answered = sent.flatMap((i) => {
-    const row = sentTeamAnsweredRow(i, null);
+    const row = sentTeamAnsweredRow(i, faceOf(i));
     return row ? [row] : [];
   });
   /* ⚠ MY TEAM · ARTIST TEAMS (11 Oct 2026, the user: "Team section to have two

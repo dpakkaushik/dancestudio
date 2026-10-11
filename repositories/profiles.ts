@@ -198,6 +198,20 @@ export const PEOPLE_SEARCH_MAX = 5;
 /** HOW MANY SUGGESTIONS BEFORE A TERM IS TYPED — "max 3 suggestions according to history" */
 export const PEOPLE_RECENT_MAX = 3;
 
+/** THE PROFILE PICTURES OF SOME PEOPLE, one read (12 Oct 2026, the user: "in
+ *  some invites i can see profile pic not visible even when its there on
+ *  profile"). The Team desk's waiting and answered invite cards drew initials
+ *  for the person asked whatever their profile held. Signed-in readers read
+ *  live profiles (Step 1), so this is a plain read; a failure answers `{}`
+ *  and the cards keep their initials. */
+export async function findProfilePhotoPaths(supabase: SupabaseClient, userIds: string[]): Promise<Record<string, string | null>> {
+  const ids = [...new Set(userIds.filter(Boolean))];
+  if (ids.length === 0) return {};
+  const { data, error } = await supabase.from("profiles").select("id, profile_photo_path").in("id", ids).is("deleted_at", null);
+  if (error) return {};
+  return Object.fromEntries((data as Array<{ id: string; profile_photo_path: string | null }>).map((r) => [r.id, r.profile_photo_path]));
+}
+
 /** SEARCH DANCEOS (prototype 16413-16447): live profiles whose NAME contains the
  *  term or who hold the WHOLE mobile number typed (19 Sep 2026, the user:
  *  "option to search name, mobile no."), the caller left out, at most five.

@@ -195,6 +195,8 @@ export function InboxScreen({
             {deskSub ? `${deskSub} · ` : ""}
             {owed > 0 ? `${owed} waiting on you` : "Nothing waiting on you"}
           </div>
+          {/* the enquiry settings' gear, top right (12 Oct 2026) */}
+          {settings}
         </div>
         {/* ⚠ WHAT MOVED TO ITS OWN TILE (11 Oct 2026) — one line each, only while
             something waits there; the class line's own treatment */}
@@ -216,7 +218,6 @@ export function InboxScreen({
             </span>
           </Link>
         ))}
-        {settings}
         {/* ⚠ NO SENT SIDE ON A STUDIO'S DESK (2 Oct 2026) — an enquiry is sent by a person */}
         {sideSwitch(enqSide, pickEnqSide, liveIn, receivedOnly ? null : liveOut, doneEnq.length, "enquiries")}
       </TopPanel>

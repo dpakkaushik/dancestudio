@@ -29,7 +29,6 @@ export function StyleCard({ style, classes, city, followers }: { style: string; 
         <span style={{ display: "block", fontFamily: DOS_DISPLAY, fontWeight: 900, fontSize: 17, letterSpacing: -0.4, lineHeight: 1.1, marginTop: 2, overflowWrap: "anywhere" }}>{style}</span>
         {classes > 0 ? <span style={{ display: "block", fontSize: 10.5, fontWeight: 700, opacity: 0.85, marginTop: 3 }}>{classes} {classes === 1 ? "class" : "classes"} in {city}</span> : null}
       </span>
-      <span aria-hidden="true" style={{ position: "absolute", top: 9, left: 9, width: 10, height: 10, borderRadius: 5, background: color, boxShadow: "0 0 0 2px rgba(255,255,255,.85)" }} />
       {/* the people who carry this style on their profile or want to learn it
           (10 Oct 2026, the user: "follower count on styles tile on discover") —
           the same pill a studio, an artist and a crew card wear */}

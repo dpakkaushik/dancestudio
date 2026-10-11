@@ -1445,6 +1445,8 @@ test.describe.serial("DanceOS, end to end", () => {
        the closed card is its title alone, so the count is read once it is open */
     await owner.getByRole("button", { name: /^Enquiry settings/ }).first().click();
     await expect(owner.getByText(/^\d+ of \d+ kinds$/).first()).toBeVisible();
+    /* the settings are a sheet behind the gear since 12 Oct 2026 — close it */
+    await owner.getByRole("dialog", { name: "Enquiry settings" }).getByRole("button", { name: "Done" }).click();
     await owner.getByRole("link", { name: `Choreographer enquiry from ${learnerName}` }).click();
     await owner.waitForURL(/\/inbox\/enquiries\/[0-9a-f-]+$/);
     await expect(owner.getByText("WHAT THEY ASKED FOR")).toBeVisible();
@@ -2145,7 +2147,9 @@ test.describe.serial("DanceOS, end to end", () => {
       const guest = await guestContext.newPage();
       await guest.goto(studioUrl);
       await expect(guest.getByText(studioName).first()).toBeVisible();
-      await expect(guest.getByRole("link", { name: "Follow" })).toBeVisible();
+      // ⚠ exact: the follower figures are links now ("Followers — 1"), and a
+      // bare string is a SUBSTRING match (12 Oct 2026)
+      await expect(guest.getByRole("link", { name: "Follow", exact: true })).toBeVisible();
       await expect(guest.getByTestId("follow-toggle")).toHaveAttribute("data-followers", "1");
     } finally {
       await guestContext.close();
@@ -3825,7 +3829,9 @@ test.describe.serial("DanceOS, end to end", () => {
     // on — dancers are people who were CHECKED IN, never people who booked.
     await trainer.goto("/routines");
     await expect(row.getByTestId("routine-classes")).toHaveText("1");
-    await row.click();
+    /* the card's own link, not its middle — Song and Video span the card's
+       middle since 12 Oct 2026, so a centre click opens the song */
+    await row.getByRole("link", { name: `Open ${routineName}`, exact: true }).click({ position: { x: 10, y: 10 } });
     await trainer.waitForURL(/\/routines\/[0-9a-f-]+$/);
     await expect(trainer.getByRole("heading", { name: routineName })).toBeVisible();
     await expect(trainer.getByTestId("routine-classes")).toHaveText("1");

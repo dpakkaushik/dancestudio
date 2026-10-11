@@ -181,6 +181,8 @@ export interface ClassDetailProps {
   classMoney?: ClassMoney | null;
   /** What the room has in it — read off the room the class runs in. */
   roomAmenities: string[];
+  /** how many the room holds — printed in AT THE STUDIO (12 Oct 2026) */
+  roomCapacity?: number | null;
   /** on a priced class, the learners whose seat is paid — the register row's
    *  meta line (12126); empty for a free class and for anyone not running it */
   paidUserIds?: string[];
@@ -268,6 +270,7 @@ export function ClassDetail({
   standingAttendance = false,
   standingRefunds = false,
   roomAmenities,
+  roomCapacity = null,
   refunds = [],
   canSettleRefunds = false,
   classMoney = null,
@@ -831,6 +834,12 @@ export function ClassDetail({
                 eyebrow="Studio"
                 made={studioMade}
                 mirrored
+                /* ⚠ THE STUDIO HALF IS THE STUDIO'S DOOR (12 Oct 2026, the user:
+                   "remove studio name and pic as already above in right and that
+                   pic should take to profile") — AT THE STUDIO no longer repeats
+                   the place, so this is its one link, with the name it had there */
+                href={placeIsStudio ? placeHref : undefined}
+                hrefLabel={placeIsStudio ? `Open ${placeName}` : undefined}
                 title={studioMade ? madeBy : undefined}
                 confirmed={isDraft}
               />
@@ -1311,8 +1320,12 @@ export function ClassDetail({
               the studio"): BAND 1 is the place itself, big — its own picture and
               its name in the display face, one door to its page; then the ROOM in
               a tile of its own holding what the room has; then the address; then
-              Maps on a bar of its own. Nothing is said twice: the seats are the
-              card's bar above, so the room tile carries no capacity. */}
+              Maps on a bar of its own. Since 12 Oct 2026 the studio's name and
+              picture are the card's right half only, and the room tile carries
+              the ROOM's capacity (what it holds — the card's bar is the class's). */}
+          {/* ⚠ ONLY WHEN NOTHING ABOVE NAMES THE PLACE (12 Oct 2026): a studio is
+              the card's right half and opens from there */}
+          {placeIsStudio && studioHalf ? null : (
           <Link href={placeHref} aria-label={`Open ${placeName}`} data-testid="class-place" style={{ display: "flex", alignItems: "center", gap: 12, color: "var(--text)", textDecoration: "none" }}>
             <ToolFace name={placeName} photoPath={placePhoto} tint={col} size={56} />
             <span style={{ flex: 1, minWidth: 0, display: "block" }}>
@@ -1324,19 +1337,31 @@ export function ClassDetail({
               ›
             </span>
           </Link>
+          )}
           {/* the ROOM, and what it HAS (12278-12354) — one tile, because the
               amenities belong to the room and not to the studio */}
           {/* an artist's class at a place of their own has no room to name and no
               amenities to list, so the tile is not drawn at all there */}
           {c.room || placeIsStudio ? (
-          <div data-testid="class-room-tile" style={{ marginTop: 13, padding: "11px 12px 12px", borderRadius: 15, background: `${col}0f`, border: "1.5px solid var(--el)" }}>
+          <div data-testid="class-room-tile" style={{ marginTop: placeIsStudio && studioHalf ? 0 : 13, padding: "13px 13px 13px", borderRadius: 16, background: `${col}0f`, border: "1.5px solid var(--el)" }}>
+            {/* ⚠ THE ROOM AND WHAT IT HOLDS ON ONE ROW (12 Oct 2026, the user:
+                "room capacity also and should look better at the studio") — the
+                studio page's own capacity pill, so the two read alike */}
             {c.room ? (
-              <>
-                <div style={{ fontSize: 9, fontWeight: 900, letterSpacing: 0.9, color: "var(--muted)" }}>ROOM</div>
-                <div data-testid="class-room" style={{ fontFamily: DOS_DISPLAY, fontSize: 23, fontWeight: 800, letterSpacing: -0.6, lineHeight: 1.1, color: ink, marginTop: 2, marginBottom: 11, overflowWrap: "anywhere" }}>
-                  {c.room}
+              <div style={{ display: "flex", alignItems: "flex-start", gap: 10, paddingBottom: 12, marginBottom: 11, borderBottom: "1.5px solid var(--el)" }}>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontSize: 9, fontWeight: 900, letterSpacing: 0.9, color: "var(--muted)" }}>ROOM</div>
+                  <div data-testid="class-room" style={{ fontFamily: DOS_DISPLAY, fontSize: 23, fontWeight: 800, letterSpacing: -0.6, lineHeight: 1.1, color: ink, marginTop: 2, overflowWrap: "anywhere" }}>
+                    {c.room}
+                  </div>
                 </div>
-              </>
+                {roomCapacity ? (
+                  <div data-testid="class-room-capacity" aria-label={`Capacity ${roomCapacity} people`} style={{ flexShrink: 0, display: "flex", flexDirection: "column", alignItems: "center", padding: "6px 11px", borderRadius: 13, background: `${col}1c`, border: `1.5px solid ${col}33` }}>
+                    <span style={{ fontSize: 19, fontWeight: 900, lineHeight: 1.05, color: "var(--text)", fontVariantNumeric: "tabular-nums" }}>{roomCapacity}</span>
+                    <span style={{ fontSize: 8.5, fontWeight: 900, letterSpacing: 0.8, color: "var(--sub)", marginTop: 2 }}>CAPACITY</span>
+                  </div>
+                ) : null}
+              </div>
             ) : null}
             <div style={{ fontSize: 9, fontWeight: 900, letterSpacing: 0.9, color: "var(--muted)", marginBottom: 6 }}>AMENITIES</div>
             <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 6 }}>

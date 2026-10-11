@@ -320,6 +320,7 @@ export default async function ClassSharePage({
       standingAttendance={Boolean(seat?.canAttendance)}
       standingRefunds={Boolean(seat?.canRefunds)}
       roomAmenities={room?.amenities ?? []}
+      roomCapacity={room?.capacity ?? null}
       refunds={refunds}
       canSettleRefunds={canSettleRefunds}
       classMoney={classMoney}

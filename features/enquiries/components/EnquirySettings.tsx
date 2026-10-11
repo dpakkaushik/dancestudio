@@ -6,6 +6,7 @@ import { Switch } from "@/features/profiles/components/ContactEditor";
 import { fieldLabel } from "@/features/profiles/components/profile-kit";
 import { updateBusinessProfileAction } from "@/features/settings/server-actions/plans";
 import { MUTED, SUB } from "@/lib/design/tokens";
+import { BottomSheet } from "@/components/ui/RequestSettingsSheet";
 import { enquiryTypesFor } from "@/types/enquiry";
 import type { Business } from "@/types/business";
 
@@ -32,15 +33,34 @@ import type { Business } from "@/types/business";
  *  artist three (+ Judge / Guest) — `enquiryTypesFor` decides, never a list
  *  typed here. */
 export function EnquirySettings({ businesses }: { businesses: Business[] }) {
+  const [open, setOpen] = useState(false);
   if (businesses.length === 0) return null;
+  /* ⚠ A GEAR IN THE INBOX'S TOP RIGHT (12 Oct 2026, the user: "enquiry setting
+     becomes icon on top right") — the disclosure that sat under the heading is
+     a bottom sheet behind one round button, the Classes gear's own shape in the
+     page's ink (the Inbox's head is not a solid hero, so white would vanish) */
   return (
-    /* in the Inbox's TOP squircle since 3 Oct 2026, under the columns — each
-       card carries its own 10px above, and the first one 12 */
-    <div style={{ margin: "2px 0 0" }}>
-      {businesses.map((t) => (
-        <OneBusiness key={t.id} business={t} showName={businesses.length > 1} />
-      ))}
-    </div>
+    <>
+      <button
+        type="button"
+        aria-label="Enquiry settings"
+        data-testid="enquiry-settings"
+        onClick={() => setOpen(true)}
+        style={{ position: "absolute", top: 0, right: 0, width: 38, height: 38, borderRadius: 19, border: "1.5px solid var(--el)", background: "var(--card)", color: "var(--text)", display: "inline-flex", alignItems: "center", justifyContent: "center", cursor: "pointer", padding: 0 }}
+      >
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+          <circle cx="12" cy="12" r="3" />
+          <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.6 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.6a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" />
+        </svg>
+      </button>
+      {open ? (
+        <BottomSheet title="Enquiry settings" onClose={() => setOpen(false)} scroll>
+          {businesses.map((t) => (
+            <OneBusiness key={t.id} business={t} showName={businesses.length > 1} />
+          ))}
+        </BottomSheet>
+      ) : null}
+    </>
   );
 }
 
@@ -48,8 +68,6 @@ function OneBusiness({ business, showName }: { business: Business; showName: boo
   const router = useRouter();
   const [pending, start] = useTransition();
   const [err, setErr] = useState<string | null>(null);
-  const [open, setOpen] = useState(false);
-
   const all = enquiryTypesFor(business.type).map((t) => t.k);
   const stored = business.enquiryTypes;
   /* null on the record means EVERY kind its type allows; an empty list means
@@ -92,26 +110,8 @@ function OneBusiness({ business, showName }: { business: Business; showName: boo
 
   return (
     <div style={{ background: "var(--card)", border: "1.5px solid var(--el)", borderRadius: 16, padding: "12px 14px", marginTop: 10 }}>
-      <button
-        type="button"
-        aria-expanded={open}
-        /* "ENQUIRY SETTINGS" (2 Oct 2026, the user: "what you take in enquiries
-           should be enquiry settings") — the visible word and the accessible name
-           move together, the 27 Sep rule */
-        aria-label={showName ? `Enquiry settings — ${business.name}` : "Enquiry settings"}
-        onClick={() => setOpen((v) => !v)}
-        style={{ display: "flex", alignItems: "center", gap: 10, width: "100%", background: "none", border: "none", padding: 0, cursor: "pointer", fontFamily: "inherit", color: "var(--text)", textAlign: "left" }}
-      >
-        {/* ⚠ ONE HEADING (3 Oct 2026, the user: "settings for enquiry requests
-            and invites should not have the second heading") — the state line
-            that sat under the title is inside the opened panel now */}
-        <span style={{ ...fieldLabel, margin: 0, flex: 1, minWidth: 0 }}>Enquiry settings{showName ? ` · ${business.name}` : ""}</span>
-        <span aria-hidden="true" style={{ fontSize: 15, color: MUTED, transform: open ? "rotate(90deg)" : "none", transition: "transform .15s" }}>
-          ›
-        </span>
-      </button>
-
-      {open ? (
+      {showName ? <div style={{ ...fieldLabel, margin: 0 }}>{business.name}</div> : null}
+      {(
         <>
           <div style={{ fontSize: 11.5, fontWeight: 800, color: SUB, marginTop: 8 }}>{on ? `${liveCount} of ${all.length} kinds` : "Not taking enquiries"}</div>
           <Switch
@@ -173,7 +173,7 @@ function OneBusiness({ business, showName }: { business: Business; showName: boo
             </div>
           ) : null}
         </>
-      ) : null}
+      )}
     </div>
   );
 }

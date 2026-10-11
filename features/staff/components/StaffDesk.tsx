@@ -172,7 +172,8 @@ export function StaffDesk({
   /** which labels this profile has to give (19 Sep 2026) */
   businessType: BusinessType;
   team: TeamMember[];
-  invites: BusinessInvite[];
+  /** the person asked's own picture rides each row (12 Oct 2026) */
+  invites: Array<BusinessInvite & { photoPath?: string | null }>;
   /** everything this business has paid its people — the history, filtered per row */
   payments?: PayoutRecord[];
   isOwner: boolean;
@@ -565,7 +566,7 @@ export function StaffDesk({
                     tint={TEAM_TINT}
                     eyebrowTint={L.colour}
                     name={inv.name}
-                    photoPath={null}
+                    photoPath={inv.photoPath ?? null}
                     eyebrow={`${MEMBER_ROLE_WORD[inv.memberRole]} · asked`}
                     sub={inv.email ?? null}
                     right={<ToolChip word={declined ? "SAID NO" : "WAITING"} fg={declined ? "#F87171" : "#F59E0B"} bg={declined ? "#F8717118" : "#F59E0B18"} />}

@@ -25,7 +25,7 @@ import { DeskBody, DeskTop } from "@/components/ui/DeskSections";
  *  mean. */
 
 /** the head's two small media buttons (11 Oct 2026) */
-const HEAD_MEDIA: CSSProperties = { padding: "5px 9px", fontSize: 11, gap: 4, flex: "0 0 auto", minHeight: 0 };
+const HEAD_MEDIA: CSSProperties = { padding: "10px 12px", fontSize: 13, gap: 6, flex: "1 1 0", minWidth: 0, justifyContent: "center" };
 
 const card: CSSProperties = { background: "var(--card)", border: "1.5px solid var(--el)", borderRadius: 16, padding: "13px 14px", marginBottom: 10 };
 
@@ -214,13 +214,14 @@ function RoutineCard({
         right={<ToolChip word={status.word} fg={status.strong ? "#22C55E" : SUB} bg={status.strong ? "#22C55E1c" : "var(--el)"} />}
       />
       <ToolBody style={{ padding: "10px 14px 11px" }}>
-        {/* ⚠ SONG AND VIDEO IN THE MIDDLE SECTION, ON THE RIGHT (12 Oct 2026, the
-            user: "song and video in routine in middle section right side") — beside
-            the routine's name and pills, stacked, each still its own link above the
-            card's stretched one (`pointerEvents: auto`). The accessible names are
+        {/* ⚠ SONG LEFT, VIDEO RIGHT, ACROSS THE MIDDLE SECTION (12 Oct 2026, the
+            user: "song an video 2 buttons placed on left and right taking more
+            space in middle section") — one row under the routine's name, each
+            button half the width, each still its own link above the card's
+            stretched one (`pointerEvents: auto`). The accessible names are
             unchanged ("Open the song for …"). */}
-        <div style={{ display: "flex", alignItems: "flex-start", gap: 10 }}>
-          <div style={{ flex: 1, minWidth: 0 }}>
+        <div>
+          <div style={{ minWidth: 0 }}>
             {/* the routine itself — its name first and biggest, its style and
                 level as pills beside where it was taught */}
             <div style={{ fontSize: 19, fontWeight: 900, letterSpacing: -0.35, lineHeight: 1.2, overflowWrap: "anywhere" }}>{title}</div>
@@ -233,7 +234,7 @@ function RoutineCard({
               <div style={{ fontSize: 11, color: SUB, marginTop: 6, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>♪ {song.title}</div>
             ) : null}
           </div>
-          <span data-testid="routine-media" style={{ display: "flex", flexDirection: "column", alignItems: "stretch", gap: 6, flexShrink: 0, pointerEvents: "auto" }}>
+          <span data-testid="routine-media" style={{ display: "flex", gap: 8, marginTop: 10, pointerEvents: "auto" }}>
             <RoutineMediaButton kind="song" href={song.href} word={song.short} title={title} extra={HEAD_MEDIA} />
             <RoutineMediaButton kind="video" href={video} word="Video" title={title} extra={HEAD_MEDIA} />
           </span>

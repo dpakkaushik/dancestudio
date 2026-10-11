@@ -906,7 +906,12 @@ export function AppChrome({
                   gap: on ? 7 : 0,
                   background: on ? `linear-gradient(135deg,${tint},${tint}cc)` : "transparent",
                   boxShadow: on ? `0 4px 14px ${tint}66` : "none",
-                  transition: "background .22s ease, padding .22s ease, gap .22s ease, box-shadow .22s ease",
+                  /* ⚠ THE SELECTED TAB WEARS ITS OWN OUTLINE (12 Oct 2026, the user:
+                     "navbar icons … should be separate outline when selected. in same
+                     design") — a ring in the tab's own colour, 2px clear of the capsule */
+                  outline: on ? `2px solid ${tint}` : "2px solid transparent",
+                  outlineOffset: 2,
+                  transition: "background .22s ease, padding .22s ease, gap .22s ease, box-shadow .22s ease, outline-color .22s ease",
                   WebkitTapHighlightColor: "transparent",
                   textDecoration: "none",
                 }}
