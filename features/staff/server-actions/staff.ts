@@ -333,6 +333,7 @@ export async function acceptInviteAction(input: { code: string }): Promise<Staff
     await acceptInvite(supabase, parsed.data.code);
     revalidatePath("/");
     revalidatePath("/business");
+    revalidatePath("/inbox");
     return { error: null };
   } catch (error: unknown) {
     return { error: message(error, "Could not join the team") };
@@ -348,6 +349,9 @@ export async function declineInviteAction(input: { code: string }): Promise<Staf
   try {
     await declineInvite(supabase, parsed.data.code);
     revalidatePath("/");
+    /* the invitations are answered on the Studios hub's Team column (11 Oct 2026) */
+    revalidatePath("/business");
+    revalidatePath("/inbox");
     return { error: null };
   } catch (error: unknown) {
     return { error: message(error, "Could not answer that invite") };

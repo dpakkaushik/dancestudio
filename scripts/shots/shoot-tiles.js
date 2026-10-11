@@ -290,7 +290,7 @@ async function personOpensAStudio(page, who, acc, stamp) {
      is asserted where it belongs — `guard_business_visibility`, in the proofs. */
   check((await page.getByTestId("studio-subscription").filter({ hasText: name }).getByRole("button", { name: /^Subscribe/ }).count()) > 0, `${who} · and Subscribe IS offered before the badge — paying comes first now`);
 
-  /* the owner takes their own class: nobody is asked, the owner presses Publish (nothing publishes by itself — 11 Oct 2026), the Inbox keeps the line */
+  /* the owner takes their own class: nobody is asked, the owner presses Publish (nothing publishes by itself — 11 Oct 2026), Classes' Answered keeps the log */
   await page.goto(`${BASE}/business/${studioId}/classes?new=1`, { waitUntil: "networkidle" });
   const form = page.getByRole("dialog", { name: "Add class" });
   await form.waitFor({ timeout: 15_000 }).catch(() => {});

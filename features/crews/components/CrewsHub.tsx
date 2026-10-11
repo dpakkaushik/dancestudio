@@ -7,6 +7,8 @@ import { DeskBody, DeskTop } from "@/components/ui/DeskSections";
 import { ToolActions, ToolBody, ToolCard, ToolChip, ToolFacts, ToolHead, toolBtn } from "@/components/ui/ToolCard";
 import { CrewI, dosToolPaint } from "./crew-kit";
 import { ReclaimCrewButton } from "./ReclaimCrewButton";
+import { CrewInvites, JoinSettingsGear, type CrewInviteRow } from "@/features/inbox/components/JoinInvites";
+import type { AskKind } from "@/repositories/askSettings";
 
 /** The Crews hub — prototype S_bizhub with kind="crews" (2585-2691): TWO LISTS,
  *  BECAUSE THERE ARE TWO RELATIONSHIPS. "A crew you lead and a crew you dance in
@@ -109,15 +111,18 @@ function LedColumn({ led }: { led: CrewSummary[] }) {
  *  ⚠ …EXCEPT ONE: a crew you FOUNDED and handed over is in this column, because
  *  you are a member of it now. That is where "Take it back" belongs, and it is
  *  the only place a founder can reach it (30 Sep 2026). */
-function MemberColumn({ member }: { member: Array<CrewSummary & { since: string; foundedByMe: boolean }> }) {
-  return member.length ? (
+function MemberColumn({ member, asks }: { member: Array<CrewSummary & { since: string; foundedByMe: boolean }>; asks: CrewInviteRow[] }) {
+  return (
     <>
-      {member.map((c) => (
-        <CrewCard key={c.id} crew={c} own={false} since={c.since} foundedByMe={c.foundedByMe} />
-      ))}
+      {/* ⚠ THE ASKS FIRST (11 Oct 2026) — a crew leader asking you onto their
+          roster is answered here, not in the Inbox */}
+      <CrewInvites asks={asks} />
+      {member.length ? (
+        member.map((c) => <CrewCard key={c.id} crew={c} own={false} since={c.since} foundedByMe={c.foundedByMe} />)
+      ) : asks.length ? null : (
+        <div style={{ fontSize: 11.5, color: SUB, padding: "0 2px 10px" }}>You are not on anybody else&rsquo;s crew yet.</div>
+      )}
     </>
-  ) : (
-    <div style={{ fontSize: 11.5, color: SUB, padding: "0 2px 10px" }}>You are not on anybody else&rsquo;s crew yet.</div>
   );
 }
 
@@ -125,7 +130,13 @@ export function CrewsHub({
   led,
   member,
   show = "led",
+  asks = [],
+  inboxOff = [],
 }: {
+  /** the crew asks waiting on this person (11 Oct 2026) — the top of Member */
+  asks?: CrewInviteRow[];
+  /** the kinds of ask switched off — the gear carries the "crew" one */
+  inboxOff?: AskKind[];
   led: CrewSummary[];
   member: Array<CrewSummary & { since: string; foundedByMe: boolean }>;
   /** ⚠⚠ TWO COLUMNS, AND THEY ARE THE TWO RELATIONSHIPS (29 Sep 2026, the user:
@@ -149,13 +160,17 @@ export function CrewsHub({
       offered two columns that can only both say "nothing yet", which is an empty
       state for a question they never asked. They get the Create crew door and
       one line, which is the rule the hub has followed since it grew a segment. */
-  const hasCrew = led.length > 0 || member.length > 0;
+  /* ⚠ an ask waiting on you counts (11 Oct 2026): somebody with no crew yet but
+     one leader asking them must still reach the Member column to answer it */
+  const hasCrew = led.length > 0 || member.length > 0 || asks.length > 0;
   /* the heading — the same paint, and the same word, as the tile you pressed */
   const hero = (
     <div style={{ borderRadius: 22, padding: "15px 17px 14px", marginBottom: 0, position: "relative", overflow: "hidden", color: "#fff", background: dosToolPaint(accent) }}>
       <div style={{ position: "absolute", right: -28, top: -32, width: 130, height: 130, borderRadius: 65, background: "rgba(255,255,255,.13)" }} />
       {/* the page's own `<h1>` — the chrome no longer prints a drill page's name (28 Sep 2026) */}
       <h1 style={{ margin: 0, fontSize: 21, fontWeight: 800, letterSpacing: -0.5, position: "relative", fontFamily: DOS_DISPLAY, lineHeight: 1.18 }}>Crews</h1>
+      {/* the "crew" invite switch, moved here from the Inbox with the asks (11 Oct 2026) */}
+      <JoinSettingsGear testId="crews-settings" kind="crew" off={inboxOff} title="Crew invites" />
     </div>
   );
   return (
@@ -179,11 +194,11 @@ export function CrewsHub({
                  and Member") — the words say what you DO with each crew; the arias
                  stay the sentences a locator and a screen reader read */
               { key: "led", href: "/crews", label: "Manage", n: led.length, aria: "The crews you created" },
-              { key: "in", href: "/crews?show=in", label: "Member", n: member.length, aria: "The crews you are a part of" },
+              { key: "in", href: "/crews?show=in", label: "Member", n: member.length + asks.length, aria: "The crews you are a part of" },
             ]}
             panels={[
               { key: "led", node: <LedColumn led={led} /> },
-              { key: "in", node: <MemberColumn member={member} /> },
+              { key: "in", node: <MemberColumn member={member} asks={asks} /> },
             ]}
           />
         ) : (

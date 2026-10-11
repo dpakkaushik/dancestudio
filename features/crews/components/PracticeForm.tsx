@@ -85,7 +85,7 @@ export function PracticeForm({ crewId, crewName, practice = null }: { crewId: st
       onClose={close}
       onBack={close}
       title={editing ? "Move the practice" : "Arrange a practice"}
-      sub={editing ? `${crewName} — everyone who said they are coming is told` : `${crewName} — everyone on the crew is asked`}
+      sub={`${crewName} — everyone on the crew is told`}
     >
       <label style={FORM_LABEL} htmlFor="practice-date">
         Day
@@ -130,7 +130,7 @@ export function PracticeForm({ crewId, crewName, practice = null }: { crewId: st
         <FormConfirm
           label={editing ? "Move this practice?" : "Arrange this practice?"}
           title={editing ? "Move the practice" : "Arrange the practice"}
-          sub={editing ? "Everyone who has not said no is told it moved — nobody is asked again." : "Everyone confirmed on the crew is asked. You are not: you arranged it."}
+          sub={editing ? "Everyone on the crew is told it moved." : "Everyone confirmed on the crew is told. Check them in from the register on the day."}
           confirmWord={editing ? "Move it" : "Arrange it"}
           busy={busy}
           onCancel={() => setConfirm(false)}

@@ -10,18 +10,18 @@
      · the Practice tile on the crew's home, and the Calendar tile beside it;
      · the leader arranges a practice through the `?new=1` sheet, whose button
        NAMES THE MISSING ANSWER at each step (ClassForm's rule);
-     · the member is ASKED — the row is in their Inbox, in the Accept · Reject
-       group rather than the invitations one, because a practice is about ONE
-       OCCASION — and the LEADER is not asked, which is the thing most likely to
-       be got wrong;
-     · the member says they are coming, and the leader's REGISTER says so;
+     · the member is TOLD, by a notification — nobody is asked since 11 Oct 2026
+       (the user: "no request required for practice only notification should
+       do. team leader can just check their attendance directly in register."),
+       and nothing about a practice is in the Inbox any more;
+     · the leader's REGISTER is the whole crew, with no answer first;
      · the leader checks them in, and undoing it is a soft delete that leaves the
        row on the register rather than erasing the person;
      · it is on the CREW's calendar and on BOTH people's own calendars;
      · and calling it off says so rather than making the practice disappear.
 
-   ⚠ It asserts BOTH ENDS of the one thing that is easy to get wrong: the leader
-   has no "I am coming" pair (they arranged it) and the member has no register.
+   ⚠ It asserts that nobody is offered an answer, and that the member has no
+   register.
 
    Needs the app on DANCEOS_BASE_URL (default :3000) and `20260927140000`
    applied. Cleans up both accounts and the crew. */
@@ -92,21 +92,6 @@ async function onboard(page, name, city) {
   await page.waitForURL((u) => !/\/onboarding/.test(u.pathname), { timeout: 30000 });
 }
 
-/** ⚠ THE INBOX IS THREE DESKS SINCE C68 (27 Sep 2026) — Requests · Invites ·
- *  Done — so a crew JOIN is behind the Invites pill and a PRACTICE ask is on
- *  Requests, which is the split working: one is about belonging and one is about
- *  one evening. Pressing a pill before hydration does nothing, so this retries
- *  until `aria-pressed` says it took (the e2e's own `pressPill`). */
-const pressPill = async (page, name) => {
-  const pill = page.getByRole("button", { name }).first();
-  await pill.waitFor({ timeout: 20000 });
-  for (let i = 0; i < 4; i += 1) {
-    await pill.click();
-    if ((await pill.getAttribute("aria-pressed")) === "true") return;
-    await page.waitForTimeout(700);
-  }
-};
-
 /* tomorrow in IST, as the date input wants it */
 const tomorrowIst = () => {
   const f = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Kolkata", year: "numeric", month: "2-digit", day: "2-digit" });
@@ -155,11 +140,15 @@ const tomorrowIst = () => {
     await leader.waitForURL(/\/crews\/[0-9a-f-]+\/manage(\?welcome=crew)?$/, { timeout: 30000 });
     crewId = leader.url().match(/\/crews\/([0-9a-f-]+)\/manage/)[1];
 
-    /* the member confirms the SEAT — only a confirmed member is asked to a practice */
-    await member.goto(`${BASE}/inbox`, { waitUntil: "networkidle" });
-    await pressPill(member, /^Invites/);
-    await member.getByRole("button", { name: `Join ${crewName}` }).click();
-    await member.waitForTimeout(1800);
+    /* the member confirms the SEAT from the Crews tab on Home (11 Oct 2026: a crew
+       ask is answered there now, not in the Inbox) — only a confirmed member is
+       told about a practice */
+    await member.goto(`${BASE}/crews?show=in`, { waitUntil: "networkidle" });
+    const crewInvite = member.getByTestId("crew-invite").filter({ hasText: crewName });
+    await crewInvite.waitFor({ timeout: 20000 });
+    await crewInvite.getByTestId("crew-invite-join").click();
+    await crewInvite.waitFor({ state: "detached", timeout: 20000 }).catch(() => {});
+    check((await member.getByTestId("crew-invite").filter({ hasText: crewName }).count()) === 0, "the member joins the crew from the Crews hub's Member column — not the Inbox");
 
     /* ── 1 · THE TWO TILES ── */
     await leader.goto(`${BASE}/crews/${crewId}/manage`, { waitUntil: "networkidle" });
@@ -196,27 +185,18 @@ const tomorrowIst = () => {
     check(await leader.getByText("Studio 4, Baner").isVisible().catch(() => false), "the practice is on the desk as soon as the sheet closes, with where it is");
     check(await leader.getByText("Knee pads").isVisible().catch(() => false), "…and what to bring");
     check(await leader.getByText("YOU ARRANGED IT").isVisible().catch(() => false), "⚠ THE LEADER IS NOT ASKED — they arranged it, and the desk says so instead of offering them a yes/no");
-    check((await leader.getByRole("button", { name: /^I am coming/ }).count()) === 0, "…so there is no I-am-coming pair on the leader's own row");
-    check(await leader.getByText("0 of 1 coming").isVisible().catch(() => false), "and one person was asked — the confirmed member, and nobody else");
+    check((await leader.getByRole("button", { name: /^(I am coming|Coming to|Cannot make)/ }).count()) === 0, "…and nobody is offered an answer — a practice is a notice");
+    check(await leader.getByText("0 of 2 checked in").isVisible().catch(() => false), "the roster is the crew — the leader and the confirmed member — none checked in yet");
 
-    /* ── 3 · THE MEMBER IS ASKED, IN THE ASK GROUP ── */
+    /* ── 3 · THE MEMBER IS TOLD, NOT ASKED ── */
+    await member.goto(`${BASE}/notifications`, { waitUntil: "networkidle" });
+    check(await member.getByText(`${crewName} has a practice`).first().isVisible().catch(() => false), "the member is TOLD — a notification names the crew");
     await member.goto(`${BASE}/inbox`, { waitUntil: "networkidle" });
-    /* ⚠ RE-CUT 3 Oct 2026: the Inbox has OPENED ON ENQUIRIES since 2 Oct (C96),
-       so the ask is one press away, on the Requests column — shoot-inbox's own way in */
-    await pressPill(member, /^Requests/);
-    /* ⚠ ON **REQUESTS**, NOT INVITES — which is the C68 split working: joining a
-       crew is about belonging and goes to Invites; a practice is about one
-       evening and belongs with the class and duet asks. `JOIN_KINDS` decides it
-       by omission, and this is the check that says so. */
-    const ask = member.getByText(/have you at a practice of/);
-    check(await ask.first().isVisible().catch(() => false), "the member's INBOX carries the ask, on REQUESTS (an occasion, not a joining)");
-    check((await member.getByText("PRACTICE", { exact: true }).count()) >= 1, "…labelled PRACTICE, in the Accept · Reject group");
-    await member.getByRole("button", { name: `Accept ${crewName}` }).first().click();
-    await member.waitForTimeout(2000);
+    check((await member.getByText(/at a practice of/).count()) === 0, "…and nothing about it is in the Inbox (enquiries only, since 11 Oct 2026)");
 
     /* ── 4 · THE REGISTER ── */
     await leader.goto(`${BASE}/crews/${crewId}/manage/practice`, { waitUntil: "networkidle" });
-    check(await leader.getByText("1 of 1 coming").isVisible().catch(() => false), "the leader's desk counts the yes");
+    check(await leader.getByText("0 of 2 checked in").isVisible().catch(() => false), "the leader's desk counts the register, not answers");
     /* 2 Oct 2026: the card leads with the crew it is for, then a date block */
     const card = leader.getByTestId("practice-card").first();
     check((await card.innerText()).includes(crewName), "the practice card names its crew at the top");
@@ -224,7 +204,7 @@ const tomorrowIst = () => {
     await leader.getByRole("button", { name: /^Register for/ }).first().click();
     await leader.waitForTimeout(1200);
     check(await leader.getByText(memberName).first().isVisible().catch(() => false), "the register lists the member, read ON THE PRESS");
-    check(await leader.getByText("Leader").first().isVisible().catch(() => false), "…and the leader first, who is on it without having been asked");
+    check(await leader.getByText("Leader").first().isVisible().catch(() => false), "…and the leader first");
     const checkIn = leader.getByRole("button", { name: `Check ${memberName} in` });
     check((await checkIn.count()) === 1, "…with a Check in button, like a class register");
     await checkIn.click();
@@ -259,7 +239,7 @@ const tomorrowIst = () => {
     check((await member.getByRole("checkbox", { name: /^Practice: 1$/ }).count()) === 1, "…and the drawer's Practice checkbox counts one");
     await member.getByRole("button", { name: "Close the menu" }).click();
     check(await member.getByText(new RegExp(crewName)).first().isVisible().catch(() => false), "…naming WHICH crew");
-    check(await member.getByText(/^Coming ·/).first().isVisible().catch(() => false), "…wearing what they said");
+    check(await member.getByText(/^Your crew ·/).first().isVisible().catch(() => false), "…as their crew's");
 
     /* ── 6 · THE MEMBER CAN SEE IT AND ANSWER IT (28 Sep 2026, the user: *"no
        way to check practices you have been a part of fix that"*).
@@ -281,22 +261,14 @@ const tomorrowIst = () => {
     check(await member.getByTestId("my-practices").isVisible().catch(() => false), "the Practice tile's own screen carries the practices of somebody who only BELONGS to a crew");
     check(await member.getByText("Studio 4, Baner").first().isVisible().catch(() => false), "…with the practice on it, where and when");
     check(await member.getByText(crewName).first().isVisible().catch(() => false), "…and WHICH CREW, because this list can hold three crews' practices in one evening");
-    check((await member.getByRole("button", { name: /^Coming to/ }).count()) === 1, "…and the answer pair, so a member can change their mind from the one screen that shows it");
+    check((await member.getByRole("button", { name: /^(Coming to|Cannot make)/ }).count()) === 0, "…with no answer pair — a practice is a notice");
     check((await member.getByRole("button", { name: /^Register for/ }).count()) === 0, "⚠ and NO register — that is the leader's, and a member is not offered a control the database would refuse");
-    /* change the answer HERE, which is the whole point of the screen */
-    await member.getByRole("button", { name: /^Cannot make/ }).first().click();
-    await member.waitForTimeout(2200);
-    await member.reload({ waitUntil: "networkidle" });
-    check(await member.getByText("NOT COMING").first().isVisible().catch(() => false), "answering on the hub really writes — the standing changes and the page says so");
-    await member.getByRole("button", { name: /^Coming to/ }).first().click();
-    await member.waitForTimeout(2200);
-
     /* the leader's own hub shows the same practice with the door to the register
        instead of an answer they were never asked for */
     await leader.goto(`${BASE}/practice`, { waitUntil: "networkidle" });
     check(await leader.getByTestId("my-practices").isVisible().catch(() => false), "the leader's Practice screen carries it too — one list, every crew");
     check((await leader.getByRole("link", { name: /^Open the register for/ }).count()) === 1, "…with Register › to their own desk");
-    check((await leader.getByRole("button", { name: /^Coming to/ }).count()) === 0, "…and no answer pair, because they arranged it");
+    check((await leader.getByRole("button", { name: /^Coming to/ }).count()) === 0, "…and no answer pair");
 
     /* ⚠ TWO COLUMNS (1 Oct 2026, the user: *"practice also in 2 columns"*) — the
        Crews hub's own split. The pill's accessible name is its `aria` plus its
@@ -309,7 +281,7 @@ const tomorrowIst = () => {
     await leader.waitForTimeout(500);
     check((await leader.getByText("Studio 4, Baner").count()) === 0, "…and it is NOT under You are in — a practice sits in exactly one column");
     await member.goto(`${BASE}/practice`, { waitUntil: "networkidle" });
-    check((await member.getByRole("button", { name: /^Coming to/ }).count()) === 1, "…while a member who leads nothing lands on You are in, with the practice and its answer pair");
+    check((await member.getByText("Studio 4, Baner").count()) >= 1, "…while a member who leads nothing lands on You are in, with the practice on it");
     await yoursPill(member).click();
     await member.waitForTimeout(500);
     check((await member.getByText("Studio 4, Baner").count()) === 0 && (await member.getByText(/practices you arrange/).count()) === 1, "…and their Yours column is empty and says what would land there");
@@ -322,7 +294,7 @@ const tomorrowIst = () => {
       const a = [...document.querySelectorAll("a")].find((x) => /Studio 4, Baner/.test(x.textContent || ""));
       return a ? a.getAttribute("href") : null;
     });
-    check(memberHref === "/practice?show=in", `a member's calendar row opens the Practice screen's "You are in" column, which can answer it — it reads ${memberHref}`);
+    check(memberHref === "/practice?show=in", `a member's calendar row opens the Practice screen's "You are in" column, — it reads ${memberHref}`);
 
     /* ── 7 · CALLING IT OFF SAYS SO ── */
     await leader.goto(`${BASE}/crews/${crewId}/manage/practice`, { waitUntil: "networkidle" });

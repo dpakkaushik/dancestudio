@@ -2,11 +2,9 @@ import { redirect } from "next/navigation";
 import { EnquirySettings } from "@/features/enquiries/components/EnquirySettings";
 import { loadEnquiries } from "@/features/enquiries/server/loadEnquiries";
 import { InboxScreen } from "@/features/inbox/components/InboxScreen";
-import { buildRequests } from "@/features/inbox/requestItems";
 import { gradientOf } from "@/features/profiles/components/profile-kit";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { findVenueRequestsForBusinesses } from "@/repositories/classes";
-import { findSentInvites } from "@/repositories/invites";
 import { findMyMemberships, runsTheBusiness } from "@/repositories/businesses";
 
 const stampNowIso = (): string => new Date().toISOString();
@@ -15,8 +13,8 @@ const stampNowIso = (): string => new Date().toISOString();
  *  home and inbox tab below on their home pages as both have enquiries to deal
  *  with and studios have their requests to deal with as well"). The Inbox tab
  *  on a studio's own home. The same two desks the person's Inbox draws, scoped
- *  to THIS studio: the enquiries sent to it, the rooms artists have asked it
- *  for, the teachers it has asked and the invites it has sent. Every member of
+ *  to THIS studio: since 11 Oct 2026 the enquiries sent to it and nothing else,
+ *  with one line counting the room requests that wait in Classes. Every member of
  *  the team reads it — the desk is the studio's CRM and staff answer the phone
  *  (Step 12's rule), and RLS already admits them to each of these rows. */
 export default async function StudioInboxPage({ params, searchParams }: { params: Promise<{ businessId: string }>; searchParams: Promise<{ show?: string }> }) {
@@ -57,26 +55,27 @@ export default async function StudioInboxPage({ params, searchParams }: { params
      2026, the user's choice: class requests live in Classes only). This desk
      keeps the enquiries and the invites it sent, and one line counting the room
      requests that wait — the room switch went with them. */
-  const [venueWaiting, invitesOut, enq, { show }] = await Promise.all([
+  /* ⚠⚠ ENQUIRIES ONLY (11 Oct 2026, the user: "only enquiries to be handled from
+     inbox"). The invites this studio SENT left with the Invites column — they
+     are on its own Team desk (`/business/{id}/staff`), with Withdraw. */
+  const [venueWaiting, enq, { show }] = await Promise.all([
     findVenueRequestsForBusinesses(supabase, [businessId], ["requested"]).catch(() => []),
-    findSentInvites(supabase, businessId).then((rows) => rows.map((i) => ({ ...i, businessName: business.name }))),
     loadEnquiries(supabase, { kind: "business", id: businessId, memberships }),
     searchParams,
   ]);
-  const { requestsIn, requestsOut } = buildRequests({ invitesOut });
 
   return (
     <InboxScreen
       accent={gradientOf(business.name)[1]}
-      requestsIn={requestsIn}
-      requestsOut={requestsOut}
       enquiriesIn={enq.enquiriesIn}
       enquiriesOut={[]}
       receivedOnly
       deskSub={business.name}
       settings={<EnquirySettings businesses={enq.settingsFor} />}
-      classPointer={{ n: venueWaiting.length, href: `/business/${businessId}/classes` }}
-      initialSection={show === "enquiries" ? "enq" : show === "done" ? "done" : undefined}
+      pointers={[
+        { testId: "class-requests-pointer", n: venueWaiting.length, href: `/business/${businessId}/classes`, one: "room request", many: "room requests", where: "Room requests are answered in Classes", tint: "#8B5CF6" },
+      ]}
+      initialSection={show === "done" ? "done" : undefined}
       nowIso={stampNowIso()}
     />
   );

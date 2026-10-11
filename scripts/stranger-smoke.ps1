@@ -238,8 +238,10 @@ $forwards = @(
   # stranger those send to sign in, as the pages did (/enquiries never asked)
   @("/managed", "/my-classes"),
   @("/business/$fake/enquiries", "/business/$fake/inbox"),
-  @("/crews/$fake/manage/enquiries", "/crews/$fake/inbox"),
+  @("/crews/$fake/manage/enquiries", "/crews/$fake/manage/team"),
   @("/crews/$fake/manage/earnings", "/crews/$fake/manage"),
+  # a crew has no Inbox tab (11 Oct 2026) - its roster asks are on its Team desk
+  @("/crews/$fake/inbox", "/crews/$fake/manage/team"),
   @("/profile", "/login"),
   @("/stats?tab=history", "/login"),
   @("/assets", "/login"),

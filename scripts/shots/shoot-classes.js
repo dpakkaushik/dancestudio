@@ -317,6 +317,13 @@ const BOOK_ON_PAGE = /^Book Now$/;
       check((await oPage.getByTestId("request-settings").count()) >= 1, "…the gear carries the room switch, moved here from the Inbox");
       await oPage.goBack();
       await oPage.waitForTimeout(300);
+      /* ⚠ the studio's Inbox is ENQUIRIES ONLY (11 Oct 2026) — while the room
+         request waits it draws one line counting it and pointing at Classes */
+      await oPage.goto(`${BASE}/business/${studio.id}/inbox`, { waitUntil: "networkidle" });
+      const roomPtr = oPage.getByTestId("class-requests-pointer");
+      check((await roomPtr.count()) === 1 && /1 room request/.test(await roomPtr.innerText().catch(() => "")), "the studio's Inbox counts the room request in one pointer line");
+      check((await roomPtr.getAttribute("href").catch(() => null)) === `/business/${studio.id}/classes`, "…pointing at the studio's Classes, where it is answered");
+      await oPage.goto(`${BASE}/business/${studio.id}/classes`, { waitUntil: "networkidle" });
       await oPage.getByTestId("todo-answer").getByTestId("card-accept").first().click();
       await oPage.waitForTimeout(2500);
       const vs = (await rows(owner.h, `classes?id=eq.${venueClassId}&select=venue_status`))[0];
@@ -383,11 +390,13 @@ const BOOK_ON_PAGE = /^Book Now$/;
     await lPage.getByTestId("classes-settings").click();
     check((await lPage.getByTestId("request-settings").count()) >= 1, "…and the gear carries the teach / assist switches, moved here from the Inbox");
     await lPage.goBack();
+    /* ⚠ the Inbox is ENQUIRIES ONLY since 11 Oct 2026 — no Requests column to
+       press; the pointer sits in its top squircle while something waits */
     await lPage.goto(`${BASE}/inbox`, { waitUntil: "networkidle" });
-    await lPage.getByRole("button", { name: /^Requests — / }).click().catch(() => {});
+    check((await lPage.getByRole("button", { name: /^Requests — / }).count()) === 0, "…the Inbox has no Requests column any more");
     const ptr = lPage.getByTestId("class-requests-pointer");
     check((await ptr.count()) === 1 && /1 class request/.test(await ptr.innerText()), "…and the Inbox keeps one line counting it and pointing to Classes");
-    check((await ptr.getAttribute("href")) === "/my-classes", `…to the Classes screen itself (${await ptr.getAttribute("href")})`);
+    check((await ptr.getAttribute("href")) === "/my-classes?tab=todo", `…to the Classes screen's To do (${await ptr.getAttribute("href")})`);
     await lPage.goto(`${BASE}/my-classes`, { waitUntil: "networkidle" });
     await lPage.getByTestId("todo-answer").getByTestId("card-accept").first().click();
     await lPage.waitForTimeout(2500);

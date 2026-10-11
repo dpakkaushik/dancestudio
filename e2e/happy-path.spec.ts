@@ -891,14 +891,30 @@ test.describe.serial("DanceOS, end to end", () => {
     await expect(admin.getByText(`${trainerName} has the Artist plan for 12 months — nothing charged`)).toBeVisible({ timeout: 15_000 });
     await trainer.goto("/subscription");
     await expect(trainer.getByText("Active · granted")).toBeVisible({ timeout: 15_000 });
+    /* ⚠⚠ A TEAM INVITATION IS ANSWERED ON THE STUDIOS HUB (11 Oct 2026, the
+       user: "handle invites to join a team and crew from the crew and studio
+       tabs at home. remove from inbox"). Home's gold "wants you on the team"
+       card is gone; the Inbox keeps one pointer line counting it; the hub opens
+       on Team while it waits, with Decline · Join on the invitation's card.
+       Asserted at all three ends. */
     await trainer.goto("/");
-    const askCard = trainer.getByRole("link", { name: new RegExp(`${studioName} wants you on the team`) });
-    await expect(askCard).toBeVisible();
-    await askCard.click();
-    await trainer.waitForURL(/\/join\/[0-9a-f]+$/);
-    await trainer.getByRole("button", { name: "Join the team" }).click();
-    // accepting lands them on the studio they just joined
-    await trainer.waitForURL(/\/business\/[0-9a-f-]+\/classes$/);
+    await expect(trainer.getByText(`${studioName} wants you on the team`)).toHaveCount(0);
+    await expect(trainer.getByText("Answer this")).toHaveCount(0);
+    await trainer.goto("/inbox");
+    const teamPointer = trainer.getByTestId("team-invites-pointer");
+    await expect(teamPointer).toContainText(/1 team invite/, { timeout: 15_000 });
+    await expect(teamPointer).toHaveAttribute("href", "/business?show=team");
+    // and the old Invites column is not there — an old address lands on Enquiries
+    await trainer.goto("/inbox?show=invites");
+    await expect(trainer.getByRole("button", { name: /^Invites/ })).toHaveCount(0);
+    await expect(trainer.getByRole("button", { name: "Received enquiries" })).toBeVisible();
+    await trainer.goto("/business");
+    const teamInvite = trainer.getByTestId("team-invites").getByTestId("team-invite").filter({ hasText: studioName });
+    await expect(teamInvite).toBeVisible({ timeout: 15_000 });
+    await teamInvite.getByTestId("team-invite-join").click();
+    // joining stays on the hub — the invitation goes and the studio is in the Team column
+    await expect(trainer.getByTestId("team-invite").filter({ hasText: studioName })).toHaveCount(0, { timeout: 15_000 });
+    await expect(trainer.getByRole("link", { name: `${studioName} — open the profile` }).first()).toBeVisible({ timeout: 15_000 });
 
     // ---- WHAT A SESSION PAYS THEM IS THE TEAM DESK'S (11 Oct 2026) ---------
     // The class form lost its "What a session pays the artist" field: the rate is
@@ -981,17 +997,16 @@ test.describe.serial("DanceOS, end to end", () => {
 
     // ---- THE TEACHER SAYS YES, AND ONLY THEN CAN IT GO LIVE ----------------
     /* ⚠⚠ CLASS REQUESTS LIVE IN CLASSES (11 Oct 2026, the user's choice). The
-       Inbox's Requests column keeps one line counting them and pointing there —
-       asserted at both ends: the line names the ask, and pressing it lands on
-       the Classes screen, whose NEEDS YOU strip is where the answer is given
-       (the strip replaced the Requests column the same evening) */
+       Inbox — enquiries only since the same day, no Requests column — keeps one
+       line counting them and pointing there, asserted at both ends: the line
+       names the ask, and pressing it lands on the Classes screen's To do */
     await trainer.goto("/inbox");
-    await pressPill(trainer, /^Requests — \d+ waiting/);
+    await expect(trainer.getByRole("button", { name: /^Requests/ })).toHaveCount(0);
     await expect(trainer.getByRole("button", { name: `Accept ${classTitle}` })).toHaveCount(0);
     const pointer = trainer.getByTestId("class-requests-pointer");
     await expect(pointer).toContainText(/class request/);
     await pointer.click();
-    await trainer.waitForURL(/\/my-classes$/);
+    await trainer.waitForURL(/\/my-classes(\?tab=todo)?$/);
     /* the screen opens on To do because something waits on you, and the ask is
        the class's own card under ASKED OF YOU with Decline · Accept on it */
     const askedOfYou = trainer.getByTestId("todo-answer");
@@ -1517,7 +1532,8 @@ test.describe.serial("DanceOS, end to end", () => {
     // ---- Step 22: a crew, from the hub to the door of an event ----
     // The learner creates a crew and asks the trainer onto it (a roster is a
     // public page, so being on one is an ASK, never a write); the trainer
-    // confirms from the Inbox's Requests desk; the crew's public page prints
+    // confirms on the Crews hub's Member column (the Inbox only points there
+    // since 11 Oct 2026); the crew's public page prints
     // both and Discover's Crews tab lists it. Then the owner publishes a crew
     // battle and the learner enters it AS THE CREW'S LEADER from the crews they
     // lead — a typed name no longer books — the organiser's register says so,
@@ -1583,7 +1599,10 @@ test.describe.serial("DanceOS, end to end", () => {
     await learner.waitForURL(/\/crews\/[0-9a-f-]+\/manage$/);
     // the crew's HOME (18 Sep 2026): the hero, the Team and Events tiles, the crew's own bar
     await expect(learner.getByTestId("crew-hero")).toBeVisible();
-    await expect(learner.getByRole("navigation", { name: "Crew" }).getByRole("link", { name: "Inbox" })).toBeVisible();
+    /* ⚠ A CREW HAS NO INBOX (11 Oct 2026, the user: "only enquiries to be handled
+       from inbox") — a crew takes no enquiries, so its bar is Home alone */
+    await expect(learner.getByRole("navigation", { name: "Crew" }).getByRole("link", { name: "Home", exact: true })).toBeVisible();
+    await expect(learner.getByRole("navigation", { name: "Crew" }).getByRole("link", { name: "Inbox" })).toHaveCount(0);
     /* ⚠ AND THE CORNER OPENS **THIS CREW'S** PUBLIC PAGE (21 Sep 2026, the user:
        "studio and crew pages on home tab should have option to view their
        profile pages currently taking to organizations page and user/artist
@@ -1619,49 +1638,29 @@ test.describe.serial("DanceOS, end to end", () => {
     await learner.mouse.click(10, 10); // the scrim closes it
     await expect(crewAdd).toHaveCount(0);
 
-    // the trainer answers from the INVITES desk — only they can
+    /* ⚠⚠ THE TRAINER ANSWERS ON THE CREWS HUB — only they can (11 Oct 2026, the
+       user: "handle invites to join a team and crew from the crew and studio
+       tabs at home. remove from inbox"). The Inbox is enquiries only and keeps
+       one pointer line counting the ask; the Crews hub opens on Member while it
+       waits, with Decline · Join on the invitation's card. Asserted at both
+       ends: the pointer, and the card. */
     await trainer.goto("/inbox");
-    // ⚠ A DESK OF ITS OWN, NOT A SECTION OF REQUESTS (27 Sep 2026, the user:
-    // "different columns for join team requests … other team join, crew join,
-    // studio join, organization join for invites should also be different in
-    // style and should be card style but segregated in a different section
-    // now"). It was a heading inside Requests for one morning; a crew ask is a
-    // question about BELONGING and now has its own column and its own card,
-    // reading Join / Decline. The class ask this trainer already accepted is on
-    // Requests and is not counted here, which is what the split is for.
-    await pressPill(trainer, /^Invites — \d+ waiting/);
-    await expect(trainer.getByText(`invited by ${learnerName}`)).toBeVisible();
-    await trainer.getByRole("button", { name: `Join ${crewName}` }).click();
-    /* AN ANSWERED ASK STAYS ON THE DESK (19 Sep 2026, the user: "enquiries and
-       requests don't get removed after accepting") — the row wears its answer
-       and its buttons are gone; it used to vanish.
-       ⚠ SCOPED TO THIS ROW, AND THAT IS THE POINT (20 Sep 2026). This read
-       `getByText("✅ Confirmed — you said yes")` against the whole desk, where the
-       CLASS ask segment 1 confirmed already wears that exact sentence — so it
-       passed the instant the page rendered, proved nothing about the crew, and
-       waited for nothing. The count check under it was then the only real
-       assertion and had 5 seconds to beat a server action that takes ~4 s on this
-       machine, which is a coin toss rather than a test. Worse, once the crew was
-       confirmed the desk held TWO of that sentence, so the bare locator was one
-       green run away from a strict-mode violation. The row is the unit here.
-       ⚠⚠ AND THE ROW IS ON **DONE** NOW (27 Sep 2026, the user: "sepreate
-       section request, invites and enquiries which are already completed").
-       Answered rows still exist — the 19 Sep rule is untouched, nothing is
-       deleted — they have simply moved off the live desk, which is what stops
-       Invites filling with rows that carry no buttons. So the check presses Done
-       first; that it is NOT on Invites any more is asserted straight after,
-       because a check that only looks at the new place cannot tell you the old
-       one was cleared. */
-    await expect(trainer.getByRole("button", { name: `Join ${crewName}` })).toHaveCount(0, { timeout: 15_000 });
-    /* ⚠ COMPLETED IS A SIDE OF EACH COLUMN since later on 2 Oct 2026 (the user:
-       "completed … with received and sent in their respective section") — so
-       the answered invitation is under Invites › Completed, not a pill of its own */
-    await expect(trainer.getByRole("button", { name: /^Completed — / })).toHaveCount(0);
-    await trainer.getByRole("button", { name: "Completed invitations" }).click();
-    const crewAsk = trainer.getByTestId("request-row").filter({ hasText: crewName }).filter({ hasText: `invited by ${learnerName}` });
-    await expect(crewAsk.getByText("Joined — you said yes")).toBeVisible({ timeout: 15_000 });
-    await expect(crewAsk.getByRole("button", { name: `Join ${crewName}` })).toHaveCount(0);
-    await expect(crewAsk.getByRole("button", { name: `Decline ${crewName}` })).toHaveCount(0);
+    await expect(trainer.getByRole("button", { name: /^Invites/ })).toHaveCount(0);
+    const crewPointer = trainer.getByTestId("crew-invites-pointer");
+    await expect(crewPointer).toContainText(/1 crew invite/, { timeout: 15_000 });
+    await crewPointer.click();
+    await trainer.waitForURL(/\/crews\?show=in$/);
+    const crewInvite = trainer.getByTestId("crew-invites").getByTestId("crew-invite").filter({ hasText: crewName });
+    await expect(crewInvite).toBeVisible({ timeout: 15_000 });
+    await expect(crewInvite.getByText(`invited by ${learnerName}`)).toBeVisible();
+    await crewInvite.getByTestId("crew-invite-join").click();
+    /* the answered invitation leaves the card list (the hub draws only what
+       still waits), and the crew is in the Member column below it */
+    await expect(trainer.getByTestId("crew-invite").filter({ hasText: crewName })).toHaveCount(0, { timeout: 15_000 });
+    await expect(trainer.getByRole("link", { name: `${crewName} — open the profile` })).toBeVisible({ timeout: 15_000 });
+    // and the pointer is gone from the Inbox, because nothing waits any more
+    await trainer.goto("/inbox");
+    await expect(trainer.getByTestId("crew-invites-pointer")).toHaveCount(0);
     await learner.reload();
     await expect(learner.getByTestId("crew-tile-members")).toHaveText("2");
     /* ⚠ the crew DESK's roster row, not a profile group — "Member" is the word

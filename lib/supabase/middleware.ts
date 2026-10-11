@@ -103,7 +103,9 @@ async function retiredAddress(
     }
     case "/enquiries": {
       const actingAs = userId ? await resolveActingAs(supabase, searchParams.get("as")) : null;
-      if (actingAs?.kind === "crew") return `/crews/${actingAs.id}/inbox?show=enquiries`;
+      /* ⚠ a crew has no Inbox since 11 Oct 2026 (it takes no enquiries) — its
+         Team desk, where the crew's own asks are, is the nearest true thing */
+      if (actingAs?.kind === "crew") return `/crews/${actingAs.id}/manage/team`;
       if (actingAs) return `/business/${actingAs.id}/inbox?show=enquiries`;
       return "/inbox?show=enquiries";
     }

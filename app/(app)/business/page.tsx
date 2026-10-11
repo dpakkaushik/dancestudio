@@ -8,7 +8,9 @@ import { findWhyNoStudio } from "@/repositories/orgStanding";
 import { countRoomsByBusinesses } from "@/repositories/rooms";
 import { findStudioVerificationStates } from "@/repositories/studioVerification";
 import { findMyStudioSubscriptions } from "@/repositories/subscriptions";
-import { findMyMemberships } from "@/repositories/businesses";
+import { findBusinessPhotoPaths, findMyMemberships } from "@/repositories/businesses";
+import { findMyInboxOff } from "@/repositories/askSettings";
+import { findMyPendingInvites } from "@/repositories/invites";
 
 /** /business — the Studios hub: the studios this account RUNS, and for a person
  *  the studios they teach at and learn at.
@@ -28,8 +30,6 @@ import { findMyMemberships } from "@/repositories/businesses";
 export default async function BusinessPage({ searchParams }: { searchParams: Promise<Record<string, string | undefined>> }) {
   /* which column the ADDRESS asks for — the URL is the state (19 Sep 2026) */
   const asked = (await searchParams).show;
-  /* ⚠ `?show=learned` (the Student column, removed 11 Oct 2026) lands on Manage — Rule 14 */
-  const show = asked === "team" ? "team" : "own";
   const supabase = await createSupabaseServerClient();
   const {
     data: { user },
@@ -44,7 +44,11 @@ export default async function BusinessPage({ searchParams }: { searchParams: Pro
   }
   // membership is the spine, and the ROLE on it decides which list a business
   // sits in — owned rows get their room count for the sub-line (prototype 2655)
-  const [memberships, plan, whyNoStudio, catalog, cityCentres] = await Promise.all([
+  /* ⚠ THE TEAM INVITATIONS ARE ANSWERED HERE (11 Oct 2026, the user: "handle
+     invites to join a team and crew from the crew and studio tabs at home.
+     remove from inbox"). They ride the first round with the switch behind the
+     hub's gear — both answer empty rather than throwing. */
+  const [memberships, plan, whyNoStudio, catalog, cityCentres, pendingInvites, inboxOff] = await Promise.all([
     findMyMemberships(supabase),
     findMyArtistPlan(supabase),
     /* the gate to CREATING a studio, in the database's own words — everybody's since 26 Sep 2026 */
@@ -56,10 +60,15 @@ export default async function BusinessPage({ searchParams }: { searchParams: Pro
        New-studio sheet's quick chips, and where its map opens. Replaces
        DOS_CITIES, which was twelve names nobody could add to. */
     findDiscoverCities(supabase),
+    findMyPendingInvites(supabase).catch(() => []),
+    findMyInboxOff(supabase, user.id),
   ]);
+  /* ⚠ the hub opens on Team while an invitation waits and no `?show=` was given;
+     `?show=learned` (the Student column, removed 11 Oct 2026) lands on Manage — Rule 14 */
+  const show = asked === "team" || (asked === undefined && pendingInvites.length > 0) ? "team" : "own";
   const owned = memberships.filter((m) => m.memberRole === "owner").map((m) => m.business);
   const studioIds = owned.filter((t) => t.type === "studio").map((t) => t.id);
-  const [roomCounts, studioSubscriptions, studioVerification] = await Promise.all([
+  const [roomCounts, studioSubscriptions, studioVerification, invitePhotos] = await Promise.all([
     countRoomsByBusinesses(supabase, owned.map((t) => t.id)),
     findMyStudioSubscriptions(supabase, studioIds).catch(() => ({})),
     /* WHERE EACH STUDIO STANDS WITH DANCEOS (11 Sep 2026): its badge, its
@@ -69,11 +78,15 @@ export default async function BusinessPage({ searchParams }: { searchParams: Pro
       supabase,
       owned.filter((t) => t.type === "studio").map((t) => ({ id: t.id, verifiedAt: t.verifiedAt }))
     ),
+    /* the faces on the invitations — a studio RLS hides draws its initials */
+    findBusinessPhotoPaths(supabase, pendingInvites.map((i) => i.businessId)),
   ]);
   return (
     <BusinessHub
       memberships={memberships}
       show={show}
+      invites={pendingInvites.map((i) => ({ ...i, photoPath: invitePhotos[i.businessId] ?? null }))}
+      inboxOff={inboxOff}
       roomCounts={roomCounts}
       isArtist={Boolean(plan?.active)}
       whyNoStudio={whyNoStudio}

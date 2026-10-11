@@ -4,7 +4,6 @@ import { TopPanel } from "@/components/ui/TopPanel";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { findProfileById } from "@/repositories/profiles";
 import { findMyDeck } from "@/repositories/home";
-import { findMyPendingInvites } from "@/repositories/invites";
 import { ensureArtistPage, findMyMemberships } from "@/repositories/businesses";
 import { findMyArtistPlan } from "@/repositories/plans";
 import { findMyFollowedCrews, findMyFollowedPeople, findMyFollowing, findMyPersonFollowers, findTeamFollows, withTeamFollows } from "@/repositories/follows";
@@ -30,7 +29,6 @@ import { PersonDetailsEdit } from "@/features/profiles/components/EditProfileShe
 import { EnquiryButton } from "@/features/enquiries/components/EnquirySheet";
 import { HeroId, HeroPersonMeta, IdentityHero } from "@/features/profiles/components/hero-kit";
 import { KIND_WORD, heroMetaWords, kindOf, memberNoWords } from "@/types/profile";
-import { MEMBER_ROLE_WORD } from "@/types/staff";
 
 /** Home — the dancer dashboard lifted from prototype S_homedancer (DanceOSApp.jsx:7206-7352):
  *  the identity sleeve, the PassDeck of today under
@@ -88,14 +86,11 @@ export default async function HomePage() {
 
   /* `withPhone`: Home shows the person's Call button and its contact ⊕ edits the
      number, and since 6 Oct 2026 the number is its own read (decision 4) */
-  const [profile, memberships, invites, plan] = await Promise.all([
+  const [profile, memberships, plan] = await Promise.all([
     findProfileById(supabase, user.id, { withPhone: true }),
     /* WITH the role (18 Sep 2026): an artist's grid needs the page they OWN, not
        the first business they belong to — a studio they teach at is not theirs */
     findMyMemberships(supabase),
-    // somebody asked you onto their team — matched on the address you sign in
-    // with, so an invite arrives here without any link being passed around
-    findMyPendingInvites(supabase),
     findMyArtistPlan(supabase),
   ]);
   if (!profile) {
@@ -410,35 +405,10 @@ export default async function HomePage() {
                   </span>
                 </div>
               ) : null}
-              {/* somebody has asked you onto their team, and only you can answer —
-                  the same gold ask the class page wears when a class is handed over */}
-              {invites.map((inv) => (
-                <Link
-                  key={inv.inviteId}
-                  href={`/join/${inv.code}`}
-                  style={{
-                    display: "block",
-                    background: CARD,
-                    border: `1.5px solid ${GOLD}66`,
-                    borderLeft: `3px solid ${GOLD}`,
-                    borderRadius: 16,
-                    padding: "13px 14px",
-                    marginBottom: 10,
-                    color: INK,
-                    textDecoration: "none",
-                  }}
-                >
-                  <span style={{ display: "block", fontSize: 12.5, fontWeight: 900 }}>
-                    {inv.businessName} wants you on the team
-                  </span>
-                  <span style={{ display: "block", fontSize: 10.5, color: SUB, marginTop: 3 }}>
-                    As {MEMBER_ROLE_WORD[inv.memberRole].toLowerCase()} · you decide
-                  </span>
-                  <span style={{ display: "block", fontSize: 11.5, fontWeight: 800, color: GOLD, marginTop: 7 }}>
-                    Answer this ›
-                  </span>
-                </Link>
-              ))}
+              {/* ⚠ NO TEAM-INVITE CARD HERE ANY MORE (11 Oct 2026, the user: "handle
+                  invites to join a team and crew from the crew and studio tabs at
+                  home"). An invitation is answered on the Studios hub's Team column,
+                  Join · Decline on the card; the Inbox counts it in one line. */}
             </BizSection>
         </div>
       </div>

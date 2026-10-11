@@ -146,7 +146,7 @@ export interface CalendarPracticeEntry {
   place: string;
   note: string | null;
   cancelled: boolean;
-  /** what the reader is to it — Coming · Not answered · Not coming · You arranged it */
+  /** what the reader is to it — You arranged it · Your crew */
   standing: PracticeStanding;
   going: number;
   asked: number;

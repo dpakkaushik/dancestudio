@@ -180,6 +180,18 @@ export async function findBusinessName(supabase: SupabaseClient, businessId: str
   return (data as { name: string } | null)?.name ?? null;
 }
 
+/** The profile pictures of a few businesses, as the caller may read them (11 Oct
+ *  2026 — the faces on the team invitations the Studios hub draws). One query for
+ *  the list; a business RLS hides simply has no entry, and the card draws its
+ *  initials. Never throws: a picture is not worth failing a page over. */
+export async function findBusinessPhotoPaths(supabase: SupabaseClient, ids: string[]): Promise<Record<string, string | null>> {
+  const uniq = [...new Set(ids)];
+  if (uniq.length === 0) return {};
+  const { data, error } = await supabase.from("businesses").select("id, profile_photo_path").in("id", uniq).is("deleted_at", null);
+  if (error) return {};
+  return Object.fromEntries(((data ?? []) as Array<{ id: string; profile_photo_path: string | null }>).map((r) => [r.id, r.profile_photo_path]));
+}
+
 interface MembershipRow {
   businesses: BusinessRow | null;
 }

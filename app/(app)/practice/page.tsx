@@ -13,7 +13,7 @@ export const metadata: Metadata = { title: "Practice — DanceOS" };
  *  in home tab not in crew"*).
  *
  *  Every practice of every crew you are on — what is coming, what is over, the
- *  answer pair on anything you were ASKED to, and Register › on anything you
+ *  crew's page on anything you dance in, and Register › on anything you
  *  lead. It was a section stacked under both crew lists (27 Sep), then a segment
  *  of the Crews hub (28 Sep); it is a tile on Home now, because "what am I
  *  rehearsing this week" is not a question about crews.
@@ -70,7 +70,7 @@ export default async function PracticePage({ searchParams }: { searchParams: Pro
             },
             {
               key: "in",
-              node: <MyPractices practices={member} todayIso={todayIso} bare empty="Nothing yet — when a crew you are on arranges one, you are asked here." />,
+              node: <MyPractices practices={member} todayIso={todayIso} bare empty="Nothing yet — when a crew you are on arranges one, it shows up here." />,
             },
           ]}
         />

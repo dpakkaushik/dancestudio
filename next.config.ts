@@ -155,8 +155,16 @@ const nextConfig: NextConfig = {
          proxy instead — lib/supabase/middleware.ts. */
       { source: "/managed", destination: "/my-classes?show=manage", permanent: false },
       { source: "/business/:businessId/enquiries", destination: "/business/:businessId/inbox?show=enquiries", permanent: false },
-      { source: "/crews/:crewId/manage/enquiries", destination: "/crews/:crewId/inbox", permanent: false },
+      /* ⚠ straight to the Team desk since 11 Oct 2026 — the crew Inbox it pointed at is gone */
+      { source: "/crews/:crewId/manage/enquiries", destination: "/crews/:crewId/manage/team", permanent: false },
       { source: "/crews/:crewId/manage/earnings", destination: "/crews/:crewId/manage", permanent: false },
+
+      /* ══ A CREW HAS NO INBOX (11 Oct 2026, the user: "only enquiries to be handled
+         from inbox and rest all from their respective home tile section"). A crew
+         takes no enquiries, so its Inbox held only the roster asks it had out —
+         and those are on its own Team desk, "⏳ Waiting on them to confirm" with
+         Withdraw. The page is deleted; its address lands on that desk (Rule 14). ══ */
+      { source: "/crews/:crewId/inbox", destination: "/crews/:crewId/manage/team", permanent: false },
     ];
   },
 };

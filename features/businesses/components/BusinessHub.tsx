@@ -24,6 +24,8 @@ import type { StudioSubscriptionState } from "@/repositories/subscriptions";
 import type { MyMembership } from "@/repositories/businesses";
 import type { LearnedFrom } from "@/repositories/classBookings";
 import { DOS_TOOLS, SHEET_ANIMATION, dosToolPaint } from "./biz-kit";
+import { JoinSettingsGear, TeamInvites, type TeamInviteRow } from "@/features/inbox/components/JoinInvites";
+import type { AskKind } from "@/repositories/askSettings";
 
 /* Icons lifted from the prototype (DanceOSApp.jsx:3136-3142). */
 const STROKE = { fill: "none", strokeWidth: 1.7, strokeLinecap: "round", strokeLinejoin: "round" } as const;
@@ -124,7 +126,16 @@ export function BusinessHub({
   studioVerification = {},
   userId = null,
   show = "own",
+  invites = [],
+  inboxOff = [],
 }: {
+  /** ⚠ THE TEAM INVITATIONS WAITING ON THIS PERSON (11 Oct 2026, the user:
+   *  "handle invites to join a team and crew from the crew and studio tabs at
+   *  home. remove from inbox") — drawn at the top of the Team column, Decline ·
+   *  Join, the way Classes' To do answers a class ask */
+  invites?: TeamInviteRow[];
+  /** the kinds of ask switched off — the gear carries the "team" one */
+  inboxOff?: AskKind[];
   /** ⚠ WHICH COLUMN IS OPEN (29 Sep 2026) — `?show=team`, the URL as the state,
    *  like every other segmented desk in the app. The Student column went on
    *  11 Oct 2026. */
@@ -501,6 +512,8 @@ export function BusinessHub({
           >
             {DOS_TOOLS.studios.name}
           </h1>
+          {/* the "team" invite switch, moved here from the Inbox with the invitations (11 Oct 2026) */}
+          <JoinSettingsGear testId="studios-settings" kind="team" off={inboxOff} title="Team invites" />
         </div>
         {/* THE PRICE, ONCE, FROM THE PRICE LIST (26 Sep 2026) — the one fact the
             cards cannot say until there is one; the Organizations hub prints
@@ -524,7 +537,9 @@ export function BusinessHub({
              studios you own and the ones you are on the team of. */
           segments={[
             { key: "own", href: "/business", label: "Manage", n: myStudios.length, aria: "The studios you own" },
-            { key: "team", href: "/business?show=team", label: "Team", n: theirs.length, aria: "The studios whose team you are on" },
+            /* ⚠ the count takes the invitations waiting too (11 Oct 2026), so the
+               column they are answered in is reachable before any seat exists */
+            { key: "team", href: "/business?show=team", label: "Team", n: theirs.length + invites.length, aria: "The studios whose team you are on" },
             /* ⚠ THE STUDENT COLUMN IS GONE (11 Oct 2026, the user: "remove student
                column from studios inside studio page"). `?show=learned` lands on
                Manage (Rule 14). The studios a person learns at are still the
@@ -600,6 +615,8 @@ export function BusinessHub({
               key: "team",
               node: (
                 <>
+                  {/* ⚠ THE INVITATIONS FIRST (11 Oct 2026) — answered here, not in the Inbox */}
+                  <TeamInvites invites={invites} />
                   {/* every studio whose team you are on — a trainer's seat, or the
                       Visiting Faculty seat accepting a class gives you (R19) */}
                   {theirs.length > 0 ? (
@@ -607,7 +624,7 @@ export function BusinessHub({
                       <Head>STUDIOS YOU HAVE TAUGHT AT</Head>
                       {theirs.map((t) => plainCard(t))}
                     </>
-                  ) : (
+                  ) : invites.length > 0 ? null : (
                     <div style={{ fontSize: 11.5, color: SUB, padding: "4px 2px 0" }}>
                       {isArtist
                         ? "The studios whose team you are on will be listed here — accept a class at one and it appears."

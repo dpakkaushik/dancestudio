@@ -4,7 +4,7 @@ import Image from "next/image";
 import { useState, useTransition } from "react";
 import { DeskAddButton } from "@/features/settings/components/settings-kit";
 import { DOS_TOOLS, DeskHero } from "@/features/businesses/components/biz-kit";
-import { cancelCrewPracticeAction, respondToPracticeAction, setPracticeAttendanceAction } from "@/features/crews/server-actions/practices";
+import { cancelCrewPracticeAction, setPracticeAttendanceAction } from "@/features/crews/server-actions/practices";
 import { findPracticePeopleAction } from "@/features/crews/server-actions/practicePeople";
 import { photoUrl } from "@/lib/media/photo";
 import { DeskBody, DeskTop } from "@/components/ui/DeskSections";
@@ -22,7 +22,9 @@ const TINT = DOS_TOOLS.practice.c;
  *  for the same"*).
  *
  *  Behind the Practice tile on a crew's own home: what is coming, what is over,
- *  and — for the leader — the register on each one. `requireLedCrew` has already
+ *  and — for the leader — the register on each one. ⚠ Since 11 Oct 2026 the
+ *  register is the WHOLE crew and nobody answers first: a practice is a notice,
+ *  and the leader checks people in straight from it. `requireLedCrew` has already
  *  said this is the leader, so the controls are drawn without asking again; the
  *  DATABASE asks again anyway on every write, which is where the rule lives.
  *
@@ -73,13 +75,6 @@ export function PracticeDesk({ crewId, practices, todayIso }: { crewId: string; 
     });
   };
 
-  const answer = (practiceId: string, accept: boolean) => {
-    start(async () => {
-      const r = await respondToPracticeAction({ practiceId, accept, crewId });
-      say(r.error ?? (accept ? "You are coming" : "They know you cannot make it"));
-    });
-  };
-
   const callOff = (practiceId: string) => {
     start(async () => {
       const r = await cancelCrewPracticeAction({ practiceId, crewId });
@@ -97,7 +92,6 @@ export function PracticeDesk({ crewId, practices, todayIso }: { crewId: string; 
         key={p.id}
         practice={p}
         now={now}
-        onAnswer={answer}
         /* the leader's two buttons ride on the card's own action bar (3 Oct 2026) */
         actions={
           p.iLead ? (
@@ -166,7 +160,7 @@ export function PracticeDesk({ crewId, practices, todayIso }: { crewId: string; 
 
       {coming.length === 0 && over.length === 0 ? (
         <div style={{ ...bizCard, textAlign: "center", fontSize: 12, color: "var(--sub)", border: "1.5px dashed var(--el)", lineHeight: 1.5 }}>
-          Nothing arranged yet — a practice asks everyone on the crew and lands on their calendar.
+          Nothing arranged yet — a practice tells everyone on the crew and lands on their calendar.
         </div>
       ) : null}
 

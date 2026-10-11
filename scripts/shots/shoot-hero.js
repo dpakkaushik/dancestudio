@@ -875,7 +875,8 @@ const enterEdit = async (page) => {
        the old address is a redirect onto it (Rule 14) */
     await owner.goto(`${BASE}/enquiries?as=${studioId}`, { waitUntil: "networkidle" });
     check(new RegExp(`/business/${studioId}/inbox\\?show=enquiries$`).test(owner.url()), `enquiries: the old ?as= address lands on the studio's own Inbox (${owner.url()})`);
-    check((await owner.getByRole("button", { name: /^Enquiries — / }).getAttribute("aria-pressed").catch(() => null)) === "true", "studio inbox: it opens on the Enquiries desk");
+    /* ⚠ ENQUIRIES ONLY since 11 Oct 2026 — no column pills; it opens on Received */
+    check((await owner.getByRole("button", { name: "Received enquiries", exact: true }).getAttribute("aria-pressed").catch(() => null)) === "true", "studio inbox: it opens on Received enquiries");
     const enqTypes = owner.getByRole("button", { name: /^Enquiry settings/ }).first();
     check((await enqTypes.count()) === 1, "enquiries desk: the studio's own What-you-take disclosure is here — the settings moved with the tool");
     await enqTypes.click();

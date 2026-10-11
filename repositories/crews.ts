@@ -41,7 +41,7 @@ interface MemberRow {
   profiles: { full_name: string; city: string | null; profile_photo_path?: string | null } | null;
 }
 interface MyAskRow extends MemberRow {
-  crews: { name: string; city: string; leader_id: string; deleted_at: string | null; profiles: { full_name: string } | null } | null;
+  crews: { name: string; city: string; photo: string | null; leader_id: string; deleted_at: string | null; profiles: { full_name: string } | null } | null;
 }
 /* `EntryRow` and `PartnerRow` went with the battle record and the duet asks
    (29 Sep 2026) — see the note where those three reads used to be. */
@@ -225,7 +225,8 @@ export async function findMyPendingCrewAsks(supabase: SupabaseClient, statuses: 
   if (!me) return [];
   const base = supabase
     .from("crew_members")
-    .select(`${MEMBER_COLUMNS}, deleted_at, crews (name, city, leader_id, deleted_at, profiles!crews_leader_id_fkey (full_name))`)
+    /* `photo` too (11 Oct 2026) — the Crews hub draws the invitation with the crew's face */
+    .select(`${MEMBER_COLUMNS}, deleted_at, crews (name, city, photo, leader_id, deleted_at, profiles!crews_leader_id_fkey (full_name))`)
     .eq("user_id", me)
     /* answered asks too, when the Inbox wants them (19 Sep 2026) */
     .in("status", statuses);
@@ -244,6 +245,7 @@ export async function findMyPendingCrewAsks(supabase: SupabaseClient, statuses: 
       ...toMember(r),
       crewName: r.crews!.name,
       crewCity: r.crews!.city,
+      crewPhoto: r.crews!.photo ?? null,
       leaderName: r.crews!.profiles?.full_name ?? "The leader",
     }));
 }

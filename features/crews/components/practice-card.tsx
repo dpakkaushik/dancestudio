@@ -2,9 +2,9 @@
 
 import type { ReactNode } from "react";
 import { SUB } from "@/lib/design/tokens";
-import { PRACTICE_TINT, PRACTICE_WORD, practiceClock, practiceWhen, type CrewPractice } from "@/types/crewPractice";
+import { PRACTICE_TINT, PRACTICE_WORD, practiceClock, type CrewPractice } from "@/types/crewPractice";
 import { DOS_TOOLS } from "@/features/businesses/components/biz-kit";
-import { ToolActions, ToolCard, ToolChip, ToolFacts, ToolHead, toolBtn } from "@/components/ui/ToolCard";
+import { ToolActions, ToolCard, ToolChip, ToolFacts, ToolHead } from "@/components/ui/ToolCard";
 
 const TINT = DOS_TOOLS.practice.c;
 
@@ -23,13 +23,15 @@ const TINT = DOS_TOOLS.practice.c;
  *  What differs between the two callers is what they can DO, so that is a slot:
  *  the desk hangs its register and Call-it-off on `foot`, the hub hangs a link
  *  to the desk. What is the same — when, where, what to bring, where you stand
- *  and how many are coming — is here, and the ANSWER BUTTONS are here too,
- *  because answering is the one act that belongs to the person reading it
- *  wherever they are reading it. */
+ *  and how many the register has checked in — is here.
+ *
+ *  ⚠ THERE ARE NO ANSWER BUTTONS (11 Oct 2026, the user: *"no request required
+ *  for practice only notification should do. team leader can just check their
+ *  attendance directly in register."*). A practice is a notice: every confirmed
+ *  member is told, and the leader's register is the only attendance there is. */
 export function PracticeCard({
   practice: p,
   now,
-  onAnswer,
   actions = null,
   foot = null,
 }: {
@@ -38,8 +40,7 @@ export function PracticeCard({
    *  (this repo's `react-hooks/purity` rule), and both callers already stamp it
    *  on the server so the two cannot disagree about what is over */
   now: number;
-  onAnswer: (practiceId: string, accept: boolean) => void;
-  /** the caller's own buttons, on the card's action bar beside the answer pair */
+  /** the caller's own buttons, on the card's action bar */
   actions?: ReactNode;
   /** anything that opens UNDER the bar — the leader's register */
   foot?: ReactNode;
@@ -48,7 +49,6 @@ export function PracticeCard({
   const past = new Date(p.endsAt).getTime() < now;
   const d = dateParts(p.startsAt);
   const share = p.asked > 0 ? Math.min(1, p.going / p.asked) : 0;
-  const canAnswer = !cancelled && !past && p.myStatus !== "leader";
   /* ⚠ THE CARD IS ARRANGED IN THE ORDER IT IS READ (2 Oct 2026, the user:
      "better practice cards, with crew profile photo and arrangement"): WHO it is
      for — the crew's own face and name — then WHEN, as a date block you can read
@@ -93,7 +93,7 @@ export function PracticeCard({
           <div style={{ marginTop: 8 }}>
             <div style={{ fontSize: 10.5, color: "var(--muted)", fontWeight: 800 }}>
               <span>
-                {p.going} of {p.asked} coming
+                {p.going} of {p.asked} checked in
               </span>
             </div>
             <div style={{ height: 5, borderRadius: 999, background: "var(--el)", overflow: "hidden", marginTop: 4 }}>
@@ -106,8 +106,7 @@ export function PracticeCard({
         <ToolFacts
           tint={TINT}
           /* what the line above does not already say — how full, how long, and
-             whether it is still to come (the "N of M coming" line stays: it is the
-             sentence the leader's desk has counted the yes by since 27 Sep) */
+             whether it is still to come */
           items={[
             { label: "Turnout", value: `${Math.round(share * 100)}%`, tint: p.going > 0 && !cancelled ? TINT : undefined },
             { label: "Length", value: lengthWords(p.startsAt, p.endsAt) },
@@ -116,25 +115,7 @@ export function PracticeCard({
         />
       </div>
 
-      {/* ⚠ THE PERSON ASKED ANSWERS HERE, wherever "here" is — the leader's desk,
-          the Practice tile, or their Inbox. A practice shown with no way to answer
-          it is a door that is not a door. The pair and the caller's own buttons
-          share ONE bar, under the card's fields. */}
-      {canAnswer || actions ? (
-        <ToolActions>
-          {canAnswer ? (
-            <>
-              <button type="button" onClick={() => onAnswer(p.id, false)} aria-label={`Cannot make ${practiceWhen(p.startsAt)}`} style={toolBtn("secondary", TINT, { opacity: p.myStatus === "rejected" ? 0.55 : 1 })}>
-                Cannot make it
-              </button>
-              <button type="button" onClick={() => onAnswer(p.id, true)} aria-label={`Coming to ${practiceWhen(p.startsAt)}`} style={toolBtn("primary", TINT, { opacity: p.myStatus === "confirmed" ? 0.55 : 1 })}>
-                I am coming
-              </button>
-            </>
-          ) : null}
-          {actions}
-        </ToolActions>
-      ) : null}
+      {actions ? <ToolActions>{actions}</ToolActions> : null}
       {foot}
     </ToolCard>
   );

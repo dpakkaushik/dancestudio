@@ -36,7 +36,8 @@ import { CrewPicturesButton, CrewPostersButton } from "./CrewPictures";
  *  TWO desks behind a segment switch — Members | Battle record — which became
  *  two tiles here, **Team** and **Events**; the second went with events on
  *  29 Sep 2026, so Team is the whole of that desk again. The bottom bar on this
- *  page is the crew's own — Home · Inbox — drawn by the chrome.
+ *  page is the crew's own — Home alone since 11 Oct 2026, when a crew's Inbox
+ *  (which held only the roster asks it had out) went — drawn by the chrome.
  *
  *  THE CORNER IS A PENCIL OVER AN EYE (19 Sep 2026), like every other home's:
  *  the pencil opens Edit crew — the name, the photo, the header pictures (up to
@@ -249,7 +250,7 @@ export function CrewHome({ crew, members, header = [], followers = 0, order = nu
         pillsCaption="what it dances"
         note={
           <>
-            {asked > 0 ? `${asked} ${asked === 1 ? "person has" : "people have"} been asked to join — they confirm from their Inbox. ` : null}
+            {asked > 0 ? `${asked} ${asked === 1 ? "person has" : "people have"} been asked to join — they confirm from Crews › Member. ` : null}
             Bring your dancers in from <b style={{ color: "#F5F2FA" }}>Team</b>, then arrange a <b style={{ color: "#F5F2FA" }}>Practice</b>.
           </>
         }

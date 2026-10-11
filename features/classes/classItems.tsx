@@ -5,7 +5,7 @@ import { AnswerButtons, ClosedDraftButtons, DraftButtons, ScanButton, ShareButto
 import { cardBtn } from "@/features/classes/cardStyles";
 import type { AnsweredCard, ClassItem } from "@/features/classes/components/ClassesHome";
 import { draftStateOf, type TimeGroup } from "@/features/classes/classesScreen";
-import type { RequestItem } from "@/features/inbox/components/InboxScreen";
+import type { RequestItem } from "@/features/inbox/requestItems";
 import { ASK_STATUS_WORD } from "@/lib/format/classLabels";
 import type { ClassPublishState } from "@/repositories/classes";
 import type { RefundLedgerRow } from "@/repositories/refunds";

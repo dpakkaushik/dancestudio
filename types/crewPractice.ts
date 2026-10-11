@@ -4,22 +4,23 @@
  *  for the same. practice also get added to calendar. crews should also have a
  *  calendar tab."*).
  *
- *  ⚠ A PRACTICE IS NOT A CLASS, which is why it has its own three tables and its
- *  own type rather than riding `classes` — a class is SOLD (a price, a room the
- *  database defends, an artist paid per session, seats, a waitlist, a refund
- *  window, a Cashfree order) and a practice is a crew's own people in a room they
- *  arranged themselves. `20260927140000_a_crew_practises.sql` has the whole
- *  reasoning. What it DOES borrow is this app's own grammar: asked → confirmed
- *  (nobody is put on anything without saying yes, 1792), and one live attendance
- *  row per person per occasion, soft-deleted to check out (Step 10's rule). */
+ *  ⚠ A PRACTICE IS NOT A CLASS, which is why it has its own tables and its own
+ *  type rather than riding `classes` — a class is SOLD (a price, a room the
+ *  database defends, an artist paid per session, seats, a refund window, a
+ *  Cashfree order) and a practice is a crew's own people in a room they arranged
+ *  themselves. `20260927140000_a_crew_practises.sql` has the whole reasoning.
+ *
+ *  ⚠ A PRACTICE IS A NOTICE, NOT A QUESTION (11 Oct 2026, the user: *"no request
+ *  required for practice only notification should do. team leader can just check
+ *  their attendance directly in register."*). Creating one TELLS every confirmed
+ *  member; nobody answers, and the leader's register is the whole of attendance
+ *  (`20261018090000_a_practice_is_a_notice.sql`). */
 
 export type PracticeStatus = "scheduled" | "cancelled";
 
-/** What the person reading it is to this practice. ⚠ `leader` is not a row in
- *  `crew_practice_people` at all — the leader arranged it, so asking whether they
- *  are coming to their own practice is a question with one answer; the RPC says
- *  so by coalescing to this word. */
-export type PracticeStanding = "leader" | "asked" | "confirmed" | "rejected";
+/** What the person reading it is to this practice: the leader who arranged it,
+ *  or a member of the crew it is for. */
+export type PracticeStanding = "leader" | "member";
 
 export interface CrewPractice {
   id: string;
@@ -37,14 +38,15 @@ export interface CrewPractice {
    *  arrange/cancel controls are theirs */
   iLead: boolean;
   myStatus: PracticeStanding;
-  /** how many have said they are coming, and how many were asked */
+  /** how many the leader has checked in, and how many the practice is for (the
+   *  leader and every confirmed member) */
   going: number;
   asked: number;
   /** the crew's picture (`crews.photo`), read beside the RPC — null draws initials */
   crewPhotoPath: string | null;
 }
 
-/** One row of the register: who is on it, what they said, and whether they came. */
+/** One row of the register: who is on it and whether they came. */
 export interface PracticePerson {
   userId: string;
   fullName: string;
@@ -54,27 +56,23 @@ export interface PracticePerson {
   present: boolean;
 }
 
-/** The words each standing reads as on a row — one map, so the desk, the calendar
- *  and the Inbox cannot come to call the same fact three things. */
+/** The words each standing reads as on a row — one map, so the desk and the
+ *  calendar cannot come to call the same fact two things. */
 export const PRACTICE_WORD: Record<PracticeStanding, string> = {
   leader: "You arranged it",
-  asked: "Not answered",
-  confirmed: "Coming",
-  rejected: "Not coming",
+  member: "Your crew",
 };
 
 /** and their colours, on the same principle */
 export const PRACTICE_TINT: Record<PracticeStanding, string> = {
   leader: "#15803D",
-  asked: "#F59E0B",
-  confirmed: "#22C55E",
-  rejected: "#94A3B8",
+  member: "#4338CA",
 };
 
 /** "Tue 30 Sep, 7:00pm" in IST — the one grammar for a practice's when, used by
- *  the desk, the calendar row and the Inbox ask alike. ⚠ IST explicitly: every
- *  other time in this app is stamped the same way, and a rehearsal that reads an
- *  hour out is worse than one that reads nothing. */
+ *  the desk and the calendar row alike. ⚠ IST explicitly: every other time in
+ *  this app is stamped the same way, and a rehearsal that reads an hour out is
+ *  worse than one that reads nothing. */
 export const practiceWhen = (iso: string): string =>
   new Intl.DateTimeFormat("en-IN", { timeZone: "Asia/Kolkata", weekday: "short", day: "numeric", month: "short", hour: "numeric", minute: "2-digit", hour12: true }).format(new Date(iso));
 

@@ -162,11 +162,15 @@ const SWITCH_TINT: Record<SwitcherItem["kind"], string> = { me: "#5AC8FA", studi
    too from 26 Sep 2026 and wore the same bar; it went on 29 Sep. */
 const UUID = "[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}";
 const STUDIO_HOME_RE = new RegExp(`^/business/(${UUID})(/inbox)?$`, "i");
-const CREW_HOME_RE = new RegExp(`^/crews/(${UUID})/(manage|inbox)$`, "i");
+/* ⚠ A CREW HAS NO INBOX (11 Oct 2026, the user: "only enquiries to be handled
+   from inbox"). A crew takes no enquiries, so its bar is Home alone and
+   `/crews/{id}/inbox` forwards to its Team desk (next.config.ts). */
+const CREW_HOME_RE = new RegExp(`^/crews/(${UUID})/manage$`, "i");
 interface Entity {
   kind: "studio" | "crew";
   home: string;
-  inbox: string;
+  /** null for a crew — it has no Inbox since 11 Oct 2026 */
+  inbox: string | null;
   /** what the Discover link carries so the shelf knows who is reading it */
   as: string;
 }
@@ -174,7 +178,7 @@ const entityOf = (pathname: string): Entity | null => {
   const s = pathname.match(STUDIO_HOME_RE);
   if (s) return { kind: "studio", home: `/business/${s[1]}`, inbox: `/business/${s[1]}/inbox`, as: s[1]! };
   const c = pathname.match(CREW_HOME_RE);
-  if (c) return { kind: "crew", home: `/crews/${c[1]}/manage`, inbox: `/crews/${c[1]}/inbox`, as: `crew-${c[1]}` };
+  if (c) return { kind: "crew", home: `/crews/${c[1]}/manage`, inbox: null, as: `crew-${c[1]}` };
   return null;
 };
 
@@ -294,7 +298,7 @@ export function AppChrome({
      the layout and simply unused here. */
   const bar: Array<{ label: TabLabel; href: string }> = entity
     ? [
-        { label: "Inbox", href: entity.inbox },
+        ...(entity.inbox ? [{ label: "Inbox" as TabLabel, href: entity.inbox }] : []),
         { label: "Home", href: entity.home },
         /* ⚠ ENQUIRIES LEFT THIS BAR THE SAME DAY IT JOINED IT (27 Sep 2026, the
            user: "enquiries should not be on navbar a tab in tools for all"). It
@@ -302,7 +306,7 @@ export function AppChrome({
            desk it opens is scoped to the profile whose grid was pressed. */
       ]
     : TAB_SET;
-  const lit = entity ? (pathname === entity.home ? "Home" : pathname === entity.inbox ? "Inbox" : null) : activeTab;
+  const lit = entity ? (pathname === entity.home ? "Home" : entity.inbox && pathname === entity.inbox ? "Inbox" : null) : activeTab;
   /* THE SWITCHER'S OPEN STATE IS KEYED ON THE PAGE IT WAS OPENED ON: a navigation
      changes the pathname, so the menu closes by itself without an effect writing
      state (this repo's setState-in-effect rule) */
@@ -313,8 +317,8 @@ export function AppChrome({
      rather than submitting */
   const [confirmOut, setConfirmOut] = useState(false);
   const closeOut = useCallback(() => setConfirmOut(false), []);
-  /* a crew's home is /crews/{id}/manage, its inbox /crews/{id}/inbox — both are
-     "here" for that crew, so the match is on the crew's root */
+  /* a crew's home is /crews/{id}/manage, and its desks hang under /crews/{id} —
+     all "here" for that crew, so the match is on the crew's root */
   const isHere = (item: SwitcherItem) => {
     if (item.href === "/") return pathname === "/";
     const root = item.kind === "crew" ? item.href.replace(/\/manage$/, "") : item.href;

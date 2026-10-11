@@ -69,6 +69,8 @@ export interface CrewSummary extends Crew {
 export interface MyCrewAsk extends CrewMember {
   crewName: string;
   crewCity: string;
+  /** the crew's picture (11 Oct 2026) — the Crews hub's invitation card */
+  crewPhoto?: string | null;
   leaderName: string;
 }
 

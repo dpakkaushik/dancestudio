@@ -35,6 +35,10 @@ export async function setInboxOffAction(input: { off: string[] }): Promise<{ err
     revalidatePath("/inbox");
     /* the Classes gear's "Taking requests" switch writes the same list (11 Oct 2026) */
     revalidatePath("/my-classes");
+    /* and the Studios and Crews hubs' gears write the team and crew kinds
+       (11 Oct 2026, the invitations left the Inbox for those two tiles) */
+    revalidatePath("/business");
+    revalidatePath("/crews");
     return { error: null };
   } catch (error: unknown) {
     return { error: error instanceof Error ? error.message : "Could not save that" };

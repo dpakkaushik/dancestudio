@@ -4,13 +4,14 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
-import { cancelCrewPractice, checkInPractice, respondToPractice, saveCrewPractice, undoPracticeCheckIn } from "@/repositories/crewPractices";
+import { cancelCrewPractice, checkInPractice, saveCrewPractice, undoPracticeCheckIn } from "@/repositories/crewPractices";
 
-/** THE PRACTICE WRITES (27 Sep 2026). Every rule is in `20260927140000` — only
- *  the leader arranges or cancels or runs the register, only the person asked
- *  answers, a practice ends after it starts, creating asks every confirmed member
- *  and moving re-asks nobody — so these validate SHAPE and pass through. There is
- *  no second copy of any of those checks here to drift from the database's.
+/** THE PRACTICE WRITES (27 Sep 2026). Every rule is in the database — only the
+ *  leader arranges or cancels or runs the register, a practice ends after it
+ *  starts, and creating one TELLS every confirmed member (since 11 Oct 2026,
+ *  `20261018090000`: a practice is a notice, nobody answers) — so these validate
+ *  SHAPE and pass through. There is no second copy of any of those checks here
+ *  to drift from the database's.
  *
  *  ⚠ THE CREW ID IS NOT AN AUTHORITY, it is a pointer: `save_crew_practice` calls
  *  `is_crew_leader` on it, so a forged id is refused by the database in its own
@@ -33,17 +34,11 @@ async function requireUser() {
   return supabase;
 }
 
-/** ⚠ EVERY SCREEN A PRACTICE SHOWS ON. It is on the crew's desk, on the crew's
- *  calendar, on every member's own calendar, on the CREWS HUB (27 Sep 2026 — the
- *  one screen a member who does not lead the crew can act on it from) and, while
- *  it is unanswered, in their Inbox. A write that revalidated only the desk would
- *  leave the other four saying yesterday's thing. */
+/** ⚠ EVERY SCREEN A PRACTICE SHOWS ON: the crew's desk, the crew's calendar,
+ *  every member's own calendar and the Practice tile's screen. A write that
+ *  revalidated only the desk would leave the others saying yesterday's thing. */
 function revalidatePractice(crewId?: string) {
   revalidatePath("/calendar");
-  revalidatePath("/inbox");
-  revalidatePath("/crews");
-  /* the Practice tile's own screen since 29 Sep 2026 — it is where a member
-     answers, so a write that skipped it left the answer stale there */
   revalidatePath("/practice");
   if (crewId) {
     revalidatePath(`/crews/${crewId}/manage/practice`);
@@ -105,21 +100,6 @@ export async function cancelCrewPracticeAction(raw: unknown): Promise<PracticeAc
     return { error: null };
   } catch (e) {
     return { error: e instanceof Error ? e.message : "That could not be called off" };
-  }
-}
-
-const answerInput = z.object({ practiceId: z.string().uuid(), accept: z.boolean(), crewId: z.string().uuid().optional() });
-
-export async function respondToPracticeAction(raw: unknown): Promise<PracticeActionResult> {
-  const parsed = answerInput.safeParse(raw);
-  if (!parsed.success) return { error: "That practice could not be found" };
-  const supabase = await requireUser();
-  try {
-    await respondToPractice(supabase, parsed.data.practiceId, parsed.data.accept);
-    revalidatePractice(parsed.data.crewId);
-    return { error: null };
-  } catch (e) {
-    return { error: e instanceof Error ? e.message : "That could not be answered" };
   }
 }
 

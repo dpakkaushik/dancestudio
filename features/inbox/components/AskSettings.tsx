@@ -65,12 +65,26 @@ const SHORT: Record<AskKind, string> = { teach: "Asks to teach", assist: "Asks t
 const OFF_LINE = "Off turns new asks away.";
 
 /** a person's switches for the kinds one column holds */
-export function PersonAskSettings({ section, off, startOpen = false, compact = false }: { section: "requests" | "invites"; off: AskKind[]; startOpen?: boolean; compact?: boolean }) {
+export function PersonAskSettings({
+  section,
+  off,
+  startOpen = false,
+  compact = false,
+  only,
+}: {
+  section: "requests" | "invites";
+  off: AskKind[];
+  startOpen?: boolean;
+  compact?: boolean;
+  /** ONE KIND, for a hub's gear (11 Oct 2026): the Studios hub carries "team",
+   *  the Crews hub "crew" — the invitations left the Inbox for those two tiles */
+  only?: AskKind[];
+}) {
   const router = useRouter();
   const [pending, start] = useTransition();
   const [err, setErr] = useState<string | null>(null);
   const [now, setNow] = useState<AskKind[]>(off);
-  const kinds: AskKind[] = section === "requests" ? ["teach", "assist"] : ["team", "crew"];
+  const kinds: AskKind[] = only ?? (section === "requests" ? ["teach", "assist"] : ["team", "crew"]);
   const taking = kinds.filter((k) => !now.includes(k)).length;
 
   const flip = (k: AskKind) => {

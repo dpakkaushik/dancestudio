@@ -1,11 +1,9 @@
 "use client";
 
 import Link from "next/link";
-import { useState, useTransition } from "react";
-import { respondToPracticeAction } from "@/features/crews/server-actions/practices";
 import { DOS_TOOLS } from "@/features/businesses/components/biz-kit";
 import type { CrewPractice } from "@/types/crewPractice";
-import { Toast, bizCard } from "./crew-kit";
+import { bizCard } from "./crew-kit";
 import { toolBtn } from "@/components/ui/ToolCard";
 import { PRACTICE_HEAD, PracticeCard, splitPractices } from "./practice-card";
 
@@ -39,8 +37,9 @@ const TINT = DOS_TOOLS.practice.c;
  *  ⚠ THE LEADER GETS A LINK, NOT A REGISTER. Their desk is one tap away and has
  *  the roster, the check-in and Call it off; drawing a second register here would
  *  be the two-doors-to-one-subject shape this file has paid for twice. What the
- *  hub gives everybody is the same thing: what is coming, what is over, where you
- *  stand, and — for anybody who was ASKED — the answer. */
+ *  hub gives everybody is the same thing: what is coming, what is over, and where
+ *  you stand. ⚠ Nobody answers here any more (11 Oct 2026): a practice is a
+ *  notice, and attendance is the leader's register. */
 /** ⚠ `bare` IS FOR WHATEVER ALREADY NAMED IT (28 Sep 2026, and still true one
  *  screen later). This was a section stacked under the two crew lists, so it
  *  wore its own top margin and its own YOUR PRACTICES head to separate it from
@@ -51,7 +50,7 @@ export function MyPractices({
   practices,
   todayIso,
   bare = false,
-  empty = "Nothing arranged yet — when a crew you are on arranges one you are asked here.",
+  empty = "Nothing arranged yet — when a crew you are on arranges one, it shows up here.",
 }: {
   practices: CrewPractice[];
   todayIso: string;
@@ -59,27 +58,8 @@ export function MyPractices({
   /** what an empty list says — each of `/practice`'s two columns has its own */
   empty?: string;
 }) {
-  const [toast, setToast] = useState<string | null>(null);
-  const [, start] = useTransition();
   const now = new Date(todayIso).getTime();
   const { coming, over } = splitPractices(practices, now);
-
-  const say = (m: string) => {
-    setToast(m);
-    setTimeout(() => setToast(null), 2600);
-  };
-
-  const answer = (practiceId: string, accept: boolean) => {
-    start(async () => {
-      /* ⚠ `crewId` is what the action revalidates by and its schema is
-         `uuid().optional()` — so an empty string would fail the PARSE and come
-         back as "that practice could not be found", which is a lie about a
-         practice that exists. Undefined when we genuinely do not know. */
-      const p = practices.find((x) => x.id === practiceId);
-      const r = await respondToPracticeAction({ practiceId, accept, crewId: p?.crewId });
-      say(r.error ?? (accept ? "You are coming" : "They know you cannot make it"));
-    });
-  };
 
   /* ⚠ THE CREW'S NAME IS ON EVERY CARD HERE and on none of them on the desk —
      the desk is one crew's and says so in its own sub-line, while this list can
@@ -89,7 +69,6 @@ export function MyPractices({
       key={p.id}
       practice={p}
       now={now}
-      onAnswer={answer}
       /* the crew's name leads the card now (its head), so the bar carries only the
          door: the register for a practice you arranged, the crew's page otherwise */
       actions={
@@ -126,7 +105,6 @@ export function MyPractices({
           {over.map(card)}
         </>
       ) : null}
-      <Toast msg={toast} />
     </div>
   );
 }

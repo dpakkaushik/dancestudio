@@ -29,6 +29,12 @@ interface PracticeRow {
   asked: number;
 }
 
+/** ⚠ ANY WORD BUT `leader` READS AS `member`. Before `20261018090000` the RPCs
+ *  answered asked · confirmed · rejected; the app ships first, so for the minutes
+ *  between the deploy and the apply this is what keeps an old word from reaching
+ *  a map that no longer has it. */
+const standingOf = (s: string | null | undefined): PracticeStanding => (s === "leader" ? "leader" : "member");
+
 const toPractice = (r: PracticeRow): CrewPractice => ({
   id: r.practice_id,
   crewId: r.crew_id,
@@ -40,7 +46,7 @@ const toPractice = (r: PracticeRow): CrewPractice => ({
   note: r.note,
   status: r.status,
   iLead: Boolean(r.i_lead),
-  myStatus: r.my_status,
+  myStatus: standingOf(r.my_status),
   going: Number(r.going ?? 0),
   asked: Number(r.asked ?? 0),
   crewPhotoPath: null,
@@ -136,7 +142,7 @@ interface PersonRow {
   present: boolean;
 }
 
-/** The register: who is on this practice, what they said, and who turned up.
+/** The register: the leader and every confirmed member, and who turned up.
  *  Readable by the crew; an empty list for anybody else, which is the function's
  *  own answer rather than a check this file repeats. */
 export async function findPracticePeople(supabase: SupabaseClient, practiceId: string): Promise<PracticePerson[]> {
@@ -146,17 +152,18 @@ export async function findPracticePeople(supabase: SupabaseClient, practiceId: s
     userId: r.user_id,
     fullName: r.full_name,
     avatarPath: r.avatar_path ?? null,
-    status: r.status,
+    status: standingOf(r.status),
     isLeader: Boolean(r.is_leader),
     present: Boolean(r.present),
   }));
 }
 
-/* ── the five doors ─────────────────────────────────────────────────────────
-   Each is the RPC and nothing else: every rule — who may arrange, who may
-   answer, who runs the register, that a practice ends after it starts, that
-   moving re-asks nobody — is in the database, so there is no second copy here
-   to drift from it. The actions in front of these validate SHAPE only. */
+/* ── the four doors ─────────────────────────────────────────────────────────
+   Each is the RPC and nothing else: every rule — who may arrange, who runs the
+   register, that a practice ends after it starts, who is told — is in the
+   database, so there is no second copy here to drift from it. The actions in
+   front of these validate SHAPE only. ⚠ There is no answer door any more: a
+   practice is a notice (11 Oct 2026, `20261018090000`). */
 
 export async function saveCrewPractice(
   supabase: SupabaseClient,
@@ -177,11 +184,6 @@ export async function saveCrewPractice(
 
 export async function cancelCrewPractice(supabase: SupabaseClient, practiceId: string): Promise<void> {
   const { error } = await supabase.rpc("cancel_crew_practice", { p_practice_id: practiceId });
-  if (error) throw new Error(error.message);
-}
-
-export async function respondToPractice(supabase: SupabaseClient, practiceId: string, accept: boolean): Promise<void> {
-  const { error } = await supabase.rpc("respond_to_practice", { p_practice_id: practiceId, p_accept: accept });
   if (error) throw new Error(error.message);
 }
 
