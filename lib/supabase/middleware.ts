@@ -3,6 +3,10 @@ import { NextResponse, type NextRequest } from "next/server";
 import { findMyMemberships } from "@/repositories/businesses";
 import { resolveActingAs } from "@/repositories/actingAs";
 
+/** the "the app is open" marker — see `updateSession` */
+export const OPEN_COOKIE = "dos_open";
+export const OPEN_COOKIE_OPTIONS = { path: "/", maxAge: 60 * 30, httpOnly: true, sameSite: "lax" as const };
+
 /** Refreshes the auth session cookie on every request (called from proxy.ts). */
 export async function updateSession(request: NextRequest) {
   let supabaseResponse = NextResponse.next({ request });
@@ -42,6 +46,23 @@ export async function updateSession(request: NextRequest) {
      "Keep the server check"). */
   const { data } = await supabase.auth.getClaims();
   const userId = typeof data?.claims?.sub === "string" ? data.claims.sub : null;
+
+  /* ⚠ THE APP OPENS ON DISCOVER (12 Oct 2026, the user: "only during set up
+     should take to home after that should always start from discover"). A
+     signed-in DOCUMENT load of `/` with no live `dos_open` cookie is a fresh
+     open (the installed app's start URL, a new tab, a sign-in landing), so it
+     goes to Discover. The cookie is refreshed on every signed-in request and
+     lives 30 minutes, so a refresh or a client hop to Home while the app is in
+     use stays on Home — and onboarding's own landing on Home is a client
+     navigation, which never comes through here as a document. */
+  const isDocument = request.headers.get("sec-fetch-dest") === "document" || (!request.headers.get("rsc") && (request.headers.get("accept") ?? "").includes("text/html"));
+  if (userId && request.nextUrl.pathname === "/" && isDocument && !request.cookies.get(OPEN_COOKIE)) {
+    const res = NextResponse.redirect(new URL("/discover", request.url), 307);
+    supabaseResponse.cookies.getAll().forEach((c) => res.cookies.set(c));
+    res.cookies.set(OPEN_COOKIE, "1", OPEN_COOKIE_OPTIONS);
+    return res;
+  }
+  if (userId) supabaseResponse.cookies.set(OPEN_COOKIE, "1", OPEN_COOKIE_OPTIONS);
 
   const forward = await retiredAddress(request, supabase, userId);
   if (forward) {

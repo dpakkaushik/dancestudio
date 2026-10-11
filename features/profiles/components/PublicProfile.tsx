@@ -2,19 +2,17 @@ import Link from "next/link";
 import { EnquiryButton } from "@/features/enquiries/components/EnquirySheet";
 import { ReportButton } from "@/features/reports/components/ReportButton";
 import { TopPanel } from "@/components/ui/TopPanel";
-import { InvertedPanel } from "@/components/ui/InvertedPanel";
 import { DOS_UI, GOLD, INK, LILAC, MUTED } from "@/lib/design/tokens";
 import { photoUrl } from "@/lib/media/photo";
 import type { HeaderPhoto } from "@/repositories/headerPhotos";
 import { enquiryTypesFor } from "@/types/enquiry";
 import type { BusinessFollower } from "@/types/follow";
-import type { PublicTeamMember, PublicBusinessProfile } from "@/types/publicProfile";
+import type { PublicBusinessProfile } from "@/types/publicProfile";
 import { ActionRow, CallButton, LocationButton, MailButton, MessageButton, mapsPinHref, whatsappHrefOf } from "./ContactButtons";
-import { MembershipsOnSale } from "@/features/memberships/components/MembershipsOnSale";
 import type { MembershipOnSale as MembershipOnSaleRow } from "@/repositories/memberships";
 import { FollowToggle } from "./FollowToggle";
-import { NextSessions, type NextSessionsBooking } from "./NextSessions";
-import { StudioPlace } from "./StudioPlace";
+import type { NextSessionsBooking } from "./NextSessions";
+import { StudioPublicBody } from "./StudioPublicBody";
 import type { Room } from "@/types/room";
 import type { CalendarEntry } from "@/types/calendar";
 import { EntityBand, Figure } from "./profile-band";
@@ -26,7 +24,7 @@ import { ProfileLink, ProfileShare } from "./ProfileShare";
 import { StatsChip } from "./StatsChip";
 import { memberNoWords } from "@/types/profile";
 import { HeroDot, HeroFact, HeroId, IdentityHero } from "./hero-kit";
-import { PROFILE_RING, PeopleGroup, PersonChip, ScheduleBar, smallBox } from "./profile-kit";
+import { PROFILE_RING, ScheduleBar, smallBox } from "./profile-kit";
 
 /** A STUDIO'S PUBLIC PAGE, lifted from prototype S_profiletab with
  *  `publicEntity="studio"` (10565-11060): THE PROFILE, LIT LIKE A PLAYER — the
@@ -126,37 +124,6 @@ export function PublicProfile({
   const shots: HeroShot[] = header
     .filter((h) => h.url)
     .map((h, i) => ({ key: h.id, src: h.url as string, alt: `Header picture ${i + 1} of ${business.name}`, signed: h.signed }));
-  /* the seats a studio's page names (19 Sep 2026: "Owner, Faculty, Visiting
-     Faculty"), and since 20 Sep the ASSISTANTS — the user's list E. A `staff`
-     seat is still never named: a front-desk job is not a public association. */
-  const owners = profile.team.filter((m) => m.role === "owner");
-  const faculty = profile.team.filter((m) => m.role === "trainer");
-  const visiting = profile.team.filter((m) => m.role === "visiting_faculty");
-  const assistants = profile.team.filter((m) => m.role === "assistant");
-  /** ⚠⚠ EVERY TEAM ROW OPENS A PERSON (27 Sep 2026, the user: *"all profiles
-   *  should only showcase according to how the team sections are managed … and
-   *  their associations linked properly"*).
-   *
-   *  This read `m.isOrg ? \`/org/${m.userId}\` : …`, and that link was BROKEN in
-   *  two ways at once. `m.userId` is a `profiles` id, while `/org/{id}` has
-   *  taken a BUSINESS id since 26 Sep — so the href pointed at a page that
-   *  resolves by a different key and answered `notFound()`. And `isOrg` is
-   *  computed as `profiles.role = 'org'`, a role the same migration RETIRED, so
-   *  the branch is false for everything created since and true only for a
-   *  surviving legacy row — which is exactly the row it 404s on.
-   *
-   *  A studio's owner is a PERSON now, always, so there is one destination. */
-  /* ⚠ THE ROLE IS THE `right` WORD, NOT THE `sub` (27 Sep 2026) — the slot a
-     person's own page and an organization's have always used for it. `sub` is
-     where somebody IS, so it carries the business's own place here, the way a
-     city does on every other Row in the app. */
-  /** ⚠ A CHIP, NOT A ROW (27 Sep 2026) — `PersonChip`'s own note has the whole
-   *  reason. The `sub` this used to carry was the STUDIO's place repeated under
-   *  every name, which said nothing about the person; the role takes that slot
-   *  now, which is what the user asked to see beside a name. */
-  const teamChip = (m: PublicTeamMember, word: string) => (
-    <PersonChip key={m.userId} href={`/person/${m.userId}`} name={m.name} role={word} roleColour={RC} photo={photoUrl(m.photoPath)} />
-  );
   /* ⚠ DRAWN FOR THE TEAM TOO, AND DISABLED (20 Sep 2026, the user: "Viewing your
      own profile should show same buttons which you see on discover it should
      look the same way"). `ActionRow` is a grid sized by its cell count, so
@@ -346,44 +313,22 @@ export function PublicProfile({
         <ScheduleBar href={scheduleHref} />
         </TopPanel>
 
-        {/* ── THE STUDIO ITSELF, A SECTION OF ITS OWN (5 Oct 2026, the user:
-            "below Schedule should have full adrees and rooms with amenities
-            mentioned alongside membership in a seprate segragation and others
-            from next session below that") — the full address, every room with
-            what it has, and what the studio sells ── */}
-        {business.type === "studio" ? (
-          <StudioPlace address={address || place} rooms={rooms} tint={RC}>
-            {/* ── WHAT IT SELLS (19 Sep 2026, the user: "Users should be able to
-                buy from Studio and Artist Profile Pages") — a price on a public
-                page is public; who holds one never is ── */}
-            <MembershipsOnSale memberships={memberships} businessName={business.name} accent={RC} signedIn={signedIn} canBuy={!isMember} />
-          </StudioPlace>
-        ) : null}
-
-        {/* ⚠ ON THE PAGE'S OWN THEME (5 Oct 2026, the user: "Remove Dual tone
-            from public profile pages") — the squircle Home and Discover wear */}
-        <InvertedPanel ground="page">
-        {/* ── A TASTE OF WHAT IS BEHIND THE BAR ABOVE (30 Sep 2026, #0aj) — the
-            soonest five, each with its Book Now (5 Oct 2026) ── */}
-        <NextSessions entries={nextSessions} booking={booking} />
-
-        {/* an artist page read through this component keeps its memberships here */}
-        {business.type === "studio" ? null : (
-          <MembershipsOnSale memberships={memberships} businessName={business.name} accent={RC} signedIn={signedIn} canBuy={!isMember} />
-        )}
-
-        {/* ── THE TEAM, A SECTION PER ROLE (11000-11060; re-cut 27 Sep 2026 to
-            the user's *"Studio, Crew and Organization — simply should show the
-            Team with position … all roles should have a seprate section
-            according to profile"*). The grouping is what it always was; what
-            changed is the row: a person is a CHIP with their position beside
-            them, two to a line, so a studio with nine people is a block you can
-            read rather than nine full-width rows. ── */}
-        {owners.length ? <PeopleGroup title="Owner" n={owners.length}>{owners.map((m) => teamChip(m, m.isOrg ? "Organization" : "Owner"))}</PeopleGroup> : null}
-        {faculty.length ? <PeopleGroup title="Faculty" n={faculty.length}>{faculty.map((m) => teamChip(m, "Faculty"))}</PeopleGroup> : null}
-        {visiting.length ? <PeopleGroup title="Visiting faculty" n={visiting.length}>{visiting.map((m) => teamChip(m, "Visiting faculty"))}</PeopleGroup> : null}
-        {assistants.length ? <PeopleGroup title="Assistants" n={assistants.length}>{assistants.map((m) => teamChip(m, "Assistant"))}</PeopleGroup> : null}
-        </InvertedPanel>
+        {/* ── EVERYTHING BELOW THE TOP PANEL IS `StudioPublicBody` (12 Oct 2026) —
+            the place, the next sessions and the team — which the studio's own
+            home draws too, so the two screens cannot drift ── */}
+        <StudioPublicBody
+          businessName={business.name}
+          isStudio={business.type === "studio"}
+          accent={RC}
+          address={address || place}
+          rooms={rooms}
+          memberships={memberships}
+          signedIn={signedIn}
+          canBuy={!isMember}
+          nextSessions={nextSessions}
+          booking={booking}
+          team={profile.team}
+        />
       </div>
     </div>
   );

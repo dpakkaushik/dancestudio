@@ -8,6 +8,10 @@ import { ensureArtistPage, findMyMemberships } from "@/repositories/businesses";
 import { findMyArtistPlan } from "@/repositories/plans";
 import { findMyFollowedCrews, findMyFollowedPeople, findMyFollowing, findMyPersonFollowers, findTeamFollows, withTeamFollows } from "@/repositories/follows";
 import { findPersonHeaderPhotos } from "@/repositories/headerPhotos";
+import { findNextPublicSessions } from "@/repositories/calendar";
+import { findPublicPerson } from "@/repositories/publicPerson";
+import { findPublicStudioTeam } from "@/repositories/publicProfile";
+import { PersonBody } from "@/features/profiles/components/PersonBody";
 import { ProfileLink, ProfileShare } from "@/features/profiles/components/ProfileShare";
 import { StatsChip } from "@/features/profiles/components/StatsChip";
 import { amIPlatformAdmin } from "@/repositories/admin";
@@ -17,7 +21,7 @@ import { TodayShelf } from "@/features/home/components/TodayShelf";
 import { HomeBand } from "@/features/profiles/components/HomeBand";
 import { HeaderEditButton, PicturesButton } from "@/features/profiles/components/PicturesSheet";
 import type { HeroShot } from "@/features/profiles/components/HeroRail";
-import { EyeIcon, ROLE_RING, cornerChip } from "@/features/profiles/components/profile-kit";
+import { EyeIcon, ROLE_RING, ScheduleBar, cornerChip } from "@/features/profiles/components/profile-kit";
 import { ActionRow, CallButton, MailButton, MessageButton, whatsappHrefOf } from "@/features/profiles/components/ContactButtons";
 import { ContactEditButton } from "@/features/profiles/components/ContactEditor";
 import { EditModeButton, EditModeProvider } from "@/features/profiles/components/EditMode";
@@ -135,7 +139,16 @@ export default async function HomePage() {
      studio's desks are on the studio's own home.
      ⚠ It is worked out HERE rather than beside the grid since 22 Sep 2026,
      because the batch below needs it: the arrangement is keyed by kind. */
-  const [header, deck, pageId, followers, followingPeople, followedBusinesses, followedCrews, teams] = await Promise.all([
+  /* ⚠ WHAT THE PROFILE PAGE DRAWS BELOW ITS TOP PANEL (12 Oct 2026, the user:
+     "since home is now empty can show all elements from public profile page
+     here as well") — the same reads `OwnProfileScreen` makes: the person as
+     their page reads them, the schedule a person's bar opens, its next sessions
+     and an artist's own team */
+  const businessesOn = memberships.map((m) => m.business);
+  const schedBiz = businessesOn.find((t) => t.type === "artist_page") ?? businessesOn[0] ?? null;
+  const scheduleHref = schedBiz ? `/${schedBiz.type === "studio" ? "studio" : "artist"}/${schedBiz.id}/schedule` : null;
+  const ownArtistPage = memberships.find((m) => m.business.type === "artist_page" && m.memberRole === "owner")?.business.id ?? null;
+  const [header, deck, pageId, followers, followingPeople, followedBusinesses, followedCrews, teams, person, nextSessions, artistTeam] = await Promise.all([
     findPersonHeaderPhotos(supabase, user.id, headerMax),
     deckP,
     !isArtist ? Promise.resolve(null) : ensureArtistPage(supabase, profile, memberships),
@@ -144,6 +157,11 @@ export default async function HomePage() {
     followedBusinessesP,
     followedCrewsP,
     teamsP,
+    findPublicPerson(supabase, user.id).catch(() => null),
+    schedBiz
+      ? findNextPublicSessions(supabase, schedBiz.id, { name: schedBiz.name, city: schedBiz.city }, schedBiz.id === ownArtistPage ? user.id : null).catch(() => [])
+      : Promise.resolve([]),
+    ownArtistPage ? findPublicStudioTeam(supabase, ownArtistPage).catch(() => []) : Promise.resolve([]),
   ]);
   const { businesses: followingBusinesses, crews: followingCrews } = withTeamFollows({ businesses: followedBusinesses, crews: followedCrews }, teams);
 
@@ -373,8 +391,16 @@ export default async function HomePage() {
         </ActionRow>
         {/* the ⊕ that makes and unmakes those buttons, while the pencil is pressed (26 Sep 2026) */}
         <ContactEditButton target={{ kind: "person", profile, isArtist }} />
+        {/* the schedule bar the profile page carries in its top half (12 Oct 2026) */}
+        {scheduleHref ? <ScheduleBar href={scheduleHref} /> : null}
         </TopPanel>
         <TodayShelf deck={deck} />
+        {/* ── AND THE PROFILE PAGE'S OWN BODY — next sessions, the associations —
+            through the very component it draws (12 Oct 2026), so Home and the
+            profile cannot drift ── */}
+        {person ? (
+          <PersonBody person={person} isMe signedIn memberships={[]} artistTeam={artistTeam} nextSessions={nextSessions} accent={ring[1]} />
+        ) : null}
 
         {/* ── run your business — the prototype's BizSection (7342-7344, 2497-2583). It is the
             sheet that covers the deck, so it is opaque and it is above. ── */}

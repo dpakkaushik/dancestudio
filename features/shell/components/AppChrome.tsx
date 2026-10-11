@@ -317,6 +317,12 @@ export function AppChrome({
      state (this repo's setState-in-effect rule) */
   const [openFor, setOpenFor] = useState<string | null>(null);
   const menuOpen = openFor === pathname;
+  /* SETTINGS IS A PANE OF THE DRAWER (12 Oct 2026, the user: "settings page open
+     should be smoother now since it has moved"): the gear swaps the drawer's
+     contents in place — no navigation, no second sheet — and ‹ Back swaps them
+     back. Opening the drawer always starts on the profiles. `?settings=1` still
+     opens the bottom sheet for a deep link. */
+  const [pane, setPane] = useState<"main" | "settings">("main");
   /* LOG OUT ASKS FIRST (3 Oct 2026, the user: "should not log out without
      confirmation") — both the menu's Log out and an admin's Sign out open this
      rather than submitting */
@@ -705,7 +711,7 @@ export function AppChrome({
                 if (Math.abs(dy) >= SWIPE_SWITCH && Math.abs(dy) > Math.abs(dx) * 1.5) swipeSwitch(dy);
               }}
               onContextMenu={(e) => e.preventDefault()}
-              onClick={(e) => { if (wasSwipe(e)) return; setOpenFor(menuOpen ? null : pathname); }}
+              onClick={(e) => { if (wasSwipe(e)) return; setPane("main"); setOpenFor(menuOpen ? null : pathname); }}
               style={{ ...chipStyle, padding: 0, overflow: "hidden", fontFamily: "inherit", touchAction: "none", WebkitTouchCallout: "none", WebkitUserSelect: "none", userSelect: "none", border: `2px solid ${hereItem ? SWITCH_TINT[hereItem.kind] : "var(--chip-line)"}`, background: hereItem ? `linear-gradient(135deg,${SWITCH_TINT[hereItem.kind]},${SWITCH_TINT[hereItem.kind]}88)` : "var(--chip-bg)" }}
             >
               {hereItem?.photo ? (
@@ -745,8 +751,12 @@ export function AppChrome({
               aria-label="Profiles and tools"
               data-testid="profile-drawer"
               onKeyDown={(e) => { if (e.key === "Escape") setOpenFor(null); }}
-              style={{ pointerEvents: "auto", width: "86%", maxWidth: 340, height: "100%", overflowY: "auto", boxSizing: "border-box", background: "var(--solid)", color: "var(--text)", borderLeft: "1.5px solid var(--el)", borderRadius: "26px 0 0 26px", boxShadow: "-18px 0 48px rgba(0,0,0,.4)", padding: "calc(var(--dos-safe-top) + 14px) 12px calc(var(--dos-safe-bottom) + 18px)", fontFamily: DOS_UI, animation: "dosDrawerIn .22s ease" }}
+              style={{ pointerEvents: "auto", width: "86%", maxWidth: 340, height: "100%", overflowY: "auto", boxSizing: "border-box", background: "var(--solid)", color: "var(--text)", borderLeft: "1.5px solid var(--el)", borderRadius: "26px 0 0 26px", boxShadow: "-18px 0 48px rgba(0,0,0,.4)", padding: "calc(var(--dos-safe-top) + 14px) 12px calc(var(--dos-safe-bottom) + 18px)", fontFamily: DOS_UI, animation: "dosDrawerRight .22s ease" }}
             >
+              {pane === "settings" && activeSettings ? (
+                <SettingsSheet inline open onClose={() => setOpenFor(null)} onBack={() => setPane("main")} active={activeSettings} isAdmin={settings?.isAdmin ?? false} />
+              ) : (
+              <>
               {/* the theme toggle, with Settings on its right */}
               <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 14 }}>
                 <div role="group" aria-label="Theme" style={{ flex: 1, display: "flex", padding: 4, gap: 4, borderRadius: 999, background: "var(--el)" }}>
@@ -776,13 +786,13 @@ export function AppChrome({
                     );
                   })}
                 </div>
-                {/* the gear opens Settings for THE PROFILE YOU ARE IN (21 Sep 2026);
-                    the drawer folds first so the sheet is not drawn over it */}
+                {/* the gear opens Settings for THE PROFILE YOU ARE IN (21 Sep 2026),
+                    as a pane of this drawer (12 Oct 2026) */}
                 <button
                   type="button"
-                  onClick={() => { setOpenFor(null); openSettings(); }}
+                  onClick={() => { if (activeSettings) setPane("settings"); else { setOpenFor(null); openSettings(); } }}
                   aria-label="Settings"
-                  aria-expanded={settingsOpen}
+                  aria-expanded={false}
                   style={{ ...chipStyle, width: 46, height: 46, borderRadius: 23, cursor: "pointer", padding: 0, fontFamily: "inherit" }}
                 >
                   <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="var(--text)" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
@@ -872,6 +882,8 @@ export function AppChrome({
                 <span style={{ fontSize: 13, fontWeight: 900 }}>Log out</span>
               </button>
               </div>
+              </>
+              )}
             </div>
           </div>
         </Portal>

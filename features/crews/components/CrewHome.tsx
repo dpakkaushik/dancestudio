@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { CrewRoster } from "./CrewPublicPage";
 import { WelcomeFromUrl } from "@/components/ui/WelcomeBow";
 import { TopPanel } from "@/components/ui/TopPanel";
 import type { HeroShot } from "@/features/profiles/components/HeroRail";
@@ -203,7 +204,10 @@ export function CrewHome({ crew, members, header = [], followers = 0, editOpen =
         {/* the ⊕ that makes and unmakes those buttons, while the pencil is pressed (26 Sep 2026) */}
         <ContactEditButton target={{ kind: "crew", crew, socials: crew.socials }} />
         </TopPanel>
-
+        {/* the roster the crew's public page draws, by role (12 Oct 2026, the user:
+            "since home is now empty can show all elements from public profile page
+            here as well") */}
+        <CrewRoster members={members} />
       </div>
       {/* the form Settings sends you to, over the home it belongs to */}
       {editOpen ? <CrewEditFromUrl crew={crew} /> : null}

@@ -381,8 +381,10 @@ a:focus-visible:not([data-slot]) {
     animation: none !important;
   }
 }
-/* the profile drawer slides in from the right (12 Oct 2026) */
-@keyframes dosDrawerIn {
+/* the profile drawer slides in from the right (12 Oct 2026). ⚠ Its own name:
+   the calendar's drawer owns `dosDrawerIn` (from the LEFT) further down, and
+   the later rule won, so this drawer came in from the wrong side */
+@keyframes dosDrawerRight {
   from {
     transform: translateX(100%);
   }
@@ -390,8 +392,20 @@ a:focus-visible:not([data-slot]) {
     transform: translateX(0);
   }
 }
+/* Settings swapping in as a pane of that drawer */
+@keyframes dosPaneIn {
+  from {
+    transform: translateX(24px);
+    opacity: 0;
+  }
+  to {
+    transform: none;
+    opacity: 1;
+  }
+}
 @media (prefers-reduced-motion: reduce) {
-  [data-testid="profile-drawer"] {
+  [data-testid="profile-drawer"],
+  [data-testid="profile-drawer"] [role="dialog"] {
     animation: none !important;
   }
 }

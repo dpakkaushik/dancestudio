@@ -109,7 +109,7 @@ async function land(
     return NextResponse.redirect(new URL("/login/reset", request.url));
   }
   const profile = await findProfileById(supabase, userId);
-  return NextResponse.redirect(new URL(profile ? "/" : "/onboarding", request.url));
+  return NextResponse.redirect(new URL(profile ? "/discover" : "/onboarding", request.url));
 }
 
 /** Back to the screen that can retry the same thing, carrying a message that

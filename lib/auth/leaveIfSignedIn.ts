@@ -16,6 +16,6 @@ export async function leaveIfSignedIn(): Promise<void> {
     data: { user },
   } = await supabase.auth.getUser();
   if (user) {
-    redirect("/", RedirectType.replace);
+    redirect("/discover", RedirectType.replace);
   }
 }

@@ -1,4 +1,6 @@
 import Link from "next/link";
+import { redirect } from "next/navigation";
+import { amIPlatformAdmin } from "@/repositories/admin";
 import { InvertedPanel } from "@/components/ui/InvertedPanel";
 import { TopPanel } from "@/components/ui/TopPanel";
 import { ClassTile } from "@/features/classes/components/ClassTile";
@@ -144,6 +146,10 @@ export default async function DiscoverPage({
     /* the styles this person wants to LEARN (11 Oct 2026) — private, read through its own door */
     user ? findMyLearnStyles(supabase) : Promise.resolve([] as string[]),
   ]);
+  /* ⚠ THE APP OPENS HERE NOW (12 Oct 2026), so a signed-in account with NO
+     profile — somebody mid-setup, or a platform admin — is sent where Home would
+     send it, rather than landing on a shelf it has no profile to use */
+  if (user && !profile) redirect((await amIPlatformAdmin(supabase)) ? "/admin/verifications" : "/onboarding");
   /* the raw value, kept only to carry onto the cards' own hrefs so the page a
      card opens agrees with the card that sent you */
   const asRaw = actingAs ? (params.as ?? null) : null;

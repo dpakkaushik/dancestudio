@@ -1,5 +1,6 @@
 "use server";
 
+import { OPEN_COOKIE, OPEN_COOKIE_OPTIONS } from "@/lib/supabase/middleware";
 import { cookies, headers } from "next/headers";
 import { RedirectType, redirect } from "next/navigation";
 import { z } from "zod";
@@ -135,7 +136,9 @@ export async function signInWithPasswordAction(
      to that class. Only an in-app path is honoured (`safeNext`); onboarding
      still comes first for an account that has none. */
   const next = safeNext(formData.get("next"));
-  redirect(profile ? (next ?? "/") : "/onboarding", RedirectType.replace);
+  /* ⚠ A SIGN-IN LANDS ON DISCOVER (12 Oct 2026, the user: "only during set up
+     should take to home after that should always start from discover") */
+  redirect(profile ? (next ?? "/discover") : "/onboarding", RedirectType.replace);
 }
 
 /** FORGOT PASSWORD — sends a recovery link, which lands on /login/reset.
@@ -209,7 +212,7 @@ export async function setNewPasswordAction(
   }
 
   const profile = await findProfileById(supabase, user.id);
-  redirect(profile ? "/" : "/onboarding", RedirectType.replace);
+  redirect(profile ? "/discover" : "/onboarding", RedirectType.replace);
 }
 
 export async function completeProfileAction(
@@ -344,6 +347,9 @@ export async function saveProfileBasicsAction(input: unknown): Promise<{ error: 
 /** "Open DanceOS →" (3940): the flow is over, the cookie goes, Home is next. */
 export async function finishOnboardingAction(): Promise<void> {
   (await cookies()).delete(ONBOARDING_COOKIE);
+  /* SETUP ENDS ON HOME (12 Oct 2026) — the "app is open" marker, so the proxy
+     does not send this one landing to Discover */
+  (await cookies()).set(OPEN_COOKIE, "1", OPEN_COOKIE_OPTIONS);
   redirect("/", RedirectType.replace);
 }
 

@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import Link from "next/link";
 import { TopPanel } from "@/components/ui/TopPanel";
 import type { FollowListResult } from "@/features/profiles/server-actions/followLists";
@@ -11,7 +12,7 @@ import { FollowerFigure } from "@/features/profiles/components/FollowerFigure";
 import { FollowingFigure } from "@/features/profiles/components/FollowingFigure";
 import { ProfileLink, ProfileShare } from "@/features/profiles/components/ProfileShare";
 import { StatsChip } from "@/features/profiles/components/StatsChip";
-import { PROFILE_RING, EyeIcon, cornerChip } from "@/features/profiles/components/profile-kit";
+import { PROFILE_RING, EyeIcon, cornerChip, ScheduleBar } from "@/features/profiles/components/profile-kit";
 import { ActionRow, CallButton, LocationButton, MailButton, MessageButton, mapsPinHref, whatsappHrefOf } from "@/features/profiles/components/ContactButtons";
 import { ContactEditButton } from "@/features/profiles/components/ContactEditor";
 import { EditDetailsChip, EditModeButton, EditModeProvider } from "@/features/profiles/components/EditMode";
@@ -81,6 +82,7 @@ export function StudioHome({
    *  AND NEVER AN AUTHORITY (C54): the sheet is drawn only when `editable` is
    *  non-null, which is the owner-only read this page already made. */
   editOpen = false,
+  body = null,
 }: {
   business: Business;
   photo: string | null;
@@ -95,6 +97,10 @@ export function StudioHome({
   /** ⚠ the studio's TEAM, which is what its Following lists (2 Oct 2026) */
   followingRows?: FollowListResult["rows"];
   editOpen?: boolean;
+  /** EVERYTHING THE PUBLIC PAGE DRAWS BELOW ITS TOP PANEL (12 Oct 2026, the
+   *  user: "since home is now empty can show all elements from public profile
+   *  page here as well") — `StudioPublicBody`, built by the route */
+  body?: ReactNode;
   /** ⚠ `standing` is GONE (21 Sep 2026, later the same day): where this studio
    *  stands with DanceOS — its verification and its subscription, and the door
    *  to its refunds — is in its own Settings now, so this screen neither draws
@@ -350,12 +356,15 @@ export function StudioHome({
         </ActionRow>
         {/* the ⊕ that makes and unmakes those buttons — the owner's, while the pencil is pressed (26 Sep 2026) */}
         {editable ? <ContactEditButton target={{ kind: "business", business, detailsHref: `/business/${business.id}?edit=1` }} /> : null}
+        {/* the schedule bar the public page carries in its top half (12 Oct 2026) */}
+        <ScheduleBar href={`/studio/${business.id}/schedule`} />
         </TopPanel>
 
         {/* ── TODAY, AS THE SCHEDULE IT ACTUALLY IS (7500-7520): every class and
             event running in THIS studio's rooms today, one card each, in the
             order the day happens; a studio's doors are its own (7143-7150) ── */}
         <TodayShelf deck={deck} />
+        {body}
 
         {/* ⚠⚠ WHERE THIS STUDIO STANDS IS IN ITS SETTINGS (21 Sep 2026, the user:
             "Studio-Invoices subscription and refunds to be managed from

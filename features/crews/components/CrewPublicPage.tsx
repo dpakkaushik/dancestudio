@@ -84,8 +84,6 @@ export function CrewPublicPage({
 }) {
   const RG = CREW_GRAD;
   const RC = RG[1];
-  const lead = members.filter((m) => m.role === "leader");
-  const rest = members.filter((m) => m.role !== "leader");
   const path = `/crew/${crew.id}`;
   const shots: HeroShot[] = header.filter((h) => h.url).map((h, i) => ({ key: h.id, src: h.url as string, alt: `Header picture ${i + 1} of ${crew.name}`, signed: h.signed }));
 
@@ -202,25 +200,34 @@ export function CrewPublicPage({
 
         {/* ⚠ ON THE PAGE'S OWN THEME (5 Oct 2026, the user: "Remove Dual tone
             from public profile pages") — the squircle Home and Discover wear */}
-        <InvertedPanel ground="page" style={{ paddingTop: 0 }}>
-        {/* ── THE ASSOCIATIONS, in one language: a row per person, the group headed with a count ── */}
-        {lead.length ? (
-          <PeopleGroup title="Crew leader" n={lead.length}>
-            {lead.map((m) => (
-              <Person key={m.id} m={m} role="Crew leader" tint={RC} />
-            ))}
-          </PeopleGroup>
-        ) : null}
-        <PeopleGroup title="Crew members" n={rest.length}>
-          {rest.length ? rest.map((m) => <Person key={m.id} m={m} role={m.role === "trainee" ? "Trainee" : "Member"} tint={RC} />) : <div style={{ gridColumn: "1 / -1", fontSize: 11.5, color: MUTED, padding: "10px 0" }}>Nobody else in the crew yet.</div>}
-        </PeopleGroup>
-
-        {/* ⚠ THE BATTLE RECORD WENT WITH EVENTS (29 Sep 2026) — the events this
-            crew had entered, each a door to its page, read off
-            `event_bookings.crew_id`. It was the one group on this page that was
-            not the roster, and there is nothing left that could fill it. */}
-        </InvertedPanel>
+        <CrewRoster members={members} />
       </div>
     </div>
+  );
+}
+
+/** THE CREW'S ROSTER, A SECTION PER ROLE — the public page's and, since 12 Oct
+ *  2026, the crew's own home's (the user: "since home is now empty can show all
+ *  elements from public profile page here as well"). Confirmed members only —
+ *  an unanswered ask never puts a name on a page. */
+export function CrewRoster({ members }: { members: CrewMember[] }) {
+  const RC = CREW_GRAD[1];
+  const live = members.filter((m) => m.status === "confirmed");
+  const lead = live.filter((m) => m.role === "leader");
+  const rest = live.filter((m) => m.role !== "leader");
+  return (
+    /* ⚠ ON THE PAGE'S OWN THEME (5 Oct 2026, the user: "Remove Dual tone from public profile pages") */
+    <InvertedPanel ground="page" style={{ paddingTop: 0 }}>
+      {lead.length ? (
+        <PeopleGroup title="Crew leader" n={lead.length}>
+          {lead.map((m) => (
+            <Person key={m.id} m={m} role="Crew leader" tint={RC} />
+          ))}
+        </PeopleGroup>
+      ) : null}
+      <PeopleGroup title="Crew members" n={rest.length}>
+        {rest.length ? rest.map((m) => <Person key={m.id} m={m} role={m.role === "trainee" ? "Trainee" : "Member"} tint={RC} />) : <div style={{ gridColumn: "1 / -1", fontSize: 11.5, color: MUTED, padding: "10px 0" }}>Nobody else in the crew yet.</div>}
+      </PeopleGroup>
+    </InvertedPanel>
   );
 }

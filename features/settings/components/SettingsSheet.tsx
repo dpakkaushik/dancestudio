@@ -154,8 +154,18 @@ export function SettingsSheet({
   onClose,
   active,
   isAdmin = false,
+  inline = false,
+  onBack,
 }: {
   open: boolean;
+  /** ⚠ DRAWN INSIDE THE PROFILE DRAWER (12 Oct 2026, the user: "settings page
+   *  open should be smoother now since it has moved now can change the way we
+   *  reach there"): the gear swaps the drawer's own content for this — no route
+   *  change, no second sheet sliding up over a closing one. `?settings=1` still
+   *  opens the bottom sheet, for every link that carries it. */
+  inline?: boolean;
+  /** the drawer's ‹ back to the profiles list (inline only) */
+  onBack?: () => void;
   onClose: () => void;
   active: SettingsProfile;
   /** a platform admin gets the panel as a tile; nobody else sees it exists */
@@ -230,9 +240,15 @@ export function SettingsSheet({
   const whose = studio ? studio.name : active.kind === "crew" ? active.crew.name : (profile?.fullName ?? null);
 
   return (
-    <div onClick={onClose} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,.55)", display: "flex", alignItems: "flex-end", justifyContent: "center", zIndex: 600, fontFamily: DOS_UI }}>
-      <div role="dialog" aria-modal="true" aria-label="Settings" onClick={(e) => e.stopPropagation()} style={{ background: "var(--solid)", borderRadius: "24px 24px 0 0", padding: "16px 16px 30px", width: "100%", maxWidth: 430, boxSizing: "border-box", maxHeight: "84vh", overflowY: "auto", color: INK, animation: "dosSheetUp .28s cubic-bezier(.22,.9,.34,1)" }}>
-        <div style={{ width: 40, height: 4, borderRadius: 2, background: "var(--el)", margin: "0 auto 12px" }} />
+    <div onClick={inline ? undefined : onClose} style={inline ? { fontFamily: DOS_UI } : { position: "fixed", inset: 0, background: "rgba(0,0,0,.55)", display: "flex", alignItems: "flex-end", justifyContent: "center", zIndex: 600, fontFamily: DOS_UI }}>
+      <div role="dialog" aria-modal={inline ? undefined : true} aria-label="Settings" onClick={(e) => e.stopPropagation()} style={inline ? { color: INK, animation: "dosPaneIn .22s cubic-bezier(.22,.9,.34,1)" } : { background: "var(--solid)", borderRadius: "24px 24px 0 0", padding: "16px 16px 30px", width: "100%", maxWidth: 430, boxSizing: "border-box", maxHeight: "84vh", overflowY: "auto", color: INK, animation: "dosSheetUp .28s cubic-bezier(.22,.9,.34,1)" }}>
+        {inline ? (
+          <button type="button" onClick={onBack} aria-label="Back to profiles" style={{ display: "inline-flex", alignItems: "center", gap: 6, background: "none", border: "none", color: INK, fontFamily: DOS_UI, fontSize: 13, fontWeight: 800, padding: "2px 0 10px", cursor: "pointer" }}>
+            <span aria-hidden="true" style={{ fontSize: 18, lineHeight: 1 }}>‹</span> Back
+          </button>
+        ) : (
+          <div style={{ width: 40, height: 4, borderRadius: 2, background: "var(--el)", margin: "0 auto 12px" }} />
+        )}
         <div style={{ borderRadius: 18, padding: "14px 16px 13px", background: "linear-gradient(135deg,#64748B,#0EA5E9)", color: "#fff", marginBottom: 4 }}>
           <div style={{ fontSize: 19, fontWeight: 900 }}>Settings</div>
           {/* ⚠ WHOSE (21 Sep 2026). While this sheet could only ever be your own
