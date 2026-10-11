@@ -5,7 +5,7 @@ import { askClassPerson, findClassPeopleByClass, setClassPersonPay, withdrawClas
  *  the only person the form names: the teacher, anyone on DanceOS (the RPC
  *  refuses an organization account and re-checks the caller is the owner).
  *  Assistants are not the form's business any more — they are added from the
- *  class page, by the owner or the teacher, and this service never touches them.
+ *  class page, by the owner or the teacher.
  *
  *  `artistPayInr` is only ever sent by an OWNER — the RPCs refuse a rate from
  *  anybody else. */
@@ -22,18 +22,52 @@ export interface ClassPeopleIntent {
  *    · the same person still named keeps their answer; only the rate may move
  *    · a different person named: the old ask is withdrawn, the new person ASKED
  *    · nobody named: the old ask is withdrawn (the class waits for a teacher)
- *  Assistant classPeople on the class are left exactly as they are. */
+ *
+ *  ⚠⚠ UNLESS THE CLASS ITSELF CHANGED (11 Oct 2026, the user: "if anything has
+ *  been edited should send a new request for confirmation"). A yes was a yes to
+ *  a date, a time, a room and a price; when any of those moves, `reconfirm` is
+ *  true and everybody on the class who is not the person saving it is ASKED
+ *  AGAIN — the teacher with their rate and register job, every assistant with
+ *  their powers. `ask_class_person` closes the old row and opens a fresh one, so
+ *  consent is never inherited and each of them is notified. A draft cannot be
+ *  published until they say yes again (`classes_publish_needs_a_yes`); a
+ *  published class stays on sale for the people already booked. */
 export async function reconcileClassPeople(
   supabase: SupabaseClient,
   classId: string,
-  intent: ClassPeopleIntent
+  intent: ClassPeopleIntent | null,
+  opts: { reconfirm?: boolean; meId?: string } = {}
 ): Promise<void> {
   const current = await findClassPeopleByClass(supabase, classId);
   const teacher = current.find((c) => c.kind === "artist") ?? null;
+  const reask = (p: (typeof current)[number], pay?: number) =>
+    askClassPerson(supabase, {
+      classId,
+      userId: p.userId,
+      kind: p.kind,
+      canAttendance: p.canAttendance,
+      canRefunds: p.canRefunds,
+      payPerSessionInr: pay ?? p.payPerSessionInr,
+    });
+
+  if (opts.reconfirm) {
+    for (const a of current.filter((c) => c.kind === "assistant" && c.userId !== opts.meId && c.status !== "rejected")) {
+      await reask(a);
+    }
+  }
+
+  if (!intent) {
+    if (opts.reconfirm && teacher && teacher.userId !== opts.meId) await reask(teacher);
+    return;
+  }
 
   if (teacher && teacher.userId === intent.artistUserId) {
-    // a rate change is not a re-ask, and it only moves sessions that have not
-    // been settled — paid ones are frozen by their payout line
+    if (opts.reconfirm && teacher.userId !== opts.meId) {
+      await reask(teacher, intent.artistPayInr);
+      return;
+    }
+    // a rate change alone is not a re-ask, and it only moves sessions that have
+    // not been settled — paid ones are frozen by their payout line
     if (intent.artistPayInr !== undefined && intent.artistPayInr !== teacher.payPerSessionInr) {
       await setClassPersonPay(supabase, teacher.id, intent.artistPayInr);
     }

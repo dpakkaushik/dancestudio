@@ -8,6 +8,8 @@ import { MAX_SESSION_MINUTES } from "@/types/class";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import {
   createClassWithSession,
+  findClassById,
+  reopenVenueRequest,
   softDeleteClass,
   updateClassDetails,
   updateClassPoster,
@@ -16,6 +18,7 @@ import {
   updateClassStatus,
 } from "@/repositories/classes";
 import { findRoomsByBusiness } from "@/repositories/rooms";
+import { findMyMemberships } from "@/repositories/businesses";
 import { searchEverything } from "@/repositories/search";
 import { reconcileClassPeople } from "@/services/classPeople";
 import { sendUnsentRefunds } from "@/services/refundRail";
@@ -259,7 +262,15 @@ export async function updateClassAction(
   const supabase = await requireUser();
   const d = parsed.data;
   const people = readPeople(formData);
+  const startsAt = toIst(d.date, d.startTime);
+  const endsAt = toIst(d.date, d.endTime);
   try {
+    /* what the class WAS, so a changed one can be put back to the people who
+       agreed to it (11 Oct 2026) */
+    const before = await findClassById(supabase, d.classId);
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
     await updateClassDetails(supabase, d.classId, {
       style: d.style,
       level: d.level,
@@ -268,8 +279,8 @@ export async function updateClassAction(
       poster: d.poster ?? null,
       priceInr: d.priceInr,
       capacity: d.capacity,
-      startsAt: toIst(d.date, d.startTime),
-      endsAt: toIst(d.date, d.endTime),
+      startsAt,
+      endsAt,
       venueBusinessId: d.venueBusinessId ?? null,
       lat: d.lat ?? null,
       lng: d.lng ?? null,
@@ -277,8 +288,31 @@ export async function updateClassAction(
       allowsStudioMemberships: d.allowsStudioMemberships,
       allowsArtistMemberships: d.allowsArtistMemberships,
     });
-    if (people) {
-      await reconcileClassPeople(supabase, d.classId, people);
+    /* ⚠⚠ AN EDIT IS A NEW REQUEST (11 Oct 2026, the user: "if anything has been
+       edited should send a new request for confirmation"). Whatever somebody said
+       yes to — the date, the time, the room, the studio, the price, the size —
+       when it moves, they are asked again. A poster or a memberships switch is
+       not something anybody agreed to, so it moves nothing. */
+    const sameMinute = (a: string | undefined, b: string) => Boolean(a) && Math.floor(Date.parse(a!) / 60000) === Math.floor(Date.parse(b) / 60000);
+    const changed =
+      before !== null &&
+      (before.style !== d.style ||
+        before.level !== d.level ||
+        !sameMinute(before.session?.startsAt, startsAt) ||
+        !sameMinute(before.session?.endsAt, endsAt) ||
+        (before.roomId ?? null) !== (d.roomId ?? null) ||
+        (before.venueBusinessId ?? null) !== (d.venueBusinessId ?? null) ||
+        before.priceInr !== d.priceInr ||
+        before.capacity !== d.capacity ||
+        (before.mapsUrl ?? "") !== (d.mapsUrl ?? ""));
+    await reconcileClassPeople(supabase, d.classId, people, { reconfirm: changed, meId: user?.id });
+    /* the studio whose room it is, too: an artist's draft that was given a room
+       for one slot goes back to it when the slot moves. A new room or studio is
+       already a new ask (the database's own trigger); a studio the artist owns
+       has nobody to ask; a published class keeps the room it is on sale in. */
+    if (changed && before && before.status === "draft" && before.venueStatus === "accepted" && before.venueBusinessId && before.venueBusinessId === (d.venueBusinessId ?? null) && (before.roomId ?? null) === (d.roomId ?? null)) {
+      const owned = (await findMyMemberships(supabase)).some((m) => m.business.id === before.venueBusinessId && m.memberRole === "owner");
+      if (!owned) await reopenVenueRequest(supabase, d.classId);
     }
   } catch (error: unknown) {
     return { error: error instanceof Error ? error.message : "Could not save the class" };
@@ -326,6 +360,12 @@ export async function publishClassAction(
 
   const supabase = await requireUser();
   try {
+    /* ⚠ a draft whose date has passed is CLOSED (11 Oct 2026) — publishing it
+       would put a class on sale that has already happened */
+    const c = await findClassById(supabase, parsed.data.classId);
+    if (c?.session && Date.parse(c.session.startsAt) <= Date.now()) {
+      return { error: "Its date has passed — add a new class instead." };
+    }
     await updateClassStatus(supabase, parsed.data.classId, "published");
   } catch (error: unknown) {
     return { error: error instanceof Error ? error.message : "Could not publish" };

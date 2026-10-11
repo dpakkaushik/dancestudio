@@ -3,7 +3,7 @@ import { ClassForm } from "@/features/classes/components/ClassForm";
 import { ClassesHome, type ClassItem } from "@/features/classes/components/ClassesHome";
 import { ClassTile } from "@/features/classes/components/ClassTile";
 import { groupWithDoor, tabFromAddress, timeGroupOf, type ClassesTab, type TimeGroup } from "@/features/classes/classesScreen";
-import { answeredRows, askToYouItem, askYouSentItem, draftItem, refundsItem, runActions, unpublishedItem } from "@/features/classes/classItems";
+import { answeredItems, askExpired, askToYouItem, askYouSentItem, closedDraftItem, draftItem, hasPassed, refundsItem, runActions, unpublishedItem } from "@/features/classes/classItems";
 import { EnrollButton } from "@/features/classBookings/components/EnrollButton";
 import { DeskHero } from "@/features/businesses/components/biz-kit";
 import { PersonAskSettings } from "@/features/inbox/components/AskSettings";
@@ -55,10 +55,8 @@ const ROLES = [
   { key: "booked", word: "Booked" },
   { key: "teaching", word: "Teaching" },
   { key: "assisting", word: "Assisting" },
-  /* a second axis (11 Oct 2026, the user: "person should get filter for classes
-     created by studio as well") — the classes a STUDIO made, whatever you are
-     on them; drawn only when it narrows the list */
-  { key: "studio", word: "By studios" },
+  /* ⚠ "By studios" is GONE (11 Oct 2026, the user: "classes remove by studios
+     filter") — the card's two halves already say who made a class */
 ];
 
 /** YOUR CLASSES — the Home grid's Classes tile.
@@ -133,10 +131,21 @@ export default async function MyClassesPage({ searchParams }: { searchParams: Pr
   const nowMs = stampNow();
   const relRole = (relation: string | null | undefined) => (relation === "askedToAssist" ? "assisting" : "teaching");
 
+  /* ⚠ A CLASS THAT NEVER GOT ITS YES AND WHOSE DATE HAS PASSED IS CLOSED (11 Oct
+     2026, the user: "should be just closed directly"): an unanswered ask on it
+     goes to Answered as Expired, and a draft goes to Past as "Closed · never
+     published" with nothing to press. A draft with no session at all is not
+     drawn — a class card never says "dates to be set". */
+  const draftOpen = (c: DanceClass) => c.session !== null && !hasPassed(c.session.startsAt, nowMs);
+  const openDrafts = drafts.filter(draftOpen);
+  const closedDrafts = drafts.filter((c) => c.session !== null && !draftOpen(c));
+  const teachDraft = teaching.filter((c) => c.classStatus === "draft");
+  const assistDraft = assistantOn.filter((c) => c.classStatus === "draft");
+
   /* ── TO DO ─────────────────────────────────────────────────────────────── */
   const todo: ClassItem[] = [
-    ...classIn.filter((r) => r.status === "asked").map((r) => askToYouItem(r, artistOf(r.danceClass?.id), relRole(r.relation))),
-    ...drafts.map((c) =>
+    ...classIn.filter((r) => r.status === "asked" && !askExpired(r, nowMs)).map((r) => askToYouItem(r, artistOf(r.danceClass?.id), relRole(r.relation))),
+    ...openDrafts.map((c) =>
       draftItem({
         c,
         businessId: myPage!.id,
@@ -152,11 +161,18 @@ export default async function MyClassesPage({ searchParams }: { searchParams: Pr
     /* an ask you sent on a class that is already out (an assistant, mostly) — a
        draft's own asks are on its card */
     ...classOut
-      .filter((r) => r.status === "asked" && r.kind === "classPerson" && !(r.danceClass && draftIds.has(r.danceClass.id)))
+      .filter((r) => r.status === "asked" && !askExpired(r, nowMs) && r.kind === "classPerson" && !(r.danceClass && draftIds.has(r.danceClass.id)))
       .map((r) => askYouSentItem(r, artistOf(r.danceClass?.id), "teaching")),
     /* a class you said yes to, still a draft at the studio that asked */
-    ...teaching.filter((c) => c.classStatus === "draft").map((c) => unpublishedItem({ key: `teach-${c.id}`, c: askToTileClass(c), artist: artistOf(c.classId), filled: seatsOf(c.sessionId), role: "teaching", relation: "teaching" })),
-    ...assistantOn.filter((c) => c.classStatus === "draft").map((c) => unpublishedItem({ key: `assist-${c.id}`, c: askToTileClass(c), artist: artistOf(c.classId), filled: seatsOf(c.sessionId), role: "assisting", relation: "assisting" })),
+    ...teachDraft.filter((c) => !hasPassed(c.startsAt, nowMs)).map((c) => unpublishedItem({ key: `teach-${c.id}`, c: askToTileClass(c), artist: artistOf(c.classId), filled: seatsOf(c.sessionId), role: "teaching", relation: "teaching" })),
+    ...assistDraft.filter((c) => !hasPassed(c.startsAt, nowMs)).map((c) => unpublishedItem({ key: `assist-${c.id}`, c: askToTileClass(c), artist: artistOf(c.classId), filled: seatsOf(c.sessionId), role: "assisting", relation: "assisting" })),
+  ];
+
+  /* ── CLOSED: drafts whose date passed — Past, no buttons ───────────────── */
+  const closed: Array<ClassItem & { at: string | null }> = [
+    ...closedDrafts.map((c) => ({ ...closedDraftItem({ key: `draft-${c.id}`, c, artist: artistOf(c.id), filled: seatsOf(c.session?.id), role: "teaching" }), at: c.session?.startsAt ?? null })),
+    ...teachDraft.filter((c) => hasPassed(c.startsAt, nowMs)).map((c) => ({ ...closedDraftItem({ key: `teach-${c.id}`, c: askToTileClass(c), artist: artistOf(c.classId), filled: seatsOf(c.sessionId), role: "teaching", relation: "teaching" }), at: c.startsAt })),
+    ...assistDraft.filter((c) => hasPassed(c.startsAt, nowMs)).map((c) => ({ ...closedDraftItem({ key: `assist-${c.id}`, c: askToTileClass(c), artist: artistOf(c.classId), filled: seatsOf(c.sessionId), role: "assisting", relation: "assisting" }), at: c.startsAt })),
   ];
 
   /* ── UPCOMING · PAST ───────────────────────────────────────────────────── */
@@ -184,7 +200,7 @@ export default async function MyClassesPage({ searchParams }: { searchParams: Pr
         />
       );
     }),
-    ...ownLive.map((c) => {
+    ...ownLive.filter((c) => c.session !== null).map((c) => {
       const group = groupWithDoor(c.session?.startsAt ?? null, c.session?.endsAt ?? null, nowMs);
       const path = `/c/${c.shareSlug}`;
       return timed(`own-${c.id}`, group, "teaching", c.session?.startsAt ?? null, <ClassTile danceClass={c} filled={seatsOf(c.session?.id)} artist={artistOf(c.id)} href={path} relation="teaching" actions={runActions({ group, path, title: c.title, canDoor: true })} />);
@@ -199,28 +215,10 @@ export default async function MyClassesPage({ searchParams }: { searchParams: Pr
       const path = `/c/${c.classShareSlug}`;
       return timed(`assist-${c.id}`, group, "assisting", c.startsAt, <ClassTile danceClass={askToTileClass(c)} filled={seatsOf(c.sessionId)} artist={artistOf(c.classId)} city={c.businessCity} href={path} relation="assisting" actions={runActions({ group, path, title: c.classTitle, canDoor: c.canAttendance, canShare: false })} />);
     }),
+    ...closed,
   ].sort((a, b) => (a.group === "past" && b.group === "past" ? (b.at ?? "").localeCompare(a.at ?? "") : (a.at ?? "9").localeCompare(b.at ?? "9")));
 
-  /* which classes a STUDIO made — off the maker each read already carries; your
-     own page's classes are an artist's by definition */
-  const byStudio = new Set<string>([
-    ...bookings.filter((e) => e.owner?.kind === "studio").map((e) => e.classId),
-    ...[...teaching, ...assistantOn].filter((c) => c.owner?.kind === "studio").map((c) => c.classId),
-    ...[...classIn, ...classOut].filter((r) => r.danceClass?.owner?.kind === "studio").map((r) => r.danceClass!.id),
-  ]);
-  const classIdOf = new Map<string, string>([
-    ...bookings.map((e) => [`booked-${e.id}`, e.classId] as [string, string]),
-    ...teaching.map((c) => [`teach-${c.id}`, c.classId] as [string, string]),
-    ...assistantOn.map((c) => [`assist-${c.id}`, c.classId] as [string, string]),
-    /* the keys `askToYouItem` and `askYouSentItem` give their cards */
-    ...classIn.filter((r) => r.danceClass).map((r) => [`ask-${r.kind}-${r.id}`, r.danceClass!.id] as [string, string]),
-    ...classOut.filter((r) => r.danceClass).map((r) => [`sent-${r.kind}-${r.id}`, r.danceClass!.id] as [string, string]),
-  ]);
-  const studioMade = (i: ClassItem) => {
-    const id = classIdOf.get(i.key);
-    return id ? byStudio.has(id) : false;
-  };
-  const items: ClassItem[] = [...todo, ...time].map((i) => (studioMade(i) ? { ...i, tags: [...(i.tags ?? []), "studio"] } : i));
+  const items: ClassItem[] = [...todo, ...time];
 
   /* ── WHERE THE PAGE OPENS ──────────────────────────────────────────────── */
   const roleFromAddress =
@@ -250,10 +248,10 @@ export default async function MyClassesPage({ searchParams }: { searchParams: Pr
         mode="person"
         top={<DeskHero tool="classes" as="h1" margin="0" />}
         add={add}
-        settings={<PersonAskSettings section="requests" off={inboxOff} startOpen />}
+        settings={<PersonAskSettings section="requests" off={inboxOff} compact />}
         roles={ROLES}
         items={items}
-        answered={answeredRows(classIn, classOut)}
+        answered={answeredItems(classIn, classOut, artistOf, nowMs)}
         initialTab={initialTab}
         initialRole={roleFromAddress}
         basePath="/my-classes"

@@ -56,8 +56,16 @@ const WORDS: Record<AskKind, { label: string; note: string }> = {
   crew: { label: "Invitations to join a crew", note: "A crew leader asking you onto their roster" },
 };
 
+/** ⚠ THE CLASSES GEAR'S OWN WORDS (11 Oct 2026, the user: "settings for classes
+ *  should be redesigned with better wording and shorter. dont need so many
+ *  descriptions"). In the gear's sheet the sheet IS the heading, so `compact`
+ *  drops the card, its heading, the note under every switch and the paragraph
+ *  at the foot: two switches and one line. */
+const SHORT: Record<AskKind, string> = { teach: "Asks to teach", assist: "Asks to assist", team: "Team invites", crew: "Crew invites" };
+const OFF_LINE = "Off turns new asks away.";
+
 /** a person's switches for the kinds one column holds */
-export function PersonAskSettings({ section, off, startOpen = false }: { section: "requests" | "invites"; off: AskKind[]; startOpen?: boolean }) {
+export function PersonAskSettings({ section, off, startOpen = false, compact = false }: { section: "requests" | "invites"; off: AskKind[]; startOpen?: boolean; compact?: boolean }) {
   const router = useRouter();
   const [pending, start] = useTransition();
   const [err, setErr] = useState<string | null>(null);
@@ -79,6 +87,24 @@ export function PersonAskSettings({ section, off, startOpen = false }: { section
       router.refresh();
     });
   };
+
+  if (compact) {
+    return (
+      <div data-testid={section === "requests" ? "request-settings" : "invite-settings"} style={{ marginTop: 8 }}>
+        {kinds.map((k) => (
+          <div key={k} style={{ opacity: pending ? 0.7 : 1 }}>
+            <Switch on={!now.includes(k)} label={SHORT[k]} onClick={() => flip(k)} />
+          </div>
+        ))}
+        <div style={{ fontSize: 11, color: MUTED, marginTop: 6 }}>{OFF_LINE}</div>
+        {err ? (
+          <div role="alert" style={{ fontSize: 11.5, color: "#F87171", marginTop: 6 }}>
+            {err}
+          </div>
+        ) : null}
+      </div>
+    );
+  }
 
   return (
     <Shell
@@ -106,7 +132,7 @@ export function PersonAskSettings({ section, off, startOpen = false }: { section
 }
 
 /** a studio's one switch: whether artists may ask it for a room */
-export function RoomRequestSettings({ businessId, on, owner, startOpen = false }: { businessId: string; on: boolean; owner: boolean; startOpen?: boolean }) {
+export function RoomRequestSettings({ businessId, on, owner, startOpen = false, compact = false }: { businessId: string; on: boolean; owner: boolean; startOpen?: boolean; compact?: boolean }) {
   const router = useRouter();
   const [pending, start] = useTransition();
   const [err, setErr] = useState<string | null>(null);
@@ -126,6 +152,26 @@ export function RoomRequestSettings({ businessId, on, owner, startOpen = false }
       router.refresh();
     });
   };
+
+  if (compact) {
+    return (
+      <div data-testid="request-settings" style={{ marginTop: 8 }}>
+        {owner ? (
+          <div style={{ opacity: pending ? 0.7 : 1 }}>
+            <Switch on={now} label="Room requests" onClick={flip} />
+          </div>
+        ) : (
+          <div style={{ fontSize: 12, color: SUB, marginTop: 8 }}>{now ? "Taking room requests" : "Not taking room requests"} · the owner decides</div>
+        )}
+        <div style={{ fontSize: 11, color: MUTED, marginTop: 6 }}>{OFF_LINE}</div>
+        {err ? (
+          <div role="alert" style={{ fontSize: 11.5, color: "#F87171", marginTop: 6 }}>
+            {err}
+          </div>
+        ) : null}
+      </div>
+    );
+  }
 
   return (
     <Shell title="Request settings" testId="request-settings" startOpen={startOpen} summary={now ? "Taking room requests" : "Not taking room requests"}>

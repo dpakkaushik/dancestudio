@@ -302,8 +302,13 @@ const BOOK_ON_PAGE = /^Book Now$/;
       await oPage.waitForTimeout(2500);
       const vs = (await rows(owner.h, `classes?id=eq.${venueClassId}&select=venue_status`))[0];
       check(vs.venue_status === "accepted", `…and one press holds the room, read back out of the database (venue_status "${vs.venue_status}")`);
-      const answeredText = await oPage.getByTestId("todo-answered").innerText().catch(() => "");
-      check(/answered/i.test(answeredText), `…the answered request folds into Answered rather than vanishing (${answeredText.slice(0, 60) || `none; tab ${await oPage.locator('[aria-selected="true"]').first().getAttribute("data-testid").catch(() => "?")}`})`);
+      /* ⚠ ANSWERED IS A BUTTON BESIDE THE GEAR (11 Oct 2026), opening the class
+         cards with the reply on each */
+      await oPage.getByTestId("classes-answered").click().catch(() => {});
+      const answeredText = await oPage.getByTestId("answered-list").innerText().catch(() => "");
+      check(/confirmed/i.test(answeredText) && (await oPage.getByTestId("answered-list").locator('[data-card="session"]').count()) >= 1, `…the answered request is kept behind the Answered button, as its class card with the reply (${answeredText.replace(/\s+/g, " ").slice(0, 80) || "none"})`);
+      await oPage.goBack();
+      await oPage.waitForTimeout(300);
     } else {
       check(false, "could not plant a venue request (artist page or class refused)");
     }
@@ -384,10 +389,10 @@ const BOOK_ON_PAGE = /^Book Now$/;
     await lPage.waitForTimeout(300);
     const cols = await lPage.getByTestId("classes-chips").locator("button").evaluateAll((els) => els.map((e) => e.getAttribute("data-testid").replace("classes-chip-", "")));
     /* ⚠ EVERY CHIP IS ALWAYS DRAWN, a 0 included (11 Oct 2026, the user) */
-    check(cols.join(",") === "all,booked,teaching,assisting,studio", `⚠⚠ every chip is drawn, a 0 included — All · Booked · Teaching · Assisting · By studios (${cols.join(" · ")})`);
+    check(cols.join(",") === "all,booked,teaching,assisting", `⚠⚠ every chip is drawn, a 0 included — All · Booked · Teaching · Assisting, and no By studios (${cols.join(" · ")})`);
     check(/Assisting · 0/.test(await lPage.getByTestId("classes-chip-assisting").innerText().catch(() => "")), "…Assisting reads 0 rather than vanishing");
     await lPage.goto(`${BASE}/my-classes?role=studio`, { waitUntil: "networkidle" });
-    check((await lPage.getByTestId("classes-chip-studio").getAttribute("aria-pressed").catch(() => null)) === "true", "…and an address asking for By studios lands on it");
+    check((await lPage.getByTestId("classes-chip-all").getAttribute("aria-pressed").catch(() => null)) === "true", "…and an old ?role=studio address lands on All (Rule 14)");
     await lPage.goto(`${BASE}/my-classes?tab=upcoming`, { waitUntil: "networkidle" });
     check(await onShelf(lPage, aheadSlug), "…Upcoming holds the class they booked");
     await lPage.getByTestId("classes-chip-teaching").click();
@@ -675,6 +680,18 @@ const BOOK_ON_PAGE = /^Book Now$/;
       driftMs < 60000,
       `⚠ …and the SESSION half ran in the same act, leaving the time where it was (${Math.round(driftMs / 1000)}s of HH:MM rounding, not a move)`
     );
+
+    /* ══ 10b · AN EDIT ASKS THE TEACHER AGAIN (11 Oct 2026, the user: "if anything
+       has been edited should send a new request for confirmation") ═══════════ */
+    await oPage.goto(`${BASE}/business/${studio.id}/classes/${second}/edit`, { waitUntil: "networkidle" });
+    await oPage.getByRole("button", { name: "Continue" }).click();
+    await oPage.waitForTimeout(400);
+    await oPage.getByLabel("Price per session").fill("350");
+    await oPage.getByRole("button", { name: "Save changes" }).click();
+    await oPage.waitForURL((u) => !/\/edit$/.test(new URL(u).pathname), { timeout: 30000 });
+    await oPage.waitForTimeout(1500);
+    const reAsked = await rows(owner.h, `class_people?class_id=eq.${second}&user_id=eq.${learner.id}&deleted_at=is.null&select=status`);
+    check(reAsked.length === 1 && reAsked[0].status === "asked", `⚠⚠ …and editing a class its teacher had said yes to asks them again (${reAsked.map((r) => r.status).join(",") || "no live row"})`);
 
     /* ══ 11 · A TEAM MEMBER MAY BOOK A CLASS AT THEIR OWN STUDIO ══════════════
        ⚠⚠ `showBar = !isMember` gave faculty who wanted to TRAIN where they teach

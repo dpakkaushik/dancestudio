@@ -2,7 +2,7 @@ import Link from "next/link";
 import type { ReactNode } from "react";
 import { ClassTile } from "@/features/classes/components/ClassTile";
 import { AnswerButtons, DraftButtons, ScanButton, ShareButton, StateChip, WithdrawButton, cardBtn } from "@/features/classes/components/ClassCardActions";
-import type { AnsweredRow, ClassItem } from "@/features/classes/components/ClassesHome";
+import type { AnsweredCard, ClassItem } from "@/features/classes/components/ClassesHome";
 import { draftStateOf, type TimeGroup } from "@/features/classes/classesScreen";
 import type { RequestItem } from "@/features/inbox/components/InboxScreen";
 import { ASK_STATUS_WORD } from "@/lib/format/classLabels";
@@ -168,21 +168,63 @@ export function runActions({ group, path, title, canDoor, canShare = true }: { g
   return canShare ? <ShareButton path={path} title={title} /> : null;
 }
 
-/** the answered asks, both ways, newest first — the folded history in To do */
-export function answeredRows(requestsIn: RequestItem[], requestsOut: RequestItem[]): AnsweredRow[] {
+/** has this instant passed — a start time, against the page's one clock */
+export const hasPassed = (iso: string | null | undefined, nowMs: number): boolean => Boolean(iso) && Date.parse(iso!) <= nowMs;
+
+/** ⚠ AN ASK WHOSE CLASS HAS ALREADY STARTED IS CLOSED (11 Oct 2026, the user:
+ *  "classes which have not got approval and dates have crossed … should be just
+ *  closed directly"). Nobody can answer it any more — the database's own
+ *  `respondToClassAsk` refuses an accept on a started class — so it leaves To do
+ *  and is filed with the answered ones as Expired. */
+export const askExpired = (r: RequestItem, nowMs: number): boolean => r.status === "asked" && hasPassed(r.danceClass?.session?.startsAt, nowMs);
+
+/** a draft whose date passed without it ever being published — Past, closed,
+ *  nothing to press. ⚠ Not deleted: it is the record that the class was planned */
+export function closedDraftItem({ key, c, artist, filled, role, relation }: { key: string; c: DanceClass; artist: ClassArtist | null; filled: number; role: string; relation?: "teaching" | "assisting" }): ClassItem {
+  return {
+    key,
+    tab: "past",
+    group: "past",
+    role,
+    node: <ClassTile danceClass={c} filled={filled} artist={artist} href={`/c/${c.shareSlug}`} relation={relation ?? null} actions={<StateChip word="Closed · never published" tint="#858585" />} />,
+  };
+}
+
+/** ⚠⚠ THE ANSWERED ASKS AS THE CLASS CARDS THEY WERE ABOUT (11 Oct 2026, the user:
+ *  "answered section should be button beside settings and should show full class
+ *  cards with reply"). Both ways, newest first, each the app's own ClassTile with
+ *  who asked and the reply on its action row — Confirmed · Declined · Withdrawn,
+ *  and Expired for an ask nobody answered before the class began. */
+export function answeredItems(requestsIn: RequestItem[], requestsOut: RequestItem[], artistOf: (classId: string | undefined) => ClassArtist | null, nowMs: number): AnsweredCard[] {
+  const done = (r: RequestItem) => (r.status && r.status !== "asked") || askExpired(r, nowMs);
   return [
-    ...requestsIn.filter((r) => r.status && r.status !== "asked").map((r) => ({ r, line: `${r.who} asked you ${askWords(r)}` })),
-    ...requestsOut.filter((r) => r.status && r.status !== "asked").map((r) => ({ r, line: `You asked ${r.who} ${askWords(r)}` })),
+    ...requestsIn.filter(done).map((r) => ({ r, line: r.kind === "venue" ? `${r.who} asked for a room` : `${r.who} asked you ${askWords(r)}` })),
+    ...requestsOut.filter(done).map((r) => ({ r, line: `You asked ${r.who} ${askWords(r)}` })),
   ]
     .sort((a, b) => b.r.at.localeCompare(a.r.at))
     .slice(0, 30)
-    .map(({ r, line }) => ({
-      key: `${r.dir}-${r.kind}-${r.id}`,
-      line,
-      subject: r.subjectTitle,
-      word: ASK_STATUS_WORD[r.status ?? "asked"],
-      tint: ANSWER_TINT[r.status ?? "asked"] ?? "#858585",
-    }));
+    .map(({ r, line }) => {
+      const expired = askExpired(r, nowMs);
+      const word = expired ? "Expired" : ASK_STATUS_WORD[r.status ?? "asked"];
+      const tint = expired ? "#858585" : (ANSWER_TINT[r.status ?? "asked"] ?? "#858585");
+      /* one row: who asked whom, then the reply */
+      const actions = (
+        <span data-testid="answered-reply" style={{ flexBasis: "100%", display: "flex", alignItems: "center", gap: 8, minWidth: 0 }}>
+          <span style={{ flex: 1, minWidth: 0, fontSize: 12, fontWeight: 800, color: "var(--sub)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{line}</span>
+          <span style={{ flexShrink: 0, fontSize: 10, fontWeight: 900, letterSpacing: 0.4, padding: "4px 9px", borderRadius: 999, background: `${tint}1f`, color: tint, textTransform: "uppercase" }}>{word}</span>
+        </span>
+      );
+      return {
+        key: `${r.dir}-${r.kind}-${r.id}`,
+        node: r.danceClass ? (
+          <ClassTile danceClass={r.danceClass} artist={artistOf(r.danceClass.id)} href={r.href ?? undefined} relation={r.relation ?? null} actions={actions} />
+        ) : (
+          <PlainCard title={r.subjectTitle} sub={line}>
+            <StateChip word={word} tint={tint} />
+          </PlainCard>
+        ),
+      };
+    });
 }
 
 function PlainCard({ title, sub, children, testId }: { title: string; sub: string; children: ReactNode; testId?: string }) {

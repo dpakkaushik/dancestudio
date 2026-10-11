@@ -324,9 +324,10 @@ async function personOpensAStudio(page, who, acc, stamp) {
      — its Requests column, the Done side */
   /* ⚠ AND SINCE THE SAME EVENING: To do's folded "Answered" list, wearing the word */
   await page.goto(`${BASE}/my-classes?tab=todo`, { waitUntil: "networkidle" });
-  await page.getByTestId("todo-answered").locator("summary").click().catch(() => {});
-  const inbox = await page.getByTestId("todo-answered").innerText().catch(() => "");
-  check(/Hip-Hop/.test(inbox) && /confirmed/i.test(inbox), `${who} · Classes › To do keeps the line under Answered, wearing its answer (${inbox.slice(0, 80) || "no Answered list"})`);
+  /* ⚠ AND SINCE 11 Oct 2026 (later): a button beside the gear, the class cards */
+  await page.getByTestId("classes-answered").click().catch(() => {});
+  const inbox = await page.getByTestId("answered-list").innerText().catch(() => "");
+  check(/Hip-Hop/.test(inbox) && /confirmed/i.test(inbox), `${who} · Classes keeps it behind the Answered button, the class card wearing its answer (${inbox.replace(/\s+/g, " ").slice(0, 80) || "no Answered list"})`);
   await page.goto(`${BASE}/notifications`, { waitUntil: "networkidle" });
   check(/You take Hip-Hop/.test(await page.locator("body").innerText().catch(() => "")), `${who} · and the bell says "You take …" — the log the user asked for`);
   return studioId;

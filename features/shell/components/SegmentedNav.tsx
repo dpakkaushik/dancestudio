@@ -2,8 +2,8 @@
 
 import { useRouter } from "next/navigation";
 import { useOptimistic, useState, useTransition, type CSSProperties, type ReactNode } from "react";
+import { ColumnCount, columnTab, columnTrack } from "@/components/ui/ColumnTabs";
 import { DeskBody, DeskTop } from "@/components/ui/DeskSections";
-import { INK, SUB } from "@/lib/design/tokens";
 
 /** THE SEGMENTED CONTROL, AND WHY IT IS A CLIENT COMPONENT (20 Sep 2026).
  *
@@ -63,16 +63,15 @@ export interface Segment {
   aria: string;
 }
 
-const WRAP: CSSProperties = { display: "flex", gap: 2, background: "var(--el)", borderRadius: 12, padding: 3, marginBottom: 10 };
-
 /** THE PILL ROW ITSELF — drawn once, used by both controls below, so the
- *  navigating segment and the instant one cannot drift apart. */
+ *  navigating segment and the instant one cannot drift apart.
+ *  ⚠ It wears the Classes screen's To do · Upcoming · Past look since 11 Oct 2026
+ *  (`ColumnTabs`, the user: "use same columns style … for all other columns"). */
 function Pills({ segments, shown, label, onPress, style }: { segments: Segment[]; shown: string; label: string; onPress: (s: Segment, e: React.MouseEvent) => void; style?: CSSProperties }) {
-  /* ⚠ MORE THAN FOUR WRAP, 3 + 2 (11 Oct 2026) — an artist's Classes has five
-     columns, and five at 11.5px in a phone's width cut "My classes 12" */
+  /* ⚠ MORE THAN FOUR WRAP, 3 + 2 (11 Oct 2026) */
   const wrap = segments.length > 4;
   return (
-    <div role="group" aria-label={label} style={{ ...WRAP, ...(wrap ? { flexWrap: "wrap", rowGap: 3 } : null), ...style }}>
+    <div role="group" aria-label={label} style={{ ...columnTrack(wrap), marginBottom: 10, ...style }}>
       {segments.map((s) => {
         const on = shown === s.key;
         return (
@@ -82,22 +81,10 @@ function Pills({ segments, shown, label, onPress, style }: { segments: Segment[]
             aria-label={`${s.aria}${s.n == null ? "" : ` (${s.n})`}`}
             aria-current={on ? "page" : undefined}
             onClick={(e) => onPress(s, e)}
-            style={{
-              flex: wrap ? "1 0 30%" : 1,
-              whiteSpace: wrap ? "nowrap" : undefined,
-              textAlign: "center",
-              padding: "8px 2px",
-              borderRadius: 9,
-              fontSize: 11.5,
-              fontWeight: 800,
-              textDecoration: "none",
-              background: on ? "var(--solid)" : "transparent",
-              color: on ? INK : SUB,
-              boxShadow: on ? "0 1px 4px rgba(0,0,0,.3)" : "none",
-            }}
+            style={columnTab(on, wrap)}
           >
-            {s.label}
-            {s.n == null ? null : <span style={{ fontVariantNumeric: "tabular-nums", opacity: on ? 0.75 : 0.6 }}> {s.n}</span>}
+            <span style={{ overflow: "hidden", textOverflow: "ellipsis" }}>{s.label}</span>
+            {s.n == null || s.n === 0 ? null : <ColumnCount n={s.n} on={on} />}
           </a>
         );
       })}

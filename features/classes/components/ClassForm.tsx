@@ -343,6 +343,23 @@ export function ClassForm({
     setVenueQ("");
     setVenueRooms((await venueRoomsAction(v.id)).map((r) => ({ id: r.id, name: r.name, capacity: r.capacity, amenities: r.amenities }) as Room));
   };
+  /* ⚠⚠ AN ARTIST'S CLASS REOPENS WITH ITS STUDIO'S ROOMS (11 Oct 2026, the user:
+     "edit class sometimes messes up"). `venueRooms` was filled only by picking a
+     studio, so an existing class at a studio opened its form with NO rooms — the
+     room it was in could not be shown or changed, its capacity fell back to the
+     typed number, and the save sent a blank room name. The rooms are read once,
+     for the studio the class already has. */
+  const existingVenueId = existing?.venueBusinessId ?? null;
+  useEffect(() => {
+    if (!isArtist || !existingVenueId) return;
+    let live = true;
+    void venueRoomsAction(existingVenueId).then((rs) => {
+      if (live) setVenueRooms(rs.map((r) => ({ id: r.id, name: r.name, capacity: r.capacity, amenities: r.amenities }) as Room));
+    });
+    return () => {
+      live = false;
+    };
+  }, [isArtist, existingVenueId]);
   const searchVenue = async (q: string) => {
     setVenueQ(q);
     setVenueHits(q.trim().length >= 2 ? await searchVenuesAction(q) : []);
@@ -484,7 +501,7 @@ export function ClassForm({
       title={isEdit ? "Edit class" : "Add class"}
       steps={STEPS}
       step={step}
-      sub={isEdit ? "Your saved details stay put — step through and change only what you need" : undefined}
+      sub={isEdit ? "Any change asks the teacher — and the studio — to confirm again" : undefined}
       sheet={sheet}
       onClose={() => router.back()}
       onBack={() => (step > 0 ? setStep(step - 1) : router.back())}
@@ -506,7 +523,8 @@ export function ClassForm({
         <input type="hidden" name="startTime" value={startTime} />
         <input type="hidden" name="endTime" value={endTime} />
         <input type="hidden" name="roomId" value={roomId ?? ""} />
-        <input type="hidden" name="room" value={room?.name ?? ""} />
+        {/* the room's name, or the one the class already has while its list loads */}
+        <input type="hidden" name="room" value={room?.name ?? (existing && roomId === existing.roomId ? (existing.room ?? "") : "")} />
         <input type="hidden" name="poster" value={poster ?? ""} />
         <input type="hidden" name="priceInr" value={priceInr} />
         <input type="hidden" name="capacity" value={capacity} />

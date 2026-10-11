@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useState } from "react";
 import type { ReactNode } from "react";
 import { DeskBody, DeskTop } from "@/components/ui/DeskSections";
+import { ColumnCount, columnTab, columnTrack } from "@/components/ui/ColumnTabs";
 import { Portal } from "@/components/ui/Portal";
 import { useCloseOnBack } from "@/lib/hooks/useCloseOnBack";
 import { DOS_UI, MUTED, SUB } from "@/lib/design/tokens";
@@ -16,8 +17,9 @@ import type { ClassesTab, TimeGroup } from "@/features/classes/classesScreen";
  *  gear, and no weekly classes.
  *
  *   TO DO     — what waits on you (answer an ask, publish or fix a draft, decide
- *               refunds), then what waits on others (Withdraw), then the answered
- *               asks folded. The count on the tab is only what waits on YOU.
+ *               refunds), then what waits on others (Withdraw). The count on the
+ *               tab is only what waits on YOU. The answered asks are a button in
+ *               the head, beside the gear, opening their class cards.
  *   UPCOMING  — Now (green, Scan on the card) · Today · This week · Later.
  *   PAST      — newest first.
  *
@@ -39,23 +41,18 @@ export interface ClassItem {
   /** To do: whose move it is */
   section?: TodoSection;
   role: string;
-  /** chips on a second axis — "studio" for a class a STUDIO made (11 Oct 2026,
-   *  the user: "person should get filter for classes created by studio as
-   *  well"), which cuts across Booked · Teaching · Assisting */
-  tags?: string[];
   node: ReactNode;
 }
 
-/** does a chip take this item — its role, or one of its tags */
-const takes = (i: ClassItem, key: string) => i.role === key || Boolean(i.tags?.includes(key));
+/** does a chip take this item. ⚠ The "By studios" chip and its tags are GONE
+ *  (11 Oct 2026, the user: "classes remove by studios filter") — the card's two
+ *  halves already say who made a class */
+const takes = (i: ClassItem, key: string) => i.role === key;
 
-export interface AnsweredRow {
+/** an answered ask, drawn as the class card it was about with the reply on it */
+export interface AnsweredCard {
   key: string;
-  /** "Meera asked you to teach" / "You asked Kabir to assist" */
-  line: string;
-  subject: string;
-  word: string;
-  tint: string;
+  node: ReactNode;
 }
 
 const TAB_WORD: Record<ClassesTab, string> = { todo: "To do", upcoming: "Upcoming", past: "Past" };
@@ -78,7 +75,8 @@ const chip = (on: boolean, quiet: boolean): React.CSSProperties => ({
   whiteSpace: "nowrap",
 });
 
-function SettingsSheet({ onClose, children }: { onClose: () => void; children: ReactNode }) {
+/** one bottom sheet, two uses: the request switches and the answered asks */
+function Sheet({ title, onClose, children, scroll = false }: { title: string; onClose: () => void; children: ReactNode; scroll?: boolean }) {
   useCloseOnBack(onClose);
   return (
     <Portal>
@@ -86,13 +84,13 @@ function SettingsSheet({ onClose, children }: { onClose: () => void; children: R
         <div
           role="dialog"
           aria-modal="true"
-          aria-label="Request settings"
+          aria-label={title}
           onClick={(e) => e.stopPropagation()}
-          style={{ background: "var(--solid)", color: "var(--text)", borderRadius: "24px 24px 0 0", padding: "14px 16px 28px", width: "100%", maxWidth: 430, boxSizing: "border-box", animation: "dosSheetUp .22s ease-out" }}
+          style={{ background: "var(--solid)", color: "var(--text)", borderRadius: "24px 24px 0 0", padding: "14px 16px 28px", width: "100%", maxWidth: 430, boxSizing: "border-box", animation: "dosSheetUp .22s ease-out", ...(scroll ? { maxHeight: "88vh", display: "flex", flexDirection: "column" as const } : {}) }}
         >
-          <div style={{ width: 40, height: 4, borderRadius: 2, background: "var(--el)", margin: "0 auto 12px" }} />
-          <div style={{ fontSize: 16, fontWeight: 900, fontFamily: DOS_UI }}>Request settings</div>
-          {children}
+          <div style={{ width: 40, height: 4, borderRadius: 2, background: "var(--el)", margin: "0 auto 12px", flexShrink: 0 }} />
+          <div style={{ fontSize: 16, fontWeight: 900, fontFamily: DOS_UI, flexShrink: 0 }}>{title}</div>
+          {scroll ? <div style={{ overflowY: "auto", margin: "10px -4px 0", padding: "0 4px", minHeight: 0 }}>{children}</div> : children}
           <button type="button" onClick={onClose} style={{ marginTop: 14, width: "100%", padding: 12, borderRadius: 999, border: "none", background: "var(--text)", color: "var(--solid)", fontWeight: 900, fontSize: 13, cursor: "pointer", fontFamily: "inherit" }}>
             Done
           </button>
@@ -108,6 +106,16 @@ const GearIcon = () => (
     <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.6 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.6a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" />
   </svg>
 );
+
+/** a speech bubble with a tick — the asks that have had their answer */
+const AnsweredIcon = () => (
+  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+    <path d="M8.5 10.5l2.2 2.2 4.8-4.8" />
+  </svg>
+);
+
+const headBtn: React.CSSProperties = { position: "relative", width: 38, height: 38, borderRadius: 19, border: "none", background: "rgba(255,255,255,.22)", color: "#fff", display: "inline-flex", alignItems: "center", justifyContent: "center", cursor: "pointer", padding: 0 };
 
 export function ClassesHome({
   mode,
@@ -131,7 +139,7 @@ export function ClassesHome({
   /** the chip row: key and word; "all" first */
   roles: Array<{ key: string; word: string }>;
   items: ClassItem[];
-  answered: AnsweredRow[];
+  answered: AnsweredCard[];
   initialTab: ClassesTab;
   initialRole?: string;
   /** the address this screen lives at, so the tabs and chips can write the query */
@@ -147,6 +155,7 @@ export function ClassesHome({
   const [tab, setTab] = useState<ClassesTab>(initialTab);
   const [role, setRole] = useState<string>(shownRoles.some((r) => r.key === initialRole) ? initialRole : "all");
   const [gear, setGear] = useState(false);
+  const [showAnswered, setShowAnswered] = useState(false);
 
   /* the tab and the chip are the ADDRESS too, REPLACED rather than pushed — a
      setting of a page replaces (the 19 Sep rule), so back still leaves */
@@ -172,26 +181,16 @@ export function ClassesHome({
   const shown = byRole(inTab(tab));
 
   const tabs = (
-    <div role="tablist" aria-label="Classes" style={{ display: "flex", gap: 4, padding: 4, borderRadius: 999, background: "var(--el)", marginTop: 12 }}>
+    /* the app's one column switch (`ColumnTabs`, 11 Oct 2026) — every column row
+       under Home is drawn from the same two styles as this one */
+    <div role="tablist" aria-label="Classes" style={{ ...columnTrack(), marginTop: 12 }}>
       {(["todo", "upcoming", "past"] as ClassesTab[]).map((t) => {
         const on = tab === t;
         const n = countTab(t);
         return (
-          <button
-            key={t}
-            type="button"
-            role="tab"
-            aria-selected={on}
-            data-testid={`classes-tab-${t}`}
-            onClick={() => pickTab(t)}
-            style={{ flex: "1 1 0", minWidth: 0, padding: "9px 6px", borderRadius: 999, border: "none", cursor: "pointer", fontFamily: "inherit", fontSize: 13, fontWeight: 900, background: on ? "var(--text)" : "transparent", color: on ? "var(--solid)" : "var(--text)", display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 6 }}
-          >
+          <button key={t} type="button" role="tab" aria-selected={on} data-testid={`classes-tab-${t}`} onClick={() => pickTab(t)} style={columnTab(on)}>
             {TAB_WORD[t]}
-            {n > 0 ? (
-              <span style={{ fontSize: 11, fontWeight: 900, minWidth: 18, padding: "1px 6px", borderRadius: 999, background: t === "todo" ? "#F59E0B" : on ? "var(--solid)" : "var(--card)", color: t === "todo" ? "#1a1406" : on ? "var(--text)" : SUB, fontVariantNumeric: "tabular-nums" }}>
-                {n}
-              </span>
-            ) : null}
+            {n > 0 ? <ColumnCount n={n} on={on} attention={t === "todo"} /> : null}
           </button>
         );
       })}
@@ -234,22 +233,6 @@ export function ClassesHome({
             {list(rows)}
           </section>
         ))}
-        {answered.length > 0 ? (
-          <details data-testid="todo-answered" style={{ marginTop: 8 }}>
-            <summary style={{ listStyle: "none", cursor: "pointer" }}>
-              <span style={head}>Answered · {answered.length} ›</span>
-            </summary>
-            {answered.map((a) => (
-              <div key={a.key} style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 12px", marginBottom: 8, borderRadius: 14, background: "var(--card)", border: "1.5px solid var(--el)" }}>
-                <span style={{ flex: 1, minWidth: 0 }}>
-                  <span style={{ display: "block", fontSize: 12.5, fontWeight: 800, lineHeight: 1.3 }}>{a.line}</span>
-                  <span style={{ display: "block", fontSize: 11, color: SUB, marginTop: 2 }}>{a.subject}</span>
-                </span>
-                <span style={{ flexShrink: 0, fontSize: 10, fontWeight: 900, letterSpacing: 0.4, padding: "4px 9px", borderRadius: 999, background: `${a.tint}1f`, color: a.tint, textTransform: "uppercase" }}>{a.word}</span>
-              </div>
-            ))}
-          </details>
-        ) : null}
       </div>
     );
   } else {
@@ -292,24 +275,43 @@ export function ClassesHome({
       <DeskTop style={{ paddingBottom: 12 }}>
         <div style={{ position: "relative" }}>
           {top}
-          {settings ? (
-            <button
-              type="button"
-              aria-label="Request settings"
-              data-testid="classes-settings"
-              onClick={() => setGear(true)}
-              style={{ position: "absolute", top: 10, right: 10, width: 38, height: 38, borderRadius: 19, border: "none", background: "rgba(255,255,255,.22)", color: "#fff", display: "inline-flex", alignItems: "center", justifyContent: "center", cursor: "pointer" }}
-            >
-              <GearIcon />
+          {/* ⚠ ANSWERED IS A BUTTON BESIDE THE GEAR (11 Oct 2026, the user) — it
+              was a folded list at the foot of To do, which made a finished ask
+              look like work. Drawn whatever the count, so it is always where it
+              was last time; the badge says how many. */}
+          <div style={{ position: "absolute", top: 10, right: 10, display: "flex", gap: 8 }}>
+            <button type="button" aria-label={`Answered requests (${answered.length})`} data-testid="classes-answered" onClick={() => setShowAnswered(true)} style={headBtn}>
+              <AnsweredIcon />
+              {answered.length > 0 ? (
+                <span style={{ position: "absolute", top: -3, right: -3, minWidth: 17, height: 17, padding: "0 4px", boxSizing: "border-box", borderRadius: 999, background: "#fff", color: "#111", fontSize: 10, fontWeight: 900, display: "inline-flex", alignItems: "center", justifyContent: "center", fontVariantNumeric: "tabular-nums" }}>
+                  {answered.length}
+                </span>
+              ) : null}
             </button>
-          ) : null}
+            {settings ? (
+              <button type="button" aria-label="Request settings" data-testid="classes-settings" onClick={() => setGear(true)} style={headBtn}>
+                <GearIcon />
+              </button>
+            ) : null}
+          </div>
         </div>
         {add ? <div style={{ marginTop: 10 }}>{add}</div> : null}
         {tabs}
         {chips}
       </DeskTop>
       <DeskBody style={{ paddingTop: 4 }}>{body}</DeskBody>
-      {gear && settings ? <SettingsSheet onClose={() => setGear(false)}>{settings}</SettingsSheet> : null}
+      {gear && settings ? (
+        <Sheet title="Class requests" onClose={() => setGear(false)}>
+          {settings}
+        </Sheet>
+      ) : null}
+      {showAnswered ? (
+        <Sheet title={`Answered · ${answered.length}`} onClose={() => setShowAnswered(false)} scroll>
+          <div data-testid="answered-list">
+            {answered.length === 0 ? <div style={{ fontSize: 13, color: SUB, padding: "18px 2px" }}>Nothing answered yet.</div> : answered.map((a) => <div key={a.key}>{a.node}</div>)}
+          </div>
+        </Sheet>
+      ) : null}
     </>
   );
 }

@@ -403,7 +403,17 @@ export function ClassDetail({
      ⚠ A trainer or a manager NOT on this class is a dancer here like anybody
      else, which is the whole point of the change. */
   const runsThisClass = isOwner || myClassPerson?.status === "confirmed";
-  const showBar = !runsThisClass && !done && c.session !== null;
+  /* ⚠⚠ A DRAFT IS NOT ON SALE (11 Oct 2026, the user: "should not be able to book
+     a class if in drafts — happened when i rejected a class offer to teach"). A
+     person ASKED onto a class reads its draft (18 Sep), and saying no keeps the
+     row, so they kept reading it — and this bar was drawn for them because they
+     no longer ran it. The database refuses the booking (`book_class_session`
+     books a published class only); the screen stops offering it. */
+  const showBar = !isDraft && !runsThisClass && !done && c.session !== null;
+  /* a draft whose date has come and gone is CLOSED — it can never be published,
+     so nothing on this page offers to (11 Oct 2026, the user: "classes which have
+     not got approval and dates have crossed … should be just closed directly") */
+  const closedDraft = isDraft && sessionPhase !== "upcoming";
 
   /* THE PLACE IS THE VENUE (19 Sep 2026, the user: "right Studio inside the class
      section"): an artist's class held in a studio's room names THE STUDIO THAT
@@ -878,7 +888,8 @@ export function ClassDetail({
         {/* ── YOU HAVE BEEN ASKED — consent is the person's own answer, so it is
             asked where the class is (prototype 15455: "They are asked to
             confirm. A class does not go on Discover until they do."). ── */}
-        {myClassPerson && myClassPerson.status === "asked" && (
+        {/* an ask on a class whose date has passed is closed — nothing to answer */}
+        {myClassPerson && myClassPerson.status === "asked" && sessionPhase === "upcoming" && (
           <div
             style={{
               background: `linear-gradient(135deg, ${GOLD}24, ${GOLD}08), var(--card)`,
@@ -1934,8 +1945,13 @@ export function ClassDetail({
           }}
         >
           <div style={{ fontSize: 9.5, fontWeight: 900, letterSpacing: 0.9, color: "var(--muted)", marginBottom: 8, fontFamily: DOS_UI }}>
-            YOUR DRAFT · PUBLISH TO OPEN BOOKINGS
+            {closedDraft ? "CLOSED · ITS DATE HAS PASSED" : "YOUR DRAFT · PUBLISH TO OPEN BOOKINGS"}
           </div>
+          {closedDraft ? (
+            <div data-testid="draft-closed" style={{ fontSize: 12.5, color: "var(--sub)", lineHeight: 1.45 }}>
+              It was never published. Add a new class for another date.
+            </div>
+          ) : (
           <Link
             href={`/business/${c.businessId}/classes/${c.id}/edit`}
             style={{
@@ -1953,6 +1969,7 @@ export function ClassDetail({
           >
             Edit class
           </Link>
+          )}
         </div>
       )}
 

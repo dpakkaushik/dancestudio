@@ -183,6 +183,7 @@ interface MyAskRow extends ClassPersonRow {
   business_id?: string | null;
   classes: {
     id: string;
+    deleted_at?: string | null;
     style: string;
     level: string;
     share_slug: string;
@@ -203,7 +204,7 @@ interface MyAskRow extends ClassPersonRow {
  *  class cards in same way" — and the ask's own STATUS, so an answered ask can
  *  still be listed in the Inbox ("enquiries and requests don't get removed
  *  after accepting"). */
-const ASK_SELECT = `${CLAIM_COLUMNS}, deleted_at, business_id, classes (id, style, level, share_slug, room, price_inr, capacity, status, poster_path, venue_status, businesses!classes_business_id_fkey (name, city, type, profile_photo_path), venue:businesses!classes_venue_business_id_fkey (name, type, profile_photo_path), class_sessions (id, starts_at, ends_at, deleted_at))`;
+const ASK_SELECT = `${CLAIM_COLUMNS}, deleted_at, business_id, classes (id, deleted_at, style, level, share_slug, room, price_inr, capacity, status, poster_path, venue_status, businesses!classes_business_id_fkey (name, city, type, profile_photo_path), venue:businesses!classes_venue_business_id_fkey (name, type, profile_photo_path), class_sessions (id, starts_at, ends_at, deleted_at))`;
 const toAsk = (r: MyAskRow): MyClassPersonAsk => {
   /* the session the ask is about: the live one still to run, else the last */
   const live = [...(r.classes!.class_sessions ?? [])].filter((s) => !s.deleted_at).sort((a, b) => a.starts_at.localeCompare(b.starts_at));
@@ -232,6 +233,17 @@ const toAsk = (r: MyAskRow): MyClassPersonAsk => {
   };
 };
 export type AskStatus = "asked" | "confirmed" | "rejected";
+
+/** ⚠⚠ A CLASS THAT IS GONE IS NOT A CARD (11 Oct 2026, the user: "dates to be set
+ *  should never be the case"). A studio's own members read its DELETED classes
+ *  ("members read own classes" has no `deleted_at` filter — a soft-deleting role
+ *  must see the row it deleted), and deleting a class soft-deletes its sessions
+ *  and leaves the people on it. So every claim on a deleted class came back with
+ *  NO session and was drawn as a card reading "to be set" — 46 live confirmed
+ *  claims sat on deleted classes on production. A row is drawn only when its
+ *  class is live AND has a session. */
+const drawable = (r: MyAskRow): boolean =>
+  Boolean(r.classes) && !r.classes!.deleted_at && (r.classes!.class_sessions ?? []).some((s) => !s.deleted_at);
 
 /** The asks waiting for the signed-in person, newest first.
  *
@@ -267,7 +279,7 @@ export async function findMyPendingClassPeople(supabase: SupabaseClient, statuse
   if (error) {
     throw new Error(`classPeople.findMinePending failed: ${error.message}`);
   }
-  return (data as unknown as MyAskRow[]).filter((r) => r.classes).map(toAsk);
+  return (data as unknown as MyAskRow[]).filter(drawable).map(toAsk);
 }
 
 /** THE CLASSES YOU ASSIST ON, OR TEACH (18 Sep 2026, the user's Home grid: a
@@ -295,7 +307,7 @@ export async function findMyConfirmedClassPeople(supabase: SupabaseClient, kind:
   if (error) {
     throw new Error(`classPeople.findMineConfirmed failed: ${error.message}`);
   }
-  return (data as unknown as MyAskRow[]).filter((r) => r.classes).map(toAsk);
+  return (data as unknown as MyAskRow[]).filter(drawable).map(toAsk);
 }
 
 export async function askClassPerson(
@@ -338,11 +350,32 @@ export async function setClassPersonPay(
   }
 }
 
+/** the sentence for an ask whose class has already started — it is closed */
+export const ASK_CLOSED_SENTENCE = "This class has already started — the request is closed.";
+
+/** has the class this ask is about already started? (11 Oct 2026, the user:
+ *  "classes which have not got approval and dates have crossed … should be just
+ *  closed directly"). A yes to a class that has begun is a yes to nothing, so
+ *  accepting is refused here, before the RPC; a no still goes through. */
+export async function askHasStarted(supabase: SupabaseClient, classPersonId: string): Promise<boolean> {
+  const { data } = await supabase
+    .from("class_people")
+    .select("id, classes (class_sessions (starts_at, deleted_at))")
+    .eq("id", classPersonId)
+    .maybeSingle();
+  const row = data as { classes: { class_sessions: Array<{ starts_at: string; deleted_at: string | null }> | null } | null } | null;
+  const starts = (row?.classes?.class_sessions ?? []).filter((s) => !s.deleted_at).map((s) => Date.parse(s.starts_at));
+  return starts.length > 0 && Math.max(...starts) <= Date.now();
+}
+
 export async function respondToClassAsk(
   supabase: SupabaseClient,
   classPersonId: string,
   accept: boolean
 ): Promise<void> {
+  if (accept && (await askHasStarted(supabase, classPersonId))) {
+    throw new Error(ASK_CLOSED_SENTENCE);
+  }
   const { error } = await supabase.rpc("respond_to_class_ask", {
     p_class_person_id: classPersonId,
     p_accept: accept,
@@ -396,5 +429,5 @@ export async function findAskedClassPeopleForBusinesses(supabase: SupabaseClient
   if (error) {
     throw new Error(`classPeople.findAskedForBusinesses failed: ${error.message}`);
   }
-  return (data as unknown as MyAskRow[]).filter((r) => r.classes).map(toAsk);
+  return (data as unknown as MyAskRow[]).filter(drawable).map(toAsk);
 }

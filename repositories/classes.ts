@@ -440,6 +440,27 @@ export async function updateClassStatus(
   }
 }
 
+/** Put an artist's draft back to the studio that gave it a room (11 Oct 2026):
+ *  the slot it said yes to has moved, so it is asked again. `notify_venue_request`
+ *  tells the studio's owners; `guard_room_requests_open` refuses it, in words,
+ *  if the studio has stopped taking requests. Only an accepted DRAFT moves. */
+export async function reopenVenueRequest(supabase: SupabaseClient, classId: string): Promise<void> {
+  const { data, error } = await supabase
+    .from("classes")
+    .update({ venue_status: "requested" })
+    .eq("id", classId)
+    .eq("status", "draft")
+    .eq("venue_status", "accepted")
+    .is("deleted_at", null)
+    .select("id");
+  if (error) {
+    throw new Error(error.message);
+  }
+  /* 0 rows is not an error here: the class was not an accepted draft by the time
+     this ran, which is exactly the state that needs nothing */
+  void data;
+}
+
 export interface UpdateClassInput {
   style: string;
   level: ClassLevel;

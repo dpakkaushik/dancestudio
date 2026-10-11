@@ -3,6 +3,7 @@
 import { useState, type CSSProperties } from "react";
 
 import { ClassDetailButton } from "@/components/ui/ClassDetailButton";
+import { columnTab, columnTrack } from "@/components/ui/ColumnTabs";
 import { FigureHead } from "@/components/ui/FigureHead";
 import { ToolChip, ToolFace, ToolFacts, inkOn } from "@/components/ui/ToolCard";
 import { dosStyleColor } from "@/lib/constants/styles";
@@ -192,7 +193,7 @@ export function TeamClassesPanel({
       </div>
 
       {/* THE WAY IN — three pills, the one pressed solid */}
-      <div role="group" aria-label="Group classes by" style={{ display: "flex", gap: 6, margin: "0 0 12px" }}>
+      <div role="group" aria-label="Group classes by" style={{ ...columnTrack(), margin: "0 0 12px" }}>
         {GROUPS.map(([k, word]) => {
           const on = by === k;
           return (
@@ -205,7 +206,7 @@ export function TeamClassesPanel({
                 setBy(k);
                 setOpened(new Set());
               }}
-              style={{ flex: 1, padding: "9px 10px", borderRadius: 999, fontSize: 12, fontWeight: 900, fontFamily: "inherit", cursor: "pointer", background: on ? "var(--text)" : "var(--card)", color: on ? "var(--solid)" : SUB, border: `1.5px solid ${on ? "var(--text)" : "var(--el)"}` }}
+              style={columnTab(on)}
             >
               {word}
             </button>

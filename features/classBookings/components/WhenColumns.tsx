@@ -1,8 +1,8 @@
 "use client";
 
 import { useState, type ReactNode } from "react";
+import { ColumnCount, columnTab, columnTrack } from "@/components/ui/ColumnTabs";
 import { DOS_TOOLS } from "@/features/businesses/components/biz-kit";
-import { DOS_MONO } from "@/features/inbox/components/inbox-kit";
 import { SUB } from "@/lib/design/tokens";
 
 /** UPCOMING · COMPLETED AS COLUMNS (4 Oct 2026, the user: *"upcoming and
@@ -51,34 +51,14 @@ export function WhenColumns({
   const n = col === "upcoming" ? nUp : nDone;
   return (
     <>
-      <div role="group" aria-label={`Upcoming or completed ${noun}`} data-testid={`${id}-columns`} style={{ display: "flex", gap: 6, marginBottom: 12 }}>
-        {cols.map(([k, label, count, tint]) => {
+      {/* the Classes screen's column look (11 Oct 2026, `ColumnTabs`) */}
+      <div role="group" aria-label={`Upcoming or completed ${noun}`} data-testid={`${id}-columns`} style={{ ...columnTrack(), marginBottom: 12 }}>
+        {cols.map(([k, label, count]) => {
           const on = col === k;
           return (
-            <button
-              key={k}
-              type="button"
-              aria-pressed={on}
-              aria-label={`${label} ${noun} (${count})`}
-              onClick={() => setCol(k)}
-              style={{
-                flex: 1,
-                textAlign: "center",
-                padding: "9px 6px",
-                borderRadius: 12,
-                cursor: "pointer",
-                fontSize: 11.5,
-                fontWeight: 800,
-                fontFamily: "inherit",
-                background: on ? "var(--text)" : "var(--card)",
-                color: on ? "var(--solid)" : "var(--sub)",
-                border: "1.5px solid var(--el)",
-              }}
-            >
+            <button key={k} type="button" aria-pressed={on} aria-label={`${label} ${noun} (${count})`} onClick={() => setCol(k)} style={columnTab(on)}>
               {label}
-              {count > 0 ? (
-                <span style={{ marginLeft: 5, fontSize: 8.5, fontWeight: 900, padding: "1px 6px", borderRadius: 999, fontFamily: DOS_MONO, background: on ? "var(--solid)" : tint, color: on ? "var(--text)" : "#fff" }}>{count}</span>
-              ) : null}
+              {count > 0 ? <ColumnCount n={count} on={on} /> : null}
             </button>
           );
         })}

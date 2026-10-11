@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useState, type CSSProperties, type ReactNode } from "react";
+import { columnTab, columnTrack } from "@/components/ui/ColumnTabs";
 import { FigureHead } from "@/components/ui/FigureHead";
 import { DeskBody, DeskMiddle, DeskTop } from "@/components/ui/DeskSections";
 import { DOS_TOOLS, DeskHero } from "@/features/businesses/components/biz-kit";
@@ -193,7 +194,7 @@ export function EarningsScreen({
       {sub && title !== DOS_TOOLS.earn.name ? <div style={{ fontSize: 11.5, color: SUB, fontWeight: 800, marginTop: 6 }}>{sub}</div> : null}
 
       {/* DAY · WEEK · MONTH · YEAR — the period is a LINK, so it is in the URL */}
-      <div role="group" aria-label="Period" style={{ display: "flex", gap: 2, background: "var(--el)", borderRadius: 12, padding: 3, marginTop: 12 }}>
+      <div role="group" aria-label="Period" style={{ ...columnTrack(), marginTop: 12 }}>
         {PERIODS.map(([p, label]) => {
           const on = report.period === p;
           return (
@@ -203,7 +204,7 @@ export function EarningsScreen({
               replace
               scroll={false}
               aria-current={on ? "true" : undefined}
-              style={{ flex: 1, textAlign: "center", padding: "8px 2px", borderRadius: 9, fontSize: 11.5, fontWeight: 800, textDecoration: "none", background: on ? "var(--solid)" : "transparent", color: on ? INK : SUB }}
+              style={columnTab(on)}
             >
               {label}
             </Link>

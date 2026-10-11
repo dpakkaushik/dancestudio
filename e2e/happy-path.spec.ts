@@ -975,9 +975,15 @@ test.describe.serial("DanceOS, end to end", () => {
     const askedOfYou = trainer.getByTestId("todo-answer");
     await expect(askedOfYou).toBeVisible();
     await askedOfYou.getByRole("button", { name: `Accept ${classTitle}` }).click();
-    // the answered ask leaves To do, and the folded history keeps it
+    /* the answered ask leaves To do and is kept behind the Answered button beside
+       the gear (11 Oct 2026) — the class's own card, with the reply on it */
     await expect(trainer.getByRole("button", { name: `Accept ${classTitle}` })).toHaveCount(0, { timeout: 15_000 });
-    await expect(trainer.getByTestId("todo-answered")).toContainText("Answered");
+    await trainer.getByTestId("classes-answered").click();
+    const answeredSheet = trainer.getByTestId("answered-list");
+    await expect(answeredSheet.locator(`[aria-label="Open ${classTitle}"]`)).toBeVisible({ timeout: 15_000 });
+    await expect(answeredSheet.getByTestId("answered-reply").first()).toContainText(/Confirmed/i);
+    await trainer.goBack();
+    await expect(answeredSheet).toHaveCount(0);
     // now the owner publishes from the class's own card — the door the form no longer is
     await owner.goto(`/business/${businessId}/classes`);
     /* everybody has said yes, so the draft is READY TO PUBLISH under YOUR MOVE */
