@@ -138,6 +138,10 @@ export const tilesFor = (kind: HomeKind, pageId: string | null): Tile[] => {
   if (kind !== "artist") {
     return [
       ...person,
+      /* ⚠ A TEAM TILE FOR EVERYBODY (11 Oct 2026, the user's answer "Team tile
+         for everyone") — an artist asking a plain user onto their team is
+         answered on `/team`'s Artist Teams column */
+      { name: DOS_TOOLS.team.name, href: "/team", k: "team", c: DOS_TOOLS.team.c },
       { name: DOS_TOOLS.memberships.name, href: "/memberships", k: "memberships", c: DOS_TOOLS.memberships.c },
       { name: DOS_TOOLS.earn.name, href: "/earnings", k: "earn", c: DOS_TOOLS.earn.c },
       subscription,
@@ -147,7 +151,7 @@ export const tilesFor = (kind: HomeKind, pageId: string | null): Tile[] => {
   const desk = (path: string) => (pageId ? `/business/${pageId}/${path}` : "/business");
   return [
     ...person,
-    { name: DOS_TOOLS.team.name, href: desk("staff"), k: "team", c: DOS_TOOLS.team.c },
+    { name: DOS_TOOLS.team.name, href: pageId ? desk("staff") : "/team", k: "team", c: DOS_TOOLS.team.c },
     { name: DOS_TOOLS.students.name, href: desk("students"), k: "students", c: DOS_TOOLS.students.c },
     /* ⚠ AN ARTIST'S EARNINGS TILE OPENS THEIR PAGE'S DESK (20 Sep 2026, the
        user: "Earnings make sure to check all revenue sources mentioned for all

@@ -66,21 +66,27 @@ export function StudioPlace({
             title={<span style={micro}>ROOMS</span>}
             figure={<span style={{ fontSize: 10.5, fontWeight: 800, color: "var(--muted)", fontVariantNumeric: "tabular-nums" }}>{rooms.length}</span>}
           />
-          <div style={{ display: "grid", gap: 8 }}>
+          {/* ⚠ SMALLER ROOM CARDS, THE CAPACITY SAID PROPERLY (11 Oct 2026, the
+              user: "At the studio section on studio profiles should have smaller
+              room cards and capacity written properly"). Two to a row, the name
+              at a card's size rather than a heading's, and the capacity a figure
+              with its word — "20 · Capacity" — where it read "Holds 20" in grey
+              beside the name. The amenities stay inside the room they belong to. */}
+          <div style={{ display: "grid", gridTemplateColumns: rooms.length > 1 ? "1fr 1fr" : "1fr", gap: 8 }}>
             {rooms.map((r) => (
-              <div key={r.id} data-testid="studio-room" style={{ padding: "11px 12px 12px", borderRadius: 15, background: `${tint}0f`, border: "1.5px solid var(--el)" }}>
-                <div style={{ display: "flex", alignItems: "baseline", gap: 8 }}>
-                  <span data-testid="studio-room-name" style={{ flex: 1, minWidth: 0, fontFamily: DOS_DISPLAY, fontSize: 19, fontWeight: 800, letterSpacing: -0.5, lineHeight: 1.15, color: "var(--text)", overflowWrap: "anywhere" }}>
-                    {r.name}
-                  </span>
-                  <span style={{ flexShrink: 0, fontSize: 10.5, fontWeight: 800, color: "var(--sub)", fontVariantNumeric: "tabular-nums" }}>Holds {r.capacity}</span>
+              <div key={r.id} data-testid="studio-room" style={{ padding: "9px 10px 10px", borderRadius: 13, background: `${tint}0f`, border: "1.5px solid var(--el)", minWidth: 0 }}>
+                <div data-testid="studio-room-name" style={{ fontFamily: DOS_DISPLAY, fontSize: 14.5, fontWeight: 800, letterSpacing: -0.3, lineHeight: 1.2, color: "var(--text)", overflowWrap: "anywhere" }}>
+                  {r.name}
                 </div>
-                <div style={{ ...micro, margin: "9px 0 6px" }}>AMENITIES</div>
-                <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 6 }}>
+                <div data-testid="studio-room-capacity" aria-label={`Capacity ${r.capacity} people`} style={{ display: "inline-flex", alignItems: "baseline", gap: 5, marginTop: 6, padding: "3px 9px", borderRadius: 999, background: `${tint}1c`, border: `1.5px solid ${tint}33` }}>
+                  <span style={{ fontSize: 13, fontWeight: 900, color: "var(--text)", fontVariantNumeric: "tabular-nums" }}>{r.capacity}</span>
+                  <span style={{ ...micro, color: "var(--sub)" }}>CAPACITY</span>
+                </div>
+                <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 5, marginTop: 7 }}>
                   {r.amenities.length > 0 ? (
-                    r.amenities.map((a) => <AmenityChip key={a} value={a} tint={tint} />)
+                    r.amenities.map((a) => <AmenityChip key={a} value={a} tint={tint} small />)
                   ) : (
-                    <span style={{ fontSize: 11, color: "var(--muted)" }}>Nothing listed for {r.name} yet.</span>
+                    <span style={{ fontSize: 10.5, color: "var(--muted)" }}>No amenities listed</span>
                   )}
                 </div>
               </div>

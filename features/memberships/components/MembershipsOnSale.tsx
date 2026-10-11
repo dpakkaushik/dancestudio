@@ -7,7 +7,9 @@ import { buyMembershipAction } from "@/features/memberships/server-actions/membe
 import { money as rupees } from "@/features/payouts/components/earnings-kit";
 import { confirmCheckoutAction, startMembershipCheckoutAction } from "@/features/payments/server-actions/payments";
 import { openCashfreeCheckout, preloadCheckout } from "@/lib/cashfree/checkout-client";
-import { INK, SUB } from "@/lib/design/tokens";
+import { DOS_DISPLAY, INK, SUB } from "@/lib/design/tokens";
+import { inkOn } from "@/components/ui/ToolCard";
+import { SeatBar } from "@/features/classes/components/ClassTile";
 import type { MembershipOnSale } from "@/repositories/memberships";
 
 /** MEMBERSHIPS ON A PUBLIC PAGE (19 Sep 2026, the user: "Users should be able
@@ -28,7 +30,9 @@ import type { MembershipOnSale } from "@/repositories/memberships";
  *  being paid with, then one Pay button. A free one says "no payment" in the
  *  same sheet rather than pretending there is a step. */
 
-const row: CSSProperties = { display: "flex", alignItems: "center", gap: 10, padding: "9px 0", borderBottom: "1.5px solid var(--el)" };
+const row: CSSProperties = { padding: "11px 0 12px", borderBottom: "1.5px solid var(--el)" };
+/* the row's one action, as a full pill (11 Oct 2026) */
+const buyBox: CSSProperties = { flexShrink: 0, display: "inline-flex", alignItems: "center", justifyContent: "center", minWidth: 118, padding: "11px 18px", borderRadius: 999, fontSize: 13, fontWeight: 900, fontFamily: "inherit", textDecoration: "none", whiteSpace: "nowrap" };
 const sheetBackdrop: CSSProperties = { position: "fixed", inset: 0, background: "rgba(0,0,0,.55)", display: "flex", alignItems: "flex-end", justifyContent: "center", zIndex: 700 };
 const sheetBody: CSSProperties = { background: "var(--solid)", color: INK, borderRadius: "24px 24px 0 0", padding: "16px 16px 30px", width: "100%", maxWidth: 430, boxSizing: "border-box", animation: "dosSheetUp .28s cubic-bezier(.22,.9,.34,1)" };
 
@@ -91,31 +95,53 @@ export function MembershipsOnSale({
   return (
     <div style={{ background: "var(--card)", border: "1.5px solid var(--el)", borderRadius: 16, padding: "13px 14px", marginTop: 10 }} data-testid="memberships-on-sale">
       <div style={{ fontSize: 9.5, fontWeight: 900, letterSpacing: 0.9, color: accent, marginBottom: 6 }}>MEMBERSHIPS</div>
-      {memberships.map((m) => (
-        <div key={m.id} style={row}>
-          <span style={{ flex: 1, minWidth: 0 }}>
-            <span style={{ display: "block", fontSize: 12.5, fontWeight: 800, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{m.name}</span>
-            <span style={{ display: "block", fontSize: 10.5, color: SUB, marginTop: 1 }}>
+      {memberships.map((m, i) => (
+        <div key={m.id} data-testid="membership-on-sale" style={{ ...row, borderBottom: i === memberships.length - 1 ? "none" : row.borderBottom }}>
+          <div style={{ display: "flex", alignItems: "baseline", gap: 8 }}>
+            <span style={{ flex: 1, minWidth: 0, fontSize: 14, fontWeight: 900, letterSpacing: -0.2, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{m.name}</span>
+            <span style={{ flexShrink: 0, fontSize: 10.5, color: SUB, fontWeight: 700 }}>
               {m.unit === "hours" ? `${m.units} hours` : `${m.units} classes`}
-              {m.validityDays ? ` · valid ${m.validityDays} days` : " · until used up"} · {m.leftCount > 0 ? `${m.leftCount} left` : "all taken"}
+              {m.validityDays ? ` · ${m.validityDays} days` : " · until used up"}
             </span>
-          </span>
-          {/* ⚠ THE PRICE AND THE BUTTON ARE ONE GROUP (28 Sep 2026, "together").
-              They were two children of a row spaced `gap: 10`, so the price sat
-              as far from the button it belongs to as it did from the name it
-              does not. 7px binds them and the row's own gap keeps them off the
-              name. */}
-          <span style={{ flexShrink: 0, display: "flex", alignItems: "center", gap: 7 }}>
-            <span style={{ fontSize: 12.5, fontWeight: 900 }}>{m.priceInr === 0 ? "Free" : rupees(m.priceInr)}</span>
+          </div>
+          {/* ⚠ A BAR, LIKE A CLASS CARD'S (11 Oct 2026, the user: "Membership
+              should also have a bar like class cards for spots left") — the
+              class's own `SeatBar`, its numbers and colours, in a membership's
+              words: "3/20 Sold · 17 Left", amber at the last three, red when
+              all are taken */}
+          <div style={{ display: "flex", marginTop: 8 }}>
+            <SeatBar
+              taken={Math.max(0, m.totalCount - m.leftCount)}
+              cap={m.totalCount}
+              tint={accent}
+              height={24}
+              testId="membership-left"
+              barTestId="membership-bar"
+              words={{ taken: "Sold", left: "Left", full: "All taken" }}
+            />
+          </div>
+          {/* ⚠ THE PRICE AND THE BUTTON, WRITTEN ANOTHER WAY (11 Oct 2026, the user:
+              "price and buy now button written in a different way"). The price
+              was a word squeezed beside a small pill; it is the row's own foot
+              now — the figure at the size of a figure on the left with what it
+              buys under it, and the button on the right as a full pill. Still
+              ONE price (28 Sep 2026: never on the button as well). */}
+          <div style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 10 }}>
+            <span style={{ flex: 1, minWidth: 0 }}>
+              <span data-testid="membership-price" style={{ display: "block", fontFamily: DOS_DISPLAY, fontSize: 20, fontWeight: 900, letterSpacing: -0.5, lineHeight: 1.05 }}>
+                {m.priceInr === 0 ? "Free" : rupees(m.priceInr)}
+              </span>
+              <span style={{ display: "block", fontSize: 10, color: "var(--muted)", fontWeight: 700, marginTop: 2 }}>{m.priceInr === 0 ? "no payment" : "one payment"}</span>
+            </span>
             {!signedIn ? (
-            <a href="/login" aria-label={`Buy ${m.name}`} style={{ flexShrink: 0, fontSize: 10.5, fontWeight: 800, color: accent, textDecoration: "none" }}>
-              Buy now ›
+            <a href="/login" aria-label={`Buy ${m.name}`} style={{ ...buyBox, color: accent, background: `${accent}1f`, border: `1.5px solid ${accent}` }}>
+              Sign in to buy
             </a>
           ) : m.held ? (
             /* ⚠ YOURS ALREADY — NOT A SECOND BUY (2 Oct 2026). The database
                refuses a second live pass; the button no longer offers one, and
                points at the pass instead */
-            <Link href="/memberships?show=booked" aria-label={`${m.name} — yours, open it`} style={{ flexShrink: 0, fontSize: 11, fontWeight: 900, color: accent, background: `${accent}1f`, border: `1.5px solid ${accent}`, borderRadius: 999, padding: "6.5px 12px", textDecoration: "none", whiteSpace: "nowrap" }}>
+            <Link href="/memberships?show=booked" aria-label={`${m.name} — yours, open it`} style={{ ...buyBox, color: accent, background: `${accent}1f`, border: `1.5px solid ${accent}` }}>
               ✓ Active
             </Link>
           ) : canBuy && m.leftCount > 0 ? (
@@ -129,7 +155,7 @@ export function MembershipsOnSale({
                  from the one on the screen */
               aria-label={`Buy ${m.name}`}
               onClick={() => { setNote(null); setPaying(m); if (m.priceInr > 0) preloadCheckout(); }}
-              style={{ flexShrink: 0, fontSize: 11, fontWeight: 900, color: "#fff", background: accent, border: "none", borderRadius: 999, padding: "8px 14px", cursor: pending ? "wait" : "pointer", fontFamily: "inherit", whiteSpace: "nowrap", boxShadow: `0 3px 10px ${accent}44` }}
+              style={{ ...buyBox, color: inkOn(accent), background: accent, border: `1.5px solid ${accent}`, cursor: pending ? "wait" : "pointer", boxShadow: `0 3px 10px ${accent}44` }}
             >
               {/* ⚠ "BUY NOW", NOT "TAKE IT" (27 Sep 2026, the user's own word).
                   A free pass reads "Buy now" too: what the button does is the
@@ -152,11 +178,11 @@ export function MembershipsOnSale({
                own team, and `why_no_membership` says exactly that — "a
                membership is for the people who come to dance". A dash made a
                real rule look like a broken button. */
-            <span style={{ flexShrink: 0, fontSize: 10, fontWeight: 700, color: "var(--muted)", textAlign: "right", maxWidth: 96, lineHeight: 1.35 }}>
+            <span style={{ flexShrink: 0, fontSize: 10.5, fontWeight: 700, color: "var(--muted)", textAlign: "right", maxWidth: 130, lineHeight: 1.35 }}>
               {m.leftCount === 0 ? "All taken" : "You are on this team"}
             </span>
             )}
-          </span>
+          </div>
         </div>
       ))}
       {note ? (

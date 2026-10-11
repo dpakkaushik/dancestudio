@@ -127,9 +127,13 @@ export function BusinessHub({
   userId = null,
   show = "own",
   invites = [],
+  artistInvites = 0,
   answered = [],
   inboxOff = [],
 }: {
+  /** how many ARTIST team invitations wait on the Team page — this hub points
+   *  there rather than answering them (11 Oct 2026) */
+  artistInvites?: number;
   /** ⚠ THE TEAM INVITATIONS THAT ARE OVER (11 Oct 2026, the user: "after
    *  declining or withdrawing, invite cards vanish — should be handled like
    *  Classes' Answered") — behind the Answered button beside the gear */
@@ -268,7 +272,9 @@ export function BusinessHub({
      since R48 retired the login on 26 Sep, and its three branches are gone with
      it — every reader of this hub is a person. */
   const mine = memberships.filter((m) => m.memberRole === "owner").map((m) => m.business);
-  const theirs = memberships.filter((m) => m.memberRole !== "owner").map((m) => m.business);
+  /* ⚠ STUDIOS ONLY (11 Oct 2026): an artist page whose team you are on is the
+     Team page's Artist Teams column now, with its invitations */
+  const theirs = memberships.filter((m) => m.memberRole !== "owner" && m.business.type === "studio").map((m) => m.business);
   const myStudios = mine.filter((t) => t.type === "studio");
 
   /* ⚠ THE SHEET OPENS A STUDIO, FOR ANYBODY (26 Sep 2026, the user: "Move Studio
@@ -533,6 +539,24 @@ export function BusinessHub({
         <div style={{ fontSize: 11, color: SUB, lineHeight: 1.5, margin: "8px 2px 0" }}>
           {studioPrice ? `A studio is ${priceWords(studioPrice.priceInr, studioPrice.period).replace("/mo", " a month")} once DanceOS has verified it.` : "No studio plan is on offer right now — message DanceOS from Settings › Help & support."}
         </div>
+        {/* ⚠ ADD STUDIO UNDER THE HEADING, ABOVE THE COLUMNS (11 Oct 2026, the
+            user: "add studio below the heading above the column"). It was the
+            Manage column's first row, so it was gone the moment Team was open.
+            "Add Studio", S capital (4 Oct 2026). ⚠ THE GATE IS NOT A GREYED PILL
+            (R14): when the database would refuse a studio the button is not drawn
+            and its SENTENCE stands in its place. */}
+        {gateShut ? (
+          <div
+            role="status"
+            aria-label={`Cannot add a studio: ${gateShut}`}
+            style={{ borderRadius: 16, border: `1.5px dashed var(--el)`, padding: "13px 14px", background: CARD, marginTop: 12 }}
+          >
+            <div style={{ fontSize: 12.5, fontWeight: 900, color: INK }}>＋ Add Studio</div>
+            <div style={{ fontSize: 11, color: SUB, marginTop: 4, lineHeight: 1.5 }}>{gateShut}</div>
+          </div>
+        ) : (
+          <DeskAddButton label="Add Studio" onClick={() => setSheetOpen(true)} inTop />
+        )}
         </>
           }
           /* ⚠⚠ TWO COLUMNS (29 Sep 2026, the user: *"same should be for studios
@@ -562,42 +586,7 @@ export function BusinessHub({
               key: "own",
               node: (
           <>
-            {/* ⚠ ＋ ADD STUDIO IS THE DESK PILL, AT THE TOP (20 Sep 2026, the user:
-                "fix add studio button also similarly"). It was a DASHED row at the
-                FOOT of the studios list — so on an organization with several
-                branches you scrolled past all of them to open another, which is
-                exactly what the 20 Sep move fixed for Team, Rooms and Crews and
-                then missed here. The same `DeskAddButton` those three use, so a
-                desk is a desk whatever it holds.
-                ⚠ THE GATE IS NOT A GREYED PILL (R14). When the database would
-                refuse a studio, the button is not drawn at all and its SENTENCE
-                stands in its place with the door to the person who can move it —
-                a control that exists only to be refused says less than the
-                refusal itself. */}
-            {gateShut ? (
-              <div
-                role="status"
-                aria-label={`Cannot add a studio: ${gateShut}`}
-                style={{ borderRadius: 16, border: `1.5px dashed var(--el)`, padding: "13px 14px", background: CARD, marginBottom: 12 }}
-              >
-                <div style={{ fontSize: 12.5, fontWeight: 900, color: INK }}>＋ Add Studio</div>
-                <div style={{ fontSize: 11, color: SUB, marginTop: 4, lineHeight: 1.5 }}>{gateShut}</div>
-                {/* ⚠ THE DOOR WENT WITH THE SCREEN IT OPENED (21 Sep 2026). This
-                    said "Where you stand with DanceOS ›" and pointed at `/` —
-                    Home's standing card, which was DELETED on 11 Sep once the
-                    tick alone became the verified state. A link to a card that
-                    no longer exists lands you on an ordinary Home with nothing
-                    to see. Unreachable today, because the gate returns null for
-                    every organization — which is exactly why it survived: a
-                    branch nobody renders is where a broken promise hides. The
-                    sentence above already says what is wrong; Settings carries
-                    the conversation with DanceOS. */}
-              </div>
-            ) : (
-              /* "Add Studio", S capital (4 Oct 2026, the user) */
-              <DeskAddButton label="Add Studio" onClick={() => setSheetOpen(true)} />
-            )}
-
+            {/* Add Studio is in the top section now (11 Oct 2026) */}
             <Head>YOUR STUDIOS</Head>
             {myStudios.length ? (
               myStudios.map((t) => studioCard(t))
@@ -628,7 +617,23 @@ export function BusinessHub({
               node: (
                 <>
                   {/* ⚠ THE INVITATIONS FIRST (11 Oct 2026) — answered here, not in the Inbox */}
-                  <TeamInvites invites={invites} />
+                  <TeamInvites invites={invites} heading="Invited to a studio's team" />
+                  {/* ⚠ AN ARTIST'S INVITATION IS ANSWERED ON THE TEAM PAGE (11 Oct
+                      2026, the user: "artist team invites in teams") — one line
+                      pointing there, so an old notification that opened this
+                      column still leads to it */}
+                  {artistInvites > 0 ? (
+                    <Link
+                      href="/team"
+                      data-testid="artist-invites-pointer"
+                      style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, padding: "11px 13px", borderRadius: 14, background: CARD, border: "1.5px solid var(--el)", color: INK, textDecoration: "none", fontSize: 12.5, fontWeight: 800, marginBottom: 10 }}
+                    >
+                      <span>
+                        {artistInvites} artist team {artistInvites === 1 ? "invitation" : "invitations"} waiting
+                      </span>
+                      <span style={{ color: SUB, fontSize: 11.5 }}>Open Team ›</span>
+                    </Link>
+                  ) : null}
                   {/* every studio whose team you are on — a trainer's seat, or the
                       Visiting Faculty seat accepting a class gives you (R19) */}
                   {theirs.length > 0 ? (

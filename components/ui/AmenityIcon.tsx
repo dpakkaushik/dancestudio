@@ -110,24 +110,27 @@ export function AmenityIcon({ value, size = 16, color = "currentColor", style }:
 
 /** an amenity as a chip — the icon in the tool's colour, the words in ink. One
  *  look on the room card, the class page and anywhere else an amenity is shown. */
-export function AmenityChip({ value, tint }: { value: string; tint: string }) {
+export function AmenityChip({ value, tint, small = false }: { value: string; tint: string; /** a studio page's half-width room card (11 Oct 2026) */ small?: boolean }) {
   return (
     <span
       style={{
         display: "inline-flex",
         alignItems: "center",
-        gap: 6,
-        fontSize: 11.5,
+        gap: small ? 4 : 6,
+        fontSize: small ? 10.5 : 11.5,
         fontWeight: 700,
-        padding: "5px 11px 5px 8px",
+        padding: small ? "3px 8px 3px 6px" : "5px 11px 5px 8px",
         borderRadius: 999,
         background: `${tint}14`,
         color: "var(--text)",
         border: `1.5px solid ${tint}33`,
         whiteSpace: "nowrap",
+        maxWidth: "100%",
+        overflow: "hidden",
+        textOverflow: "ellipsis",
       }}
     >
-      <AmenityIcon value={value} size={15} color={tint} />
+      <AmenityIcon value={value} size={small ? 12 : 15} color={tint} />
       {amenityLabel(value)}
     </span>
   );

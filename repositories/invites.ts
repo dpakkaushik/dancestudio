@@ -76,11 +76,14 @@ export interface AnsweredInvite {
   /** who sent it, and the business's face (`20261019090000`) — null before that lands */
   inviterName: string | null;
   businessPhotoPath: string | null;
+  /** studio or artist_page (`20261020090000`) — which section files it */
+  businessType: string | null;
 }
 export async function findMyAnsweredInvites(supabase: SupabaseClient): Promise<AnsweredInvite[]> {
   const { data, error } = await supabase.rpc("my_answered_invites");
   if (error) return [];
-  return ((data ?? []) as Array<{ invite_id: string; business_id: string; business_name: string; member_role: InvitableRole; status: Exclude<InviteStatus, "pending">; created_at: string; answered_at: string; inviter_name?: string | null; business_photo_path?: string | null }>).map((r) => ({
+  return ((data ?? []) as Array<{ invite_id: string; business_id: string; business_name: string; member_role: InvitableRole; status: Exclude<InviteStatus, "pending">; created_at: string; answered_at: string; inviter_name?: string | null; business_photo_path?: string | null; business_type?: string | null }>).map((r) => ({
+    businessType: r.business_type ?? null,
     inviteId: r.invite_id,
     businessId: r.business_id,
     businessName: r.business_name,

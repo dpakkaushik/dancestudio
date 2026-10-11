@@ -29,7 +29,11 @@ export const eyebrow: CSSProperties = { fontSize: 9.5, fontWeight: 900, letterSp
  *  ⚠ It takes `onClick` OR `href`, never both: Team and Rooms open a sheet in
  *  place, Crews is a route. Three copies of one pill is how the bands drifted
  *  earlier today, so this is the one declaration and the desks read it. */
-export function DeskAddButton({ label, href, onClick }: { label: string; href?: string; onClick?: () => void }) {
+/* ⚠ `inTop` (11 Oct 2026, the user: "add crew, add studio, add routine below
+   the heading above the column"): on a desk with columns the pill sits in the
+   TOP squircle between the heading and the column switch, so its 12px foot
+   becomes a 12px head and the switch keeps its own. */
+export function DeskAddButton({ label, href, onClick, inTop = false }: { label: string; href?: string; onClick?: () => void; inTop?: boolean }) {
   const inner = (
     <>
       <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true">
@@ -38,7 +42,7 @@ export function DeskAddButton({ label, href, onClick }: { label: string; href?: 
       {label}
     </>
   );
-  const style: CSSProperties = { ...bizBtn, display: "flex", alignItems: "center", justifyContent: "center", gap: 8, marginBottom: 12 };
+  const style: CSSProperties = { ...bizBtn, display: "flex", alignItems: "center", justifyContent: "center", gap: 8, ...(inTop ? { marginTop: 12, marginBottom: 0 } : { marginBottom: 12 }) };
   if (href) {
     /* ⚠ A `next/link`, NOT a bare `<a>` (22 Sep 2026). Every href this takes now
        points at the SAME page with `?new=1` on it — the form opens as a sheet

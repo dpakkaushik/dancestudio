@@ -192,6 +192,39 @@ export async function findBusinessPhotoPaths(supabase: SupabaseClient, ids: stri
   return Object.fromEntries(((data ?? []) as Array<{ id: string; profile_photo_path: string | null }>).map((r) => [r.id, r.profile_photo_path]));
 }
 
+/** WHOSE ARTIST PAGE IT IS (11 Oct 2026) — the Team page's Artist Teams column
+ *  draws an artist's team as the ARTIST (their face, a door to their profile),
+ *  because an artist page has no picture of its own. Reads the owner seat (a
+ *  page's members read each other's rows since Step 11) and then the person.
+ *  Answers empty rather than throwing — a card without a face is still a card. */
+export async function findArtistPageOwners(
+  supabase: SupabaseClient,
+  pageIds: string[]
+): Promise<Record<string, { userId: string; name: string; photoPath: string | null }>> {
+  const uniq = [...new Set(pageIds)];
+  if (uniq.length === 0) return {};
+  const { data: seats, error } = await supabase
+    .from("business_members")
+    .select("business_id, user_id")
+    .in("business_id", uniq)
+    .eq("member_role", "owner")
+    .is("deleted_at", null);
+  if (error || !seats?.length) return {};
+  const owners = (seats as Array<{ business_id: string; user_id: string }>);
+  const { data: people } = await supabase
+    .from("profiles")
+    .select("id, full_name, profile_photo_path")
+    .in("id", [...new Set(owners.map((s) => s.user_id))]);
+  const byId = new Map(((people ?? []) as Array<{ id: string; full_name: string | null; profile_photo_path: string | null }>).map((p) => [p.id, p]));
+  const out: Record<string, { userId: string; name: string; photoPath: string | null }> = {};
+  for (const s of owners) {
+    if (out[s.business_id]) continue;
+    const p = byId.get(s.user_id);
+    out[s.business_id] = { userId: s.user_id, name: p?.full_name ?? "An artist", photoPath: p?.profile_photo_path ?? null };
+  }
+  return out;
+}
+
 interface MembershipRow {
   businesses: BusinessRow | null;
 }

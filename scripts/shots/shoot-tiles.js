@@ -365,7 +365,7 @@ async function personOpensAStudio(page, who, acc, stamp) {
        should be seprate tab in home tab not in crew") — pressed here so the new
        tile is DRIVEN rather than skipped: `pressEveryTile` only presses names it
        is given, so a tile left off this list is a tile nothing opens. */
-    await pressEveryTile(p1, "user", ["Classes", "Calendar", "Crews", "Practice", "Studios", "Routines", "Memberships", "Earnings"]);
+    await pressEveryTile(p1, "user", ["Classes", "Calendar", "Crews", "Practice", "Studios", "Routines", "Team", "Memberships", "Earnings"]);
     /* the grid is arrangeable, and the arrangement is the account's (22 Sep 2026) */
     await arrangeGrid(p1, "user", `${BASE}/`);
     /* a person opens a studio, runs it from the switcher, takes their own class (26 Sep 2026) */

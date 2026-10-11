@@ -139,7 +139,7 @@ const pressed = async (loc) => (await loc.getAttribute("aria-pressed").catch(() 
     }
     /* THE POINTERS — one line each, only while something waits there */
     const teamPtr = sp.getByTestId("team-invites-pointer");
-    check((await teamPtr.count()) === 1 && /1 team invite\b/.test(await teamPtr.innerText().catch(() => "")), `team-invites pointer counts the one invite still waiting (${(await teamPtr.innerText().catch(() => "missing")).replace(/\s+/g, " ")})`);
+    check((await teamPtr.count()) === 1 && /1 studio team invite\b/.test(await teamPtr.innerText().catch(() => "")), `team-invites pointer counts the one invite still waiting (${(await teamPtr.innerText().catch(() => "missing")).replace(/\s+/g, " ")})`);
     check((await teamPtr.getAttribute("href").catch(() => null)) === "/business?show=team", "…and opens the Studios hub's Team column");
     const crewPtr = sp.getByTestId("crew-invites-pointer");
     check((await crewPtr.count()) === 1 && /1 crew invite\b/.test(await crewPtr.innerText().catch(() => "")), "crew-invites pointer counts the live ask, and not the withdrawn one");

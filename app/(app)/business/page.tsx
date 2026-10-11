@@ -11,7 +11,7 @@ import { findMyStudioSubscriptions } from "@/repositories/subscriptions";
 import { findBusinessPhotoPaths, findMyMemberships } from "@/repositories/businesses";
 import { findMyInboxOff } from "@/repositories/askSettings";
 import { findMyAnsweredInvites, findMyPendingInvites } from "@/repositories/invites";
-import { teamAnsweredRow } from "@/features/inbox/inviteRows";
+import { isArtistTeam, teamAnsweredRow } from "@/features/inbox/inviteRows";
 
 /** /business — the Studios hub: the studios this account RUNS, and for a person
  *  the studios they teach at and learn at.
@@ -66,9 +66,14 @@ export default async function BusinessPage({ searchParams }: { searchParams: Pro
     /* the invitations already answered — the head's Answered sheet, as on Classes */
     findMyAnsweredInvites(supabase).catch(() => []),
   ]);
+  /* ⚠⚠ A STUDIO'S INVITATIONS ONLY (11 Oct 2026, the user: "for studio team
+     invites in studio. artist team invites in teams"). An artist's are answered
+     on the Team page; this hub counts them only to point there. */
+  const studioInvites = pendingInvites.filter((i) => !isArtistTeam(i.businessType));
+  const artistInvites = pendingInvites.length - studioInvites.length;
   /* ⚠ the hub opens on Team while an invitation waits and no `?show=` was given;
      `?show=learned` (the Student column, removed 11 Oct 2026) lands on Manage — Rule 14 */
-  const show = asked === "team" || (asked === undefined && pendingInvites.length > 0) ? "team" : "own";
+  const show = asked === "team" || (asked === undefined && studioInvites.length > 0) ? "team" : "own";
   const owned = memberships.filter((m) => m.memberRole === "owner").map((m) => m.business);
   const studioIds = owned.filter((t) => t.type === "studio").map((t) => t.id);
   const [roomCounts, studioSubscriptions, studioVerification, invitePhotos] = await Promise.all([
@@ -91,8 +96,9 @@ export default async function BusinessPage({ searchParams }: { searchParams: Pro
     <BusinessHub
       memberships={memberships}
       show={show}
-      invites={pendingInvites.map((i) => ({ ...i, photoPath: i.businessPhotoPath ?? invitePhotos[i.businessId] ?? null }))}
-      answered={answeredInvites.map((i) => teamAnsweredRow(i, invitePhotos[i.businessId] ?? null))}
+      invites={studioInvites.map((i) => ({ ...i, photoPath: i.businessPhotoPath ?? invitePhotos[i.businessId] ?? null }))}
+      artistInvites={artistInvites}
+      answered={answeredInvites.filter((i) => !isArtistTeam(i.businessType)).map((i) => teamAnsweredRow(i, invitePhotos[i.businessId] ?? null))}
       inboxOff={inboxOff}
       roomCounts={roomCounts}
       isArtist={Boolean(plan?.active)}

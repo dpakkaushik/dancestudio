@@ -902,7 +902,7 @@ test.describe.serial("DanceOS, end to end", () => {
     await expect(trainer.getByText("Answer this")).toHaveCount(0);
     await trainer.goto("/inbox");
     const teamPointer = trainer.getByTestId("team-invites-pointer");
-    await expect(teamPointer).toContainText(/1 team invite/, { timeout: 15_000 });
+    await expect(teamPointer).toContainText(/1 studio team invite/,{ timeout: 15_000 });
     await expect(teamPointer).toHaveAttribute("href", "/business?show=team");
     // and the old Invites column is not there — an old address lands on Enquiries
     await trainer.goto("/inbox?show=invites");
@@ -2844,7 +2844,11 @@ test.describe.serial("DanceOS, end to end", () => {
     const onSale = learner.getByTestId("memberships-on-sale");
     await expect(onSale).toBeVisible({ timeout: 15_000 });
     await expect(onSale.getByText(passName)).toBeVisible();
-    await expect(onSale.getByText("2 hours · valid 60 days · 5 left")).toBeVisible();
+    /* the facts, then the class card's own bar in a membership's words (11 Oct
+       2026, the user: "Membership should also have a bar like class cards for
+       spots left") */
+    await expect(onSale.getByText("2 hours · 60 days")).toBeVisible();
+    await expect(onSale.getByRole("img", { name: "0/5 Sold · 5 Left" })).toBeVisible();
 
     /* ── AND A PERSON TAKES IT FROM THERE, through the PAYMENT STEP (19 Sep
        2026, the user: "Membership on profiles to have a better pay button and

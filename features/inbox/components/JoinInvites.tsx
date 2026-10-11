@@ -201,16 +201,29 @@ export function AnsweredInviteCard({ row }: { row: AnsweredInviteRow }) {
  *  from team member section not studio"): headed INVITED TO A TEAM, an artist's
  *  page said "Artist" rather than "Studio", the face the artist's OWN picture
  *  (`business_face_path`), and who sent it on the line under the name. */
-export function TeamInvites({ invites }: { invites: TeamInviteRow[] }) {
+export function TeamInvites({
+  invites,
+  stayOn = "/business?show=team",
+  heading = "Invited to a team",
+  testId = "team-invites",
+}: {
+  invites: TeamInviteRow[];
+  /** the address a Join or a Decline keeps — the column it was answered in */
+  stayOn?: string;
+  heading?: string;
+  testId?: string;
+}) {
   if (invites.length === 0) return null;
   return (
-    <div data-testid="team-invites" style={{ marginBottom: 6 }}>
-      <div style={head}>Invited to a team · {invites.length}</div>
+    <div data-testid={testId} style={{ marginBottom: 6 }}>
+      <div style={head}>
+        {heading} · {invites.length}
+      </div>
       {invites.map((i) => (
         <InviteCard
           key={i.inviteId}
           testId="team-invite"
-          stayOn="/business?show=team"
+          stayOn={stayOn}
           tint={TEAM_TINT}
           name={i.businessName}
           photoPath={i.photoPath}

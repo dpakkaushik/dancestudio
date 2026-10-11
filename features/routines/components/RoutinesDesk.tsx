@@ -24,6 +24,9 @@ import { DeskBody, DeskTop } from "@/components/ui/DeskSections";
  *  students are on the routine's own page, where there is room to say what they
  *  mean. */
 
+/** the head's two small media buttons (11 Oct 2026) */
+const HEAD_MEDIA: CSSProperties = { padding: "5px 9px", fontSize: 11, gap: 4, flex: "0 0 auto", minHeight: 0 };
+
 const card: CSSProperties = { background: "var(--card)", border: "1.5px solid var(--el)", borderRadius: 16, padding: "13px 14px", marginBottom: 10 };
 
 export function RoutinesDesk({
@@ -68,6 +71,12 @@ export function RoutinesDesk({
       {/* ⚠ THE TOP SECTION (3 Oct 2026, C116): the heading and what chooses the
           list — the two sides, and on Yours the New routine button and the search */}
       <DeskHero tool="routines" as="h1" margin="0" />
+      {/* ⚠ ADD ROUTINE UNDER THE HEADING, ABOVE THE COLUMNS (11 Oct 2026, the
+          user: "add routine below the heading above the column"). It opens over
+          this desk at `?new=1` (22 Sep 2026; `/routines/new` forwards here, Rule
+          14) — `?new=1` is PUSHED, so back closes the sheet. "Add Routine" since
+          4 Oct 2026. */}
+      <DeskAddButton label="Add Routine" href="?new=1" inTop />
 
       {/* ── YOURS · LEARNED (20 Sep 2026) — the two sides of a routine: the ones
           you made and teach from, and the ones you were taught. Client state,
@@ -87,20 +96,6 @@ export function RoutinesDesk({
 
       {seg === "learned" ? null : (
         <>
-      {/* ⚠ THE FORM OPENS OVER THIS DESK (22 Sep 2026, the user: "All forms and
-          add buttons anywhere in home tab should open form like how setting page
-          or edit profile page open from the same screen"). It is the SAME form
-          wearing the SAME `FormPage` anatomy it has worn since 21 Sep — only its
-          shell differs. The full-page `/routines/new` went on 5 Oct 2026; its
-          address forwards to this desk, because a link handed out is a promise
-          (Rule 14) and the installed TWA reopens on the last URL it showed.
-          ⚠ `?new=1` is PUSHED, exactly as the gear pushes `?settings=1`: the
-          param IS the history entry, so the phone's back gesture closes the
-          sheet instead of leaving the desk. */}
-      {/* "Add Routine" (4 Oct 2026, the user: "New routine button should be
-          rename to Add Routine") */}
-      <DeskAddButton label="Add Routine" href="?new=1" />
-
       <div style={{ display: "flex", alignItems: "center", gap: 8, background: "var(--card)", border: "1.5px solid var(--el)", borderRadius: 12, padding: "9px 11px", marginBottom: 0 }}>
         <span aria-hidden="true" style={{ color: "var(--muted)", fontSize: 13 }}>
           ⌕
@@ -191,7 +186,9 @@ function RoutineCard({
   status: { word: string; strong: boolean };
   /** a line under the routine's name, e.g. the studio it was taught at */
   sub?: string | null;
-  song: { href: string | null; word: string };
+  /** `short` is the head button's word (Song · MP3); `title` the song's own name,
+   *  printed in the body under the routine's name when there is one */
+  song: { href: string | null; short: string; title?: string | null };
   video: string | null;
   /** WHO MADE IT — the profile the card is linked to */
   maker: { name: string; photoPath: string | null; eyebrow: string };
@@ -214,7 +211,20 @@ function RoutineCard({
            a 40px face and tighter bands — the routine's NAME is what the card is
            about, and it is now the biggest thing on it */
         size={40}
-        right={<ToolChip word={status.word} fg={status.strong ? "#22C55E" : SUB} bg={status.strong ? "#22C55E1c" : "var(--el)"} />}
+        /* ⚠ SONG AND VIDEO IN THE UPPER HALF, ON THE RIGHT (11 Oct 2026, the user:
+           "song and video button on routine card on upper half on right side") —
+           under the status chip, small, each still its own link above the card's
+           stretched one (`pointerEvents: auto`). The accessible names are the
+           ones the bar's buttons had ("Open the song for …"). */
+        right={
+          <span style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 7, pointerEvents: "auto" }}>
+            <ToolChip word={status.word} fg={status.strong ? "#22C55E" : SUB} bg={status.strong ? "#22C55E1c" : "var(--el)"} />
+            <span data-testid="routine-media" style={{ display: "flex", gap: 5 }}>
+              <RoutineMediaButton kind="song" href={song.href} word={song.short} title={title} extra={HEAD_MEDIA} />
+              <RoutineMediaButton kind="video" href={video} word="Video" title={title} extra={HEAD_MEDIA} />
+            </span>
+          </span>
+        }
       />
       <ToolBody style={{ padding: "10px 14px 11px" }}>
         {/* the routine itself — its name first and biggest (⚠ no "ROUTINE" kicker
@@ -227,19 +237,21 @@ function RoutineCard({
           <span style={{ fontSize: 10, fontWeight: 800, padding: "3px 9px", borderRadius: 999, background: "var(--el)", color: SUB }}>{DOS_LEVEL_LABEL[level] ?? level}</span>
           {sub ? <span style={{ fontSize: 11, color: SUB, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>at {sub}</span> : null}
         </div>
+        {song.title ? (
+          <div style={{ fontSize: 11, color: SUB, marginTop: 6, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>♪ {song.title}</div>
+        ) : null}
         <ToolFacts tint={col} items={facts} style={{ marginTop: 9 }} />
       </ToolBody>
-      <ToolActions>
-        <RoutineMediaButton kind="song" href={song.href} word={song.word} title={title} extra={{ padding: "8px 10px" }} />
-        <RoutineMediaButton kind="video" href={video} word="Video" title={title} extra={{ padding: "8px 10px" }} />
-        {/* ⚠ ROUTINE DETAIL BESIDE SONG AND VIDEO (4 Oct 2026, the user: "Another
-            Routine Detail Button with song and video") — the card still opens it too */}
-        {detail ? (
+      {/* ⚠ ROUTINE DETAIL keeps the bar (4 Oct 2026, the user: "Another Routine
+          Detail Button") — the card still opens it too. A learned routine has no
+          detail page of yours to open, so it draws no bar at all. */}
+      {detail ? (
+        <ToolActions>
           <Link href={detail} style={toolBtn("tinted", DOS_TOOLS.routines.c, { padding: "8px 10px" })}>
             Routine Detail
           </Link>
-        ) : null}
-      </ToolActions>
+        </ToolActions>
+      ) : null}
     </ToolCard>
   );
 }
@@ -264,7 +276,7 @@ function LearnedRow({ r }: { r: LearnedRoutine }) {
       level={r.level}
       sub={r.businessName}
       status={{ word: "LEARNED", strong: false }}
-      song={{ href: songHref, word: r.songIsFile ? "MP3" : "Song" }}
+      song={{ href: songHref, short: r.songIsFile ? "MP3" : "Song" }}
       video={r.videoUrl}
       maker={{ name: r.ownerName ?? "The artist", photoPath: r.ownerPhotoPath, eyebrow: "Routine by" }}
       /* no Sessions on a routine card (4 Oct 2026, the user: "Remove sessions
@@ -286,7 +298,7 @@ function RoutineRow({ r, me }: { r: RoutineWithUsage; me: Maker }) {
       style={r.style}
       level={r.level}
       status={r.status === "draft" ? { word: "DRAFT", strong: false } : { word: "LIVE", strong: true }}
-      song={{ href: songHref, word: r.songTitle ?? (r.songIsFile ? "MP3" : "Song") }}
+      song={{ href: songHref, short: r.songIsFile ? "MP3" : "Song", title: r.songTitle }}
       video={r.videoUrl}
       detail={`/routines/${r.id}`}
       maker={{ name: me.name, photoPath: me.photoPath, eyebrow: "Routine" }}

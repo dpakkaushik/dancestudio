@@ -90,14 +90,9 @@ function CrewCard({ crew, own, since, foundedByMe = false }: { crew: CrewSummary
 function LedColumn({ led }: { led: CrewSummary[] }) {
   return (
     <>
-      {/* ＋ AT THE TOP, LIKE CLASSES AND EVENTS (20 Sep 2026) — it was a dashed
-          row under the list, so somebody who leads several scrolled past them
-          all to start one */}
-      {/* opens over this hub (22 Sep 2026); the old `/crews/new` page went on
-          5 Oct 2026 and its address forwards here (next.config.ts) */}
-      {/* "Add Crew", not "Create crew" (4 Oct 2026, the user). The form's own
-          submit still reads "Create crew": pressing it IS the act of creating. */}
-      <DeskAddButton label="Add Crew" href="?new=1" />
+      {/* ⚠ ADD CREW LEFT THIS COLUMN FOR THE TOP SQUIRCLE (11 Oct 2026, the user:
+          "add crew … below the heading above the column") — it is drawn under
+          the hero in `CrewsHub`, so it is there whichever column is open */}
       {led.length ? (
         led.map((c) => <CrewCard key={c.id} crew={c} own since={c.createdAt} />)
       ) : (
@@ -183,6 +178,15 @@ export function CrewsHub({
       />
     </div>
   );
+  /* ＋ ADD CREW, UNDER THE HEADING AND ABOVE THE COLUMNS (11 Oct 2026, the user).
+     Opens over this hub (22 Sep 2026); the old `/crews/new` forwards here.
+     "Add Crew", not "Create crew" (4 Oct 2026) — the form's own submit says that. */
+  const top = (
+    <>
+      {hero}
+      <DeskAddButton label="Add Crew" href="?new=1" inTop />
+    </>
+  );
   return (
     <div style={{ background: LILAC, color: INK, maxWidth: 430, margin: "0 auto", fontFamily: DOS_UI, minHeight: "100vh", paddingBottom: 40 }}>
       <div style={{ padding: "14px 16px 0" }}>
@@ -198,7 +202,7 @@ export function CrewsHub({
             initial={show}
             label="Show"
             sections
-            top={hero}
+            top={top}
             segments={[
               /* ⚠ MANAGE · MEMBER (3 Oct 2026, the user: "crew columns name- Manage
                  and Member") — the words say what you DO with each crew; the arias
@@ -213,7 +217,7 @@ export function CrewsHub({
           />
         ) : (
           <>
-            <DeskTop style={{ margin: "0 0 12px" }}>{hero}</DeskTop>
+            <DeskTop style={{ margin: "0 0 12px" }}>{top}</DeskTop>
             <DeskBody style={{ margin: "0" }}>
               <LedColumn led={led} />
             </DeskBody>

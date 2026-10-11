@@ -26,6 +26,9 @@ import { DOS_DISPLAY, DOS_UI, INK, LILAC, MUTED, SUB } from "@/lib/design/tokens
 import { useCloseOnBack } from "@/lib/hooks/useCloseOnBack";
 import { InviteHeadButtons } from "@/features/inbox/components/JoinInvites";
 import type { AnsweredInviteRow } from "@/features/inbox/inviteRows";
+import { ArtistTeams } from "@/features/staff/components/ArtistTeams";
+import type { ArtistTeamsData } from "@/features/staff/server/loadArtistTeams";
+import { ColumnCount, columnTab, columnTrack } from "@/components/ui/ColumnTabs";
 import type { TeamMember } from "@/repositories/businesses";
 import type { PayoutMethod, PayoutRecord, PayoutStatus } from "@/types/payout";
 import type { BusinessType } from "@/types/business";
@@ -152,7 +155,13 @@ export function StaffDesk({
   classCounts = null,
   isOwner,
   meUserId,
+  artistTeams = null,
+  initialColumn = "mine",
 }: {
+  /** the Artist Teams column (11 Oct 2026) — drawn only on the viewer's OWN
+   *  artist page; a studio's desk has one column */
+  artistTeams?: (ArtistTeamsData & { stayOn: string }) | null;
+  initialColumn?: "mine" | "artists";
   /** the invites this desk sent that are over — the head's Answered sheet */
   answered?: AnsweredInviteRow[];
   /** each member's classes here, by user id — null when the read failed */
@@ -174,6 +183,20 @@ export function StaffDesk({
      studio has a page of its own; an ARTIST PAGE does not — an artist IS their
      profile since 18 Sep (R24), so the door is the OWNER's person page, taken
      from the roster rather than from `/artist/{id}`, which only redirects there */
+  /* ⚠ MY TEAM · ARTIST TEAMS (11 Oct 2026) — client state, with the address kept
+     in step by a replace so a reload and a Join's `stayOn` land on the column */
+  const [col, setColState] = useState<"mine" | "artists">(artistTeams ? initialColumn : "mine");
+  const setCol = (c: "mine" | "artists") => {
+    setColState(c);
+    try {
+      const u = new URL(window.location.href);
+      if (c === "artists") u.searchParams.set("show", "artists");
+      else u.searchParams.delete("show");
+      window.history.replaceState(window.history.state, "", u.pathname + u.search);
+    } catch {
+      /* the column still switches */
+    }
+  };
   const [addOpen, setAddOpen] = useState(false);
   const [shareInvite, setShareInvite] = useState<BusinessInvite | null>(null);
   /* the add sheet's two ways in: pick somebody on DanceOS, or ask an address */
@@ -274,7 +297,18 @@ export function StaffDesk({
           switches are the PEOPLE asked, not this business's */}
       <div style={{ position: "relative", margin: "0 0 12px" }}>
         <DeskHero tool="team" as="h1" margin="0" />
-        <InviteHeadButtons answered={answered} answeredTestId="team-answered" answeredListTestId="team-answered-list" answeredLabel="Answered invitations" />
+        {col === "artists" && artistTeams ? (
+          <InviteHeadButtons
+            key="artists"
+            answered={artistTeams.answered}
+            answeredTestId="artist-team-answered"
+            answeredListTestId="artist-team-answered-list"
+            answeredLabel="Answered artist invitations"
+            settings={{ testId: "artist-teams-settings", kind: "team", off: artistTeams.inboxOff, title: "Team invitations" }}
+          />
+        ) : (
+          <InviteHeadButtons key="mine" answered={answered} answeredTestId="team-answered" answeredListTestId="team-answered-list" answeredLabel="Answered invitations" />
+        )}
       </div>
 
       {/* ＋ ADD, AT THE TOP, THE WAY CLASSES AND EVENTS OPEN (20 Sep 2026, the
@@ -298,8 +332,24 @@ export function StaffDesk({
           }}
         />
       ) : null}
+      {artistTeams ? (
+        <div role="tablist" aria-label="Team columns" style={{ ...columnTrack(), marginBottom: 8 }}>
+          <button type="button" role="tab" aria-selected={col === "mine"} data-testid="team-col-mine" onClick={() => setCol("mine")} style={columnTab(col === "mine")}>
+            My Team <ColumnCount n={team.length} on={col === "mine"} />
+          </button>
+          <button type="button" role="tab" aria-selected={col === "artists"} data-testid="team-col-artists" onClick={() => setCol("artists")} style={columnTab(col === "artists")}>
+            Artist Teams <ColumnCount n={artistTeams.invites.length + artistTeams.teams.length} on={col === "artists"} attention={artistTeams.invites.length > 0} />
+          </button>
+        </div>
+      ) : null}
       </DeskTop>
 
+      {col === "artists" && artistTeams ? (
+        <DeskBody style={{ paddingBottom: 4 }}>
+          <ArtistTeams invites={artistTeams.invites} teams={artistTeams.teams} stayOn={artistTeams.stayOn} />
+        </DeskBody>
+      ) : (
+      <>
       {/* ⚠ THE MIDDLE SECTION (4 Oct 2026, the user: "section in between with
           total members count below count member role wise") — counted off the
           roster below, never stored */}
@@ -584,6 +634,8 @@ export function StaffDesk({
           red line is a refusal a screen reader never hears */}
       {error && <div role="alert" style={{ fontSize: 11.5, color: "#F87171", fontWeight: 700, marginTop: 10 }}>{error}</div>}
       </DeskBody>
+      </>
+      )}
 
       {/* ── invite: name, email, what they may do ── */}
       {addOpen && (

@@ -30,15 +30,26 @@ export const seatsOf = (taken: number, cap: number) => {
  *  Shared by the card and the class page so the two cannot describe one class
  *  two ways. The fill is the style's colour at a third of its strength (the
  *  ink reads over it in both themes) with a solid strip along its foot. */
-export function SeatBar({ taken, cap, tint, note, height = 26, testId = "class-fact-spots", leftWord }: { taken: number; cap: number; tint: string; note?: string | null; height?: number; testId?: string; /** replaces "N Spots Left" — a class that is over has none to offer */ leftWord?: string }) {
-  const raw = seatsOf(taken, cap);
+export function SeatBar({ taken, cap, tint, note, height = 26, testId = "class-fact-spots", leftWord, words, barTestId = "class-seat-bar" }: { taken: number; cap: number; tint: string; note?: string | null; height?: number; testId?: string; /** replaces "N Spots Left" — a class that is over has none to offer */ leftWord?: string; /** a membership's words (11 Oct 2026): "Sold", "Left", "All taken" in place of the class's */ words?: { taken: string; left: string; full: string }; barTestId?: string }) {
+  const raw0 = seatsOf(taken, cap);
+  /* ⚠ THE SAME BAR FOR A MEMBERSHIP (11 Oct 2026, the user: "Membership should
+     also have a bar like class cards for spots left") — the numbers and the
+     colours are the class's own rule, only the words are the membership's */
+  const raw = words
+    ? (() => {
+        const left = Math.max(0, cap - taken);
+        const booked = `${taken}/${cap} ${words.taken}`;
+        const l = left <= 0 ? words.full : `${left} ${words.left}`;
+        return { ...raw0, booked, left: l, txt: `${booked} · ${l}` };
+      })()
+    : raw0;
   const s = leftWord ? { ...raw, left: leftWord, txt: `${raw.booked} · ${leftWord}`, fill: null } : raw;
   const col = s.fill ?? tint;
   return (
     <span
       role="img"
       aria-label={`${s.txt}${note ? ` · ${note}` : ""}`}
-      data-testid="class-seat-bar"
+      data-testid={barTestId}
       data-pct={s.pct}
       style={{ position: "relative", display: "block", flex: 1, minWidth: 0, height, borderRadius: 999, background: "var(--el)", overflow: "hidden" }}
     >

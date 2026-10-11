@@ -6,16 +6,20 @@ import { sentTeamAnsweredRow } from "@/features/inbox/inviteRows";
 import { findBusinessPayLedger } from "@/repositories/payouts";
 import { findMyMemberships, findBusinessTeam, runsTheBusiness } from "@/repositories/businesses";
 import { findTeamClassCounts } from "@/repositories/teamMemberWork";
+import { loadArtistTeams } from "@/features/staff/server/loadArtistTeams";
 
 /* the clock, stamped once outside render (react-hooks/purity) */
 const stampNowIso = (): string => new Date().toISOString();
 
 export default async function BusinessStaffPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ businessId: string }>;
+  searchParams: Promise<Record<string, string | undefined>>;
 }) {
   const { businessId } = await params;
+  const asked = (await searchParams).show;
   const supabase = await createSupabaseServerClient();
   const {
     data: { user },
@@ -59,7 +63,15 @@ export default async function BusinessStaffPage({
     const row = sentTeamAnsweredRow(i, null);
     return row ? [row] : [];
   });
-  const classCounts = await findTeamClassCounts(supabase, businessId, team.map((m) => m.userId)).catch(() => null);
+  /* ⚠ MY TEAM · ARTIST TEAMS (11 Oct 2026, the user: "Team section to have two
+     columns My Team … and Artist Teams which manages team invites from artist").
+     Only on the viewer's OWN artist page — a studio's desk is its team alone,
+     and a studio's invitations are answered on the Studios hub. */
+  const ownArtistPage = business.type === "artist_page" && myRole === "owner";
+  const [classCounts, artistData] = await Promise.all([
+    findTeamClassCounts(supabase, businessId, team.map((m) => m.userId)).catch(() => null),
+    ownArtistPage ? loadArtistTeams(supabase, user.id) : Promise.resolve(null),
+  ]);
 
   return (
     <StaffDesk
@@ -74,6 +86,8 @@ export default async function BusinessStaffPage({
       // asking and removing are the owner's alone (§10.9); everyone else reads
       isOwner={myRole === "owner"}
       meUserId={user.id}
+      artistTeams={artistData ? { ...artistData, stayOn: `/business/${businessId}/staff?show=artists` } : null}
+      initialColumn={asked === "artists" || (asked === undefined && (artistData?.invites.length ?? 0) > 0) ? "artists" : "mine"}
     />
   );
 }

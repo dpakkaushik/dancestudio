@@ -30,6 +30,14 @@ export interface AnsweredInviteRow {
   at: string | null;
 }
 
+/** ⚠ WHICH SECTION ANSWERS A TEAM INVITATION (11 Oct 2026, the user: "for
+ *  studio team invites in studio. artist team invites in teams") — an artist
+ *  page's on the Team page's Artist Teams column, everything else on the Studios
+ *  hub's Team column. One test, so the two screens cannot both claim one row or
+ *  both drop it. An unknown type (before `20261020090000`) counts as a studio's,
+ *  which is where every invitation lived until today. */
+export const isArtistTeam = (businessType: string | null | undefined): boolean => businessType === "artist_page";
+
 /* the seat an invite offers, in the app's own word ("Faculty", never "trainer") */
 export const teamSeatOf = (r: string): { word: string; colour: string } => {
   const k = r as MemberRole;
@@ -48,7 +56,7 @@ export function teamAnsweredRow(i: AnsweredInvite, fallbackPhoto: string | null)
     kind: "team",
     name: i.businessName,
     photoPath: i.businessPhotoPath ?? fallbackPhoto,
-    eyebrow: "Team invitation",
+    eyebrow: i.businessType === "artist_page" ? "Artist · Team invitation" : "Studio · Team invitation",
     sub: i.inviterName ? `Invited by ${i.inviterName}` : null,
     seatWord: seat.word,
     seatColour: seat.colour,
