@@ -928,7 +928,13 @@ test.describe.serial("DanceOS, end to end", () => {
     await owner.getByLabel("Dance style", { exact: true }).click();
     await owner.getByLabel("Search styles").fill("Bolly");
     await owner.getByRole("button", { name: "Bollywood", exact: true }).click();
-    await owner.getByRole("button", { name: "Hold it in Studio A" }).click();
+    /* ⚠ a ONE-ROOM studio's room is picked already (11 Oct 2026, decision 10)
+       and the row TOGGLES — press it only if it is not held */
+    {
+      const room = owner.getByRole("button", { name: "Hold it in Studio A" });
+      if ((await room.getAttribute("aria-pressed")) !== "true") await room.click();
+      await expect(room).toHaveAttribute("aria-pressed", "true");
+    }
     // the button reads "Continue" once every answer on the step is given (15573-15578)
     await owner.getByRole("button", { name: "Continue" }).click();
     // the room now defines the capacity (prototype: "defined by Studio A")
@@ -1152,7 +1158,9 @@ test.describe.serial("DanceOS, end to end", () => {
     await owner.getByRole("button", { name: "Add someone to the team" }).click();
     // the artist column is a door to the person (11900), and Change goes to the form
     await expect(owner.getByRole("link", { name: `Open ${trainerName}` })).toBeVisible();
-    await expect(owner.getByRole("link", { name: "Change the artist taking this class" })).toBeVisible();
+    /* a PUBLISHED class is fixed (11 Oct 2026, guard_published_class_fixed) —
+       Change is a draft's alone, and this class was published in segment 1 */
+    await expect(owner.getByRole("link", { name: "Change the artist taking this class" })).toHaveCount(0);
     // the Poster chip in the sleeve opens the drawn designs (11812, 12768)
     /* ⚠ BACK TO THE TOP FIRST (4 Oct 2026). The sleeve folds away as the page
        scrolls (`useDosFold`) and is `visibility: hidden` past 86% gone, which
@@ -3351,8 +3359,12 @@ test.describe.serial("DanceOS, end to end", () => {
       await expect(owner.getByRole("button", { name: "Pick a date" })).toHaveCount(0, { timeout: 2_000 });
     }).toPass({ timeout: 30_000 });
     await pick(owner, "Starts", when.time);
-    // TODO(11 Oct): the WHERE switch reads "Your room" / "A map link" now; "Hold it in Studio A" and "Continue" are unconfirmed on the one form.
-    await owner.getByRole("button", { name: "Hold it in Studio A" }).click();
+    /* the room may already be held (a one-room studio picks it for you), and the row toggles */
+    {
+      const room = owner.getByRole("button", { name: "Hold it in Studio A" });
+      if ((await room.getAttribute("aria-pressed")) !== "true") await room.click();
+      await expect(room).toHaveAttribute("aria-pressed", "true");
+    }
     await owner.getByRole("button", { name: "Continue" }).click();
     /* ⚠ THIS ASK GOES TO SOMEBODY OFF THE TEAM, AND THAT IS THE POINT (18 Sep
        2026). The user found the bug this covers: "when studio creating class

@@ -736,7 +736,9 @@ const BOOK_ON_PAGE = /^Book Now$/;
     await oPage.waitForURL((u) => !/\/edit$/.test(new URL(u).pathname), { timeout: 30000 });
     await oPage.waitForTimeout(1500);
     const reAsked = await rows(owner.h, `class_people?class_id=eq.${reconfirm}&user_id=eq.${learner.id}&deleted_at=is.null&select=status`);
-    check(reAsked.length === 1 && reAsked[0].status === "asked", `⚠⚠ …and editing a DRAFT its teacher had said yes to asks them again (${reAsked.map((r) => r.status).join(",") || "no live row"})`);
+    /* 11 Oct 2026, the user's decision 8: re-ask ONLY when the time, the place
+       or the pay changes — a price edit is none of those, so the yes stands. */
+    check(reAsked.length === 1 && reAsked[0].status === "confirmed", `⚠⚠ …and a PRICE edit on a draft leaves its teacher's yes standing — only time, place or pay re-asks (${reAsked.map((r) => r.status).join(",") || "no live row"})`);
 
     /* ══ 11 · A TEAM MEMBER MAY BOOK A CLASS AT THEIR OWN STUDIO ══════════════
        ⚠⚠ `showBar = !isMember` gave faculty who wanted to TRAIN where they teach

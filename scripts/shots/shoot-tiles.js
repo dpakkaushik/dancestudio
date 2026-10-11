@@ -291,7 +291,6 @@ async function personOpensAStudio(page, who, acc, stamp) {
   check((await page.getByTestId("studio-subscription").filter({ hasText: name }).getByRole("button", { name: /^Subscribe/ }).count()) > 0, `${who} · and Subscribe IS offered before the badge — paying comes first now`);
 
   /* the owner takes their own class: nobody is asked, the owner presses Publish (nothing publishes by itself — 11 Oct 2026), the Inbox keeps the line */
-  // TODO(11 Oct): "Continue" (two steps) and the room pick "Floor 1" are unconfirmed on the one form; the WHO switch's "You" is "I take this class myself" / `self-teacher` (confirmed).
   await page.goto(`${BASE}/business/${studioId}/classes?new=1`, { waitUntil: "networkidle" });
   const form = page.getByRole("dialog", { name: "Add class" });
   await form.waitFor({ timeout: 15_000 }).catch(() => {});
@@ -300,7 +299,11 @@ async function personOpensAStudio(page, who, acc, stamp) {
   await form.getByRole("button", { name: "Pick a dance style" }).or(form.getByRole("button", { name: /dance style/i })).first().click().catch(() => {});
   await form.getByPlaceholder(/search/i).first().fill("Hip").catch(() => {});
   await form.getByRole("option", { name: "Hip-Hop" }).or(form.getByRole("button", { name: "Hip-Hop", exact: true })).first().click().catch(() => {});
-  await form.getByRole("radio", { name: "Floor 1" }).or(form.getByText("Floor 1", { exact: true })).first().click().catch(() => {});
+  /* ⚠ a ONE-ROOM studio has its room picked already (11 Oct 2026, decision 10)
+     and the row TOGGLES — pressing it would un-pick it, so press only if not held */
+  const floor = form.getByRole("button", { name: "Hold it in Floor 1" });
+  if ((await floor.getAttribute("aria-pressed").catch(() => "true")) !== "true") await floor.click().catch(() => {});
+  check((await floor.getAttribute("aria-pressed").catch(() => "")) === "true", `${who} · a one-room studio's class is held in its one room without a pick`);
   await form.getByRole("button", { name: "Continue" }).click();
   const selfBtn = form.getByRole("button", { name: /I take this class myself/ });
   check(await selfBtn.isVisible().catch(() => false), `${who} · the form offers "I take this class myself" to the owner`);
