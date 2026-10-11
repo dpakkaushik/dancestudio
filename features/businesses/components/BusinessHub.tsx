@@ -15,7 +15,8 @@ import { createBusinessAction, type BusinessActionState } from "@/features/busin
 import { centreOf } from "@/repositories/cities";
 import { DosStyleMultiPicker } from "@/components/ui/DosStyleKit";
 import { ToolActions, ToolBody, ToolCard, ToolChip, ToolFacts, ToolHead, ToolLive, toolBtn } from "@/components/ui/ToolCard";
-import { DOS_DISPLAY, DOS_UI, INK, LILAC, MUTED, SUB } from "@/lib/design/tokens";
+import { DOS_DISPLAY, DOS_UI, INK, LILAC, MUTED, SUB } from "@/lib/design/tokens";
+import { FORM_TITLE } from "@/components/ui/formTitle";
 
 import { useCloseOnBack } from "@/lib/hooks/useCloseOnBack";
 import { publicProfilePath } from "@/lib/routes/publicProfile";
@@ -688,13 +689,12 @@ export function BusinessHub({
             }}
           >
             <div style={{ width: 40, height: 4, borderRadius: 2, background: EL, margin: "0 auto 12px" }} />
-            <b style={{ fontSize: 17, fontFamily: DOS_DISPLAY }}>New studio</b>
+            <b style={{ ...FORM_TITLE, marginBottom: 14 }}>New studio</b>
             {/* ⚠ ONE CLAUSE (27 Sep 2026, "less details in creation forms for
                 everything should mostly just be headings"). What is kept is the
                 only thing somebody cannot discover by pressing on: that a studio
                 is born PRIVATE. The branch advice and the list of what lives
                 behind a page were describing the app to somebody already in it. */}
-            <div style={{ fontSize: 11.5, color: SUB, margin: "3px 0 14px", lineHeight: 1.5 }}>One studio = one location. It stays private until it is verified and subscribed.</div>
 
             <form action={formAction}>
               {/* ⚠ THE ONE PLACE THE TEXT BECOMES A NUMBER — the payload the action parses */}

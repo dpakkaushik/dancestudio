@@ -72,7 +72,6 @@ export function RecommendationSettings({ initial }: { initial: string[] }) {
             allowEmpty
             label="Recommendation settings"
             title="Recommendation settings"
-            intro="The dance styles you want to learn — Discover shows these first."
             onClose={() => setOpen(false)}
           />
           {said ? (

@@ -6,6 +6,7 @@ import { useState } from "react";
 import { sendEnquiryAction } from "@/features/enquiries/server-actions/enquiries";
 import { CONTACT_BOX, CONTACT_LABEL } from "@/features/profiles/components/ContactButtons";
 import { DISC_RADIUS, DOS_UI } from "@/lib/design/tokens";
+import { FORM_TITLE } from "@/components/ui/formTitle";
 import { useCloseOnBack } from "@/lib/hooks/useCloseOnBack";
 import { enquiryTypesFor, type EnquiryField, type EnquiryType, type SendableEnquiryTypeKey } from "@/types/enquiry";
 import type { BusinessType } from "@/types/business";
@@ -371,7 +372,7 @@ export function EnquirySheet({
                 <path d="m5 12.5 4.5 4.5L19 7.5" />
               </svg>
             </div>
-            <b style={{ fontSize: 17 }}>Enquiry sent</b>
+            <b style={FORM_TITLE}>Enquiry sent</b>
             <div style={{ fontSize: 12, color: "var(--sub)", margin: "5px 0 16px", lineHeight: 1.5 }}>
               {businessName} will reply in your Enquiries.
               <br />
@@ -388,7 +389,7 @@ export function EnquirySheet({
         ) : !type ? (
           <>
             <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 12 }}>
-              <div style={{ flex: 1, minWidth: 0, fontSize: 17, fontWeight: 900 }}>What&apos;s it for?</div>
+              <div style={{ ...FORM_TITLE, flex: 1, minWidth: 0 }}>What&apos;s it for?</div>
               <Recipient name={businessName} photo={businessPhoto} />
             </div>
             {/* ⚠ ONE KIND PER ROW, BIG (4 Oct 2026, the user: "Bigger icons for and
@@ -426,11 +427,7 @@ export function EnquirySheet({
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                   <EnqIcon k={type.k} size={22} color={type.c} sw={1.9} />
-                  <div style={{ fontSize: 18, fontWeight: 900 }}>{type.label}</div>
-                </div>
-                {/* the kind's own line, the same words its tile says (4 Oct 2026) */}
-                <div data-testid="enquiry-kind-sub">
-                  <DotLine text={type.sub} style={{ fontSize: 12, color: "var(--text)", fontWeight: 700, marginTop: 3, lineHeight: 1.45 }} />
+                  <div style={FORM_TITLE}>{type.label}</div>
                 </div>
               </div>
               <Recipient name={businessName} photo={businessPhoto} />

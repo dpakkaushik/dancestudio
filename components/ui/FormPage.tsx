@@ -3,7 +3,8 @@
 import { createContext, useContext } from "react";
 import { Portal } from "@/components/ui/Portal";
 import { useCloseOnBack } from "@/lib/hooks/useCloseOnBack";
-import { DOS_DISPLAY, DOS_UI, INK, LILAC, SUB } from "@/lib/design/tokens";
+import { DOS_UI, INK, LILAC, SUB } from "@/lib/design/tokens";
+import { FORM_TITLE } from "@/components/ui/formTitle";
 
 /** THE SHAPE EVERY "ADD SOMETHING" FORM IN THIS APP WEARS (21 Sep 2026).
  *
@@ -130,7 +131,6 @@ const InSheet = createContext(false);
  *  comparable inside ONE stacking context). */
 export function FormPage({
   title,
-  sub,
   steps,
   step = 0,
   onBack,
@@ -139,9 +139,9 @@ export function FormPage({
   children,
 }: {
   title: string;
-  /** the line under the heading. When `steps` is given and this is absent, the
-   *  page says "Step 1 of 2 — The session" itself. */
-  sub?: string;
+  /* ⚠ NO `sub` (12 Oct 2026, the user: "no subheading in forms"). The heading
+     is the only line above the fields; where there are steps, the bars say how
+     far along you are and the action bar names what is still missing. */
   steps?: readonly string[];
   step?: number;
   onBack: () => void;
@@ -152,7 +152,6 @@ export function FormPage({
   onClose?: () => void;
   children: React.ReactNode;
 }) {
-  const line = sub ?? (steps && steps.length > 1 ? `Step ${step + 1} of ${steps.length} — ${steps[step]}` : steps?.[0]);
   const head = (
     <>
       <div style={{ display: "flex", alignItems: "center", gap: 10, margin: sheet ? "2px 0" : "10px 0 2px" }}>
@@ -164,9 +163,8 @@ export function FormPage({
             — the same gap `DeskHero as="h1"` closed for the desks on 18 Sep. The
             e2e found it the moment a locator asked for one. Margins are zeroed
             so the look is identical to the div it replaces. */}
-        <h1 style={{ fontSize: 21, fontWeight: 800, fontFamily: DOS_DISPLAY, letterSpacing: -0.5, flex: 1, margin: 0 }}>{title}</h1>
+        <h1 style={{ ...FORM_TITLE, flex: 1 }}>{title}</h1>
       </div>
-      {line ? <div style={{ fontSize: 11.5, color: SUB, lineHeight: 1.5 }}>{line}</div> : null}
       {/* progress (prototype 15547-15550) — drawn only where there is more than
           one step, because a single full bar says nothing */}
       {steps && steps.length > 1 ? (
@@ -254,7 +252,6 @@ export function FormNote({ blockers, children }: { blockers?: string[]; children
 export function FormConfirm({
   label,
   title,
-  sub,
   cancelWord = "Keep editing",
   confirmWord,
   busy = false,
@@ -266,7 +263,6 @@ export function FormConfirm({
   /** the dialog's accessible name — a question, the way the class form asks one */
   label: string;
   title: string;
-  sub?: string;
   cancelWord?: string;
   confirmWord: string;
   busy?: boolean;
@@ -301,8 +297,8 @@ export function FormConfirm({
         style={{ background: "var(--solid)", borderRadius: "24px 24px 0 0", padding: "18px 16px 30px", width: "100%", maxWidth: 430, boxSizing: "border-box", color: INK, animation: "dosSheetUp .28s cubic-bezier(.22,.9,.34,1)" }}
       >
         <div style={{ width: 40, height: 4, borderRadius: 2, background: EL, margin: "0 auto 14px" }} />
-        <b style={{ fontSize: 17 }}>{title}</b>
-        {sub ? <div style={{ fontSize: 12, color: SUB, margin: "3px 0 14px" }}>{sub}</div> : <div style={{ height: 12 }} />}
+        <b style={FORM_TITLE}>{title}</b>
+        <div style={{ height: 12 }} />
         {children}
         <div style={{ display: "flex", gap: 10, marginTop: 16 }}>
           <button type="button" onClick={onCancel} style={{ flex: 1, textAlign: "center", padding: 13, borderRadius: 999, background: CARD, border: `1.5px solid ${EL}`, fontWeight: 700, fontSize: 13, cursor: "pointer", fontFamily: "inherit", color: INK }}>

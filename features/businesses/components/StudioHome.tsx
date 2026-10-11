@@ -283,7 +283,7 @@ export function StudioHome({
 {/* ⚠⚠ AND SINCE 2 Oct 2026 IT IS THE STUDIO'S TEAM (the user:
                     "following for crew and studio should by default show list of
                     team members") — derived from the seats, not stored */}
-                <FollowingFigure n={null} rows={followingRows} always testId="studio-following" />
+                <FollowingFigure n={null} rows={followingRows} always kind="business" id={business.id} testId="studio-following" />
               </>
             }
             /* the chips at the row's right edge (20 Sep 2026) — the studio's own

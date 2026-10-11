@@ -511,7 +511,6 @@ export function ClassForm({
       title={isEdit ? "Edit class" : "Add class"}
       steps={STEPS}
       step={step}
-      sub={isEdit ? "Changing the time or the place asks everyone again." : undefined}
       sheet={sheet}
       onClose={() => router.back()}
       onBack={() => (step > 0 ? setStep(step - 1) : router.back())}
@@ -819,7 +818,6 @@ export function ClassForm({
         <FormConfirm
           label="Save this class?"
           title="Save this class?"
-          sub={saveSentence}
           confirmWord="Save"
           busy={isPending}
           spend={false}

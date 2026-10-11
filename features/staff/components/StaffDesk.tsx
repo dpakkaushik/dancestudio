@@ -22,7 +22,8 @@ import { DeskAddButton } from "@/features/settings/components/settings-kit";
 import { DeskBody, DeskMiddle, DeskTop } from "@/components/ui/DeskSections";
 import { ToolActions, ToolBody, ToolCard, ToolChip, ToolFace, ToolFacts, ToolHead, toolBtn } from "@/components/ui/ToolCard";
 import { DOS_TOOLS, DeskHero, SheetHandle, sheetBody, sheetWrap } from "@/features/businesses/components/biz-kit";
-import { DOS_DISPLAY, DOS_UI, INK, LILAC, MUTED, SUB } from "@/lib/design/tokens";
+import { DOS_UI, INK, LILAC, MUTED, SUB } from "@/lib/design/tokens";
+import { FORM_TITLE } from "@/components/ui/formTitle";
 import { useCloseOnBack } from "@/lib/hooks/useCloseOnBack";
 import { InviteHeadButtons } from "@/features/inbox/components/JoinInvites";
 import type { AnsweredInviteRow } from "@/features/inbox/inviteRows";
@@ -651,7 +652,7 @@ export function StaffDesk({
           >
             <SheetHandle />
             {/* ⚠ NOTHING UNDER THE HEADING (4 Oct 2026, the user) */}
-            <b style={{ display: "block", fontSize: 17, fontFamily: DOS_DISPLAY, marginBottom: 14 }}>Add Team Members</b>
+            <b style={{ ...FORM_TITLE, marginBottom: 14 }}>Add Team Members</b>
 
             {/* THE LABEL IS CHOSEN FIRST, because it is what they are being
                 asked to be — and the picker below asks them in one press */}
@@ -795,7 +796,7 @@ export function StaffDesk({
             onClick={(e) => e.stopPropagation()}
             style={{ ...CENTER_CARD, textAlign: "center" }}
           >
-            <b style={{ fontSize: 17, fontFamily: DOS_DISPLAY }}>{shareInvite.name}</b>
+            <b style={FORM_TITLE}>{shareInvite.name}</b>
             <div style={{ fontSize: 11.5, color: SUB, margin: "3px 0 14px" }}>
               Invited as {MEMBER_ROLE_WORD[shareInvite.memberRole].toLowerCase()} · {shareInvite.email}
             </div>
@@ -886,8 +887,7 @@ export function StaffDesk({
             <div style={{ display: "flex", alignItems: "center", gap: 11, marginBottom: 12 }}>
               <ToolFace name={payFor.name} photoPath={payFor.avatarPath} tint={MEMBER_LABEL[payFor.role].colour} size={44} />
               <div style={{ minWidth: 0 }}>
-                <b style={{ display: "block", fontSize: 17, fontFamily: DOS_DISPLAY }}>Pay {payFor.name}</b>
-                <div style={{ fontSize: 11.5, color: SUB, marginTop: 2 }}>{MEMBER_ROLE_WORD[payFor.role]} · lands in your Earnings as an expense</div>
+                <b style={FORM_TITLE}>Pay {payFor.name}</b>
               </div>
             </div>
             <div style={{ fontSize: 11.5, color: SUB, margin: "0 0 14px", lineHeight: 1.5 }}>

@@ -16,7 +16,8 @@ import { DOS_TOOLS, DeskHero, SheetHandle, sheetBody, sheetWrap } from "@/featur
 import { DeskBody, DeskMiddle, DeskTop } from "@/components/ui/DeskSections";
 import { FigureHead } from "@/components/ui/FigureHead";
 import { ToolActions, ToolBody, ToolCard, ToolFacts, ToolHead, toolBtn } from "@/components/ui/ToolCard";
-import { DOS_DISPLAY, DOS_UI, INK, LILAC, MUTED } from "@/lib/design/tokens";
+import { DOS_UI, INK, LILAC, MUTED } from "@/lib/design/tokens";
+import { FORM_TITLE } from "@/components/ui/formTitle";
 import { CREW_ROLE_TINT, CREW_ROLE_WORD, type Crew, type CrewMember, type CrewRole } from "@/types/crew";
 import { Toast, bizCard, sinceWords } from "./crew-kit";
 import { InviteHeadButtons } from "@/features/inbox/components/JoinInvites";
@@ -285,7 +286,7 @@ export function CrewManager({ crew, members, answered = [] }: { crew: Crew; memb
                       and this one was 16px in the UI face. One sheet, one title. */}
                   {/* ⚠ nothing under the heading, as on the studio's add sheet (4 Oct 2026) */}
                   <div style={{ marginBottom: 12 }}>
-                    <b style={{ fontSize: 17, fontFamily: DOS_DISPLAY }}>Add Team Members</b>
+                    <b style={FORM_TITLE}>Add Team Members</b>
                   </div>
                   <PeoplePicker
                     exclude={members.map((m) => m.userId)}

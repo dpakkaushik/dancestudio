@@ -9,7 +9,8 @@ import { setBusinessLocationAction } from "@/features/geo/server-actions/locatio
 import { updateBusinessProfileAction } from "@/features/settings/server-actions/plans";
 /* the style registry left with the styles block on 21 Sep — the value is still
    carried through this sheet's save, it is just not edited here any more */
-import { SUB } from "@/lib/design/tokens";
+import { SUB } from "@/lib/design/tokens";
+import { FORM_TITLE } from "@/components/ui/formTitle";
 import type { PublicBusiness } from "@/types/publicProfile";
 import { Sheet, fieldInput, fieldLabel, sheetBtn } from "./profile-kit";
 
@@ -156,7 +157,7 @@ export function BusinessEditSheet({
   return (
     <Portal>
     <Sheet label="Edit business" onClose={onClose} maxHeight="88vh">
-      <b style={{ fontSize: 16.5, letterSpacing: -0.2 }}>Edit {isStudio ? "studio" : "details"}</b>
+      <b style={FORM_TITLE}>Edit {isStudio ? "studio" : "details"}</b>
 
       {/* ── THE PICTURES (16 Sep 2026) ────────────────────────────────────────
           The round one first, because it is the one everybody sees on a card;

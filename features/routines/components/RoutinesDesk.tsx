@@ -211,35 +211,33 @@ function RoutineCard({
            a 40px face and tighter bands — the routine's NAME is what the card is
            about, and it is now the biggest thing on it */
         size={40}
-        /* ⚠ SONG AND VIDEO IN THE UPPER HALF, ON THE RIGHT (11 Oct 2026, the user:
-           "song and video button on routine card on upper half on right side") —
-           under the status chip, small, each still its own link above the card's
-           stretched one (`pointerEvents: auto`). The accessible names are the
-           ones the bar's buttons had ("Open the song for …"). */
-        right={
-          <span style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 7, pointerEvents: "auto" }}>
-            <ToolChip word={status.word} fg={status.strong ? "#22C55E" : SUB} bg={status.strong ? "#22C55E1c" : "var(--el)"} />
-            <span data-testid="routine-media" style={{ display: "flex", gap: 5 }}>
-              <RoutineMediaButton kind="song" href={song.href} word={song.short} title={title} extra={HEAD_MEDIA} />
-              <RoutineMediaButton kind="video" href={video} word="Video" title={title} extra={HEAD_MEDIA} />
-            </span>
-          </span>
-        }
+        right={<ToolChip word={status.word} fg={status.strong ? "#22C55E" : SUB} bg={status.strong ? "#22C55E1c" : "var(--el)"} />}
       />
       <ToolBody style={{ padding: "10px 14px 11px" }}>
-        {/* the routine itself — its name first and biggest (⚠ no "ROUTINE" kicker
-            over it any more, 4 Oct 2026: the desk is Routines, so the word said
-            the page's own name back), its style and level as pills beside where
-            it was taught */}
-        <div style={{ fontSize: 19, fontWeight: 900, letterSpacing: -0.35, lineHeight: 1.2, overflowWrap: "anywhere" }}>{title}</div>
-        <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 6, flexWrap: "wrap" }}>
-          <span style={{ fontSize: 10, fontWeight: 900, padding: "3px 9px", borderRadius: 999, background: col, color: inkOn(col) }}>{style}</span>
-          <span style={{ fontSize: 10, fontWeight: 800, padding: "3px 9px", borderRadius: 999, background: "var(--el)", color: SUB }}>{DOS_LEVEL_LABEL[level] ?? level}</span>
-          {sub ? <span style={{ fontSize: 11, color: SUB, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>at {sub}</span> : null}
+        {/* ⚠ SONG AND VIDEO IN THE MIDDLE SECTION, ON THE RIGHT (12 Oct 2026, the
+            user: "song and video in routine in middle section right side") — beside
+            the routine's name and pills, stacked, each still its own link above the
+            card's stretched one (`pointerEvents: auto`). The accessible names are
+            unchanged ("Open the song for …"). */}
+        <div style={{ display: "flex", alignItems: "flex-start", gap: 10 }}>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            {/* the routine itself — its name first and biggest, its style and
+                level as pills beside where it was taught */}
+            <div style={{ fontSize: 19, fontWeight: 900, letterSpacing: -0.35, lineHeight: 1.2, overflowWrap: "anywhere" }}>{title}</div>
+            <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 6, flexWrap: "wrap" }}>
+              <span style={{ fontSize: 10, fontWeight: 900, padding: "3px 9px", borderRadius: 999, background: col, color: inkOn(col) }}>{style}</span>
+              <span style={{ fontSize: 10, fontWeight: 800, padding: "3px 9px", borderRadius: 999, background: "var(--el)", color: SUB }}>{DOS_LEVEL_LABEL[level] ?? level}</span>
+              {sub ? <span style={{ fontSize: 11, color: SUB, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>at {sub}</span> : null}
+            </div>
+            {song.title ? (
+              <div style={{ fontSize: 11, color: SUB, marginTop: 6, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>♪ {song.title}</div>
+            ) : null}
+          </div>
+          <span data-testid="routine-media" style={{ display: "flex", flexDirection: "column", alignItems: "stretch", gap: 6, flexShrink: 0, pointerEvents: "auto" }}>
+            <RoutineMediaButton kind="song" href={song.href} word={song.short} title={title} extra={HEAD_MEDIA} />
+            <RoutineMediaButton kind="video" href={video} word="Video" title={title} extra={HEAD_MEDIA} />
+          </span>
         </div>
-        {song.title ? (
-          <div style={{ fontSize: 11, color: SUB, marginTop: 6, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>♪ {song.title}</div>
-        ) : null}
         <ToolFacts tint={col} items={facts} style={{ marginTop: 9 }} />
       </ToolBody>
       {/* ⚠ ROUTINE DETAIL keeps the bar (4 Oct 2026, the user: "Another Routine

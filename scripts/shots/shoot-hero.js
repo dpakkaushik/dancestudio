@@ -310,16 +310,15 @@ const enterEdit = async (page) => {
        morning, and the check above could not tell the difference because a
        count is 1 either way. The thing to assert is that it is a BUTTON and
        that pressing it opens the sheet, which is what the user pressed. */
+    /* ⚠ A LINK TO THE FOLLOW PAGE since 12 Oct 2026 (Instagram's, with filters) */
     const followingChip = hero.getByTestId("studio-following");
-    check((await followingChip.evaluate((el) => el.tagName)) === "BUTTON", "studio home: the Following figure is a DOOR, not a dead number (27 Sep 2026)");
+    check((await followingChip.evaluate((el) => el.tagName)) === "A", "studio home: the Following figure is a DOOR, not a dead number (27 Sep 2026)");
+    const studioHomeUrl = owner.url();
     await followingChip.click();
-    /* ⚠ the sheet is on the PAGE, not inside `hero`: it is `position: fixed`
-       over the whole screen, which is the same reason `pick()` looks for a
-       portalled option on the page rather than in its trigger's scope */
-    const followingSheet = owner.getByRole("dialog", { name: "Following" });
-    check(await followingSheet.isVisible().catch(() => false), "studio home: pressing it opens the Following sheet, like Followers beside it");
-    await followingSheet.getByRole("button", { name: "Done" }).click();
-    await followingSheet.waitFor({ state: "detached", timeout: 10000 });
+    await owner.waitForURL(/\/follows\/business\/[0-9a-f-]+\?tab=following/, { timeout: 15000 }).catch(() => {});
+    check(/\/follows\/business\//.test(owner.url()) && (await owner.getByTestId("follows-tab-following").getAttribute("aria-selected").catch(() => null)) === "true", "studio home: pressing it opens the follow page on its Following (the team) tab");
+    await owner.goto(studioHomeUrl);
+    await hero.getByTestId("studio-followers").waitFor();
     /* ⚠ AND IN THE RIGHT ORDER — figures, THEN the styles (20 Sep 2026). The
        first cut of the band left a studio using `IdentityHero`'s own `styles`
        prop, which renders BEFORE children, so it read styles → figures → links
@@ -684,8 +683,8 @@ const enterEdit = async (page) => {
       "owner home: Followers AND Following, both drawn and both clickable (20 Sep 2026)"
     );
     await owner.getByTestId("home-following").click();
-    check(await owner.getByRole("dialog", { name: "Following", exact: true }).isVisible(), "owner home: and the Following figure opens its list");
-    await owner.keyboard.press("Escape").catch(() => {});
+    await owner.waitForURL(/\/follows\/person\/[0-9a-f-]+\?tab=following/, { timeout: 15000 }).catch(() => {});
+    check(/\/follows\/person\//.test(owner.url()), "owner home: and the Following figure opens the follow page (12 Oct 2026)");
     await owner.goto(`${BASE}/`);
     await owner.getByRole("heading", { name: "EEE Dance Company", exact: true }).waitFor();
     check((await owner.getByLabel("Change your photo").count()) === 0, "owner home: no ＋ on the disc — the picture is changed behind the pencil beside it");

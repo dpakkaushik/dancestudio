@@ -8,6 +8,7 @@ import { updateCrewAction } from "@/features/crews/server-actions/crews";
 import { CityPicker } from "@/features/geo/components/CityPicker";
 import { Sheet, fieldInput, fieldLabel, sheetBtn } from "@/features/profiles/components/profile-kit";
 import { MUTED } from "@/lib/design/tokens";
+import { FORM_TITLE } from "@/components/ui/formTitle";
 import type { Crew } from "@/types/crew";
 
 /** EDIT CREW (19 Sep 2026) — the leader's one editor for the crew, the same
@@ -60,7 +61,7 @@ export function CrewEditSheet({ crew, onClose }: { crew: Crew; onClose: () => vo
   return (
     <Portal>
       <Sheet label="Edit crew" onClose={onClose} maxHeight="88vh">
-        <b style={{ fontSize: 16.5, letterSpacing: -0.2 }}>Edit crew</b>
+        <b style={FORM_TITLE}>Edit crew</b>
         <div style={fieldLabel}>Name</div>
         <input aria-label="Name" value={name} maxLength={64} onChange={(e) => setName(e.target.value)} style={fieldInput} />
         {/* ⚠ NO PICTURES HERE ANY MORE (21 Sep 2026, the user: "make sure all

@@ -201,7 +201,7 @@ export function PublicPersonPage({
               signedIn ? (
                 <>
                   <FollowerFigure n={person.followers} kind="person" id={profile.id} name={profile.fullName} testId="person-followers" />
-                  <FollowingFigure n={person.following} userId={profile.id} testId="person-following" />
+                  <FollowingFigure n={person.following} kind="person" id={profile.id} testId="person-following" />
                 </>
               ) : (
                 <>

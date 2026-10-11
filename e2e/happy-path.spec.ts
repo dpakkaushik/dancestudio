@@ -693,7 +693,8 @@ test.describe.serial("DanceOS, end to end", () => {
     await owner.goto(`/person/${ownerId}`);
     await expect(owner.getByText("Studios", { exact: true })).toBeVisible();
     await expect(owner.getByRole("link", { name: new RegExp(`Open ${studioName}`) }).first()).toBeVisible();
-    await expect(owner.getByRole("button", { name: "0 followers" })).toHaveCount(1);
+    // ⚠ a LINK to the follow page since 12 Oct 2026, no longer a sheet's button
+    await expect(owner.getByRole("link", { name: "0 followers" })).toHaveCount(1);
 
     // ---- create + publish a class ----------------------------------------
     // ⚠ FROM THE HUB, because that is the door this asserts. The hub's CARD
@@ -1352,11 +1353,19 @@ test.describe.serial("DanceOS, end to end", () => {
        a card carries and a pill does not. */
     await expect(learner.getByTestId("cal-pill")).toHaveCount(0);
     // and the follow shows on their own profile — the Following figure opens the
-    // sheet (S_profiletab 11335), and the studio is a row in it
+    // follow PAGE on its Following tab (12 Oct 2026, Instagram's), and the
+    // studio is a row in it with its own Following button
     await learner.goto("/profile");
-    await learner.getByRole("button", { name: /following$/ }).click();
-    await expect(learner.getByRole("dialog", { name: "Following" }).getByRole("link", { name: new RegExp(studioName) })).toBeVisible();
-    await learner.keyboard.press("Escape").catch(() => {});
+    await learner.getByRole("link", { name: /following$/ }).click();
+    await learner.waitForURL(/\/follows\/person\/[0-9a-f-]+\?tab=following/);
+    await expect(learner.getByTestId("follows-tab-following")).toHaveAttribute("aria-selected", "true");
+    await expect(learner.getByTestId("follows-list").getByRole("link", { name: new RegExp(studioName) })).toBeVisible();
+    await expect(learner.getByRole("button", { name: `Following ${studioName}` })).toBeVisible();
+    // the filters: Studios keeps it, Users leaves nothing of it
+    await learner.getByTestId("follows-show-user").click();
+    await expect(learner.getByTestId("follows-list").getByRole("link", { name: new RegExp(studioName) })).toHaveCount(0);
+    await learner.getByTestId("follows-show-studio").click();
+    await expect(learner.getByTestId("follows-list").getByRole("link", { name: new RegExp(studioName) })).toBeVisible();
 
     // ---- Step 18: an enquiry, from the profile to the studio's Inbox and back ----
     // The learner asks for private sessions; the studio finds it waiting, opens
@@ -2305,11 +2314,17 @@ test.describe.serial("DanceOS, end to end", () => {
        user: "show follower following also on home it should be clickable with
        list to see follower following list with profile type name and photo") ---- */
     await expect(trainer.getByTestId("home-followers")).toBeVisible();
+    /* ⚠ A PAGE OF ITS OWN SINCE 12 Oct 2026 (the user: "should open a seprate
+       page do it excatly how insta does it but give filters") — both tabs, the
+       search and every filter chip, a 0 included */
     await trainer.getByTestId("home-following").click();
-    const following = trainer.getByRole("dialog", { name: "Following" });
-    await expect(following).toBeVisible();
-    await expect(following.getByRole("button", { name: "Studios" })).toBeVisible();
-    await following.getByRole("button", { name: "All" }).click();
+    await trainer.waitForURL(/\/follows\/person\/[0-9a-f-]+\?tab=following/);
+    await expect(trainer.getByTestId("follows-show-studio")).toBeVisible();
+    await expect(trainer.getByTestId("follows-show-crew")).toBeVisible();
+    await expect(trainer.getByRole("textbox", { name: "Search" })).toBeVisible();
+    await trainer.getByTestId("follows-tab-followers").click();
+    await expect(trainer.getByTestId("follows-tab-followers")).toHaveAttribute("aria-selected", "true");
+    await trainer.goto("/");
     /* ⚠ AND NO RANK (19 Sep 2026, the user: "Remove rank from home") — where you
        stand is the Stats chip's own screen, which prints its population too */
     await expect(trainer.getByRole("link", { name: /rank/i })).toHaveCount(0);
@@ -2708,9 +2723,10 @@ test.describe.serial("DanceOS, end to end", () => {
        same list, and the sheet reads its rows on the press. */
     await owner.goto(studioUrl);
     await expect(owner.getByRole("button", { name: "Followers — see who" })).toHaveCount(0);
+    /* ⚠ the follow PAGE since 12 Oct 2026, on its Followers tab */
     await owner.getByTestId("business-followers").click();
-    const followersSheet = owner.getByRole("dialog", { name: /^Followers of / });
-    const learnerRow = followersSheet.getByRole("link", { name: /E2E Learner/ });
+    await owner.waitForURL(/\/follows\/business\/[0-9a-f-]+\?tab=followers/);
+    const learnerRow = owner.getByTestId("follows-list").getByRole("link", { name: /E2E Learner/ });
     await expect(learnerRow).toBeVisible();
     await expect(learnerRow).toHaveAttribute("href", `/person/${learnerId}`);
     await learnerRow.click();

@@ -9,7 +9,8 @@ import { columnTab, columnTrack } from "@/components/ui/ColumnTabs";
 import { DeskBody, DeskMiddle, DeskTop } from "@/components/ui/DeskSections";
 import { FigureHead } from "@/components/ui/FigureHead";
 import { ToolActions, ToolBody, ToolCard, ToolChip, ToolFacts, ToolHead, toolBtn } from "@/components/ui/ToolCard";
-import { DOS_UI, INK, LILAC, SUB } from "@/lib/design/tokens";
+import { DOS_UI, INK, LILAC, SUB } from "@/lib/design/tokens";
+import { FORM_TITLE } from "@/components/ui/formTitle";
 import { useCloseOnBack } from "@/lib/hooks/useCloseOnBack";
 import type { Student } from "@/repositories/students";
 
@@ -306,7 +307,7 @@ function InviteSheet({
         {/* ⚠ NOTHING UNDER THE HEADING (4 Oct 2026, the user: "invite student form
             remove text below heading") */}
         <div style={{ marginBottom: 14 }}>
-          <b style={{ fontSize: 17 }}>Invite Student</b>
+          <b style={FORM_TITLE}>Invite Student</b>
         </div>
 
         {/* the app's one column look (`ColumnTabs`, 11 Oct 2026) */}

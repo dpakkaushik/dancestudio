@@ -174,7 +174,7 @@ export function CrewHome({ crew, members, header = [], followers = 0, order = nu
                 {/* ⚠⚠ AND SINCE 2 Oct 2026 IT IS THE CREW'S TEAM (the user: "following
                     for crew and studio should by default show list of team
                     members") — not the leader's follows any more */}
-                <FollowingFigure n={null} rows={crewTeamRows(members)} always testId="crew-following" />
+                <FollowingFigure n={null} rows={crewTeamRows(members)} always kind="crew" id={crew.id} testId="crew-following" />
               </>
             }
             /* the chips at the row's right edge (20 Sep 2026). No Follow bell:

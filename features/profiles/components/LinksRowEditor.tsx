@@ -3,6 +3,7 @@
 import { useState, useTransition } from "react";
 import { PLATFORMS, handleOf, isPlatform, safeHref } from "@/lib/constants/socials";
 import { CARD, INK, LINE, SKY, SUB } from "@/lib/design/tokens";
+import { FORM_TITLE } from "@/components/ui/formTitle";
 import type { SocialLink } from "@/types/profile";
 import { useEditMode } from "./EditMode";
 import { LINKS_ROW, linkChip } from "./profile-band";
@@ -129,8 +130,8 @@ export function LinksRowEditor({
       {/* the list, with its order and its removals (11161) */}
       {listOpen ? (
         <Sheet label="Add a social link" onClose={() => setListOpen(false)}>
-          <b style={{ fontSize: 16 }}>Add a social link</b>
-          <div style={{ fontSize: 12, color: SUB, margin: "4px 0 12px" }}>Reorder with ↑↓ · tap a platform below to add it.</div>
+          <b style={FORM_TITLE}>Add a social link</b>
+          <div style={{ height: 12 }} />
           <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
             {socials.map((l, i, arr) => (
               <div key={l.platform} style={{ display: "flex", alignItems: "center", gap: 9, padding: "10px 12px", borderRadius: 14, background: CARD, border: `1.5px solid ${LINE}` }}>
@@ -190,7 +191,7 @@ export function LinksRowEditor({
         <Sheet label={editor.isNew ? `Add your ${editor.platform}` : `Edit ${editor.platform}`} onClose={() => setEditor(null)}>
           <div style={{ display: "flex", alignItems: "center", gap: 9 }}>
             <PlatformIcon label={editor.platform} size={24} />
-            <b style={{ fontSize: 16 }}>{editor.isNew ? `Add your ${editor.platform}` : `Edit ${editor.platform}`}</b>
+            <b style={FORM_TITLE}>{editor.isNew ? `Add your ${editor.platform}` : `Edit ${editor.platform}`}</b>
           </div>
           <div style={{ ...fieldLabel, margin: "16px 0 6px" }}>URL</div>
           <input aria-label="URL" value={editor.url} onChange={(e) => setEditor((d) => (d ? { ...d, url: e.target.value } : d))} placeholder="https://…" autoFocus style={fieldInput} />

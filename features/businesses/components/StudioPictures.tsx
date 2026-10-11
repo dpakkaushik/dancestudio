@@ -12,6 +12,7 @@ import { useEditMode } from "@/features/profiles/components/EditMode";
 import { ProfileDisc } from "@/features/profiles/components/HeroRail";
 import { PlusIcon, pictureChipPaint, Sheet, sheetBtn } from "@/features/profiles/components/profile-kit";
 import { MUTED, SUB } from "@/lib/design/tokens";
+import { FORM_TITLE } from "@/components/ui/formTitle";
 import { PROOF_MAX, type ProofPhoto } from "@/lib/media/proof";
 
 /** A STUDIO'S TWO PICTURES, WHERE A PERSON'S ARE (20 Sep 2026).
@@ -44,12 +45,11 @@ import { PROOF_MAX, type ProofPhoto } from "@/lib/media/proof";
  *  that can only be refused. A person's floor is 0 and theirs says so. */
 
 /** the disc's own editor — one picker, and it lands as soon as you choose */
-export function StudioPictureSheet({ businessId, businessName, hasPhoto, onClose }: { businessId: string; businessName: string; hasPhoto: boolean; onClose: () => void }) {
+export function StudioPictureSheet({ businessId, hasPhoto, onClose }: { businessId: string; businessName: string; hasPhoto: boolean; onClose: () => void }) {
   return (
     <Portal>
       <Sheet label="Profile picture" onClose={onClose} maxHeight="70vh">
-        <b style={{ fontSize: 16.5, letterSpacing: -0.2 }}>Profile picture</b>
-        <div style={{ fontSize: 11.5, color: SUB, marginTop: 3 }}>{businessName} — it changes as soon as you pick one.</div>
+        <b style={FORM_TITLE}>Profile picture</b>
         <div style={{ marginTop: 14 }}>
           {/* the owner OR a trainer, which is the pair the storage policy on
               `businesses/{id}` admits and `set_business_profile_photo` re-checks */}
@@ -113,7 +113,7 @@ export function StudioPostersSheet({
     <Portal>
       <Sheet label="Posters" onClose={onClose} maxHeight="88vh">
         <div style={{ display: "flex", alignItems: "baseline", gap: 8 }}>
-          <b style={{ fontSize: 16.5, letterSpacing: -0.2 }}>Posters</b>
+          <b style={FORM_TITLE}>Posters</b>
           {/* the ceiling, said where it can be read rather than met as a refusal */}
           <span style={{ marginLeft: "auto", fontSize: 12, fontWeight: 700, color: MUTED }}>
             {photos.length} / {PROOF_MAX}

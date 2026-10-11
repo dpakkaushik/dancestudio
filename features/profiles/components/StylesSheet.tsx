@@ -3,7 +3,8 @@
 import { Sheet, fieldLabel, sheetBtn } from "./profile-kit";
 import { DragList } from "@/components/ui/DragList";
 import { DOS_STYLE_NAMES, dosStyleColor } from "@/lib/constants/styles";
-import { CARD, INK, LINE, SUB } from "@/lib/design/tokens";
+import { CARD, INK, LINE } from "@/lib/design/tokens";
+import { FORM_TITLE } from "@/components/ui/formTitle";
 
 /** ADD A DANCE STYLE — the prototype's own sheet (11217), extracted (21 Sep 2026).
  *
@@ -35,10 +36,7 @@ export function StylesSheet({
   label = "Add a dance style",
   title = "＋ Add a dance style",
   allowEmpty = false,
-  intro,
 }: {
-  /** one line under the title saying what the list is for */
-  intro?: string;
   styles: string[];
   /** hand back the whole new list — the caller owns the door and the toast */
   onSave: (next: string[], said: string) => void;
@@ -57,11 +55,10 @@ export function StylesSheet({
 
   return (
     <Sheet label={label} onClose={onClose} maxHeight="78vh">
-      <b style={{ fontSize: 16 }}>{title}</b>
-      {intro ? <div style={{ fontSize: 12.5, color: INK, marginTop: 4, lineHeight: 1.45 }}>{intro}</div> : null}
+      <b style={FORM_TITLE}>{title}</b>
       {/* ⚠ DRAG, NOT ARROWS (11 Oct 2026, the user: "pressing on the tiles and
           dragging them up and down … should be smooth") */}
-      <div style={{ fontSize: 12, color: SUB, margin: "4px 0 6px" }}>{styles.length > 1 ? "Press and drag a style to reorder — this is the order shown." : allowEmpty && styles.length === 0 ? "Nothing picked yet — add from the list below." : " "}</div>
+      <div style={{ height: 10 }} />
       <DragList
         items={styles}
         keyOf={(s) => s}

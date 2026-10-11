@@ -1,10 +1,7 @@
 "use client";
 
-import Image from "next/image";
 import Link from "next/link";
-import { useState } from "react";
-import { columnTab, columnTrack } from "@/components/ui/ColumnTabs";
-import { DOS_UI, INK, LILAC, MUTED, SUB } from "@/lib/design/tokens";
+import { DOS_UI, INK, LILAC, SUB } from "@/lib/design/tokens";
 import { photoUrl } from "@/lib/media/photo";
 import type { MembershipOnSale } from "@/repositories/memberships";
 import type { PublicPerson } from "@/repositories/publicPerson";
@@ -27,7 +24,7 @@ import type { HeaderPhoto } from "@/repositories/headerPhotos";
 import type { HeroShot } from "./HeroRail";
 import { HeroId, HeroPersonMeta, IdentityHero } from "./hero-kit";
 import { EntityBand, figureLabel, figureNum } from "./profile-band";
-import { ROLE_RING, RoleBadge, ScheduleBar, Sheet, followTint, initialsOf, type FollowGlyph } from "./profile-kit";
+import { ROLE_RING, ScheduleBar } from "./profile-kit";
 
 /** THE PROFILE TAB — prototype S_profiletab's OWN render (10565-11400), lifted
  *  whole: the profile lit like a player (the role's colour bleeding off the top;
@@ -54,14 +51,6 @@ import { ROLE_RING, RoleBadge, ScheduleBar, Sheet, followTint, initialsOf, type 
  *  the five ways they had. What is left here is what only your own tab has: the
  *  Settings sheet, the two follow lists behind the figures, the eye in the
  *  corner, and an organization's own studios. */
-
-/* the Following sheet's segments (11336), in the words for the kinds we have —
-   Organizations and Crews joined on 19 Sep 2026, when both became followable */
-/* ⚠ "Organizations" went on 11 Oct 2026 (the user: "remove organization list
-   while clicking on follower and following lists") — nothing can be followed
-   under it since organizations were retired on 29 Sep, so it was an empty pill */
-const FOLLOW_SEGS = ["All", "Users", "Artists", "Studios", "Crews"] as const;
-type FollowSeg = (typeof FOLLOW_SEGS)[number];
 
 
 export function MyProfilePage({
@@ -140,11 +129,9 @@ export function MyProfilePage({
   const isPlainUser = !isArtist;
   const asksGoHere = isArtist ? person.artistPageId : null;
 
-  const [followList, setFollowList] = useState<"followers" | "following" | null>(null);
   /* ⚠ `?settings=1` is not read here any more (21 Sep 2026) — the chrome reads
      it, because the chrome is what renders the sheet now and the gear is on
      every screen rather than only on this one. */
-  const [followSeg, setFollowSeg] = useState<FollowSeg>("All");
   /* ⚠ NO TOAST ON THIS PAGE ANY MORE (19 Sep 2026): every sheet that had
      something to say moved to Home, and the Settings sheet carries its own */
 
@@ -154,20 +141,6 @@ export function MyProfilePage({
      profile tab"). Where you stand is the Stats chip's own screen, which prints
      the place WITH its population — a bare "#4" beside two follower counts said
      less than it implied. `my_chart_place` is no longer read for this page. */
-
-  const followRows: Array<{ key: string; href: string; name: string; kind: string; glyph: FollowGlyph; tint: string; face: string | null; initials: string }> =
-    followList === "followers"
-      ? followers.map((f) => ({ key: f.followId, href: `/person/${f.userId}`, name: f.name, kind: kindOf(f.isArtist), glyph: kindOf(f.isArtist) as FollowGlyph, tint: followTint(kindOf(f.isArtist)), face: photoUrl(f.avatarPath), initials: initialsOf(f.name) }))
-      : [
-          ...followingPeople.map((f) => ({ key: f.followId, href: `/person/${f.userId}`, name: f.name, kind: kindOf(f.isArtist), glyph: kindOf(f.isArtist) as FollowGlyph, tint: followTint(kindOf(f.isArtist)), face: photoUrl(f.avatarPath), initials: initialsOf(f.name) })),
-          /* ⚠ `face: null` until 29 Sep 2026 — see the same line in `HomeBand` */
-          ...followingBusinesses.map((t) => ({ key: t.followId, href: `/${t.businessType === "studio" ? "studio" : "artist"}/${t.businessId}`, name: t.businessName, kind: t.businessType === "studio" ? "studio" : "artist", glyph: (t.businessType === "studio" ? "studio" : "artist") as FollowGlyph, tint: followTint(t.businessType === "studio" ? "studio-biz" : "artist-biz"), face: photoUrl(t.businessPhotoPath), initials: initialsOf(t.businessName) })),
-          /* the crews (19 Sep 2026) — each row opens its own page. ⚠ The
-             organizations followed sat here and went on 29 Sep 2026. */
-          ...followingCrews.map((c) => ({ key: c.followId, href: `/crew/${c.crewId}`, name: c.name, kind: "crew", glyph: "crew" as FollowGlyph, tint: followTint("crew"), face: photoUrl(c.photo), initials: initialsOf(c.name) })),
-        ];
-  const segOf = (kind: string): FollowSeg => (kind === "user" ? "Users" : kind === "artist" ? "Artists" : kind === "crew" ? "Crews" : "Studios");
-  const shownFollowRows = followRows.filter((r) => followSeg === "All" || segOf(r.kind) === followSeg);
 
   return (
     <div style={{ background: LILAC, color: INK, maxWidth: 430, margin: "0 auto", fontFamily: DOS_UI, minHeight: "100vh", paddingBottom: 40, boxSizing: "border-box" }}>
@@ -235,10 +208,10 @@ export function MyProfilePage({
                     organizations (29 Sep 2026); every profile is a person's now,
                     so the row is the two follow figures it has always been for
                     one. What somebody runs is the "What you run" group below. */}
-                <button type="button" aria-label={`${followers.length} followers`} onClick={() => { setFollowSeg("All"); setFollowList("followers"); }} style={{ background: "none", border: "none", padding: 0, cursor: "pointer", textAlign: "left", fontFamily: "inherit" }}>
+                <Link href={`/follows/person/${profile.id}?tab=followers`} aria-label={`${followers.length} followers`} style={{ display: "block", color: "inherit", textDecoration: "none", textAlign: "left" }}>
                   <span data-testid="my-followers" style={figureNum}>{followers.length}</span>
                   <span style={figureLabel}>Followers</span>
-                </button>
+                </Link>
                 {/* ⚠ AN ORGANIZATION HAS THIS FIGURE NOW (20 Sep 2026, the user:
                     "Organization and Studio still dont have Following section in
                     profile and home"). It was withheld because R11 made an
@@ -246,10 +219,10 @@ export function MyProfilePage({
                     user chose to let it really follow, so
                     `20260920180000_an_organization_follows` lifts the refusal in
                     the three doors and this figure counts real rows. */}
-                <button type="button" aria-label={`${followingN} following`} onClick={() => { setFollowSeg("All"); setFollowList("following"); }} style={{ background: "none", border: "none", padding: 0, cursor: "pointer", textAlign: "left", fontFamily: "inherit" }}>
+                <Link href={`/follows/person/${profile.id}?tab=following`} aria-label={`${followingN} following`} style={{ display: "block", color: "inherit", textDecoration: "none", textAlign: "left" }}>
                   <span data-testid="my-following" style={figureNum}>{followingN}</span>
                   <span style={figureLabel}>Following</span>
-                </button>
+                </Link>
               </>
             }
             /* the chips at the row's right edge (20 Sep 2026) — the QR that
@@ -353,39 +326,8 @@ export function MyProfilePage({
           Settings' first option now, and the styles (11217), the links (11161)
           and one platform's own editor (11140) are Home's band (`HomeBand`).
           Nothing was redrawn: they moved. */}
-      {/* ── Followers / Following list — segregated by account type (11335) ── */}
-      {followList ? (
-        <Sheet label={followList === "followers" ? "Followers" : "Following"} onClose={() => setFollowList(null)} maxHeight="78vh">
-          <div style={{ display: "flex", alignItems: "baseline", gap: 7, marginBottom: 14 }}>
-            <b style={{ fontSize: 18 }}>{followList === "followers" ? "Followers" : "Following"}</b>
-            <span style={{ fontSize: 13, color: SUB, fontWeight: 700 }}>{followRows.length}</span>
-          </div>
-          {/* the app's one column look (`ColumnTabs`, 11 Oct 2026); five columns wrap 3 + 2 */}
-          <div role="group" aria-label="Show" style={{ ...columnTrack(true), marginBottom: 14 }}>
-            {FOLLOW_SEGS.map((s) => (
-              <button type="button" key={s} onClick={() => setFollowSeg(s)} aria-pressed={followSeg === s} style={columnTab(followSeg === s, true)}>{s}</button>
-            ))}
-          </div>
-          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-            {shownFollowRows.map((r) => (
-              <Link key={r.key} href={r.href} style={{ display: "flex", alignItems: "center", gap: 12, padding: "10px 12px", borderRadius: 16, background: `${r.tint}12`, border: `1.5px solid ${r.tint}30`, color: INK, textDecoration: "none" }}>
-                <span style={{ position: "relative", flexShrink: 0 }}>
-                  <span style={{ width: 46, height: 46, borderRadius: 23, display: "flex", overflow: "hidden", background: `linear-gradient(135deg,${r.tint},${r.tint}88)`, alignItems: "center", justifyContent: "center", color: "#fff", fontWeight: 800, fontSize: 17 }}>
-                    {r.face ? <Image src={r.face} alt="" width={46} height={46} style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} /> : r.initials}
-                  </span>
-                  <RoleBadge kind={r.glyph} tint={r.tint} />
-                </span>
-                <span style={{ flex: 1, minWidth: 0 }}>
-                  <span style={{ display: "block", fontWeight: 750, fontSize: 14, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{r.name}</span>
-                  <span style={{ display: "block", fontSize: 11.5, color: r.tint, fontWeight: 700, textTransform: "capitalize" }}>{r.kind}</span>
-                </span>
-                <span style={{ fontSize: 16, color: MUTED }}>›</span>
-              </Link>
-            ))}
-            {shownFollowRows.length === 0 ? <div style={{ fontSize: 12, color: SUB, padding: "8px 2px" }}>{followList === "followers" ? "Nobody follows you yet." : "You follow nobody here yet."}</div> : null}
-          </div>
-        </Sheet>
-      ) : null}
+      {/* ⚠ The Followers / Following sheet went on 12 Oct 2026 — both figures
+          open `/follows/person/{you}`, Instagram's page with filters. */}
 
       {/* ⚠⚠ THE SETTINGS SHEET IS NOT RENDERED HERE ANY MORE (21 Sep 2026, the
           user: "settings are seprate for each profile type according to which

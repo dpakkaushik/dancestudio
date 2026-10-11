@@ -8,7 +8,8 @@ import {
   setPayoutStatusAction,
   voidPayoutAction,
 } from "@/features/payouts/server-actions/payouts";
-import { CARD, DOS_DISPLAY, DOS_UI, GOLD, GREEN, INK, LILAC, LINE, RED, SUB } from "@/lib/design/tokens";
+import { CARD, DOS_UI, GOLD, GREEN, INK, LILAC, LINE, RED, SUB } from "@/lib/design/tokens";
+import { FORM_TITLE } from "@/components/ui/formTitle";
 import { sessionDayLabel } from "@/lib/format/session";
 import { useCloseOnBack } from "@/lib/hooks/useCloseOnBack";
 import type { BusinessIncome } from "@/types/income";
@@ -109,7 +110,7 @@ function Sheet({
           boxSizing: "border-box",
         }}
       >
-        <b style={{ fontSize: 16.5, fontFamily: DOS_DISPLAY }}>{title}</b>
+        <b style={FORM_TITLE}>{title}</b>
         {sub ? <div style={{ fontSize: 12, color: SUB, margin: "5px 0 14px" }}>{sub}</div> : <div style={{ height: 12 }} />}
         {children}
       </div>
@@ -418,7 +419,6 @@ export function EarningsDesk({
       {payPerson ? (
         <Sheet
           title={`Pay ${payPerson.personName}`}
-          sub="Money you have already sent. Pick the sessions it covers — the amount is counted from the rates on record."
           onClose={() => setPayPerson(null)}
         >
           <div style={{ marginBottom: 12 }}>

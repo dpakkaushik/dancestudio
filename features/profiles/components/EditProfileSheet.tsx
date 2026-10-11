@@ -6,6 +6,7 @@ import { Portal } from "@/components/ui/Portal";
 import { CityPicker } from "@/features/geo/components/CityPicker";
 import { updateMyProfileAction } from "@/features/profiles/server-actions/profile";
 import { MUTED } from "@/lib/design/tokens";
+import { FORM_TITLE } from "@/components/ui/formTitle";
 import type { Profile } from "@/types/profile";
 import { EditDetailsChip } from "./EditMode";
 import { Sheet, fieldInput, fieldLabel, sheetBtn } from "./profile-kit";
@@ -136,7 +137,7 @@ export function EditProfileSheet({
   return (
     <Portal>
     <Sheet label="Edit profile" onClose={onClose} maxHeight="88vh">
-      <b style={{ fontSize: 16.5, letterSpacing: -0.2 }}>Edit profile</b>
+      <b style={FORM_TITLE}>Edit profile</b>
       <div style={fieldLabel}>Name</div>
       <input aria-label="Name" value={d.fullName} onChange={(e) => setD((x) => ({ ...x, fullName: e.target.value }))} style={fieldInput} />
       {/* ⚠ NO MOBILE, NO CALL SWITCH, NO EMAIL (26 Sep 2026) — they are the ⊕

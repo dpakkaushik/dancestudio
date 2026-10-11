@@ -8,7 +8,8 @@ import { setCrewSocialsAction, updateCrewAction } from "@/features/crews/server-
 import { updateBusinessProfileAction } from "@/features/settings/server-actions/plans";
 import { updateMyProfileAction } from "@/features/profiles/server-actions/profile";
 import type { StudioLinkTarget } from "@/features/businesses/components/StudioLinksRow";
-import { INK, MUTED, SUB } from "@/lib/design/tokens";
+import { INK, SUB } from "@/lib/design/tokens";
+import { FORM_TITLE } from "@/components/ui/formTitle";
 import type { Crew } from "@/types/crew";
 import type { Profile, SocialLink } from "@/types/profile";
 import { enquiryTypesFor } from "@/types/enquiry";
@@ -250,7 +251,6 @@ function ContactSheet({ target, onClose }: { target: ContactTarget; onClose: () 
     });
   };
 
-  const who = target.kind === "person" ? "your page" : target.kind === "business" ? "its page" : "the crew's page";
   /** a plain user's page draws no buttons at all (the 19 Sep list) — the boxes
    *  still keep the details on the account, and every card says so */
   const pageShows = target.kind !== "person" || target.isArtist;
@@ -264,10 +264,7 @@ function ContactSheet({ target, onClose }: { target: ContactTarget; onClose: () 
   return (
     <Portal>
       <Sheet label="Contact buttons" onClose={onClose} maxHeight="88vh">
-        <b style={{ fontSize: 16.5, letterSpacing: -0.2 }}>Contact buttons</b>
-        <div style={{ fontSize: 11, color: MUTED, margin: "3px 0 4px" }}>
-          {pageShows ? `The buttons on ${who}, in the order they are drawn` : "Kept on your account — a user's page shows no buttons; the Artist plan does"}
-        </div>
+        <b style={{ ...FORM_TITLE, marginBottom: 8 }}>Contact buttons</b>
 
         {/* ⚠⚠ A CARD PER BUTTON (3 Oct 2026, the user: "better add contact button
             form can be managed better"). It was a row of preview chips over a

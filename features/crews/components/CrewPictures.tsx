@@ -12,6 +12,7 @@ import { useEditMode } from "@/features/profiles/components/EditMode";
 import { ProfileDisc } from "@/features/profiles/components/HeroRail";
 import { PlusIcon, pictureChipPaint, Sheet, sheetBtn } from "@/features/profiles/components/profile-kit";
 import { SUB } from "@/lib/design/tokens";
+import { FORM_TITLE } from "@/components/ui/formTitle";
 import { HEADER_MAX_CREW } from "@/lib/media/photo";
 import type { HeaderPhoto } from "@/repositories/headerPhotos";
 
@@ -46,12 +47,11 @@ import type { HeaderPhoto } from "@/repositories/headerPhotos";
  *  Five at most — "Artist and Crews 5" (R26). */
 
 /** the disc's own editor — one picker, landing as soon as a picture is chosen */
-export function CrewPictureSheet({ crewId, crewName, hasPhoto, onClose }: { crewId: string; crewName: string; hasPhoto: boolean; onClose: () => void }) {
+export function CrewPictureSheet({ crewId, hasPhoto, onClose }: { crewId: string; crewName: string; hasPhoto: boolean; onClose: () => void }) {
   return (
     <Portal>
       <Sheet label="Profile picture" onClose={onClose} maxHeight="70vh">
-        <b style={{ fontSize: 16.5, letterSpacing: -0.2 }}>Profile picture</b>
-        <div style={{ fontSize: 11.5, color: SUB, marginTop: 3 }}>{crewName} — it changes as soon as you pick one.</div>
+        <b style={FORM_TITLE}>Profile picture</b>
         <div style={{ marginTop: 14 }}>
           {/* the LEADER's alone, which is what the storage policy on `crews/{id}`
               admits and what `set_crew_photo` re-checks */}
@@ -101,7 +101,7 @@ export function CrewPostersSheet({ crewId, crewName, photos = [], onClose }: { c
           under a different name is the thing being fixed */}
       <Sheet label="Posters" onClose={onClose} maxHeight="86vh">
         <div style={{ display: "flex", alignItems: "baseline", gap: 8 }}>
-          <b style={{ fontSize: 16.5, letterSpacing: -0.2 }}>Posters</b>
+          <b style={FORM_TITLE}>Posters</b>
           <span style={{ fontSize: 11, color: SUB, marginLeft: "auto" }}>
             {draft.liveCount} / {HEADER_MAX_CREW}
           </span>

@@ -243,7 +243,7 @@ export function PublicProfile({
                     — the people the page already prints, now a door that opens
                     them as a list. An artist page keeps the old count. */}
                 {business.type === "studio" ? (
-                  <FollowingFigure n={null} rows={studioTeamRows(profile.team)} always testId="business-following" />
+                  <FollowingFigure n={null} rows={studioTeamRows(profile.team)} always kind="business" id={business.id} testId="business-following" />
                 ) : (
                   <Figure n={followingN} label="Following" testId="business-following" />
                 )}

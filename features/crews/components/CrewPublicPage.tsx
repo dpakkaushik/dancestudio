@@ -136,7 +136,7 @@ export function CrewPublicPage({
                 <FollowerFigure n={followers} kind="crew" id={crew.id} name={crew.name} testId="crew-public-followers" />
                 {/* ⚠ A CREW'S FOLLOWING IS ITS TEAM (2 Oct 2026, the user's
                     later word) — the confirmed roster, opening as a list */}
-                <FollowingFigure n={null} rows={crewTeamRows(members)} always testId="crew-public-following" />
+                <FollowingFigure n={null} rows={crewTeamRows(members)} always kind="crew" id={crew.id} testId="crew-public-following" />
               </>
             }
             /* the three chips at the row's right edge (20 Sep 2026) — the QR, the

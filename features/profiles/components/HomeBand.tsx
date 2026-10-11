@@ -1,21 +1,16 @@
 "use client";
 
-import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useState, type ReactNode } from "react";
+import type { ReactNode } from "react";
 import { updateMyProfileAction } from "@/features/profiles/server-actions/profile";
-import { columnTab, columnTrack } from "@/components/ui/ColumnTabs";
-import { INK, MUTED, SUB } from "@/lib/design/tokens";
-import { photoUrl } from "@/lib/media/photo";
 import type { FollowedCrew, PersonFollowRow } from "@/repositories/follows";
 import type { FollowedBusiness } from "@/types/follow";
-import { kindOf, type Profile, type SocialLink } from "@/types/profile";
+import type { Profile, SocialLink } from "@/types/profile";
 import { LinksRowEditor } from "./LinksRowEditor";
 import { CHIP_ROW, FIGURE_GROUP, FIGURE_ROW, figureLabel, figureNum } from "./profile-band";
 import { useRecordLists } from "./RecordLists";
 import { StylesRowEditor } from "./StylesRowEditor";
-import { RoleBadge, Sheet, followTint, initialsOf, type FollowGlyph } from "./profile-kit";
 
 /** THE BAND UNDER THE NAME ON HOME — and the ONE place these three are edited
  *  (19 Sep 2026, the user: "Dance style for the page should also be editable
@@ -40,10 +35,6 @@ import { RoleBadge, Sheet, followTint, initialsOf, type FollowGlyph } from "./pr
  *  ⚠ THE TWO ＋ APPEAR WITH THE PENCIL (26 Sep 2026): the home is read-only
  *  until the corner's Edit is pressed. */
 
-/* ⚠ "Organizations" went with organizations (29 Sep 2026) */
-const FOLLOW_SEGS = ["All", "Users", "Artists", "Studios", "Crews"] as const;
-type FollowSeg = (typeof FOLLOW_SEGS)[number];
-
 export function HomeBand({
   profile,
   chips = null,
@@ -64,8 +55,6 @@ export function HomeBand({
 }) {
   const router = useRouter();
   const { lists } = useRecordLists();
-  const [followList, setFollowList] = useState<"followers" | "following" | null>(null);
-  const [followSeg, setFollowSeg] = useState<FollowSeg>("All");
 
   const followingN = followingPeople.length + followingBusinesses.length + followingCrews.length;
 
@@ -89,33 +78,20 @@ export function HomeBand({
     return out.error;
   };
 
-  const followRows: Array<{ key: string; href: string; name: string; kind: string; glyph: FollowGlyph; tint: string; face: string | null; initials: string }> =
-    followList === "followers"
-      ? followers.map((f) => ({ key: f.followId, href: `/person/${f.userId}`, name: f.name, kind: kindOf(f.isArtist), glyph: kindOf(f.isArtist) as FollowGlyph, tint: followTint(kindOf(f.isArtist)), face: photoUrl(f.avatarPath), initials: initialsOf(f.name) }))
-      : [
-          ...followingPeople.map((f) => ({ key: f.followId, href: `/person/${f.userId}`, name: f.name, kind: kindOf(f.isArtist), glyph: kindOf(f.isArtist) as FollowGlyph, tint: followTint(kindOf(f.isArtist)), face: photoUrl(f.avatarPath), initials: initialsOf(f.name) })),
-          /* ⚠ `face` was hard-coded null until 29 Sep 2026 — the one row in this
-             sheet that could not show a picture, beside people and crews that
-             could. The read simply never selected the column. */
-          ...followingBusinesses.map((t) => ({ key: t.followId, href: `/${t.businessType === "studio" ? "studio" : "artist"}/${t.businessId}`, name: t.businessName, kind: t.businessType === "studio" ? "studio" : "artist", glyph: (t.businessType === "studio" ? "studio" : "artist") as FollowGlyph, tint: followTint(t.businessType === "studio" ? "studio-biz" : "artist-biz"), face: photoUrl(t.businessPhotoPath), initials: initialsOf(t.businessName) })),
-          ...followingCrews.map((c) => ({ key: c.followId, href: `/crew/${c.crewId}`, name: c.name, kind: "crew", glyph: "crew" as FollowGlyph, tint: followTint("crew"), face: photoUrl(c.photo), initials: initialsOf(c.name) })),
-        ];
-  const segOf = (kind: string): FollowSeg => (kind === "user" ? "Users" : kind === "artist" ? "Artists" : kind === "crew" ? "Crews" : "Studios");
-  const shownFollowRows = followRows.filter((r) => followSeg === "All" || segOf(r.kind) === followSeg);
-
   return (
     <>
-      {/* ── THE TWO FIGURES, AND BOTH OPEN THEIR LIST (19 Sep 2026) ── */}
+      {/* ── THE TWO FIGURES, AND BOTH OPEN THEIR LIST — a page of its own since
+          12 Oct 2026, Instagram's (`/follows/person/{id}`) ── */}
       <div style={FIGURE_ROW}>
         <div style={FIGURE_GROUP}>
-        <button type="button" aria-label={`${followers.length} followers`} onClick={() => { setFollowSeg("All"); setFollowList("followers"); }} style={{ background: "none", border: "none", padding: 0, cursor: "pointer", textAlign: "left", fontFamily: "inherit" }}>
+        <Link href={`/follows/person/${profile.id}?tab=followers`} aria-label={`${followers.length} followers`} style={{ display: "block", color: "inherit", textDecoration: "none", textAlign: "left" }}>
           <span data-testid="home-followers" style={figureNum}>{followers.length}</span>
           <span style={figureLabel}>Followers</span>
-        </button>
-        <button type="button" aria-label={`${followingN} following`} onClick={() => { setFollowSeg("All"); setFollowList("following"); }} style={{ background: "none", border: "none", padding: 0, cursor: "pointer", textAlign: "left", fontFamily: "inherit" }}>
+        </Link>
+        <Link href={`/follows/person/${profile.id}?tab=following`} aria-label={`${followingN} following`} style={{ display: "block", color: "inherit", textDecoration: "none", textAlign: "left" }}>
           <span data-testid="home-following" style={figureNum}>{followingN}</span>
           <span style={figureLabel}>Following</span>
-        </button>
+        </Link>
         </div>
         {chips ? <div style={CHIP_ROW}>{chips}</div> : null}
       </div>
@@ -133,39 +109,6 @@ export function HomeBand({
       {/* ── THE LINKS, RIGHT BELOW THE STYLES (10760, and the user's own order) ── */}
       <LinksRowEditor canEdit save={(next) => save({ socials: next })} />
 
-      {/* ── Followers / Following, by account type (11335) ── */}
-      {followList ? (
-        <Sheet label={followList === "followers" ? "Followers" : "Following"} onClose={() => setFollowList(null)} maxHeight="78vh">
-          <div style={{ display: "flex", alignItems: "baseline", gap: 7, marginBottom: 14 }}>
-            <b style={{ fontSize: 18 }}>{followList === "followers" ? "Followers" : "Following"}</b>
-            <span style={{ fontSize: 13, color: SUB, fontWeight: 700 }}>{followRows.length}</span>
-          </div>
-          {/* the app's one column look (`ColumnTabs`, 11 Oct 2026); five columns wrap 3 + 2 */}
-          <div role="group" aria-label="Show" style={{ ...columnTrack(true), marginBottom: 14 }}>
-            {FOLLOW_SEGS.map((s) => (
-              <button type="button" key={s} onClick={() => setFollowSeg(s)} aria-pressed={followSeg === s} style={columnTab(followSeg === s, true)}>{s}</button>
-            ))}
-          </div>
-          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-            {shownFollowRows.map((r) => (
-              <Link key={r.key} href={r.href} style={{ display: "flex", alignItems: "center", gap: 12, padding: "10px 12px", borderRadius: 16, background: `${r.tint}12`, border: `1.5px solid ${r.tint}30`, color: INK, textDecoration: "none" }}>
-                <span style={{ position: "relative", flexShrink: 0 }}>
-                  <span style={{ width: 46, height: 46, borderRadius: 23, display: "flex", overflow: "hidden", background: `linear-gradient(135deg,${r.tint},${r.tint}88)`, alignItems: "center", justifyContent: "center", color: "#fff", fontWeight: 800, fontSize: 17 }}>
-                    {r.face ? <Image src={r.face} alt="" width={46} height={46} style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} /> : r.initials}
-                  </span>
-                  <RoleBadge kind={r.glyph} tint={r.tint} />
-                </span>
-                <span style={{ flex: 1, minWidth: 0 }}>
-                  <span style={{ display: "block", fontWeight: 750, fontSize: 14, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{r.name}</span>
-                  <span style={{ display: "block", fontSize: 11.5, color: r.tint, fontWeight: 700, textTransform: "capitalize" }}>{r.kind}</span>
-                </span>
-                <span style={{ fontSize: 16, color: MUTED }}>›</span>
-              </Link>
-            ))}
-            {shownFollowRows.length === 0 ? <div style={{ fontSize: 12, color: SUB, padding: "8px 2px" }}>{followList === "followers" ? "Nobody follows you yet." : "You follow nobody here yet."}</div> : null}
-          </div>
-        </Sheet>
-      ) : null}
     </>
   );
 }

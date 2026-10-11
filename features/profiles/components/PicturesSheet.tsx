@@ -8,7 +8,8 @@ import { HeaderPictures, headerTiles } from "@/features/media/components/HeaderP
 import { PhotoLightbox } from "@/features/media/components/PhotoLightbox";
 import { PhotoPicker } from "@/features/media/components/PhotoPicker";
 import { useHeaderDraft } from "@/features/media/headerDraft";
-import { MUTED, SUB } from "@/lib/design/tokens";
+import { MUTED, SUB } from "@/lib/design/tokens";
+import { FORM_TITLE } from "@/components/ui/formTitle";
 import type { HeaderPhoto } from "@/repositories/headerPhotos";
 import type { Profile } from "@/types/profile";
 import { useEditMode } from "./EditMode";
@@ -48,8 +49,7 @@ export function ProfilePictureSheet({ profile, onClose }: { profile: Profile; on
   return (
     <Portal>
       <Sheet label="Profile picture" onClose={onClose} maxHeight="70vh">
-        <b style={{ fontSize: 16.5, letterSpacing: -0.2 }}>Profile picture</b>
-        <div style={{ fontSize: 11.5, color: SUB, marginTop: 3 }}>It changes as soon as you pick one.</div>
+        <b style={FORM_TITLE}>Profile picture</b>
         <div style={{ marginTop: 14 }}>
           <PhotoPicker owner={{ kind: "avatar", id: profile.id }} hasPhoto={Boolean(profile.avatarPath)} label="Change your photo" />
         </div>
@@ -108,7 +108,7 @@ export function HeaderPicturesSheet({
     <Portal>
       <Sheet label="Posters" onClose={onClose} maxHeight="88vh">
         <div style={{ display: "flex", alignItems: "baseline", gap: 8 }}>
-          <b style={{ fontSize: 16.5, letterSpacing: -0.2 }}>Posters</b>
+          <b style={FORM_TITLE}>Posters</b>
           {/* ⚠ THE CEILING, SAID OUT LOUD (20 Sep 2026). It used to live on the
               "Your pictures" screen, and taking that screen away took the only
               place a person could read how many they may hold — a rule nobody

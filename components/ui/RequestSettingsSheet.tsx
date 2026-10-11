@@ -3,7 +3,8 @@
 import type { CSSProperties, ReactNode } from "react";
 import { Portal } from "@/components/ui/Portal";
 import { useCloseOnBack } from "@/lib/hooks/useCloseOnBack";
-import { DOS_UI, MUTED, SUB } from "@/lib/design/tokens";
+import { MUTED, SUB } from "@/lib/design/tokens";
+import { FORM_TITLE } from "@/components/ui/formTitle";
 
 /** ⚠⚠ ONE HEAD, ONE SETTINGS SHEET, ONE ANSWERED SHEET (11 Oct 2026, the user:
  *  "check alignment of settings on headings for crew, studio" and "settings
@@ -98,7 +99,7 @@ export function BottomSheet({ title, onClose, children, scroll = false }: { titl
           style={{ background: "var(--solid)", color: "var(--text)", borderRadius: "24px 24px 0 0", padding: "14px 16px 28px", width: "100%", maxWidth: 430, boxSizing: "border-box", animation: "dosSheetUp .22s ease-out", ...(scroll ? { maxHeight: "88vh", display: "flex", flexDirection: "column" as const } : {}) }}
         >
           <div style={{ width: 40, height: 4, borderRadius: 2, background: "var(--el)", margin: "0 auto 12px", flexShrink: 0 }} />
-          <div style={{ fontSize: 17, fontWeight: 900, fontFamily: DOS_UI, flexShrink: 0 }}>{title}</div>
+          <div style={{ ...FORM_TITLE, flexShrink: 0 }}>{title}</div>
           {scroll ? <div style={{ overflowY: "auto", margin: "10px -4px 0", padding: "0 4px", minHeight: 0 }}>{children}</div> : children}
           <button type="button" onClick={onClose} style={{ marginTop: 16, width: "100%", padding: 12, borderRadius: 999, border: "none", background: "var(--text)", color: "var(--solid)", fontWeight: 900, fontSize: 13, cursor: "pointer", fontFamily: "inherit", flexShrink: 0 }}>
             Done
