@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
+import { toolBtn } from "@/components/ui/ToolCard";
 import { deleteClassAction } from "@/features/classes/server-actions/classes";
 
 /** DELETE, ON THE TOP RIGHT OF THE CLASS PAGE (4 Oct 2026, the user: "delete
@@ -102,26 +103,11 @@ export function ClassDeleteChip({
           setErr(null);
           setOpen(true);
         }}
-        style={{
-          display: "inline-flex",
-          alignItems: "center",
-          gap: 6,
-          padding: "7px 12px 7px 10px",
-          borderRadius: 999,
-          border: "1.5px solid rgba(248,113,113,.55)",
-          background: "rgba(10,10,10,.62)",
-          color: "#FCA5A5",
-          fontSize: 11.5,
-          fontWeight: 900,
-          cursor: "pointer",
-          fontFamily: "inherit",
-          backdropFilter: "blur(6px)",
-          WebkitBackdropFilter: "blur(6px)",
-        }}
+        /* ⚠ THE APP'S OWN DELETE (12 Oct 2026, the user: "delete button on class
+           detail should be similar to others") — the routine page's toolBtn("danger")
+           pill, one word, on a solid ground because it stands over the poster */
+        style={{ ...toolBtn("danger", "#F87171", { flex: "0 0 auto", padding: "5px 11px", fontSize: 11 }), background: "var(--solid)" }}
       >
-        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-          <path d="M4 7h16M10 11v6M14 11v6M6 7l1 12a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2l1-12M9 7V4h6v3" />
-        </svg>
         Delete
       </button>
       {open ? (

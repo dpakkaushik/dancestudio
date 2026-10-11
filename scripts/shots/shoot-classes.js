@@ -875,13 +875,11 @@ const BOOK_ON_PAGE = /^Book Now$/;
     const closedRow = await rows(H_SERVICE, `classes?id=eq.${closedId}&select=deleted_at`);
     check(closedRow[0] && closedRow[0].deleted_at !== null, "…and one confirmed press deletes it, read back out of the database");
 
-    // d. the booked card's Add to calendar answers a real calendar file
+    // d. no per-card Add to calendar any more (12 Oct 2026 — the Calendar page
+    //    syncs the whole calendar); the class's own .ics address still answers (Rule 14)
     await lPage.goto(`${BASE}/my-classes?tab=upcoming&role=booked`, { waitUntil: "networkidle" });
-    const icsCard = lPage.locator('[data-card="session"]').filter({ has: lPage.locator(`a[href^="/c/${aheadSlug}"]`) });
-    const icsLink = icsCard.getByTestId("add-to-calendar");
-    check((await icsLink.count()) === 1, "⚠ a booked card carries Add to calendar");
-    const icsHref = (await icsLink.getAttribute("href").catch(() => null)) || "";
-    check(icsHref === `/c/${aheadSlug}/ics`, `…pointing at the class's own .ics (${icsHref})`);
+    check((await lPage.getByTestId("add-to-calendar").count()) === 0, "⚠ no booked card carries Add to calendar");
+    const icsHref = `/c/${aheadSlug}/ics`;
     const icsRes = await lCtx.request.get(`${BASE}${icsHref}`);
     const icsType = icsRes.headers()["content-type"] || "";
     const icsBody = await icsRes.text();

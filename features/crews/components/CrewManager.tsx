@@ -88,7 +88,7 @@ export function CrewManager({ crew, members, answered = [] }: { crew: Crew; memb
           "{crew} · {style} · {city}" line went, as the studio's did */}
       {/* the asks already answered, top right — the place Classes gives its own (11 Oct 2026) */}
       <div style={{ position: "relative", margin: "0 0 12px" }}>
-        <DeskHero tool="team" as="h1" margin="0" />
+        <DeskHero tool="team" as="h1" margin="0" toggle={false} />
         <InviteHeadButtons answered={answered} answeredTestId="crew-answered" answeredListTestId="crew-answered-list" answeredLabel="Answered asks" />
       </div>
 
@@ -185,8 +185,7 @@ export function CrewManager({ crew, members, answered = [] }: { crew: Crew; memb
                     eyebrowTint={rc}
                     name={m.name}
                     photoPath={m.avatarPath ?? null}
-                    href={`/person/${m.userId}`}
-                    hrefLabel={`Open ${m.name}'s profile`}
+                    /* no profile door on a card's face (12 Oct 2026, the user) */
                     /* the row's word, exactly — `CREW_ROLE_WORD` ("Member") */
                     eyebrow={pending ? "Asked to join" : CREW_ROLE_WORD[m.role]}
                     sub={m.city ?? null}

@@ -180,7 +180,7 @@ export default async function BusinessClassesPage({
         /* keyed on the ADDRESS, never the computed default — see /my-classes */
         key={`${tabAsked ?? "auto"}-${initialRole}`}
         mode="studio"
-        top={<DeskHero tool="classes" as="h1" margin="0" />}
+        top={<DeskHero tool="classes" as="h1" margin="0" toggle={false} />}
         add={add}
         settings={<TakingRequestsSwitch mode="studio" businessId={businessId} on={takesRooms} />}
         roles={ROLES}

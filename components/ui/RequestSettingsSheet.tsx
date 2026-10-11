@@ -2,6 +2,7 @@
 
 import type { CSSProperties, ReactNode } from "react";
 import { Portal } from "@/components/ui/Portal";
+import { ViewToggle } from "@/features/shell/components/ViewToggle";
 import { useCloseOnBack } from "@/lib/hooks/useCloseOnBack";
 import { MUTED, SUB } from "@/lib/design/tokens";
 import { FORM_TITLE } from "@/components/ui/formTitle";
@@ -45,7 +46,14 @@ export const HEAD_BTN: CSSProperties = {
 
 /** the hero's top-right corner — the same place on every screen that has one */
 export function HeadCorner({ children }: { children: ReactNode }) {
-  return <div style={{ position: "absolute", top: 10, right: 10, display: "flex", gap: 8, zIndex: 1 }}>{children}</div>;
+  /* ⚠ the card · list switch rides first in the corner on a tool's list page
+     (12 Oct 2026), so it sits with the heading beside Answered and the gear */
+  return (
+    <div style={{ position: "absolute", top: 10, right: 10, display: "flex", alignItems: "center", gap: 8, zIndex: 1 }}>
+      <ViewToggle />
+      {children}
+    </div>
+  );
 }
 
 const GearIcon = () => (

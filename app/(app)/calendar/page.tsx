@@ -3,6 +3,7 @@ import { CalendarScreen } from "@/features/calendar/components/CalendarScreen";
 import { dayKeyOf, monthStartIso, monthsWindow, shiftMonthKey } from "@/lib/format/month";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { findMyCalendar } from "@/repositories/calendar";
+import { calendarFeedPath } from "@/lib/calendar/feedToken";
 import { findMyCrewPractices, practiceToCalendar } from "@/repositories/crewPractices";
 
 /* the clock lives outside the component (react-hooks/purity) */
@@ -57,6 +58,8 @@ export default async function CalendarPage() {
       entries={entries}
       practices={practices.map(practiceToCalendar)}
       emptyHref="/discover"
+      /* the whole calendar as one subscribable feed (12 Oct 2026) */
+      feedPath={calendarFeedPath(user.id)}
     />
   );
 }

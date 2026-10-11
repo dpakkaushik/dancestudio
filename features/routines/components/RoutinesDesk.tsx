@@ -25,7 +25,7 @@ import { DeskBody, DeskTop } from "@/components/ui/DeskSections";
  *  mean. */
 
 /** the head's two small media buttons (11 Oct 2026) */
-const HEAD_MEDIA: CSSProperties = { padding: "10px 12px", fontSize: 13, gap: 6, flex: "0 0 auto", width: "100%", minWidth: 0, boxSizing: "border-box", justifyContent: "center" };
+const HEAD_MEDIA: CSSProperties = { padding: "6px 9px", fontSize: 11.5, gap: 5, flex: "0 0 auto", width: "100%", minWidth: 0, boxSizing: "border-box", justifyContent: "center" };
 
 const card: CSSProperties = { background: "var(--card)", border: "1.5px solid var(--el)", borderRadius: 16, padding: "13px 14px", marginBottom: 10 };
 
@@ -220,8 +220,11 @@ function RoutineCard({
             button half the width, each still its own link above the card's
             stretched one (`pointerEvents: auto`). The accessible names are
             unchanged ("Open the song for …"). */}
-        <div>
-          <div style={{ minWidth: 0 }}>
+        {/* ⚠ RE-CUT THE SAME EVENING (12 Oct 2026, the user: "song and video button
+            smaller and adjusted on the right side of the middle section") — the
+            routine on the left, the two small buttons stacked on the right, Song above */}
+        <div style={{ display: "flex", alignItems: "flex-start", gap: 10 }}>
+          <div style={{ minWidth: 0, flex: 1 }}>
             {/* the routine itself — its name first and biggest, its style and
                 level as pills beside where it was taught */}
             <div style={{ fontSize: 19, fontWeight: 900, letterSpacing: -0.35, lineHeight: 1.2, overflowWrap: "anywhere" }}>{title}</div>
@@ -234,7 +237,7 @@ function RoutineCard({
               <div style={{ fontSize: 11, color: SUB, marginTop: 6, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>♪ {song.title}</div>
             ) : null}
           </div>
-          <span data-testid="routine-media" style={{ display: "flex", flexDirection: "column", gap: 8, marginTop: 10, pointerEvents: "auto" }}>
+          <span data-testid="routine-media" style={{ display: "flex", flexDirection: "column", gap: 6, flexShrink: 0, width: 92, pointerEvents: "auto" }}>
             <RoutineMediaButton kind="song" href={song.href} word={song.short} title={title} extra={HEAD_MEDIA} />
             <RoutineMediaButton kind="video" href={video} word="Video" title={title} extra={HEAD_MEDIA} />
           </span>

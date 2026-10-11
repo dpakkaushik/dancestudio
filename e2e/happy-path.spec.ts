@@ -1980,8 +1980,13 @@ test.describe.serial("DanceOS, end to end", () => {
     // roster, and the search dropdown's People section (Step 23 left people out
     // for exactly this reason). They open now, and the page is made of what the
     // story already did.
+    /* ⚠ the crew desk's member card is no door to a profile since 12 Oct 2026 (the
+       user: "should take to detail inside the cards always") — the desk still names
+       them, and the person page is reached by its own address */
     await learner.goto(`/crews/${crewId}/manage/team`);
-    await learner.getByRole("link", { name: `Open ${trainerName}'s profile` }).click();
+    await expect(learner.getByText(trainerName).first()).toBeVisible();
+    expect(await learner.getByRole("link", { name: `Open ${trainerName}'s profile` }).count()).toBe(0);
+    await learner.goto(`/person/${trainerId}`);
     await learner.waitForURL(/\/person\/[0-9a-f-]+$/);
     /* THE HEADING, not the text (16 Sep 2026). `exact: true` was put here to
        dodge Next's route announcer on the theory that it carries the page TITLE

@@ -48,8 +48,7 @@ function CrewCard({ crew, own, since, foundedByMe = false }: { crew: CrewSummary
         name={crew.name}
         photoPath={crew.photo}
         icon={<CrewI size={24} color="#fff" />}
-        href={own ? `/crew/${crew.id}` : undefined}
-        hrefLabel={own ? `${crew.name} — view its profile page` : undefined}
+        /* no profile door on the face (12 Oct 2026) — the card opens the crew */
         eyebrow={foundedByMe ? "Crew · you started it" : "Crew"}
         sub={crew.city}
         right={<ToolChip word={own ? "LEADER" : "MEMBER"} fg={own ? tint : SUB} bg={own ? `${tint}18` : "var(--el)"} />}

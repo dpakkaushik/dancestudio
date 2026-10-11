@@ -216,8 +216,8 @@ export function MembershipsScreen({
                   tint={TINT}
                   name={p.businessName}
                   photoPath={sellerPhotos[p.businessId] ?? null}
-                  href={sellerHref}
-                  hrefLabel={`${p.businessName} — open the page`}
+                  /* no profile door on the face (12 Oct 2026) — the seller's page is
+                     the "Studio page" button on the bar */
                   eyebrow={`Sold by ${p.businessType === "studio" ? "a studio" : "an artist"}`}
                   sub="Your membership"
                   right={<ToolChip word={word} fg={live ? "#22C55E" : unpaid ? "#F59E0B" : expired ? "#F87171" : SUB} bg={live ? "#22C55E1c" : unpaid ? "#F59E0B1c" : expired ? "#F871711c" : "var(--el)"} />}
@@ -302,8 +302,8 @@ export function MembershipsScreen({
                 /* ⚠ THE FACE AND THE NAME OPEN THE SELLER'S PROFILE (4 Oct 2026, the
                    user: "membership card clicking on profile pic and name should take
                    to profile page") — the rest of the card still opens its details */
-                href={seller?.href}
-                hrefLabel={seller?.href ? `${seller.name} — view its profile page` : undefined}
+                /* ⚠ no profile door on the face since 12 Oct 2026 — the whole card
+                   opens the membership's details */
                 /* ⚠ "Membership" (4 Oct 2026, the user: "rename your artist page with
                    Membership") — the face and the name already say whose it is */
                 eyebrow="Membership"

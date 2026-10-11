@@ -49,6 +49,7 @@ import { ScanSheet, type ScanOutcome } from "@/features/people/components/ScanSh
 import type { PoolHit } from "@/features/people/components/PeoplePicker";
 import { ClassShare } from "./ClassShare";
 import { ClassDeleteChip } from "./ClassDeleteChip";
+import { PlusIcon, pictureChipPaint } from "@/features/profiles/components/profile-kit";
 import { DancerIcon, Half, SeatBar, WhenTile } from "./ClassTile";
 import { PosterSheet } from "./PosterSheet";
 import { DOS_POSTERS, DOS_SLEEVE, DosPosterSleeve, PosterBlock, dosPosterAuto, useDosFold } from "./poster";
@@ -62,7 +63,16 @@ import { dosKey } from "./ShareSheet";
  *  attendance/waitlist tools + the pass sheet behind the poster (10), rooms/artists/
  *  team/posters/routine (11), owner earnings/refunds tabs (13) — see the backlog. */
 
-const DOS_MONO = 'ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace';
+/** the page as a sheet over the poster: rounded top corners, a squircle edge
+ *  line and a soft shadow, pulled up over the sleeve (12 Oct 2026) */
+const SHEET_TOP = {
+  marginTop: -22,
+  borderRadius: "28px 28px 0 0",
+  borderTop: "1.5px solid var(--el)",
+  boxShadow: "0 -14px 28px -18px rgba(0,0,0,.55)",
+} as const;
+
+const DOS_MONO ='ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace';
 
 /* one k/v line inside a section — prototype Row */
 function Row({ k, v }: { k: string; v: string }) {
@@ -702,17 +712,21 @@ export function ClassDetail({
             landed on each other. Both pressed, and it read cramped. */}
         {/* ⚠ THE PEOPLE WHO RUN IT (B11, 11 Oct 2026) — a trainer was offered a
             sheet whose every press the database refused */}
+        {/* ⚠ A ⊕ ON THE POSTER'S BOTTOM RIGHT, like the profile picture's (12 Oct
+            2026, the user: "poster add card should be a plus like profile pic on the
+            bottom right of poster") — the hero's own `pictureChipPaint` and glyph */}
         {runs && !done ? (
           <button
             type="button"
             aria-label="Change the poster"
+            data-testid="class-poster-plus"
             onClick={(e) => {
               e.stopPropagation();
               setPosterOpen(true);
             }}
-            style={{ position: "absolute", left: 6, top: 6, padding: "4px 9px", borderRadius: 999, cursor: "pointer", background: "rgba(0,0,0,.6)", color: "#fff", fontSize: 9, fontWeight: 800, border: "none", fontFamily: "inherit" }}
+            style={{ ...pictureChipPaint, position: "absolute", right: -10, bottom: -10, width: 34, height: 34, borderRadius: 999, display: "inline-flex", alignItems: "center", justifyContent: "center", cursor: "pointer", padding: 0, boxShadow: "0 4px 12px rgba(0,0,0,.45)" }}
           >
-            Poster
+            <PlusIcon light />
           </button>
         ) : null}
       </DosPosterSleeve>
@@ -738,7 +752,7 @@ export function ClassDetail({
       {/* ⚠ B19: a DRAFT whose date passed was never a class that ran — it is
           "Closed" (its badge and footer say so), never "Class completed" */}
       {((done && !isDraft) || assisting) && (
-        <div style={{ padding: "14px 16px 0", position: "relative", zIndex: 1, background: "var(--bg)" }}>
+        <div style={{ padding: "14px 16px 0", position: "relative", zIndex: 1, background: "var(--bg)", ...SHEET_TOP }}>
           <div
             data-testid={done ? "class-over-band" : "class-assisting-band"}
             style={{
@@ -786,12 +800,13 @@ export function ClassDetail({
           with the price beside it — `Half`, `WhenTile` and `SeatBar` are the
           card's own components, so the page and the card cannot describe one
           class two ways. ── */}
-      <div style={{ padding: "0 16px 10px", position: "relative", zIndex: 1, background: "var(--bg)" }}>
+      <div style={{ padding: "0 16px 10px", position: "relative", zIndex: 1, background: "var(--bg)", ...((done && !isDraft) || assisting ? {} : SHEET_TOP) }}>
         {/* THE LINE UNDER THE POSTER IS A SQUIRCLE EDGE (12 Oct 2026, the user: "the
-            line between them … needs to be squircle") — the top bar's own bottom
-            edge turned over: a 1.5px line whose ends curve away at 26px, in place
-            of the flat hairline. */}
-        <div aria-hidden="true" data-testid="class-poster-edge" style={{ height: 26, margin: "16px -4px -8px", borderTop: "1.5px solid var(--el)", borderLeft: "1.5px solid var(--el)", borderRight: "1.5px solid var(--el)", borderRadius: "26px 26px 0 0" }} />
+            line between them … needs to be squircle") — and since the same evening
+            the page IS that squircle: the sheet that slides up over the poster has
+            28px top corners (`SHEET_TOP`), so swiping up reads as a card closing
+            over the poster rather than a flat strip covering it. */}
+        <div aria-hidden="true" data-testid="class-poster-edge" style={{ height: 16 }} />
         <div
           data-testid="class-page-card"
           style={{
@@ -1133,18 +1148,8 @@ export function ClassDetail({
                 ) : null}
               </div>
             ) : null}
-            {/* ADD TO CALENDAR (D11) — the class as an .ics, before it runs */}
-            {!done ? (
-              <a
-                href={`/c/${c.shareSlug}/ics`}
-                download
-                data-testid="add-to-calendar"
-                aria-label={`Add ${c.title} to your calendar`}
-                style={{ display: "inline-block", marginTop: 8, fontSize: 11, fontWeight: 800, color: "var(--text)", textDecoration: "underline", textUnderlineOffset: 3 }}
-              >
-                Add to calendar
-              </a>
-            ) : null}
+            {/* ⚠ No per-class "Add to calendar" (12 Oct 2026): the whole calendar
+                syncs from the Calendar page's Sync chip. /c/{slug}/ics stays (Rule 14). */}
             {/* one bordered pill, two segments, a hairline between */}
             <div
               style={{

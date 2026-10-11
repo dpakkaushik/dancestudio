@@ -30,7 +30,7 @@ export default async function TeamPage() {
     <div style={{ background: LILAC, color: INK, maxWidth: 430, margin: "0 auto", fontFamily: DOS_UI, minHeight: "100vh", padding: "0 16px 40px", boxSizing: "border-box" }}>
       <DeskTop style={{ paddingBottom: 4 }}>
         <div style={{ position: "relative", margin: "0 0 12px" }}>
-          <DeskHero tool="team" as="h1" margin="0" />
+          <DeskHero tool="team" as="h1" margin="0" toggle={false} />
           <InviteHeadButtons
             answered={data.answered}
             answeredTestId="artist-team-answered"

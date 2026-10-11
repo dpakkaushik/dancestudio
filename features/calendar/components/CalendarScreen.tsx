@@ -23,6 +23,7 @@ import { CLASS_RELATION, SIDE_RELATION } from "@/lib/format/classLabels";
 import { useCloseOnBack } from "@/lib/hooks/useCloseOnBack";
 import { tileClassOf, type CalendarEntry, type CalendarMonth, type CalendarPracticeEntry, type CalendarSide } from "@/types/calendar";
 import { PRACTICE_WORD, practiceWhen } from "@/types/crewPractice";
+import { CalendarSync } from "./CalendarSync";
 import { MonthGrid, TimeGrid, useSwipe, type GridItem, type MonthChip } from "./calendar-grid";
 
 /** The calendar, lifted from prototype S_profiletab in its `calendarOnly` dress
@@ -334,15 +335,18 @@ export interface CalendarScreenProps {
   emptyHref: string;
   /** public only: whose schedule this is — the page stands on its own URL */
   title?: string;
+  /** a person's own calendar: the path of their subscribable feed */
+  feedPath?: string;
 }
 
-export function CalendarScreen({ mode, months, todayKey, entries, practices = [], emptyHref, title: pageTitle }: CalendarScreenProps) {
+export function CalendarScreen({ mode, months, todayKey, entries, practices = [], emptyHref, title: pageTitle, feedPath }: CalendarScreenProps) {
   const isPublic = mode === "public";
   const isCrew = mode === "crew";
   const idx = (monthKey: string) => months.findIndex((m) => m.key === monthKey);
   const inWindow = (dayKey: string) => idx(monthOfDay(dayKey)) >= 0;
 
   const [view, setView] = useState<View>("sched");
+  const [showPast, setShowPast] = useState(false);
   /* ⚠⚠ CLASSES AND PRACTICE TOGETHER, FILTERED LIKE GOOGLE'S "MY CALENDARS"
      (10 Oct 2026, the user: "classe and practice together as well. manage the
      upper hallf of calendar and filters also like googlke calendar"). The
@@ -421,7 +425,6 @@ export function CalendarScreen({ mode, months, todayKey, entries, practices = []
   /* ⚠ `fabOpen` went with the compose FAB (29 Sep 2026): it opened the sheet
      that offered Add class / Add event, and a calendar composes nothing now */
   const todayRef = useRef<HTMLDivElement>(null);
-  const jumped = useRef("");
 
   const isToday = (dayKey: string) => dayKey === todayKey;
   /* every kind that is switched on, merged into one list (10 Oct 2026) */
@@ -480,6 +483,8 @@ export function CalendarScreen({ mode, months, todayKey, entries, practices = []
     if (j >= 0) setMi(j);
     setPanelOpen(false);
     if (view !== "sched") return;
+    /* a day before today lives under Earlier days — open it first */
+    if (dayKey < todayKey) setShowPast(true);
     window.requestAnimationFrame(() => {
       let el = document.getElementById(`doscal-${dayKey}`);
       if (!el) {
@@ -576,29 +581,9 @@ export function CalendarScreen({ mode, months, todayKey, entries, practices = []
     };
   }, [view, isPublic]);
 
-  /* the schedule holds history too, so it is scrolled to today once drawn — and
-     re-finds today when the list itself changes (8686-8705) */
-  const jumpKey = `${view}|${JSON.stringify(shown)}|${room ?? ""}`;
-  useEffect(() => {
-    if (view !== "sched" || jumped.current === jumpKey) return;
-    const rows = Array.from(document.querySelectorAll<HTMLElement>('[id^="doscal-"]'));
-    const n = todayRef.current ?? rows[rows.length - 1];
-    if (!n) return;
-    jumped.current = jumpKey;
-    /* ⚠⚠ NOT WHEN TODAY IS ALREADY ON SCREEN (5 Oct 2026). On a short calendar
-       the jump could not reach its target — the list ends before today's row can
-       sit under the controls — so it scrolled as far as the page went and
-       stopped half way: the Calendar heading slid behind the top bar and a
-       sliver of its card was left peeking under it, on every person's calendar
-       with a week of classes. A row the reader can already see does not need
-       bringing to them; only a today that is BELOW the fold is scrolled to. */
-    const r = n.getBoundingClientRect();
-    const pinned = document.querySelector<HTMLElement>("[data-dos-sticky]");
-    const floor = pinned ? pinned.getBoundingClientRect().bottom : 0;
-    if (r.top >= floor && r.bottom <= window.innerHeight - 24) return;
-    const id = window.requestAnimationFrame(() => dosScrollTo(n, false));
-    return () => window.cancelAnimationFrame(id);
-  }, [jumpKey, view]);
+  /* ⚠⚠ NO JUMP ON OPEN (12 Oct 2026). The schedule used to hold history above
+     today and scroll the page down to reach it, which hid the heading; it starts
+     AT today now, so the page opens at its top and today is the first row. */
 
   /* while the date panel or the menu is open the page beneath does not move (8683) */
   /* ⚠ only the drawer freezes the page now — the mini month opens IN the page
@@ -864,10 +849,17 @@ export function CalendarScreen({ mode, months, todayKey, entries, practices = []
      today — and TODAY ITSELF EVEN WHEN NOTHING IS ON (10 Oct 2026, Google's own
      Schedule: today always has its row, "Nothing planned" when empty, so you can
      see where you are in the list) */
-  const schedDays = months
+  const allSchedDays = months
     .flatMap((m) => Array.from({ length: m.days }, (_, i) => dayKeyFor(m.key, i + 1)))
     .map((dayKey) => ({ dayKey, items: agendaOf(dayKey) }))
     .filter((x) => x.items.length > 0 || (!isPublic && x.dayKey === todayKey));
+  /* ⚠ THE SCHEDULE STARTS AT TODAY (12 Oct 2026, the user: "calendar page should
+     start from top with heading and should start from the current day in
+     schedule at top"). The past is one press away (Earlier days) rather than
+     above the fold with the page scrolled to hide it — which is what pushed the
+     heading off the top. */
+  const pastCount = allSchedDays.filter((x) => x.dayKey < todayKey).length;
+  const schedDays = showPast ? allSchedDays : allSchedDays.filter((x) => x.dayKey >= todayKey);
   const firstToday = schedDays.findIndex((x) => x.dayKey >= todayKey);
 
   return (
@@ -894,7 +886,7 @@ export function CalendarScreen({ mode, months, todayKey, entries, practices = []
               sticky block — the controls start the lower section, so they stick
               for the length of the schedule rather than inside this short box */}
           {/* ⚠ THE HUE HEADING (12 Oct 2026): `TAB_TITLE` over the calendar's hue */}
-          <HueHead title="Calendar" color={TOOL_COLOUR} />
+          <HueHead title="Calendar" color={TOOL_COLOUR} right={feedPath ? <CalendarSync feedPath={feedPath} /> : undefined} />
             {/* ⚠ NO HISTORY CHIP (19 Sep 2026, the user's list). It opened
                 `/stats?tab=history`, which the Stats chip on every hero already
                 opened — the calendar looks forward, and the way back was a
@@ -1214,6 +1206,16 @@ export function CalendarScreen({ mode, months, todayKey, entries, practices = []
           says it. A public schedule keeps its cards and draws none of this. */}
       {view === "sched" ? (
         <div data-testid="cal-view-sched" style={{ paddingTop: isPublic ? 10 : 6 }}>
+          {pastCount > 0 && !showPast ? (
+            <button
+              type="button"
+              data-testid="cal-show-earlier"
+              onClick={() => setShowPast(true)}
+              style={{ display: "block", width: "100%", margin: "2px 0 10px", padding: "9px 12px", borderRadius: 12, border: "1.5px dashed var(--el)", background: "transparent", color: SUB, fontSize: 12, fontWeight: 800, cursor: "pointer", fontFamily: "inherit" }}
+            >
+              ↑ Earlier days · {pastCount}
+            </button>
+          ) : null}
           {schedDays.length === 0 ? nothing : null}
           {schedDays.map(({ dayKey, items }, gi) => {
             const prev = gi > 0 ? schedDays[gi - 1].dayKey : null;

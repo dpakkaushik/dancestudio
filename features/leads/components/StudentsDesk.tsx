@@ -170,8 +170,9 @@ export function StudentsDesk({
               tint={TINT}
               name={s.name}
               photoPath={s.photoPath}
-              href={s.userId ? `/person/${s.userId}` : undefined}
-              hrefLabel={`Open ${s.name}`}
+              /* the face opens the STUDENT'S DETAIL, never their profile (12 Oct 2026) */
+              href={s.userId ? `/business/${businessId}/students/${s.userId}` : undefined}
+              hrefLabel={`${s.name} — student detail`}
               eyebrow={walkIn ? "Walk-in" : "Student"}
               /* ⚠ NOTHING UNDER THE NAME, AND "MEMBER" SAID ONCE (4 Oct 2026, the
                  user: "student cards- no second line below name, member only as a

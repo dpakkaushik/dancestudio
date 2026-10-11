@@ -7,7 +7,6 @@ import { answeredItems, askExpired, askToYouItem, askYouSentItem, closedDraftIte
 import { EnrollButton } from "@/features/classBookings/components/EnrollButton";
 import { DeskHero } from "@/features/businesses/components/biz-kit";
 import { StateChip, TakingRequestsSwitch } from "@/features/classes/components/ClassCardActions";
-import { cardBtn } from "@/features/classes/cardStyles";
 import { buildRequests, isClassAsk } from "@/features/inbox/requestItems";
 import { DeskAddButton } from "@/features/settings/components/settings-kit";
 import { DOS_UI, INK, LILAC, SUB } from "@/lib/design/tokens";
@@ -219,13 +218,8 @@ export default async function MyClassesPage({ searchParams }: { searchParams: Pr
              started one no Cancel (6 Oct) */
           actions={
             group === "past" ? undefined : (
-              <>
-                <EnrollButton sessionId={e.sessionId} isFull={false} isSignedIn mine={{ id: e.id, status: e.status }} priceInr={e.priceInr} shareSlug={e.shareSlug} started={started(e.startsAt)} />
-                {/* D11: the seat into the person's own calendar app */}
-                <a href={`/c/${e.shareSlug}/ics`} download data-testid="add-to-calendar" aria-label={`Add ${e.title} to your calendar`} style={cardBtn(false)}>
-                  Add to calendar
-                </a>
-              </>
+              /* no per-card Add to calendar (12 Oct 2026) — the Calendar page syncs the lot */
+              <EnrollButton sessionId={e.sessionId} isFull={false} isSignedIn mine={{ id: e.id, status: e.status }} priceInr={e.priceInr} shareSlug={e.shareSlug} started={started(e.startsAt)} />
             )
           }
         />
@@ -297,7 +291,7 @@ export default async function MyClassesPage({ searchParams }: { searchParams: Pr
            key on it would throw the person off To do the moment they pressed Accept */
         key={`${tabAsked ?? "auto"}-${roleFromAddress}`}
         mode="person"
-        top={<DeskHero tool="classes" as="h1" margin="0" />}
+        top={<DeskHero tool="classes" as="h1" margin="0" toggle={false} />}
         add={add}
         settings={<TakingRequestsSwitch mode="person" off={inboxOff} />}
         roles={ROLES}

@@ -1,5 +1,6 @@
 import type { CSSProperties, ReactNode } from "react";
 import { INK, TAB_TITLE } from "@/lib/design/tokens";
+import { ViewToggle } from "@/features/shell/components/ViewToggle";
 import { dosToolPaint } from "@/lib/format/styleInk";
 
 /** The business desks' shared chrome, lifted from the prototype's BizShell and
@@ -197,7 +198,7 @@ export const SheetHandle = () => (
  *  classes, Your events and the not-built desks had a 17px text line where the
  *  other desks had this card. `as="h1"` makes the title the page's heading on
  *  the pages whose only heading it is. */
-export function DeskHero({ tool, margin = "12px 0 0", as = "div" }: { tool: DosToolKey; margin?: string; as?: "div" | "h1" }) {
+export function DeskHero({ tool, margin = "12px 0 0", as = "div", toggle = true }: { tool: DosToolKey; margin?: string; as?: "div" | "h1"; toggle?: boolean }) {
   const T = DOS_TOOLS[tool];
   /* ⚠ NO COLOUR BAR (12 Oct 2026, the user: "from all tool page headings use
      the heading font style used for Discover and inbox in same size and remove
@@ -209,7 +210,10 @@ export function DeskHero({ tool, margin = "12px 0 0", as = "div" }: { tool: DosT
      the caller's BOTTOM margin is kept. */
   const parts = margin.trim().split(/\s+/);
   const bottom = parts.length >= 3 ? parts[2] : parts.length === 2 ? parts[0] : parts[0];
-  return <HueHead title={T.name} color={T.c} as={as} bottom={bottom} />;
+  /* the card · list switch on the heading's own line (12 Oct 2026) — draws
+     nothing on a page that is not a tool's list; `toggle={false}` where the
+     heading already has a `HeadCorner`, which carries it beside Answered */
+  return <HueHead title={T.name} color={T.c} as={as} bottom={bottom} right={toggle ? <ViewToggle /> : undefined} />;
 }
 
 /** THE ONE HUE HEADING (12 Oct 2026). `DeskHero` for a tool, and the same object

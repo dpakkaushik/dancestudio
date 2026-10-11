@@ -15,6 +15,7 @@ import type { Profile, ProfileRole } from "@/types/profile";
 import type { Business } from "@/types/business";
 import { setToolOrderAction } from "@/features/home/server-actions/toolOrder";
 import { viewKey, viewToolOf, type ViewMode, type ViewTool } from "@/features/shell/viewMode";
+import { ViewModeContext } from "@/features/shell/components/ViewToggle";
 
 /* ⚠ A SWIPE IS NOT A TAP (2 Oct 2026, the user: "swiping on top right profile
    switches also switches profile"). The switcher sits at the screen's right edge,
@@ -678,36 +679,9 @@ export function AppChrome({
           </span>
         </span>
         <span style={{ display: "flex", gap: 7, flexShrink: 0 }}>
-          {/* CARD · LIST — drawn only on a tool's own list page (12 Oct 2026) */}
-          {viewMode && !adminOnly ? (
-            <span role="group" aria-label="View" data-testid="view-toggle" style={{ display: "inline-flex", alignItems: "center", gap: 2, height: 46, padding: 3, borderRadius: 23, boxSizing: "border-box", background: "var(--chip-bg)", border: "1.5px solid var(--chip-line)" }}>
-              {(["card", "list"] as const).map((m) => {
-                const on = viewMode === m;
-                return (
-                  <button
-                    key={m}
-                    type="button"
-                    aria-label={m === "card" ? "Card view" : "List view"}
-                    aria-pressed={on}
-                    data-testid={`view-${m}`}
-                    onClick={() => pickView(m)}
-                    style={{ width: 34, height: 36, borderRadius: 18, border: "none", padding: 0, cursor: "pointer", display: "inline-flex", alignItems: "center", justifyContent: "center", background: on ? INK : "transparent", color: on ? "var(--solid)" : INK, transition: "background .18s, color .18s" }}
-                  >
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                      {m === "card" ? (
-                        <>
-                          <rect x="4" y="4" width="16" height="7" rx="2" />
-                          <rect x="4" y="14" width="16" height="7" rx="2" />
-                        </>
-                      ) : (
-                        <path d="M8 6h12M8 12h12M8 18h12M4 6h.01M4 12h.01M4 18h.01" />
-                      )}
-                    </svg>
-                  </button>
-                );
-              })}
-            </span>
-          ) : null}
+          {/* ⚠ CARD · LIST LEFT THE BAR (12 Oct 2026, the user: "on top right with
+              the heading of the page not on top bar") — `ViewToggle`, through
+              `ViewModeContext` below */}
           {/* the bell, with what is unread on it (prototype 19252-19257) — a real
               route, so the badge is whatever the server counted for this render.
               Not for an admin-only account: notifications belong to profiles. */}
@@ -947,7 +921,7 @@ export function AppChrome({
           boxSizing: "border-box",
         }}
       >
-        {children}
+        <ViewModeContext.Provider value={{ mode: adminOnly ? null : viewMode, pick: pickView }}>{children}</ViewModeContext.Provider>
       </div>
 
       {/* ── the floating pill bar — a tab draws the main one, an entity's home its own

@@ -355,8 +355,9 @@ export function BusinessHub({
              page of that studio. remove public page button") — the rest of the
              card still opens its home. The label stays clear of "open the studio",
              which the card's own link carries (Playwright matches by substring). */
-          href={`/studio/${t.id}`}
-          hrefLabel={`${t.name} — view its profile page`}
+          /* ⚠ NO PROFILE DOOR ON THE FACE (12 Oct 2026, the user: "some cards have
+             profile pics but should not take to profile page from there should take
+             to detail inside the cards always") — the whole card opens the studio */
           eyebrow="Studio · yours"
           afterName={t.verifiedAt ? <VerifiedTick size={15} /> : null}
           sub={[t.area, t.city].filter(Boolean).join(", ") || null}

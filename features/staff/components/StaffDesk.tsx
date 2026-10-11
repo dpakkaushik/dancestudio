@@ -298,7 +298,7 @@ export function StaffDesk({
           place and the shape Classes gives its own — no gear: this desk's
           switches are the PEOPLE asked, not this business's */}
       <div style={{ position: "relative", margin: "0 0 12px" }}>
-        <DeskHero tool="team" as="h1" margin="0" />
+        <DeskHero tool="team" as="h1" margin="0" toggle={false} />
         {col === "artists" && artistTeams ? (
           <InviteHeadButtons
             key="artists"
@@ -466,8 +466,11 @@ export function StaffDesk({
                     eyebrowTint={L.colour}
                     name={m.name}
                     photoPath={m.avatarPath}
-                    href={`/person/${m.userId}`}
-                    hrefLabel={`${m.name} — their profile`}
+                    /* ⚠ THE FACE OPENS THE MEMBER'S DETAIL, NOT THEIR PROFILE (12 Oct
+                       2026, the user: "should take to detail inside the cards always") —
+                       only where Member Detail is offered; elsewhere it is no door */
+                    href={manageable ? `/business/${businessId}/staff/${m.userId}` : undefined}
+                    hrefLabel={manageable ? `${m.name} — member detail` : undefined}
                     eyebrow={`${MEMBER_ROLE_WORD[m.role]} · ${KIND_WORD[kindOf(m.isArtist)]}`}
                     /* ⚠ NO DANCE STYLES ON A TEAM CARD (4 Oct 2026, the user) — the city alone */
                     sub={m.city || null}

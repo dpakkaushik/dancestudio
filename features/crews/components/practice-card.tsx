@@ -65,8 +65,8 @@ export function PracticeCard({
         tint={TINT}
         name={p.crewName}
         photoPath={p.crewPhotoPath}
-        href={`/crew/${p.crewId}`}
-        hrefLabel={`${p.crewName} — the crew's page`}
+        /* no profile door on a card's face (12 Oct 2026, the user: "should take to
+           detail inside the cards always") */
         eyebrow={`Crew practice${p.crewStyle ? ` · ${p.crewStyle}` : ""}`}
         sub={p.iLead ? "You lead this crew" : "You dance in this crew"}
         right={

@@ -234,6 +234,28 @@ export function DosPosterSleeve({
         background: "var(--bg)",
       }}
     >
+      {/* ⚠ THE BACKDROP IS A SQUIRCLE THAT FOLDS INTO THE PAGE (12 Oct 2026, the
+          user: "poster background should be squircle and merging when swiping up …
+          should not look ugly"). It stands inset from the edges with 30px corners,
+          and as the sheet slides up over it the squircle draws inward, softens its
+          corners and fades — a card going back into the page rather than a strip
+          being covered. Transform and opacity only, so it costs no layout. */}
+      <span
+        aria-hidden="true"
+        data-testid="class-poster-backdrop"
+        style={{
+          position: "absolute",
+          inset: "6px 12px 4px",
+          borderRadius: 30,
+          overflow: "hidden",
+          pointerEvents: "none",
+          transform: `scale(${(1 - heroGone * 0.08).toFixed(3)})`,
+          transformOrigin: "50% 0%",
+          opacity: Math.max(0, 1 - heroGone * 1.1),
+          border: "1.5px solid var(--el)",
+          willChange: "transform, opacity",
+        }}
+      >
       {/* the cover, blown up and blurred, is the light source */}
       <span
         aria-hidden="true"
@@ -261,9 +283,9 @@ export function DosPosterSleeve({
           inset: 0,
           pointerEvents: "none",
           background: `linear-gradient(180deg, ${col}5e 0%, ${col}38 58%, ${col}10 100%)`,
-          opacity: 1 - heroGone,
         }}
       />
+      </span>
       <div
         style={{
           position: "relative",
