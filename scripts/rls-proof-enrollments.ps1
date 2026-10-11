@@ -135,6 +135,21 @@ try {
 "10. A priced class refuses this door: $paidMsg $(if ($paidMsg -match 'takes payment') {'-- OK'} else {'-- !!! FAILED !!!'})"
 if ($paidMsg -notmatch "takes payment") { $pass = $false }
 
+# 11. 11 Oct 2026: THE PEOPLE WHO RUN A CLASS DO NOT BOOK A SEAT ON IT
+#     (20261016090000 - book_class_session says so first, and a BEFORE INSERT
+#     trigger on class_bookings keeps it for every other door). A owns the studio.
+$ownMsg = ""
+try {
+  Invoke-RestMethod -Method Post -Uri "$base/rest/v1/rpc/book_class_session" -Headers (Api $a.access_token) -Body (@{ p_session_id = $sid } | ConvertTo-Json) | Out-Null
+  $ownMsg = "(went through)"
+} catch {
+  $body = $_.ErrorDetails.Message
+  if (-not $body) { try { $st = $_.Exception.Response.GetResponseStream(); $st.Position = 0; $body = (New-Object System.IO.StreamReader($st)).ReadToEnd() } catch {} }
+  try { if ($body) { $ownMsg = ($body | ConvertFrom-Json).message } } catch { $ownMsg = $body }
+}
+"11. The owner books their own class: $ownMsg $(if ($ownMsg -match 'not yours to book') {'-- REFUSED, OK'} else {'-- !!! FAILED !!!'})"
+if ($ownMsg -notmatch "not yours to book") { $pass = $false }
+
 # cleanup: the studio cascades its class, session and class_bookings; the third person takes their profile
 try { Invoke-RestMethod -Method Delete -Uri "$base/rest/v1/businesses?id=eq.$($ta.id)" -Headers $svcH | Out-Null } catch {}
 try { Invoke-RestMethod -Method Delete -Uri "$base/auth/v1/admin/users/$($cUser.id)" -Headers $svcH | Out-Null } catch {}

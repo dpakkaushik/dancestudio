@@ -173,6 +173,10 @@ const valueOf = (page, label) => page.getByLabel(label).inputValue();
        their OWN class is seated confirmed by `ask_class_person` itself (26 Sep),
        so this is one call and no answer. */
     await rpc(owner.h, "ask_class_person", { p_class_id: cls.id, p_user_id: owner.id, p_kind: "artist", p_pay_per_session_inr: 0 });
+    /* 11 Oct 2026: the class is born with auto_publish on, so the owner's own
+       confirmed row PUBLISHES it on the spot (zz_publish_when_person_confirmed);
+       the PATCH below is a no-op kept so a class created the old way still gets
+       there. A status change stays allowed on a published class. */
     await patch(owner.h, `classes?id=eq.${cls.id}`, { status: "published" });
 
     const session = (await rows(owner.h, `class_sessions?class_id=eq.${cls.id}&select=id&deleted_at=is.null`))[0];
@@ -205,10 +209,20 @@ const valueOf = (page, label) => page.getByLabel(label).inputValue();
     check(classHead.text === "Hip-Hop", `and it is the class's own name — "${classHead.text}"`);
 
     /* ── 2. SCAN TO CHECK IN ────────────────────────────────────────────────── */
+    /* 11 Oct 2026: ONE DOOR CONTROL (test id `door`) — a name field and one
+       button. With the field EMPTY the button reads "Scan a code to check
+       somebody in" (`scan-check-in`) and opens the scan sheet; with a name typed
+       it books a walk-in and checks them in (section 3b). */
     await page.getByRole("button", { name: "Attendance", exact: true }).click();
-    const scanBtn = page.getByTestId("scan-check-in");
+    const door = page.getByTestId("door");
+    await door.waitFor({ timeout: 20000 });
+    check((await door.getByTestId("door-name").count()) === 1, "the register carries ONE door: a name field…");
+    const scanBtn = door.getByTestId("scan-check-in");
     await scanBtn.waitFor({ timeout: 20000 });
-    check(true, "the register offers Scan to check in while the session is live");
+    check(
+      (await page.getByRole("button", { name: "Scan a code to check somebody in", exact: true }).count()) === 1,
+      "…and, with the field empty, its button scans a code — while the session is live"
+    );
 
     await scanBtn.click();
     const sheet = page.getByRole("dialog", { name: "Scan a profile" });
@@ -282,19 +296,34 @@ const valueOf = (page, label) => page.getByLabel(label).inputValue();
     /* ── 3b. THE WALK-IN WITH NO ACCOUNT AT ALL (29 Sep 2026, shape 2) ───────
        ⚠ THE NAME ROW IS GONE FROM THE REGISTER (4 Oct 2026, the user: "remove
        somebody at the door and name first bar from attendance in class detail").
-       The DOOR stays — `add_class_walk_in` is untouched, and a walk-in already
-       on a register is drawn, paid and removed exactly as before — so this
-       section asserts the row's absence and then plants its walk-in through the
-       database's own door, as the owner, to keep driving what the register
-       still does with one. */
+       The DOOR stays — `add_class_walk_in` is untouched (11 Oct 2026: reached
+       through `book_at_the_door` with a name now), and a walk-in already
+       on a register is drawn, paid and removed exactly as before. 11 Oct 2026:
+       the name is typed into the one door control again (`door-name`), so this
+       section drives the walk-in through the SCREEN once more. */
     const walkName = `Walk In ${stamp}`;
+    /* 11 Oct 2026: the old name row (`walk-in-name` / `walk-in-add`) is gone for
+       good; the name is typed into the ONE door's field and the same button
+       books AND checks in, in one press */
     check(
       (await page.getByTestId("walk-in-name").count()) === 0 && (await page.getByTestId("walk-in-add").count()) === 0,
-      "⚠ the register carries no 'somebody at the door' name row any more"
+      "the old 'somebody at the door' name row is gone — the door's own field replaces it"
     );
-    const walkSeat = await rpc(owner.h, "add_class_walk_in", { p_session_id: session.id, p_name: walkName });
-    await rpc(owner.h, "check_in", { p_class_booking_id: walkSeat.id });
-    check(Boolean(walkSeat && walkSeat.id), "⚠⚠ somebody with NO DanceOS account is recorded at the door by name — through the database's door");
+    /* the door is ONE rpc, `book_at_the_door(session, user, name)`; an empty call
+       is refused in words before it touches anything */
+    let emptyDoor = "ACCEPTED";
+    try {
+      await rpc(owner.h, "book_at_the_door", { p_session_id: session.id, p_user_id: null, p_name: null });
+    } catch (e) {
+      emptyDoor = e.message;
+    }
+    check(/scan a code or type a name/.test(emptyDoor), `⚠ the door refuses a call with neither a person nor a name (${emptyDoor.slice(0, 80)})`);
+    const doorName = page.getByTestId("door").getByLabel("Name of somebody at the door");
+    await doorName.waitFor({ timeout: 20000 });
+    await doorName.fill(walkName);
+    await page.getByRole("button", { name: `Check ${walkName} in at the door`, exact: true }).click();
+    await page.getByText(walkName, { exact: false }).first().waitFor({ timeout: 20000 });
+    check(true, "⚠⚠ somebody with NO DanceOS account is recorded at the door by name — typed into the door, one press");
 
     /* the database's own answer, not the screen's */
     const wRow = await rows(
@@ -375,7 +404,7 @@ const valueOf = (page, label) => page.getByLabel(label).inputValue();
     /* the walk-in planted through the database's door (the register's name row
        is gone since 4 Oct 2026 — see 3b) */
     const payName = `Cash Walk ${stamp}`;
-    const paySeat = await rpc(owner.h, "add_class_walk_in", { p_session_id: paidSession.id, p_name: payName });
+    const paySeat = await rpc(owner.h, "book_at_the_door", { p_session_id: paidSession.id, p_user_id: null, p_name: payName }); // 11 Oct 2026: the one door
     await rpc(owner.h, "check_in", { p_class_booking_id: paySeat.id });
     await page.goto(`${BASE}/c/${paidSlug}`, { waitUntil: "networkidle" });
     await page.getByRole("button", { name: "Attendance", exact: true }).click();
@@ -494,34 +523,44 @@ const valueOf = (page, label) => page.getByLabel(label).inputValue();
     check((await valueOf(page, "Price per session")) === "0", "⚠ a field left empty settles at its floor on blur — it never means one thing and says another");
     await price.fill("0");
 
-    /* ⚠ THE PAY FIELD ONLY EXISTS ONCE THERE IS SOMEBODY TO PAY — it is drawn
-       inside the teacher block, so the person is picked first. Found by running
-       this: the field simply was not on the page yet. */
+    /* 11 Oct 2026: the WHO switch is "You" (`self-teacher`, "I take this class
+       myself") / "Somebody else" ("Somebody else takes this class"); the picker
+       is drawn under the second. Pressed only if it is not already the one on. */
+    // TODO(11 Oct): the picker's own field and rows are unconfirmed — label "Search DanceOS for who takes this class", button "{name} takes this class".
+    await page.getByRole("button", { name: "Somebody else takes this class" }).click().catch(() => {});
     await page.getByLabel("Search DanceOS for who takes this class").fill(stranger.name);
     await page.getByRole("button", { name: `${stranger.name} takes this class` }).click();
 
-    const pay = page.getByLabel("What a session pays the artist");
-    await pay.waitFor({ timeout: 20000 });
-    await pay.fill("");
-    check((await valueOf(page, "What a session pays the artist")) === "", "⚠ the session-pay field can be CLEARED too");
-    await pay.fill("900");
-    check((await valueOf(page, "What a session pays the artist")) === "900", `the pay reads exactly 900 (read "${await valueOf(page, "What a session pays the artist")}")`);
-    await pay.fill("0");
-    await pay.blur();
+    /* 11 Oct 2026: the form carries NO pay field any more — what a session pays
+       somebody is the Team desk's ("What a session pays {name}", set_member_pay),
+       and an ask with no rate copies the seat's. The check is the absence. */
+    check(
+      (await page.getByLabel("What a session pays the artist").count()) === 0,
+      "⚠ the class form has no session-pay field — pay lives on the Team desk now"
+    );
 
-    /* ⚠ THE WORD: "Send request", not "Save & ask" — what the person pressing it
-       is DOING is asking somebody; the draft is the mechanism, not the act. */
-    const sendBtn = page.getByRole("button", { name: "Send request", exact: true });
+    /* 11 Oct 2026: and the switch that publishes it on the last yes, ON by default */
+    check(
+      (await page.getByText("Publish as soon as everyone says yes", { exact: false }).count()) >= 1,
+      "the form carries \"Publish as soon as everyone says yes\" (on by default)"
+    );
+
+    /* 11 Oct 2026: THE WORD IS "Save" — one form, one button; who is asked and
+       whether it publishes are the form's fields, not its button's name. */
+    const sendBtn = page.getByRole("button", { name: "Save", exact: true });
     await sendBtn.waitFor({ timeout: 20000 });
-    check(true, "the form's own button reads Send request");
-    check((await page.getByRole("button", { name: /Save & ask/ }).count()) === 0, "…and nothing anywhere still says Save & ask");
+    check(true, "the form's own button reads Save");
+    check(
+      (await page.getByRole("button", { name: /Save & ask|Send request/ }).count()) === 0,
+      "…and nothing anywhere still says Save & ask or Send request"
+    );
     await sendBtn.click();
-    const confirmSheet = page.getByRole("dialog", { name: "Send this request?" });
+    const confirmSheet = page.getByRole("dialog", { name: "Save this class?" });
     await confirmSheet.waitFor({ timeout: 20000 });
-    check(true, "the confirm sheet asks the same question the button asked");
-    await confirmSheet.getByRole("button", { name: "Send request", exact: true }).click();
+    check(true, "the confirm sheet asks Save this class?");
+    await confirmSheet.getByRole("button", { name: "Save", exact: true }).click();
     await page.waitForURL(/\/classes$/, { timeout: 30000 });
-    check(true, "the request is sent and the register is underneath it");
+    check(true, "the class is saved, the request is sent, and the register is underneath it");
 
     /* ── 6. AS SOON AS THE TEACHER CONFIRMS, THEY HOLD THE REGISTER ──────────
        28 Sep 2026, the user: "as soon as the teacher confirms the class they
@@ -532,7 +571,15 @@ const valueOf = (page, label) => page.getByLabel(label).inputValue();
     check(Boolean(asked), "the studio's request reached the person by name");
     check(asked.can_attendance === true, "⚠⚠ the claim is BORN holding attendance — the rule is on the row, so every door that makes one gets it");
     await rpc(stranger.h, "respond_to_class_ask", { p_class_person_id: asked.id, p_accept: true });
-    await patch(owner.h, `classes?id=eq.${asked.class_id}`, { status: "published" });
+    /* 11 Oct 2026: a studio class publishes ITSELF on its teacher's yes
+       (auto_publish, on by default on the form — "Publish as soon as everyone
+       says yes"); the owner no longer presses Publish. */
+    const afterYes = (await rows(owner.h, `classes?id=eq.${asked.class_id}&select=status`))[0];
+    check(afterYes && afterYes.status === "published", `⚠⚠ the teacher's yes PUBLISHED the class on its own (status "${afterYes && afterYes.status}")`);
+    /* 11 Oct 2026: and accepting made NO visiting_faculty seat — the register
+       below opens off the class row alone */
+    const vfSeat = await rows(H_SERVICE, `business_members?business_id=eq.${studio.id}&user_id=eq.${stranger.id}&deleted_at=is.null&select=member_role`);
+    check(vfSeat.length === 0, `⚠ no seat on the studio's team was made by the yes (found ${vfSeat.length})`);
     const slug2 = (await rows(owner.h, `classes?id=eq.${asked.class_id}&select=share_slug`))[0].share_slug;
 
     /* the database's own answer first, then the screen's */

@@ -2,7 +2,8 @@
 
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
-import { updateBusinessProfileAction } from "@/features/settings/server-actions/plans";
+import { columnTab, columnTrack } from "@/components/ui/ColumnTabs";
+import { setRefundWindowAction, updateBusinessProfileAction } from "@/features/settings/server-actions/plans";
 import type { MethodUse } from "@/repositories/invoices";
 import type { AcceptedMethods, Business } from "@/types/business";
 import { BizPage, BizToast, bizBtn, bizCard, dayWords, eyebrow, rupees } from "./settings-kit";
@@ -66,9 +67,26 @@ const ACCEPT_ROWS: Array<[keyof AcceptedMethods, string]> = [
   ["bank", "Bank transfer"],
 ];
 
-export function PaymentsScreen({ side, methods, business = null, canEdit = false }: { side: "mine" | "business"; methods: MethodUse[]; business?: Business | null; canEdit?: boolean }) {
+export function PaymentsScreen({
+  side,
+  methods,
+  business = null,
+  canEdit = false,
+  refundWindowHours = 12,
+}: {
+  side: "mine" | "business";
+  methods: MethodUse[];
+  business?: Business | null;
+  canEdit?: boolean;
+  /** THE STUDIO'S OWN REFUND WINDOW (11 Oct 2026, `businesses.refund_window_hours`) */
+  refundWindowHours?: number;
+}) {
   const router = useRouter();
   const [pv, setPv] = useState<"pay" | "ver">("pay");
+  /* ⚠ TEXT-BACKED (C82): an emptied box stays empty while the next digit is typed */
+  const [windowText, setWindowText] = useState(String(refundWindowHours));
+  const [savedWindow, setSavedWindow] = useState(refundWindowHours);
+  const windowValue = Math.min(168, Math.max(0, Number(windowText) || 0));
   const [add, setAdd] = useState<Kind | null>(null);
   const [toast, setToast] = useState<string | null>(null);
   const [pending, start] = useTransition();
@@ -78,6 +96,18 @@ export function PaymentsScreen({ side, methods, business = null, canEdit = false
   };
   const isBiz = side === "business" && business !== null;
   const verified = Boolean(business?.verifiedAt);
+
+  const saveWindow = () => {
+    if (!business || !canEdit || windowValue === savedWindow) return;
+    start(async () => {
+      const out = await setRefundWindowAction({ businessId: business.id, hours: windowValue });
+      if (out.error || out.hours == null) return fire(out.error ?? "Could not save the refund window");
+      setSavedWindow(out.hours);
+      setWindowText(String(out.hours));
+      fire(`Refund window set to ${out.hours} ${out.hours === 1 ? "hour" : "hours"}`);
+      router.refresh();
+    });
+  };
 
   const flip = (k: keyof AcceptedMethods) => {
     if (!business) return;
@@ -117,9 +147,10 @@ export function PaymentsScreen({ side, methods, business = null, canEdit = false
       grad="linear-gradient(135deg,#22C55E,#3B82F6)"
       top={
         /* ⚠ THE SEGMENT IS IN THE TOP SECTION (3 Oct 2026, C116) */
-        <div style={{ display: "flex", gap: 2, background: "var(--el)", borderRadius: 12, padding: 3 }}>
+        /* ⚠ ONE COLUMN STYLE UNDER HOME (11 Oct 2026, `ColumnTabs`) */
+        <div style={columnTrack()}>
           {([["pay", "Payments"], ...(isBiz ? [["ver", "Verification"]] : [])] as Array<["pay" | "ver", string]>).map(([k, l]) => (
-            <button type="button" key={k} aria-pressed={pv === k} onClick={() => setPv(k)} style={{ flex: 1, textAlign: "center", padding: "8px 2px", borderRadius: 9, cursor: "pointer", fontSize: 11.5, fontWeight: 800, border: "none", fontFamily: "inherit", background: pv === k ? "var(--solid)" : "transparent", color: pv === k ? "var(--text)" : "var(--sub)", boxShadow: pv === k ? "0 1px 4px rgba(0,0,0,.3)" : "none" }}>
+            <button type="button" key={k} aria-pressed={pv === k} onClick={() => setPv(k)} style={columnTab(pv === k)}>
               {l}
             </button>
           ))}
@@ -241,6 +272,47 @@ export function PaymentsScreen({ side, methods, business = null, canEdit = false
                 );
               })}
               <div style={{ fontSize: 10, color: "var(--muted)", marginTop: 8, lineHeight: 1.5 }}>What is switched on is printed on your public page. Cards and UPI through the app are Cashfree&apos;s; cash and bank transfer are recorded at the desk.</div>
+            </div>
+          ) : null}
+
+          {/* ── THE STUDIO'S OWN REFUND WINDOW (11 Oct 2026, `set_refund_window`) —
+              the owner's; anybody else running the desk reads the number ── */}
+          {isBiz ? (
+            <div style={{ ...bizCard, marginTop: 10 }} data-testid="refund-window">
+              <div style={{ fontSize: 9.5, fontWeight: 900, letterSpacing: 0.8, color: "var(--muted)", marginBottom: 8 }}>REFUND WINDOW</div>
+              {canEdit ? (
+                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                  <span style={{ flex: 1, minWidth: 0, display: "flex", alignItems: "center", gap: 6, border: "1.5px solid var(--el)", borderRadius: 12, padding: "0 12px", background: "var(--card)" }}>
+                    <input
+                      type="text"
+                      inputMode="numeric"
+                      aria-label="Refund window in hours"
+                      data-testid="refund-window-hours"
+                      value={windowText}
+                      disabled={pending}
+                      onChange={(e) => setWindowText(e.target.value.replace(/[^\d]/g, "").slice(0, 3))}
+                      onBlur={() => setWindowText(String(windowValue))}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") saveWindow();
+                      }}
+                      style={{ flex: 1, minWidth: 0, border: "none", outline: "none", background: "transparent", color: "var(--text)", fontSize: 15, fontWeight: 800, padding: "10px 0", fontFamily: "inherit", textTransform: "none" }}
+                    />
+                    <span aria-hidden="true" style={{ fontSize: 12, fontWeight: 800, color: "var(--sub)" }}>
+                      hours
+                    </span>
+                  </span>
+                  <button type="button" data-testid="refund-window-save" aria-label="Save the refund window" disabled={pending || windowValue === savedWindow} onClick={saveWindow} style={{ ...bizBtn, flex: "none", width: "auto", padding: "10px 16px", opacity: windowValue === savedWindow ? 0.5 : 1 }}>
+                    Save
+                  </button>
+                </div>
+              ) : (
+                <div style={{ fontSize: 15, fontWeight: 900 }}>
+                  {savedWindow} {savedWindow === 1 ? "hour" : "hours"}
+                </div>
+              )}
+              <div style={{ fontSize: 10.5, color: "var(--sub)", marginTop: 8, lineHeight: 1.5 }}>
+                A learner cancelling at least this many hours before a class is refunded automatically; later, you decide.
+              </div>
             </div>
           ) : null}
         </>

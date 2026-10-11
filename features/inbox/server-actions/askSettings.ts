@@ -7,8 +7,9 @@ import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { setMyInboxOff, setRoomRequests } from "@/repositories/askSettings";
 
 /** The Inbox's request and invite settings (3 Oct 2026). The RPCs decide who
- *  may change what — a person their own kinds, a studio's owner its room
- *  requests — so these validate the shape and pass it on. */
+ *  may change what — a person their own kinds, the people who run a studio
+ *  (owner or manager, since `20261016090000`) its room requests — so these
+ *  validate the shape and pass it on. */
 
 async function requireUser() {
   const supabase = await createSupabaseServerClient();
@@ -32,6 +33,8 @@ export async function setInboxOffAction(input: { off: string[] }): Promise<{ err
   try {
     await setMyInboxOff(supabase, parsed.data.off);
     revalidatePath("/inbox");
+    /* the Classes gear's "Taking requests" switch writes the same list (11 Oct 2026) */
+    revalidatePath("/my-classes");
     return { error: null };
   } catch (error: unknown) {
     return { error: error instanceof Error ? error.message : "Could not save that" };
@@ -49,6 +52,7 @@ export async function setRoomRequestsAction(input: { businessId: string; on: boo
   try {
     await setRoomRequests(supabase, parsed.data.businessId, parsed.data.on);
     revalidatePath(`/business/${parsed.data.businessId}/inbox`);
+    revalidatePath(`/business/${parsed.data.businessId}/classes`);
     return { error: null };
   } catch (error: unknown) {
     return { error: error instanceof Error ? error.message : "Could not save that" };

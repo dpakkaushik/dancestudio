@@ -6,7 +6,7 @@ import { findClassById } from "@/repositories/classes";
 import { findRoomsByBusiness } from "@/repositories/rooms";
 import { findBusinessName, findMyMemberships } from "@/repositories/businesses";
 
-/** Edit class — the owner alone (18 Sep 2026), like Add class. */
+/** Edit class — the owner or a manager (11 Oct 2026), like Add class. */
 export default async function EditClassPage({
   params,
 }: {
@@ -28,13 +28,20 @@ export default async function EditClassPage({
   }
   const { business, memberRole } = membership;
   /* ⚠ the hosting row's redirect went with events (29 Sep 2026) */
-  if (memberRole !== "owner") {
+  /* 11 Oct 2026: a manager edits drafts too — everything but money and people */
+  if (memberRole !== "owner" && memberRole !== "manager") {
     redirect(business.type === "artist_page" ? "/my-classes" : `/business/${businessId}/classes`);
   }
 
   const danceClass = await findClassById(supabase, classId);
   if (!danceClass || danceClass.businessId !== businessId) {
     redirect(business.type === "artist_page" ? "/my-classes?show=manage" : `/business/${businessId}/classes`);
+  }
+  /* ⚠ A PUBLISHED CLASS IS FIXED (11 Oct 2026, the user: "should not be able to
+     edit a published class only delete it") — the database refuses it too
+     (`20261015090000`), so an old Edit link lands on the class itself */
+  if (danceClass.status !== "draft") {
+    redirect(`/c/${danceClass.shareSlug}`);
   }
 
   /* ⚠ `findDiscoverCities` LEFT THIS LIST WITH THE MAP PICKER (20 Sep 2026) —
@@ -56,10 +63,9 @@ export default async function EditClassPage({
       venueName={venueName}
       rooms={rooms}
       classPeople={classPeople}
-      isOwner
-      /* 26 Sep 2026: the owner may take their own class; an artist's class in a studio they own needs no request */
-      meId={business.type === "studio" ? user.id : null}
-      ownedStudioIds={memberships.filter((m) => m.memberRole === "owner" && m.business.type === "studio").map((m) => m.business.id)}
+      /* the person saving may take the class themselves (11 Oct 2026, both kinds); an artist's class in a studio they own needs no request */
+      meId={user.id}
+      ownedStudioIds={memberships.filter((m) => (m.memberRole === "owner" || m.memberRole === "manager") && m.business.type === "studio").map((m) => m.business.id)}
       studioPlace={[business.area, business.city].filter(Boolean).join(", ")}
       suggestedStyles={business.styles}
     />

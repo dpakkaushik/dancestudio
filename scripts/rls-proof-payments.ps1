@@ -125,7 +125,9 @@ try {
   # 7. the studio sees its money, the public sees none
   $ordA = Get-Rows (Api $a.access_token) "orders?id=eq.$($o1.id)&select=id"
   $ordAnon = Get-Rows $anonH "orders?select=id"
-  Check 7 "Studio member reads the order ($($ordA.Count)); anon reads none ($($ordAnon.Count))" (($ordA.Count -eq 1) -and ($ordAnon.Count -eq 0))
+  # 11 Oct 2026: money is read by the people RUNNING the business (owner, manager)
+  # and whoever settles a class's refunds - not every seat (20261016090000). A is the owner.
+  Check 7 "Studio owner reads the order ($($ordA.Count)); anon reads none ($($ordAnon.Count))" (($ordA.Count -eq 1) -and ($ordAnon.Count -eq 0))
 
   # 8. a capture landing on a full class refunds instead of overbooking
   $c2 = New-Class (Api $a.access_token) $ta.id "One Seat $stamp" 300 1 7 $b.user.id

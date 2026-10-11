@@ -8,7 +8,9 @@ import { askClassPerson, findClassPeopleByClass, setClassPersonPay, withdrawClas
  *  class page, by the owner or the teacher.
  *
  *  `artistPayInr` is only ever sent by an OWNER — the RPCs refuse a rate from
- *  anybody else. */
+ *  anybody else. ⚠ The class form sends none since 11 Oct 2026: pay is off the
+ *  form, and `ask_class_person` gives an ask with no rate the SEAT's own
+ *  (`business_members.pay_per_session_inr`). */
 export interface ClassPeopleIntent {
   artistUserId: string | null;
   artistPayInr?: number;
@@ -25,7 +27,8 @@ export interface ClassPeopleIntent {
  *
  *  ⚠⚠ UNLESS THE CLASS ITSELF CHANGED (11 Oct 2026, the user: "if anything has
  *  been edited should send a new request for confirmation"). A yes was a yes to
- *  a date, a time, a room and a price; when any of those moves, `reconfirm` is
+ *  a time and a place (since 11 Oct 2026 only those — the start, the end, the
+ *  room, the studio, the map link; the action decides); when one moves, `reconfirm` is
  *  true and everybody on the class who is not the person saving it is ASKED
  *  AGAIN — the teacher with their rate and register job, every assistant with
  *  their powers. `ask_class_person` closes the old row and opens a fresh one, so
@@ -36,7 +39,7 @@ export async function reconcileClassPeople(
   supabase: SupabaseClient,
   classId: string,
   intent: ClassPeopleIntent | null,
-  opts: { reconfirm?: boolean; meId?: string } = {}
+  opts: { reconfirm?: boolean; meId?: string; keepRates?: boolean } = {}
 ): Promise<void> {
   const current = await findClassPeopleByClass(supabase, classId);
   const teacher = current.find((c) => c.kind === "artist") ?? null;
@@ -47,7 +50,10 @@ export async function reconcileClassPeople(
       kind: p.kind,
       canAttendance: p.canAttendance,
       canRefunds: p.canRefunds,
-      payPerSessionInr: pay ?? p.payPerSessionInr,
+      // 11 Oct 2026: the OWNER's re-ask keeps the rate this class already pays;
+      // anybody else's sends none and the seat's own rate is used, because the
+      // RPC refuses a rate from anybody but the owner.
+      payPerSessionInr: pay ?? (opts.keepRates ? p.payPerSessionInr : 0),
     });
 
   if (opts.reconfirm) {

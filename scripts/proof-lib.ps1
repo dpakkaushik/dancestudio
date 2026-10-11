@@ -324,7 +324,18 @@ function Subscribe-Studio($tenantId) {
 # The teacher is a PERSON - any account is one since 26 Sep 2026 (the organization
 # login is retired); a phone-based proof still teaches with its learner so the
 # owner's own record stays what the proof set up.
+#
+# 11 Oct 2026: A CLASS WITH NOTHING LEFT TO WAIT FOR PUBLISHES ITSELF
+# (classes.auto_publish, default on, migration 20261016090000) - and the trigger
+# behind it fires on a confirmed artist row WHOEVER writes it, the service role
+# included. So seating a teacher here would publish the class on the spot and
+# every "the owner presses publish" check after it would be proving the trigger
+# instead. Seat-Teacher switches the class's auto_publish OFF first (service
+# role; auto_publish is not one of the fields a published class keeps fixed), so
+# the harness keeps its explicit Publish. rls-proof-classes check 10 is the one
+# place the auto-publish itself is proven.
 function Seat-Teacher($classId, $teacherUserId) {
+  Invoke-RestMethod -Method Patch -Uri "$base/rest/v1/classes?id=eq.$classId" -Headers $svcH -Body '{"auto_publish":false}' | Out-Null
   $cls = Invoke-RestMethod -Method Get -Uri "$base/rest/v1/classes?id=eq.$classId&select=business_id" -Headers $svcH
   $bid = [string](@($cls)[0].business_id)
   # one live artist per class (a partial unique index), so an existing one is
@@ -366,6 +377,10 @@ function New-Published-Class($headers, $body, $teacherUserId) {
   $b = @{}
   foreach ($k in $body.Keys) { $b[$k] = $body[$k] }
   $b["p_status"] = "draft"
+  # 11 Oct 2026: born with auto_publish OFF, so nothing publishes it but the
+  # explicit press below (an artist's class at its own pin would otherwise publish
+  # itself the moment it exists - migration 20261016090000)
+  if (-not $b.ContainsKey("p_auto_publish")) { $b["p_auto_publish"] = $false }
   $cls = Invoke-RestMethod -Method Post -Uri "$base/rest/v1/rpc/create_class_with_session" -Headers $headers -Body ($b | ConvertTo-Json)
   Publish-Class ([string]$cls.id) $teacherUserId $headers
   $again = Invoke-RestMethod -Method Get -Uri "$base/rest/v1/classes?id=eq.$($cls.id)&select=*" -Headers $svcH

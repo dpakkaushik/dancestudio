@@ -6,6 +6,7 @@ import { z } from "zod";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { activateArtistPlan } from "@/repositories/plans";
 import { updateBusinessProfile } from "@/repositories/businesses";
+import { setRefundWindow } from "@/repositories/refundWindow";
 
 /** DanceOS Pro · Artist (S_subscr 16935): the plan's two doors, and the
  *  business profile's one (About / Since / phone / links / enquiry types / the
@@ -83,5 +84,36 @@ export async function updateBusinessProfileAction(input: BusinessProfileActionIn
     return { error: null };
   } catch (error: unknown) {
     return { error: error instanceof Error ? error.message : "Could not save that" };
+  }
+}
+
+/** A STUDIO'S OWN REFUND WINDOW (11 Oct 2026, `set_refund_window`) ⚠ money
+ *  policy. Shape only — the RPC is the owner's alone and keeps 0–168. What it
+ *  changes is which cancellations refund AUTOMATICALLY from now on; refunds
+ *  already filed keep their status. */
+export async function setRefundWindowAction(input: { businessId: string; hours: number }): Promise<{ error: string | null; hours: number | null }> {
+  const parsed = z
+    .object({
+      businessId: z.string().uuid(),
+      hours: z.coerce.number().int("Whole hours only").min(0, "The window is 0 hours or more").max(168, "The window is at most 168 hours (a week)"),
+    })
+    .safeParse(input);
+  if (!parsed.success) {
+    return { error: parsed.error.issues[0]?.message ?? "Invalid window", hours: null };
+  }
+  const supabase = await createSupabaseServerClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) redirect("/login");
+  try {
+    const hours = await setRefundWindow(supabase, parsed.data.businessId, parsed.data.hours);
+    revalidatePath(`/business/${parsed.data.businessId}/payments`);
+    revalidatePath(`/business/${parsed.data.businessId}/refunds`);
+    /* every class page prints the window in its POLICY row */
+    revalidatePath("/c/[slug]", "page");
+    return { error: null, hours };
+  } catch (error: unknown) {
+    return { error: error instanceof Error ? error.message : "Could not save the refund window", hours: null };
   }
 }

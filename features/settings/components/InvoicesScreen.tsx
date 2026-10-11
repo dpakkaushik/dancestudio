@@ -2,8 +2,9 @@
 
 import Link from "next/link";
 import { useState } from "react";
+import { columnTab, columnTrack } from "@/components/ui/ColumnTabs";
 import type { InvoiceRow } from "@/repositories/invoices";
-import { BizPage, bizCard, chip, dayWords, ghostBtn, rupees } from "./settings-kit";
+import { BizPage, bizCard, dayWords, ghostBtn, rupees } from "./settings-kit";
 
 /** S_invoices (16691-16720): the ledger — a filter row, a card per invoice with
  *  who · what · number · date on the left and the amount with its state on the
@@ -34,7 +35,9 @@ export function InvoicesScreen({ rows, side }: { rows: InvoiceRow[]; side: "mine
       grad="linear-gradient(135deg,#64748B,#0EA5E9)"
       top={
         /* ⚠ THE FILTER IS IN THE TOP SECTION (3 Oct 2026, C116); the ledger is the lower one */
-        <div style={{ display: "flex", gap: 6 }}>
+        /* ⚠ ONE COLUMN STYLE UNDER HOME (11 Oct 2026, `ColumnTabs`) — no count in
+           the pill, so each button's accessible name stays its one word */
+        <div style={columnTrack()}>
           {(
             [
               ["all", "All"],
@@ -42,7 +45,7 @@ export function InvoicesScreen({ rows, side }: { rows: InvoiceRow[]; side: "mine
               ["refunded", "Refunded"],
             ] as Array<["all" | "paid" | "refunded", string]>
           ).map(([k, l]) => (
-            <button type="button" key={k} aria-pressed={f === k} onClick={() => setF(k)} style={{ ...chip(f === k), flex: 1, textAlign: "center" }}>
+            <button type="button" key={k} aria-pressed={f === k} onClick={() => setF(k)} style={columnTab(f === k)}>
               {l}
             </button>
           ))}

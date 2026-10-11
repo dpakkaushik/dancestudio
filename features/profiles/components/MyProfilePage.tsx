@@ -3,7 +3,8 @@
 import Image from "next/image";
 import Link from "next/link";
 import { useState } from "react";
-import { CARD, DOS_UI, INK, LILAC, MUTED, SKY, SUB } from "@/lib/design/tokens";
+import { columnTab, columnTrack } from "@/components/ui/ColumnTabs";
+import { DOS_UI, INK, LILAC, MUTED, SUB } from "@/lib/design/tokens";
 import { photoUrl } from "@/lib/media/photo";
 import type { MembershipOnSale } from "@/repositories/memberships";
 import type { PublicPerson } from "@/repositories/publicPerson";
@@ -359,9 +360,10 @@ export function MyProfilePage({
             <b style={{ fontSize: 18 }}>{followList === "followers" ? "Followers" : "Following"}</b>
             <span style={{ fontSize: 13, color: SUB, fontWeight: 700 }}>{followRows.length}</span>
           </div>
-          <div style={{ display: "flex", gap: 5, marginBottom: 14, overflowX: "auto", scrollbarWidth: "none" }}>
+          {/* the app's one column look (`ColumnTabs`, 11 Oct 2026); five columns wrap 3 + 2 */}
+          <div role="group" aria-label="Show" style={{ ...columnTrack(true), marginBottom: 14 }}>
             {FOLLOW_SEGS.map((s) => (
-              <button type="button" key={s} onClick={() => setFollowSeg(s)} aria-pressed={followSeg === s} style={{ flex: "0 0 auto", textAlign: "center", padding: "8px 12px", borderRadius: 999, cursor: "pointer", fontSize: 11.5, fontWeight: 800, whiteSpace: "nowrap", background: followSeg === s ? SKY : CARD, color: followSeg === s ? "#fff" : SUB, border: "none", fontFamily: "inherit", boxShadow: followSeg === s ? "0 3px 10px rgba(90,200,250,.35)" : "none" }}>{s}</button>
+              <button type="button" key={s} onClick={() => setFollowSeg(s)} aria-pressed={followSeg === s} style={columnTab(followSeg === s, true)}>{s}</button>
             ))}
           </div>
           <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>

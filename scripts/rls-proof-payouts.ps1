@@ -100,6 +100,22 @@ try {
   Publish-Class ([string]$c1.id) ([string]$artist.id) (Api $owner.token)
   $s1row = Get-Rows $svcH "class_sessions?class_id=eq.$($c1.id)&select=id"
   $s1 = $s1row[0].id
+
+  # 11 Oct 2026: A CLASS WHOSE DATE HAS PASSED IS CLOSED - respond_to_class_ask
+  # refuses a yes once every session has started ("the request is closed",
+  # 20261016090000). So the three asks this proof answers on c1 (checks 1, 12, 13)
+  # are made and answered HERE, while its session is still three days ahead, and
+  # only then are its sessions pushed into the past.
+  $claim = Rpc (Api $owner.token) "ask_class_person" @{ p_class_id = $c1.id; p_user_id = $artist.id;
+    p_kind = "artist"; p_can_attendance = $true; p_can_refunds = $false; p_pay_per_session_inr = 900 }
+  Rpc (Api $artist.token) "respond_to_class_ask" @{ p_class_person_id = $claim.id; p_accept = $true } | Out-Null
+  $gclaim = Rpc (Api $owner.token) "ask_class_person" @{ p_class_id = $c1.id; p_user_id = $ghost.id;
+    p_kind = "assistant"; p_can_attendance = $true; p_can_refunds = $false; p_pay_per_session_inr = 500 }
+  Rpc (Api $ghost.token) "respond_to_class_ask" @{ p_class_person_id = $gclaim.id; p_accept = $true } | Out-Null
+  $zclaim = Rpc (Api $owner.token) "ask_class_person" @{ p_class_id = $c1.id; p_user_id = $trainer.id;
+    p_kind = "assistant"; p_can_attendance = $false; p_can_refunds = $false; p_pay_per_session_inr = 0 }
+  Rpc (Api $trainer.token) "respond_to_class_ask" @{ p_class_person_id = $zclaim.id; p_accept = $true } | Out-Null
+
   $past1 = (Get-Date).AddDays(-9)
   $past2 = (Get-Date).AddDays(-2)
   Invoke-RestMethod -Method Patch -Uri "$base/rest/v1/class_sessions?id=eq.$s1" -Headers $svcH -Body (@{
@@ -124,9 +140,7 @@ try {
   $s4 = (Get-Rows $svcH "class_sessions?class_id=eq.$($c3.id)&select=id")[0].id
 
   # 1. the owner asks somebody onto the class AT A RATE, and the rate is theirs to set
-  $claim = Rpc (Api $owner.token) "ask_class_person" @{ p_class_id = $c1.id; p_user_id = $artist.id;
-    p_kind = "artist"; p_can_attendance = $true; p_can_refunds = $false; p_pay_per_session_inr = 900 }
-  Rpc (Api $artist.token) "respond_to_class_ask" @{ p_class_person_id = $claim.id; p_accept = $true } | Out-Null
+  #    (the ask itself is made above, before c1's sessions went into the past)
   Check 1 "Owner sets the rate on the ask (Rs $($claim.pay_per_session_inr), status $($claim.status))" (
     ($claim.pay_per_session_inr -eq 900) -and ($claim.status -eq "asked"))
 
@@ -203,19 +217,16 @@ try {
     ($null -ne $voided[0].deleted_at) -and ($liveLines.Count -eq 0) -and ($repay.amount_inr -eq 1500))
 
   # 12. taken off the team, still owed for what they taught
-  $gclaim = Rpc (Api $owner.token) "ask_class_person" @{ p_class_id = $c1.id; p_user_id = $ghost.id;
-    p_kind = "assistant"; p_can_attendance = $true; p_can_refunds = $false; p_pay_per_session_inr = 500 }
-  Rpc (Api $ghost.token) "respond_to_class_ask" @{ p_class_person_id = $gclaim.id; p_accept = $true } | Out-Null
+  #     (the ghost's ask was answered above, while c1 was still ahead - 11 Oct 2026)
   Rpc (Api $owner.token) "remove_business_member" @{ p_business_id = $ta.id; p_user_id = $ghost.id } | Out-Null
   $ghostClaimGone = Get-Rows $svcH "class_people?id=eq.$($gclaim.id)&deleted_at=is.null&select=id"
   $ghostPay = RpcRaw (Api $owner.token) "record_payout" "{""p_business_id"":""$($ta.id)"",""p_user_id"":""$($ghost.id)"",""p_session_ids"":$(IdsJson @($s2))}"
   Check 12 "Removed from the team (claim closed: $($ghostClaimGone.Count) live) and still paid Rs $($ghostPay.amount_inr) for the session they taught" (
     ($ghostClaimGone.Count -eq 0) -and ($ghostPay.amount_inr -eq 500))
 
-  # 13. a payout has to be worth something
-  $zclaim = Rpc (Api $owner.token) "ask_class_person" @{ p_class_id = $c1.id; p_user_id = $trainer.id;
-    p_kind = "assistant"; p_can_attendance = $false; p_can_refunds = $false; p_pay_per_session_inr = 0 }
-  Rpc (Api $trainer.token) "respond_to_class_ask" @{ p_class_person_id = $zclaim.id; p_accept = $true } | Out-Null
+  # 13. a payout has to be worth something (the Rs 0 ask was answered above; the
+  #     trainer's seat carries no rate either, so 11 Oct 2026's "an ask with no
+  #     rate takes the seat's" still lands on 0 here)
   $zeroBlocked = Expect-Fail {
     RpcRaw (Api $owner.token) "record_payout" "{""p_business_id"":""$($ta.id)"",""p_user_id"":""$($trainer.id)"",""p_session_ids"":$(IdsJson @($s1))}"
   }
@@ -226,6 +237,18 @@ try {
     RpcRaw (Api $owner.token) "record_payout" "{""p_business_id"":""$($ta.id)"",""p_user_id"":""$($artist.id)"",""p_session_ids"":$(IdsJson @($s4))}"
   }
   Check 14 "A rival studio's session cannot be paid from your ledger" $crossBlocked
+
+  # 15. 11 Oct 2026: WHAT A SESSION PAYS LIVES ON THE SEAT TOO (20261016090000).
+  #     set_member_pay is the owner's alone, and an ask that names no rate takes
+  #     the seat's. The trainer's seat is set to Rs 700; asking them onto c2 with
+  #     no rate lands a Rs 700 ask.
+  $mateSetBlocked = Expect-Fail { Rpc (Api $trainer.token) "set_member_pay" @{ p_business_id = $ta.id; p_user_id = $trainer.id; p_rate = 5000 } }
+  Rpc (Api $owner.token) "set_member_pay" @{ p_business_id = $ta.id; p_user_id = $trainer.id; p_rate = 700 } | Out-Null
+  $seatRate = Get-Rows $svcH "business_members?business_id=eq.$($ta.id)&user_id=eq.$($trainer.id)&deleted_at=is.null&select=pay_per_session_inr"
+  $inherit = Rpc (Api $owner.token) "ask_class_person" @{ p_class_id = $c2.id; p_user_id = $trainer.id;
+    p_kind = "assistant"; p_can_attendance = $false; p_can_refunds = $false }
+  Check 15 "A trainer cannot set a seat's rate ($mateSetBlocked); the owner sets Rs $($seatRate[0].pay_per_session_inr); an ask with no rate takes it (Rs $($inherit.pay_per_session_inr))" (
+    $mateSetBlocked -and ($seatRate[0].pay_per_session_inr -eq 700) -and ($inherit.pay_per_session_inr -eq 700))
 }
 finally {
   Invoke-RestMethod -Method Delete -Uri "$base/rest/v1/businesses?id=eq.$($ta.id)" -Headers $svcH | Out-Null

@@ -10,6 +10,7 @@ import { photoUrl } from "@/lib/media/photo";
 import type { LearnedRoutine, RoutineWithUsage } from "@/repositories/routines";
 import { DOS_TOOLS, DeskHero } from "@/features/businesses/components/biz-kit";
 import { DeskAddButton } from "@/features/settings/components/settings-kit";
+import { ColumnCount, columnTab, columnTrack } from "@/components/ui/ColumnTabs";
 import { DeskBody, DeskTop } from "@/components/ui/DeskSections";
 
 /** ROUTINES (19 Sep 2026, the user: "Routines are just a combination of Music —
@@ -73,10 +74,13 @@ export function RoutinesDesk({
           not a URL: both lists are already on the page, so switching is free and
           there is nothing for a server to fetch (the lag the user reported on
           the class columns is a round trip; this one has none). ── */}
-      <div role="group" aria-label="Show" style={{ display: "flex", gap: 2, background: "var(--el)", borderRadius: 12, padding: 3, marginTop: 12, marginBottom: seg === "learned" ? 0 : 11 }}>
-        {([["mine", `Yours · ${routines.length}`], ["learned", `Learned · ${learned.length}`]] as const).map(([k, label]) => (
-          <button key={k} type="button" onClick={() => setSeg(k)} aria-pressed={seg === k} style={{ flex: 1, padding: "8px 2px", borderRadius: 9, fontSize: 11.5, fontWeight: 800, border: "none", cursor: "pointer", fontFamily: "inherit", background: seg === k ? "var(--solid)" : "transparent", color: seg === k ? INK : SUB }}>
-            {label}
+      {/* ⚠ the app's one column look (`ColumnTabs`, 11 Oct 2026): the count is the
+          badge inside the column; the accessible name still reads "Yours · 3" */}
+      <div role="group" aria-label="Show" style={{ ...columnTrack(), marginTop: 12, marginBottom: seg === "learned" ? 0 : 11 }}>
+        {([["mine", "Yours", routines.length], ["learned", "Learned", learned.length]] as const).map(([k, word, n]) => (
+          <button key={k} type="button" onClick={() => setSeg(k)} aria-pressed={seg === k} aria-label={`${word} · ${n}`} style={columnTab(seg === k)}>
+            <span>{word}</span>
+            <ColumnCount n={n} on={seg === k} />
           </button>
         ))}
       </div>

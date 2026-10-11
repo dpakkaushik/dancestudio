@@ -143,7 +143,11 @@ export async function undoCheckIn(supabase: SupabaseClient, classBookingId: stri
   }
 }
 
-/** THE DOOR (29 Sep 2026) — book somebody who is standing in front of you.
+/** THE DOOR, AS ONE ACTION (11 Oct 2026, `book_at_the_door`, 20261016090000) —
+ *  a scanned PERSON books in, a typed NAME is a walk-in with no account. It
+ *  replaced two doors (`book_class_session_for_person`, `add_class_walk_in`)
+ *  that the database still keeps underneath it, so the gate, the register's own
+ *  30-minutes-before-until-it-ends window and capacity are unchanged.
  *
  *  ⚠ It hands back the new booking's id, and that is the point of returning
  *  anything at all: the door's next act is to CHECK THEM IN, and waiting for a
@@ -151,41 +155,15 @@ export async function undoCheckIn(supabase: SupabaseClient, classBookingId: stri
  *  the scan sheet was bitten by on 28 Sep (a prop only moves when the round trip
  *  lands, so a second scan read a stale register and said "✓ checked in" twice).
  *
- *  Everything that decides is the RPC's: who may run the register, the register's
- *  own 30-minutes-before-until-it-ends window, capacity, and the three answers a
- *  door has to tell apart. Nothing here re-implements any of it. */
-export async function bookForPerson(
+ *  Everything that decides is the RPC's. Nothing here re-implements any of it. */
+export async function bookAtTheDoor(
   supabase: SupabaseClient,
-  sessionId: string,
-  userId: string
+  input: { sessionId: string; userId?: string | null; name?: string | null }
 ): Promise<string> {
-  const { data, error } = await supabase.rpc("book_class_session_for_person", {
-    p_session_id: sessionId,
-    p_user_id: userId,
-  });
-  if (error) {
-    throw new Error(error.message);
-  }
-  const row = data as { id?: string } | null;
-  if (!row?.id) {
-    throw new Error("The door did not hand back a booking");
-  }
-  return row.id;
-}
-
-/** THE DOOR, SHAPE 2 — somebody with no DanceOS account, by name.
- *
- *  ⚠ Hands back the booking id for the same reason `bookForPerson` does: the
- *  door's next act is to check them in, and the row is not in the page's props
- *  yet. */
-export async function addWalkIn(
-  supabase: SupabaseClient,
-  sessionId: string,
-  name: string
-): Promise<string> {
-  const { data, error } = await supabase.rpc("add_class_walk_in", {
-    p_session_id: sessionId,
-    p_name: name,
+  const { data, error } = await supabase.rpc("book_at_the_door", {
+    p_session_id: input.sessionId,
+    p_user_id: input.userId ?? null,
+    p_name: input.name ?? null,
   });
   if (error) {
     throw new Error(error.message);

@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useState } from "react";
+import { columnTab, columnTrack } from "@/components/ui/ColumnTabs";
 import { DOS_DISPLAY } from "@/lib/design/tokens";
 import type { ChartRow, ChartSegment } from "@/types/stats";
 
@@ -28,7 +29,8 @@ export function StyleBoards({ style, color, boards }: { style: string; color: st
   const population = rows[0]?.population ?? 0;
   return (
     <div>
-      <div role="group" aria-label="Board" style={{ display: "flex", gap: 6, marginBottom: 12 }}>
+      {/* the app's one column look (`ColumnTabs`, 11 Oct 2026) */}
+      <div role="group" aria-label="Board" style={{ ...columnTrack(), marginBottom: 12 }}>
         {BOARDS.map(([k, word]) => {
           const on = seg === k;
           return (
@@ -37,7 +39,7 @@ export function StyleBoards({ style, color, boards }: { style: string; color: st
               type="button"
               aria-pressed={on}
               onClick={() => setSeg(k)}
-              style={{ flex: 1, padding: "8px 2px", borderRadius: 12, cursor: "pointer", fontSize: 11.5, fontWeight: 800, fontFamily: "inherit", background: on ? "var(--text)" : "var(--card)", color: on ? "var(--solid)" : "var(--sub)", border: `1.5px solid ${on ? "var(--text)" : "var(--el)"}` }}
+              style={columnTab(on)}
             >
               {word}
             </button>

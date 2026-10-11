@@ -328,6 +328,9 @@ async function seed() {
   const teachAndPublish = async (ownerH, cls, teacher, payInr = 0) => {
     const ask = await rpc(ownerH, "ask_class_person", { p_class_id: cls.id, p_user_id: teacher.id, p_kind: "artist", p_pay_per_session_inr: payInr });
     await rpc(teacher.h, "respond_to_class_ask", { p_class_person_id: ask.id, p_accept: true });
+    /* 11 Oct 2026: the yes PUBLISHES the class on its own (auto_publish, on by
+       default) — this PATCH is a no-op kept for a class that could not (its room
+       busy); a status change is allowed on a published class */
     await patch(ownerH, `classes?id=eq.${cls.id}`, { status: "published" });
     return cls;
   };
@@ -362,13 +365,15 @@ async function seed() {
   const salsa = await teachAndPublish(eeeCo.h, await mkClass(eeeCo.h, eee.id, { style: "Salsa", room: "Studio A", capacity: 20, starts: at(2, "20:00"), ends: at(2, "21:30") }), rhea, 800);
   const bhangra = await teachAndPublish(eeeCo.h, await mkClass(eeeCo.h, eee.id, { style: "Bhangra", room: "Studio A", price: 250, capacity: 15, starts: at(6, "18:00"), ends: at(6, "19:00") }), rhea, 800);
   const pastEee = await teachAndPublish(eeeCo.h, await mkClass(eeeCo.h, eee.id, { style: "Hip-Hop", level: "beginner", room: "Studio A", capacity: 15, starts: at(40, "19:00"), ends: at(40, "20:00") }), rhea, 800);
-  /* Bounce, New Delhi — Aditya teaches here too, from outside the team: visiting faculty */
+  /* Bounce, New Delhi — Aditya teaches here too, from outside the team (11 Oct
+     2026: his yes no longer seats him `visiting_faculty` — the class row is all
+     he needs to run its register) */
   const bounceBolly = await teachAndPublish(bounceCo.h, await mkClass(bounceCo.h, bounce.id, { style: "Bollywood", room: "Hall 1", capacity: 18, starts: at(3, "19:00"), ends: at(3, "20:00") }), aditya, 1000);
   const pastBounce = await teachAndPublish(bounceCo.h, await mkClass(bounceCo.h, bounce.id, { style: "Contemporary", level: "intermediate", room: "Hall 1", capacity: 12, starts: at(40, "18:00"), ends: at(40, "19:00") }), meera, 1500);
   /* Namma, Bengaluru */
   const nammaBreaking = await teachAndPublish(namma.h, await mkClass(namma.h, nammaStudio.id, { style: "Breaking", level: "beginner", room: "Main Floor", capacity: 14, starts: at(2, "18:00"), ends: at(2, "19:00") }), karan, 900);
   const pastNamma = await teachAndPublish(namma.h, await mkClass(namma.h, nammaStudio.id, { style: "Breaking", room: "Main Floor", capacity: 14, starts: at(40, "18:00"), ends: at(40, "19:30") }), karan, 900);
-  log("Sector 29: Hip-Hop (free), Bollywood (₹300), Breaking (2 places), Kathak (draft), three past classes · DLF: Contemporary (₹250), one past · EEE: Salsa, Bhangra (₹250), one past · Bounce: Bollywood (Aditya, visiting), one past (Meera) · Namma: Breaking, one past");
+  log("Sector 29: Hip-Hop (free), Bollywood (₹300), Breaking (2 places), Kathak (draft), three past classes · DLF: Contemporary (₹250), one past · EEE: Salsa, Bhangra (₹250), one past · Bounce: Bollywood (Aditya, from outside the team), one past (Meera) · Namma: Breaking, one past");
 
   /* AN ARTIST'S OWN CLASSES: at their own pin (published straight away), or in a
      STUDIO'S ROOM — asked, and the studio's yes / no / silence is real */

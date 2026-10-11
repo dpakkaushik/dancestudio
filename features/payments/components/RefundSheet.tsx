@@ -8,8 +8,9 @@ import { useCloseOnBack } from "@/lib/hooks/useCloseOnBack";
 
 /** Cancelling is two things, and only one of them is about money — lifted from
  *  prototype DanceOSApp.jsx:6269-6327. The seat goes back the instant you
- *  confirm; the money follows the policy window the page printed (12 h since
- *  4 Oct 2026, 48 h before — the POLICY section's number, S_class 12400): in
+ *  confirm; the money follows the policy window the page printed (the studio's
+ *  own `refund_window_hours` since 11 Oct 2026 — 12 unless it set another; 12 h
+ *  from 4 Oct 2026, 48 h before — the POLICY section's number, S_class 12400): in
  *  full outside it, the studio
  *  decides inside it. The four common reasons are shortcuts, not a cage. */
 
@@ -25,9 +26,16 @@ export interface RefundSheetProps {
   onClose: () => void;
   /** fired with the action's outcome copy (or its error) once the cancel lands */
   onDone: (message: string) => void;
+  /** THE STUDIO'S OWN WINDOW (11 Oct 2026, `businesses.refund_window_hours`) —
+   *  the number `_cancel_one_class_booking` decides by; 12 unless the studio set
+   *  another. The class page reads it with `findRefundWindowHours`. */
+  refundWindowHours?: number;
 }
 
-export function RefundSheet({ classBookingId, title, timeText, amountInr, onClose, onDone }: RefundSheetProps) {
+export function RefundSheet({ classBookingId, title, timeText, amountInr, onClose, onDone, refundWindowHours = 12 }: RefundSheetProps) {
+  const win = Math.max(0, Math.round(refundWindowHours));
+  const moneyLine =
+    win === 0 ? "in full until the class starts" : `in full ${win} h or more ahead; inside ${win} h the studio decides`;
   useCloseOnBack(onClose);
   const [own, setOwn] = useState(false);
   const [why, setWhy] = useState("");
@@ -76,7 +84,7 @@ export function RefundSheet({ classBookingId, title, timeText, amountInr, onClos
           {(
             [
               ["Your place", "goes back on sale straight away"],
-              ["Your money", "in full more than 12 h ahead; inside 12 h the studio decides"],
+              ["Your money", moneyLine],
             ] as Array<[string, string]>
           ).map(([k, v]) => (
             <div key={k} style={{ display: "flex", gap: 10, padding: "4px 0" }}>

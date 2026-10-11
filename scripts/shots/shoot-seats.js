@@ -11,6 +11,9 @@
  * and land on its home, with its Team desk, its Students desk (every student's
  * name and PHONE NUMBER), its Rooms editor, its invoice ledger and its refunds
  * one tap away. Nothing in the app said that was a thing; nothing failed either.
+ * (11 Oct 2026: accepting a class seats NOBODY any more — the register and the
+ * refunds are read off the class row — so that path is gone; an INVITED seat
+ * below is still the case this script proves.)
  *
  * ⚠ A GATE CLOSED ONLY IN THE MENU THAT OPENS IT IS NOT CLOSED, which is why
  * this script drives the ADDRESSES rather than the switcher: every desk is

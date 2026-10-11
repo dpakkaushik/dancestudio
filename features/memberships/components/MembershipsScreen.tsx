@@ -9,6 +9,7 @@ import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { openCashfreeCheckout } from "@/lib/cashfree/checkout-client";
 import { DOS_TOOLS, DeskHero } from "@/features/businesses/components/biz-kit";
 import { DeskAddButton } from "@/features/settings/components/settings-kit";
+import { ColumnCount, columnTab, columnTrack } from "@/components/ui/ColumnTabs";
 import { DeskBody, DeskTop } from "@/components/ui/DeskSections";
 import { ToolActions, ToolBody, ToolCard, ToolChip, ToolFacts, ToolHead, ToolTitle, toolBtn } from "@/components/ui/ToolCard";
 import { DOS_UI, INK, LILAC, SUB } from "@/lib/design/tokens";
@@ -150,16 +151,20 @@ export function MembershipsScreen({
           every card's face already say whose desk this is. */}
 
       {canSell && !business ? (
-        <div role="group" aria-label="Show" style={{ display: "flex", gap: 2, background: "var(--el)", borderRadius: 12, padding: 3, marginTop: 12 }}>
+        <div role="group" aria-label="Show" style={{ ...columnTrack(), marginTop: 12 }}>
           {/* BOOKED · MANAGE (19 Sep 2026, the user: "membership columns should be
               Booked and Manage") — the same two sides, in the words the Classes
               desk already uses: what you hold, and what you sell */}
           {/* ⚠ MANAGE FIRST IN THE ORDER TOO (20 Sep 2026) — the segment you land
               on and the segment you read first are the same one, or the order is
               telling you something the page then contradicts. */}
-          {([["selling", `Manage · ${selling.length}`], ["mine", `Booked · ${passes.length}`]] as const).map(([k, label]) => (
-            <button key={k} type="button" onClick={() => setSeg(k)} aria-pressed={seg === k} style={{ flex: 1, padding: "8px 2px", borderRadius: 9, fontSize: 11.5, fontWeight: 800, border: "none", cursor: "pointer", fontFamily: "inherit", background: seg === k ? "var(--solid)" : "transparent", color: seg === k ? INK : SUB }}>
-              {label}
+          {/* ⚠ the app's one column look (`ColumnTabs`, 11 Oct 2026): the count is
+              the badge inside the column, so the accessible name still reads
+              "Manage · 2" — a screen reader hears what it heard */}
+          {([["selling", "Manage", selling.length], ["mine", "Booked", passes.length]] as const).map(([k, word, n]) => (
+            <button key={k} type="button" onClick={() => setSeg(k)} aria-pressed={seg === k} aria-label={`${word} · ${n}`} style={columnTab(seg === k)}>
+              <span>{word}</span>
+              <ColumnCount n={n} on={seg === k} />
             </button>
           ))}
         </div>

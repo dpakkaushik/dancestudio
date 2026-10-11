@@ -5,6 +5,7 @@ import { useState } from "react";
 import { deleteLeadAction } from "@/features/leads/server-actions/leads";
 import { DeskAddButton } from "@/features/settings/components/settings-kit";
 import { DOS_TOOLS, DeskHero } from "@/features/businesses/components/biz-kit";
+import { columnTab, columnTrack } from "@/components/ui/ColumnTabs";
 import { DeskBody, DeskMiddle, DeskTop } from "@/components/ui/DeskSections";
 import { FigureHead } from "@/components/ui/FigureHead";
 import { ToolActions, ToolBody, ToolCard, ToolChip, ToolFacts, ToolHead, toolBtn } from "@/components/ui/ToolCard";
@@ -308,9 +309,10 @@ function InviteSheet({
           <b style={{ fontSize: 17 }}>Invite Student</b>
         </div>
 
-        <div role="group" aria-label="Invite by" style={{ display: "flex", gap: 2, background: EL, borderRadius: 12, padding: 3, marginBottom: 10 }}>
+        {/* the app's one column look (`ColumnTabs`, 11 Oct 2026) */}
+        <div role="group" aria-label="Invite by" style={{ ...columnTrack(), marginBottom: 10 }}>
           {([["mobile", "Mobile no."], ["email", "Email"]] as const).map(([k, l]) => (
-            <button key={k} type="button" onClick={() => { setBy(k); setTo(""); }} aria-pressed={by === k} style={{ flex: 1, padding: "8px 2px", borderRadius: 9, fontSize: 11.5, fontWeight: 800, border: "none", cursor: "pointer", fontFamily: "inherit", background: by === k ? "var(--solid)" : "transparent", color: by === k ? INK : SUB }}>
+            <button key={k} type="button" onClick={() => { setBy(k); setTo(""); }} aria-pressed={by === k} style={columnTab(by === k)}>
               {l}
             </button>
           ))}

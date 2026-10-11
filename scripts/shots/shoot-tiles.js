@@ -290,7 +290,8 @@ async function personOpensAStudio(page, who, acc, stamp) {
      is asserted where it belongs — `guard_business_visibility`, in the proofs. */
   check((await page.getByTestId("studio-subscription").filter({ hasText: name }).getByRole("button", { name: /^Subscribe/ }).count()) > 0, `${who} · and Subscribe IS offered before the badge — paying comes first now`);
 
-  /* the owner takes their own class: nobody is asked, Publish is open at once, the Inbox keeps the line */
+  /* the owner takes their own class: nobody is asked, it publishes itself (11 Oct 2026), the Inbox keeps the line */
+  // TODO(11 Oct): "Continue" (two steps) and the room pick "Floor 1" are unconfirmed on the one form; the WHO switch's "You" is "I take this class myself" / `self-teacher` (confirmed).
   await page.goto(`${BASE}/business/${studioId}/classes?new=1`, { waitUntil: "networkidle" });
   const form = page.getByRole("dialog", { name: "Add class" });
   await form.waitFor({ timeout: 15_000 }).catch(() => {});
@@ -305,16 +306,19 @@ async function personOpensAStudio(page, who, acc, stamp) {
   check(await selfBtn.isVisible().catch(() => false), `${who} · the form offers "I take this class myself" to the owner`);
   await selfBtn.click();
   check(await form.getByTestId("self-teacher").isVisible().catch(() => false), `${who} · and says no confirmation is needed`);
-  await form.getByRole("button", { name: "Save draft", exact: true }).click();
-  await page.getByRole("button", { name: "Save draft", exact: true }).last().click();
+  /* 11 Oct 2026: the form's one button reads "Save", its sheet "Save this class?" (was "Save draft" twice) */
+  await form.getByRole("button", { name: "Save", exact: true }).click();
+  await page.getByRole("dialog", { name: "Save this class?" }).getByRole("button", { name: "Save", exact: true }).click();
   await form.waitFor({ state: "detached", timeout: 20_000 }).catch(() => {});
-  await page.goto(`${BASE}/business/${studioId}/classes`, { waitUntil: "networkidle" });
-  /* ⚠ TO DO · UPCOMING · PAST since 11 Oct 2026: a draft whose teacher is the
-     owner themselves is READY — nothing to wait for — so the screen opens on To
-     do and its card carries Publish */
-  const publish = page.getByTestId("todo-mine").getByTestId("card-publish");
-  await publish.first().waitFor({ timeout: 15_000 }).catch(() => {});
-  check((await publish.count()) >= 1, `${who} · To do offers Publish with nothing in its way — nobody was asked (${(await page.getByTestId("card-state").allTextContents().catch(() => [])).join(" | ") || "no card state at all"})`);
+  await page.goto(`${BASE}/business/${studioId}/classes?tab=upcoming`, { waitUntil: "networkidle" });
+  /* 11 Oct 2026: INVERTED — a class whose teacher is the owner themselves has
+     nothing to wait for, so it PUBLISHES ITSELF at creation (auto_publish, on
+     by default). It is on Upcoming, and To do offers no Publish for it. */
+  const upList = page.getByTestId("classes-upcoming");
+  await upList.waitFor({ timeout: 15_000 }).catch(() => {});
+  check(/Hip-Hop/.test(await upList.innerText().catch(() => "")), `${who} · the owner's own class published itself and is on Upcoming — nobody was asked, nothing to press`);
+  await page.goto(`${BASE}/business/${studioId}/classes?tab=todo`, { waitUntil: "networkidle" });
+  check((await page.getByTestId("todo-mine").getByTestId("card-publish").count()) === 0, `${who} · …and To do carries no Publish for it`);
   /* the log: an ask the studio made and its answer. ⚠ ON **DONE** SINCE 27 Sep
      2026 (the user: "sepreate section request, invites and enquiries which are
      already completed") — an answered ask still exists, which is the 19 Sep

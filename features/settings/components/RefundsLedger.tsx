@@ -6,7 +6,8 @@ import { useState, useTransition } from "react";
 import { decideRefundAction, sendRefundToRailAction, settleRefundOfflineAction } from "@/features/payments/server-actions/refunds";
 import type { RefundLedgerRow } from "@/repositories/refunds";
 import { REFUND_WORD, type RefundStatus } from "@/types/refund";
-import { BizPage, BizToast, bizCard, chip, dayWords, ghostBtn, rupees } from "./settings-kit";
+import { columnTab, columnTrack } from "@/components/ui/ColumnTabs";
+import { BizPage, BizToast, bizCard, dayWords, ghostBtn, rupees } from "./settings-kit";
 
 /** S_refunds (16621-16690): the refunds ledger — the hero's "₹X refunded · ₹Y
  *  pending", the four counted tiles (Paid · Processing · Requested · Declined),
@@ -63,20 +64,22 @@ export function RefundsLedger({ rows, side, canSettle = false, focusClassId = nu
            focus and the state chips; the counted tiles are the middle section */
         <>
           {focusTitle ? (
-            <div style={{ display: "flex", gap: 6, marginBottom: 10 }}>
+            /* ⚠ ONE COLUMN STYLE UNDER HOME (11 Oct 2026, `ColumnTabs`) */
+            <div style={{ ...columnTrack(), marginBottom: 10 }}>
               {(
                 [
                   ["focus", focusTitle.length > 22 ? focusTitle.slice(0, 22) + "…" : focusTitle],
                   ["all", "All refunds"],
                 ] as Array<["focus" | "all", string]>
               ).map(([k, l]) => (
-                <button type="button" key={k} aria-pressed={scope === k} onClick={() => setScope(k)} style={{ ...chip(scope === k), flex: k === "focus" ? 1.4 : 1, textAlign: "center", overflow: "hidden", textOverflow: "ellipsis" }}>
+                <button type="button" key={k} aria-pressed={scope === k} onClick={() => setScope(k)} style={{ ...columnTab(scope === k), flex: k === "focus" ? "1.4 1 0" : "1 1 0" }}>
                   {l}
                 </button>
               ))}
             </div>
           ) : null}
-          <div style={{ display: "flex", gap: 6, overflowX: "auto", scrollbarWidth: "none" }}>
+          {/* five columns wrap 3 + 2, the kit's own rule */}
+          <div style={columnTrack(true)}>
             {(
               [
                 ["all", "All"],
@@ -86,7 +89,7 @@ export function RefundsLedger({ rows, side, canSettle = false, focusClassId = nu
                 ["declined", "Declined"],
               ] as Array<["all" | RefundStatus, string]>
             ).map(([k, l]) => (
-              <button type="button" key={k} aria-pressed={tab === k} onClick={() => setTab(k)} style={chip(tab === k)}>
+              <button type="button" key={k} aria-pressed={tab === k} onClick={() => setTab(k)} style={columnTab(tab === k, true)}>
                 {l}
               </button>
             ))}
@@ -210,7 +213,7 @@ export function RefundsLedger({ rows, side, canSettle = false, focusClassId = nu
       {list.length === 0 ? (
         <div style={{ ...bizCard, textAlign: "center", border: "1.5px dashed var(--el)", padding: "22px 16px" }}>
           <div style={{ fontSize: 13, fontWeight: 900, marginBottom: 5 }}>{rows.length === 0 ? "No refunds yet" : "Nothing in that state"}</div>
-          <div style={{ fontSize: 11.5, color: "var(--sub)", lineHeight: 1.5 }}>{side === "mine" ? "Cancel a paid booking from its class page and the request lands here." : "A cancellation inside the 12-hour window lands here for you to decide; outside it the rail refunds by itself."}</div>
+          <div style={{ fontSize: 11.5, color: "var(--sub)", lineHeight: 1.5 }}>{side === "mine" ? "Cancel a paid booking from its class page and the request lands here." : "A cancellation inside your refund window (set on the Payments desk) lands here for you to decide; outside it the rail refunds by itself."}</div>
         </div>
       ) : null}
       <BizToast msg={toast} />

@@ -9,9 +9,9 @@
 # numbers are the studio's own. Every query here is the repository's own, verbatim
 # in shape (repositories/income.ts), so what this proves is what the page renders.
 #
-# Check 12 is the honest one, part 2a's again: the screen is owner-only because
-# the prototype gates S_earn on the studio's owner, and that is a PRESENTATION
-# gate - a trainer reads the same rows through the API, by Step 9's design.
+# Check 12 is the honest one, part 2a's again. 11 Oct 2026: INVERTED - since
+# 20261016090000 the money rows are the owner's and a manager's (and a class's
+# refunds-job holder's), so a plain trainer reads none and a manager reads them.
 #
 # Reads keys from .env.local - run from the repo root:
 #   powershell -File scripts/rls-proof-studio-income.ps1
@@ -133,6 +133,8 @@ $stamp = Get-Date -Format "HHmmss"
 $owner = New-EmailUser "income-owner-$stamp@example.com" "Owner $stamp" "user"
 $trainer = New-EmailUser "income-trainer-$stamp@example.com" "Trainer $stamp" "user"
 $rival = New-EmailUser "income-rival-$stamp@example.com" "Rival $stamp" "user"
+# 11 Oct 2026: check 12b - a manager reads the money a plain trainer may not
+$manager = New-EmailUser "income-manager-$stamp@example.com" "Manager $stamp" "user"
 $learners = @()
 foreach ($i in 0..6) { $learners += New-EmailUser "income-l$i-$stamp@example.com" "Learner $i $stamp" "user" }
 
@@ -141,6 +143,7 @@ Subscribe-Studio ([string]$ta.id)
 $tb = New-Studio $rival.token "Rival Studio $stamp" "Andheri" "Mumbai"
 Subscribe-Studio ([string]$tb.id)
 Add-Member $ta.id $trainer.id "trainer" $owner.id
+Add-Member $ta.id $manager.id "manager" $owner.id
 
 try {
   # 4 Oct 2026: the refund window is 12 hours, so "inside it" is a few hours from NOW
@@ -264,9 +267,16 @@ try {
   #     gate (S_earn is the studio's own page), NOT a security boundary. Step 9
   #     admits every member of the tenant to these rows, and this asserts that is
   #     still so - narrowing it is an RLS change to Step 9, not a UI change here.
+  #
+  # !! INVERTED 11 Oct 2026: the wall exists now. 20261016090000 gave the money
+  # rows to the people RUNNING the business (owner, manager) and whoever holds a
+  # class's refunds job - so a plain trainer reads none, and a manager reads them.
   $trainerSees = Income-Of (Api $trainer.token) $ta.id
-  Check 12 "A trainer still reads the takings directly (Rs $(M $trainerSees $curKey 'gross')) - the screen is a UI gate, not a wall" (
-    ((M $trainerSees $curKey "gross") -eq 900) -and ($trainerSees.payRows -eq 4))
+  Check 12 "A trainer with no refunds job reads NONE of the takings directly (Rs $(M $trainerSees $curKey 'gross') from $($trainerSees.payRows) rows)" (
+    ((M $trainerSees $curKey "gross") -eq 0) -and ($trainerSees.payRows -eq 0))
+  $managerSees = Income-Of (Api $manager.token) $ta.id
+  Check "12b" "A manager reads them (Rs $(M $managerSees $curKey 'gross') from $($managerSees.payRows) rows)" (
+    ((M $managerSees $curKey "gross") -eq 900) -and ($managerSees.payRows -eq 4))
 
   # 13. THE WINDOW IS THE WINDOW: a payment older than the four months on screen
   #     is outside the read, and an unbounded read is what would have found it
@@ -280,7 +290,7 @@ try {
 finally {
   Invoke-RestMethod -Method Delete -Uri "$base/rest/v1/businesses?id=eq.$($ta.id)" -Headers $svcH | Out-Null
   Invoke-RestMethod -Method Delete -Uri "$base/rest/v1/businesses?id=eq.$($tb.id)" -Headers $svcH | Out-Null
-  foreach ($u in (@($owner, $trainer, $rival) + $learners)) {
+  foreach ($u in (@($owner, $trainer, $rival, $manager) + $learners)) {
     Invoke-RestMethod -Method Delete -Uri "$base/auth/v1/admin/users/$($u.id)" -Headers $adminH | Out-Null
   }
   "   (cleanup: proof studios and throwaway accounts deleted)"

@@ -171,9 +171,12 @@ try {
 
   # -- 6. THE TWO SWITCHES DECIDE WHOSE PASS A CLASS TAKES ---------------------
   $cls = New-Class (Api $org.token) $studioId "MemProof Class $stamp" 3 48 1 $learner.id
-  Invoke-RestMethod -Method Patch -Uri "$base/rest/v1/classes?id=eq.$($cls.id)" -Headers (Api $org.token) -Body '{"allows_studio_memberships":false}' | Out-Null
+  # !! the switch is flipped by the SERVICE ROLE since 11 Oct 2026: a published
+  # class is fixed for its owner (20261015090000), and what this check proves is
+  # that passes_for_session READS the switch, not who may set it
+  Invoke-RestMethod -Method Patch -Uri "$base/rest/v1/classes?id=eq.$($cls.id)" -Headers $svcH -Body '{"allows_studio_memberships":false}' | Out-Null
   $offered = Rpc-Rows (Api $learner.token) "passes_for_session" @{ p_session_id = $cls.sessionId }
-  Invoke-RestMethod -Method Patch -Uri "$base/rest/v1/classes?id=eq.$($cls.id)" -Headers (Api $org.token) -Body '{"allows_studio_memberships":true}' | Out-Null
+  Invoke-RestMethod -Method Patch -Uri "$base/rest/v1/classes?id=eq.$($cls.id)" -Headers $svcH -Body '{"allows_studio_memberships":true}' | Out-Null
   $onNow = Rpc-Rows (Api $learner.token) "passes_for_session" @{ p_session_id = $cls.sessionId }
   $onlyLive = @($onNow | Where-Object { [string]$_.pass_id -eq $p1Id })
   $pendingOffered = @($onNow | Where-Object { [string]$_.pass_id -eq [string]$pp.id })

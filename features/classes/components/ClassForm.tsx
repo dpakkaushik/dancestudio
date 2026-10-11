@@ -18,6 +18,7 @@ import { PeoplePicker } from "@/features/people/components/PeoplePicker";
 import { DosStylePicker } from "@/components/ui/DosStyleKit";
 import { Pick } from "@/components/ui/PickSheet";
 import { AmenityIcon, amenityLabel } from "@/components/ui/AmenityIcon";
+import { columnTab, columnTrack } from "@/components/ui/ColumnTabs";
 import {
   FORM_LABEL,
   FORM_INPUT,
@@ -170,25 +171,52 @@ function RoomList({ rooms, roomId, onPick, emptyWords }: { rooms: Room[]; roomId
   );
 }
 
+/** a switch row — the memberships switch and the auto-publish switch read one look */
+function SwitchRow({ word, on, onFlip }: { word: string; on: boolean; onFlip: () => void }) {
+  return (
+    <button
+      type="button"
+      role="switch"
+      aria-checked={on}
+      aria-label={word}
+      onClick={onFlip}
+      style={{ display: "flex", alignItems: "center", gap: 10, width: "100%", textAlign: "left", background: CARD, border: `1.5px solid ${EL}`, borderRadius: 12, padding: "11px 12px", marginBottom: 8, cursor: "pointer", fontFamily: "inherit", color: INK }}
+    >
+      <span style={{ flex: 1, minWidth: 0, fontSize: 12.5, fontWeight: 800 }}>{word}</span>
+      <span style={{ flexShrink: 0, width: 38, height: 22, borderRadius: 999, background: on ? "#22C55E" : EL, position: "relative", transition: "background .15s" }}>
+        <span style={{ position: "absolute", top: 3, left: on ? 19 : 3, width: 16, height: 16, borderRadius: 999, background: "#fff", transition: "left .15s" }} />
+      </span>
+    </button>
+  );
+}
+
 type Venue = { id: string; name: string; sub: string };
-type WhereKind = "studio" | "place";
+/** a venue's rooms, as `venueRoomsAction` hands them back, in the form's own shape */
+const toRooms = (rs: Array<{ id: string; name: string; capacity: number; amenities: string[] }>) =>
+  rs.map((r) => ({ id: r.id, name: r.name, capacity: r.capacity, amenities: r.amenities }) as Room);
+/** WHERE a class happens (11 Oct 2026): one of the studio's own rooms, a
+ *  studio's room asked for (an artist's), or a map link */
+type WhereKind = "room" | "studio" | "map";
+type WhoKind = "me" | "other";
 
 /** Create/edit a class — the prototype's two-step S_classform wizard
  *  (DanceOSApp.jsx:15309-15531). Step 1 is what the class IS and where it runs;
  *  step 2 is who takes it and what it costs.
  *
- *  RE-CUT ON 18 SEP 2026, AT THE USER'S INSTRUCTION, FOR TWO KINDS OF OWNER:
- *   · A STUDIO's form: WHERE is one of its own rooms; WHO IS TAKING IT is anyone
- *     on DanceOS, found through the app's one people search and ASKED; there is
- *     no assistants block — assistants are added from the class page, by the
- *     owner or the teacher; and the form only ever SAVES A DRAFT. Publish lives
- *     on the register, and the database refuses it until the teacher has said yes.
- *   · An ARTIST's form: the artist is the teacher, so nobody is asked; WHERE is
- *     either a STUDIO with one of its rooms — a request the studio must accept
- *     before the class can be published — or a PLACE of their own, a map pin
- *     with their own capacity, which may publish straight from the form.
- *  The rule behind both is the database's (`classes_publish_needs_a_yes`), so
- *  this form cannot drift from it. */
+ *  ⚠⚠ ONE FORM FOR A STUDIO AND AN ARTIST (11 Oct 2026, the user's answers to
+ *  "classes made simpler"). It forked on the business type into two layouts; it
+ *  is ONE now, with one WHERE block and one WHO TAKES IT block. The business TYPE
+ *  only decides which WHERE answers exist and where each block opens:
+ *   · WHERE — a STUDIO picks one of its own rooms or pastes a map link; an
+ *     ARTIST page asks a studio on DanceOS for one of its rooms, or pastes a map
+ *     link. (A studio is never offered a venue: the RPC refuses one.)
+ *   · WHO — "You" (born confirmed, nobody to ask) or "Somebody else", found
+ *     through the app's one people search and asked. A studio opens on somebody
+ *     else, an artist page on you.
+ *  Pay is not on the form any more: an ask with no rate takes the seat's
+ *  (`business_members.pay_per_session_inr`). And a draft PUBLISHES ITSELF the
+ *  moment the last yes lands, unless the switch on the last step is off — the
+ *  database's `publish_class_if_ready`. */
 /** the chips a business with no styles of its own is offered — the commonest
  *  across the cities DanceOS runs in; `DosStylePicker` drops any name the
  *  registry does not hold, so a renamed style cannot draw a dead chip */
@@ -200,13 +228,10 @@ export function ClassForm({
   existing,
   rooms,
   classPeople = [],
-  isOwner = false,
   studioPlace = "",
   /* ⚠ `cityCentres` and `city` are GONE (20 Sep 2026). They existed for one
      reason — centring the map picker — and the picker left with the user's
-     "should just need a map link". A prop nothing reads is a lie to the next
-     reader, so the two routes stopped sending them in the same push; the
-     edit route's `findDiscoverCities` round trip went with it. */
+     "should just need a map link". */
   venueName = null,
   sheet = false,
   meId = null,
@@ -218,21 +243,17 @@ export function ClassForm({
    *  one-tap chips over the style picker (3 Oct 2026). Empty → a short list of
    *  the commonest styles, so the chips are never absent on a first class. */
   suggestedStyles?: string[];
-  /** THE OWNER THEMSELVES (26 Sep 2026): a studio's form offers "I take it
-   *  myself" beside the people search, and the database seats that person
-   *  CONFIRMED rather than asked — there is nobody to ask. Null on an artist's
-   *  form and for anybody who is not the owner. */
+  /** THE PERSON SAVING (26 Sep 2026; both kinds since 11 Oct 2026): "You" under
+   *  WHO TAKES IT names this person, and the database seats them CONFIRMED rather
+   *  than asked — there is nobody to ask. Null hides the "You" answer. */
   meId?: string | null;
   /** the STUDIOS THIS PERSON OWNS (26 Sep 2026): an artist's class held in one
-   *  of them needs no request — the room is theirs — so the form says so and
-   *  may publish straight away, exactly as a place of their own may */
+   *  of them needs no request — the room is theirs — so the form says so */
   ownedStudioIds?: string[];
   /** open over the register that offered it rather than as a page of its own
-   *  (22 Sep 2026). The form is unchanged either way — only its shell differs.
-   *  The page shell is the EDIT page's alone since 5 Oct 2026: the old
-   *  `/business/{id}/classes/new` address forwards to the register (Rule 14). */
+   *  (22 Sep 2026). The form is unchanged either way — only its shell differs. */
   sheet?: boolean;
-  /** a studio's form or an artist page's — decides WHERE and WHO (18 Sep 2026) */
+  /** a studio's form or an artist page's — decides which WHERE answers exist (11 Oct 2026) */
   businessType: BusinessType;
   existing?: DanceClass;
   /** the NAME of the studio an artist's class asked for a room — the row holds
@@ -241,12 +262,8 @@ export function ClassForm({
   /** the business's OWN rooms — a studio's; an artist page has none */
   rooms: Room[];
   classPeople?: ClassPerson[];
-  /** the studio's own address, printed above the room list (prototype 15381:
-   *  `ownStudio().loc` — a room means nothing until you know which building) */
+  /** the studio's own address, printed above the room list (prototype 15381) */
   studioPlace?: string;
-  /** Only the owner sets what a session pays (prototype 18434: payout approval
-   *  is owner-only and cannot be granted). */
-  isOwner?: boolean;
 }) {
   const isEdit = Boolean(existing);
   const isArtist = businessType === "artist_page";
@@ -258,129 +275,117 @@ export function ClassForm({
     setToast(m);
     setTimeout(() => setToast(null), 2600);
   };
-  /* the confirm sheet before a save (15586-15625) — the button sets which
-     status the form will carry, and the sheet's own button submits it */
-  const [confirm, setConfirm] = useState<"draft" | "publish" | null>(null);
-  /* ⚠ THE CONFIRM'S HISTORY ENTRY IS `FormConfirm`'s, ONCE (22 Sep 2026). This
-     file used to register a SECOND `useCloseOnBack` of its own beside the kit's
-     — two entries for one question, which only worked because the orphan rule
-     happened to skip one of them, and which is why a class saved from a sheet
-     needed two back presses to be rid of. The `spend: false` it existed for is
-     a prop on the confirm now: this sheet's button closes it AND submits in one
-     tick, and spending the entry there would race what the submit does next. */
-  /* WHAT THIS FORM IS ABOUT TO SUBMIT, IN THE DOM RATHER THAN IN STATE. React
-     batches state updates inside a click handler, so setting a status and calling
-     requestSubmit() in the same tick submits the value from the PREVIOUS render.
-     Written straight to the input, so what is read is what was just decided. */
-  const statusRef = useRef<HTMLInputElement>(null);
-  const setSubmitStatus = (v: "draft" | "published") => {
-    if (statusRef.current) statusRef.current.value = v;
-  };
+  /* the confirm sheet before a save (15586-15625). ⚠ Its history entry is
+     `FormConfirm`'s, once (22 Sep 2026), with `spend: false` — this sheet's
+     button closes it AND submits in one tick. */
+  const [confirm, setConfirm] = useState(false);
 
   const [style, setStyle] = useState<string>(existing?.style ?? "");
   const [level, setLevel] = useState<ClassLevel>(existing?.level ?? "all");
   const [date, setDate] = useState(existing?.session ? toDateInput(existing.session.startsAt) : "");
   const [startTime, setStartTime] = useState(existing?.session ? toTimeInput(existing.session.startsAt) : "19:00");
   const [endTime, setEndTime] = useState(existing?.session ? toTimeInput(existing.session.endsAt) : "20:00");
-  const [roomId, setRoomId] = useState<string | null>(existing?.roomId ?? null);
+  /* ⚠ A SINGLE-ROOM STUDIO SKIPS "PICK A ROOM" (11 Oct 2026): its one room is
+     picked already, and the list is still drawn so it can be seen */
+  const onlyRoom = !isArtist && rooms.length === 1 ? rooms[0].id : null;
+  const [roomId, setRoomId] = useState<string | null>(existing?.roomId ?? onlyRoom);
   const [poster, setPoster] = useState<PosterChoice | null>(existing?.poster ?? null);
-  /** ⚠⚠ A NUMBER FIELD YOU CAN ACTUALLY CLEAR (28 Sep 2026, the user: "fix both
-   *  what a session pays them and price fields while typing 0 becomes stagnant").
-   *
-   *  These were NUMBER state — `value={priceInr}` against
-   *  `onChange={… Number(e.target.value) || 0}` — and a number state can never be
-   *  empty. Backspace the field to nothing and `Number("")` is 0, so React put the
-   *  0 straight back on the next render: the field could not be cleared, and the
-   *  only way to type 300 over it was to leave the 0 sitting in front. That is the
-   *  "stagnant 0".
-   *
-   *  THE TEXT IS THE STATE WHILE SOMEBODY IS TYPING and the number is derived from
-   *  it, so an empty field stays empty for exactly as long as it takes to type the
-   *  next digit. ⚠ `onBlur` writes back what will ACTUALLY be saved, so a field
-   *  left empty settles at its floor rather than showing nothing and meaning zero.
-   *  ⚠ And the bounds are the SERVER'S own (`classFields` in the action: price
-   *  ≤ 1,000,000, capacity 1–500, pay ≤ 200,000), so the form cannot hand over a
-   *  number Zod would refuse. */
+  /** ⚠⚠ A NUMBER FIELD YOU CAN ACTUALLY CLEAR (28 Sep 2026, the user: "while
+   *  typing 0 becomes stagnant"). THE TEXT IS THE STATE WHILE SOMEBODY IS TYPING
+   *  and the number is derived from it; `onBlur` writes back what will ACTUALLY
+   *  be saved. The bounds are the SERVER'S own (`classFields` in the action). */
   const numberOf = (text: string, min: number, max: number) => Math.min(max, Math.max(min, Math.trunc(Number(text) || 0)));
   const [priceText, setPriceText] = useState(String(existing?.priceInr ?? 300));
   const priceInr = numberOf(priceText, 0, 1000000);
   const [capacityText, setCapacityText] = useState(String(existing?.capacity ?? 16));
   const capacityInput = numberOf(capacityText, 1, 500);
-  /* ── WHICH MEMBERSHIPS PAY FOR A SEAT HERE (19 Sep 2026, the user: "from form
-     should be able toggle whether studio and artist memberships are allowed or
-     not"). Two booleans on the class; the database is what enforces them when a
-     pass is spent (`passes_for_session` offers nothing a class refuses). The
-     defaults are the column's: a business's own memberships work on its classes,
-     and the teacher's do not until the class says so. ── */
+  /* WHICH MEMBERSHIPS PAY FOR A SEAT HERE (19 Sep 2026) — the database is what
+     enforces it when a pass is spent */
   const [allowsStudioMem, setAllowsStudioMem] = useState(existing?.allowsStudioMemberships ?? true);
+  /* ⚠ PUBLISH AS SOON AS EVERYONE SAYS YES (11 Oct 2026, `classes.auto_publish`):
+     on by default; off means the owner publishes from Classes by hand */
+  const [autoPublish, setAutoPublish] = useState(existing?.autoPublish ?? true);
 
-  /* ── WHERE, for an artist (18 Sep 2026) ── */
-  /* ⚠ THE FORM OPENS ON DANCEOS (20 Sep 2026, the user: "should always be on
-     dance os when opening the form by default"). A NEW class started on "A place
-     of my own", so the commonest answer by far — a studio that is already here,
-     with rooms and a register and a team — was one tap away and the rarer one
-     was free. An EXISTING class still opens on whichever it actually has: a
-     class already pinned to a map link is not "at a studio", and re-opening its
-     form must not say it is. */
-  const [whereKind, setWhereKind] = useState<WhereKind>(existing && !existing.venueBusinessId && (existing.mapsUrl || existing.lat != null) ? "place" : "studio");
+  /* ── WHERE (11 Oct 2026): the business type decides the answers ── */
+  /* an EXISTING class opens on whichever it actually has: a class already at a
+     map link is not "in a room", and re-opening its form must not say it is */
+  const initialWhere: WhereKind = existing?.venueBusinessId
+    ? "studio"
+    : existing && !existing.roomId && (existing.mapsUrl || existing.lat != null)
+      ? "map"
+      : isArtist
+        ? "studio"
+        : "room";
+  const [whereKind, setWhereKind] = useState<WhereKind>(initialWhere);
+  const whereOptions: Array<[WhereKind, string]> = isArtist
+    ? [
+        ["studio", "A studio's room"],
+        ["map", "A map link"],
+      ]
+    : [
+        ["room", "Your room"],
+        ["map", "A map link"],
+      ];
   const [venue, setVenue] = useState<Venue | null>(existing?.venueBusinessId ? { id: existing.venueBusinessId, name: venueName ?? "the studio you asked", sub: "" } : null);
   const [venueRooms, setVenueRooms] = useState<Room[]>([]);
   const [venueQ, setVenueQ] = useState("");
   const [venueHits, setVenueHits] = useState<Venue[]>([]);
-  /* ⚠ READ-ONLY SINCE THE PICKER LEFT (20 Sep 2026). There is no map on this
-     form any more, so nothing SETS a pin — but a class that already has one
-     keeps it, and it rides back out through the hidden fields below. Taking a
-     control off a form must never silently delete what it used to hold (the
-     16 Sep destroy-on-cancel lesson, in a quieter coat). */
+  /* ⚠ READ-ONLY SINCE THE PICKER LEFT (20 Sep 2026): nothing SETS a pin any
+     more, but a class that already has one keeps it */
   const [geo] = useState<{ lat: number; lng: number } | null>(existing?.lat != null && existing?.lng != null ? { lat: existing.lat, lng: existing.lng } : null);
   const [mapsUrl, setMapsUrl] = useState<string>(existing?.mapsUrl ?? "");
   const [placeLabel, setPlaceLabel] = useState<string | null>(null);
 
+  const pickWhere = (k: WhereKind) => {
+    setWhereKind(k);
+    setRoomId(k === "room" ? onlyRoom : k === "studio" && venue && venueRooms.length === 1 ? venueRooms[0].id : null);
+  };
   const pickVenue = async (v: Venue) => {
     setVenue(v);
     setRoomId(null);
     setVenueHits([]);
     setVenueQ("");
-    setVenueRooms((await venueRoomsAction(v.id)).map((r) => ({ id: r.id, name: r.name, capacity: r.capacity, amenities: r.amenities }) as Room));
+    const rs = toRooms(await venueRoomsAction(v.id));
+    setVenueRooms(rs);
+    if (rs.length === 1) setRoomId(rs[0].id);
   };
   /* ⚠⚠ AN ARTIST'S CLASS REOPENS WITH ITS STUDIO'S ROOMS (11 Oct 2026, the user:
-     "edit class sometimes messes up"). `venueRooms` was filled only by picking a
-     studio, so an existing class at a studio opened its form with NO rooms — the
-     room it was in could not be shown or changed, its capacity fell back to the
-     typed number, and the save sent a blank room name. The rooms are read once,
-     for the studio the class already has. */
+     "edit class sometimes messes up") — the rooms are read once, for the studio
+     the class already has */
   const existingVenueId = existing?.venueBusinessId ?? null;
   useEffect(() => {
-    if (!isArtist || !existingVenueId) return;
+    if (!existingVenueId) return;
     let live = true;
     void venueRoomsAction(existingVenueId).then((rs) => {
-      if (live) setVenueRooms(rs.map((r) => ({ id: r.id, name: r.name, capacity: r.capacity, amenities: r.amenities }) as Room));
+      if (live) setVenueRooms(toRooms(rs));
     });
     return () => {
       live = false;
     };
-  }, [isArtist, existingVenueId]);
+  }, [existingVenueId]);
   const searchVenue = async (q: string) => {
     setVenueQ(q);
     setVenueHits(q.trim().length >= 2 ? await searchVenuesAction(q) : []);
   };
 
-  /* ── WHO IS TAKING IT, for a studio (18 Sep 2026): anyone on DanceOS, asked ── */
+  /* ── WHO TAKES IT (11 Oct 2026): you, or anyone on DanceOS, asked ── */
   const artistClassPerson = classPeople.find((c) => c.kind === "artist");
-  const [teacher, setTeacher] = useState<{ id: string; name: string } | null>(artistClassPerson ? { id: artistClassPerson.userId, name: artistClassPerson.personName } : null);
-  const [artistPayText, setArtistPayText] = useState(String(artistClassPerson?.payPerSessionInr ?? 0));
-  const artistPayInr = numberOf(artistPayText, 0, 200000);
+  const existingIsMe = Boolean(artistClassPerson && meId && artistClassPerson.userId === meId);
+  const [whoKind, setWhoKind] = useState<WhoKind>(
+    !meId ? "other" : artistClassPerson ? (existingIsMe ? "me" : "other") : isArtist ? "me" : "other"
+  );
+  const [other, setOther] = useState<{ id: string; name: string } | null>(
+    artistClassPerson && !existingIsMe ? { id: artistClassPerson.userId, name: artistClassPerson.personName } : null
+  );
+  const selfTeacher = whoKind === "me" && meId !== null;
+  const teacherId = selfTeacher ? meId : other?.id ?? null;
 
   const [state, formAction, isPending] = useActionState(isEdit ? updateClassAction : createClassAction, initialState);
 
   /* ⚠ A SHEET LEAVES ITSELF (22 Sep 2026). As a PAGE the action redirects and
      this never runs. As a SHEET it hands back `ok` instead, and ONE `back()` is
-     enough for both entries: the confirm closed with `spend: false`, so we are
-     standing on its orphan, whose URL is the desk's own `?new=1` — the hook's
-     rule 3(a) then takes the second step on its own. `refresh()` re-runs the
-     register's read, so the class is in the list the sheet slides off.
-     No setState here on purpose: this repo's lint forbids it in an effect, and
-     the confirm is taken down by the render below reading `state.ok` instead. */
+     enough for both entries (the confirm's orphan and the desk's `?new=1`). No
+     setState here: the confirm is taken down by the render reading `state.ok`. */
   useEffect(() => {
     if (!state.ok) return;
     const t = setTimeout(() => {
@@ -390,45 +395,33 @@ export function ClassForm({
     return () => clearTimeout(t);
   }, [state.ok, router]);
 
+  const atRoom = whereKind === "room";
+  const atStudio = whereKind === "studio";
+  const atPlace = whereKind === "map";
   /* the room the class is in: the studio's own, or the venue's */
-  const roomList = isArtist ? venueRooms : rooms;
+  const roomList = atStudio ? venueRooms : atRoom ? rooms : [];
   const room = roomList.find((r) => r.id === roomId) ?? null;
-  /* a room defines what the class can hold (prototype 15507-15509); a place of one's own is the artist's number */
+  /* a room defines what the class can hold (prototype 15507-15509); a map link is your number */
   const capacity = room ? room.capacity : capacityInput;
-  const atStudio = isArtist && whereKind === "studio";
-  const atPlace = isArtist && whereKind === "place";
-  /* ⚠ YOUR OWN STUDIO (26 Sep 2026): the venue is one this person owns, so the
-     database accepts the room at birth and nothing waits — the words and the
-     buttons below follow, and the register's Publish is open the moment it lands */
+  /* ⚠ YOUR OWN STUDIO (26 Sep 2026): the database accepts the room at birth */
   const ownVenue = atStudio && venue !== null && ownedStudioIds.includes(venue.id);
-  /* the studio's owner taking their own class — born confirmed, never asked */
-  const selfTeacher = !isArtist && teacher !== null && meId !== null && teacher.id === meId;
-  /* a link, and a real one — the same http(s) test `save_class` applies to
-     anything rendered as an href on a page somebody else reads (11 Sep's
-     `javascript:` lesson) */
+  /* a link, and a real one — the same http(s) test the database applies */
   const mapsLinkOk = /^https?:\/\/\S+$/i.test(mapsUrl.trim());
 
   const basicsOk = style.length > 0 && date.length > 0 && endTime > startTime;
-  /* the first missing answer, in the words the button will wear (15573-15578) */
-  /** ⚠ EDITING AN OLD CLASS IS NOT BACKDATING. A class that has already run may
-   *  still have its price, its poster or its people corrected, so the rule bites
-   *  only when the start has MOVED from what this class already had — the form is
-   *  the one place that knows that, which is why the server enforces it on CREATE
-   *  and leaves UPDATE to this. */
+  /** ⚠ EDITING AN OLD CLASS IS NOT BACKDATING — the rule bites only when the
+   *  start has MOVED from what this class already had */
   const keptItsOwnStart = Boolean(
     existing?.session && date === toDateInput(existing.session.startsAt) && startTime === toTimeInput(existing.session.startsAt)
   );
   const startsInThePast = Boolean(date) && !keptItsOwnStart && startHasGone(date, startTime);
-  /* the Starts list for the date picked: TODAY offers only what is still ahead,
-     and a class being edited keeps its own start in the list whatever it is */
+  /* the Starts list for the date picked: TODAY offers only what is still ahead */
   const isToday = date !== "" && date === istToday();
   const nowHm = isToday ? istNowHm() : "";
   const startRows = TIMES.slice(0, -1).filter((t) => !isToday || t > nowHm || (keptItsOwnStart && t === startTime));
   /* an end after the start and within five hours (the old one kept if editing) */
   const endRows = TIMES.filter((t) => endFits(startTime, t) || (existing?.session && t === endTime && t > startTime));
   const tooLong = endTime > startTime && !endFits(startTime, endTime);
-  /** picking a start moves the end with it when the end no longer fits —
-   *  after the start and within five hours — to the next half hour */
   const pickStart = (v: string) => {
     setStartTime(v);
     if (!endFits(v, endTime)) {
@@ -436,8 +429,6 @@ export function ClassForm({
       if (next) setEndTime(next);
     }
   };
-  /** picking TODAY with a start already gone moves the start to the next open
-   *  slot, so the form never sits on a time the list no longer offers */
   const pickDate = (d: string) => {
     setDate(d);
     if (d === istToday() && startTime <= istNowHm()) {
@@ -446,12 +437,6 @@ export function ClassForm({
       if (next) pickStart(next);
     }
   };
-
-  /** ⚠ DOES THIS SAVE ASK ANYBODY? (28 Sep 2026) — an artist wanting a studio's
-   *  room, or a studio naming somebody other than itself as the teacher. Both are
-   *  a REQUEST; a class with nobody to wait for is only a draft, and the button
-   *  and the confirm sheet both read off this one answer so they cannot disagree. */
-  const asksSomebody = (atStudio && !ownVenue) || (!isArtist && teacher !== null && !selfTeacher);
 
   const stepOneErr = !style
     ? "Pick a dance style"
@@ -465,25 +450,18 @@ export function ClassForm({
             ? "End after the start"
           : tooLong
             ? "A session can be at most 5 hours"
-          : !isArtist && rooms.length > 0 && !roomId
+          : atRoom && rooms.length > 0 && !roomId
             ? "Pick a room"
             : atStudio && !venue
               ? "Pick a studio"
               : atStudio && venue && !roomId
                 ? "Pick one of its rooms"
-                /* ⚠ THE ANSWER IS A LINK NOW, NOT A PIN (20 Sep 2026) — the map
-                   picker is gone from this step, so what has to be there is a
-                   web address, and the check is the same http(s) rule the
-                   database keeps on every link somebody else will click */
                 : atPlace && !mapsLinkOk
                   ? "Paste the Google Maps link"
                   : null;
   const ok = basicsOk && !stepOneErr;
 
-  /* WHAT STANDS BETWEEN THIS AND PUBLISH — said here for an ARTIST'S PLACE, the
-     one case that may publish from the form (15551-15563). A studio's class and
-     an artist's class at a studio always leave here as drafts: their yes comes
-     from somebody else, later, and the register is where Publish lives. */
+  /* WHAT STANDS BETWEEN A MAP-LINK CLASS AND DISCOVER (15551-15563) */
   const blockers: string[] = [];
   if (atPlace) {
     if (!mapsLinkOk) blockers.push("Paste the Google Maps link for where it happens");
@@ -491,30 +469,44 @@ export function ClassForm({
     if (Number.isNaN(Number(priceInr))) blockers.push("Set a price — put 0 if it is free");
   }
 
-  /* the rate only travels when an OWNER is saving — the RPCs reject it from anybody else */
-  const peoplePayload = isArtist ? "" : JSON.stringify({ artistUserId: teacher?.id ?? null, ...(isOwner ? { artistPayInr } : {}) });
+  /* ⚠ PAY IS OFF THE FORM (11 Oct 2026): the ask takes the seat's own rate */
+  const peoplePayload = JSON.stringify({ artistUserId: teacherId });
 
   const whereWords = atStudio && venue ? `${room?.name ?? "a room"} at ${venue.name}` : atPlace ? (placeLabel ?? (mapsLinkOk ? "the place you linked" : "—")) : room?.name ?? "—";
+  const whoWords = selfTeacher ? "You" : other?.name ?? "Nobody asked yet";
+
+  /* ⚠ ONE SENTENCE FOR WHAT A SAVE DOES (11 Oct 2026) — the confirm sheet and
+     the last step's note read it, so they cannot disagree */
+  const askedNames = [
+    !selfTeacher && other ? other.name : null,
+    atStudio && venue && !ownVenue ? venue.name : null,
+  ].filter((n): n is string => Boolean(n));
+  const noTeacher = !selfTeacher && !other;
+  const saveSentence = !autoPublish
+    ? "Saved as a draft — publish it from Classes when you are ready."
+    : noTeacher
+      ? "Saved as a draft — nobody is asked yet. Pick who takes it and it goes on Discover once they say yes."
+      : askedNames.length
+        ? `${askedNames.join(" and ")} ${askedNames.length > 1 ? "are" : "is"} asked. It goes on Discover the moment they ${askedNames.length > 1 ? "both " : ""}say yes.`
+        : "It goes on Discover now.";
 
   return (
     <FormPage
       title={isEdit ? "Edit class" : "Add class"}
       steps={STEPS}
       step={step}
-      sub={isEdit ? "Any change asks the teacher — and the studio — to confirm again" : undefined}
+      sub={isEdit ? "Changing the time, the place or the pay asks everyone again." : undefined}
       sheet={sheet}
       onClose={() => router.back()}
       onBack={() => (step > 0 ? setStep(step - 1) : router.back())}
     >
       <form action={formAction} ref={formRef}>
-        {!isEdit ? <input type="hidden" name="status" ref={statusRef} defaultValue="draft" /> : null}
         {/* every field lives in state and submits as a hidden input, so stepping
             between the two halves never drops what you already answered */}
         <input type="hidden" name="businessId" value={businessId} />
-        {/* where a save lands — an artist's register is Your classes' Manage segment, in one hop (19 Sep 2026) */}
+        {/* where a save lands — an artist's register is Your classes, in one hop (19 Sep 2026) */}
         <input type="hidden" name="after" value={isArtist ? "/my-classes" : `/business/${businessId}/classes`} />
-        {/* which shell this form is in, so the action revalidates the register
-            and hands back instead of redirecting over the sheet's own entry */}
+        {/* which shell this form is in, so the action hands back instead of redirecting */}
         {sheet ? <input type="hidden" name="sheet" value="1" /> : null}
         {isEdit && existing && <input type="hidden" name="classId" value={existing.id} />}
         <input type="hidden" name="style" value={style} />
@@ -522,15 +514,16 @@ export function ClassForm({
         <input type="hidden" name="date" value={date} />
         <input type="hidden" name="startTime" value={startTime} />
         <input type="hidden" name="endTime" value={endTime} />
-        <input type="hidden" name="roomId" value={roomId ?? ""} />
+        <input type="hidden" name="roomId" value={atPlace ? "" : roomId ?? ""} />
         {/* the room's name, or the one the class already has while its list loads */}
-        <input type="hidden" name="room" value={room?.name ?? (existing && roomId === existing.roomId ? (existing.room ?? "") : "")} />
+        <input type="hidden" name="room" value={atPlace ? "" : room?.name ?? (existing && roomId === existing.roomId ? (existing.room ?? "") : "")} />
         <input type="hidden" name="poster" value={poster ?? ""} />
         <input type="hidden" name="priceInr" value={priceInr} />
         <input type="hidden" name="capacity" value={capacity} />
         <input type="hidden" name="allowsStudioMemberships" value={allowsStudioMem ? "1" : ""} />
+        <input type="hidden" name="autoPublish" value={autoPublish ? "1" : ""} />
         <input type="hidden" name="people" value={peoplePayload} />
-        {/* WHERE, for an artist: the venue, or the pin (18 Sep 2026) */}
+        {/* WHERE: the venue, or the map link (18 Sep 2026) */}
         <input type="hidden" name="venueBusinessId" value={atStudio && venue ? venue.id : ""} />
         <input type="hidden" name="lat" value={atPlace && geo ? String(geo.lat) : ""} />
         <input type="hidden" name="lng" value={atPlace && geo ? String(geo.lng) : ""} />
@@ -540,21 +533,12 @@ export function ClassForm({
           <>
             <div style={labelStyle}>1 · CLASS DATE &amp; TIME</div>
             <div style={{ fontSize: 12, color: SUB, marginBottom: 4 }}>Date</div>
-            {/* ⚠ `min` IS THE PICKER'S OWN FLOOR (28 Sep 2026) — it stops the
-                commonest backdate before it is typed, and `startsInThePast` is
-                the rule, because a date alone cannot tell you that 19:00 today
-                has already gone. An EXISTING class keeps whatever date it has;
-                the floor only limits what can be picked next. */}
+            {/* ⚠ `min` IS THE PICKER'S OWN FLOOR (28 Sep 2026); `startsInThePast`
+                is the rule, because a date alone cannot tell you 19:00 today has gone */}
             <input type="date" min={istToday()} value={date} onChange={(e) => pickDate(e.target.value)} aria-label="Class date" style={{ ...inputStyle, colorScheme: "dark" }} />
             <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div style={{ fontSize: 12, color: SUB, marginBottom: 4 }}>Starts</div>
-                {/* ⚠ THE CLOCK IS AN IN-APP SHEET NOW (27 Sep 2026) — and this is
-                    the pair that most needed it: the form is itself a sheet over
-                    the register, so a native `<select>` here threw the OS picker
-                    over the whole app twice in a row while somebody was still
-                    filling in one screen. The times, the "Ends follows Starts"
-                    rule and both accessible names are untouched. */}
                 <Pick
                   value={startTime}
                   rows={startRows.map((t) => ({ value: t, label: t }))}
@@ -578,8 +562,6 @@ export function ClassForm({
             </div>
 
             <div style={labelStyle}>2 · DANCE STYLE</div>
-            {/* the prototype's searchable picker (15336-15360), with the
-                business's own styles as one-tap chips over it (3 Oct 2026) */}
             <DosStylePicker
               value={style}
               onChange={setStyle}
@@ -596,210 +578,142 @@ export function ClassForm({
             </div>
 
             <div style={labelStyle}>4 · WHERE</div>
-            {!isArtist ? (
+            {/* ONE PLACE TO SAY WHERE (11 Oct 2026): the answers are the business
+                type's, the switch is the app's one column switch */}
+            <div role="group" aria-label="Where the class happens" style={{ ...columnTrack(), marginBottom: 10 }}>
+              {whereOptions.map(([k, word]) => {
+                const on = whereKind === k;
+                return (
+                  <button key={k} type="button" aria-pressed={on} onClick={() => pickWhere(k)} style={columnTab(on)}>
+                    {word}
+                  </button>
+                );
+              })}
+            </div>
+            {atRoom ? (
               <>
-                {/* ── ONE PLACE TO SAY WHERE (prototype 15376-15396): a room belongs
-                    to a studio, so they are one question — and every room here is
-                    already yours ── */}
-                {studioPlace ? <div style={{ fontSize: 11.5, fontWeight: 700, color: SUB, margin: "-4px 0 8px" }}>{studioPlace}</div> : null}
+                {studioPlace ? <div style={{ fontSize: 11.5, fontWeight: 700, color: SUB, margin: "0 0 8px" }}>{studioPlace}</div> : null}
                 <RoomList rooms={rooms} roomId={roomId} onPick={setRoomId} emptyWords="No rooms yet. Add one in Rooms on the studio's home and it will be pickable here — a room also decides what the class can hold." />
+              </>
+            ) : atStudio ? (
+              <>
+                {venue ? (
+                  <div style={{ display: "flex", alignItems: "center", gap: 10, background: EL, border: `1.5px solid ${INK}`, borderRadius: 14, padding: "11px 13px", marginBottom: 8 }}>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontSize: 13.5, fontWeight: 800 }}>{venue.name}</div>
+                      {ownVenue ? (
+                        <div style={{ fontSize: 10.5, fontWeight: 800, color: "#22C55E" }} data-testid="own-venue">Your studio · no request needed</div>
+                      ) : venue.sub ? (
+                        <div style={{ fontSize: 11, color: SUB }}>{venue.sub}</div>
+                      ) : null}
+                    </div>
+                    <button
+                      type="button"
+                      aria-label="Pick a different studio"
+                      onClick={() => {
+                        setVenue(null);
+                        setVenueRooms([]);
+                        setRoomId(null);
+                      }}
+                      style={{ fontSize: 11, fontWeight: 800, color: SUB, background: "transparent", border: `1.5px solid ${EL}`, borderRadius: 999, padding: "5px 10px", cursor: "pointer", fontFamily: "inherit" }}
+                    >
+                      Change
+                    </button>
+                  </div>
+                ) : (
+                  <div>
+                    <input value={venueQ} onChange={(e) => void searchVenue(e.target.value)} placeholder="Search studios on DanceOS…" aria-label="Search studios" style={inputStyle} />
+                    {venueHits.map((h) => (
+                      <div key={h.id} role="button" tabIndex={0} onKeyDown={dosKey} aria-label={`Ask ${h.name} for a room`} onClick={() => void pickVenue(h)} style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 12px", borderRadius: 13, marginTop: 6, cursor: "pointer", background: CARD, border: `1.5px solid ${EL}` }}>
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div style={{ fontSize: 12.5, fontWeight: 800 }}>{h.name}</div>
+                          <div style={{ fontSize: 10.5, color: "var(--muted)", marginTop: 1 }}>{h.sub}</div>
+                        </div>
+                        <span style={{ fontSize: 11, fontWeight: 800, color: "#3B82F6" }}>Pick ›</span>
+                      </div>
+                    ))}
+                    {venueQ.trim().length >= 2 && venueHits.length === 0 ? <div style={{ fontSize: 11.5, color: SUB, padding: "8px 2px" }}>No studio on DanceOS by that name.</div> : null}
+                  </div>
+                )}
+                {venue ? <RoomList rooms={venueRooms} roomId={roomId} onPick={setRoomId} emptyWords="This studio has not listed its rooms yet — ask them to add one, or pick another studio." /> : null}
               </>
             ) : (
               <>
-                {/* ── AN ARTIST'S TWO ANSWERS (18 Sep 2026): a studio's room, asked
-                    for; or a place of their own, pinned ── */}
-                <div role="group" aria-label="Where the class happens" style={{ display: "flex", gap: 2, background: EL, borderRadius: 12, padding: 3, marginBottom: 10 }}>
-                  {(
-                    [
-                      ["studio", "A studio on DanceOS"],
-                      ["place", "Somewhere else"],
-                    ] as Array<[WhereKind, string]>
-                  ).map(([k, word]) => {
-                    const on = whereKind === k;
-                    return (
-                      <button
-                        key={k}
-                        type="button"
-                        aria-pressed={on}
-                        onClick={() => {
-                          setWhereKind(k);
-                          setRoomId(null);
-                        }}
-                        style={{ flex: 1, textAlign: "center", padding: "8px 4px", borderRadius: 9, cursor: "pointer", fontSize: 11.5, fontWeight: 800, border: "none", background: on ? LILAC : "transparent", color: on ? INK : SUB, boxShadow: on ? "0 1px 4px rgba(0,0,0,.3)" : "none", fontFamily: "inherit" }}
-                      >
-                        {word}
-                      </button>
-                    );
-                  })}
+                {/* ⚠ A MAP LINK, NOT A MAP (20 Sep 2026) — the place's own Google
+                    Maps link is more accurate than a pin dragged around a map */}
+                <input
+                  value={mapsUrl}
+                  onChange={(e) => setMapsUrl(e.target.value)}
+                  aria-label="Google Maps link"
+                  inputMode="url"
+                  placeholder="https://maps.app.goo.gl/… or https://maps.google.com/…"
+                  style={inputStyle}
+                />
+                {mapsUrl.trim() && !/^https?:\/\//i.test(mapsUrl.trim()) ? (
+                  <div style={{ fontSize: 11.5, color: "#F87171", fontWeight: 700, marginTop: 6 }}>
+                    That is not a web address — open the place in Google Maps, press Share, and paste the link it gives you.
+                  </div>
+                ) : null}
+                <div style={{ marginTop: 10 }}>
+                  <div style={labelStyle}>WHAT TO CALL IT</div>
+                  <input
+                    value={placeLabel ?? ""}
+                    onChange={(e) => setPlaceLabel(e.target.value || null)}
+                    aria-label="What to call this place"
+                    maxLength={80}
+                    placeholder="The studio's name, or your space"
+                    style={inputStyle}
+                  />
                 </div>
-                {whereKind === "studio" ? (
-                  <>
-                    {/* ⚠ NO PARAGRAPH HERE (27 Sep 2026, the user: *"less details
-                        in creation forms for everything should mostly just be
-                        headings"*). What it said is on the screen twice already:
-                        the chip under a studio you own reads "Your studio · no
-                        request needed", and the bar's own button reads "Save &
-                        ask them" for one you do not. This is C4c's rule — helper
-                        text only where the control cannot speak — applied to the
-                        forms rather than to the Edit sheets. */}
-                    {venue ? (
-                      <div style={{ display: "flex", alignItems: "center", gap: 10, background: EL, border: `1.5px solid ${INK}`, borderRadius: 14, padding: "11px 13px", marginBottom: 8 }}>
-                        <div style={{ flex: 1, minWidth: 0 }}>
-                          <div style={{ fontSize: 13.5, fontWeight: 800 }}>{venue.name}</div>
-                          {ownVenue ? (
-                            <div style={{ fontSize: 10.5, fontWeight: 800, color: "#22C55E" }} data-testid="own-venue">Your studio · no request needed</div>
-                          ) : venue.sub ? (
-                            <div style={{ fontSize: 11, color: SUB }}>{venue.sub}</div>
-                          ) : null}
-                        </div>
-                        <button
-                          type="button"
-                          aria-label="Pick a different studio"
-                          onClick={() => {
-                            setVenue(null);
-                            setVenueRooms([]);
-                            setRoomId(null);
-                          }}
-                          style={{ fontSize: 11, fontWeight: 800, color: SUB, background: "transparent", border: `1.5px solid ${EL}`, borderRadius: 999, padding: "5px 10px", cursor: "pointer", fontFamily: "inherit" }}
-                        >
-                          Change
-                        </button>
-                      </div>
-                    ) : (
-                      <div>
-                        <input value={venueQ} onChange={(e) => void searchVenue(e.target.value)} placeholder="Search studios on DanceOS…" aria-label="Search studios" style={inputStyle} />
-                        {venueHits.map((h) => (
-                          <div key={h.id} role="button" tabIndex={0} onKeyDown={dosKey} aria-label={`Ask ${h.name} for a room`} onClick={() => void pickVenue(h)} style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 12px", borderRadius: 13, marginTop: 6, cursor: "pointer", background: CARD, border: `1.5px solid ${EL}` }}>
-                            <div style={{ flex: 1, minWidth: 0 }}>
-                              <div style={{ fontSize: 12.5, fontWeight: 800 }}>{h.name}</div>
-                              <div style={{ fontSize: 10.5, color: "var(--muted)", marginTop: 1 }}>{h.sub}</div>
-                            </div>
-                            <span style={{ fontSize: 11, fontWeight: 800, color: "#3B82F6" }}>Pick ›</span>
-                          </div>
-                        ))}
-                        {venueQ.trim().length >= 2 && venueHits.length === 0 ? <div style={{ fontSize: 11.5, color: SUB, padding: "8px 2px" }}>No studio on DanceOS by that name.</div> : null}
-                      </div>
-                    )}
-                    {venue ? <RoomList rooms={venueRooms} roomId={roomId} onPick={setRoomId} emptyWords="This studio has not listed its rooms yet — ask them to add one, or pick another studio." /> : null}
-                  </>
-                ) : (
-                  <>
-                    {/* ── ⚠ A MAP LINK, NOT A MAP (20 Sep 2026, the user: "when
-                        adding a class by artist with studio not on dance os
-                        should just need a map link not map location picker").
-                        They are right, and it is about who knows the answer: a
-                        studio that is not on DanceOS ALREADY HAS a Google Maps
-                        listing, and its own link is more accurate than anything
-                        an artist can find by dragging a pin around a map of a
-                        place they may not be standing in. Pasting the link they
-                        were sent is one action; hunting for the right rooftop is
-                        several, and gets it wrong.
-                        ⚠ AND IT IS THE ONLY MAPS LOAD ON THIS FORM, so an artist
-                        who teaches at their own place never waits for the Maps
-                        script (and never meets the demo key's daily quota). ── */}
-                    {/* the placeholder below IS the instruction, and the error
-                        line under it teaches the rule at the moment it is broken */}
-                    <input
-                      value={mapsUrl}
-                      onChange={(e) => setMapsUrl(e.target.value)}
-                      aria-label="Google Maps link"
-                      inputMode="url"
-                      placeholder="https://maps.app.goo.gl/… or https://maps.google.com/…"
-                      style={inputStyle}
-                    />
-                    {/* the sentence a bad paste gets, where they can act on it —
-                        the same http(s) rule `save_class`'s own check keeps */}
-                    {mapsUrl.trim() && !/^https?:\/\//i.test(mapsUrl.trim()) ? (
-                      <div style={{ fontSize: 11.5, color: "#F87171", fontWeight: 700, marginTop: 6 }}>
-                        That is not a web address — open the place in Google Maps, press Share, and paste the link it gives you.
-                      </div>
-                    ) : null}
-                    {/* what they will type on the class page beside it, so the
-                        row is not just a URL somebody has to trust */}
-                    <div style={{ marginTop: 10 }}>
-                      <div style={labelStyle}>WHAT TO CALL IT</div>
-                      <input
-                        value={placeLabel ?? ""}
-                        onChange={(e) => setPlaceLabel(e.target.value || null)}
-                        aria-label="What to call this place"
-                        maxLength={80}
-                        placeholder="The studio's name, or your space"
-                        style={inputStyle}
-                      />
-                    </div>
-                  </>
-                )}
               </>
             )}
           </>
         ) : (
           <>
-            {!isArtist ? (
-              <>
-                {/* ── WHO IS TAKING IT (15445-15479), from ANYONE ON DANCEOS (18 Sep 2026):
-                    the app's one people search; the person is ASKED and answers in
-                    their Inbox; the class stays a draft until they say yes ── */}
-                <div style={labelStyle}>5 · WHO IS TAKING IT</div>
-                {/* ⚠ THE OWNER TAKES IT THEMSELVES (26 Sep 2026, the user: "when
-                    the same user is creating classes from studio … no
-                    verification is required but keeps a log in the inbox"). The
-                    people search leaves you out on purpose (a search that finds
-                    yourself is a search that lies about who is available), so
-                    this is the one door to naming yourself. The database seats
-                    you CONFIRMED and the Inbox keeps the line. */}
-                {!teacher && meId ? (
-                  <button
-                    type="button"
-                    onClick={() => setTeacher({ id: meId, name: "You" })}
-                    style={{ display: "block", width: "100%", textAlign: "left", padding: "10px 12px", borderRadius: 13, marginBottom: 8, background: CARD, border: `1.5px dashed ${EL}`, color: INK, cursor: "pointer", fontFamily: "inherit" }}
-                  >
-                    <span style={{ display: "block", fontSize: 12.5, fontWeight: 900 }}>I take this class myself</span>
-                    <span style={{ display: "block", fontSize: 10.5, color: SUB, marginTop: 2 }}>Your own studio, your own class — no confirmation needed</span>
-                  </button>
-                ) : null}
-                {teacher ? (
-                  <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 12px", borderRadius: 13, marginBottom: 6, background: EL, border: `1.5px solid ${INK}` }}>
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ fontSize: 12.5, fontWeight: 900 }}>{teacher.name}</div>
-                      <div style={{ fontSize: 10.5, color: "var(--muted)", marginTop: 1 }}>{selfTeacher ? "you take this class" : "takes this class"}</div>
-                    </div>
-                    {artistClassPerson && artistClassPerson.userId === teacher.id ? (
-                      <span style={{ flexShrink: 0, fontSize: 10, fontWeight: 800, color: classPersonTint(artistClassPerson.status) }}>{classPersonWord(artistClassPerson.status)}</span>
-                    ) : selfTeacher ? (
-                      <span style={{ flexShrink: 0, fontSize: 10, fontWeight: 800, color: "#22C55E" }} data-testid="self-teacher">No confirmation needed</span>
-                    ) : (
-                      <span style={{ flexShrink: 0, fontSize: 10, fontWeight: 800, color: "#F59E0B" }}>Will be asked</span>
-                    )}
-                    <button type="button" aria-label="Pick somebody else to take this class" onClick={() => setTeacher(null)} style={{ fontSize: 11, fontWeight: 800, color: SUB, background: "transparent", border: `1.5px solid ${EL}`, borderRadius: 999, padding: "5px 10px", cursor: "pointer", fontFamily: "inherit" }}>
-                      Change
-                    </button>
-                  </div>
-                ) : (
-                  <PeoplePicker title="SEARCH DANCEOS, THEN ASK THEM" ariaLabel="Search DanceOS for who takes this class" actionWord="Ask ›" actionColor="#0D9488" onPick={(p) => setTeacher({ id: p.id, name: p.fullName })} pickLabel={(p) => `${p.fullName} takes this class`} />
-                )}
-
-                {/* ── WHAT A SESSION PAYS (Step 13): the studio owner's number, riding the ask ── */}
-                {isOwner && teacher && !selfTeacher && (
-                  <>
-                    <div style={labelStyle}>WHAT A SESSION PAYS THEM</div>
-                    <input type="number" min={0} max={200000} step={50} value={artistPayText} aria-label="What a session pays the artist" onChange={(e) => setArtistPayText(e.target.value)} onBlur={() => setArtistPayText(String(artistPayInr))} style={inputStyle} />
-                    {/* ⚠ ONE CLAUSE KEPT, AND IT IS A MONEY CLAIM — Step 13's own
-                        limit, which nothing else on this screen states: the number
-                        is a record, not a transfer. The rest of the paragraph said
-                        what "₹" and "0" already say. */}
-                    <div style={{ fontSize: 11.5, color: SUB, marginTop: 6 }}>₹ per session · 0 = free. You settle it — DanceOS does not move the money.</div>
-                  </>
-                )}
-                <div style={{ fontSize: 11.5, color: "var(--muted)", marginTop: 14, lineHeight: 1.5 }}>Assistants are added from the class page once it exists.</div>
-              </>
-            ) : (
-              <div style={{ background: CARD, borderRadius: 14, padding: "12px 14px", marginTop: 18, fontSize: 12, color: SUB, lineHeight: 1.5 }}>
-                <b style={{ color: INK }}>You take this class.</b> Assistants are added from the class page once it exists.
+            {/* ── WHO TAKES IT (11 Oct 2026): you, born confirmed; or somebody on
+                DanceOS, asked. ⚠ The people search leaves you out on purpose, so
+                "You" is the one door to naming yourself. ── */}
+            <div style={labelStyle}>5 · WHO TAKES IT</div>
+            {meId ? (
+              <div role="group" aria-label="Who takes this class" style={{ ...columnTrack(), marginBottom: 10 }}>
+                <button type="button" aria-pressed={whoKind === "me"} aria-label="I take this class myself" onClick={() => setWhoKind("me")} style={columnTab(whoKind === "me")}>
+                  You
+                </button>
+                <button type="button" aria-pressed={whoKind === "other"} aria-label="Somebody else takes this class" onClick={() => setWhoKind("other")} style={columnTab(whoKind === "other")}>
+                  Somebody else
+                </button>
               </div>
+            ) : null}
+            {selfTeacher ? (
+              <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 12px", borderRadius: 13, marginBottom: 6, background: EL, border: `1.5px solid ${INK}` }}>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontSize: 12.5, fontWeight: 900 }}>You</div>
+                  <div style={{ fontSize: 10.5, color: "var(--muted)", marginTop: 1 }}>you take this class</div>
+                </div>
+                <span style={{ flexShrink: 0, fontSize: 10, fontWeight: 800, color: "#22C55E" }} data-testid="self-teacher">No confirmation needed</span>
+              </div>
+            ) : other ? (
+              <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 12px", borderRadius: 13, marginBottom: 6, background: EL, border: `1.5px solid ${INK}` }}>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontSize: 12.5, fontWeight: 900 }}>{other.name}</div>
+                  <div style={{ fontSize: 10.5, color: "var(--muted)", marginTop: 1 }}>takes this class</div>
+                </div>
+                {artistClassPerson && artistClassPerson.userId === other.id ? (
+                  <span style={{ flexShrink: 0, fontSize: 10, fontWeight: 800, color: classPersonTint(artistClassPerson.status) }}>{classPersonWord(artistClassPerson.status)}</span>
+                ) : (
+                  <span style={{ flexShrink: 0, fontSize: 10, fontWeight: 800, color: "#F59E0B" }}>Will be asked</span>
+                )}
+                <button type="button" aria-label="Pick somebody else to take this class" onClick={() => setOther(null)} style={{ fontSize: 11, fontWeight: 800, color: SUB, background: "transparent", border: `1.5px solid ${EL}`, borderRadius: 999, padding: "5px 10px", cursor: "pointer", fontFamily: "inherit" }}>
+                  Change
+                </button>
+              </div>
+            ) : (
+              <PeoplePicker title="SEARCH DANCEOS, THEN ASK THEM" ariaLabel="Search DanceOS for who takes this class" actionWord="Ask ›" actionColor="#0D9488" onPick={(p) => setOther({ id: p.id, name: p.fullName })} pickLabel={(p) => `${p.fullName} takes this class`} />
             )}
+            <div style={{ fontSize: 11.5, color: "var(--muted)", marginTop: 10, lineHeight: 1.5 }}>Assistants are added from the class page once it exists.</div>
 
-            {/* CAPACITY — the room decides it when there is one (15505-15515); a place of your own is your number */}
-            <div style={labelStyle}>{isArtist ? "5" : "6"} · CAPACITY</div>
+            {/* CAPACITY — the room decides it when there is one (15505-15515) */}
+            <div style={labelStyle}>6 · CAPACITY</div>
             {room ? (
               <div style={{ background: CARD, borderRadius: 14, padding: "12px 14px" }}>
                 <div style={{ fontSize: 14, fontWeight: 700 }}>
@@ -810,40 +724,20 @@ export function ClassForm({
               <input type="number" min={1} max={500} value={capacityText} onChange={(e) => setCapacityText(e.target.value)} onBlur={() => setCapacityText(String(capacityInput))} aria-label="Capacity" style={inputStyle} />
             )}
 
-            <div style={labelStyle}>{isArtist ? "6" : "7"} · PRICE</div>
+            <div style={labelStyle}>7 · PRICE</div>
             <div style={{ fontSize: 12, color: SUB, marginBottom: 4 }}>
               ₹ / session <span style={{ color: "var(--muted)" }}>· 0 = free</span>
             </div>
             <input type="number" min={0} max={1000000} value={priceText} onChange={(e) => setPriceText(e.target.value)} onBlur={() => setPriceText(String(priceInr))} aria-label="Price per session" style={inputStyle} />
             {priceInr === 0 && <div style={{ fontSize: 12, color: "#22C55E", fontWeight: 700, marginTop: 6 }}>This session is free.</div>}
 
-            {/* ── MEMBERSHIPS (19 Sep 2026) — the two switches the user asked the
-                form to carry. They decide whose pass may pay for a seat here, and
-                the Policy block on the class's own page says the same thing to
-                whoever is about to book. ── */}
-            <div style={labelStyle}>{isArtist ? "7" : "8"} · MEMBERSHIPS</div>
-            {/* ⚠ ONE SWITCH (4 Oct 2026, the user: "memberships can only be created
-                by studios") — "Artist memberships" went with artists selling them */}
-            {([["Studio memberships", allowsStudioMem, setAllowsStudioMem]] as const).map(([word, on, set]) => (
-              <button
-                key={word}
-                type="button"
-                role="switch"
-                aria-checked={on}
-                aria-label={word}
-                onClick={() => set(!on)}
-                style={{ display: "flex", alignItems: "center", gap: 10, width: "100%", textAlign: "left", background: CARD, border: `1.5px solid ${EL}`, borderRadius: 12, padding: "11px 12px", marginBottom: 8, cursor: "pointer", fontFamily: "inherit", color: INK }}
-              >
-                <span style={{ flex: 1, minWidth: 0, fontSize: 12.5, fontWeight: 800 }}>{word}</span>
-                <span style={{ flexShrink: 0, width: 38, height: 22, borderRadius: 999, background: on ? "#22C55E" : EL, position: "relative", transition: "background .15s" }}>
-                  <span style={{ position: "absolute", top: 3, left: on ? 19 : 3, width: 16, height: 16, borderRadius: 999, background: "#fff", transition: "left .15s" }} />
-                </span>
-              </button>
-            ))}
+            {/* ── MEMBERSHIPS (19 Sep 2026; one switch since 4 Oct 2026) ── */}
+            <div style={labelStyle}>8 · MEMBERSHIPS</div>
+            <SwitchRow word="Studio memberships" on={allowsStudioMem} onFlip={() => setAllowsStudioMem(!allowsStudioMem)} />
 
             {/* POSTER — drawn, not uploaded, so it can never disagree with the class it belongs to (6478-6481) */}
             <div style={labelStyle}>
-              {isArtist ? "8" : "9"} · POSTER <span style={{ fontWeight: 500, letterSpacing: 0 }}>· optional</span>
+              9 · POSTER <span style={{ fontWeight: 500, letterSpacing: 0 }}>· optional</span>
             </div>
             <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "flex-start" }}>
               {POSTER_DESIGNS.map(([design, word]) => {
@@ -858,28 +752,18 @@ export function ClassForm({
                 );
               })}
             </div>
-            {/* no note: the label already says "optional", and a class that
-                chooses none is DRAWN one anyway — the default is on the screen */}
+
+            {/* ── ON DISCOVER (11 Oct 2026): the draft publishes itself when the
+                last yes lands, unless this is off ── */}
+            <div style={labelStyle}>10 · ON DISCOVER</div>
+            <SwitchRow word="Publish as soon as everyone says yes" on={autoPublish} onFlip={() => setAutoPublish(!autoPublish)} />
           </>
         )}
 
         {state.error && <div style={{ fontSize: 12, color: "#EF4444", fontWeight: 700, marginTop: 14 }}>{state.error}</div>}
 
-        {/* WHAT HAPPENS ON SAVE (18 Sep 2026): said plainly, because the form no
-            longer publishes a studio's class — the register does, once the yes is in */}
-        {step === STEPS.length - 1 && !isEdit ? (
-          <FormNote blockers={atPlace && blockers.length ? blockers : undefined}>
-            {atPlace
-              ? "Your place, your capacity — this one can go straight on Discover."
-              : ownVenue
-                ? `Your own studio's room — nothing waits on anybody, so this one can go straight on Discover.`
-                : atStudio
-                  ? `Saved as a draft. ${venue?.name ?? "The studio"} is asked for the room; publish from Your classes once they accept.`
-                  : selfTeacher
-                    ? "Saved as a draft with you as its teacher — nobody has to confirm. Publish it from the register."
-                    : `Saved as a draft. ${teacher ? `${teacher.name} is asked` : "Nobody is asked yet — pick who takes it"}; publish from the register once they have said yes.`}
-          </FormNote>
-        ) : null}
+        {/* WHAT HAPPENS ON SAVE — the same sentence the confirm sheet carries */}
+        {step === STEPS.length - 1 ? <FormNote blockers={atPlace && blockers.length ? blockers : undefined}>{saveSentence}</FormNote> : null}
 
         <FormBar>
           {step === 0 ? (
@@ -902,36 +786,19 @@ export function ClassForm({
               </button>
               {isEdit ? (
                 <button type="submit" disabled={!ok || isPending} style={{ flex: 1.3, padding: "13px", borderRadius: 999, border: "none", background: ok ? INK : EL, color: ok ? LILAC : "#707070", fontWeight: 800, fontSize: 13.5, cursor: ok ? "pointer" : "default", fontFamily: "inherit" }}>
-                  {isPending ? "Saving…" : "Save changes"}
+                  {isPending ? "Saving…" : "Save"}
                 </button>
               ) : (
-                <>
-                  <button
-                    type="button"
-                    disabled={!ok || isPending}
-                    onClick={() => {
-                      setSubmitStatus("draft");
-                      setConfirm("draft");
-                    }}
-                    style={{ flex: 1.6, padding: "14px", borderRadius: 999, border: "none", background: INK, color: !ok ? "var(--muted)" : LILAC, fontWeight: 700, fontSize: 14, cursor: ok ? "pointer" : "default", fontFamily: "inherit" }}
-                  >
-                    {/* ⚠ "SEND REQUEST", NOT "SAVE & ASK" (28 Sep 2026, the user's own
-                        word). The old label named the two things the press does in
-                        the order the CODE does them — it saves a draft, then asks
-                        somebody — and what the person pressing it is doing is
-                        asking. The draft is the mechanism, not the act. The word
-                        is the same whether the ask goes to a teacher or to a
-                        studio, because from here they are one thing: somebody
-                        else has to say yes. */}
-                    {isPending ? (asksSomebody ? "Sending…" : "Saving…") : asksSomebody ? "Send request" : "Save draft"}
-                  </button>
-                  {/* ⚠ NO "PUBLISH CLASS" HERE (4 Oct 2026, the user: "after creating
-                      class always gets saved in drafts first"). An artist's class at
-                      their own place, or in a studio they own, could publish straight
-                      from this bar; every new class is a draft now, and the register's
-                      Publish — the one big button on the Draft card — is the next step.
-                      The server forces the draft too. */}
-                </>
+                /* ⚠ "SAVE", EVERYWHERE (11 Oct 2026): one word whatever the save
+                   goes on to ask — the sentence under the form says what happens */
+                <button
+                  type="button"
+                  disabled={!ok || isPending}
+                  onClick={() => setConfirm(true)}
+                  style={{ flex: 1.6, padding: "14px", borderRadius: 999, border: "none", background: INK, color: !ok ? "var(--muted)" : LILAC, fontWeight: 700, fontSize: 14, cursor: ok ? "pointer" : "default", fontFamily: "inherit" }}
+                >
+                  {isPending ? "Saving…" : "Save"}
+                </button>
               )}
             </>
           )}
@@ -940,62 +807,43 @@ export function ClassForm({
 
       {confirm && !isEdit && !state.ok ? (
         <FormConfirm
-          /* ⚠ THE SHEET ASKS THE QUESTION THE BUTTON ASKED (28 Sep 2026). Where the
-             press sends a request the heading says so; where it only files a draft
-             it still says "Save as draft?", because those are two different acts and
-             one word for both is how the old label misled. ⚠ A braced JSX comment
-             here would be a CHILD, and a child in an attribute list is a parse
-             error — and writing the braced form INSIDE this comment closed it
-             early, which is the same trap one layer down. */
-          label={confirm === "publish" ? "Publish this class?" : asksSomebody ? "Send this request?" : "Save as draft?"}
-          title={confirm === "publish" ? "Publish this class?" : asksSomebody ? "Send this request?" : "Save as draft?"}
-          sub={
-            confirm === "publish"
-              ? "It'll be added to your calendar and go live on Discover."
-              : ownVenue
-                ? `${room?.name ?? "The room"} at ${venue?.name ?? "your studio"} is yours — nothing waits on anybody. Only you can see the draft until you publish.`
-                : atStudio
-                  ? `${venue?.name ?? "The studio"} will be asked for ${room?.name ?? "the room"}. Only you can see the draft until they accept and you publish.`
-                  : selfTeacher
-                    ? "You take it — no confirmation needed. Only you can see the draft until you publish."
-                    : teacher
-                      ? `${teacher.name} will be asked to take it. Only you can see the draft until they say yes and you publish.`
-                      : "Only you can see drafts — edit anytime from the register's Drafts tab."
-          }
-          confirmWord={confirm === "publish" ? "Publish it" : asksSomebody ? "Send request" : "Save draft"}
+          label="Save this class?"
+          title="Save this class?"
+          sub={saveSentence}
+          confirmWord="Save"
           busy={isPending}
           spend={false}
-          onCancel={() => setConfirm(null)}
+          onCancel={() => setConfirm(false)}
           onConfirm={() => {
-            setConfirm(null);
+            setConfirm(false);
             formRef.current?.requestSubmit();
           }}
         >
-            {/* the calendar-style card (15595-15617) */}
-            {(() => {
-              const styleColor = dosStyleColor(style);
-              return (
-                <div style={{ borderRadius: 14, overflow: "hidden", background: CARD, border: `1.5px solid ${EL}` }}>
-                  <div style={{ background: `${styleColor}40`, padding: "9px 10px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                    <span style={{ fontSize: 11.5, fontWeight: 800 }}>🕒 {startTime}–{endTime} · {date}</span>
-                  </div>
-                  <div style={{ background: `${styleColor}22`, padding: "9px 10px", display: "flex", alignItems: "center", gap: 10 }}>
-                    <span style={{ display: "inline-flex", alignItems: "center", gap: 9, background: CARD, border: `1.5px solid ${styleColor}55`, borderRadius: 999, padding: "4px 14px 4px 5px" }}>
-                      <span aria-hidden="true" style={{ width: 11, height: 11, borderRadius: 6, background: styleColor, display: "inline-block" }} />
-                      <span style={{ fontSize: 15, fontWeight: 800, color: styleColor }}>{style}</span>
-                    </span>
-                    <span style={{ fontSize: 11, fontWeight: 800, color: SUB }}>{DOS_LEVEL_LABEL[level] ?? level}</span>
-                  </div>
-                  <div style={{ padding: "10px 12px" }}>
-                    <div style={{ fontSize: 12, color: SUB }}>👤 {isArtist ? "You" : teacher?.name ?? "Nobody asked yet"}</div>
-                    <div style={{ fontSize: 12, color: SUB, marginTop: 4 }}>● {whereWords} · cap {capacity}</div>
-                    {!isArtist && studioPlace ? <div style={{ fontSize: 12, color: SUB, marginTop: 4 }}>📍 {studioPlace}</div> : null}
-                    <div style={{ fontSize: 12, marginTop: 4, fontWeight: 800, color: priceInr === 0 ? "#22C55E" : INK }}>{priceInr === 0 ? "FREE" : `₹${priceInr}/session`}</div>
-                    {priceInr > 0 ? <div style={{ fontSize: 11.5, marginTop: 4, color: "#22C55E", fontWeight: 700 }}>↩️ Refund until 12 h before start</div> : null}
-                  </div>
+          {/* the calendar-style card (15595-15617) */}
+          {(() => {
+            const styleColor = dosStyleColor(style);
+            return (
+              <div style={{ borderRadius: 14, overflow: "hidden", background: CARD, border: `1.5px solid ${EL}` }}>
+                <div style={{ background: `${styleColor}40`, padding: "9px 10px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                  <span style={{ fontSize: 11.5, fontWeight: 800 }}>🕒 {startTime}–{endTime} · {date}</span>
                 </div>
-              );
-            })()}
+                <div style={{ background: `${styleColor}22`, padding: "9px 10px", display: "flex", alignItems: "center", gap: 10 }}>
+                  <span style={{ display: "inline-flex", alignItems: "center", gap: 9, background: CARD, border: `1.5px solid ${styleColor}55`, borderRadius: 999, padding: "4px 14px 4px 5px" }}>
+                    <span aria-hidden="true" style={{ width: 11, height: 11, borderRadius: 6, background: styleColor, display: "inline-block" }} />
+                    <span style={{ fontSize: 15, fontWeight: 800, color: styleColor }}>{style}</span>
+                  </span>
+                  <span style={{ fontSize: 11, fontWeight: 800, color: SUB }}>{DOS_LEVEL_LABEL[level] ?? level}</span>
+                </div>
+                <div style={{ padding: "10px 12px" }}>
+                  <div style={{ fontSize: 12, color: SUB }}>👤 {whoWords}</div>
+                  <div style={{ fontSize: 12, color: SUB, marginTop: 4 }}>● {whereWords} · cap {capacity}</div>
+                  {atRoom && studioPlace ? <div style={{ fontSize: 12, color: SUB, marginTop: 4 }}>📍 {studioPlace}</div> : null}
+                  <div style={{ fontSize: 12, marginTop: 4, fontWeight: 800, color: priceInr === 0 ? "#22C55E" : INK }}>{priceInr === 0 ? "FREE" : `₹${priceInr}/session`}</div>
+                  {priceInr > 0 ? <div style={{ fontSize: 11.5, marginTop: 4, color: "#22C55E", fontWeight: 700 }}>↩️ Refund until 12 h before start</div> : null}
+                </div>
+              </div>
+            );
+          })()}
         </FormConfirm>
       ) : null}
 

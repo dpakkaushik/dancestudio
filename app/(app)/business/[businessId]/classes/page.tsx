@@ -5,7 +5,7 @@ import { ClassTile } from "@/features/classes/components/ClassTile";
 import { groupWithDoor, tabFromAddress, type ClassesTab } from "@/features/classes/classesScreen";
 import { answeredItems, askExpired, askToYouItem, askYouSentItem, closedDraftItem, draftItem, hasPassed, refundsItem, runActions } from "@/features/classes/classItems";
 import { DeskHero } from "@/features/businesses/components/biz-kit";
-import { RoomRequestSettings } from "@/features/inbox/components/AskSettings";
+import { TakingRequestsSwitch } from "@/features/classes/components/ClassCardActions";
 import { buildRequests } from "@/features/inbox/requestItems";
 import { DeskAddButton } from "@/features/settings/components/settings-kit";
 import { DOS_UI, INK, LILAC, SUB } from "@/lib/design/tokens";
@@ -32,8 +32,11 @@ const ROLES = [
  *  the rooms artists asked for, the drafts and what each waits on, the refunds
  *  to decide and the asks still out; every card carries its own buttons. The
  *  room-request switch is behind the gear.
- *  ⚠ Every write here is the OWNER's (RLS admits only the owner to `classes`
- *  UPDATE); a manager sees the drafts with their state and no buttons.
+ *  ⚠ A MANAGER RUNS CLASSES (`20261016090000`): adding, editing a draft,
+ *  publishing, withdrawing an ask, answering a room request and the request
+ *  switch are the owner's OR a manager's — every seat that reaches this page,
+ *  since it redirects anybody else. What stays the OWNER's: refunds to decide,
+ *  and the pay a person is offered on the class form.
  *  ⚠ Old addresses keep landing (Rule 14): `?show=requests` and `?stage=` open
  *  the tab they meant. An artist page's address is Your classes. */
 export default async function BusinessClassesPage({
@@ -64,6 +67,9 @@ export default async function BusinessClassesPage({
     redirect("/my-classes");
   }
   const owner = seat.memberRole === "owner";
+  /* ⚠ every seat past the redirect above RUNS the place — owner or manager — so
+     what a manager may now do (`20261016090000`) is simply offered: answering a
+     room, editing and publishing a draft, withdrawing an ask, adding a class */
 
   const [classes, hosted] = await Promise.all([findClassesByBusiness(supabase, businessId), findClassesHostedByBusiness(supabase, businessId)]);
   const sessionIds = [...classes, ...hosted.map((h) => h.danceClass)].map((c) => c.session?.id).filter(Boolean) as string[];
@@ -95,18 +101,18 @@ export default async function BusinessClassesPage({
 
   /* ── TO DO ─────────────────────────────────────────────────────────────── */
   const todo: ClassItem[] = [
-    /* an artist wants one of the rooms — the owner answers; a manager reads it.
+    /* an artist wants one of the rooms — the owner or a manager answers.
        ⚠ A request whose class has already started is closed: it goes to Answered */
     ...requestsIn
       .filter((r) => r.status === "asked" && !askExpired(r, nowMs))
-      .map((r) => askToYouItem(r, artistOf(r.danceClass?.id), "guest", owner)),
+      .map((r) => askToYouItem(r, artistOf(r.danceClass?.id), "guest", true)),
     ...openDrafts.map((c) =>
       draftItem({
         c,
         businessId,
         state: state.get(c.id),
         askedTeacherId: sentAsks.find((a) => a.classId === c.id && a.kind === "artist" && a.status === "asked" && !a.withdrawn)?.id ?? null,
-        canEdit: owner,
+        canEdit: true,
         artist: artistOf(c.id),
         filled: seatsOf(c.session?.id),
         role: "yours",
@@ -115,7 +121,7 @@ export default async function BusinessClassesPage({
     ...[refundsItem(refunds, `/business/${businessId}/refunds`, "yours")].filter((x): x is ClassItem => x !== null),
     ...requestsOut
       .filter((r) => r.status === "asked" && !askExpired(r, nowMs) && r.kind === "classPerson" && !(r.danceClass && draftIds.has(r.danceClass.id)))
-      .map((r) => askYouSentItem(owner ? r : { ...r, classPersonId: undefined }, artistOf(r.danceClass?.id), "yours")),
+      .map((r) => askYouSentItem(r, artistOf(r.danceClass?.id), "yours")),
   ];
 
   /* ── UPCOMING · PAST ───────────────────────────────────────────────────── */
@@ -157,18 +163,16 @@ export default async function BusinessClassesPage({
   const initialTab: ClassesTab = tabAsked ?? (waitsOnYou ? "todo" : "upcoming");
   const initialRole = sp.role ?? "all";
 
-  const add = owner ? (
-    whyNoClass ? (
-      <div data-testid="why-no-class" style={{ fontSize: 12, color: SUB, lineHeight: 1.4 }}>
-        {whyNoClass}
-      </div>
-    ) : (
-      <DeskAddButton label="Add Class" href={`/business/${businessId}/classes?new=1`} />
-    )
-  ) : null;
+  const add = whyNoClass ? (
+    <div data-testid="why-no-class" style={{ fontSize: 12, color: SUB, lineHeight: 1.4 }}>
+      {whyNoClass}
+    </div>
+  ) : (
+    <DeskAddButton label="Add Class" href={`/business/${businessId}/classes?new=1`} />
+  );
 
   /* the rooms the form offers are read only when the form is asked for */
-  const rooms = opening && owner && !whyNoClass ? await findRoomsByBusiness(supabase, businessId).catch(() => []) : [];
+  const rooms = opening && !whyNoClass ? await findRoomsByBusiness(supabase, businessId).catch(() => []) : [];
 
   return (
     <div style={{ background: LILAC, color: INK, maxWidth: 430, margin: "0 auto", fontFamily: DOS_UI, minHeight: "100vh", padding: "14px 16px 40px", boxSizing: "border-box" }}>
@@ -178,7 +182,7 @@ export default async function BusinessClassesPage({
         mode="studio"
         top={<DeskHero tool="classes" as="h1" margin="0" />}
         add={add}
-        settings={<RoomRequestSettings businessId={businessId} on={takesRooms} owner={owner} compact />}
+        settings={<TakingRequestsSwitch mode="studio" businessId={businessId} on={takesRooms} />}
         roles={ROLES}
         items={items}
         answered={answeredItems(requestsIn, requestsOut, artistOf, nowMs)}
@@ -186,12 +190,11 @@ export default async function BusinessClassesPage({
         initialRole={initialRole}
         basePath={`/business/${businessId}/classes`}
       />
-      {opening && owner && !whyNoClass ? (
+      {opening && !whyNoClass ? (
         <ClassForm
           businessId={businessId}
           businessType={business.type}
           rooms={rooms}
-          isOwner
           meId={user.id}
           studioPlace={[business.area, business.city].filter(Boolean).join(", ")}
           suggestedStyles={business.styles}

@@ -7,7 +7,8 @@ import { findBusinessHeaderPhotos } from "@/repositories/headerPhotos";
 import { findMembershipsOnSale } from "@/repositories/memberships";
 import { findPublicBusinessProfile } from "@/repositories/publicProfile";
 import { findPersonFollowerCounts } from "@/repositories/publicPerson";
-import { findMyMembershipRole } from "@/repositories/businesses";
+import { findMyMembershipRole, runsTheBusiness } from "@/repositories/businesses";
+import { findClassIdsIRun } from "@/repositories/classPeople";
 import { findMyEnrolledSessionIds } from "@/repositories/classBookings";
 import { findRoomsByBusiness } from "@/repositories/rooms";
 import { fullAddressOf } from "@/lib/geo/fullAddress";
@@ -81,12 +82,12 @@ export async function PublicBusinessPage({ businessId, expect }: { businessId: s
     /* the viewer's own seats, so a card on the rail says Booked rather than Book Now */
     user ? findMyEnrolledSessionIds(supabase).catch(() => new Map()) : Promise.resolve(new Map()),
   ]);
-  /* ⚠ WHAT THE VIEWER RUNS OFFERS NO SEAT — the class page's own rule (R61): the
-     OWNER on the studio's own classes, and whoever is the artist taking it. Faculty
-     and a manager may still book, exactly as on the class page. */
-  const runs = nextSessions
-    .filter((e) => (role === "owner" && e.owner?.kind === "studio") || (user && e.artist?.userId === user.id))
-    .map((e) => e.sessionId);
+  /* ⚠ WHAT THE VIEWER RUNS OFFERS NO SEAT (11 Oct 2026, `20261016090000`): the
+     database refuses a booking by the owner or a MANAGER of the class's own
+     business, or anybody confirmed on it — so the rail asks the same question in
+     one read and draws no Book Now there. Signed out, nobody runs anything. */
+  const ranIds = user ? await findClassIdsIRun(supabase, user.id, nextSessions.map((e) => e.classId)) : new Set<string>();
+  const runs = nextSessions.filter((e) => ranIds.has(e.classId) || (runsTheBusiness(role) && e.owner?.kind === "studio")).map((e) => e.sessionId);
   const booking = { signedIn: Boolean(user), mine: Object.fromEntries(mine), runs, started: startedSessionIds(nextSessions) };
   const ownerId0 = profile.team.find((m) => m.role === "owner")?.userId ?? null;
   const followingN = ownerId0 ? (ownerCounts.get(ownerId0)?.following ?? null) : null;

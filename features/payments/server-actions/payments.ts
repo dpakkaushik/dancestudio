@@ -26,6 +26,7 @@ import {
   findMyOrder,
 } from "@/repositories/payments";
 import { findProfileById } from "@/repositories/profiles";
+import { findRefundWindowHoursForBooking } from "@/repositories/refundWindow";
 import { reportRefundSendFailures, sendOrderRefunds } from "@/services/refundRail";
 import type { CheckoutPayload, PaymentOrder } from "@/types/payment";
 
@@ -332,7 +333,9 @@ export interface CancelBookingResult {
   error: string | null;
 }
 
-/** RefundSheet's cancel: seat back now, money by the 12 h window (48 h until 4 Oct 2026). */
+/** RefundSheet's cancel: seat back now, money by the studio's own window
+ *  (`refund_window_hours` since 11 Oct 2026, 12 unless it set another; 48 h
+ *  until 4 Oct 2026). */
 export async function cancelBookingAction(input: {
   classBookingId: string;
   reason: string;
@@ -349,8 +352,10 @@ export async function cancelBookingAction(input: {
       return { message: "Cancelled — the seat is back on sale", error: null };
     }
     if (refund.status === "requested") {
+      /* the sentence says the STUDIO's number — the one the database just decided by */
+      const win = await findRefundWindowHoursForBooking(supabase, parsed.data.classBookingId);
       return {
-        message: "Cancelled — inside 12 h the studio decides the refund, and they've been asked",
+        message: `Cancelled — inside ${win} h the studio decides the refund, and they've been asked`,
         error: null,
       };
     }

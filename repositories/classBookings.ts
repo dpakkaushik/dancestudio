@@ -28,13 +28,19 @@ interface MyClassBookingRow {
 }
 
 /** Book a seat via the atomic RPC. A full class is refused in words — there is
- *  no waitlist since 4 Oct 2026. Returns the resulting status. */
+ *  no waitlist since 4 Oct 2026. Returns the resulting status.
+ *  ⚠ ONE BOOKING DOOR (11 Oct 2026, `20261016090000`): with a `passId` the RPC
+ *  spends a membership pass through `book_with_membership`'s own lock; without
+ *  one it books a free class. A priced class without a pass still goes through
+ *  the class page's payment. */
 export async function bookClassSession(
   supabase: SupabaseClient,
-  sessionId: string
+  sessionId: string,
+  passId?: string | null
 ): Promise<ClassBookingStatus> {
   const { data, error } = await supabase.rpc("book_class_session", {
     p_session_id: sessionId,
+    p_pass_id: passId ?? null,
   });
   if (error) {
     throw new Error(error.message);

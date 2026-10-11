@@ -7,10 +7,10 @@
 # prototype derives "Came in" as price x seats because it has no payments to
 # count, and we count the payments instead.
 #
-# Check 9 is the honest one. The Earnings tab is owner-only because the prototype
-# puts it behind `isMine` (SEGS 11757) - that is a PRESENTATION gate, and this
-# proves it is not mistaken for a security boundary: Step 9's RLS lets any member
-# read the rows directly, by design.
+# Check 9 is the honest one. 11 Oct 2026: it is INVERTED - 20261016090000 made
+# the money rows the people RUNNING the business' (owner, manager) and whoever
+# holds a class's refunds job, so a plain trainer reads none and a manager reads
+# them (9b). Until then Step 9's RLS let any member read them directly.
 #
 # Reads keys from .env.local - run from the repo root:
 #   powershell -File scripts/rls-proof-class-earnings.ps1
@@ -93,6 +93,8 @@ $stamp = Get-Date -Format "HHmmss"
 $owner = New-EmailUser "earnproof-owner-$stamp@example.com" "Owner $stamp" "user"
 $trainer = New-EmailUser "earnproof-trainer-$stamp@example.com" "Trainer $stamp" "user"
 $rival = New-EmailUser "earnproof-rival-$stamp@example.com" "Rival $stamp" "user"
+# 11 Oct 2026: check 9b - a manager reads the money a plain trainer may not
+$manager = New-EmailUser "earnproof-manager-$stamp@example.com" "Manager $stamp" "user"
 $learners = @()
 foreach ($i in 1..5) { $learners += New-EmailUser "earnproof-l$i-$stamp@example.com" "Learner $i $stamp" "user" }
 
@@ -101,6 +103,7 @@ Subscribe-Studio ([string]$ta.id)
 $tb = New-Studio $rival.token "Rival Studio $stamp" "Andheri" "Mumbai"
 Subscribe-Studio ([string]$tb.id)
 Add-Member $ta.id $trainer.id "trainer" $owner.id
+Add-Member $ta.id $manager.id "manager" $owner.id
 
 try {
   # 4 Oct 2026: the refund window is 12 hours, so "inside it" is a few hours from NOW
@@ -196,14 +199,22 @@ try {
   #    every member of the tenant to these rows and this asserts that is still
   #    true, so nobody later reads "owner-only tab" as "trainers cannot see the
   #    takings". Narrowing that is an RLS change to Step 9, not a UI change here.
+  #
+  # !! INVERTED 11 Oct 2026: the wall now exists. 20261016090000 replaced the
+  # "members read business payments/orders/refunds" policies with "the people
+  # running it" - an owner or a MANAGER, or whoever holds this class's refunds
+  # job. So a plain trainer reads NONE of the takings, and a manager reads them.
   $trainerSees = Money-Of (Api $trainer.token) $cls.id
-  Check 9 "A trainer still reads the rows directly (Rs $($trainerSees.collected)) - the tab is a UI gate, not a wall" (
-    ($trainerSees.collected -eq 1500) -and ($trainerSees.payRows -eq 5))
+  Check 9 "A trainer with no refunds job reads NONE of the takings directly (Rs $($trainerSees.collected) from $($trainerSees.payRows) rows)" (
+    ($trainerSees.collected -eq 0) -and ($trainerSees.payRows -eq 0))
+  $managerSees = Money-Of (Api $manager.token) $cls.id
+  Check "9b" "A manager reads them (Rs $($managerSees.collected) from $($managerSees.payRows) rows)" (
+    ($managerSees.collected -eq 1500) -and ($managerSees.payRows -eq 5))
 }
 finally {
   Invoke-RestMethod -Method Delete -Uri "$base/rest/v1/businesses?id=eq.$($ta.id)" -Headers $svcH | Out-Null
   Invoke-RestMethod -Method Delete -Uri "$base/rest/v1/businesses?id=eq.$($tb.id)" -Headers $svcH | Out-Null
-  $all = @($owner, $trainer, $rival) + $learners
+  $all = @($owner, $trainer, $rival, $manager) + $learners
   if ($comped) { $all += $comped }
   foreach ($u in $all) {
     Invoke-RestMethod -Method Delete -Uri "$base/auth/v1/admin/users/$($u.id)" -Headers $adminH | Out-Null

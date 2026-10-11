@@ -26,7 +26,8 @@ const ANSWER_TINT: Record<string, string> = { confirmed: "#22C55E", rejected: "#
 
 /** an ask put to you — the class card, who is asking, Decline · Accept */
 export function askToYouItem(r: RequestItem, artist: ClassArtist | null, role: string, canAnswer = true): ClassItem {
-  /* ⚠ a room is the studio OWNER's to give — a manager sees the ask, not the buttons */
+  /* ⚠ a room is given by the people who RUN the studio — owner or manager since
+     11 Oct 2026 (`respond_to_venue_request` reads `runs_business`) */
   const actions = (
     <>
       <StateChip word={r.kind === "venue" ? `${r.who} wants a room` : `From ${r.who}`} tint="#F59E0B" />
@@ -175,7 +176,7 @@ export const hasPassed = (iso: string | null | undefined, nowMs: number): boolea
  *  "classes which have not got approval and dates have crossed … should be just
  *  closed directly"). Nobody can answer it any more — the database's own
  *  `respondToClassAsk` refuses an accept on a started class — so it leaves To do
- *  and is filed with the answered ones as Expired. */
+ *  and is filed with the answered ones as Closed. */
 export const askExpired = (r: RequestItem, nowMs: number): boolean => r.status === "asked" && hasPassed(r.danceClass?.session?.startsAt, nowMs);
 
 /** a draft whose date passed without it ever being published — Past, closed,
@@ -186,7 +187,7 @@ export function closedDraftItem({ key, c, artist, filled, role, relation }: { ke
     tab: "past",
     group: "past",
     role,
-    node: <ClassTile danceClass={c} filled={filled} artist={artist} href={`/c/${c.shareSlug}`} relation={relation ?? null} actions={<StateChip word="Closed · never published" tint="#858585" />} />,
+    node: <ClassTile danceClass={c} filled={filled} artist={artist} href={`/c/${c.shareSlug}`} relation={relation ?? null} actions={<StateChip word="Closed" tint="#858585" />} />,
   };
 }
 
@@ -194,7 +195,7 @@ export function closedDraftItem({ key, c, artist, filled, role, relation }: { ke
  *  "answered section should be button beside settings and should show full class
  *  cards with reply"). Both ways, newest first, each the app's own ClassTile with
  *  who asked and the reply on its action row — Confirmed · Declined · Withdrawn,
- *  and Expired for an ask nobody answered before the class began. */
+ *  and Closed for an ask nobody answered before the class began. */
 export function answeredItems(requestsIn: RequestItem[], requestsOut: RequestItem[], artistOf: (classId: string | undefined) => ClassArtist | null, nowMs: number): AnsweredCard[] {
   const done = (r: RequestItem) => (r.status && r.status !== "asked") || askExpired(r, nowMs);
   return [
@@ -205,7 +206,9 @@ export function answeredItems(requestsIn: RequestItem[], requestsOut: RequestIte
     .slice(0, 30)
     .map(({ r, line }) => {
       const expired = askExpired(r, nowMs);
-      const word = expired ? "Expired" : ASK_STATUS_WORD[r.status ?? "asked"];
+      /* ⚠ ONE CLOSED STATE (11 Oct 2026): an ask nobody answered before the class
+         began reads "Closed", the same word a closed draft wears in Past */
+      const word = expired ? "Closed" : ASK_STATUS_WORD[r.status ?? "asked"];
       const tint = expired ? "#858585" : (ANSWER_TINT[r.status ?? "asked"] ?? "#858585");
       /* one row: who asked whom, then the reply */
       const actions = (

@@ -258,7 +258,11 @@ const drawable = (r: MyAskRow): boolean =>
  *  SELECT policies admit a deleted row — so the Inbox can keep it under Completed
  *  as "Withdrawn" rather than have it vanish. A confirmed row deleted later (the
  *  seat ended) is not an ask any more and stays out. */
-const liveOrWithdrawn = "deleted_at.is.null,status.eq.asked";
+/* ⚠ AND A NO IS A CLOSED ASK SINCE 11 Oct 2026 (20261016090000): declining sets
+   `status = 'rejected'` AND `deleted_at`, so the answered list has to admit a
+   deleted `rejected` row too, or every no would vanish from Answered. A
+   deleted CONFIRMED row (the seat ended) still stays out. */
+const liveOrWithdrawn = "deleted_at.is.null,status.in.(asked,rejected)";
 
 export async function findMyPendingClassPeople(supabase: SupabaseClient, statuses: AskStatus[] = ["asked"], opts: { withdrawn?: boolean } = {}): Promise<MyClassPersonAsk[]> {
   const {
@@ -406,6 +410,54 @@ export async function setClassPersonPowers(
   if (error) {
     throw new Error(error.message);
   }
+}
+
+/** ⚠⚠ THE CLASSES THE VIEWER RUNS, OF THE ONES A PAGE IS ABOUT TO OFFER A SEAT
+ *  ON (11 Oct 2026, `20261016090000`). The database now refuses a booking by the
+ *  people who run a class — "You run this class — it is not yours to book" —
+ *  which is the owner or a manager of the class's OWN business (`runs_business`
+ *  on `classes.business_id`, never the venue's) or anybody confirmed on it,
+ *  either kind. So a shelf must not offer Book Now there and be refused after the
+ *  press. One call per page: the viewer's running seats and their confirmed rows
+ *  on these classes, read together. Both say `user_id` out loud — RLS is a
+ *  ceiling, not a scope — and a failed read answers "runs nothing", because the
+ *  database still refuses the press. */
+export async function findClassIdsIRun(supabase: SupabaseClient, userId: string | null | undefined, classIdsIn: string[]): Promise<Set<string>> {
+  const out = new Set<string>();
+  const classIds = [...new Set(classIdsIn.filter(Boolean))];
+  if (!userId || classIds.length === 0) {
+    return out;
+  }
+  try {
+    /* the classes' own businesses (a card's data carries the maker's name, not
+       its id) and the viewer's confirmed rows, together; then the running seats */
+    const [owners, rows] = await Promise.all([
+      supabase.from("classes").select("id, business_id").in("id", classIds),
+      supabase.from("class_people").select("class_id").eq("user_id", userId).eq("status", "confirmed").in("class_id", classIds).is("deleted_at", null),
+    ]);
+    for (const r of ((rows.error ? null : rows.data) as Array<{ class_id: string }> | null) ?? []) {
+      out.add(r.class_id);
+    }
+    const ownerRows = ((owners.error ? null : owners.data) as Array<{ id: string; business_id: string }> | null) ?? [];
+    const businessIds = [...new Set(ownerRows.map((o) => o.business_id))];
+    if (businessIds.length > 0) {
+      const { data: seats, error } = await supabase
+        .from("business_members")
+        .select("business_id")
+        .eq("user_id", userId)
+        .in("business_id", businessIds)
+        .in("member_role", ["owner", "manager"])
+        .is("deleted_at", null);
+      const seatRows = ((error ? null : seats) as Array<{ business_id: string }> | null) ?? [];
+      const running = new Set(seatRows.map((s) => s.business_id));
+      for (const o of ownerRows) {
+        if (running.has(o.business_id)) out.add(o.id);
+      }
+    }
+  } catch {
+    /* runs nothing — the database still refuses the press */
+  }
+  return out;
 }
 
 /** Asks a set of businesses have SENT and are still waiting on — the Requests

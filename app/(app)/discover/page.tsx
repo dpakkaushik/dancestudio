@@ -27,7 +27,7 @@ import { DOS_DISPLAY, DOS_UI, INK, SKY, SUB, TAB_SUB, TAB_TITLE } from "@/lib/de
 import { photoUrl } from "@/lib/media/photo";
 import { publicProfilePath } from "@/lib/routes/publicProfile";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
-import { findClassArtists, findClassesWithArtist } from "@/repositories/classPeople";
+import { findClassArtists, findClassIdsIRun, findClassesWithArtist } from "@/repositories/classPeople";
 import { findPublishedClasses, findPublishedStylesByBusiness } from "@/repositories/classes";
 import { findCrewsByCity } from "@/repositories/crews";
 import { findDiscoverArtists, findNearbyBusinesses, findBusinessCardFacts, type DiscoverArtist, type BusinessCardFacts } from "@/repositories/discovery";
@@ -313,12 +313,16 @@ export default async function DiscoverPage({
   const artistsFiltered = wantsArtists ? recommendFirst(artistsRaw.filter((a) => anyStyleOk(filters, a.styles) && anyPriceOk(filters, pricesByArtist.get(a.id))), learnStyles, filters, (a) => a.styles) : [];
   /* ⚠ one round for every tab's per-card counts (10 Oct 2026): the crews' and the
      artists' follower counts used to be two more rounds of their own */
-  const [counts, classArtists, crewFollowers, personCounts] = await Promise.all([
+  const [counts, classArtists, crewFollowers, personCounts, ranIds] = await Promise.all([
     tab === "classes" ? countEnrolledBySession(supabase, classes.map((c) => c.session?.id).filter(Boolean) as string[]) : Promise.resolve(new Map<string, number>()),
     tab === "classes" ? findClassArtists(supabase, classes.map((c) => c.id)) : Promise.resolve(new Map<string, ClassArtist>()),
     /* one aggregate call for the whole crews shelf — the count every card prints */
     wantsCrews ? findCrewFollowerCounts(supabase, crewsFiltered.map((c) => c.id)) : Promise.resolve(new Map<string, number>()),
     wantsArtists ? findPersonFollowerCounts(supabase, artistsFiltered.map((a) => a.id)) : Promise.resolve(new Map<string, { followers: number; following: number }>()),
+    /* ⚠ the classes the viewer RUNS (11 Oct 2026, `20261016090000`) — the owner
+       or a manager of its business, or anybody confirmed on it. The database
+       refuses them a seat, so the card says so instead of offering Book Now */
+    tab === "classes" && user ? findClassIdsIRun(supabase, user.id, classes.map((c) => c.id)) : Promise.resolve(new Set<string>()),
   ]);
   /* ⚠ THE SORT IS THE LAST THING DONE TO A SHELF (10 Oct 2026), after the
      recommendation (which stands aside whenever a sort is picked) and after the
@@ -598,7 +602,7 @@ export default async function DiscoverPage({
                     mine={mine.get(c.session.id) ?? null}
                     priceInr={c.priceInr}
                     shareSlug={c.shareSlug}
-                    cannotBookWhy={noClass}
+                    cannotBookWhy={ranIds.has(c.id) ? "You run this class" : noClass}
                   />
                 ) : null
               }

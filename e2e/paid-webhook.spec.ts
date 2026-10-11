@@ -145,21 +145,27 @@ test("cashfree webhook: bad signature rejected, capture books the seat, replay i
     });
     /* the ask and the yes, then the owner publishes — what the register does. The
        service role stands in for the ask-and-accept the way it stands in for the
-       admin's grant above; the PUBLISH itself still goes through the trigger. */
+       admin's grant above; the PUBLISH itself still goes through the trigger.
+       ⚠ 11 Oct 2026: the TEACHER IS THE OWNER, no longer the learner — a person
+       confirmed on a class runs it and `create_payment_order` refuses them a seat
+       ("You run this class — it is not yours to book"), so the learner who pays
+       below must not be the one seated. And the confirmed insert now PUBLISHES the
+       class itself (`zz_publish_when_person_confirmed`, auto_publish defaults
+       true), so the owner's PATCH below is a no-op kept as the register's press. */
     const seated = await fetch(`${supabaseUrl}/rest/v1/class_people`, {
       method: "POST",
       headers: serviceHeaders,
       body: JSON.stringify({
         class_id: created.id,
         business_id: business.id,
-        user_id: learner.userId,
+        user_id: owner.userId,
         kind: "artist",
         status: "confirmed",
         can_attendance: false,
         can_refunds: false,
         pay_per_session_inr: 0,
-        created_by: learner.userId,
-        updated_by: learner.userId,
+        created_by: owner.userId,
+        updated_by: owner.userId,
       }),
     });
     if (!seated.ok) throw new Error(`could not seat the teacher: ${seated.status} ${await seated.text()}`);

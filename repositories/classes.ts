@@ -39,6 +39,8 @@ interface ClassRow {
   maps_url: string | null;
   allows_studio_memberships: boolean | null;
   allows_artist_memberships: boolean | null;
+  /** publish as soon as everyone says yes (`20261016090000`) */
+  auto_publish: boolean | null;
   class_sessions: SessionRow[] | null;
   /** WHO MADE IT (4 Oct 2026) — the owner business, read through `OWNER_EMBED`
    *  where no other embed of that key is in the select */
@@ -98,7 +100,7 @@ const venueOf = (row: PublicClassRow) => ({
    ever deleted with the class, so nothing needed to look */
 const SESSION_EMBED = "class_sessions (id, starts_at, ends_at, deleted_at)";
 const CLASS_COLUMNS =
-  `id, business_id, share_slug, style, level, room, room_id, poster, poster_path, price_inr, capacity, status, venue_business_id, venue_status, lat, lng, maps_url, allows_studio_memberships, allows_artist_memberships, ${SESSION_EMBED}`;
+  `id, business_id, share_slug, style, level, room, room_id, poster, poster_path, price_inr, capacity, status, venue_business_id, venue_status, lat, lng, maps_url, allows_studio_memberships, allows_artist_memberships, auto_publish, ${SESSION_EMBED}`;
 /** the same columns with the session INNER-joined, so a read can filter on when
  *  the class actually runs — see `findPublishedClasses` (30 Sep 2026) */
 const CLASS_COLUMNS_DATED = CLASS_COLUMNS.replace(SESSION_EMBED, "class_sessions!inner (id, starts_at, ends_at, deleted_at)");
@@ -145,6 +147,7 @@ const toClass = (row: ClassRow): DanceClass => ({
      (nothing does today, but a narrowed select might) reads as the database would */
   allowsStudioMemberships: row.allows_studio_memberships ?? true,
   allowsArtistMemberships: row.allows_artist_memberships ?? false,
+  autoPublish: row.auto_publish ?? true,
 });
 
 export interface CreateClassInput {
@@ -170,6 +173,9 @@ export interface CreateClassInput {
   /** whose pass may pay for a seat here (19 Sep 2026) — see the note on the write */
   allowsStudioMemberships: boolean;
   allowsArtistMemberships: boolean;
+  /** publish as soon as everyone says yes (11 Oct 2026) — the RPC publishes a
+   *  ready draft at the end of creating it when this is on */
+  autoPublish: boolean;
 }
 
 /** Atomic create: class + first session via the create_class_with_session RPC.
@@ -198,6 +204,7 @@ export async function createClassWithSession(
     p_lat: input.lat,
     p_lng: input.lng,
     p_maps_url: input.mapsUrl,
+    p_auto_publish: input.autoPublish,
   });
 
   if (error) {
@@ -440,6 +447,26 @@ export async function updateClassStatus(
   }
 }
 
+/** Turn a draft's auto-publish switch on or off by itself (11 Oct 2026). Used by
+ *  the class actions to hold a draft back while its people are being asked —
+ *  the RPCs publish a ready draft at their end, which would otherwise happen a
+ *  step before a new ask goes out. Setting it does not publish anything; the
+ *  next yes does. RLS admits the people who run the business. */
+export async function setClassAutoPublish(supabase: SupabaseClient, classId: string, on: boolean): Promise<void> {
+  const { data, error } = await supabase
+    .from("classes")
+    .update({ auto_publish: on })
+    .eq("id", classId)
+    .is("deleted_at", null)
+    .select("id");
+  if (error) {
+    throw new Error(`classes.setAutoPublish failed: ${error.message}`);
+  }
+  if (!data || data.length === 0) {
+    throw new Error("Class not found or not yours to change");
+  }
+}
+
 /** Put an artist's draft back to the studio that gave it a room (11 Oct 2026):
  *  the slot it said yes to has moved, so it is asked again. `notify_venue_request`
  *  tells the studio's owners; `guard_room_requests_open` refuses it, in words,
@@ -477,6 +504,8 @@ export interface UpdateClassInput {
   mapsUrl: string | null;
   allowsStudioMemberships: boolean;
   allowsArtistMemberships: boolean;
+  /** null leaves the class's switch as it is (`coalesce` in the RPC) */
+  autoPublish: boolean | null;
 }
 
 /** Edit a class's fields and move its session — ONE act.
@@ -521,6 +550,7 @@ export async function updateClassDetails(
     p_maps_url: input.mapsUrl,
     p_allows_studio_memberships: input.allowsStudioMemberships,
     p_allows_artist_memberships: input.allowsArtistMemberships,
+    p_auto_publish: input.autoPublish,
   });
 
   /* the door's own words, not a reworded version of them (27 Sep 2026) */

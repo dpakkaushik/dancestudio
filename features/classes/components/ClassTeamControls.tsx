@@ -90,7 +90,8 @@ export function AddAssistant({ classId, col, exclude, pool }: { classId: string;
 }
 
 /** the owner's controls on one person on the class: the two jobs, and Remove; a
- *  teacher who asked them gets Remove alone.
+ *  teacher who asked them gets Remove alone, and a MANAGER (`20261016090000`)
+ *  only withdraws an ask still unanswered — the caller decides `remove`.
  *
  *  ⚠⚠ IT IS NOT ONLY AN ASSISTANT'S ANY MORE (28 Sep 2026). `20260928100000` made
  *  the register a DEFAULT the person taking the class is born with and an owner

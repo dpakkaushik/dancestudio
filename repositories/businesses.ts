@@ -387,6 +387,10 @@ export interface TeamMember {
    *  FIRST style, which is the one they put first themselves; null when they
    *  have named none. One more column on a select that already runs. */
   style: string | null;
+  /** WHAT A SESSION PAYS THEM HERE (11 Oct 2026, `20261016090000`) — the OWNER's
+   *  number, set from the member sheet (`set_member_pay`); an ask with no rate of
+   *  its own takes it. 0 = unpaid. */
+  payPerSessionInr: number;
 }
 
 /** The business's own people — the pool the class form's artist and assistant
@@ -418,14 +422,24 @@ export async function findBusinessTeam(
     return [];
   }
 
-  const { data: people, error: peopleError } = await supabase
-    .from("profiles")
-    .select("id, full_name, city, role, profile_photo_path, styles")
-    .in(
-      "id",
-      rows.map((r) => r.user_id)
-    )
-    .is("deleted_at", null);
+  /* ⚠ THE RATE IS ITS OWN READ, AND IT FAILS SOFT (11 Oct 2026). The column
+     arrives with `20261016090000`; putting it in the select above would take the
+     whole Team desk down with "column does not exist" if the app deploys before
+     the migration (the `poster_path` lesson of 27 Sep). Read beside the profiles,
+     so it costs no extra round trip in a row. */
+  const ids = rows.map((r) => r.user_id);
+  const [{ data: people, error: peopleError }, rates] = await Promise.all([
+    supabase.from("profiles").select("id, full_name, city, role, profile_photo_path, styles").in("id", ids).is("deleted_at", null),
+    supabase
+      .from("business_members")
+      .select("user_id, pay_per_session_inr")
+      .eq("business_id", businessId)
+      .in("user_id", ids)
+      .is("deleted_at", null)
+      .then(({ data: r, error: e }) =>
+        e ? new Map<string, number>() : new Map((r as Array<{ user_id: string; pay_per_session_inr: number | null }>).map((x) => [x.user_id, Number(x.pay_per_session_inr ?? 0)])),
+      ),
+  ]);
 
   if (peopleError) {
     throw new Error(`businesses.teamProfiles failed: ${peopleError.message}`);
@@ -454,8 +468,24 @@ export async function findBusinessTeam(
       canAttendance: Boolean(row.can_attendance),
       canRefunds: Boolean(row.can_refunds),
       style: Array.isArray(p?.styles) && p.styles.length ? p.styles[0] : null,
+      payPerSessionInr: rates.get(row.user_id) ?? 0,
     };
   });
+}
+
+/** WHAT A SESSION PAYS SOMEBODY ON THE TEAM (11 Oct 2026, `set_member_pay`) —
+ *  the owner's alone, 0–2,00,000, refused in the database's own words. An ask
+ *  made afterwards with no rate of its own takes this. Returns the rate saved. */
+export async function setMemberPay(supabase: SupabaseClient, businessId: string, userId: string, rate: number): Promise<number> {
+  const { data, error } = await supabase.rpc("set_member_pay", {
+    p_business_id: businessId,
+    p_user_id: userId,
+    p_rate: rate,
+  });
+  if (error) {
+    throw new Error(error.message);
+  }
+  return Number(data ?? rate);
 }
 
 /** THE OWNER GRANTS THE TWO STANDING POWERS (20 Sep 2026). Owner-only inside the

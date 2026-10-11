@@ -4,10 +4,11 @@
 # their powers with them.
 #
 # Checks 16-17 cover the hardening in 20260825140000: check 14 proves
-# remove_business_member closes the claims it should, 16 proves the register does
-# not depend on it doing so (the seat is pulled with the service role, no RPC
-# involved, and the register shuts anyway), 17 proves a soft-deleted class has no
-# register for anybody.
+# remove_business_member closes the claims it should, 17 proves a soft-deleted
+# class has no register for anybody. 11 Oct 2026: check 16 is INVERTED - the
+# register is read off the class row alone (20261016090000), so a seat pulled
+# with the service role, no RPC involved, leaves the register OPEN while the
+# claim is live.
 #
 # Invites are keyed on EMAIL (what DanceOS authenticates on today), so this proof
 # mints real email users through the admin API rather than using the test phone
@@ -258,8 +259,13 @@ try {
   Invoke-RestMethod -Method Patch -Uri "$base/rest/v1/business_members?id=eq.$($memberRow[0].id)" -Headers $svcH `
     -Body (@{ deleted_at = $null } | ConvertTo-Json) | Out-Null
   $runAfterRevive = Rpc (Api $ghost.token) "can_run_register_for_class" @{ p_class_id = $cls.id }
-  Check 16 "Staff assistant runs the register ($staffCanRun); seat soft-deleted behind the RPC's back -> refused ($runAfterSeatGone) with the claim still live ($($claimStillLive.Count)); seat back -> allowed ($runAfterRevive)" (
-    ($staffCanRun -eq $true) -and ($runAfterSeatGone -eq $false) -and ($claimStillLive.Count -eq 1) -and ($runAfterRevive -eq $true))
+  # !! INVERTED 11 Oct 2026: the register is read off the CLASS ROW alone
+  # (20261016090000, the user's decision): a confirmed person holding attendance
+  # runs the door whatever seat they hold or do not hold. So the seat pulled
+  # behind the RPC's back no longer shuts it - the live claim keeps it open, and
+  # the claim is what check 14's remove_business_member closes (still proven there).
+  Check 16 "Staff assistant runs the register ($staffCanRun); seat soft-deleted behind the RPC's back -> STAYS OPEN on the class row alone ($runAfterSeatGone) with the claim still live ($($claimStillLive.Count)); seat back -> still allowed ($runAfterRevive)" (
+    ($staffCanRun -eq $true) -and ($runAfterSeatGone -eq $true) -and ($claimStillLive.Count -eq 1) -and ($runAfterRevive -eq $true))
 
   # 17. same migration's second tightening: the claim branch never filtered
   #     soft-deleted classes while the owner branch always did, so a deleted

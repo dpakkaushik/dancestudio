@@ -5,8 +5,7 @@ import { redirect } from "next/navigation";
 import { z } from "zod";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import {
-  addWalkIn,
-  bookForPerson,
+  bookAtTheDoor,
   checkIn,
   removeWalkIn,
   setDoorPaid,
@@ -86,64 +85,38 @@ export async function undoCheckInAction(input: { classBookingId: string }): Prom
  *  check-in then fails, the seat STANDS and the message says so, because the
  *  booking is the thing that matters and un-booking somebody to tidy up a
  *  failed second step would throw away the real one. */
-const doorSchema = z.object({
-  sessionId: z.string().uuid(),
-  userId: z.string().uuid(),
-});
+/* ⚠ ONE DOOR (11 Oct 2026): a scan hands a person, a typed name is a walk-in —
+   exactly one of the two, the RPC's own rule ("scan a code or type a name") */
+const doorSchema = z
+  .object({
+    sessionId: z.string().uuid(),
+    userId: z.string().uuid().nullish(),
+    name: z.string().trim().max(80).nullish(),
+  })
+  .refine((v) => Boolean(v.userId) !== Boolean(v.name && v.name.length > 0), {
+    message: "Scan a code or type a name",
+  });
 
 export async function bookAtTheDoorAction(input: {
   sessionId: string;
-  userId: string;
+  userId?: string | null;
+  name?: string | null;
 }): Promise<RegisterActionResult> {
   const parsed = doorSchema.safeParse(input);
   if (!parsed.success) {
-    return { error: "Invalid person or session" };
+    return { error: parsed.error.issues[0]?.message ?? "Scan a code or type a name" };
   }
   const supabase = await requireUser();
 
   let classBookingId: string;
   try {
-    classBookingId = await bookForPerson(supabase, parsed.data.sessionId, parsed.data.userId);
+    classBookingId = await bookAtTheDoor(supabase, {
+      sessionId: parsed.data.sessionId,
+      userId: parsed.data.userId ?? null,
+      name: parsed.data.userId ? null : (parsed.data.name ?? null),
+    });
   } catch (error: unknown) {
     return { error: error instanceof Error ? error.message : "Could not book them in" };
-  }
-
-  try {
-    await checkIn(supabase, classBookingId);
-  } catch (error: unknown) {
-    revalidateRegisterSurfaces();
-    const why = error instanceof Error ? error.message : "the register would not take it";
-    return { error: `They have a seat, but the check-in did not go through — ${why}` };
-  }
-
-  revalidateRegisterSurfaces();
-  return { error: null };
-}
-
-/** THE DOOR, SHAPE 2: a walk-in with no account, recorded by name and checked
- *  in as one act — the same shape as `bookAtTheDoorAction` and for the same
- *  reason. A half-done door is reported honestly: the seat stands if the
- *  check-in then fails, because the seat is the thing that matters. */
-const walkInSchema = z.object({
-  sessionId: z.string().uuid(),
-  name: z.string().trim().min(1).max(80),
-});
-
-export async function addWalkInAction(input: {
-  sessionId: string;
-  name: string;
-}): Promise<RegisterActionResult> {
-  const parsed = walkInSchema.safeParse(input);
-  if (!parsed.success) {
-    return { error: "Give the walk-in a name" };
-  }
-  const supabase = await requireUser();
-
-  let classBookingId: string;
-  try {
-    classBookingId = await addWalkIn(supabase, parsed.data.sessionId, parsed.data.name);
-  } catch (error: unknown) {
-    return { error: error instanceof Error ? error.message : "Could not record the walk-in" };
   }
 
   try {

@@ -7,6 +7,8 @@ import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { checkRoomClashAction, publishClassAction, respondToVenueRequestAction, type RoomClash } from "@/features/classes/server-actions/classes";
 import { respondToClassAskAction, withdrawClassAskAction } from "@/features/classPeople/server-actions/classPeople";
 import type { DraftState } from "@/features/classes/classesScreen";
+import { setInboxOffAction, setRoomRequestsAction } from "@/features/inbox/server-actions/askSettings";
+import { Switch } from "@/features/profiles/components/ContactEditor";
 
 /** ⚠⚠ THE BUTTONS ON A CLASS CARD (11 Oct 2026, the user: "write buttons on class
  *  cards for doing proper action"). At most two per card, chosen by what the
@@ -117,8 +119,9 @@ const istParts = (iso: string) => ({
 
 /** A DRAFT'S BUTTONS: the one way forward its state allows. Ready → Publish
  *  (behind a question, the room asked first); a no → the edit form under the
- *  right words; waiting on a teacher → Withdraw. `canEdit` is the owner alone —
- *  RLS admits only the owner to `classes` UPDATE. */
+ *  right words; waiting on a teacher → Withdraw. `canEdit` is the people who run
+ *  the business — owner or manager since `20261016090000` (`runs_business` on
+ *  `classes` UPDATE, the publish door and `withdraw_class_ask`). */
 export function DraftButtons({
   businessId,
   classId,
@@ -244,6 +247,53 @@ export function ScanButton({ path, title }: { path: string; title: string }) {
     <Link href={`${path}?open=scan`} aria-label={`Scan a code at ${title}`} data-testid="card-scan" style={greenBtn}>
       Scan
     </Link>
+  );
+}
+
+/** ⚠ ONE SWITCH IN THE CLASSES GEAR (11 Oct 2026, `20261016090000`): "Taking
+ *  requests". For a PERSON it writes both class kinds of `inbox_off` at once
+ *  (teach + assist) and leaves the team and crew kinds as they were; for a
+ *  STUDIO it is `takes_room_requests`. The database refuses an ask that is
+ *  switched off, in words that name the person, so off really turns new asks
+ *  away — the ones already made are untouched. */
+export function TakingRequestsSwitch(
+  props: { mode: "person"; off: string[] } | { mode: "studio"; businessId: string; on: boolean }
+) {
+  const router = useRouter();
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
+  const classKinds = ["teach", "assist"];
+  const startOn = props.mode === "person" ? !classKinds.some((k) => props.off.includes(k)) : props.on;
+  const [on, setOn] = useState(startOn);
+
+  const flip = async () => {
+    const next = !on;
+    setOn(next);
+    setErr(null);
+    setBusy(true);
+    const out =
+      props.mode === "person"
+        ? await setInboxOffAction({ off: [...props.off.filter((k) => !classKinds.includes(k)), ...(next ? [] : classKinds)] })
+        : await setRoomRequestsAction({ businessId: props.businessId, on: next });
+    setBusy(false);
+    if (out.error) {
+      setErr(out.error);
+      setOn(!next);
+      return;
+    }
+    router.refresh();
+  };
+
+  return (
+    <div data-testid="request-settings" style={{ marginTop: 8, opacity: busy ? 0.7 : 1 }}>
+      <Switch on={on} label="Taking requests" onClick={() => void flip()} />
+      <div style={{ fontSize: 11, color: "var(--muted)", marginTop: 6 }}>Off turns new asks away.</div>
+      {err ? (
+        <div role="alert" style={{ fontSize: 11.5, color: "#F87171", marginTop: 6 }}>
+          {err}
+        </div>
+      ) : null}
+    </div>
   );
 }
 

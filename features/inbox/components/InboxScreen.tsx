@@ -13,6 +13,7 @@ import { DOS_DISPLAY, DOS_UI, LILAC, SKY, TAB_SUB, TAB_TITLE } from "@/lib/desig
 import type { DanceClass } from "@/types/class";
 import type { ClassRelation } from "@/lib/format/classLabels";
 import type { ClassArtist } from "@/types/classPerson";
+import { ColumnCount, columnTab, columnTrack } from "@/components/ui/ColumnTabs";
 import { InvertedPanel } from "@/components/ui/InvertedPanel";
 import { TopPanel } from "@/components/ui/TopPanel";
 import {
@@ -157,31 +158,8 @@ const Row = ({ children, c, testId }: { children: React.ReactNode; c: string; te
   <div data-testid={testId} style={{ background: "var(--card)", border: "1.5px solid var(--el)", borderLeft: `4px solid ${c}`, borderRadius: 16, padding: "12px 14px", marginBottom: 10 }}>{children}</div>
 );
 
-/* ⚠ THREE BIGGER, SPACED COLUMNS (3 Oct 2026, the user: "spaced out and bigger
-   columns for enquiries requests and invites") — equal tiles across the row
-   rather than three pills hugging the left, each with its own colour edge */
-const colBtn = (on: boolean, tint: string): React.CSSProperties => ({
-  display: "flex",
-  flexDirection: "column",
-  alignItems: "center",
-  justifyContent: "center",
-  gap: 7,
-  minHeight: 76,
-  padding: "13px 6px 12px",
-  borderRadius: 20,
-  cursor: "pointer",
-  fontSize: 14,
-  fontWeight: 900,
-  letterSpacing: -0.3,
-  whiteSpace: "nowrap",
-  fontFamily: DOS_DISPLAY,
-  background: on ? "var(--text)" : "var(--card)",
-  color: on ? "var(--solid)" : "var(--text)",
-  border: `1.5px solid ${on ? "var(--text)" : "var(--el)"}`,
-  borderBottom: `3px solid ${tint}`,
-  boxShadow: on ? `0 8px 22px ${tint}40` : "none",
-  transition: "background .16s, box-shadow .16s",
-});
+/* ⚠ The three bigger, spaced, tinted column tiles of 3 Oct 2026 are gone
+   (11 Oct 2026): the columns wear `ColumnTabs`, the app's one column look. */
 
 type Side3 = "in" | "out" | "done";
 const emptyBox: React.CSSProperties = { background: "var(--card)", border: "1.5px dashed var(--el)", borderRadius: 16, padding: "22px 16px", textAlign: "center" };
@@ -786,19 +764,21 @@ export function InboxScreen({
   /* ⚠ Completed's count is what is IN it (not what waits on you — nothing there
      waits on anybody), painted green so it never reads as owed. And a studio's
      or a crew's Enquiries desk has no Sent side: an enquiry is sent by a person. */
-  const sideSwitch = (cur: Side3, set: (s: Side3) => void, nIn: number, nOut: number | null, nDone: number, noun: string, tint: string, words: readonly [string, string, string] = ["Received", "Sent", "Completed"]) => (
+  const sideSwitch = (cur: Side3, set: (s: Side3) => void, nIn: number, nOut: number | null, nDone: number, noun: string, words: readonly [string, string, string] = ["Received", "Sent", "Completed"]) => (
     /* in the TOP squircle since 3 Oct 2026, under the column's settings */
-    <div data-testid="inbox-sides" style={{ display: "flex", gap: 6, marginTop: 12 }}>
+    /* ⚠ the app's one column look since 11 Oct 2026 (`ColumnTabs`); the Received
+       count is amber because it waits on you, the other two are plain */
+    <div data-testid="inbox-sides" role="group" aria-label={`${noun} sides`} style={{ ...columnTrack(), marginTop: 12 }}>
       {(
         [
-          ["in", words[0], nIn, tint],
-          ...(nOut === null ? [] : [["out", words[1], nOut, tint]]),
-          ["done", words[2], nDone, "#22C55E"],
-        ] as Array<[Side3, string, number, string]>
-      ).map(([k, l, n, tint]) => (
-        <div key={k} role="button" tabIndex={0} aria-pressed={cur === k} aria-label={`${l} ${noun}`} onKeyDown={pressKey(() => set(k))} onClick={() => set(k)} style={{ flex: 1, textAlign: "center", padding: "9px 6px", borderRadius: 12, cursor: "pointer", fontSize: 11.5, fontWeight: 800, background: cur === k ? "var(--text)" : "var(--card)", color: cur === k ? "var(--solid)" : "var(--sub)", border: "1.5px solid var(--el)" }}>
-          {l}
-          {n > 0 ? <span style={{ marginLeft: 5, fontSize: 8.5, fontWeight: 900, padding: "1px 6px", borderRadius: 999, fontFamily: DOS_MONO, background: cur === k ? "var(--solid)" : tint, color: cur === k ? "var(--text)" : "#fff" }}>{n}</span> : null}
+          ["in", words[0], nIn, true],
+          ...(nOut === null ? [] : [["out", words[1], nOut, false]]),
+          ["done", words[2], nDone, false],
+        ] as Array<[Side3, string, number, boolean]>
+      ).map(([k, l, n, owed]) => (
+        <div key={k} role="button" tabIndex={0} aria-pressed={cur === k} aria-label={`${l} ${noun}`} onKeyDown={pressKey(() => set(k))} onClick={() => set(k)} style={columnTab(cur === k)}>
+          <span style={{ overflow: "hidden", textOverflow: "ellipsis" }}>{l}</span>
+          {n > 0 ? <ColumnCount n={n} on={cur === k} attention={owed} /> : null}
         </div>
       ))}
     </div>
@@ -915,7 +895,7 @@ export function InboxScreen({
     return (
       <div data-testid="class-requests">
         {requestSettings}
-        {sideSwitch(rqSide, pickRqSide, askIn.length, receivedOnly ? null : askOut.length, doneAsks.length, "class requests", REQ_TINT, ["To answer", "Sent", "Done"])}
+        {sideSwitch(rqSide, pickRqSide, askIn.length, receivedOnly ? null : askOut.length, doneAsks.length, "class requests", ["To answer", "Sent", "Done"])}
         <div style={{ height: 14 }} />
         {error ? <div style={{ fontSize: 11.5, color: "#F87171", marginBottom: 10 }}>{error}</div> : null}
         {reqBase.length ? <InboxFilters value={fReq} onChange={setFReq} noun="requests" kinds={kindsOf(reqBase)} stages={stagesOf(reqBase, false)} stageLabel="OUTCOME" sorts={REQ_SORTS} /> : null}
@@ -974,31 +954,22 @@ export function InboxScreen({
           {owed > 0 ? `${owed} waiting on you` : "Nothing waiting on you"}
         </div>
       </div>
-      <div data-testid="inbox-columns" style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 10, position: "relative" }}>
-        {SECT.map(([k, l, n, tint]) => {
+      {/* ⚠ THE COLUMNS WEAR THE APP'S ONE COLUMN LOOK (11 Oct 2026, the user: "a
+          lot of columns in the app still dont follow the new column look") —
+          `ColumnTabs`, the Classes screen's To do · Upcoming · Past. The three
+          tinted tiles of 3 Oct went with it; the count is the badge inside the
+          column, amber because what it counts is waiting on you. Every
+          accessible name is unchanged. */}
+      <div data-testid="inbox-columns" role="group" aria-label="Inbox" style={{ ...columnTrack(), position: "relative" }}>
+        {SECT.map(([k, l, n]) => {
           const on = sect === k;
           return (
-            <div key={k} role="button" tabIndex={0} aria-pressed={on} aria-label={`${l} — ${n} waiting`} onKeyDown={pressKey(() => setSect(k))} onClick={() => setSect(k)} style={colBtn(on, tint)}>
-              {l}
+            <div key={k} role="button" tabIndex={0} aria-pressed={on} aria-label={`${l} — ${n} waiting`} onKeyDown={pressKey(() => setSect(k))} onClick={() => setSect(k)} style={columnTab(on)}>
+              <span style={{ overflow: "hidden", textOverflow: "ellipsis" }}>{l}</span>
               {/* ⚠ NOTHING UNDER A QUIET COLUMN (3 Oct 2026, the user: "remove all
                   clear below headings enquiries, requests, invites") — a count
                   only when something is new */}
-              {n > 0 ? (
-                <span
-                  style={{
-                    fontSize: 10,
-                    fontWeight: 900,
-                    fontFamily: DOS_MONO,
-                    letterSpacing: 0,
-                    padding: "2px 8px",
-                    borderRadius: 999,
-                    background: on ? "var(--solid)" : tint,
-                    color: on ? "var(--text)" : "#fff",
-                  }}
-                >
-                  {`${n} new`}
-                </span>
-              ) : null}
+              {n > 0 ? <ColumnCount n={n} on={on} attention /> : null}
             </div>
           );
         })}
@@ -1016,13 +987,13 @@ export function InboxScreen({
           it (the figures and the breakup), and the panel holding the search and
           the cards. */}
       {sect === "req"
-        ? sideSwitch(rqSide, pickRqSide, askIn.length, askOut.length, doneAsks.length, "requests", REQ_TINT)
+        ? sideSwitch(rqSide, pickRqSide, askIn.length, askOut.length, doneAsks.length, "requests")
         : sect === "join"
-          ? sideSwitch(rqSide, pickRqSide, joinIn.length, joinOut.length, doneJoins.length, "invitations", JOIN_TINT.invite ?? REQ_TINT)
+          ? sideSwitch(rqSide, pickRqSide, joinIn.length, joinOut.length, doneJoins.length, "invitations")
           : /* ⚠ NO SENT SIDE ON A STUDIO'S OR A CREW'S DESK (2 Oct 2026) — an
                enquiry is sent by a person, so the toggle there could only ever
                offer an empty half */
-            sideSwitch(enqSide, pickEnqSide, liveIn, receivedOnly ? null : liveOut, doneEnq.length, "enquiries", "#EC4899")}
+            sideSwitch(enqSide, pickEnqSide, liveIn, receivedOnly ? null : liveOut, doneEnq.length, "enquiries")}
       </TopPanel>
 
       {/* ── THE MIDDLE HALF: what the side holds, at a glance (3 Oct 2026) — the

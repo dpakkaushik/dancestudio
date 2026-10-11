@@ -16,7 +16,8 @@ import { findClassMoney, findPaidReceiptByClassBooking, findPaidUserIdsBySession
 import { findRefundsByClass } from "@/repositories/refunds";
 import { findRoomById } from "@/repositories/rooms";
 import { reconcileRailRefunds } from "@/services/refundRail";
-import { findMySeat } from "@/repositories/businesses";
+import { findMySeat, runsTheBusiness } from "@/repositories/businesses";
+import { findRefundWindowHours } from "@/repositories/refundWindow";
 import type { ClassBookingStatus } from "@/types/classBooking";
 import type { PublicClassListing } from "@/types/class";
 import { reversePlace } from "@/lib/geo/places";
@@ -145,6 +146,7 @@ export default async function ClassSharePage({
   const canSetRoutinesP = early(user ? canSetClassRoutines(supabase, danceClass.id).catch(() => false) : Promise.resolve(false));
   const actingAsP = early(user ? resolveActingAs(supabase, as) : Promise.resolve(null));
   const placeP = early(placeOf(supabase, danceClass));
+  const refundWindowP = early(findRefundWindowHours(supabase, danceClass.businessId));
   /* the passes are asked for whether or not the viewer holds a seat, and dropped
      below if they do — a cheap read in parallel beats a round of its own */
   const passesP = early(user && sessionId ? findPassesForSession(supabase, sessionId).catch(() => []) : Promise.resolve([]));
@@ -170,7 +172,11 @@ export default async function ClassSharePage({
     : false;
   const myBooking = sessionId ? mine.get(sessionId) ?? null : null;
   const role = seat?.role ?? null;
-  const canManage = role === "owner" || role === "trainer";
+  /* ⚠ 11 Oct 2026: a MANAGER runs the business's classes (20261016090000) — they
+     create, edit, publish, delete and name the teacher. Money, powers and pay
+     stay the owner's (`role === "owner"` below). */
+  const runs = runsTheBusiness(role);
+  const canManage = runs || role === "trainer";
   const myClassPerson = user ? classPeople.find((cl) => cl.userId === user.id) ?? null : null;
 
   /* ⚠⚠ WHO THE REGISTER IS FETCHED FOR, AND WHY THIS IS THE REAL FIX (28 Sep
@@ -196,11 +202,16 @@ export default async function ClassSharePage({
      teacher while the page drew no tab at all.
      ⚠ `20260928100000` is what makes this reachable — an artist classPerson is born
      holding attendance now — and this is the half no migration could do. */
+  /* ⚠ 11 Oct 2026: the class row alone decides for somebody with no seat — no
+     `visiting_faculty` seat is made on accept any more — and the standing grant
+     counts on its own, exactly as `can_run_register_for_class` reads them */
   const mayRunRegister =
     canManage ||
-    (myClassPerson?.status === "confirmed" && (myClassPerson.canAttendance || Boolean(seat?.canAttendance)));
-  /* 18 Sep 2026: the owner hands out jobs; the owner or the confirmed teacher adds assistants */
-  const canAddAssistant = role === "owner" || (myClassPerson?.kind === "artist" && myClassPerson.status === "confirmed");
+    Boolean(seat?.canAttendance) ||
+    (myClassPerson?.status === "confirmed" && myClassPerson.canAttendance);
+  /* the people who run the business (owner or manager, 11 Oct 2026) or the
+     confirmed teacher add assistants; the jobs stay the owner's */
+  const canAddAssistant = runs || (myClassPerson?.kind === "artist" && myClassPerson.status === "confirmed");
 
   /* ONE ROUND TRIP FOR THE FIVE INDEPENDENT READS (19 Sep 2026, the user: "make
      app snappier") — they used to run one after another, four serial waits on
@@ -236,7 +247,7 @@ export default async function ClassSharePage({
      viewer's own class row go out TOGETHER, beside the ones started above —
      the refund queue's reconcile-then-read is one chain inside it, so it no
      longer holds a round of its own. */
-  const [receipt, register, paidUserIds, room, ownerId, routines, myRoutines, canSetRoutines, passesAll, actingAs, assistantPool, place, refunds, classMoney] = await Promise.all([
+  const [receipt, register, paidUserIds, room, ownerId, routines, myRoutines, canSetRoutines, passesAll, actingAs, assistantPool, place, refunds, classMoney, refundWindowHours] = await Promise.all([
     myBooking && danceClass.priceInr > 0 ? findPaidReceiptByClassBooking(supabase, myBooking.id) : Promise.resolve(null),
     mayRunRegister ? findClassRegister(supabase, danceClass.id) : Promise.resolve(null),
     mayRunRegister && sessionId && danceClass.priceInr > 0 ? findPaidUserIdsBySession(supabase, sessionId) : Promise.resolve(new Set<string>()),
@@ -260,6 +271,9 @@ export default async function ClassSharePage({
       ? reconcileRailRefunds(supabase, { classId: danceClass.id }).then(() => findRefundsByClass(supabase, danceClass.id))
       : Promise.resolve([]),
     role === "owner" ? findClassMoney(supabase, danceClass.id) : Promise.resolve(null),
+    /* THE STUDIO'S OWN REFUND WINDOW (11 Oct 2026) — the POLICY row and the
+       refund sheet print the number the database refunds by */
+    refundWindowP,
   ]);
   /* a viewer who already holds a seat is offered no pass */
   const passes = myBooking ? [] : passesAll;
@@ -286,6 +300,8 @@ export default async function ClassSharePage({
       classMoney={classMoney}
       paidUserIds={[...paidUserIds]}
       isOwner={role === "owner"}
+      runsBusiness={runs}
+      refundWindowHours={refundWindowHours}
       canAddAssistant={canAddAssistant}
       assistantPool={assistantPool}
       placeAddress={place.address}

@@ -8,6 +8,7 @@ import { useState } from "react";
 import { DosStyleTile } from "@/features/discovery/components/DiscoverFilters";
 import { dosStyleColor } from "@/lib/constants/styles";
 import { Sheet } from "@/features/profiles/components/profile-kit";
+import { columnTab, columnTrack } from "@/components/ui/ColumnTabs";
 import { SectionCard } from "@/components/ui/SectionCard";
 import { TopPanel } from "@/components/ui/TopPanel";
 import { CARD, DOS_DISPLAY, DOS_UI, INK, LILAC, LINE, MUTED, SUB } from "@/lib/design/tokens";
@@ -494,9 +495,9 @@ export function StatsScreen({
         >
           ‹ Back to the page
         </Link>
-        {/* three dresses, one page — inside the top squircle, the app's one pill
-            row (`SegmentedNav`'s own paint: the track, the solid pressed pill) */}
-        <div style={{ display: "flex", gap: 2, background: "var(--el)", borderRadius: 12, padding: 3, marginTop: 12 }}>
+        {/* three dresses, one page — inside the top squircle, the app's one
+            column look (`ColumnTabs`, 11 Oct 2026) */}
+        <div role="group" aria-label="Show" style={{ ...columnTrack(), marginTop: 12 }}>
           {(
             [
               /* ⚠ THE USER'S OWN THREE WORDS (29 Sep 2026): *"the graphs and
@@ -513,7 +514,7 @@ export function StatsScreen({
                a push per tap made the back swipe walk Rankings → History →
                Record before it ever left the screen. The 19 Sep rule, which the
                metric chips below already followed and these did not. */
-            <Link key={k} href={tabHref(k)} replace scroll={false} aria-pressed={tab === k} style={{ flex: 1, textAlign: "center", padding: "8px 4px", borderRadius: 9, fontSize: 11.5, fontWeight: 800, textDecoration: "none", background: tab === k ? "var(--solid)" : "transparent", color: tab === k ? INK : SUB, boxShadow: tab === k ? "0 1px 4px rgba(0,0,0,.3)" : "none" }}>
+            <Link key={k} href={tabHref(k)} replace scroll={false} aria-pressed={tab === k} style={columnTab(tab === k)}>
               {l}
             </Link>
           ))}
@@ -717,11 +718,16 @@ export function StatsScreen({
 
                 {/* group by, and order by (10325) */}
                 <div style={{ display: "flex", gap: 6, marginBottom: 8, overflowX: "auto", scrollbarWidth: "none" }}>
-                  {DIMS.map(([k, l]) => (
-                    <span key={k} role="button" tabIndex={0} aria-label={`Group by ${l}`} aria-pressed={dim === k} onKeyDown={pressKey(() => setDim(k))} onClick={() => setDim(k)} style={{ padding: "6px 13px", borderRadius: 999, cursor: "pointer", fontSize: 11, fontWeight: 800, whiteSpace: "nowrap", flexShrink: 0, background: dim === k ? INK : LINE, color: dim === k ? LILAC : SUB }}>
-                      {l}
-                    </span>
-                  ))}
+                  {/* the grouping wears the app's one column look (11 Oct 2026) —
+                      the same Style · Artist · Studio switch the team, student
+                      and routine pages draw */}
+                  <span role="group" aria-label="Group classes by" style={{ ...columnTrack(), display: "inline-flex", flex: "0 0 auto" }}>
+                    {DIMS.map(([k, l]) => (
+                      <span key={k} role="button" tabIndex={0} aria-label={`Group by ${l}`} aria-pressed={dim === k} onKeyDown={pressKey(() => setDim(k))} onClick={() => setDim(k)} style={{ ...columnTab(dim === k), padding: "7px 12px", flex: "0 0 auto" }}>
+                        {l}
+                      </span>
+                    ))}
+                  </span>
                   <span style={{ marginLeft: "auto", display: "inline-flex", gap: 4, flexShrink: 0 }}>
                     {(
                       [
@@ -815,11 +821,12 @@ export function StatsScreen({
             ) : null}
             {canBrowseBoards ? (
               <SectionCard icon={ICON.boards} label="BROWSE THE BOARDS" col={SEC.boards}>
-            <div style={{ display: "flex", gap: 6, marginBottom: 9 }}>
+            {/* the four boards, in the app's one column look (11 Oct 2026) */}
+            <div role="group" aria-label="Board" style={{ ...columnTrack(), marginBottom: 9 }}>
               {CHART_SEGMENTS.map((s) => {
                 const on = segment === s.k;
                 return (
-                  <Link key={s.k} href={chartHref({ seg: s.k })} replace scroll={false} aria-pressed={on} style={{ flex: 1, textAlign: "center", padding: "9px 2px", borderRadius: 12, fontSize: 11.5, fontWeight: 800, textDecoration: "none", background: on ? INK : CARD, color: on ? LILAC : SUB, border: `1.5px solid ${on ? INK : LINE}` }}>
+                  <Link key={s.k} href={chartHref({ seg: s.k })} replace scroll={false} aria-pressed={on} style={columnTab(on)}>
                     {s.label}
                   </Link>
                 );

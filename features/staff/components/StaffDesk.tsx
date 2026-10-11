@@ -462,6 +462,13 @@ export function StaffDesk({
                     />
                     {/* ⚠ NO "Nothing paid yet" LINE (4 Oct 2026, the user) — the Paid
                         and Payments tiles above already say it */}
+                    {/* the seat's rate (11 Oct 2026, `set_member_pay`) — drawn only when
+                        there is one, because "₹0 / session" reads as a claim */}
+                    {m.payPerSessionInr > 0 ? (
+                      <div data-testid="team-card-rate" style={{ fontSize: 11.5, fontWeight: 800, color: SUB, marginTop: 8 }}>
+                        {rupees(m.payPerSessionInr)} / session
+                      </div>
+                    ) : null}
                   </ToolBody>
                   {manageable ? (
                     <ToolActions>

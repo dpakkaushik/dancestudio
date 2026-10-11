@@ -900,6 +900,21 @@ test.describe.serial("DanceOS, end to end", () => {
     // accepting lands them on the studio they just joined
     await trainer.waitForURL(/\/business\/[0-9a-f-]+\/classes$/);
 
+    // ---- WHAT A SESSION PAYS THEM IS THE TEAM DESK'S (11 Oct 2026) ---------
+    // The class form lost its "What a session pays the artist" field: the rate is
+    // the SEAT's, set on the member sheet (set_member_pay, owner-only), and an
+    // ask with no rate copies it — so the class below is asked at ₹900 without
+    // the form ever naming a number.
+    await owner.goto(`/business/${businessId}/staff`);
+    await owner.getByRole("link", { name: `Member Detail — ${trainerName}` }).click();
+    await owner.waitForURL(new RegExp(`/business/${businessId}/staff/[0-9a-f-]+$`), { timeout: 20_000 });
+    await owner.getByRole("button", { name: `Manage ${trainerName}` }).click();
+    // TODO(11 Oct): the member sheet's dialog name is assumed to be the member's name.
+    const trainerSheet = owner.getByRole("dialog", { name: trainerName });
+    await trainerSheet.getByLabel(`What a session pays ${trainerName}`).fill("900");
+    await trainerSheet.getByRole("button", { name: `Save the session rate for ${trainerName}` }).click();
+    await expect(trainerSheet.getByLabel(`What a session pays ${trainerName}`)).toHaveValue("900", { timeout: 15_000 });
+
     // ---- the class form is a two-step wizard (Step 11) --------------------
     await owner.goto(`/business/${businessId}/classes`);
     /* "Add Class" since 4 Oct 2026 (the user: "Create Class button to be renamed
@@ -922,28 +937,29 @@ test.describe.serial("DanceOS, end to end", () => {
     // The team list is gone from this form — the user: "Who is taking class should
     // be any user or artist and should send a request to the user or artist for
     // accepting". So it is the app's one people search, and the person is ASKED.
+    // 11 Oct 2026: the WHO switch is "You" / "Somebody else"; the search is under the second
+    await owner.getByRole("button", { name: "Somebody else takes this class" }).click().catch(() => {});
     await owner.getByLabel("Search DanceOS for who takes this class").fill(trainerName);
     await owner.getByRole("button", { name: `${trainerName} takes this class` }).click();
-    // Step 13: at a RATE. The rate field is the owner's alone — the RPCs refuse it
-    // from anybody else, and since 18 Sep 2026 only an owner reaches this form at all.
-    await owner.getByLabel("What a session pays the artist").fill("900");
-    // and assistants are NOT on this form any more: they are added from the class page
+    /* 11 Oct 2026: NO RATE ON THE FORM — the ₹900 set on the Team desk above is
+       what the ask copies (Step 13's per-session rate, moved to the seat) */
+    await expect(owner.getByLabel("What a session pays the artist")).toHaveCount(0);
     await expect(owner.getByText(/Assistants are added from the class page/)).toBeVisible();
     // step 2 — people & price. Free trial: the ₹300 default would route booking
     // through Razorpay (Step 9), which the paid-webhook spec covers.
     await owner.getByLabel("Price per session").fill("0");
-    // ---- IT CAN ONLY BE SAVED AS A DRAFT (18 Sep 2026) ---------------------
-    // "All classes when submitting should only go in drafts and can only be
-    // published once the who is taking the class accepts." So the form offers no
-    // Publish at all for a studio, and says what the save will do.
+    // ---- IT IS SAVED AS A DRAFT AND PUBLISHES ON THE YES (11 Oct 2026) -----
+    // The form still offers no Publish button for a studio; what it carries now
+    // is the switch "Publish as soon as everyone says yes", ON by default — left
+    // on here, so the teacher's yes below publishes the class with nobody pressing.
     await expect(owner.getByRole("button", { name: "Publish class" })).toHaveCount(0);
-    await expect(owner.getByText(new RegExp(`Saved as a draft\\. ${trainerName} is asked`))).toBeVisible();
-    // ⚠ "SEND REQUEST", NOT "SAVE & ASK" (28 Sep 2026, the user's own word). The
-    // old label named the two things the press does in the order the CODE does
-    // them; what the person pressing it is doing is asking somebody. The confirm
-    // sheet moved with it — a save that asks nobody still says "Save as draft?".
-    await owner.getByRole("button", { name: "Send request" }).click();
-    await owner.getByRole("dialog", { name: "Send this request?" }).getByRole("button", { name: "Send request" }).click();
+    await expect(owner.getByText("Publish as soon as everyone says yes").first()).toBeVisible();
+    // the form's one sentence says what the save will do (saveSentence, 11 Oct 2026)
+    await expect(owner.getByText(new RegExp(`${trainerName} is asked\\. It goes on Discover the moment they say yes`)).first()).toBeVisible();
+    // ⚠ "SAVE" (11 Oct 2026): one form, one button — who is asked and whether it
+    // publishes are the form's fields, not its button's name ("Send request" until today)
+    await owner.getByRole("button", { name: "Save", exact: true }).click();
+    await owner.getByRole("dialog", { name: "Save this class?" }).getByRole("button", { name: "Save", exact: true }).click();
 
     // back on the register, and the class is a DRAFT waiting on the person asked
     await owner.waitForURL(/\/business\/[0-9a-f-]+\/classes$/);
@@ -984,14 +1000,15 @@ test.describe.serial("DanceOS, end to end", () => {
     await expect(answeredSheet.getByTestId("answered-reply").first()).toContainText(/Confirmed/i);
     await trainer.goBack();
     await expect(answeredSheet).toHaveCount(0);
-    // now the owner publishes from the class's own card — the door the form no longer is
+    /* ⚠⚠ INVERTED 11 Oct 2026: the teacher's yes PUBLISHED the class
+       (`publish_class_if_ready`, run by the confirm trigger, because "Publish as
+       soon as everyone says yes" was left on). The owner presses nothing: there is
+       no Ready to publish row and no Publish button left in YOUR MOVE */
     await owner.goto(`/business/${businessId}/classes`);
-    /* everybody has said yes, so the draft is READY TO PUBLISH under YOUR MOVE */
     const yourMove = owner.getByTestId("todo-mine");
-    await expect(yourMove.getByText("Ready to publish")).toBeVisible();
-    await yourMove.getByRole("button", { name: `Publish ${classTitle}` }).click();
-    await owner.getByRole("alertdialog", { name: `Publish ${classTitle}?` }).getByRole("button", { name: "Publish", exact: true }).click();
-    // the class has moved to Upcoming
+    await expect(owner.getByRole("button", { name: `Publish ${classTitle}` })).toHaveCount(0, { timeout: 15_000 });
+    await expect(yourMove.getByText("Ready to publish")).toHaveCount(0);
+    // the class is already on Upcoming
     await owner.getByTestId("classes-tab-upcoming").click();
     registerTile = owner.getByTestId("classes-upcoming").locator(`[aria-label="Open ${classTitle}"]`);
     await expect(registerTile).toBeVisible({ timeout: 15_000 });
@@ -1909,7 +1926,8 @@ test.describe.serial("DanceOS, end to end", () => {
        2026). It was TWICE on purpose from 20 Sep: "Studios taught at" counted
        PUBLISHED CLASSES and "Studios associated with" counted the SEAT, and
        both are true of this trainer (they accepted the class in segment 1, and
-       accepting is what seated them as visiting faculty). The user asked for one
+       they hold the Faculty seat from the invite — 11 Oct 2026: accepting a
+       class no longer seats anybody as visiting faculty). The user asked for one
        group with the team title on the row — *"Studios with team Title"* — so
        the two facts are one row, keyed by the studio's id, and the SEAT's word
        is what it reads because a seat is what the studio calls you.
@@ -3330,6 +3348,7 @@ test.describe.serial("DanceOS, end to end", () => {
       await expect(owner.getByRole("button", { name: "Pick a date" })).toHaveCount(0, { timeout: 2_000 });
     }).toPass({ timeout: 30_000 });
     await pick(owner, "Starts", when.time);
+    // TODO(11 Oct): the WHERE switch reads "Your room" / "A map link" now; "Hold it in Studio A" and "Continue" are unconfirmed on the one form.
     await owner.getByRole("button", { name: "Hold it in Studio A" }).click();
     await owner.getByRole("button", { name: "Continue" }).click();
     /* ⚠ THIS ASK GOES TO SOMEBODY OFF THE TEAM, AND THAT IS THE POINT (18 Sep
@@ -3341,11 +3360,15 @@ test.describe.serial("DanceOS, end to end", () => {
        asks the trainer, who accepted a team invite back in segment 1 and could
        therefore read the draft as a MEMBER: the story tested the one case that
        cannot fail. The learner is on nobody's team. */
+    // 11 Oct 2026: the WHO switch is "You" / "Somebody else"; the search is under the second
+    await owner.getByRole("button", { name: "Somebody else takes this class" }).click().catch(() => {});
     await owner.getByLabel("Search DanceOS for who takes this class").fill(learnerName);
     await owner.getByRole("button", { name: `${learnerName} takes this class` }).click();
     await owner.getByLabel("Price per session").fill("0");
-    await owner.getByRole("button", { name: "Send request" }).click();
-    await owner.getByRole("dialog", { name: "Send this request?" }).getByRole("button", { name: "Send request" }).click();
+    /* "Publish as soon as everyone says yes" is LEFT ON (its default), which is
+       what this segment now proves fails safely: the yes lands, the room does not */
+    await owner.getByRole("button", { name: "Save", exact: true }).click();
+    await owner.getByRole("dialog", { name: "Save this class?" }).getByRole("button", { name: "Save", exact: true }).click();
     await owner.waitForURL(/\/business\/[0-9a-f-]+\/classes$/);
 
     // the person asked reads the ask in their own Inbox, naming the studio that
@@ -3364,8 +3387,28 @@ test.describe.serial("DanceOS, end to end", () => {
     await askedOfYou.getByRole("button", { name: "Accept Salsa · All levels" }).click();
     await expect(learner.getByRole("button", { name: "Accept Salsa · All levels" })).toHaveCount(0, { timeout: 15_000 });
 
+    /* 11 Oct 2026: THE YES TRIED TO PUBLISH IT AND THE ROOM SAID NO. The confirm
+       trigger ran `publish_class_if_ready`, which met the room clash, swallowed it
+       and told the owner in the database's own words — so the class is still a
+       draft and the owner holds "Salsa · All levels could not publish itself" */
+    await expect(async () => {
+      const note = (await (
+        await fetch(
+          `${supabaseUrl}/rest/v1/notifications?user_id=eq.${ownerId}&title=eq.${encodeURIComponent("Salsa · All levels could not publish itself")}&deleted_at=is.null&select=id`,
+          { headers: adminHeaders }
+        )
+      ).json()) as Array<{ id: string }>;
+      expect(note.length).toBeGreaterThanOrEqual(1);
+    }).toPass({ timeout: 15_000 });
+    const stillDraft = (await (
+      await fetch(`${supabaseUrl}/rest/v1/classes?business_id=eq.${businessId}&title=eq.${encodeURIComponent("Salsa · All levels")}&select=status`, { headers: adminHeaders })
+    ).json()) as Array<{ status: string }>;
+    expect(stillDraft.map((r) => r.status)).toEqual(["draft"]);
+
     await owner.goto(`/business/${businessId}/classes?tab=todo`);
-    /* everybody has said yes, so the draft is READY, and Publish is on its card */
+    /* everybody has said yes, so the draft is READY, and Publish is on its card
+       TODO(11 Oct): confirm a draft whose auto-publish failed still offers
+       `Publish Salsa · All levels` in `todo-mine` (the press is what opens the clash sheet) */
     await owner.getByTestId("todo-mine").getByRole("button", { name: "Publish Salsa · All levels" }).click();
     const sheet = owner.getByRole("alertdialog", { name: "That room is taken" });
     /* ⚠ FIFTEEN, NOT FIVE (21 Sep 2026) — and it is not a flake allowance, it is

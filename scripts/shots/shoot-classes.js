@@ -8,8 +8,9 @@
  * a door that would be refused, offered; and a door that would open, missing.
  *
  * What it proves, in order:
- *   1. A MANAGER may open the register (R55) and is offered NONE of the three
- *      controls RLS refuses them — Edit, Publish, Delete — and reads why.
+ *   1. A MANAGER may open the register (R55). 11 Oct 2026: and is offered Add
+ *      Class, Edit and Withdraw, which the database admits a manager to now;
+ *      a manager may not BOOK the studio's classes.
  *      Delete was the sharp one: the update is refused as zero rows with NO
  *      error, so the action reported success and deleted nothing.
  *   2. The COMPLETED tab fills off the CLOCK. Nothing in this app has ever
@@ -193,7 +194,9 @@ const BOOK_ON_PAGE = /^Book Now$/;
     const ran = await draftClass(owner.h, studio.id, roomB[0].id, "Kathak", -180, -120);
     const live = await draftClass(owner.h, studio.id, roomB[0].id, "Salsa", -10, 50);
     for (const id of [ahead, ran, live]) {
-      /* the owner takes their own class — confirmed at birth (26 Sep 2026) */
+      /* the owner takes their own class — confirmed at birth (26 Sep 2026).
+         11 Oct 2026: that confirmed row PUBLISHES the class on its own (auto_publish
+         is on by default); the PATCH below is a no-op kept for the old path. */
       await rpc(owner.h, "ask_class_person", { p_class_id: id, p_user_id: owner.id, p_kind: "artist" });
       await patch(owner.h, `classes?id=eq.${id}`, { status: "published" }, `publish ${id}`);
     }
@@ -207,23 +210,29 @@ const BOOK_ON_PAGE = /^Book Now$/;
 
     /* ══ 1 · THE MANAGER'S CLASSES SCREEN ═════════════════════════════════════
        ⚠⚠ RE-CUT 11 Oct 2026 (the user's choice): To do · Upcoming · Past, the
-       buttons on every card. A manager reads every draft and what it waits on,
-       and is offered no write — RLS admits only the owner to `classes` UPDATE. */
+       buttons on every card. A manager reads every draft and what it waits on.
+       11 Oct 2026: and WRITES — the classes UPDATE policy admits a manager now. */
     const mCtx = await browser.newContext();
     mCtx.on("weberror", (e) => errs.push(String(e.error())));
     const mPage = await signIn(mCtx, manager.email);
     mPage.on("pageerror", (e) => errs.push(`${mPage.url()} ${e}`));
     await mPage.goto(`${BASE}/business/${studio.id}/classes`, { waitUntil: "networkidle" });
     check(/\/classes$/.test(new URL(mPage.url()).pathname), "a MANAGER reaches the classes screen — R55 let them in on 28 Sep");
-    check((await mPage.getByRole("link", { name: "Add Class", exact: true }).count()) === 0, "…with no Add Class — creating a class is the owner's");
+    /* 11 Oct 2026: INVERTED — a manager creates, edits and withdraws classes now
+       (create_class_with_session, update_class_with_session, ask_class_person for
+       the teacher, withdraw_class_ask and the classes UPDATE policy all admit the
+       people who RUN the business). Pay and powers stay the owner's. */
+    // TODO(11 Oct): confirm the manager's controls on the re-cut Classes screen — selectors: link "Add Class", link "Edit" (in testid "todo-waiting"), testid "card-withdraw".
+    check((await mPage.getByRole("link", { name: "Add Class", exact: true }).count()) === 1, "…WITH Add Class — the people who run the business create classes (11 Oct 2026)");
     check((await mPage.getByRole("link", { name: "Roster", exact: true }).count()) === 0, "…and no Roster pill (4 Oct 2026) — the card opens the class page, whose Attendance tab is the register");
     await mPage.getByTestId("classes-tab-todo").click();
     await mPage.waitForTimeout(300);
     const mTodo = await text(mPage);
-    check(/Bhangra/.test(mTodo) && new RegExp(`Waiting on ${artist.name}`, "i").test(mTodo), "the draft is in To do, saying who it waits on — the desk is not hidden, only its writes");
-    check((await mPage.getByRole("link", { name: "Edit", exact: true }).count()) === 0, "⚠⚠ no Edit on a draft — the edit page redirects a manager away without a word");
-    check((await mPage.getByTestId("card-publish").count()) === 0 && (await mPage.getByTestId("card-withdraw").count()) === 0, "⚠⚠ no Publish and no Withdraw — RLS would answer both *Class not found or not yours to change*");
-    check((await mPage.getByRole("button", { name: "Delete", exact: true }).count()) === 0, "⚠⚠ …and no Delete anywhere");
+    check(/Bhangra/.test(mTodo) && new RegExp(`Waiting on ${artist.name}`, "i").test(mTodo), "the draft is in To do, saying who it waits on");
+    const mWaiting = mPage.getByTestId("todo-waiting");
+    check((await mWaiting.getByRole("link", { name: "Edit", exact: true }).count()) > 0, "⚠⚠ a manager is offered Edit on the draft (11 Oct 2026 — it was refused)");
+    check((await mWaiting.getByTestId("card-withdraw").count()) === 1, "⚠⚠ …and Withdraw on the ask it waits on (11 Oct 2026 — it was refused)");
+    check((await mPage.getByRole("button", { name: "Delete", exact: true }).count()) === 0, "…and no Delete on any card (it lives on the class page)");
 
     /* ══ 2 · THE OWNER: TO DO, AND PAST FILLED OFF THE CLOCK ═══════════════════ */
     const oCtx = await browser.newContext();
@@ -374,6 +383,12 @@ const BOOK_ON_PAGE = /^Book Now$/;
     await lPage.waitForTimeout(2500);
     const seated = await rows(owner.h, `class_people?class_id=eq.${second}&status=eq.confirmed&deleted_at=is.null&select=user_id`);
     check(seated.length === 1 && seated[0].user_id === learner.id, "…one press and they are on it, read back out of the database");
+    /* 11 Oct 2026: the yes PUBLISHED the class on its own (auto_publish, on by
+       default), and it made NO visiting_faculty seat on the studio's team */
+    const secondNow = (await rows(owner.h, `classes?id=eq.${second}&select=status`))[0];
+    check(secondNow && secondNow.status === "published", `⚠⚠ …and their yes published the class itself (status "${secondNow && secondNow.status}")`);
+    const lSeat = await rows(H_SERVICE, `business_members?business_id=eq.${studio.id}&user_id=eq.${learner.id}&deleted_at=is.null&select=member_role`);
+    check(lSeat.length === 0, `⚠ …and no seat on the studio's team came with the yes (found ${lSeat.length})`);
 
     /* ══ 7b · ONE LIST, NARROWED BY CHIPS ════════════════════════════════════ */
     const [secondRow] = await rows(owner.h, `classes?id=eq.${second}&select=share_slug`);
@@ -381,12 +396,16 @@ const BOOK_ON_PAGE = /^Book Now$/;
     /* ⚠ nothing waits on THEM now, so the screen opens on Upcoming — and To do
        still holds what they wait on */
     check((await lPage.getByTestId("classes-tab-upcoming").getAttribute("aria-selected")) === "true", "…nothing waits on them now, so Classes opens on Upcoming");
+    /* 11 Oct 2026: INVERTED — the class they said yes to published itself, so it
+       is NOT waiting in To do for the studio any more; it is on Upcoming, where
+       a class they teach belongs. (It read "waiting on cls studio" until today.) */
     await lPage.getByTestId("classes-tab-todo").click();
     await lPage.waitForTimeout(300);
     const todoText = await lPage.getByTestId("classes-todo").innerText().catch(() => "");
-    check(/waiting on cls studio/i.test(todoText), `(${todoText.replace(/\s+/g, " ").slice(-90)}) ⚠ the class they said yes to, still a draft, waits in To do for the studio to publish — not in Upcoming with a Share button nobody else could open`);
+    check(!/waiting on cls studio/i.test(todoText), `(${todoText.replace(/\s+/g, " ").slice(-90)}) ⚠ the class they said yes to is not waiting in To do — their yes published it`);
     await lPage.getByTestId("classes-tab-upcoming").click();
     await lPage.waitForTimeout(300);
+    check(await onShelf(lPage, secondRow.share_slug), "…it is on Upcoming instead, as a class they teach");
     const cols = await lPage.getByTestId("classes-chips").locator("button").evaluateAll((els) => els.map((e) => e.getAttribute("data-testid").replace("classes-chip-", "")));
     /* ⚠ EVERY CHIP IS ALWAYS DRAWN, a 0 included (11 Oct 2026, the user) */
     check(cols.join(",") === "all,booked,teaching,assisting", `⚠⚠ every chip is drawn, a 0 included — All · Booked · Teaching · Assisting, and no By studios (${cols.join(" · ")})`);
@@ -602,10 +621,11 @@ const BOOK_ON_PAGE = /^Book Now$/;
     await patch(owner.h, `classes?id=eq.${passCls}`, { status: "published" }, "publish the pass class");
     const passSes = (await rows(owner.h, `class_sessions?class_id=eq.${passCls}&select=id`))[0].id;
     const mem = await rpc(owner.h, "save_membership", { p_membership_id: null, p_business_id: studio.id, p_name: `Shoot Pass ${stamp}`, p_unit: "classes", p_units: 2, p_price_inr: 0, p_total_count: 5, p_status: "live" });
-    /* ⚠ A FRESH BUYER, not the learner: accepting a class in segment 7 seated the
-       learner `visiting_faculty` (R19), and the database rightly refuses a member
-       of the seller's team a membership — "a membership is for the people who
-       come to dance". The first run of this segment was that refusal. */
+    /* ⚠ A FRESH BUYER, not the learner: until 11 Oct 2026 accepting a class in
+       segment 7 seated the learner `visiting_faculty` (R19) and the database
+       refuses a member of the seller's team a membership. The yes seats nobody
+       now, but the learner is also the teacher of `second`, so a clean buyer
+       keeps this segment about passes alone. */
     const buyer = await account(`shot.cls.buy.${stamp}@example.com`, `Cls Buyer ${stamp}`, "Pune");
     made.users.push(buyer.id);
     const passRow = await rpc(buyer.h, "buy_membership", { p_membership_id: mem.id });
@@ -631,7 +651,7 @@ const BOOK_ON_PAGE = /^Book Now$/;
 
     /* ══ 10 · EDITING A CLASS IS ONE ACT (#0b4) ═══════════════════════════════
        ⚠⚠ NOTHING HAD EVER DRIVEN THIS FORM. The register's Edit LINK is checked
-       above (drawn for the owner, absent for a manager) and no test has ever
+       above (drawn for the owner — and for a manager since 11 Oct 2026) and no test has ever
        SUBMITTED it — so `updateClassDetails` had no cover at all, and it was
        just rewired from two loose updates onto one RPC. That is the same shape
        as the delete above, found the same way: by grepping for what drives it.
@@ -651,10 +671,12 @@ const BOOK_ON_PAGE = /^Book Now$/;
        has to be opened before the style is a button at all. */
     await oPage.getByLabel("Dance style", { exact: true }).click();
     await oPage.getByRole("button", { name: "Kathak", exact: true }).first().click();
+    // TODO(11 Oct): button "Continue" — present only if the one class form keeps its two steps.
     await oPage.getByRole("button", { name: "Continue" }).click();
     await oPage.waitForTimeout(400);
     await oPage.getByLabel("Price per session").fill("450");
-    await oPage.getByRole("button", { name: "Save changes" }).click();
+    /* 11 Oct 2026: the edit form's button reads "Save" (was "Save changes") */
+    await oPage.getByRole("button", { name: "Save", exact: true }).click();
     await oPage.waitForURL((u) => !/\/edit$/.test(new URL(u).pathname), { timeout: 30000 });
     check(true, "…and Save changes lands rather than hanging on a door that is not there");
 
@@ -683,15 +705,33 @@ const BOOK_ON_PAGE = /^Book Now$/;
 
     /* ══ 10b · AN EDIT ASKS THE TEACHER AGAIN (11 Oct 2026, the user: "if anything
        has been edited should send a new request for confirmation") ═══════════ */
-    await oPage.goto(`${BASE}/business/${studio.id}/classes/${second}/edit`, { waitUntil: "networkidle" });
+    /* 11 Oct 2026: `second` PUBLISHED itself on its teacher's yes, and a published
+       class's price, style, room, capacity and times are FIXED now
+       (guard_published_class_fixed) — so the re-ask is proven on a DRAFT whose
+       teacher said yes with auto_publish turned off, and the published class is
+       asserted refused instead. */
+    let fixedWhy = "ACCEPTED";
+    try {
+      await patch(owner.h, `classes?id=eq.${second}`, { price_inr: 350 }, "edit a published class");
+    } catch (e) {
+      fixedWhy = e.message;
+    }
+    check(/A published class cannot be edited/.test(fixedWhy), `⚠⚠ a PUBLISHED class's price cannot be changed — delete it and add a new one (${fixedWhy.slice(0, 110)})`);
+
+    const reconfirm = await draftClass(owner.h, studio.id, roomA[0].id, "Bollywood", atIst(20, 18), atIst(20, 18) + 60);
+    await patch(H_SERVICE, `classes?id=eq.${reconfirm}`, { auto_publish: false }, "keep the draft a draft on the yes");
+    const rcAsk = await rpc(owner.h, "ask_class_person", { p_class_id: reconfirm, p_user_id: learner.id, p_kind: "artist" });
+    await rpc(learner.h, "respond_to_class_ask", { p_class_person_id: rcAsk.id, p_accept: true });
+    await oPage.goto(`${BASE}/business/${studio.id}/classes/${reconfirm}/edit`, { waitUntil: "networkidle" });
     await oPage.getByRole("button", { name: "Continue" }).click();
     await oPage.waitForTimeout(400);
     await oPage.getByLabel("Price per session").fill("350");
-    await oPage.getByRole("button", { name: "Save changes" }).click();
+    // TODO(11 Oct): button "Continue" — present only if the one class form keeps its two steps.
+    await oPage.getByRole("button", { name: "Save", exact: true }).click();
     await oPage.waitForURL((u) => !/\/edit$/.test(new URL(u).pathname), { timeout: 30000 });
     await oPage.waitForTimeout(1500);
-    const reAsked = await rows(owner.h, `class_people?class_id=eq.${second}&user_id=eq.${learner.id}&deleted_at=is.null&select=status`);
-    check(reAsked.length === 1 && reAsked[0].status === "asked", `⚠⚠ …and editing a class its teacher had said yes to asks them again (${reAsked.map((r) => r.status).join(",") || "no live row"})`);
+    const reAsked = await rows(owner.h, `class_people?class_id=eq.${reconfirm}&user_id=eq.${learner.id}&deleted_at=is.null&select=status`);
+    check(reAsked.length === 1 && reAsked[0].status === "asked", `⚠⚠ …and editing a DRAFT its teacher had said yes to asks them again (${reAsked.map((r) => r.status).join(",") || "no live row"})`);
 
     /* ══ 11 · A TEAM MEMBER MAY BOOK A CLASS AT THEIR OWN STUDIO ══════════════
        ⚠⚠ `showBar = !isMember` gave faculty who wanted to TRAIN where they teach
@@ -702,11 +742,22 @@ const BOOK_ON_PAGE = /^Book Now$/;
 
        What is still refused is a seat on a class you are RUNNING, and these three
        checks are the three people that rule has to tell apart. */
+    /* 11 Oct 2026: INVERTED — the people who run a business do not book its
+       classes ("You run this class — it is not yours to book", in
+       book_class_session and the class_bookings trigger). A manager RUNS the
+       business, so they are offered no seat any more; the database refuses too. */
     await mPage.goto(`${BASE}/c/${aheadSlug}`, { waitUntil: "networkidle" });
     check(
-      (await mPage.getByRole("button", { name: BOOK_ON_PAGE }).count()) > 0,
-      "⚠⚠ a MANAGER — on the team, not the owner, not on this class — is offered a seat at their own studio"
+      (await mPage.getByRole("button", { name: BOOK_ON_PAGE }).count()) === 0,
+      "⚠⚠ a MANAGER runs the studio, so they are NOT offered a seat on its class (11 Oct 2026)"
     );
+    let mgrBook = "ACCEPTED";
+    try {
+      await rpc(manager.h, "book_class_session", { p_session_id: aheadSes });
+    } catch (e) {
+      mgrBook = e.message;
+    }
+    check(/not yours to book/.test(mgrBook), `…and the database refuses the manager's booking in words (${mgrBook.slice(0, 90)})`);
 
     await oPage.goto(`${BASE}/c/${aheadSlug}`, { waitUntil: "networkidle" });
     check(
@@ -715,10 +766,11 @@ const BOOK_ON_PAGE = /^Book Now$/;
     );
 
     /* ⚠ THE CLAUSE THAT IS NOT THE OWNER TEST, ISOLATED. The learner accepted an
-       ask to TAKE `second` two segments ago, which seats them `visiting_faculty`
-       (R19) — so they are a member, they are NOT the owner, and without the
-       confirmed-classPerson clause this change would have offered the teacher a
-       ticket to the class they are about to teach. */
+       ask to TAKE `second` two segments ago — they are NOT the owner, and
+       without the confirmed-classPerson clause they would be offered a ticket to
+       the class they are about to teach. (11 Oct 2026: the yes no longer seats
+       them `visiting_faculty`; they are on no team, which isolates the clause
+       even more cleanly.) */
     const secondSlug = await slugOf(second);
     await lPage.goto(`${BASE}/c/${secondSlug}`, { waitUntil: "networkidle" });
     check(

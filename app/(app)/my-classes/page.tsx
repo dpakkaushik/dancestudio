@@ -6,7 +6,7 @@ import { groupWithDoor, tabFromAddress, timeGroupOf, type ClassesTab, type TimeG
 import { answeredItems, askExpired, askToYouItem, askYouSentItem, closedDraftItem, draftItem, hasPassed, refundsItem, runActions, unpublishedItem } from "@/features/classes/classItems";
 import { EnrollButton } from "@/features/classBookings/components/EnrollButton";
 import { DeskHero } from "@/features/businesses/components/biz-kit";
-import { PersonAskSettings } from "@/features/inbox/components/AskSettings";
+import { TakingRequestsSwitch } from "@/features/classes/components/ClassCardActions";
 import { buildRequests, isClassAsk } from "@/features/inbox/requestItems";
 import { DeskAddButton } from "@/features/settings/components/settings-kit";
 import { DOS_UI, INK, LILAC, SUB } from "@/lib/design/tokens";
@@ -14,7 +14,7 @@ import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { findAskedClassPeopleForBusinesses, findClassArtists, findMyConfirmedClassPeople, findMyPendingClassPeople } from "@/repositories/classPeople";
 import { findClassPublishState, findClassesByBusiness, findMyVenueAsks, findWhyNoClass } from "@/repositories/classes";
 import { countEnrolledBySession, findMyClassBookings } from "@/repositories/classBookings";
-import { findMyMemberships } from "@/repositories/businesses";
+import { findMyMemberships, runsTheBusiness } from "@/repositories/businesses";
 import { findMyInboxOff } from "@/repositories/askSettings";
 import { findRefundsByBusiness } from "@/repositories/refunds";
 import { askToTileClass } from "@/types/classPerson";
@@ -248,7 +248,7 @@ export default async function MyClassesPage({ searchParams }: { searchParams: Pr
         mode="person"
         top={<DeskHero tool="classes" as="h1" margin="0" />}
         add={add}
-        settings={<PersonAskSettings section="requests" off={inboxOff} compact />}
+        settings={<TakingRequestsSwitch mode="person" off={inboxOff} />}
         roles={ROLES}
         items={items}
         answered={answeredItems(classIn, classOut, artistOf, nowMs)}
@@ -263,10 +263,12 @@ export default async function MyClassesPage({ searchParams }: { searchParams: Pr
           businessId={myPage.id}
           businessType="artist_page"
           rooms={[]}
-          isOwner
+          meId={user.id}
           suggestedStyles={myPage.styles}
           sheet
-          ownedStudioIds={memberships.filter((m) => m.memberRole === "owner" && m.business.type === "studio").map((m) => m.business.id)}
+          /* a studio you RUN (owner or manager) gives its room at once since
+             `20261016090000` — `classes_venue_changes` reads `runs_business` */
+          ownedStudioIds={memberships.filter((m) => runsTheBusiness(m.memberRole) && m.business.type === "studio").map((m) => m.business.id)}
         />
       ) : null}
     </div>

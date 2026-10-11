@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useRef, useState, useSyncExternalStore, type CSSProperties, type ReactNode } from "react";
 import { AmenityChip } from "@/components/ui/AmenityIcon";
+import { columnTab, columnTrack } from "@/components/ui/ColumnTabs";
 import { SectionCard } from "@/components/ui/SectionCard";
 import {
   bookAtTheDoorAction,
@@ -222,6 +223,14 @@ export interface ClassDetailProps {
    *  its register or its camera. A REQUEST: honoured only when this viewer has a
    *  register at all, and the camera only while check-in is still open. */
   openOn?: "register" | "scan" | null;
+  /** THE STUDIO'S OWN REFUND WINDOW (11 Oct 2026) — hours before the start a
+   *  cancellation is still refunded automatically; 0 means the studio decides
+   *  every one. Default 12, the window every studio had until the column. */
+  refundWindowHours?: number;
+  /** owner OR manager of the class's business (11 Oct 2026) — they create,
+   *  edit drafts, publish, delete and name the teacher. Money, powers and pay
+   *  stay the OWNER's (`isOwner`). */
+  runsBusiness?: boolean;
 }
 
 export function ClassDetail({
@@ -257,7 +266,11 @@ export function ClassDetail({
   cannotBookWhy = null,
   passes = [],
   openOn = null,
+  refundWindowHours = 12,
+  runsBusiness = false,
 }: ClassDetailProps) {
+  /* the people who RUN the business — the owner always is one */
+  const runs = runsBusiness || isOwner;
   const col = dosStyleColor(c.style);
   const dark = useSyncExternalStore(subscribeToHtmlClass, readIsDark, readServerIsDark);
   const ink = dosStyleInk(col, dark);
@@ -295,6 +308,9 @@ export function ClassDetail({
    *  answers from what this sheet itself has done, so the words are true whether
    *  or not the server has caught up. */
   const scannedIn = useRef<Set<string>>(new Set());
+  /* the door's one field — empty, the button scans; a name, the button books them in */
+  const [doorName, setDoorName] = useState("");
+  const [doorBusy, setDoorBusy] = useState(false);
   const origin = useSyncExternalStore(subscribeNever, readOrigin, readServerOrigin);
 
   /* ⚠ the two form states that drove "Join the waitlist" / "Leave the waitlist"
@@ -396,13 +412,14 @@ export function ClassDetail({
      different people rather than one:
        · the OWNER of the business — it is their class, so a Book button on it
          would be the app offering to sell them their own seat;
-       · anybody CONFIRMED on this class, whichever kind. An outside artist who
-         accepts is seated `visiting_faculty` (R19), so without this clause the
-         change would have offered the teacher a ticket to the class they are
-         about to teach.
-     ⚠ A trainer or a manager NOT on this class is a dancer here like anybody
-     else, which is the whole point of the change. */
-  const runsThisClass = isOwner || myClassPerson?.status === "confirmed";
+       · anybody CONFIRMED on this class, whichever kind — an outside artist
+         who accepts holds no seat on the studio at all since 11 Oct 2026, so
+         this clause is the only thing that knows they teach it.
+     ⚠ 11 Oct 2026: a MANAGER runs the business too, and the database refuses
+     the people who run a class a seat on it ("You run this class — it is not
+     yours to book"), so a manager is not offered one either. A trainer NOT on
+     this class is a dancer here like anybody else. */
+  const runsThisClass = runs || myClassPerson?.status === "confirmed";
   /* ⚠⚠ A DRAFT IS NOT ON SALE (11 Oct 2026, the user: "should not be able to book
      a class if in drafts — happened when i rejected a class offer to teach"). A
      person ASKED onto a class reads its draft (18 Sep), and saying no keeps the
@@ -534,7 +551,7 @@ export function ClassDetail({
    *
    *  ⚠⚠ AND THE LAST ONE IS A DOOR NOW (29 Sep 2026). It used to end the errand
    *  — "a class has no walk-in yet" — which is the one thing a person standing
-   *  at the door cannot act on. `book_class_session_for_person` books them and
+   *  at the door cannot act on. `book_at_the_door` books them and
    *  they are checked in in the same press, because the confirm card they just
    *  passed IS the consent step (the user's own 28 Sep wording: "after
    *  confirmation only should check them in OR ADD THEM").
@@ -573,9 +590,23 @@ export function ClassDetail({
     return { ok: true, message: `✓ ${row.learnerName} checked in` };
   };
 
-  /* ⚠ NO WALK-IN BY NAME ON THE REGISTER (4 Oct 2026, the user: "remove
-     somebody at the door and name first bar from attendance"). The scanner is the
-     door; a walk-in already on a register keeps its row and its Remove below. */
+  /** ⚠⚠ SCAN OR NAME IS ONE ACTION (11 Oct 2026, `book_at_the_door`). The door
+   *  is ONE control: an empty field and the button opens the camera; a typed
+   *  name and the same button books that name in as a walk-in and checks them
+   *  in. Two doors (a scan sheet and a separate "somebody at the door" bar)
+   *  were what the user had removed on 4 Oct; one field beside the one button
+   *  is the shape they asked for now. */
+  const doorWalkIn = async () => {
+    const name = doorName.trim();
+    if (!name || !c.session || doorBusy) return;
+    setDoorBusy(true);
+    const out = await bookAtTheDoorAction({ sessionId: c.session.id, name });
+    setDoorBusy(false);
+    if (out.error) return fire(out.error);
+    setDoorName("");
+    fire(`✓ ${name} checked in at the door`);
+    router.refresh();
+  };
 
   const removeWalkIn = async (classBookingId: string, name: string) => {
     if (opPending) return;
@@ -612,7 +643,7 @@ export function ClassDetail({
         maxWidth: 430,
         margin: "0 auto",
         color: "var(--text)",
-        paddingBottom: showBar || (canManage && isDraft) ? 130 : 40,
+        paddingBottom: showBar || (runs && isDraft) ? 130 : 40,
         fontFamily: DOS_UI,
         transition: "background .25s",
       }}
@@ -652,7 +683,7 @@ export function ClassDetail({
           finished class would refund every paid seat for a class that already
           happened ("cancel / refund class should not be possible if class is
           over"). The register's row no longer carries it. ── */}
-      {isOwner && !done ? (
+      {runs && !done ? (
         <div style={{ position: "absolute", top: 12, right: 16, zIndex: 3 }}>
           <ClassDeleteChip classId={c.id} businessId={c.businessId} title={c.title} isDraft={isDraft} enrolled={filled} />
         </div>
@@ -793,10 +824,13 @@ export function ClassDetail({
                 pick somebody else (18 Sep 2026), and the job chips on a confirmed
                 artist — `20260928100000` made the register a default an owner may
                 take back, and this is its only door */}
-            {(isOwner && !done && c.businessType === "studio") || (isOwner && !done && artist) ? (
+            {(runs && !done && isDraft && c.businessType === "studio") || (isOwner && !done && artist) ? (
               <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 8, marginTop: 8, minWidth: 0 }}>
+                {/* the powers are the OWNER's alone (11 Oct 2026) */}
                 {isOwner && !done && artist ? <AssistantControls classPerson={artist} isOwner={isOwner} col={col} remove={false} /> : null}
-                {isOwner && !done && c.businessType === "studio" ? (
+                {/* a published class is fixed (11 Oct 2026) — only a draft changes
+                    its artist, and a MANAGER may name one too */}
+                {runs && !done && isDraft && c.businessType === "studio" ? (
                   <Link href={`/business/${c.businessId}/classes/${c.id}/edit`} aria-label="Change the artist taking this class" style={{ marginLeft: "auto", flexShrink: 0, fontSize: 10.5, fontWeight: 800, color: col, padding: "4px 10px", borderRadius: 999, border: `1.5px solid ${col}66`, textDecoration: "none" }}>
                     Change artist
                   </Link>
@@ -835,7 +869,10 @@ export function ClassDetail({
             (prototype 11961-11970) ── */}
         {ownerTabs && (
           <>
-          <div style={{ display: "flex", gap: 2, background: "var(--el)", borderRadius: 14, padding: 3, marginTop: 10 }}>
+          {/* ⚠ THE APP'S ONE COLUMN STYLE (`ColumnTabs`, 11 Oct 2026). No count
+              inside a tab: the accessible names are read exactly ("Attendance",
+              "Earnings", "Refunds", "Details"), and a count would change them. */}
+          <div style={{ ...columnTrack(), marginTop: 10 }}>
             {(
               [
                 ["details", "Details"],
@@ -852,28 +889,15 @@ export function ClassDetail({
                 ...(canSettleRefunds ? ([["ref", "Refunds"]] as Array<["ref", string]>) : []),
               ] as Array<["details" | "att" | "money" | "ref", string]>
             ).map(([k, l]) => (
-              <div
-                role="button"
-                tabIndex={0}
-                onKeyDown={dosKey}
+              <button
+                type="button"
                 key={k}
+                aria-pressed={ownerSeg === k}
                 onClick={() => setOwnerSeg(k)}
-                style={{
-                  flex: 1,
-                  textAlign: "center",
-                  padding: "7px 4px",
-                  borderRadius: 9,
-                  cursor: "pointer",
-                  fontSize: 11.5,
-                  fontWeight: 800,
-                  background: ownerSeg === k ? "var(--solid)" : "transparent",
-                  color: ownerSeg === k ? "var(--text)" : "var(--sub)",
-                  boxShadow: ownerSeg === k ? "0 1px 4px rgba(0,0,0,.3)" : "none",
-                  transition: "all .15s",
-                }}
+                style={columnTab(ownerSeg === k)}
               >
                 {l}
-              </div>
+              </button>
             ))}
           </div>
           {/* ⚠ NO STATUS LINE UNDER THE TABS (4 Oct 2026, the user: "text below
@@ -1281,7 +1305,11 @@ export function ClassDetail({
                  drawn in the WHO column above, where it belongs */
               const asked = cl.status !== "confirmed";
               const holds = [cl.canAttendance ? "Attendance" : null, cl.canRefunds ? "Refunds" : null].filter((w): w is string => w !== null);
-              const controls = cl.kind === "assistant" && (isOwner || canAddAssistant);
+              /* ⚠ (11 Oct 2026, `20261016090000`) withdrawing an ASK is anybody's who
+                 runs the class — a manager included — but taking a CONFIRMED assistant
+                 off it stays the owner's, or the teacher's who asked them */
+              const mayRemove = asked || isOwner || (canAddAssistant && !runs);
+              const controls = cl.kind === "assistant" && (isOwner || (canAddAssistant && mayRemove));
               /* the owner's toggles ARE the jobs, so the static pills are for
                  everybody else — one statement of what they hold, never two */
               const showHolds = !(controls && isOwner && !asked);
@@ -1324,7 +1352,7 @@ export function ClassDetail({
                       teacher's own row is changed from the form, not here */}
                   {controls ? (
                     <div style={{ padding: "9px 12px 10px", borderTop: "1.5px solid var(--el)" }}>
-                      <AssistantControls classPerson={cl} isOwner={isOwner} col={col} bar />
+                      <AssistantControls classPerson={cl} isOwner={isOwner} col={col} remove={mayRemove} bar />
                     </div>
                   ) : null}
                 </div>
@@ -1355,7 +1383,13 @@ export function ClassDetail({
               </svg>
             }
           >
-            <Row k="Refund" v={isFree ? "Not applicable — free" : "Full refund until 12 h before"} />
+            {/* ⚠ THE STUDIO'S OWN WINDOW (11 Oct 2026, `businesses.refund_window_hours`) —
+                the number `_cancel_one_class_booking` reads, so the page cannot
+                promise what the refund does not do */}
+            <Row
+              k="Refund"
+              v={isFree ? "Not applicable — free" : refundWindowHours <= 0 ? "No automatic refund — the studio decides" : `Refund until ${refundWindowHours} h before start`}
+            />
             {/* ── MEMBERSHIPS (19 Sep 2026, the user: "Memberships should be
                 allowed … in Class form and Policy section in Class Detail as
                 well"). The class's own two switches, said to the person about to
@@ -1417,10 +1451,8 @@ export function ClassDetail({
         )}
 
         {/* ── ATTENDANCE — the register and the queue (prototype 12043-12138).
-            The QR scanner is the pill on the register's head since 28 Sep 2026;
-            a class WALK-IN still has no door, and needs a migration (`class_bookings`
-            has no nullable `user_id` and no name column — events have
-            `add_event_walk_in` and classes have no equivalent at all). ── */}
+            The door is ONE control since 11 Oct 2026 — a scan or a typed name,
+            one button, one RPC (`book_at_the_door`). ── */}
         {ownerTabs && ownerSeg === "att" && register && (
           <>
             {/* the clock starts the session, not a button (12050-12063).
@@ -1479,9 +1511,42 @@ export function ClassDetail({
                 button. A register with nobody on it has nothing to scan
                 against, so it says so rather than opening a camera. */}
             {sessionPhase !== "ended" && (
+              <div data-testid="door" style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
+              <input
+                type="text"
+                value={doorName}
+                onChange={(e) => setDoorName(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    e.preventDefault();
+                    void doorWalkIn();
+                  }
+                }}
+                maxLength={80}
+                placeholder="Or type a name"
+                aria-label="Name of somebody at the door"
+                data-testid="door-name"
+                style={{
+                  flex: 1,
+                  minWidth: 0,
+                  padding: "12px 14px",
+                  borderRadius: 999,
+                  border: "1.5px solid var(--el)",
+                  background: "var(--card)",
+                  color: "var(--text)",
+                  fontSize: 12.5,
+                  fontFamily: "inherit",
+                  textTransform: "none",
+                }}
+              />
               <button
                 type="button"
+                disabled={doorBusy}
                 onClick={() => {
+                  if (doorName.trim()) {
+                    void doorWalkIn();
+                    return;
+                  }
                   /* ⚠ NO "nothing to scan against" GUARD ANY MORE (29 Sep 2026).
                      It refused to open the sheet while `register.rows` was
                      empty, which was true while the only thing a scan could do
@@ -1496,32 +1561,33 @@ export function ClassDetail({
                   scannedIn.current.clear();
                   setScanOpen(true);
                 }}
-                aria-label="Scan a code to check somebody in"
+                aria-label={doorName.trim() ? `Check ${doorName.trim()} in at the door` : "Scan a code to check somebody in"}
                 data-testid="scan-check-in"
                 style={{
                   display: "flex",
                   alignItems: "center",
                   justifyContent: "center",
                   gap: 8,
-                  width: "100%",
-                  padding: "12px",
-                  marginBottom: 10,
+                  flexShrink: 0,
+                  padding: "12px 16px",
                   borderRadius: 999,
                   border: "1.5px solid var(--el)",
-                  background: "var(--card)",
-                  color: "var(--text)",
+                  background: doorName.trim() ? "var(--text)" : "var(--card)",
+                  color: doorName.trim() ? "var(--solid)" : "var(--text)",
                   fontWeight: 900,
                   fontSize: 12.5,
                   fontFamily: "inherit",
-                  cursor: "pointer",
+                  cursor: doorBusy ? "wait" : "pointer",
+                  opacity: doorBusy ? 0.6 : 1,
                 }}
               >
                 <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
                   <path d="M3.5 8.5v-3a2 2 0 0 1 2-2h3M15.5 3.5h3a2 2 0 0 1 2 2v3M20.5 15.5v3a2 2 0 0 1-2 2h-3M8.5 20.5h-3a2 2 0 0 1-2-2v-3" />
                   <path d="M7 12h10" />
                 </svg>
-                Scan to check in
+                {doorName.trim() ? "Check in" : "Scan to check in"}
               </button>
+              </div>
             )}
 
             {/* the register itself (12117-12137) */}
@@ -1928,7 +1994,8 @@ export function ClassDetail({
       )}
 
       {/* ── a draft has no attendance and no refunds — editing it is the only move (12446-12455) ── */}
-      {canManage && isDraft && (
+      {/* the people who RUN the business edit a draft (owner or manager, 11 Oct 2026) */}
+      {runs && isDraft && (
         <div
           style={{
             position: "fixed",
@@ -2090,6 +2157,7 @@ export function ClassDetail({
           title={c.title}
           timeText={whenText}
           amountInr={receipt?.amountInr ?? 0}
+          refundWindowHours={refundWindowHours}
           onClose={() => setRefundOpen(false)}
           onDone={(msg) => {
             setRefundOpen(false);

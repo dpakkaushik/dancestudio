@@ -4,6 +4,7 @@ import Link from "next/link";
 import { DOS_TOOLS, DeskHero } from "@/features/businesses/components/biz-kit";
 import { SegmentedPanels } from "@/features/shell/components/SegmentedNav";
 import { ToolBody, ToolCard, ToolChip, ToolFacts, ToolHead } from "@/components/ui/ToolCard";
+import { columnTab, columnTrack } from "@/components/ui/ColumnTabs";
 import { FigureHead } from "@/components/ui/FigureHead";
 import { PayHistoryExport } from "./PayHistoryExport";
 import { MemberManage } from "./MemberManage";
@@ -260,7 +261,9 @@ function EarningsPanel({
       <div style={{ ...panel, padding: "5px 14px" }}>
         <Fold title="KEY STATS" sub={win.label} open testId="team-fold-stats">
         {/* ALL · DAY · WEEK · MONTH · YEAR — a link, so it is in the URL */}
-        <div role="group" aria-label="Period" data-testid="team-period" style={{ display: "flex", gap: 2, background: "var(--el)", borderRadius: 12, padding: 3, marginBottom: 10 }}>
+        {/* the app's one column look (`ColumnTabs`, 11 Oct 2026) — five short
+            words fit one line, so this one does not wrap */}
+        <div role="group" aria-label="Period" data-testid="team-period" style={{ ...columnTrack(), marginBottom: 10 }}>
           {EARN_PERIODS.map(([p, label]) => {
             const on = period === p;
             return (
@@ -270,7 +273,7 @@ function EarningsPanel({
                 replace
                 scroll={false}
                 aria-current={on ? "true" : undefined}
-                style={{ flex: 1, textAlign: "center", padding: "7px 2px", borderRadius: 9, fontSize: 11.5, fontWeight: 800, textDecoration: "none", background: on ? "var(--solid)" : "transparent", color: on ? INK : SUB }}
+                style={columnTab(on)}
               >
                 {label}
               </Link>

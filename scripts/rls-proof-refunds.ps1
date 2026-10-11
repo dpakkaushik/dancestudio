@@ -139,19 +139,22 @@ try {
   Check 7 "The refunds-job holder declines ($($declined.status)) and reopens ($($reopened.status))" (
     ($declined.status -eq "declined") -and ($reopened.status -eq "requested"))
 
-  # 8. the hardening lesson, applied from the start this time: the job is only as
-  #    live as the seat behind it. The membership row is soft-deleted DIRECTLY
-  #    with the service role - no RPC - so the claim stays live and the grant
-  #    must still end.
+  # 8. !! INVERTED 11 Oct 2026: the refunds job is read off the CLASS ROW alone
+  #    (20261016090000, can_settle_refunds_for_class - the user's decision). The
+  #    membership row is soft-deleted DIRECTLY with the service role - no RPC - so
+  #    the claim stays live, and the job now KEEPS WORKING on that claim. The
+  #    decline is reopened at once so check 10 still finds a request to approve.
   $seat = (Get-Rows $svcH "business_members?business_id=eq.$($ta.id)&user_id=eq.$($settler.id)&select=id")[0].id
   Invoke-RestMethod -Method Patch -Uri "$base/rest/v1/business_members?id=eq.$seat" -Headers $svcH `
     -Body (@{ deleted_at = (Get-Date).ToString("o") } | ConvertTo-Json) | Out-Null
-  $offTeamBlocked = Expect-Fail { Rpc (Api $settler.token) "decide_refund" @{ p_refund_id = $r2; p_decision = "decline" } }
+  $offTeamWorks = -not (Expect-Fail { Rpc (Api $settler.token) "decide_refund" @{ p_refund_id = $r2; p_decision = "decline" } })
+  if ($offTeamWorks) { Rpc (Api $settler.token) "decide_refund" @{ p_refund_id = $r2; p_decision = "reopen" } | Out-Null }
   $claimStillLive = Get-Rows $svcH "class_people?id=eq.$($claim.id)&deleted_at=is.null&select=id"
   Invoke-RestMethod -Method Patch -Uri "$base/rest/v1/business_members?id=eq.$seat" -Headers $svcH `
     -Body (@{ deleted_at = $null } | ConvertTo-Json) | Out-Null
-  Check 8 "Seat pulled behind the RPC's back -> the refunds job stops working ($offTeamBlocked) with the claim still live ($($claimStillLive.Count))" (
-    $offTeamBlocked -and ($claimStillLive.Count -eq 1))
+  $r2Now = Get-Rows $svcH "refunds?id=eq.$r2&select=status"
+  Check 8 "Seat pulled behind the RPC's back -> the refunds job STILL WORKS on the class row alone ($offTeamWorks) with the claim live ($($claimStillLive.Count)); reopened to $($r2Now[0].status)" (
+    $offTeamWorks -and ($claimStillLive.Count -eq 1) -and ($r2Now[0].status -eq "requested"))
 
   # 9. cash handed back at the desk: 'processed', said out loud as offline
   $offline = Rpc (Api $owner.token) "settle_refund_offline" @{ p_refund_id = $r1; p_note = "Cash at the desk" }

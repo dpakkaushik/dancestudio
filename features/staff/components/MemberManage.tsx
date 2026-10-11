@@ -9,7 +9,7 @@ import { ToolFace, toolBtn } from "@/components/ui/ToolCard";
 import { SheetHandle, sheetBody, sheetWrap } from "@/features/businesses/components/biz-kit";
 import { dosKey } from "@/features/classes/components/ShareSheet";
 import { Toast } from "@/features/crews/components/crew-kit";
-import { removeMemberAction, removeOwnerAction, setMemberPowersAction, setMemberRoleAction } from "@/features/staff/server-actions/staff";
+import { removeMemberAction, removeOwnerAction, setMemberPayAction, setMemberPowersAction, setMemberRoleAction } from "@/features/staff/server-actions/staff";
 import { DOS_DISPLAY, INK, SUB } from "@/lib/design/tokens";
 import { useCloseOnBack } from "@/lib/hooks/useCloseOnBack";
 import type { MemberRole, TeamMember } from "@/repositories/businesses";
@@ -40,6 +40,7 @@ export function MemberManage({
   meUserId,
   principalOwnerId,
   tint,
+  mayPay = true,
 }: {
   businessId: string;
   businessType: BusinessType;
@@ -48,9 +49,18 @@ export function MemberManage({
   /** the oldest live owner seat — the only one who may remove another owner */
   principalOwnerId: string | null;
   tint: string;
+  /** WHAT A SESSION PAYS is the OWNER's (11 Oct 2026, `set_member_pay`). The
+   *  Member Detail page that draws this sheet is already the owner's alone (its
+   *  route redirects anybody else), so the default is true; a caller that ever
+   *  draws the sheet for a manager passes false. */
+  mayPay?: boolean;
 }) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
+  /* ⚠ TEXT-BACKED, NOT A NUMBER (C82, 28 Sep 2026): `Number("") || 0` snaps an
+     emptied box to 0, so the text is the state while typing and the number is
+     derived on save */
+  const [rateText, setRateText] = useState(String(member.payPerSessionInr || 0));
   /* the sheet's own copy, so a press reads back at once while the page re-reads */
   const [m, setM] = useState<TeamMember>(member);
   const [removing, setRemoving] = useState(false);
@@ -89,6 +99,7 @@ export function MemberManage({
         data-testid="member-manage"
         onClick={() => {
           setM(member);
+          setRateText(String(member.payPerSessionInr || 0));
           setError(null);
           setOpen(true);
         }}
@@ -188,6 +199,58 @@ export function MemberManage({
                         </div>
                       );
                     })}
+                  </div>
+                </>
+              ) : null}
+
+              {/* ── WHAT A SESSION PAYS THEM (11 Oct 2026) — the owner's number on the
+                  seat; an ask with no rate of its own takes it ── */}
+              {mayPay ? (
+                <>
+                  <div style={{ fontSize: 10.5, fontWeight: 900, letterSpacing: 1.1, color: "var(--muted)", margin: "14px 0 7px" }}>PAY PER SESSION</div>
+                  <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                    <span style={{ flex: 1, minWidth: 0, display: "flex", alignItems: "center", gap: 6, border: `1.5px solid ${EL}`, borderRadius: 12, padding: "0 12px", background: CARD }}>
+                      <span aria-hidden="true" style={{ fontSize: 14, fontWeight: 800, color: SUB }}>₹</span>
+                      <input
+                        type="text"
+                        inputMode="numeric"
+                        aria-label={`What a session pays ${m.name}`}
+                        data-testid="member-pay-rate"
+                        value={rateText}
+                        onChange={(e) => setRateText(e.target.value.replace(/[^\d]/g, "").slice(0, 6))}
+                        onBlur={() => {
+                          const n = Math.min(200000, Math.max(0, Number(rateText) || 0));
+                          setRateText(String(n));
+                        }}
+                        style={{ flex: 1, minWidth: 0, border: "none", outline: "none", background: "transparent", color: INK, fontSize: 15, fontWeight: 800, padding: "11px 0", fontFamily: "inherit", textTransform: "none" }}
+                      />
+                    </span>
+                    <button
+                      type="button"
+                      /* ⚠ NOT "Save what a session pays …" — getByLabel matches a
+                         SUBSTRING, and the field's own name would find this too */
+                      aria-label={`Save the session rate for ${m.name}`}
+                      data-testid="member-pay-save"
+                      disabled={busy || Math.min(200000, Number(rateText) || 0) === (m.payPerSessionInr || 0)}
+                      onClick={async () => {
+                        const rateInr = Math.min(200000, Math.max(0, Number(rateText) || 0));
+                        const done = await run(
+                          () => setMemberPayAction({ businessId, userId: m.userId, rateInr }),
+                          rateInr > 0 ? `${m.name} · ₹${rateInr.toLocaleString("en-IN")} a session` : `${m.name} · unpaid`,
+                        );
+                        if (done) {
+                          setM({ ...m, payPerSessionInr: rateInr });
+                          setRateText(String(rateInr));
+                          router.refresh();
+                        }
+                      }}
+                      style={{ ...toolBtn("tinted", tint), flex: "none" }}
+                    >
+                      Save
+                    </button>
+                  </div>
+                  <div style={{ fontSize: 11, color: SUB, marginTop: 6, lineHeight: 1.4 }}>
+                    ₹ per session · 0 = unpaid. An ask takes this rate. You settle it — DanceOS does not move the money.
                   </div>
                 </>
               ) : null}

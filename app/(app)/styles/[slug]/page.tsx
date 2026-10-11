@@ -12,7 +12,7 @@ import { findChart } from "@/repositories/stats";
 import { ClassTile } from "@/features/classes/components/ClassTile";
 import { EnrollButton } from "@/features/classBookings/components/EnrollButton";
 import { findPublishedClasses } from "@/repositories/classes";
-import { findClassArtists, findClassesWithArtist } from "@/repositories/classPeople";
+import { findClassArtists, findClassIdsIRun, findClassesWithArtist } from "@/repositories/classPeople";
 import { countEnrolledBySession, findMyEnrolledSessionIds } from "@/repositories/classBookings";
 import type { ClassArtist } from "@/types/classPerson";
 import type { ClassBookingStatus } from "@/types/classBooking";
@@ -77,10 +77,13 @@ export default async function StylePage({
   const boards = boardsList ? (Object.fromEntries(boardsList) as Record<ChartSegment, ChartRow[]>) : null;
   const ids = styleClassesRaw.map((c) => c.id);
   const sessionIds = styleClassesRaw.map((c) => c.session?.id).filter(Boolean) as string[];
-  const [taught, counts, classArtists] = await Promise.all([
+  const [taught, counts, classArtists, ranIds] = await Promise.all([
     findClassesWithArtist(supabase, ids).catch(() => new Set<string>()),
     countEnrolledBySession(supabase, sessionIds).catch(() => new Map<string, number>()),
     findClassArtists(supabase, ids).catch(() => new Map<string, ClassArtist>()),
+    /* ⚠ the classes the viewer RUNS (11 Oct 2026, `20261016090000`) — the database
+       refuses them a seat, so the card says so instead of offering Book Now */
+    findClassIdsIRun(supabase, user?.id, ids),
   ]);
   /* soonest first — the card that happens next is the one somebody is choosing */
   const styleClasses = styleClassesRaw
@@ -190,6 +193,7 @@ export default async function StylePage({
                       mine={mine.get(c.session.id) ?? null}
                       priceInr={c.priceInr}
                       shareSlug={c.shareSlug}
+                      cannotBookWhy={ranIds.has(c.id) ? "You run this class" : null}
                     />
                   ) : null
                 }

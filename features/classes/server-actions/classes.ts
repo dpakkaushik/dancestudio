@@ -14,6 +14,7 @@ import {
   updateClassDetails,
   updateClassPoster,
   findRoomClash,
+  setClassAutoPublish,
   respondToVenueRequest,
   updateClassStatus,
 } from "@/repositories/classes";
@@ -68,6 +69,9 @@ const classFields = z.object({
      database is what refuses a pass a class does not admit. */
   allowsStudioMemberships: z.coerce.boolean(),
   allowsArtistMemberships: z.coerce.boolean(),
+  /* PUBLISH AS SOON AS EVERYONE SAYS YES (11 Oct 2026) — "1" or "", like the
+     memberships switch above */
+  autoPublish: z.coerce.boolean(),
 });
 
 const endsAfterStart = {
@@ -117,10 +121,11 @@ const startsInFuture = {
 
 /* ⚠ weekly classes (13 Oct 2026) were removed on 11 Oct 2026 at the user's
    word — a class is one session, and the form sends no `repeatUntil` */
+/* ⚠ no `status` (11 Oct 2026): a new class is always saved as a draft, and the
+   database publishes it itself once nothing waits (`auto_publish`) */
 const createClassSchema = classFields
   .extend({
     businessId: z.string().uuid(),
-    status: z.enum(["draft", "published"]),
   })
   .refine(endsAfterStart.check, { message: endsAfterStart.message })
   .refine(atMostFiveHours.check, { message: atMostFiveHours.message })
@@ -140,8 +145,10 @@ const updateClassSchema = classFields
    added from the class page by the owner or the teacher, each addition an ask. */
 const peopleSchema = z.object({
   artistUserId: z.string().uuid().nullable(),
-  /* ⚠ Step 13: a rate is optional here because only an OWNER's form sends one.
-     Validating the range is not the authorization — ask_class_person and
+  /* ⚠ Step 13: a rate is optional here. Since 11 Oct 2026 the class form sends
+     none — pay is off the form and an ask with no rate takes the SEAT's
+     (`business_members.pay_per_session_inr`). Kept for any caller that names one;
+     validating the range is not the authorization — ask_class_person and
      set_class_person_pay refuse a rate from anybody but the owner, server-side. */
   artistPayInr: z.number().int().min(0).max(200000).optional(),
 });
@@ -178,6 +185,7 @@ const readFields = (formData: FormData) => ({
   /* ⚠ always false since 4 Oct 2026 — only a studio sells memberships, and the
      database's CHECK refuses anything else */
   allowsArtistMemberships: false,
+  autoPublish: (formData.get("autoPublish") as string) === "1",
 });
 
 async function requireUser() {
@@ -198,7 +206,6 @@ export async function createClassAction(
   const parsed = createClassSchema.safeParse({
     ...readFields(formData),
     businessId: formData.get("businessId"),
-    status: formData.get("status"),
   });
   if (!parsed.success) {
     return { error: parsed.error.issues[0]?.message ?? "Invalid input" };
@@ -207,6 +214,17 @@ export async function createClassAction(
   const supabase = await requireUser();
   const d = parsed.data;
   const people = readPeople(formData);
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  /* ⚠ HOLD THE PUBLISH BACK WHILE SOMEBODY ELSE IS ASKED (11 Oct 2026). The RPC
+     publishes a ready draft at its end, and an ARTIST page's class is born with
+     its owner as the confirmed teacher — so an artist at a map link naming
+     somebody else would be on Discover before that person was even asked. The
+     class is made with the switch off, the ask goes out, and then the switch the
+     form asked for is put back on: the next yes publishes it. */
+  const asksSomebodyElse = Boolean(people?.artistUserId && people.artistUserId !== user?.id);
+  const holdBack = d.autoPublish && asksSomebodyElse;
   try {
     const classId = await createClassWithSession(supabase, {
       businessId: d.businessId,
@@ -230,10 +248,17 @@ export async function createClassAction(
       mapsUrl: d.mapsUrl ?? null,
       allowsStudioMemberships: d.allowsStudioMemberships,
       allowsArtistMemberships: d.allowsArtistMemberships,
+      autoPublish: d.autoPublish && !holdBack,
     });
     // the asks go out once the class they are about exists
-    if (people) {
-      await reconcileClassPeople(supabase, classId, people);
+    try {
+      if (people) {
+        await reconcileClassPeople(supabase, classId, people);
+      }
+    } finally {
+      /* the switch is put back even when an ask is refused, so the draft keeps
+         what its owner chose */
+      if (holdBack) await setClassAutoPublish(supabase, classId, true);
     }
   } catch (error: unknown) {
     return { error: error instanceof Error ? error.message : "Could not create the class" };
@@ -268,10 +293,16 @@ export async function updateClassAction(
     /* what the class WAS, so a changed one can be put back to the people who
        agreed to it (11 Oct 2026) */
     const before = await findClassById(supabase, d.classId);
+    /* ⚠ A PUBLISHED CLASS IS FIXED (11 Oct 2026, the user: "should not be able
+       to edit a published class only delete it") — said in words here, and
+       refused again by the database (`20261015090000`) */
+    if (before && before.status !== "draft") {
+      return { error: "A published class cannot be edited — delete it and add a new one." };
+    }
     const {
       data: { user },
     } = await supabase.auth.getUser();
-    await updateClassDetails(supabase, d.classId, {
+    const details = {
       style: d.style,
       level: d.level,
       room: d.room ?? null,
@@ -287,32 +318,46 @@ export async function updateClassAction(
       mapsUrl: d.mapsUrl ?? null,
       allowsStudioMemberships: d.allowsStudioMemberships,
       allowsArtistMemberships: d.allowsArtistMemberships,
-    });
-    /* ⚠⚠ AN EDIT IS A NEW REQUEST (11 Oct 2026, the user: "if anything has been
-       edited should send a new request for confirmation"). Whatever somebody said
-       yes to — the date, the time, the room, the studio, the price, the size —
-       when it moves, they are asked again. A poster or a memberships switch is
-       not something anybody agreed to, so it moves nothing. */
+    };
+    /* ⚠ HELD BACK, THEN PUT BACK (11 Oct 2026). `update_class_with_session`
+       publishes a ready draft at its end — BEFORE the asks below go out, so a
+       draft whose old teacher had said yes would go on Discover the moment its
+       time moved, or its teacher changed. The first write keeps the switch off;
+       once the asks are out, the same values are written again with the switch
+       the form asked for, and that second write publishes the draft only if
+       nothing now waits on anybody. */
+    await updateClassDetails(supabase, d.classId, { ...details, autoPublish: false });
+    /* ⚠⚠ AN EDIT ASKS AGAIN — BUT ONLY ON THE TIME, THE PLACE OR THE PAY
+       (11 Oct 2026, the user's answer). A yes was a yes to WHEN it is and WHERE it
+       is; when either moves, everybody on the class but the person saving is
+       asked again. The style, the level, the price, the size, the poster and the
+       memberships switch move nothing — and pay is off this form (an ask takes
+       the seat's rate), so nothing here can change it. */
     const sameMinute = (a: string | undefined, b: string) => Boolean(a) && Math.floor(Date.parse(a!) / 60000) === Math.floor(Date.parse(b) / 60000);
     const changed =
       before !== null &&
-      (before.style !== d.style ||
-        before.level !== d.level ||
-        !sameMinute(before.session?.startsAt, startsAt) ||
+      (!sameMinute(before.session?.startsAt, startsAt) ||
         !sameMinute(before.session?.endsAt, endsAt) ||
         (before.roomId ?? null) !== (d.roomId ?? null) ||
         (before.venueBusinessId ?? null) !== (d.venueBusinessId ?? null) ||
-        before.priceInr !== d.priceInr ||
-        before.capacity !== d.capacity ||
         (before.mapsUrl ?? "") !== (d.mapsUrl ?? ""));
-    await reconcileClassPeople(supabase, d.classId, people, { reconfirm: changed, meId: user?.id });
+    const myMemberships = changed ? await findMyMemberships(supabase) : [];
+    /* an OWNER's re-ask keeps each person's own rate on this class; a manager's
+       cannot (the RPC refuses a rate from anybody but the owner), so it takes
+       the seat's rate (11 Oct 2026) */
+    const keepRates = Boolean(before) && myMemberships.some((m) => m.business.id === before!.businessId && m.memberRole === "owner");
+    await reconcileClassPeople(supabase, d.classId, people, { reconfirm: changed, meId: user?.id, keepRates });
     /* the studio whose room it is, too: an artist's draft that was given a room
        for one slot goes back to it when the slot moves. A new room or studio is
        already a new ask (the database's own trigger); a studio the artist owns
        has nobody to ask; a published class keeps the room it is on sale in. */
     if (changed && before && before.status === "draft" && before.venueStatus === "accepted" && before.venueBusinessId && before.venueBusinessId === (d.venueBusinessId ?? null) && (before.roomId ?? null) === (d.roomId ?? null)) {
-      const owned = (await findMyMemberships(supabase)).some((m) => m.business.id === before.venueBusinessId && m.memberRole === "owner");
+      const owned = myMemberships.some((m) => m.business.id === before.venueBusinessId && (m.memberRole === "owner" || m.memberRole === "manager"));
       if (!owned) await reopenVenueRequest(supabase, d.classId);
+    }
+    /* the switch the form asked for — on, this publishes a draft nothing waits on */
+    if (d.autoPublish) {
+      await updateClassDetails(supabase, d.classId, { ...details, autoPublish: true });
     }
   } catch (error: unknown) {
     return { error: error instanceof Error ? error.message : "Could not save the class" };

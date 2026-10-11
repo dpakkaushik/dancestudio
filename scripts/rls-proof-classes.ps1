@@ -121,6 +121,52 @@ $studioClear = ($null -eq $whyStudio) -or ("$whyStudio" -eq "null") -or ("$whySt
 "9. why_no_class: a studio -> nothing ('$whyStudio') $(if ($studioClear) {'-- OK'} else {'-- !!! FAILED !!!'})"
 if (-not $studioClear) { $pass = $false }
 
+# 10. 11 Oct 2026: A YES PUBLISHES A READY DRAFT ITSELF (classes.auto_publish,
+# default ON, migration 20261016090000). Every other class in this harness is
+# made with the switch OFF (proof-lib's Seat-Teacher / New-Published-Class), so
+# this is the one place the auto-publish is proven: the owner names B to teach
+# through the real ask, B says yes through the real answer, and nobody presses
+# Publish. Then the closed-state rules on the same ask: a second answer is
+# refused, and B - now running the class - cannot book a seat on it.
+$autoDay = (Get-Date).AddDays(31).ToString("yyyy-MM-dd")
+$autoBody = $clsBody.Clone()
+$autoBody["p_title"] = "Hip-Hop - Beginner auto $stamp"
+$autoBody["p_starts_at"] = "${autoDay}T19:00:00+05:30"; $autoBody["p_ends_at"] = "${autoDay}T20:00:00+05:30"
+$autoBody["p_auto_publish"] = $true
+try {
+  $auto = Invoke-RestMethod -Method Post -Uri "$base/rest/v1/rpc/create_class_with_session" -Headers (Api $a.access_token) -Body ($autoBody | ConvertTo-Json)
+  $ask = Invoke-RestMethod -Method Post -Uri "$base/rest/v1/rpc/ask_class_person" -Headers (Api $a.access_token) -Body (@{ p_class_id = $auto.id; p_user_id = $b.user.id; p_kind = "artist" } | ConvertTo-Json)
+  $beforeYes = [string](@(Invoke-RestMethod -Uri "$base/rest/v1/classes?id=eq.$($auto.id)&select=status" -Headers $svcH)[0].status)
+  Invoke-RestMethod -Method Post -Uri "$base/rest/v1/rpc/respond_to_class_ask" -Headers (Api $b.access_token) -Body (@{ p_class_person_id = $ask.id; p_accept = $true } | ConvertTo-Json) | Out-Null
+  $afterYes = [string](@(Invoke-RestMethod -Uri "$base/rest/v1/classes?id=eq.$($auto.id)&select=status" -Headers $svcH)[0].status)
+  $autoOk = ($beforeYes -eq "draft") -and ($afterYes -eq "published")
+  "10a. A ready draft with auto_publish on: '$beforeYes' before the teacher's yes, '$afterYes' after $(if ($autoOk) {'-- PUBLISHED ITSELF, OK'} else {'-- !!! FAILED !!!'})"
+  if (-not $autoOk) { $pass = $false }
+
+  try {
+    Invoke-RestMethod -Method Post -Uri "$base/rest/v1/rpc/respond_to_class_ask" -Headers (Api $b.access_token) -Body (@{ p_class_person_id = $ask.id; p_accept = $false } | ConvertTo-Json) | Out-Null
+    "10b. A second answer to the same ask: WENT THROUGH -- !!! FAILED !!!"; $pass = $false
+  } catch {
+    $why = ErrBody $_
+    $okTwice = $why -match "already been answered"
+    "10b. A second answer to the same ask is refused ('$why') $(if ($okTwice) {'-- OK'} else {'-- wrong reason, !!! FAILED !!!'})"
+    if (-not $okTwice) { $pass = $false }
+  }
+
+  $autoSess = @(Invoke-RestMethod -Uri "$base/rest/v1/class_sessions?class_id=eq.$($auto.id)&deleted_at=is.null&select=id" -Headers $svcH)[0].id
+  try {
+    Invoke-RestMethod -Method Post -Uri "$base/rest/v1/rpc/book_class_session" -Headers (Api $b.access_token) -Body (@{ p_session_id = $autoSess } | ConvertTo-Json) | Out-Null
+    "10c. The confirmed teacher books a seat on their own class: WENT THROUGH -- !!! FAILED !!!"; $pass = $false
+  } catch {
+    $why = ErrBody $_
+    $okOwn = $why -match "not yours to book"
+    "10c. The confirmed teacher cannot book their own class ('$why') $(if ($okOwn) {'-- OK'} else {'-- wrong reason, !!! FAILED !!!'})"
+    if (-not $okOwn) { $pass = $false }
+  }
+} catch {
+  "10. The auto-publish world could not be built ($(ErrBody $_)) -- !!! FAILED !!!"; $pass = $false
+}
+
 # THE STUDIO THIS RUN MADE GOES (10 Oct 2026): it is LISTED, so left behind it
 # sat on Discover under the kept test-phone owner ("Class Studio {stamp}") until
 # the leftover guard found it. New-Studio registered it; this deletes it and

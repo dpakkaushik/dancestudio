@@ -12,6 +12,7 @@ import type { MembershipOnSale } from "@/repositories/memberships";
 import { findNextPublicSessions } from "@/repositories/calendar";
 import { startedSessionIds } from "@/types/calendar";
 import { findMyEnrolledSessionIds } from "@/repositories/classBookings";
+import { findClassIdsIRun } from "@/repositories/classPeople";
 import { findPublicPerson, isFollowingPerson, personScheduleBusiness } from "@/repositories/publicPerson";
 import { findPublicStudioTeam } from "@/repositories/publicProfile";
 import { ensureArtistPage, findMyMemberships as findMyTeams } from "@/repositories/businesses";
@@ -165,13 +166,14 @@ export default async function PersonPage({ params }: { params: Promise<{ userId:
        profile pages") */
     user ? findMyEnrolledSessionIds(supabase).catch(() => new Map()) : Promise.resolve(new Map()),
   ]);
-  /* ⚠ a class the VIEWER is taking offers them no seat — the class page's own rule
-     (R61). This page is never the viewer's own (that returned above), so it is
-     only ever a class they teach somewhere this person also does. */
+  /* ⚠ a class the VIEWER runs offers them no seat (11 Oct 2026, `20261016090000`):
+     the owner or a manager of its business, or anybody confirmed on it — the
+     database refuses that booking, so the rail asks the same question in one read */
+  const ranIds = user ? await findClassIdsIRun(supabase, user.id, nextSessions.map((e) => e.classId)) : new Set<string>();
   const booking = {
     signedIn: Boolean(user),
     mine: Object.fromEntries(mine),
-    runs: nextSessions.filter((e) => user && e.artist?.userId === user.id).map((e) => e.sessionId),
+    runs: nextSessions.filter((e) => ranIds.has(e.classId)).map((e) => e.sessionId),
     started: startedSessionIds(nextSessions),
   };
 
