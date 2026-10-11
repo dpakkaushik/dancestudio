@@ -24,6 +24,8 @@ import { ToolActions, ToolBody, ToolCard, ToolChip, ToolFace, ToolFacts, ToolHea
 import { DOS_TOOLS, DeskHero, SheetHandle, sheetBody, sheetWrap } from "@/features/businesses/components/biz-kit";
 import { DOS_DISPLAY, DOS_UI, INK, LILAC, MUTED, SUB } from "@/lib/design/tokens";
 import { useCloseOnBack } from "@/lib/hooks/useCloseOnBack";
+import { InviteHeadButtons } from "@/features/inbox/components/JoinInvites";
+import type { AnsweredInviteRow } from "@/features/inbox/inviteRows";
 import type { TeamMember } from "@/repositories/businesses";
 import type { PayoutMethod, PayoutRecord, PayoutStatus } from "@/types/payout";
 import type { BusinessType } from "@/types/business";
@@ -145,11 +147,14 @@ export function StaffDesk({
   businessType,
   team,
   invites,
+  answered = [],
   payments = [],
   classCounts = null,
   isOwner,
   meUserId,
 }: {
+  /** the invites this desk sent that are over — the head's Answered sheet */
+  answered?: AnsweredInviteRow[];
   /** each member's classes here, by user id — null when the read failed */
   classCounts?: Record<string, number> | null;
   businessId: string;
@@ -264,7 +269,13 @@ export function StaffDesk({
       <DeskTop style={{ paddingBottom: 4 }}>
       {/* ⚠ THE TOP SECTION (3 Oct 2026, C116) — the hero, whose team it is, and Add */}
       {/* ⚠ NOTHING BETWEEN THE HEADING AND THE BUTTON (4 Oct 2026, the user) */}
-      <DeskHero tool="team" as="h1" margin="0 0 12px" />
+      {/* ⚠ THE ANSWERED INVITES SIT IN THE HERO'S TOP RIGHT (11 Oct 2026), the
+          place and the shape Classes gives its own — no gear: this desk's
+          switches are the PEOPLE asked, not this business's */}
+      <div style={{ position: "relative", margin: "0 0 12px" }}>
+        <DeskHero tool="team" as="h1" margin="0" />
+        <InviteHeadButtons answered={answered} answeredTestId="team-answered" answeredListTestId="team-answered-list" answeredLabel="Answered invitations" />
+      </div>
 
       {/* ＋ ADD, AT THE TOP, THE WAY CLASSES AND EVENTS OPEN (20 Sep 2026, the
           user: "Add button for team, room, crew to be similar to add class and

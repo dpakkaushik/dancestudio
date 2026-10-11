@@ -173,7 +173,7 @@ const pressed = async (loc) => (await loc.getAttribute("aria-pressed").catch(() 
     const cInv = sp.getByTestId("crew-invite").filter({ hasText: `Nu Crew ${stamp}` });
     check((await cInv.count()) === 1, "the Crews hub OPENS on Member while an ask waits, with the ask's card");
     check((await sp.getByTestId("crew-invite").filter({ hasText: `Mu Crew ${stamp}` }).count()) === 0, "the WITHDRAWN ask is not offered");
-    check(/invited by/.test(await cInv.first().innerText().catch(() => "")), "the card says who asked");
+    check(/invited by/i.test(await cInv.first().innerText().catch(() => "")), "the card says who asked");
     check((await sp.getByTestId("crews-settings").count()) === 1, "the crew-invite switch is behind the hub's gear");
     await cInv.getByTestId("crew-invite-decline").click();
     const q = sp.getByRole("alertdialog", { name: `Decline Nu Crew ${stamp}?` });
@@ -282,7 +282,7 @@ const pressed = async (loc) => (await loc.getAttribute("aria-pressed").catch(() 
       p_price_inr: 0, p_capacity: 8, p_status: "draft", p_starts_at: `${day}T19:00:00+05:30`, p_ends_at: `${day}T20:00:00+05:30`,
     });
     await call("POST", "/rest/v1/rpc/ask_class_person", owner.h, { p_class_id: cls.id, p_user_id: sender.id, p_kind: "artist" });
-    const askNote = await call("GET", `/rest/v1/notifications?user_id=eq.${sender.id}&kind=eq.people&deleted_at=is.null&select=title,href&order=created_at.desc&limit=1`, svc);
+    const askNote = await call("GET", `/rest/v1/notifications?user_id=eq.${sender.id}&kind=eq.class&deleted_at=is.null&select=title,href&order=created_at.desc&limit=1`, svc);
     check(askNote[0] && /wants you as the artist taking/.test(askNote[0].title), `the person asked to teach is told (${askNote[0] ? askNote[0].title : "nothing"})`);
     check(askNote[0] && askNote[0].href === "/my-classes?tab=todo", `⚠ …and the notification opens Classes' To do, where it is answered — not the Inbox (${askNote[0] ? askNote[0].href : "—"})`);
   } catch (e) {

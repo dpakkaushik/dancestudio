@@ -179,8 +179,8 @@ async function fillBusinessContact(page: Page, email: string) {
  *  switches. Press it until it reports the change (aria-pressed on a pill,
  *  aria-expanded on a stack), which is also the only honest assertion that it
  *  happened. */
-async function pressPill(page: Page, name: RegExp | string, attr: "aria-pressed" | "aria-expanded" = "aria-pressed") {
-  const pill = page.getByRole("button", { name }).first();
+async function pressPill(page: Page, name: RegExp | string | Locator, attr: "aria-pressed" | "aria-expanded" = "aria-pressed") {
+  const pill = typeof name === "string" || name instanceof RegExp ? page.getByRole("button", { name }).first() : name;
   await expect(pill).toBeVisible();
   for (let attempt = 0; attempt < 4; attempt++) {
     await pill.click();
@@ -1786,58 +1786,81 @@ test.describe.serial("DanceOS, end to end", () => {
     await expect(ourTile).toBeVisible();
   });
 
-  test("notifications: the bell, the stacks and what reaches you", async () => {
-    // ---- Step 24: notifications ----
+  test("notifications: the bell, New · Earlier, the areas and what reaches you", async () => {
+    // ---- Step 24: notifications, re-cut 11 Oct 2026 (20261019090000) ----
     // Nothing in this leg raises a notification: everything the story already did
     // — a seat booked, a person asked onto a class and answering, a crew ask
-    // confirmed, an entry made — raised one through a trigger. So the bell is
-    // read as evidence of the rest of the test, which is the whole classPerson.
+    // confirmed — raised one through a trigger. So the bell is read as evidence of
+    // the rest of the test. The screen is New · Earlier (unread · read) with a chip
+    // per AREA (class · team · crew · enquiry · money · danceos); Clear only hides.
+    /* A row is in New while unread and in Earlier once read — and whether an earlier
+       segment read it is not this segment's business, so look in New and then in
+       Earlier rather than assuming which. */
+    const findRow = async (page: Page, text: string) => {
+      const row = page.getByText(text).first();
+      if (await row.isVisible().catch(() => false)) return row;
+      try { await expect(row).toBeVisible({ timeout: 4_000 }); return row; } catch {}
+      await page.getByTestId("notif-tab-earlier").click();
+      await expect(row).toBeVisible({ timeout: 15_000 });
+      return row;
+    };
+    // a chip does nothing until hydration — press until it reports itself pressed
+    const pickChip = (page: Page, group: string) => pressPill(page, page.getByTestId(`notif-chip-${group}`));
     await owner.goto("/");
     await expect(owner.getByTestId("bell-badge")).toBeVisible();
     await owner.getByRole("link", { name: /^Notifications/ }).click();
-    await owner.waitForURL(/\/notifications$/);
-    await expect(owner.getByText("What needs you")).toBeVisible();
-    // the stacks are one per kind, and the studio's story made at least these two.
-    // (People is the trainer's and the crew leader's, further down.)
-    await expect(owner.getByRole("button", { name: /^Bookings — \d+ updates?$/ })).toBeVisible();
-    /* ⚠ THE `Events` STACK went on 29 Sep 2026 — a seat booked on an event and a
-       duet partner asked were what raised one. `NotificationKind` KEEPS the
-       word (162 rows on production still carry it and a notification is a
-       record of something that happened), so the stack still renders for an
-       account that holds one; nothing can raise a new one. */
-    // open the Bookings stack and read a real row: the learner booking the class
-    await pressPill(owner, /^Bookings — \d+ updates?$/, "aria-expanded");
-    await expect(owner.getByText(`${learnerName} booked ${classTitle}`)).toBeVisible();
-    // Mark read on the stack: the count drops and the badge follows
-    await owner.getByRole("button", { name: "Mark Bookings read" }).click();
-    await expect(owner.getByText("Bookings marked read")).toBeVisible();
-    // a kind switched off hides its stack, and nothing is deleted by it
+    await owner.waitForURL(/\/notifications/);
+    await expect(owner.getByRole("heading", { level: 1, name: "Notifications" })).toBeVisible();
+    // every area's chip is always drawn, a 0 included
+    for (const g of ["all", "class", "team", "crew", "enquiry", "money", "danceos"]) {
+      await expect(owner.getByTestId(`notif-chip-${g}`)).toBeVisible();
+    }
+    // the Classes area holds a real row: the learner booking the class
+    await pickChip(owner, "class");
+    const booked = `${learnerName} booked ${classTitle}`;
+    await findRow(owner, booked);
+    // Mark read: the New column empties of Classes and the row moves to Earlier
+    await owner.getByTestId("notif-tab-new").click();
+    const markClasses = owner.getByRole("button", { name: "Mark Classes read" });
+    if (await markClasses.isVisible().catch(() => false)) {
+      await markClasses.click();
+      await expect(owner.getByText("Classes marked read")).toBeVisible();
+    }
+    await owner.getByTestId("notif-tab-earlier").click();
+    await expect(owner.getByText(booked).first()).toBeVisible({ timeout: 15_000 });
+    // an area switched off "here" is hidden from the screen, and nothing is deleted
     await owner.getByRole("button", { name: "Notification settings" }).click();
     const notifSheet = owner.getByRole("dialog", { name: "Notification settings" });
-    await notifSheet.getByRole("button", { name: "Bookings" }).click();
+    await notifSheet.getByRole("button", { name: "Classes here" }).click();
     await notifSheet.getByRole("button", { name: "Save settings" }).click();
-    await expect(owner.getByRole("button", { name: /^Bookings — / })).toHaveCount(0);
-    // switch it back on and the history is there — the prototype's own promise
+    await expect(owner.getByTestId("notif-chip-class")).toHaveText(/Classes · off/, { timeout: 15_000 });
+    await expect(owner.getByText(booked)).toHaveCount(0);
+    // switch it back on and the history is there
     await owner.getByRole("button", { name: "Notification settings" }).click();
-    await notifSheet.getByRole("button", { name: "Bookings" }).click();
+    await notifSheet.getByRole("button", { name: "Classes here" }).click();
     await notifSheet.getByRole("button", { name: "Save settings" }).click();
-    await expect(owner.getByRole("button", { name: /^Bookings — \d+ updates?$/ })).toBeVisible();
-    // a row opens the thing it is about: the crew ask the trainer answered
+    await expect(owner.getByTestId("notif-chip-class")).toHaveText(/^Classes · \d+$/, { timeout: 15_000 });
+    await pickChip(owner, "class");
+    await expect(owner.getByText(booked).first()).toBeVisible({ timeout: 15_000 });
+    // the trainer: the learner's seat tells the confirmed TEACHER too (20261017090000)
     await trainer.goto("/notifications");
-    /* ⚠ 11 Oct 2026 (20261017090000, D10): a seat somebody books THEMSELVES tells
-       the class's confirmed TEACHER as well as the people who run the studio — and
-       the trainer said yes to teaching this class before it could be published, so
-       the learner's seat is on their Bookings stack too, opening the class page.
-       Read FIRST: one stack is open at a time, so opening Bookings after People
-       folded People shut and its Clear all was not there to press. */
-    await pressPill(trainer, /^Bookings — \d+ updates?$/, "aria-expanded");
-    await expect(trainer.getByText(`${learnerName} booked ${classTitle}`).first()).toBeVisible();
-    await pressPill(trainer, /^People — \d+ updates?$/, "aria-expanded");
-    await expect(trainer.getByText(`${crewName} wants you on the roster`)).toBeVisible();
-    // and clearing a stack empties it for good (soft-deleted, gone from the screen)
-    await trainer.getByRole("button", { name: "Clear all People" }).click();
-    await expect(trainer.getByText("People cleared")).toBeVisible();
-    await expect(trainer.getByRole("button", { name: /^People — / })).toHaveCount(0);
+    await expect(trainer.getByRole("heading", { level: 1, name: "Notifications" })).toBeVisible();
+    await pickChip(trainer, "class");
+    await findRow(trainer, booked);
+    // the crew ask the trainer answered is in the Crews area
+    await trainer.goto("/notifications");
+    await pickChip(trainer, "crew");
+    const roster = `${crewName} wants you on the roster`;
+    await findRow(trainer, roster);
+    // Clear hides what is read: mark the area read, then clear Earlier
+    await trainer.getByTestId("notif-tab-new").click();
+    const markCrews = trainer.getByTestId("notif-read-all");
+    if (await markCrews.isVisible().catch(() => false)) await markCrews.click();
+    await trainer.getByTestId("notif-tab-earlier").click();
+    await expect(trainer.getByText(roster).first()).toBeVisible({ timeout: 15_000 });
+    await trainer.getByTestId("notif-clear").click();
+    await expect(trainer.getByText(/hidden — nothing is deleted/i)).toBeVisible();
+    await expect(trainer.getByText(roster)).toHaveCount(0);
   });
 
   test("stats: three columns, every profile", async () => {

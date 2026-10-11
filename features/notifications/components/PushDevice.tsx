@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { removePushSubscriptionAction, savePushSubscriptionAction } from "@/features/notifications/server-actions/push";
 import { INK, SUB } from "@/lib/design/tokens";
 
@@ -13,7 +13,8 @@ import { INK, SUB } from "@/lib/design/tokens";
  *  ⚠ The permission prompt only appears from a PRESS — browsers refuse one that
  *  arrives on its own — which is why this is a button and not a side effect. */
 
-type State = "checking" | "unsupported" | "denied" | "off" | "on";
+export type PushDeviceState = "checking" | "unsupported" | "denied" | "off" | "on";
+type State = PushDeviceState;
 
 const KEY = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY ?? "";
 
@@ -34,10 +35,20 @@ async function readState(): Promise<State> {
   return sub ? "on" : "off";
 }
 
-export function PushDevice() {
-  const [state, setState] = useState<State>("checking");
+/** `onState` tells the settings sheet whether THIS phone can be pushed to, so
+ *  the per-group Push switches can say why they are off (11 Oct 2026). */
+export function PushDevice({ onState }: { onState?: (s: PushDeviceState) => void } = {}) {
+  const [state, setStateOnly] = useState<State>("checking");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const report = useRef(onState);
+  useEffect(() => {
+    report.current = onState;
+  });
+  const setState = useCallback((s: State) => {
+    setStateOnly(s);
+    report.current?.(s);
+  }, []);
 
   useEffect(() => {
     let live = true;
@@ -47,7 +58,7 @@ export function PushDevice() {
     return () => {
       live = false;
     };
-  }, []);
+  }, [setState]);
 
   const turnOn = async () => {
     setBusy(true);

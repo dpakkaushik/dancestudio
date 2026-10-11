@@ -2,7 +2,8 @@ import { redirect } from "next/navigation";
 import { CrewForm } from "@/features/crews/components/CrewForm";
 import { CrewsHub } from "@/features/crews/components/CrewsHub";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
-import { findMyLedCrews, findMyMemberCrews, findMyPendingCrewAsks } from "@/repositories/crews";
+import { findMyAnsweredCrewAsks, findMyLedCrews, findMyMemberCrews, findMyPendingCrewAsks } from "@/repositories/crews";
+import { crewAnsweredRow } from "@/features/inbox/inviteRows";
 import { findMyInboxOff } from "@/repositories/askSettings";
 import { findProfileById } from "@/repositories/profiles";
 
@@ -23,11 +24,13 @@ export default async function CrewsPage({ searchParams }: { searchParams: Promis
   /* ⚠ THE CREW ASKS ARE ANSWERED HERE (11 Oct 2026, the user: "handle invites to
      join a team and crew from the crew and studio tabs at home. remove from
      inbox") — the unanswered ones put to you, and the switch behind the gear */
-  const [led, member, asks, inboxOff] = await Promise.all([
+  const [led, member, asks, inboxOff, answered] = await Promise.all([
     findMyLedCrews(supabase),
     findMyMemberCrews(supabase),
     findMyPendingCrewAsks(supabase, ["asked"]).catch(() => []),
     findMyInboxOff(supabase, user.id),
+    /* the asks already answered (or taken back, or left) — the head's Answered sheet */
+    findMyAnsweredCrewAsks(supabase).catch(() => []),
   ]);
   /* the segment the ADDRESS asks for — the URL is the state, as on every other
      segmented desk in the app (19 Sep 2026's rule); with no `?show=` the hub
@@ -47,6 +50,7 @@ export default async function CrewsPage({ searchParams }: { searchParams: Promis
         show={show}
         asks={asks.map((a) => ({ id: a.id, crewId: a.crewId, crewName: a.crewName, crewCity: a.crewCity, leaderName: a.leaderName, crewPhoto: a.crewPhoto ?? null }))}
         inboxOff={inboxOff}
+        answered={answered.map((a) => crewAnsweredRow(a, "receiver"))}
       />
       {opening && profile ? <CrewForm defaultCity={profile.city} sheet /> : null}
     </>

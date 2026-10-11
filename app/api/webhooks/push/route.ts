@@ -63,9 +63,11 @@ export async function POST(req: Request): Promise<NextResponse> {
   }
   /* the trigger already asked these, and it is asked again here because the
      person may have switched Push off in the second between */
-  const { data: prefs } = await admin.from("notification_prefs").select("push, kinds").eq("user_id", n.user_id).maybeSingle();
-  const kinds = (prefs?.kinds ?? {}) as Record<string, boolean>;
-  if (prefs && (prefs.push === false || kinds[n.kind] === false)) {
+  /* the phone hears an area while push is on AND that area's PUSH switch is on
+     (`push_kinds`, 11 Oct 2026) — `kinds` is the in-app switch and decides nothing here */
+  const { data: prefs } = await admin.from("notification_prefs").select("push, push_kinds").eq("user_id", n.user_id).maybeSingle();
+  const pushKinds = (prefs?.push_kinds ?? {}) as Record<string, boolean>;
+  if (prefs && (prefs.push === false || pushKinds[n.kind] === false)) {
     return NextResponse.json({ outcome: "ignored", reason: "switched off" });
   }
   const { data: devices } = await admin

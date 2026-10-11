@@ -7,7 +7,8 @@ import { DeskBody, DeskTop } from "@/components/ui/DeskSections";
 import { ToolActions, ToolBody, ToolCard, ToolChip, ToolFacts, ToolHead, toolBtn } from "@/components/ui/ToolCard";
 import { CrewI, dosToolPaint } from "./crew-kit";
 import { ReclaimCrewButton } from "./ReclaimCrewButton";
-import { CrewInvites, JoinSettingsGear, type CrewInviteRow } from "@/features/inbox/components/JoinInvites";
+import { CrewInvites, InviteHeadButtons, type CrewInviteRow } from "@/features/inbox/components/JoinInvites";
+import type { AnsweredInviteRow } from "@/features/inbox/inviteRows";
 import type { AskKind } from "@/repositories/askSettings";
 
 /** The Crews hub — prototype S_bizhub with kind="crews" (2585-2691): TWO LISTS,
@@ -132,7 +133,10 @@ export function CrewsHub({
   show = "led",
   asks = [],
   inboxOff = [],
+  answered = [],
 }: {
+  /** the crew asks this person has already answered — the head's Answered sheet */
+  answered?: AnsweredInviteRow[];
   /** the crew asks waiting on this person (11 Oct 2026) — the top of Member */
   asks?: CrewInviteRow[];
   /** the kinds of ask switched off — the gear carries the "crew" one */
@@ -169,8 +173,14 @@ export function CrewsHub({
       <div style={{ position: "absolute", right: -28, top: -32, width: 130, height: 130, borderRadius: 65, background: "rgba(255,255,255,.13)" }} />
       {/* the page's own `<h1>` — the chrome no longer prints a drill page's name (28 Sep 2026) */}
       <h1 style={{ margin: 0, fontSize: 21, fontWeight: 800, letterSpacing: -0.5, position: "relative", fontFamily: DOS_DISPLAY, lineHeight: 1.18 }}>Crews</h1>
-      {/* the "crew" invite switch, moved here from the Inbox with the asks (11 Oct 2026) */}
-      <JoinSettingsGear testId="crews-settings" kind="crew" off={inboxOff} title="Crew invites" />
+      {/* the "crew" invite switch, moved here from the Inbox with the asks (11 Oct
+          2026), and the asks already answered — the top-right pair Classes wears */}
+      <InviteHeadButtons
+        answered={answered}
+        answeredTestId="crews-answered"
+        answeredListTestId="crews-answered-list"
+        settings={{ testId: "crews-settings", kind: "crew", off: inboxOff, title: "Crew invites" }}
+      />
     </div>
   );
   return (

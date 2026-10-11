@@ -8,7 +8,7 @@ import { checkRoomClashAction, deleteClassAction, publishClassAction, respondToV
 import { respondToClassAskAction, withdrawClassAskAction } from "@/features/classPeople/server-actions/classPeople";
 import type { DraftState } from "@/features/classes/classesScreen";
 import { setInboxOffAction, setRoomRequestsAction } from "@/features/inbox/server-actions/askSettings";
-import { Switch } from "@/features/profiles/components/ContactEditor";
+import { SETTING_ICONS, SettingRow } from "@/components/ui/RequestSettingsSheet";
 import { cardBtn } from "@/features/classes/cardStyles";
 
 /** ⚠⚠ THE BUTTONS ON A CLASS CARD (11 Oct 2026, the user: "write buttons on class
@@ -336,10 +336,20 @@ export function TakingRequestsSwitch(
     router.refresh();
   };
 
+  /* ⚠ THE SHARED ROW (11 Oct 2026) — an icon, the label, one line, the switch;
+     the sheet's own line ("Off turns new asks away.") is the sheet's now. The
+     accessible name is still "Taking requests". */
   return (
-    <div data-testid="request-settings" style={{ marginTop: 8, opacity: busy ? 0.7 : 1 }}>
-      <Switch on={on} label="Taking requests" onClick={() => void flip()} />
-      <div style={{ fontSize: 11, color: "var(--muted)", marginTop: 6 }}>Off turns new asks away.</div>
+    <div data-testid="request-settings">
+      <SettingRow
+        icon={SETTING_ICONS[props.mode === "person" ? "class" : "room"]}
+        tint="#0D9488"
+        label="Taking requests"
+        note={props.mode === "person" ? "Studios and artists asking you to teach or assist on a class" : "Artists asking to hold a class in one of your rooms"}
+        on={on}
+        busy={busy}
+        onClick={() => void flip()}
+      />
       {err ? (
         <div role="alert" style={{ fontSize: 11.5, color: "#F87171", marginTop: 6 }}>
           {err}

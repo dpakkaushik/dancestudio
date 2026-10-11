@@ -22,9 +22,12 @@ interface InviteRow {
   code: string;
   status: InviteStatus;
   created_at: string;
+  updated_at?: string | null;
 }
 
-const INVITE_COLUMNS = "id, business_id, name, email, user_id, member_role, code, status, created_at";
+/* `updated_at` too (11 Oct 2026) — an answered invite on the Team desk's Answered
+   sheet is dated by when it was answered */
+const INVITE_COLUMNS = "id, business_id, name, email, user_id, member_role, code, status, created_at, updated_at";
 
 const toInvite = (row: InviteRow): BusinessInvite => ({
   id: row.id,
@@ -36,6 +39,7 @@ const toInvite = (row: InviteRow): BusinessInvite => ({
   code: row.code,
   status: row.status,
   createdAt: row.created_at,
+  updatedAt: row.updated_at ?? null,
 });
 
 /** EVERY INVITE A STUDIO HAS SENT, ANSWERED OR NOT (2 Oct 2026, the user: "check
@@ -69,11 +73,14 @@ export interface AnsweredInvite {
   status: Exclude<InviteStatus, "pending">;
   createdAt: string;
   answeredAt: string;
+  /** who sent it, and the business's face (`20261019090000`) — null before that lands */
+  inviterName: string | null;
+  businessPhotoPath: string | null;
 }
 export async function findMyAnsweredInvites(supabase: SupabaseClient): Promise<AnsweredInvite[]> {
   const { data, error } = await supabase.rpc("my_answered_invites");
   if (error) return [];
-  return ((data ?? []) as Array<{ invite_id: string; business_id: string; business_name: string; member_role: InvitableRole; status: Exclude<InviteStatus, "pending">; created_at: string; answered_at: string }>).map((r) => ({
+  return ((data ?? []) as Array<{ invite_id: string; business_id: string; business_name: string; member_role: InvitableRole; status: Exclude<InviteStatus, "pending">; created_at: string; answered_at: string; inviter_name?: string | null; business_photo_path?: string | null }>).map((r) => ({
     inviteId: r.invite_id,
     businessId: r.business_id,
     businessName: r.business_name,
@@ -81,6 +88,8 @@ export async function findMyAnsweredInvites(supabase: SupabaseClient): Promise<A
     status: r.status,
     createdAt: r.created_at,
     answeredAt: r.answered_at,
+    inviterName: r.inviter_name ?? null,
+    businessPhotoPath: r.business_photo_path ?? null,
   }));
 }
 
@@ -151,10 +160,14 @@ interface PendingRow {
   invite_id: string;
   business_id: string;
   business_name: string;
+  business_type?: string | null;
   member_role: InvitableRole;
   code: string;
   invited_name: string;
   created_at: string;
+  /* `20261019090000` — absent before it is applied, so read as optional */
+  inviter_name?: string | null;
+  business_photo_path?: string | null;
 }
 
 /** "Is anybody waiting for me?" — matched on the address the caller signs in
@@ -168,10 +181,13 @@ export async function findMyPendingInvites(supabase: SupabaseClient): Promise<Pe
     inviteId: row.invite_id,
     businessId: row.business_id,
     businessName: row.business_name,
+    businessType: row.business_type ?? null,
     memberRole: row.member_role,
     code: row.code,
     invitedName: row.invited_name,
     createdAt: row.created_at,
+    inviterName: row.inviter_name ?? null,
+    businessPhotoPath: row.business_photo_path ?? null,
   }));
 }
 

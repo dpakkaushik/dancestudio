@@ -108,7 +108,8 @@ function Publish($token, $classId) {
 }
 function Status-Of($classId) { return [string](Get-Rows $svcH "classes?id=eq.$classId&select=status")[0].status }
 function Booking-Notes($userId) {
-  return (Get-Rows $svcH "notifications?user_id=eq.$userId&kind=eq.booking&deleted_at=is.null&select=id").Count
+  # 11 Oct 2026 (20261019090000): a booking is the CLASS area now; the title says it is a booking
+  return (Get-Rows $svcH "notifications?user_id=eq.$userId&kind=eq.class&title=like.*booked*&deleted_at=is.null&select=id").Count
 }
 
 Assert-City "Pune"

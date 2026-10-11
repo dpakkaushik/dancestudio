@@ -622,11 +622,21 @@ export function AppChrome({
               columnGap: 9,
               height: 42,
               overflow: "hidden",
-              minWidth: 0,
+              /* ⚠⚠ THE MARK WAS CLIPPED ON ITS LEFT EDGE (11 Oct 2026). It sat at
+                 `marginLeft: -2` inside this `overflow: hidden` row, so its left
+                 two pixels — and its 1px ring — were cut on every screen, most
+                 visibly beside the back chip. The clip box now starts 4px to the
+                 LEFT of the mark (padding inside, the same negative margin
+                 outside, so nothing moves sideways), and the row can never
+                 shrink below the mark itself, so a crowded drill page at 360px
+                 drops the WORD and keeps the whole mark. */
+              paddingLeft: 4,
+              marginLeft: -4,
+              minWidth: 37,
               flex: 1,
             }}
           >
-            <span style={{ flexShrink: 0, display: "inline-flex", alignItems: "center", height: 42, marginLeft: -2, lineHeight: 0 }}>
+            <span style={{ flexShrink: 0, display: "inline-flex", alignItems: "center", height: 42, lineHeight: 0 }}>
               <DosMark size={33} />
             </span>
             <span data-testid="wordmark" style={{ flexShrink: 0, fontSize: 23, lineHeight: "42px", fontWeight: 900, letterSpacing: -0.3, color: INK, fontFamily: DOS_UI, whiteSpace: "nowrap" }}>

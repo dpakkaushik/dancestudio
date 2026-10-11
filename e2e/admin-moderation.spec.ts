@@ -130,31 +130,13 @@ async function adminGoto(page: Page, email: string, path: string) {
   throw new Error(`the admin could not open ${path} — three attempts`);
 }
 
-/** A notification stack is a div[role="button"] carrying an onClick, so it does
- *  nothing until React has hydrated — and Playwright cannot see that: a
- *  server-rendered div is already visible and stable, so a click that lands
- *  first is silently lost. Press until aria-expanded says it opened, which is
- *  also the only honest assertion that it did. */
-async function pressUntilOpen(page: Page, name: RegExp | string) {
-  const control = page.getByRole("button", { name }).first();
-  await expect(control).toBeVisible();
-  for (let attempt = 0; attempt < 4; attempt++) {
-    await control.click();
-    try {
-      await expect(control).toHaveAttribute("aria-expanded", "true", { timeout: 3_000 });
-      return;
-    } catch {
-      /* not hydrated yet — press again */
-    }
-  }
-  throw new Error(`the stack ${name} never reported itself open`);
-}
-
-/** What reaches somebody is stacked by kind; the title shows collapsed, the
- *  body only once the stack is open. */
+/** What reaches somebody (11 Oct 2026, 20261019090000): New · Earlier, a row
+ *  per notification with its title AND body drawn, no stacks to open. A moderation
+ *  notice is unread, so it is in New under All the moment the page loads. */
 async function openPeopleStack(page: Page) {
   await page.goto("/notifications");
-  await pressUntilOpen(page, /^People — \d+ updates?$/);
+  await expect(page.getByRole("heading", { level: 1, name: "Notifications" })).toBeVisible();
+  await expect(page.getByTestId("notif-tab-new")).toHaveAttribute("aria-selected", "true");
 }
 
 /** A CLEANUP THAT READS ITS OWN STATUS (4 Oct 2026) — the right revoked

@@ -10,7 +10,8 @@ import { findStudioVerificationStates } from "@/repositories/studioVerification"
 import { findMyStudioSubscriptions } from "@/repositories/subscriptions";
 import { findBusinessPhotoPaths, findMyMemberships } from "@/repositories/businesses";
 import { findMyInboxOff } from "@/repositories/askSettings";
-import { findMyPendingInvites } from "@/repositories/invites";
+import { findMyAnsweredInvites, findMyPendingInvites } from "@/repositories/invites";
+import { teamAnsweredRow } from "@/features/inbox/inviteRows";
 
 /** /business — the Studios hub: the studios this account RUNS, and for a person
  *  the studios they teach at and learn at.
@@ -48,7 +49,7 @@ export default async function BusinessPage({ searchParams }: { searchParams: Pro
      invites to join a team and crew from the crew and studio tabs at home.
      remove from inbox"). They ride the first round with the switch behind the
      hub's gear — both answer empty rather than throwing. */
-  const [memberships, plan, whyNoStudio, catalog, cityCentres, pendingInvites, inboxOff] = await Promise.all([
+  const [memberships, plan, whyNoStudio, catalog, cityCentres, pendingInvites, inboxOff, answeredInvites] = await Promise.all([
     findMyMemberships(supabase),
     findMyArtistPlan(supabase),
     /* the gate to CREATING a studio, in the database's own words — everybody's since 26 Sep 2026 */
@@ -62,6 +63,8 @@ export default async function BusinessPage({ searchParams }: { searchParams: Pro
     findDiscoverCities(supabase),
     findMyPendingInvites(supabase).catch(() => []),
     findMyInboxOff(supabase, user.id),
+    /* the invitations already answered — the head's Answered sheet, as on Classes */
+    findMyAnsweredInvites(supabase).catch(() => []),
   ]);
   /* ⚠ the hub opens on Team while an invitation waits and no `?show=` was given;
      `?show=learned` (the Student column, removed 11 Oct 2026) lands on Manage — Rule 14 */
@@ -78,14 +81,18 @@ export default async function BusinessPage({ searchParams }: { searchParams: Pro
       supabase,
       owned.filter((t) => t.type === "studio").map((t) => ({ id: t.id, verifiedAt: t.verifiedAt }))
     ),
-    /* the faces on the invitations — a studio RLS hides draws its initials */
-    findBusinessPhotoPaths(supabase, pendingInvites.map((i) => i.businessId)),
+    /* the faces on the invitations — a studio RLS hides draws its initials.
+       ⚠ Since `20261019090000` the RPC hands the face back itself (an artist
+       page's is the ARTIST's picture); this read is the fallback before that
+       lands, and for the answered ones */
+    findBusinessPhotoPaths(supabase, [...new Set([...pendingInvites.map((i) => i.businessId), ...answeredInvites.map((i) => i.businessId)])]),
   ]);
   return (
     <BusinessHub
       memberships={memberships}
       show={show}
-      invites={pendingInvites.map((i) => ({ ...i, photoPath: invitePhotos[i.businessId] ?? null }))}
+      invites={pendingInvites.map((i) => ({ ...i, photoPath: i.businessPhotoPath ?? invitePhotos[i.businessId] ?? null }))}
+      answered={answeredInvites.map((i) => teamAnsweredRow(i, invitePhotos[i.businessId] ?? null))}
       inboxOff={inboxOff}
       roomCounts={roomCounts}
       isArtist={Boolean(plan?.active)}

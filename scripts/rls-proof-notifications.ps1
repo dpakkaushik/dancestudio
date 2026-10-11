@@ -7,9 +7,14 @@
 # it, not even the studio that caused it; there is no way to write one from
 # outside (no insert policy, and the notify functions are revoked from every
 # client role); reading and clearing only ever touch your own rows, whatever ids
-# you pass; a kind switched off hides its stack without deleting anything; the
-# prefs sheet refuses a kind it cannot act on; and the unread count is the
-# caller's own.
+# you pass; a group switched off "here" hides without deleting anything and
+# leaves the bell; the prefs sheet refuses a group it cannot act on; and the
+# unread count is the caller's own.
+#
+# 11 Oct 2026 (20261019090000): notifications are grouped BY APP AREA -
+# class / team / crew / enquiry / money / danceos - by a BEFORE INSERT trigger,
+# so a booking lands as 'class' and a team invite (told for the first time) as
+# 'team'. Prefs carry push_kinds beside kinds.
 #
 # Reads keys from .env.local - run from the repo root:
 #   powershell -File scripts/rls-proof-notifications.ps1
@@ -97,13 +102,15 @@ try {
   Publish-Class ([string]$cls.id) ([string]$trainer.id) (Api $owner.token)
   $sess = (Get-Rows (Api $owner.token) "class_sessions?class_id=eq.$($cls.id)&select=id")[0]
   Rpc (Api $learner.token) "book_class_session" @{ p_session_id = $sess.id } | Out-Null
-  $ownerBooking = Mine $owner "booking"
-  Check 1 "Booking told the studio: $(Titles $ownerBooking)" (
-    ($ownerBooking.Count -eq 1) -and ($ownerBooking[0].title -like "*booked Notif Class*") -and ($ownerBooking[0].href -like "/business/*"))
+  # 11 Oct 2026 (20261019090000): notifications are grouped BY APP AREA - a
+  # booking (written as 'booking' by its trigger) lands in the 'class' group
+  $ownerBooking = @((Mine $owner "class") | Where-Object { $_.title -like "*booked Notif Class*" })
+  Check 1 "Booking told the studio, filed under class: $(Titles $ownerBooking)" (
+    ($ownerBooking.Count -eq 1) -and ($ownerBooking[0].kind -eq "class") -and ($ownerBooking[0].href -like "/business/*"))
 
   # 2. IT IS ONE PERSON'S: the learner has no booking notification, and nobody
   #    else can read the studio's - not the learner, not a rival, not the public
-  $learnerBooking = Mine $learner "booking"
+  $learnerBooking = @((Mine $learner "class") | Where-Object { $_.title -like "*booked*" })
   $rivalReads = Get-Rows (Api $rival.token) "notifications?select=id"
   $anonReads = Get-Rows $anonH "notifications?select=id"
   $learnerPeeks = Get-Rows (Api $learner.token) "notifications?user_id=eq.$($owner.id)&select=id"
@@ -121,16 +128,25 @@ try {
   # 4. A CONSENT ASK REACHES THE PERSON ASKED, AND THE ANSWER REACHES THE STUDIO
   Rpc (Api $owner.token) "invite_to_business" @{ p_business_id = $ta.id; p_name = "Trainer"; p_email = $trainer.email; p_role = "trainer" } | Out-Null
   $inv = (Get-Rows (Api $owner.token) "business_invites?business_id=eq.$($ta.id)&select=code")[0]
+  # 11 Oct 2026 (20261019090000): a team invite is TOLD - it raised nothing before
+  $invited = @((Mine $trainer "team") | Where-Object { $_.title -like "*wants you on its team*" })
   Rpc (Api $trainer.token) "accept_business_invite" @{ p_code = $inv.code } | Out-Null
+  $joined = @((Mine $owner "team") | Where-Object { $_.title -like "* joined *" })
+  Check "4a" "The invite reached the trainer under team ($(Titles $invited), $($invited[0].href)); the joining reached the owner ($(Titles $joined))" (
+    ($invited.Count -eq 1) -and ($invited[0].href -eq "/business?show=team") -and ($joined.Count -eq 1))
   $claim = Rpc (Api $owner.token) "ask_class_person" @{ p_class_id = $cls.id; p_user_id = $trainer.id; p_kind = "artist"; p_pay_per_session_inr = 900 }
-  $asked = Mine $trainer "people"
+  # an ask is written as 'people' and lands in the area it opens: class
+  $asked = @((Mine $trainer "class") | Where-Object { $_.title -like "*wants you as the artist taking*" })
   Rpc (Api $trainer.token) "respond_to_class_ask" @{ p_class_person_id = $claim.id; p_accept = $true } | Out-Null
-  $answered = Mine $owner "people"
+  $answered = @((Mine $owner "class") | Where-Object { $_.title -like "*confirmed Notif Class*" })
+  # NO @() around Get-Rows: it already hands back an array with a leading comma, and
+  # wrapping it nests it, so an EMPTY answer counted as 1 (the 18 Sep trap)
+  $peopleLeft = (Get-Rows $svcH "notifications?user_id=in.($($owner.id),$($trainer.id))&kind=in.(people,booking)&select=id").Count
   # 11 Oct 2026 (20261017090000, B14): an ask points at CLASSES, where it is
   # answered - /my-classes?tab=todo - not the Inbox it used to name
-  Check 4 "The trainer was told they were asked ($(Titles $asked)) and pointed at Classes ($($asked[0].href)); the studio was told the answer ($(Titles $answered))" (
-    ($asked.Count -eq 1) -and ($asked[0].title -like "*wants you as the artist taking*") -and ($asked[0].href -eq "/my-classes?tab=todo") -and
-    ($answered.Count -eq 1) -and ($answered[0].title -like "*confirmed Notif Class*"))
+  Check 4 "The trainer was told they were asked ($(Titles $asked)) and pointed at Classes ($($asked[0].href)); the studio was told the answer ($(Titles $answered)); rows still carrying an old kind: $peopleLeft" (
+    ($asked.Count -eq 1) -and ($asked[0].href -eq "/my-classes?tab=todo") -and
+    ($answered.Count -eq 1) -and ($peopleLeft -eq 0))
 
   # 5. NO WAITLIST since 4 Oct 2026 (20261004160000): the full class refuses L2
   #    outright, a freed seat promotes nobody and so tells nobody, and L2 then
@@ -145,11 +161,11 @@ try {
     ($fullMsg -match "this class is full") -and ($offered.Count -eq 0) -and ($seat2.status -eq "enrolled"))
 
   # 6. MONEY, BOTH WAYS A REFUND IS FILED. A paid seat cancelled INSIDE the 48-hour
-  #    window is 'requested' — the studio decides, so the studio is told and the
+  #    window is 'requested' - the studio decides, so the studio is told and the
   #    payer hears the decision. Cancelled OUTSIDE it, the policy has already
   #    decided: it is 'pending' and the PAYER is told their money is coming back.
   #    That second half was silent in the first cut and is what migration
-  #    20260829163000 fixed — this check is the one that found it.
+  #    20260829163000 fixed - this check is the one that found it.
   function Buy($user, $sessId, $tag) {
     $o = Rpc (Api $user.token) "create_payment_order" @{ p_session_id = $sessId }
     $poid = "proof_order_$tag"
@@ -200,25 +216,33 @@ try {
 
   # 8. THE OWNER'S OWN READ AND CLEAR WORK, and the unread count follows
   $before = Rpc (Api $owner.token) "my_unread_notifications" @{}
-  $readN = Rpc (Api $owner.token) "mark_notifications_read" @{ p_ids = $null; p_kind = "booking" }
+  $readN = Rpc (Api $owner.token) "mark_notifications_read" @{ p_ids = $null; p_kind = "class" }
   $after = Rpc (Api $owner.token) "my_unread_notifications" @{}
-  $clearN = Rpc (Api $owner.token) "clear_notifications" @{ p_ids = $null; p_kind = "booking" }
-  $bookingLeft = (Mine $owner "booking").Count
+  $clearN = Rpc (Api $owner.token) "clear_notifications" @{ p_ids = $null; p_kind = "class" }
+  $classLeft = (Mine $owner "class").Count
   $rivalCount = Rpc (Api $rival.token) "my_unread_notifications" @{}
-  Check 8 "Unread $before -> $after after marking $readN booking read; clearing $clearN leaves $bookingLeft booking rows; a rival's own count is $rivalCount" (
-    ([int]$before -gt [int]$after) -and ([int]$readN -ge 1) -and ([int]$clearN -ge 1) -and ($bookingLeft -eq 0) -and ([int]$rivalCount -eq 0))
+  Check 8 "Unread $before -> $after after marking $readN class rows read; clearing (hiding) $clearN leaves $classLeft class rows; a rival's own count is $rivalCount" (
+    ([int]$before -gt [int]$after) -and ([int]$readN -ge 1) -and ([int]$clearN -ge 1) -and ($classLeft -eq 0) -and ([int]$rivalCount -eq 0))
 
-  # 9. PREFS: a person gets a row on first read, only the six kinds are accepted,
-  #    and switching a kind off deletes nothing
+  # 9. PREFS: a person gets a row on first read, only the six GROUPS are accepted
+  #    (an old kind word is refused too), switching a group off "here" deletes
+  #    nothing and takes it off the bell, and push is switched per group
   $prefs = Rpc (Api $owner.token) "my_notification_prefs" @{}
-  $bogusKind = Fails { Rpc (Api $owner.token) "set_notification_prefs" @{ p_kinds = @{ nonsense = $true }; p_push = $true; p_whatsapp = $true; p_email = $false } }
-  $notBool = Fails { Rpc (Api $owner.token) "set_notification_prefs" @{ p_kinds = @{ money = "yes" }; p_push = $true; p_whatsapp = $true; p_email = $false } }
-  $peopleBefore = (Mine $owner "people").Count
-  $saved = Rpc (Api $owner.token) "set_notification_prefs" @{ p_kinds = @{ enquiry = $true; booking = $true; money = $true; people = $false; event = $true; class = $true }; p_push = $false; p_whatsapp = $true; p_email = $true }
-  $peopleAfter = (Mine $owner "people").Count
-  Check 9 "Prefs row made on read (push=$($prefs.push)); a made-up kind refused ($bogusKind); a non-boolean refused ($notBool); people switched off ($($saved.kinds.people)) and the $peopleBefore people rows are still there ($peopleAfter)" (
-    ($prefs.push -eq $true) -and ($bogusKind -match "unknown notification kind") -and ($notBool -match "on or off") -and
-    ($saved.kinds.people -eq $false) -and ($saved.push -eq $false) -and ($peopleAfter -eq $peopleBefore))
+  $bogusKind = Fails { Rpc (Api $owner.token) "set_notification_prefs" @{ p_kinds = @{ nonsense = $true }; p_push = $true; p_whatsapp = $null; p_email = $null; p_push_kinds = $null } }
+  $oldKind = Fails { Rpc (Api $owner.token) "set_notification_prefs" @{ p_kinds = @{ booking = $true }; p_push = $true; p_whatsapp = $null; p_email = $null; p_push_kinds = $null } }
+  $eventKey = Fails { Rpc (Api $owner.token) "set_notification_prefs" @{ p_kinds = $null; p_push = $true; p_whatsapp = $null; p_email = $null; p_push_kinds = @{ event = $false } } }
+  $notBool = Fails { Rpc (Api $owner.token) "set_notification_prefs" @{ p_kinds = @{ money = "yes" }; p_push = $true; p_whatsapp = $null; p_email = $null; p_push_kinds = $null } }
+  $teamRows = @(Mine $owner "team")
+  $teamUnread = @($teamRows | Where-Object { $null -eq $_.read_at }).Count
+  $bellBefore = Rpc (Api $owner.token) "my_unread_notifications" @{}
+  $saved = Rpc (Api $owner.token) "set_notification_prefs" @{ p_kinds = @{ class = $true; team = $false; crew = $true; enquiry = $true; money = $true; danceos = $true }; p_push = $false; p_whatsapp = $null; p_email = $null; p_push_kinds = @{ crew = $false } }
+  $bellAfter = Rpc (Api $owner.token) "my_unread_notifications" @{}
+  $teamAfter = @(Mine $owner "team").Count
+  Check 9 "Prefs row made on read (push=$($prefs.push)); a made-up group refused ($bogusKind), an old kind refused ($oldKind), the retired event refused ($eventKey), a non-boolean refused ($notBool); team off here ($($saved.kinds.team)), crew push off ($($saved.push_kinds.crew)); the $($teamRows.Count) team rows are still there ($teamAfter); the bell $bellBefore -> $bellAfter leaves out $teamUnread unread team rows" (
+    ($prefs.push -eq $true) -and ($bogusKind -match "unknown notification group") -and ($oldKind -match "unknown notification group") -and
+    ($eventKey -match "unknown notification group") -and ($notBool -match "on or off") -and
+    ($saved.kinds.team -eq $false) -and ($saved.push_kinds.crew -eq $false) -and ($saved.push -eq $false) -and
+    ($teamAfter -eq $teamRows.Count) -and ($teamUnread -ge 1) -and ([int]$bellAfter -eq ([int]$bellBefore - $teamUnread)))
 
   # 10. A PERSON READS ONLY THEIR OWN PREFS
   $rivalPrefs = Rpc (Api $rival.token) "my_notification_prefs" @{}

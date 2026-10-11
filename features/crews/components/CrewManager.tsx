@@ -19,6 +19,8 @@ import { ToolActions, ToolBody, ToolCard, ToolFacts, ToolHead, toolBtn } from "@
 import { DOS_DISPLAY, DOS_UI, INK, LILAC, MUTED } from "@/lib/design/tokens";
 import { CREW_ROLE_TINT, CREW_ROLE_WORD, type Crew, type CrewMember, type CrewRole } from "@/types/crew";
 import { Toast, bizCard, sinceWords } from "./crew-kit";
+import { InviteHeadButtons } from "@/features/inbox/components/JoinInvites";
+import type { AnsweredInviteRow } from "@/features/inbox/inviteRows";
 
 /** a crew member's card wears the Team tool's colour; the role keeps its own on the eyebrow */
 const TEAM_TINT = DOS_TOOLS.team.c;
@@ -49,7 +51,7 @@ const CREW_ROLE_PLURAL: Record<CrewRole, string> = { leader: "Leader", member: "
  *  Departures still standing: the prototype's tiles read Members / Battles won /
  *  Points — results and points need scoring, which no table holds. */
 
-export function CrewManager({ crew, members }: { crew: Crew; members: CrewMember[] }) {
+export function CrewManager({ crew, members, answered = [] }: { crew: Crew; members: CrewMember[]; answered?: AnsweredInviteRow[] }) {
   const router = useRouter();
   const [add, setAdd] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -83,7 +85,11 @@ export function CrewManager({ crew, members }: { crew: Crew; members: CrewMember
           ⚠ NOTHING BETWEEN THE HEADING AND THE BUTTON (4 Oct 2026, the user:
           "remove such headings from all tools in any profile") — the
           "{crew} · {style} · {city}" line went, as the studio's did */}
-      <DeskHero tool="team" as="h1" margin="0 0 12px" />
+      {/* the asks already answered, top right — the place Classes gives its own (11 Oct 2026) */}
+      <div style={{ position: "relative", margin: "0 0 12px" }}>
+        <DeskHero tool="team" as="h1" margin="0" />
+        <InviteHeadButtons answered={answered} answeredTestId="crew-answered" answeredListTestId="crew-answered-list" answeredLabel="Answered asks" />
+      </div>
 
             {/* ⚠ THE SHARED ＋, ON TOP, IN THE SAME WORDS AS EVERY OTHER TEAM DESK
                 (21 Sep 2026, the user: "fix Team pages for all kinds of profile

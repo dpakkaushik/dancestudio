@@ -1,7 +1,8 @@
 import { redirect } from "next/navigation";
 import { StaffDesk } from "@/features/staff/components/StaffDesk";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
-import { findPendingInvites } from "@/repositories/invites";
+import { findSentInvites } from "@/repositories/invites";
+import { sentTeamAnsweredRow } from "@/features/inbox/inviteRows";
 import { findBusinessPayLedger } from "@/repositories/payouts";
 import { findMyMemberships, findBusinessTeam, runsTheBusiness } from "@/repositories/businesses";
 import { findTeamClassCounts } from "@/repositories/teamMemberWork";
@@ -38,9 +39,11 @@ export default async function BusinessStaffPage({
 
   /* ⚠ WHO MAY REMOVE ANOTHER OWNER is read by the Member Detail page now
      (4 Oct 2026): the Manage sheet moved there, so this desk no longer asks */
-  const [team, invites, ledger] = await Promise.all([
+  /* ⚠ EVERY INVITE THE DESK HAS SENT (11 Oct 2026): the pending ones are the
+     WAITING rows, the answered ones the head's Answered sheet, as on Classes */
+  const [team, sent, ledger] = await Promise.all([
     findBusinessTeam(supabase, businessId),
-    findPendingInvites(supabase, businessId),
+    findSentInvites(supabase, businessId),
     /* WHAT THIS BUSINESS HAS PAID ITS PEOPLE (19 Sep 2026, the user: "able to pay
        them, track payment history"). One read for the whole desk — every row
        carries its `userId`, so a person's history is that list filtered, rather
@@ -51,6 +54,11 @@ export default async function BusinessStaffPage({
   /* each member's Classes figure (4 Oct 2026, the user: "Paid Payments and Classes
      for - Team Member Cards") — the Member Detail page's own rule, one batch for
      the desk; a failed read draws no figure rather than a wrong one */
+  const invites = sent.filter((i) => i.status === "pending");
+  const answered = sent.flatMap((i) => {
+    const row = sentTeamAnsweredRow(i, null);
+    return row ? [row] : [];
+  });
   const classCounts = await findTeamClassCounts(supabase, businessId, team.map((m) => m.userId)).catch(() => null);
 
   return (
@@ -60,6 +68,7 @@ export default async function BusinessStaffPage({
       businessType={business.type}
       team={team}
       invites={invites}
+      answered={answered}
       payments={ledger?.payouts ?? []}
       classCounts={classCounts ? Object.fromEntries(classCounts) : null}
       // asking and removing are the owner's alone (§10.9); everyone else reads

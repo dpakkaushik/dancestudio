@@ -7,16 +7,20 @@ import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { clearNotifications, markNotificationsRead, setNotificationPrefs } from "@/repositories/notifications";
 import { DEFAULT_PREFS, type NotificationKind } from "@/types/notification";
 
-/** Step 24's writes. Nothing here raises a notification — triggers do that
- *  where the fact happens. These are the three things a person does with the
- *  ones they have: read them, clear them, and decide what reaches them. */
+/** Step 24's writes, by app area since 11 Oct 2026. Nothing here raises a
+ *  notification — triggers do that where the fact happens. These are the three
+ *  things a person does with the ones they have: read them, hide them, and
+ *  decide what reaches them. */
 
 export interface NotificationActionResult {
   error: string | null;
   n?: number;
 }
 
-const KINDS = ["enquiry", "booking", "money", "people", "event", "class"] as const;
+/** the six groups a person may switch; `event` is the retired feature's
+ *  history, which may still be marked read or hidden but never switched */
+const GROUPS = ["class", "team", "crew", "enquiry", "money", "danceos"] as const;
+const KINDS = [...GROUPS, "event"] as const;
 const target = z.object({ ids: z.array(z.string().uuid()).max(200).optional(), kind: z.enum(KINDS).optional() });
 
 async function requireUser() {
@@ -52,6 +56,7 @@ export async function markNotificationsReadAction(input: { ids?: string[]; kind?
   }
 }
 
+/** Hide — a soft delete, never an erase. */
 export async function clearNotificationsAction(input: { ids?: string[]; kind?: NotificationKind }): Promise<NotificationActionResult> {
   const parsed = target.safeParse(input);
   if (!parsed.success) return { error: "Invalid request" };
@@ -66,11 +71,11 @@ export async function clearNotificationsAction(input: { ids?: string[]; kind?: N
   }
 }
 
+const groupSwitches = z.partialRecord(z.enum(GROUPS), z.boolean());
 const prefsSchema = z.object({
-  kinds: z.record(z.enum(KINDS), z.boolean()),
+  kinds: groupSwitches,
+  pushKinds: groupSwitches,
   push: z.boolean(),
-  whatsapp: z.boolean(),
-  email: z.boolean(),
 });
 
 export async function setNotificationPrefsAction(input: z.input<typeof prefsSchema>): Promise<NotificationActionResult> {
@@ -81,9 +86,8 @@ export async function setNotificationPrefsAction(input: z.input<typeof prefsSche
     await setNotificationPrefs(supabase, {
       /* a partial map is filled in from the defaults, never the other way round */
       kinds: { ...DEFAULT_PREFS.kinds, ...parsed.data.kinds },
+      pushKinds: { ...DEFAULT_PREFS.pushKinds, ...parsed.data.pushKinds },
       push: parsed.data.push,
-      whatsapp: parsed.data.whatsapp,
-      email: parsed.data.email,
     });
     revalidate();
     return { error: null };

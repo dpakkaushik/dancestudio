@@ -27,6 +27,8 @@ export interface BusinessInvite {
   code: string;
   status: InviteStatus;
   createdAt: string;
+  /** when it last moved — for an answered invite, when it was answered (11 Oct 2026) */
+  updatedAt?: string | null;
 }
 
 /** An invite waiting for the signed-in person, found by the address they sign
@@ -35,11 +37,18 @@ export interface PendingInvite {
   inviteId: string;
   businessId: string;
   businessName: string;
+  /** studio or artist_page — an artist's team reads "Artist" on the card */
+  businessType: string | null;
   memberRole: InvitableRole;
   code: string;
   /** the name the studio typed for them */
   invitedName: string;
   createdAt: string;
+  /** who sent it (`20261019090000`) — null before that migration lands */
+  inviterName: string | null;
+  /** the business's face — for an ARTIST page, the artist's own picture
+   *  (`business_face_path`, `20261019090000`); null before it lands */
+  businessPhotoPath: string | null;
 }
 
 /** What the /join/{code} screen is allowed to say. The address is masked: a

@@ -24,7 +24,7 @@ import type { StudioSubscriptionState } from "@/repositories/subscriptions";
 import type { MyMembership } from "@/repositories/businesses";
 import type { LearnedFrom } from "@/repositories/classBookings";
 import { DOS_TOOLS, SHEET_ANIMATION, dosToolPaint } from "./biz-kit";
-import { JoinSettingsGear, TeamInvites, type TeamInviteRow } from "@/features/inbox/components/JoinInvites";
+import { InviteHeadButtons, TeamInvites, type AnsweredInviteRow, type TeamInviteRow } from "@/features/inbox/components/JoinInvites";
 import type { AskKind } from "@/repositories/askSettings";
 
 /* Icons lifted from the prototype (DanceOSApp.jsx:3136-3142). */
@@ -127,8 +127,13 @@ export function BusinessHub({
   userId = null,
   show = "own",
   invites = [],
+  answered = [],
   inboxOff = [],
 }: {
+  /** ⚠ THE TEAM INVITATIONS THAT ARE OVER (11 Oct 2026, the user: "after
+   *  declining or withdrawing, invite cards vanish — should be handled like
+   *  Classes' Answered") — behind the Answered button beside the gear */
+  answered?: AnsweredInviteRow[];
   /** ⚠ THE TEAM INVITATIONS WAITING ON THIS PERSON (11 Oct 2026, the user:
    *  "handle invites to join a team and crew from the crew and studio tabs at
    *  home. remove from inbox") — drawn at the top of the Team column, Decline ·
@@ -512,8 +517,15 @@ export function BusinessHub({
           >
             {DOS_TOOLS.studios.name}
           </h1>
-          {/* the "team" invite switch, moved here from the Inbox with the invitations (11 Oct 2026) */}
-          <JoinSettingsGear testId="studios-settings" kind="team" off={inboxOff} title="Team invites" />
+          {/* the "team" invite switch, moved here from the Inbox with the
+              invitations (11 Oct 2026), and the Answered button beside it — in
+              the hero's top right, exactly where Classes draws its own */}
+          <InviteHeadButtons
+            answered={answered}
+            answeredTestId="studios-answered"
+            answeredListTestId="studios-answered-list"
+            settings={{ testId: "studios-settings", kind: "team", off: inboxOff, title: "Team invites" }}
+          />
         </div>
         {/* THE PRICE, ONCE, FROM THE PRICE LIST (26 Sep 2026) — the one fact the
             cards cannot say until there is one; the Organizations hub prints

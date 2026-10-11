@@ -250,6 +250,109 @@ export async function findMyPendingCrewAsks(supabase: SupabaseClient, statuses: 
     }));
 }
 
+/** ⚠⚠ WHAT BECAME OF A CREW ASK (11 Oct 2026, the user: "after declining or
+ *  withdrawing, invite cards vanish — should be handled like Classes'
+ *  Answered"). A crew ask is a `crew_members` row, and its answer is the row's
+ *  own state: confirmed and live → Joined; rejected → Declined; asked and
+ *  soft-deleted → Withdrawn (`withdraw_crew_ask`); confirmed and soft-deleted →
+ *  Left. An asked row still live is not answered and is never here. */
+export type CrewAskReply = "joined" | "declined" | "withdrawn" | "left";
+export interface AnsweredCrewAsk {
+  id: string;
+  crewId: string;
+  crewName: string;
+  crewCity: string;
+  crewPhoto: string | null;
+  leaderName: string;
+  /** the person asked — the desk's Answered sheet names them */
+  userId: string;
+  name: string;
+  avatarPath: string | null;
+  role: CrewRole;
+  reply: CrewAskReply;
+  /** when the row last moved — the answer's date */
+  at: string;
+}
+const replyOf = (status: "asked" | "confirmed" | "rejected", deleted: boolean): CrewAskReply | null =>
+  status === "rejected" ? "declined" : status === "confirmed" ? (deleted ? "left" : "joined") : deleted ? "withdrawn" : null;
+
+/** the asks put to ME that are over — the Crews hub's Answered sheet. Own rows
+ *  are readable deleted or not (they are the person's own). Says `user_id = me`
+ *  out loud. */
+export async function findMyAnsweredCrewAsks(supabase: SupabaseClient): Promise<AnsweredCrewAsk[]> {
+  const me = await currentUserId(supabase);
+  if (!me) return [];
+  const { data, error } = await supabase
+    .from("crew_members")
+    .select(`${MEMBER_COLUMNS}, deleted_at, updated_at, crews (name, city, photo, leader_id, deleted_at, profiles!crews_leader_id_fkey (full_name))`)
+    .eq("user_id", me)
+    .order("updated_at", { ascending: false })
+    .limit(100);
+  if (error) {
+    throw new Error(`crews.findMyAnswered failed: ${error.message}`);
+  }
+  const out: AnsweredCrewAsk[] = [];
+  for (const r of (data ?? []) as unknown as Array<MyAskRow & { deleted_at: string | null; updated_at: string | null }>) {
+    /* never a crew you LEAD — that seat was never asked of you */
+    if (!r.crews || r.crews.deleted_at || r.crews.leader_id === me || r.role === "leader") continue;
+    const reply = replyOf(r.status, Boolean(r.deleted_at));
+    if (!reply) continue;
+    out.push({
+      id: r.id,
+      crewId: r.crew_id,
+      crewName: r.crews.name,
+      crewCity: r.crews.city,
+      crewPhoto: r.crews.photo ?? null,
+      leaderName: r.crews.profiles?.full_name ?? "The leader",
+      userId: r.user_id,
+      name: r.profiles?.full_name ?? "Someone",
+      avatarPath: r.profiles?.profile_photo_path ?? null,
+      role: r.role,
+      reply,
+      at: r.updated_at ?? r.created_at,
+    });
+  }
+  return out;
+}
+
+/** the asks ONE crew has put that are over — the crew Team desk's Answered
+ *  sheet. The leader reads every row of their crew, withdrawn ones included (the
+ *  Inbox's Completed side has read them so since 2 Oct 2026). */
+export async function findCrewAnsweredAsks(supabase: SupabaseClient, crewId: string): Promise<AnsweredCrewAsk[]> {
+  const me = await currentUserId(supabase);
+  const { data, error } = await supabase
+    .from("crew_members")
+    .select(`${MEMBER_COLUMNS}, deleted_at, updated_at, crews!inner (name, city, photo, leader_id, deleted_at)`)
+    .eq("crew_id", crewId)
+    .order("updated_at", { ascending: false })
+    .limit(100);
+  if (error) {
+    throw new Error(`crews.findAnswered failed: ${error.message}`);
+  }
+  const out: AnsweredCrewAsk[] = [];
+  for (const r of (data ?? []) as unknown as Array<MemberRow & { deleted_at: string | null; updated_at: string | null; crews: { name: string; city: string; photo: string | null; leader_id: string; deleted_at: string | null } | null }>) {
+    /* ⚠ never the leader's own seat — nobody asked them */
+    if (!r.crews || r.role === "leader" || r.user_id === r.crews.leader_id || r.user_id === me) continue;
+    const reply = replyOf(r.status, Boolean(r.deleted_at));
+    if (!reply) continue;
+    out.push({
+      id: r.id,
+      crewId: r.crew_id,
+      crewName: r.crews.name,
+      crewCity: r.crews.city,
+      crewPhoto: r.crews.photo ?? null,
+      leaderName: "",
+      userId: r.user_id,
+      name: r.profiles?.full_name ?? "Someone",
+      avatarPath: r.profiles?.profile_photo_path ?? null,
+      role: r.role,
+      reply,
+      at: r.updated_at ?? r.created_at,
+    });
+  }
+  return out;
+}
+
 /** The asks the crews you lead are still waiting on (the desk's SENT side). */
 export async function findAskedForMyCrews(supabase: SupabaseClient, statuses: Array<"asked" | "confirmed" | "rejected"> = ["asked"], opts: { withdrawn?: boolean } = {}): Promise<Array<CrewMember & { crewName: string }>> {
   const me = await currentUserId(supabase);
