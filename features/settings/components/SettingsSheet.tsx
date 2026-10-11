@@ -271,8 +271,7 @@ export function SettingsSheet({
             of the profile you are IN, so the sheet must say which one. */}
         <div data-testid="settings-head" style={{ display: "flex", alignItems: "center", gap: 12, padding: "4px 2px 14px", marginBottom: 4, borderBottom: "1.5px solid var(--el)" }}>
           <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={{ fontSize: 9.5, fontWeight: 900, letterSpacing: 1.4, color: MUTED, textTransform: "uppercase" }}>Your settings</div>
-            <h2 style={{ margin: "2px 0 0", fontFamily: DOS_DISPLAY, fontSize: 26, fontWeight: 800, letterSpacing: -0.7, lineHeight: 1.1, color: INK }}>Settings</h2>
+              <h2 style={{ margin: "2px 0 0", fontFamily: DOS_DISPLAY, fontSize: 26, fontWeight: 800, letterSpacing: -0.7, lineHeight: 1.1, color: INK }}>Settings</h2>
           </div>
           {whose ? (
             <div data-testid="settings-whose" style={{ display: "flex", alignItems: "center", gap: 9, minWidth: 0, maxWidth: "55%" }}>

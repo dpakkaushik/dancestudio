@@ -6,6 +6,7 @@ import type { ReactNode } from "react";
 import { ColumnCount, columnTab, columnTrack } from "@/components/ui/ColumnTabs";
 import { DeskBody, DeskTop } from "@/components/ui/DeskSections";
 import { Portal } from "@/components/ui/Portal";
+import { HueHead } from "@/features/businesses/components/biz-kit";
 import { clearNotificationsAction, markNotificationsReadAction, setNotificationPrefsAction } from "@/features/notifications/server-actions/notifications";
 import { PushDevice, type PushDeviceState } from "@/features/notifications/components/PushDevice";
 import { DOS_DISPLAY, DOS_UI, INK, LILAC, MUTED, SUB } from "@/lib/design/tokens";
@@ -61,7 +62,7 @@ const chip = (on: boolean, quiet: boolean): React.CSSProperties => ({
   whiteSpace: "nowrap",
 });
 
-const headBtn: React.CSSProperties = { position: "relative", width: 38, height: 38, borderRadius: 19, border: "none", background: "rgba(255,255,255,.22)", color: "#fff", display: "inline-flex", alignItems: "center", justifyContent: "center", padding: 0, ...pressable };
+const headBtn: React.CSSProperties = { position: "relative", width: 38, height: 38, borderRadius: 19, border: "1.5px solid var(--chip-line)", background: "var(--chip-bg)", color: "var(--text)", display: "inline-flex", alignItems: "center", justifyContent: "center", padding: 0, ...pressable };
 
 const smallBtn = (tone: "plain" | "quiet"): React.CSSProperties => ({
   padding: "8px 13px",
@@ -431,21 +432,20 @@ export function NotificationsScreen({
     <div style={{ background: LILAC, color: INK, maxWidth: 430, margin: "0 auto", fontFamily: DOS_UI, minHeight: "100vh", padding: "2px 16px 40px", boxSizing: "border-box", overflowX: "hidden" }}>
       <DeskTop style={{ paddingBottom: 12 }}>
         {/* the hero, in the notifications tint (DosHero), with the gear on its corner */}
-        <div style={{ borderRadius: 22, padding: "15px 17px 14px", background: "linear-gradient(135deg, #5AC8FA, #6D28D9)", color: "#fff", position: "relative", overflow: "hidden" }}>
-          <div aria-hidden="true" style={{ position: "absolute", right: -28, top: -32, width: 130, height: 130, borderRadius: 65, background: "rgba(255,255,255,.13)" }} />
-          <div style={{ display: "flex", alignItems: "flex-start", gap: 10, position: "relative" }}>
-            <div style={{ flex: 1, minWidth: 0 }}>
-              {/* the page's own `<h1>` — the chrome prints no drill page's name (28 Sep 2026) */}
-              <h1 style={{ margin: 0, fontSize: 21, fontWeight: 800, fontFamily: DOS_DISPLAY, letterSpacing: -0.5, lineHeight: 1.18 }}>Notifications</h1>
-              <div style={{ fontSize: 11.5, opacity: 0.9, marginTop: 3 }} data-testid="notif-counts">
-                {fresh.length} new · {visible.length} in all
-              </div>
-            </div>
+        {/* ⚠ THE HUE HEADING (12 Oct 2026): `TAB_TITLE` over the notifications'
+            violet, the gear on its line — the page's own `<h1>` */}
+        <HueHead
+          title="Notifications"
+          color="#6D28D9"
+          bottom="4px"
+          subTestId="notif-counts"
+          sub={`${fresh.length} new · ${visible.length} in all`}
+          right={
             <button type="button" aria-label="Notification settings" data-testid="notif-settings" onClick={() => setPrefOpen(true)} style={headBtn}>
               <GearIcon />
             </button>
-          </div>
-        </div>
+          }
+        />
         {tabs}
         {chips}
         {hiddenBySettings > 0 ? (

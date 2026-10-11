@@ -32,7 +32,7 @@ export function InvoicesScreen({ rows, side }: { rows: InvoiceRow[]; side: "mine
     <BizPage
       title="Invoices"
       sub={`${rows.length} invoice${rows.length === 1 ? "" : "s"}`}
-      grad="linear-gradient(135deg,#64748B,#0EA5E9)"
+      grad="linear-gradient(135deg,#7C3AED,#0EA5E9)"
       top={
         /* ⚠ THE FILTER IS IN THE TOP SECTION (3 Oct 2026, C116); the ledger is the lower one */
         /* ⚠ ONE COLUMN STYLE UNDER HOME (11 Oct 2026, `ColumnTabs`) — no count in

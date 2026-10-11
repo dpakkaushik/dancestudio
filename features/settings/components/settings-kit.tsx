@@ -1,7 +1,7 @@
 import Link from "next/link";
 import type { CSSProperties, ReactNode } from "react";
-import { DOS_DISPLAY, DOS_UI, INK, LILAC } from "@/lib/design/tokens";
-import { DeskHero, type DosToolKey } from "@/features/businesses/components/biz-kit";
+import { DOS_UI, INK, LILAC } from "@/lib/design/tokens";
+import { DeskHero, HueHead, type DosToolKey } from "@/features/businesses/components/biz-kit";
 import { DeskBody, DeskMiddle, DeskTop } from "@/components/ui/DeskSections";
 
 /** The pieces the settings screens share, lifted from the prototype's BizShell
@@ -79,6 +79,11 @@ export const dateWords = (iso: string) => new Intl.DateTimeFormat("en-IN", { tim
  *  `grad` stays for the screens that are NOT tools — Verification is the one
  *  that matters (C53: a desk hero titles itself from `DOS_TOOLS`, and inventing
  *  a tool colour for something on nobody's grid is what that decision refused). */
+/** ⚠ THE HUE HEADING (12 Oct 2026, the user: "same look … all pages in settings
+ *  too. use different colors for some") — `grad` is now the page's HUE: its
+ *  first colour washes down behind `TAB_TITLE`, the way a tool's does. */
+const hueOf = (grad?: string) => /#[0-9a-fA-F]{6}/.exec(grad ?? "")?.[0] ?? "#64748B";
+
 export function BizPage({
   title,
   sub,
@@ -116,11 +121,7 @@ export function BizPage({
             {sub ? <div style={{ fontSize: 11, fontWeight: 700, color: "var(--sub)", margin: "5px 2px 0" }}>{sub}</div> : null}
           </>
         ) : (
-          <div style={{ borderRadius: 22, padding: "15px 17px 14px", position: "relative", overflow: "hidden", color: "#fff", background: grad }}>
-            <div aria-hidden="true" style={{ position: "absolute", right: -28, top: -32, width: 130, height: 130, borderRadius: 65, background: "rgba(255,255,255,.13)" }} />
-            <h1 style={{ fontSize: 21, fontWeight: 800, letterSpacing: -0.5, position: "relative", fontFamily: DOS_DISPLAY, lineHeight: 1.18, margin: 0 }}>{title}</h1>
-            {sub ? <div style={{ fontSize: 11, opacity: 0.9, marginTop: 3, position: "relative" }}>{sub}</div> : null}
-          </div>
+          <HueHead title={title} color={hueOf(grad)} sub={sub} />
         )}
         {top ? <div style={{ marginTop: 12 }}>{top}</div> : null}
       </DeskTop>

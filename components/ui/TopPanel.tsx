@@ -23,7 +23,7 @@ export function TopPanel({ children, tint, style, testId = "top-panel" }: { chil
         position: "relative",
         borderRadius: 22,
         border: "1.5px solid var(--el)",
-        background: tint ? `linear-gradient(180deg, ${tint}66 0%, ${tint}26 55%, var(--card) 100%)` : "var(--card)",
+        background: tint ? `linear-gradient(180deg, ${tint}8c 0%, ${tint}38 55%, var(--card) 100%)` : "var(--card)",
         padding: "14px 14px 14px",
         boxSizing: "border-box",
         ...style,

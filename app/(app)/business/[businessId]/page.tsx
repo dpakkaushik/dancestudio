@@ -10,11 +10,9 @@ import { studioTeamRows } from "@/features/profiles/teamFollowing";
 import { countRoomsByBusinesses } from "@/repositories/rooms";
 import { findStudioProofPhotos } from "@/repositories/studioVerification";
 import { findMyMemberships, runsTheBusiness } from "@/repositories/businesses";
-import { findNextPublicSessions } from "@/repositories/calendar";
 import { findMembershipsOnSale } from "@/repositories/memberships";
 import { findRoomsByBusiness } from "@/repositories/rooms";
 import { fullAddressOf } from "@/lib/geo/fullAddress";
-import { startedSessionIds } from "@/types/calendar";
 import { StudioPublicBody } from "@/features/profiles/components/StudioPublicBody";
 import { PROFILE_RING } from "@/features/profiles/components/profile-kit";
 
@@ -82,7 +80,7 @@ export default async function StudioHomePage({ params, searchParams }: { params:
   const canEditPhoto = isOwner || memberRole === "trainer";
   const nowIso = stampNowIso();
   const place = [business.area, business.city].filter(Boolean).join(", ");
-  const [photos, deck, roomCounts, stylesByBusiness, editable, followerCounts, team, onSale, nextSessions, rooms] = await Promise.all([
+  const [photos, deck, roomCounts, stylesByBusiness, editable, followerCounts, team, onSale, rooms] = await Promise.all([
     /* the header pictures — the photos of its space, as shown to DanceOS;
        signed, and since 15 Sep 2026 readable by the whole team */
     findStudioProofPhotos(supabase, businessId),
@@ -105,7 +103,8 @@ export default async function StudioHomePage({ params, searchParams }: { params:
        here as well") — what it sells, the next sessions, its rooms; each
        degrades to nothing rather than failing the home */
     findMembershipsOnSale(supabase, businessId).catch(() => []),
-    findNextPublicSessions(supabase, businessId, { name: business.name, city: business.city }).catch(() => []),
+    /* ⚠ NO NEXT SESSIONS ON A STUDIO'S HOME (12 Oct 2026, the user: "remove
+       next sessions from home page only") — its public page keeps the rail */
     findRoomsByBusiness(supabase, businessId).catch(() => []),
   ]);
   /* the address in words — the owner's read carries the pin; anybody else gets the place */
@@ -147,9 +146,7 @@ export default async function StudioHomePage({ params, searchParams }: { params:
           memberships={onSale}
           signedIn
           canBuy={false}
-          nextSessions={nextSessions}
-          /* a seat that runs the studio is offered no seat on its classes */
-          booking={{ signedIn: true, mine: {}, runs: nextSessions.map((e) => e.sessionId), started: startedSessionIds(nextSessions) }}
+          nextSessions={[]}
           team={team}
         />
       }

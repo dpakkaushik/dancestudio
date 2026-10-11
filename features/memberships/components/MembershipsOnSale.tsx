@@ -10,6 +10,7 @@ import { openCashfreeCheckout, preloadCheckout } from "@/lib/cashfree/checkout-c
 import { DOS_DISPLAY, INK, SUB } from "@/lib/design/tokens";
 import { inkOn } from "@/components/ui/ToolCard";
 import { SeatBar } from "@/features/classes/components/ClassTile";
+import { unitWord } from "@/features/memberships/components/usage-kit";
 import type { MembershipOnSale } from "@/repositories/memberships";
 
 /** MEMBERSHIPS ON A PUBLIC PAGE (19 Sep 2026, the user: "Users should be able
@@ -99,10 +100,21 @@ export function MembershipsOnSale({
         <div key={m.id} data-testid="membership-on-sale" style={{ ...row, borderBottom: i === memberships.length - 1 ? "none" : row.borderBottom }}>
           <div style={{ display: "flex", alignItems: "baseline", gap: 8 }}>
             <span style={{ flex: 1, minWidth: 0, fontSize: 14, fontWeight: 900, letterSpacing: -0.2, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{m.name}</span>
-            <span style={{ flexShrink: 0, fontSize: 10.5, color: SUB, fontWeight: 700 }}>
-              {m.unit === "hours" ? `${m.units} hours` : `${m.units} classes`}
-              {m.validityDays ? ` · ${m.validityDays} days` : " · until used up"}
-            </span>
+          </div>
+          {/* ⚠ WHAT IT IS, WRITTEN PROPERLY (12 Oct 2026, the user: "membership
+              hours and validity should be written properly in studio profile
+              pages") — two labelled boxes, the size and how long it lasts, where
+              one grey fragment ("10 hours · 60 days") said both and named neither */}
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginTop: 8 }}>
+            {[
+              { k: "size", label: m.unit === "hours" ? "Hours" : "Classes", value: unitWord(m.unit, m.units) },
+              { k: "validity", label: "Valid for", value: m.validityDays ? `${m.validityDays} days from purchase` : "Until used up" },
+            ].map((b) => (
+              <div key={b.k} data-testid={`membership-${b.k}`} style={{ background: "var(--el)", borderRadius: 12, padding: "7px 10px" }}>
+                <div style={{ fontSize: 9, fontWeight: 900, letterSpacing: 0.9, color: SUB, textTransform: "uppercase" }}>{b.label}</div>
+                <div style={{ fontSize: 13, fontWeight: 800, marginTop: 2 }}>{b.value}</div>
+              </div>
+            ))}
           </div>
           {/* ⚠ A BAR, LIKE A CLASS CARD'S (11 Oct 2026, the user: "Membership
               should also have a bar like class cards for spots left") — the

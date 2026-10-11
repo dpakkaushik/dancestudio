@@ -8,7 +8,6 @@ import { ensureArtistPage, findMyMemberships } from "@/repositories/businesses";
 import { findMyArtistPlan } from "@/repositories/plans";
 import { findMyFollowedCrews, findMyFollowedPeople, findMyFollowing, findMyPersonFollowers, findTeamFollows, withTeamFollows } from "@/repositories/follows";
 import { findPersonHeaderPhotos } from "@/repositories/headerPhotos";
-import { findNextPublicSessions } from "@/repositories/calendar";
 import { findPublicPerson } from "@/repositories/publicPerson";
 import { findPublicStudioTeam } from "@/repositories/publicProfile";
 import { PersonBody } from "@/features/profiles/components/PersonBody";
@@ -148,7 +147,7 @@ export default async function HomePage() {
   const schedBiz = businessesOn.find((t) => t.type === "artist_page") ?? businessesOn[0] ?? null;
   const scheduleHref = schedBiz ? `/${schedBiz.type === "studio" ? "studio" : "artist"}/${schedBiz.id}/schedule` : null;
   const ownArtistPage = memberships.find((m) => m.business.type === "artist_page" && m.memberRole === "owner")?.business.id ?? null;
-  const [header, deck, pageId, followers, followingPeople, followedBusinesses, followedCrews, teams, person, nextSessions, artistTeam] = await Promise.all([
+  const [header, deck, pageId, followers, followingPeople, followedBusinesses, followedCrews, teams, person, artistTeam] = await Promise.all([
     findPersonHeaderPhotos(supabase, user.id, headerMax),
     deckP,
     !isArtist ? Promise.resolve(null) : ensureArtistPage(supabase, profile, memberships),
@@ -158,9 +157,9 @@ export default async function HomePage() {
     followedCrewsP,
     teamsP,
     findPublicPerson(supabase, user.id).catch(() => null),
-    schedBiz
-      ? findNextPublicSessions(supabase, schedBiz.id, { name: schedBiz.name, city: schedBiz.city }, schedBiz.id === ownArtistPage ? user.id : null).catch(() => [])
-      : Promise.resolve([]),
+    /* ⚠ NO NEXT SESSIONS ON HOME (12 Oct 2026, the user: "remove next
+       sessions from home page only") — Today's schedule is Home's own deck;
+       the public page keeps its rail */
     ownArtistPage ? findPublicStudioTeam(supabase, ownArtistPage).catch(() => []) : Promise.resolve([]),
   ]);
   const { businesses: followingBusinesses, crews: followingCrews } = withTeamFollows({ businesses: followedBusinesses, crews: followedCrews }, teams);
@@ -399,7 +398,7 @@ export default async function HomePage() {
             through the very component it draws (12 Oct 2026), so Home and the
             profile cannot drift ── */}
         {person ? (
-          <PersonBody person={person} isMe signedIn memberships={[]} artistTeam={artistTeam} nextSessions={nextSessions} accent={ring[1]} />
+          <PersonBody person={person} isMe signedIn memberships={[]} artistTeam={artistTeam} accent={ring[1]} />
         ) : null}
 
         {/* ── run your business — the prototype's BizSection (7342-7344, 2497-2583). It is the

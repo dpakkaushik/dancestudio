@@ -25,7 +25,7 @@ import { DeskBody, DeskTop } from "@/components/ui/DeskSections";
  *  mean. */
 
 /** the head's two small media buttons (11 Oct 2026) */
-const HEAD_MEDIA: CSSProperties = { padding: "10px 12px", fontSize: 13, gap: 6, flex: "1 1 0", minWidth: 0, justifyContent: "center" };
+const HEAD_MEDIA: CSSProperties = { padding: "10px 12px", fontSize: 13, gap: 6, flex: "0 0 auto", width: "100%", minWidth: 0, boxSizing: "border-box", justifyContent: "center" };
 
 const card: CSSProperties = { background: "var(--card)", border: "1.5px solid var(--el)", borderRadius: 16, padding: "13px 14px", marginBottom: 10 };
 
@@ -234,7 +234,7 @@ function RoutineCard({
               <div style={{ fontSize: 11, color: SUB, marginTop: 6, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>♪ {song.title}</div>
             ) : null}
           </div>
-          <span data-testid="routine-media" style={{ display: "flex", gap: 8, marginTop: 10, pointerEvents: "auto" }}>
+          <span data-testid="routine-media" style={{ display: "flex", flexDirection: "column", gap: 8, marginTop: 10, pointerEvents: "auto" }}>
             <RoutineMediaButton kind="song" href={song.href} word={song.short} title={title} extra={HEAD_MEDIA} />
             <RoutineMediaButton kind="video" href={video} word="Video" title={title} extra={HEAD_MEDIA} />
           </span>

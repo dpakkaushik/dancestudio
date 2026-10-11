@@ -164,7 +164,7 @@ export function CrewsHub({
   const hasCrew = led.length > 0 || member.length > 0 || asks.length > 0;
   /* the heading — the same paint, and the same word, as the tile you pressed */
   const hero = (
-    <div data-testid="desk-hero" style={{ margin: "-14px -14px 0", padding: "16px 16px 6px", borderRadius: "21px 21px 0 0", position: "relative", color: INK, background: `linear-gradient(180deg, ${accent}66 0%, ${accent}26 60%, transparent 100%)` }}>
+    <div data-testid="desk-hero" style={{ margin: "-14px -14px 0", padding: "16px 16px 6px", borderRadius: "21px 21px 0 0", position: "relative", color: INK, background: `linear-gradient(180deg, ${accent}8c 0%, ${accent}38 60%, transparent 100%)` }}>
       {/* the page's own `<h1>` — the chrome no longer prints a drill page's name (28 Sep 2026) */}
       <h1 style={{ ...TAB_TITLE, color: INK, position: "relative" }}>Crews</h1>
       {/* the "crew" invite switch, moved here from the Inbox with the asks (11 Oct

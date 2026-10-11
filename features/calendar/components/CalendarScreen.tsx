@@ -6,7 +6,7 @@ import { DeskBody, DeskTop } from "@/components/ui/DeskSections";
 import { Portal } from "@/components/ui/Portal";
 import { inkOn } from "@/components/ui/ToolCard";
 import { ClassTile } from "@/features/classes/components/ClassTile";
-import { DOS_TOOLS, dosToolPaint } from "@/features/businesses/components/biz-kit";
+import { DOS_TOOLS, HueHead, dosToolPaint } from "@/features/businesses/components/biz-kit";
 import { DOS_LEVEL_LABEL, dosStyleColor } from "@/lib/constants/styles";
 import { CARD, DOS_DISPLAY, DOS_UI, INK, LILAC, LINE, MUTED, SKY, SUB } from "@/lib/design/tokens";
 import {
@@ -893,43 +893,14 @@ export function CalendarScreen({ mode, months, todayKey, entries, practices = []
           {/* ⚠ THE TOP SECTION (3 Oct 2026, C116): the hero alone, out of the
               sticky block — the controls start the lower section, so they stick
               for the length of the schedule rather than inside this short box */}
-          <div
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: 8,
-              margin: 0,
-              borderRadius: 22,
-              padding: "15px 17px 14px",
-              color: "#fff",
-              position: "relative",
-              overflow: "hidden",
-              background: toolPaint(TOOL_COLOUR),
-            }}
-          >
-            <div
-              style={{
-                position: "absolute",
-                right: -28,
-                top: -32,
-                width: 130,
-                height: 130,
-                borderRadius: 65,
-                background: "rgba(255,255,255,.13)",
-              }}
-            />
-            <div style={{ flex: 1, minWidth: 0, position: "relative" }}>
-              <h1 style={{ margin: 0, fontSize: 21, fontWeight: 800, letterSpacing: -0.5, fontFamily: DOS_DISPLAY, lineHeight: 1.18 }}>
-                Calendar
-              </h1>
-            </div>
+          {/* ⚠ THE HUE HEADING (12 Oct 2026): `TAB_TITLE` over the calendar's hue */}
+          <HueHead title="Calendar" color={TOOL_COLOUR} />
             {/* ⚠ NO HISTORY CHIP (19 Sep 2026, the user's list). It opened
                 `/stats?tab=history`, which the Stats chip on every hero already
                 opened — the calendar looks forward, and the way back was a
                 second door to one screen. ⚠ The library itself went on 29 Sep
                 2026 with the second stats screen, so that door now leads
                 nowhere in particular; the route is untouched (Rule 14). */}
-          </div>
         </DeskTop>
       )}
 

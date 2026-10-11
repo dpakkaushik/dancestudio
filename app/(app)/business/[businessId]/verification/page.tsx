@@ -53,7 +53,7 @@ export default async function StudioVerificationPage({ params }: { params: Promi
      fourteenth tool colour for something that is on nobody's grid (R20 spent a
      whole pass making those thirteen distinguishable). */
   return (
-    <BizPage title="Verification" sub={business.name} grad="linear-gradient(135deg,#0EA5E9,#2563EB)">
+    <BizPage title="Verification" sub={business.name} grad="linear-gradient(135deg,#0D9488,#2563EB)">
       {state ? (
         <StudioVerificationStrip business={business} orgId={user.id} state={state} />
       ) : (

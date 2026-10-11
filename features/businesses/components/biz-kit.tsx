@@ -209,7 +209,33 @@ export function DeskHero({ tool, margin = "12px 0 0", as = "div" }: { tool: DosT
      the caller's BOTTOM margin is kept. */
   const parts = margin.trim().split(/\s+/);
   const bottom = parts.length >= 3 ? parts[2] : parts.length === 2 ? parts[0] : parts[0];
-  const title: CSSProperties = { ...TAB_TITLE, color: INK, position: "relative" };
+  return <HueHead title={T.name} color={T.c} as={as} bottom={bottom} />;
+}
+
+/** THE ONE HUE HEADING (12 Oct 2026). `DeskHero` for a tool, and the same object
+ *  for every page that is not one — Calendar, Notifications, and the Settings
+ *  pages (Payments, Invoices, Refunds, Verification) — so a heading can only
+ *  ever be `TAB_TITLE` in ink over a colour washing down from the panel's top.
+ *  `right` is a control on the heading's line (the Notifications gear); `sub`
+ *  sits under it. Stands inside a `DeskTop`/`TopPanel` (14px padding). */
+export function HueHead({
+  title,
+  color,
+  as = "h1",
+  bottom = "0",
+  right,
+  sub,
+  subTestId,
+}: {
+  title: string;
+  color: string;
+  as?: "div" | "h1";
+  bottom?: string;
+  right?: ReactNode;
+  sub?: ReactNode;
+  subTestId?: string;
+}) {
+  const t: CSSProperties = { ...TAB_TITLE, color: INK, position: "relative", margin: 0 };
   return (
     <div
       data-testid="desk-hero"
@@ -218,10 +244,18 @@ export function DeskHero({ tool, margin = "12px 0 0", as = "div" }: { tool: DosT
         borderRadius: "21px 21px 0 0",
         padding: "16px 16px 6px",
         position: "relative",
-        background: `linear-gradient(180deg, ${T.c}66 0%, ${T.c}26 60%, transparent 100%)`,
+        background: `linear-gradient(180deg, ${color}8c 0%, ${color}38 60%, transparent 100%)`,
       }}
     >
-      {as === "h1" ? <h1 style={title}>{T.name}</h1> : <div style={title}>{T.name}</div>}
+      <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+        <div style={{ flex: 1, minWidth: 0 }}>{as === "h1" ? <h1 style={t}>{title}</h1> : <div style={t}>{title}</div>}</div>
+        {right}
+      </div>
+      {sub ? (
+        <div data-testid={subTestId} style={{ fontSize: 11.5, fontWeight: 700, color: "var(--sub)", marginTop: 4, position: "relative" }}>
+          {sub}
+        </div>
+      ) : null}
     </div>
   );
 }
