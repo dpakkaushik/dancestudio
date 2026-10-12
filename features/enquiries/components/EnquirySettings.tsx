@@ -5,7 +5,9 @@ import { useRouter } from "next/navigation";
 import { Switch } from "@/features/profiles/components/ContactEditor";
 import { fieldLabel } from "@/features/profiles/components/profile-kit";
 import { updateBusinessProfileAction } from "@/features/settings/server-actions/plans";
-import { MUTED, SUB } from "@/lib/design/tokens";
+import { DOS_DISPLAY, MUTED, SUB } from "@/lib/design/tokens";
+import { ToolFace } from "@/components/ui/ToolCard";
+import { EnqIcon } from "@/features/inbox/components/inbox-kit";
 import { BottomSheet } from "@/components/ui/RequestSettingsSheet";
 import { enquiryTypesFor } from "@/types/enquiry";
 import type { Business } from "@/types/business";
@@ -108,72 +110,98 @@ function OneBusiness({ business, showName }: { business: Business; showName: boo
 
   const liveCount = on ? all.filter((k) => kinds.includes(k)).length : 0;
 
+  /* ⚠ RE-CUT (12 Oct 2026, the user: "enquiry settings needs a revamp"). One
+     card per business: its face and name with a status pill, the master switch
+     as a row of its own, then every kind as a FULL ROW — its icon in its tint,
+     its name, what it covers and its own switch — where they were a cluster of
+     ✓/＋ chips that said nothing about what each kind was. */
   return (
-    <div style={{ background: "var(--card)", border: "1.5px solid var(--el)", borderRadius: 16, padding: "12px 14px", marginTop: 10 }}>
-      {showName ? <div style={{ ...fieldLabel, margin: 0 }}>{business.name}</div> : null}
-      {(
-        <>
-          <div style={{ fontSize: 11.5, fontWeight: 800, color: SUB, marginTop: 8 }}>{on ? `${liveCount} of ${all.length} kinds` : "Not taking enquiries"}</div>
-          <Switch
-            on={on}
-            label="Take enquiries"
-            onClick={() => {
-              const v = !on;
-              setOn(v);
-              save(v, kinds);
-            }}
-          />
-          {/* the kinds, only while the button is on — a list of what you take
-              under a switch that says you take none is a control with nothing
-              to govern */}
-          {on ? (
-            <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 9 }}>
-              {enquiryTypesFor(business.type).map((t) => {
-                const lit = kinds.includes(t.k);
-                return (
-                  <button
-                    key={t.k}
-                    type="button"
-                    aria-pressed={lit}
-                    aria-label={t.label}
-                    disabled={pending}
-                    onClick={() => {
-                      const picked = lit ? kinds.filter((k) => k !== t.k) : [...kinds, t.k];
-                      setKinds(picked);
-                      save(true, picked);
-                    }}
-                    style={{
-                      display: "inline-flex",
-                      alignItems: "center",
-                      gap: 5,
-                      padding: "7px 12px",
-                      borderRadius: 999,
-                      fontSize: 11,
-                      fontWeight: 800,
-                      cursor: pending ? "default" : "pointer",
-                      fontFamily: "inherit",
-                      background: lit ? "var(--text)" : "var(--card)",
-                      color: lit ? "var(--solid)" : SUB,
-                      border: `1.5px solid ${lit ? "var(--text)" : "var(--el)"}`,
-                    }}
-                  >
-                    {lit ? "✓" : "＋"} {t.label}
-                  </button>
-                );
-              })}
-            </div>
-          ) : null}
-          {/* the one thing the chips cannot say: where the button they govern is drawn */}
-          <div style={{ fontSize: 10.5, color: MUTED, marginTop: 8 }}>
-            {on ? "The Enquiry button on its page offers these." : "No Enquiry button on its page."}
-          </div>
-          {err ? (
-            <div role="alert" style={{ fontSize: 11.5, color: "#F87171", marginTop: 6 }}>
-              {err}
-            </div>
-          ) : null}
-        </>
-      )}
+    <div style={{ background: "var(--card)", border: "1.5px solid var(--el)", borderRadius: 18, padding: 14, marginTop: 10, opacity: pending ? 0.75 : 1, transition: "opacity .15s" }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 11 }}>
+        <ToolFace name={business.name} photoPath={business.photoPath ?? null} tint="#8B5CF6" size={40} />
+        <div style={{ flex: 1, minWidth: 0 }}>
+          {showName ? <div style={{ ...fieldLabel, margin: 0 }}>For</div> : null}
+          <div style={{ fontFamily: DOS_DISPLAY, fontSize: 15, fontWeight: 800, letterSpacing: -0.2, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{business.name}</div>
+          <div style={{ fontSize: 11.5, fontWeight: 800, color: SUB, marginTop: 2 }}>{on ? `${liveCount} of ${all.length} kinds` : "Not taking enquiries"}</div>
+        </div>
+        <span style={{ flexShrink: 0, fontSize: 9, fontWeight: 900, letterSpacing: 0.7, padding: "4px 9px", borderRadius: 999, background: on ? "#22C55E1c" : "var(--el)", color: on ? "#22C55E" : SUB }}>{on ? "OPEN" : "CLOSED"}</span>
+      </div>
+
+      <div style={{ marginTop: 10, borderTop: "1.5px solid var(--el)", paddingTop: 2 }}>
+        <Switch
+          on={on}
+          label="Take enquiries"
+          onClick={() => {
+            const v = !on;
+            setOn(v);
+            save(v, kinds);
+          }}
+        />
+        <div style={{ fontSize: 10.5, color: MUTED, marginTop: 2 }}>
+          {on ? "The Enquiry button on your page offers the kinds switched on below." : "No Enquiry button on your page."}
+        </div>
+      </div>
+
+      {/* the kinds, only while the button is on — a list of what you take under
+          a switch that says you take none is a control with nothing to govern */}
+      {on ? (
+        <div style={{ display: "flex", flexDirection: "column", gap: 8, marginTop: 12 }}>
+          {enquiryTypesFor(business.type).map((t) => {
+            const lit = kinds.includes(t.k);
+            return (
+              <button
+                key={t.k}
+                type="button"
+                role="switch"
+                aria-checked={lit}
+                aria-label={t.label}
+                disabled={pending}
+                onClick={() => {
+                  const picked = lit ? kinds.filter((k) => k !== t.k) : [...kinds, t.k];
+                  setKinds(picked);
+                  save(true, picked);
+                }}
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 11,
+                  width: "100%",
+                  textAlign: "left",
+                  padding: "10px 12px",
+                  borderRadius: 14,
+                  cursor: pending ? "default" : "pointer",
+                  fontFamily: "inherit",
+                  color: "var(--text)",
+                  background: lit ? `${t.c}14` : "transparent",
+                  border: `1.5px solid ${lit ? `${t.c}66` : "var(--el)"}`,
+                }}
+              >
+                <span aria-hidden="true" style={{ width: 36, height: 36, borderRadius: 11, flexShrink: 0, display: "inline-flex", alignItems: "center", justifyContent: "center", background: `${t.c}22` }}>
+                  <EnqIcon k={t.k} size={19} color={t.c} sw={2} />
+                </span>
+                <span style={{ flex: 1, minWidth: 0 }}>
+                  <span style={{ display: "block", fontSize: 13.5, fontWeight: 900 }}>{t.label}</span>
+                  <span style={{ display: "block", fontSize: 11, color: SUB, marginTop: 2 }}>{t.sub}</span>
+                </span>
+                <Knob on={lit} tint={t.c} />
+              </button>
+            );
+          })}
+        </div>
+      ) : null}
+      {err ? (
+        <div role="alert" style={{ fontSize: 11.5, color: "#F87171", marginTop: 8 }}>
+          {err}
+        </div>
+      ) : null}
     </div>
+  );
+}
+
+function Knob({ on, tint }: { on: boolean; tint: string }) {
+  return (
+    <span aria-hidden="true" style={{ position: "relative", width: 40, height: 23, borderRadius: 999, flexShrink: 0, background: on ? tint : "var(--el)", transition: "background .15s" }}>
+      <span style={{ position: "absolute", top: 3, left: on ? 20 : 3, width: 17, height: 17, borderRadius: 999, background: "#fff", boxShadow: "0 1px 3px rgba(0,0,0,.3)", transition: "left .15s" }} />
+    </span>
   );
 }

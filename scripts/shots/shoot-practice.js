@@ -310,6 +310,8 @@ const tomorrowIst = () => {
     /* ── 7 · CALLING IT OFF SAYS SO ── */
     await leader.goto(`${BASE}/crews/${crewId}/manage/practice`, { waitUntil: "networkidle" });
     await leader.getByRole("button", { name: /^Call off/ }).first().click();
+    /* ⚠ it asks first since 12 Oct 2026 */
+    await leader.getByRole("alertdialog", { name: "Call off this practice?" }).getByRole("button", { name: "Call it off" }).click();
     await leader.waitForTimeout(2000);
     await leader.reload({ waitUntil: "networkidle" });
     check(await leader.getByText("CALLED OFF").first().isVisible().catch(() => false), "calling it off is a STATUS — the row stays and says so, because a practice that vanishes tells nobody anything");

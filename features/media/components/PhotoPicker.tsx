@@ -9,6 +9,17 @@ import { PROOF_BUCKET } from "@/lib/media/proof";
 import { browserSupabase } from "@/lib/supabase/lazyClient";
 import { DOS_UI, INK, LINE, SUB } from "@/lib/design/tokens";
 import { PhotoCropper, frameForOwnerKind } from "./PhotoCropper";
+import { DeleteIconButton } from "@/components/ui/DeleteIconButton";
+
+/** a camera, drawn in the app's own stroke — the add-a-photo control's glyph */
+export function CameraGlyph({ size = 14, color = "currentColor" }: { size?: number; color?: string }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M4 8.5c0-1 .8-1.8 1.8-1.8h2l1.4-2h5.6l1.4 2h2c1 0 1.8.8 1.8 1.8v9c0 1-.8 1.8-1.8 1.8H5.8c-1 0-1.8-.8-1.8-1.8z" />
+      <circle cx="12" cy="13" r="3.4" />
+    </svg>
+  );
+}
 
 /** "📁 Browse device gallery" (prototype 3829) — the one control that changes a
  *  photo, wherever a photo is drawn.
@@ -285,13 +296,21 @@ export function PhotoPicker({
     <span style={{ display: "inline-flex", flexDirection: "column", gap: 4, alignItems: "flex-start" }}>
       <span style={{ display: "inline-flex", gap: 6, alignItems: "center" }}>
         <label style={chip} aria-disabled={busy}>
-          {busy ? "Uploading…" : hasPhoto ? label : "📁 Add a photo"}
+          {/* ⚠ a drawn camera, not the 📁 file glyph (12 Oct 2026, the user: "add a
+              photo button everywhere with that file icon should be changed") */}
+          {busy ? null : <CameraGlyph color={onLight ? "#fff" : "currentColor"} />}
+          {busy ? "Uploading…" : hasPhoto ? label : "Add a photo"}
           {input(hasPhoto ? label : "Add a photo")}
         </label>
         {hasPhoto ? (
-          <button type="button" disabled={busy} aria-label="Remove the photo" onClick={() => void clear()} style={{ ...chip, cursor: busy ? "default" : "pointer" }}>
-            Remove
-          </button>
+          <DeleteIconButton
+            size={30}
+            label="Remove the photo"
+            title="Remove this photo?"
+            goWord="Remove"
+            disabled={busy}
+            onConfirm={() => clear()}
+          />
         ) : null}
       </span>
       {error ? <span style={{ fontSize: 10, color: "#F87171", maxWidth: 260, lineHeight: 1.4 }}>{error}</span> : null}

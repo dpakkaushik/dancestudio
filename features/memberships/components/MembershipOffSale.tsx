@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { deleteMembershipAction } from "@/features/memberships/server-actions/memberships";
 import { CENTER_CARD, CENTER_SCRIM } from "@/components/ui/centerModal";
 import { Portal } from "@/components/ui/Portal";
+import { DeleteIcon } from "@/components/ui/DeleteIconButton";
 import { useCloseOnBack } from "@/lib/hooks/useCloseOnBack";
 import { SUB } from "@/lib/design/tokens";
 
@@ -51,14 +52,7 @@ export function MembershipOffSale({ membershipId, name, active, backTo = "/membe
 
   return (
     <>
-      <button
-        type="button"
-        onClick={() => setAsk(true)}
-        aria-label={`Delete ${name}`}
-        style={{ flexShrink: 0, fontSize: 9, fontWeight: 900, letterSpacing: 0.7, padding: "4px 9px", borderRadius: 999, background: "#F871711c", color: "#F87171", border: "1.5px solid #F8717155", cursor: "pointer", fontFamily: "inherit", pointerEvents: "auto" }}
-      >
-        DELETE
-      </button>
+      <DeleteIcon size={32} label={`Delete ${name}`} onClick={() => setAsk(true)} style={{ pointerEvents: "auto" }} />
       {ask ? <Confirm name={name} active={active} busy={busy} err={err} onKeep={() => setAsk(false)} onGo={go} /> : null}
     </>
   );

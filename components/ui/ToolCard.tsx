@@ -259,11 +259,11 @@ export function ToolFacts({ items, tint, style }: { items: ToolFact[]; tint: str
   return (
     <div data-tc="facts" style={{ display: "grid", gridTemplateColumns: `repeat(${items.length}, minmax(0, 1fr))`, gap: 6, ...style }}>
       {items.map((f) => (
-        <div key={f.label} style={{ borderRadius: 12, background: `${tint}0f`, border: "1.5px solid var(--el)", padding: "8px 6px 7px", textAlign: "center", minWidth: 0 }}>
-          <div data-testid={f.testId} style={{ fontSize: 15.5, fontWeight: 900, lineHeight: 1.1, color: f.tint ?? INK, fontVariantNumeric: "tabular-nums", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+        <div key={f.label} data-tc="fact" style={{ borderRadius: 12, background: `${tint}0f`, border: "1.5px solid var(--el)", padding: "8px 6px 7px", textAlign: "center", minWidth: 0 }}>
+          <div data-tc="factval" data-testid={f.testId} style={{ fontSize: 15.5, fontWeight: 900, lineHeight: 1.1, color: f.tint ?? INK, fontVariantNumeric: "tabular-nums", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
             {f.value}
           </div>
-          <div style={{ fontSize: 8.5, fontWeight: 900, letterSpacing: 0.7, color: MUTED, marginTop: 3, textTransform: "uppercase", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{f.label}</div>
+          <div data-tc="factlabel" style={{ fontSize: 8.5, fontWeight: 900, letterSpacing: 0.7, color: MUTED, marginTop: 3, textTransform: "uppercase", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{f.label}</div>
         </div>
       ))}
     </div>

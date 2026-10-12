@@ -190,7 +190,13 @@ export const useDosFold = (h: number): number => {
 
 /** The one sleeve height every booking page means by "the poster" (prototype 6496).
  *  Taller than the poster on purpose: the shadow needs somewhere to fall. */
-export const DOS_SLEEVE = 306;
+export const DOS_SLEEVE = 340;
+/* ⚠ 306 → 340 (12 Oct 2026, the user: "poster just getting cut from bottom in
+   class detail"). The page slides up over the sleeve by 22px (`SHEET_TOP`), and
+   at 306 that sheet began 2px under the poster's foot — so the ⊕ on the poster's
+   corner and the squircle backdrop's rounded bottom were drawn UNDER the page.
+   The sleeve now holds the poster, its ⊕ and the backdrop's curve above the
+   sheet's top edge. */
 
 /** The sleeve pins under the top bar and the opaque sheet below slides up over it —
  *  it never shrinks, so the page's height never fights the scroll (prototype
@@ -245,7 +251,8 @@ export function DosPosterSleeve({
         data-testid="class-poster-backdrop"
         style={{
           position: "absolute",
-          inset: "6px 12px 4px",
+          /* the bottom inset clears the sheet's 22px overlap, so the curve shows */
+          inset: "6px 12px 28px",
           borderRadius: 30,
           overflow: "hidden",
           pointerEvents: "none",
@@ -291,7 +298,8 @@ export function DosPosterSleeve({
           position: "relative",
           display: "inline-block",
           lineHeight: 0,
-          marginTop: 12,
+          /* centred in what the backdrop shows: up by half the 22px the sheet covers */
+          marginTop: -14,
           transform: `translateY(${(heroGone * 54).toFixed(1)}px)`,
           transformOrigin: "50% 40%",
           opacity: Math.max(0, 1 - heroGone * 1.15),

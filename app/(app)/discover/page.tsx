@@ -333,7 +333,22 @@ export default async function DiscoverPage({
   /* ⚠ THE SORT IS THE LAST THING DONE TO A SHELF (10 Oct 2026), after the
      recommendation (which stands aside whenever a sort is picked) and after the
      counts a "Most booked" / "Most followed" order needs */
-  const classesShown = tab === "classes" ? sortShelf(classes, filters.sort, { popular: (c) => (c.session ? counts.get(c.session.id) ?? 0 : 0) }) : classes;
+  /* ⚠ ONLY WHAT THIS PERSON CAN BOOK (12 Oct 2026, the user: "the classes you
+     cant book should not appear on discover for that person"). Off the shelf: a
+     class they RUN (the database refuses them a seat), and a FULL class they do
+     not already hold a seat on. A class they have booked stays — it is theirs. A
+     started class never reached the shelf (`findPublishedClasses` reads only what
+     is still to come), and a class with no confirmed teacher is filtered above. */
+  const bookable = (c: (typeof classes)[number]) => {
+    /* acting as a studio or a crew, nothing on this shelf can be booked */
+    if (noClass) return false;
+    if (ranIds.has(c.id)) return false;
+    const sid = c.session?.id;
+    if (sid && mine.get(sid)?.status === "enrolled") return true;
+    const taken = sid ? counts.get(sid) ?? 0 : 0;
+    return !(c.capacity > 0 && taken >= c.capacity);
+  };
+  const classesShown = tab === "classes" ? sortShelf(classes.filter(bookable), filters.sort, { popular: (c) => (c.session ? counts.get(c.session.id) ?? 0 : 0) }) : classes;
   const artists = sortShelf(artistsFiltered, filters.sort, { name: (a) => a.name, popular: (a) => personCounts.get(a.id)?.followers ?? 0, price: (a) => minOf(pricesByArtist.get(a.id)) });
   const crews = sortShelf(crewsFiltered, filters.sort, { name: (c) => c.name, popular: (c) => crewFollowers.get(c.id) ?? 0, members: (c) => c.members });
   const businesses = wantsBusinesses
@@ -709,7 +724,9 @@ export default async function DiscoverPage({
             fontSize: 13,
           }}
         >
-          {narrowed ? (
+          {tab === "classes" && noClass ? (
+            noClass
+          ) : narrowed ? (
             <>
               <div style={{ fontSize: 26 }}>🕺</div>
               <div style={{ fontWeight: 700, color: INK, marginTop: 6 }}>Nothing in {placeWord} matches that</div>

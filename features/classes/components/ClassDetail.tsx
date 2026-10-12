@@ -738,7 +738,9 @@ export function ClassDetail({
           happened ("cancel / refund class should not be possible if class is
           over"). The register's row no longer carries it. ── */}
       {runs && !done ? (
-        <div style={{ position: "absolute", top: 12, right: 16, zIndex: 3 }}>
+        /* ⚠ inside the poster's squircle, clear of the top bar's curved edge (12
+           Oct 2026, the user: "delete button also getting cut") */
+        <div style={{ position: "absolute", top: 20, right: 24, zIndex: 3 }}>
           <ClassDeleteChip classId={c.id} businessId={c.businessId} title={c.title} isDraft={isDraft} enrolled={filled} priceInr={c.priceInr} paidSeats={paidUserIds.length} />
         </div>
       ) : null}

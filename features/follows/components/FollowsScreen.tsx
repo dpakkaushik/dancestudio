@@ -259,7 +259,9 @@ export function FollowsScreen({ data, initialTab, initialShow }: { data: FollowP
                     style={{
                       width: 52,
                       height: 52,
-                      borderRadius: r.kind === "studio" || r.kind === "crew" ? 16 : 26,
+                      /* ⚠ a CIRCLE for every kind (12 Oct 2026, the user: "follower
+                         following page profile pics should be circle only") */
+                      borderRadius: 999,
                       overflow: "hidden",
                       flexShrink: 0,
                       background: "linear-gradient(135deg,#5AC8FA,#6D28D9)",

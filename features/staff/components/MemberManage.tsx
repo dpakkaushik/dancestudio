@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
+import { DeleteIcon } from "@/components/ui/DeleteIconButton";
 import { Portal } from "@/components/ui/Portal";
 import { ToolFace, toolBtn } from "@/components/ui/ToolCard";
 import { SheetHandle, sheetBody, sheetWrap } from "@/features/businesses/components/biz-kit";
@@ -259,9 +260,7 @@ export function MemberManage({
 
               <div style={{ display: "flex", gap: 8, marginTop: 16 }}>
                 {mayRemove ? (
-                  <button type="button" aria-label={`Remove ${m.name} from the team`} onClick={() => setRemoving(true)} style={toolBtn("danger", L.colour)}>
-                    Remove
-                  </button>
+                  <DeleteIcon size={42} label={`Remove ${m.name} from the team`} onClick={() => setRemoving(true)} />
                 ) : null}
                 <button type="button" onClick={() => setOpen(false)} style={toolBtn("primary", "#141414", { flex: "1.4 1 0", background: "var(--text)", color: "var(--solid)", borderColor: "var(--text)" })}>
                   Done

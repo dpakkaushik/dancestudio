@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState, type CSSProperties } from "react";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
+import { DeleteIcon } from "@/components/ui/DeleteIconButton";
 import { checkRoomClashAction, deleteClassAction, publishClassAction, respondToVenueRequestAction, type RoomClash } from "@/features/classes/server-actions/classes";
 import { respondToClassAskAction, withdrawClassAskAction } from "@/features/classPeople/server-actions/classPeople";
 import type { DraftState } from "@/features/classes/classesScreen";
@@ -113,9 +114,7 @@ export function ClosedDraftButtons({ businessId, classId, title, canEdit }: { bu
   return (
     <>
       <StateChip word="Closed" tint="#858585" />
-      <button type="button" data-testid="closed-delete" aria-label={`Delete ${title}`} onClick={() => setAsking(true)} style={cardBtn(false)}>
-        Delete
-      </button>
+      <DeleteIcon size={34} testId="closed-delete" label={`Delete ${title}`} onClick={() => setAsking(true)} />
       <Link href={`/business/${businessId}/classes/${classId}/edit`} data-testid="closed-new-date" aria-label={`Pick a new date for ${title}`} style={cardBtn(true)}>
         Pick a new date
       </Link>

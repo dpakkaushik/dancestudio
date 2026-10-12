@@ -9,6 +9,7 @@ import { PhotoLightbox } from "@/features/media/components/PhotoLightbox";
 import { photoUrl } from "@/lib/media/photo";
 import { DeskBody, DeskTop } from "@/components/ui/DeskSections";
 import { ToolActions, ToolBody, ToolCard, ToolFacts, ToolHead, toolBtn } from "@/components/ui/ToolCard";
+import { DeleteIcon } from "@/components/ui/DeleteIconButton";
 import { removeAssetAction } from "@/features/assets/server-actions/assets";
 import { DOS_TOOLS, DeskHero, BizToast } from "@/features/businesses/components/biz-kit";
 import { DeskAddButton, eyebrow, rupees } from "@/features/settings/components/settings-kit";
@@ -140,9 +141,7 @@ export function AssetsDesk({ businessId, assets }: { businessId: string; busines
               <Link href={`?edit=${a.id}`} scroll={false} aria-label={`Edit ${a.name}`} style={{ ...toolBtn("tinted", TINT), textDecoration: "none" }}>
                 Edit
               </Link>
-              <button type="button" onClick={() => setAsking(a)} disabled={pending} aria-label={`Remove ${a.name}`} style={toolBtn("danger", TINT)}>
-                Remove
-              </button>
+              <DeleteIcon label={`Remove ${a.name}`} onClick={() => setAsking(a)} disabled={pending} />
             </ToolActions>
           </ToolCard>
         ))}

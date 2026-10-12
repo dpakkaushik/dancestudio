@@ -12,6 +12,7 @@ import { DOS_UI, INK, LILAC } from "@/lib/design/tokens";
 import { PRACTICE_TINT, PRACTICE_WORD, practiceWhen, type CrewPractice, type PracticePerson } from "@/types/crewPractice";
 import { CrewFace, Toast, bizCard, pressKey } from "./crew-kit";
 import { toolBtn } from "@/components/ui/ToolCard";
+import { DeleteIconButton } from "@/components/ui/DeleteIconButton";
 import { PRACTICE_HEAD, PracticeCard, splitPractices } from "./practice-card";
 
 const TINT = DOS_TOOLS.practice.c;
@@ -75,11 +76,11 @@ export function PracticeDesk({ crewId, practices, todayIso }: { crewId: string; 
     });
   };
 
-  const callOff = (practiceId: string) => {
-    start(async () => {
-      const r = await cancelCrewPracticeAction({ practiceId, crewId });
-      say(r.error ?? "Called off — everyone is told");
-    });
+  const callOff = async (practiceId: string): Promise<string | null> => {
+    const r = await cancelCrewPracticeAction({ practiceId, crewId });
+    if (r.error) return r.error;
+    say("Called off — everyone is told");
+    return null;
   };
 
   const card = (p: CrewPractice) => {
@@ -100,9 +101,13 @@ export function PracticeDesk({ crewId, practices, todayIso }: { crewId: string; 
                 {isOpen ? "Hide the register" : "Register"}
               </button>
               {!cancelled && !past ? (
-                <button type="button" onClick={() => callOff(p.id)} aria-label={`Call off ${practiceWhen(p.startsAt)}`} style={toolBtn("danger", TINT)}>
-                  Call it off
-                </button>
+                <DeleteIconButton
+                  label={`Call off ${practiceWhen(p.startsAt)}`}
+                  title="Call off this practice?"
+                  body={`${practiceWhen(p.startsAt)} — everybody in the crew is told it is off.`}
+                  goWord="Call it off"
+                  onConfirm={() => callOff(p.id)}
+                />
               ) : null}
             </>
           ) : null

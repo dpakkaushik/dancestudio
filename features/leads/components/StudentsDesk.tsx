@@ -8,6 +8,7 @@ import { DOS_TOOLS, DeskHero } from "@/features/businesses/components/biz-kit";
 import { columnTab, columnTrack } from "@/components/ui/ColumnTabs";
 import { DeskBody, DeskTop } from "@/components/ui/DeskSections";
 import { FigureHead } from "@/components/ui/FigureHead";
+import { DeleteIconButton } from "@/components/ui/DeleteIconButton";
 import { ToolActions, ToolBody, ToolCard, ToolChip, ToolFacts, ToolHead, toolBtn } from "@/components/ui/ToolCard";
 import { DOS_UI, INK, LILAC, SUB } from "@/lib/design/tokens";
 import { FORM_TITLE } from "@/components/ui/formTitle";
@@ -110,11 +111,13 @@ export function StudentsDesk({
   const term = q.trim().toLowerCase();
   const list = term ? students.filter((s) => s.name.toLowerCase().includes(term) || (s.mobile ?? "").includes(term)) : students;
 
-  const remove = async (leadId: string, name: string) => {
+  const remove = async (leadId: string, name: string): Promise<string | null> => {
     setBusyLead(leadId);
     const out = await deleteLeadAction({ businessId, leadId });
     setBusyLead(null);
-    fire(out.error ?? `${name} removed from your list`);
+    if (out.error) return out.error;
+    fire(`${name} removed from your list`);
+    return null;
   };
 
   return (
@@ -225,9 +228,14 @@ export function StudentsDesk({
                     so no page behind a Student detail button, and Remove is the one
                     way a row the desk itself typed can come off the list */}
                 {s.leadId && walkIn ? (
-                  <button type="button" disabled={busyLead === s.leadId} aria-label={`Remove ${s.name}`} onClick={() => void remove(s.leadId as string, s.name)} style={toolBtn("danger", TINT)}>
-                    Remove
-                  </button>
+                  <DeleteIconButton
+                    label={`Remove ${s.name}`}
+                    title="Remove this student?"
+                    body={`${s.name} comes off your list. Nothing they booked or paid is touched.`}
+                    goWord="Remove"
+                    disabled={busyLead === s.leadId}
+                    onConfirm={() => remove(s.leadId as string, s.name)}
+                  />
                 ) : null}
               </ToolActions>
             ) : null}

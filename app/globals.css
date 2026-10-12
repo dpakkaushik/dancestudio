@@ -552,15 +552,23 @@ a:focus-visible:not([data-slot]) {
 #dos-main[data-dos-view="list"] [data-tc="head"] a:not(:is([data-testid="desk-top"], [data-testid="desk-middle"], [data-testid="top-panel"]) *) { gap: 10px !important; }
 #dos-main[data-dos-view="list"] [data-tc="face"]:not(:is([data-testid="desk-top"], [data-testid="desk-middle"], [data-testid="top-panel"]) *) { width: 36px !important; height: 36px !important; border-radius: 11px !important; font-size: 12px !important; }
 #dos-main[data-dos-view="list"] [data-tc="name"]:not(:is([data-testid="desk-top"], [data-testid="desk-middle"], [data-testid="top-panel"]) *) { font-size: 15px !important; -webkit-line-clamp: 1 !important; }
-#dos-main[data-dos-view="list"] [data-tc="sub"]:not(:is([data-testid="desk-top"], [data-testid="desk-middle"], [data-testid="top-panel"]) *) { display: none !important; }
-#dos-main[data-dos-view="list"] [data-tc="facts"]:not(:is([data-testid="desk-top"], [data-testid="desk-middle"], [data-testid="top-panel"]) *) { display: none !important; }
+/* ⚠ THE KEY DETAILS STAY (12 Oct 2026, the user: "list view can be better for all
+   in a similar way with key details filled properly in the list view"). The
+   sub-line (city, role, email) stays on one line, and the figures are no longer
+   hidden — they fold into ONE row of compact "value LABEL" pills, the same
+   facts the card shows, in the same order, on every tool. */
+#dos-main[data-dos-view="list"] [data-tc="sub"]:not(:is([data-testid="desk-top"], [data-testid="desk-middle"], [data-testid="top-panel"]) *) { font-size: 11px !important; margin-top: 1px !important; }
+#dos-main[data-dos-view="list"] [data-tc="facts"]:not(:is([data-testid="desk-top"], [data-testid="desk-middle"], [data-testid="top-panel"]) *) { display: flex !important; flex-wrap: wrap !important; gap: 5px !important; margin-top: 0 !important; }
+#dos-main[data-dos-view="list"] [data-tc="facts"] + [data-tc="facts"]:not(:is([data-testid="desk-top"], [data-testid="desk-middle"], [data-testid="top-panel"]) *) { margin-top: 5px !important; }
+#dos-main[data-dos-view="list"] [data-tc="fact"]:not(:is([data-testid="desk-top"], [data-testid="desk-middle"], [data-testid="top-panel"]) *) { display: inline-flex !important; align-items: baseline !important; gap: 4px !important; padding: 3px 9px !important; border-radius: 999px !important; text-align: left !important; max-width: 100%; }
+#dos-main[data-dos-view="list"] [data-tc="factval"]:not(:is([data-testid="desk-top"], [data-testid="desk-middle"], [data-testid="top-panel"]) *) { font-size: 12px !important; }
+#dos-main[data-dos-view="list"] [data-tc="factlabel"]:not(:is([data-testid="desk-top"], [data-testid="desk-middle"], [data-testid="top-panel"]) *) { margin-top: 0 !important; font-size: 8px !important; }
 #dos-main[data-dos-view="list"] [data-tc="body"]:not(:is([data-testid="desk-top"], [data-testid="desk-middle"], [data-testid="top-panel"]) *) { padding: 7px 12px 9px !important; }
-#dos-main[data-dos-view="list"] [data-tc="body"]:has(> [data-tc="facts"]:only-child):not(:is([data-testid="desk-top"], [data-testid="desk-middle"], [data-testid="top-panel"]) *) { display: none !important; }
 #dos-main[data-dos-view="list"] [data-tc="title"]:not(:is([data-testid="desk-top"], [data-testid="desk-middle"], [data-testid="top-panel"]) *) { font-size: 14px !important; letter-spacing: -0.2px !important; }
 #dos-main[data-dos-view="list"] [data-tc="actions"]:not(:is([data-testid="desk-top"], [data-testid="desk-middle"], [data-testid="top-panel"]) *) { padding: 6px 10px 9px !important; gap: 6px !important; }
 #dos-main[data-dos-view="list"] [data-tc="actions"] > a:not(:is([data-testid="desk-top"], [data-testid="desk-middle"], [data-testid="top-panel"]) *),
 #dos-main[data-dos-view="list"] [data-tc="actions"] > button:not(:is([data-testid="desk-top"], [data-testid="desk-middle"], [data-testid="top-panel"]) *) { padding-top: 6px !important; padding-bottom: 6px !important; font-size: 11px !important; }
-#dos-main[data-dos-view="list"] [data-tc="classhead"]:not(:is([data-testid="desk-top"], [data-testid="desk-middle"], [data-testid="top-panel"]) *),
-#dos-main[data-dos-view="list"] [data-tc="seatrow"] [data-testid="class-seat-bar"]:not(:is([data-testid="desk-top"], [data-testid="desk-middle"], [data-testid="top-panel"]) *) { display: none !important; }
+#dos-main[data-dos-view="list"] [data-tc="classhead"]:not(:is([data-testid="desk-top"], [data-testid="desk-middle"], [data-testid="top-panel"]) *) { display: none !important; }
 #dos-main[data-dos-view="list"] [data-testid="class-title"]:not(:is([data-testid="desk-top"], [data-testid="desk-middle"], [data-testid="top-panel"]) *) { font-size: 18px !important; }
-#dos-main[data-dos-view="list"] [data-tc="seatrow"]:not(:is([data-testid="desk-top"], [data-testid="desk-middle"], [data-testid="top-panel"]) *) { margin-top: 6px !important; justify-content: flex-end; }
+/* a class keeps its seats ("2/20 Booked · 18 Spots Left") and its price in the list */
+#dos-main[data-dos-view="list"] [data-tc="seatrow"]:not(:is([data-testid="desk-top"], [data-testid="desk-middle"], [data-testid="top-panel"]) *) { margin-top: 6px !important; }

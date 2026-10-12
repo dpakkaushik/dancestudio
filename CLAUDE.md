@@ -2,6 +2,16 @@
 
 ## LAST SESSION (12 Oct 2026) — replaced on every push (Rule 13)
 
+> ### ONE TRASH ICON THAT ALWAYS ASKS, A POSTER THAT IS NOT CUT, A LIST VIEW THAT KEEPS ITS FIGURES, A CAMERA ON ADD A PHOTO, A NEW ENQUIRY SHEET, ROUND FOLLOW FACES, AND ONLY BOOKABLE CLASSES ON DISCOVER (12 Oct 2026, latest) — no migration
+> * **Poster** (`poster.tsx`): `DOS_SLEEVE` 306 → 340, the backdrop's bottom inset 28, the poster up 14px — the page's 22px sheet overlap had covered the poster's foot, its ⊕ and the squircle's bottom curve. The class page's Delete sits at 20/24 inside the squircle, clear of the bar's curved edge.
+> * **`components/ui/DeleteIconButton.tsx`**: `DeleteIcon` (36px round red trash, trigger only) and `DeleteIconButton` (asks in `ConfirmDialog` first; `onConfirm` may return an error to keep the dialog open). On the class page, a closed draft's card, the routine page, a membership, assets, rooms, students, crew members, the member sheet, a practice's call-off and the photo picker's Remove. **Rooms, students, crew Remove, practice Call off and Remove the photo did NOT ask before — they do now.** Accessible names unchanged; e2e/shoots re-cut for the new confirms.
+> * **List view** (`globals.css`, `data-tc="fact|factval|factlabel"`): the figures fold into one row of "value LABEL" pills instead of vanishing, the sub-line stays, and a class keeps its seat bar.
+> * **Add a photo** wears a drawn camera (`CameraGlyph`), not 📁.
+> * **Enquiry settings** re-cut: per business a face, name, OPEN/CLOSED pill and count, the master switch, then each kind a full row with its icon, its sub and its own switch (`role="switch"`).
+> * **Follow lists**: every face is a circle.
+> * **Discover hides classes you cannot book**: ones you run, full ones you hold no seat on, and every class while acting as a studio or crew (the empty state says why).
+> * **Verified:** typecheck 0 · lint 0 · build green · a probe **10/10** on `:3100` in both themes (poster foot 50px clear of the page card, the enquiry sheet, list view keeping figures, no page error) and screenshots by eye. ⚠ The class-page Delete icon was not driven (the probe found no class the demo owner runs ahead); the whole e2e suite was not re-run.
+
 > ### THE CALENDAR SYNCS WHOLE, OPENS ON TODAY UNDER ITS HEADING, THE VIEW SWITCH BESIDE EVERY HEADING, A SQUIRCLE POSTER THAT FOLDS AWAY, AND NO PROFILE DOOR ON A CARD'S FACE (12 Oct 2026, latest) — no migration · ⚠ Rule 9 (a feed authenticated by an HMAC token in its URL, read with the service role)
 > * **Calendar sync** (`app/api/calendar/[userId]/[token]/route.ts`, `lib/calendar/{ics,feedToken}.ts`, `CalendarSync.tsx`): a **Sync** chip beside the Calendar heading opens Google · Apple/Outlook (`webcal:`) · Copy link · Download. The feed is the person's classes (booked, taught, assisted; no drafts) and their crews' practices, 1 month back to 6 ahead, with a 2-hour alarm; the token is an HMAC of the user id under `CALENDAR_FEED_SECRET` (else derived from the service key) — a wrong one is 404. **The per-class "Add to calendar" is gone** from the class page and My classes (`/c/{slug}/ics` still answers, Rule 14).
 > * **The calendar opens at the top with its heading, and the Schedule starts at today** — past days behind "↑ Earlier days · N"; the auto-scroll is gone.

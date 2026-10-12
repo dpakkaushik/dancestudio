@@ -16,6 +16,7 @@ import { DOS_TOOLS, DeskHero, SheetHandle, sheetBody, sheetWrap } from "@/featur
 import { DeskBody, DeskMiddle, DeskTop } from "@/components/ui/DeskSections";
 import { FigureHead } from "@/components/ui/FigureHead";
 import { ToolActions, ToolBody, ToolCard, ToolFacts, ToolHead, toolBtn } from "@/components/ui/ToolCard";
+import { DeleteIconButton } from "@/components/ui/DeleteIconButton";
 import { DOS_UI, INK, LILAC, MUTED } from "@/lib/design/tokens";
 import { FORM_TITLE } from "@/components/ui/formTitle";
 import { CREW_ROLE_TINT, CREW_ROLE_WORD, type Crew, type CrewMember, type CrewRole } from "@/types/crew";
@@ -245,20 +246,26 @@ export function CrewManager({ crew, members, answered = [] }: { crew: Crew; memb
                           {m.role === "trainee" ? "Promote" : "Make leader"}
                         </button>
                       ) : null}
-                      <button
-                        type="button"
-                        disabled={busy}
-                        aria-label={pending ? `Withdraw the ask to ${m.name}` : `Remove ${m.name}`}
-                        onClick={() =>
-                          void run(
-                            () => (pending ? withdrawCrewAskAction({ memberId: m.id, crewId: crew.id }) : removeCrewMemberAction({ memberId: m.id, crewId: crew.id })),
-                            pending ? `Withdrawn — ${m.name} is no longer being asked` : `${m.name} removed from the crew`
-                          )
-                        }
-                        style={toolBtn("danger", TEAM_TINT)}
-                      >
-                        {pending ? "Withdraw" : "Remove"}
-                      </button>
+                      {pending ? (
+                        <button
+                          type="button"
+                          disabled={busy}
+                          aria-label={`Withdraw the ask to ${m.name}`}
+                          onClick={() => void run(() => withdrawCrewAskAction({ memberId: m.id, crewId: crew.id }), `Withdrawn — ${m.name} is no longer being asked`)}
+                          style={toolBtn("danger", TEAM_TINT)}
+                        >
+                          Withdraw
+                        </button>
+                      ) : (
+                        <DeleteIconButton
+                          label={`Remove ${m.name}`}
+                          title={`Remove ${m.name} from the crew?`}
+                          body="They come off the roster. They can be asked again later."
+                          goWord="Remove"
+                          disabled={busy}
+                          onConfirm={() => run(() => removeCrewMemberAction({ memberId: m.id, crewId: crew.id }), `${m.name} removed from the crew`)}
+                        />
+                      )}
                     </ToolActions>
                   ) : null}
                 </ToolCard>

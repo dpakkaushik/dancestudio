@@ -11,6 +11,7 @@ import { DOS_DISPLAY, DOS_UI } from "@/lib/design/tokens";
 import type { Room } from "@/types/room";
 import { DeskAddButton } from "@/features/settings/components/settings-kit";
 import { AmenityChip } from "@/components/ui/AmenityIcon";
+import { DeleteIconButton } from "@/components/ui/DeleteIconButton";
 import { splitAddress } from "@/lib/format/address";
 
 /** The studio's rooms — lifted from the prototype's business settings Rooms
@@ -135,18 +136,16 @@ export function RoomsManager({
     fire("● Room saved");
   };
 
-  const remove = async (r: Room) => {
-    if (busy) return;
+  const remove = async (r: Room): Promise<string | null> => {
+    if (busy) return null;
     setBusy(true);
     setError(null);
     const out = await deleteRoomAction({ businessId, roomId: r.id });
     setBusy(false);
-    if (out.error) {
-      setError(out.error);
-      return;
-    }
+    if (out.error) return out.error;
     setList((cur) => cur.filter((x) => x.id !== r.id));
     fire(`${r.name} removed`);
+    return null;
   };
 
   return (
@@ -236,9 +235,15 @@ export function RoomsManager({
                   </button>
                   {/* ⚠ no Remove while a published class is still to run in it */}
                   {list.length > 1 && held === 0 ? (
-                    <button type="button" disabled={busy} onClick={() => void remove(r)} aria-label={`Remove ${r.name}`} style={toolBtn("danger", TINT)}>
-                      Remove
-                    </button>
+                    /* ⚠ an icon that ASKS FIRST (12 Oct 2026, the user: "ask before deleting always") */
+                    <DeleteIconButton
+                      label={`Remove ${r.name}`}
+                      title="Remove this room?"
+                      body={`${r.name} comes off the studio. Classes already held in it keep their record.`}
+                      goWord="Remove it"
+                      disabled={busy}
+                      onConfirm={() => remove(r)}
+                    />
                   ) : null}
                 </ToolActions>
               ) : null}

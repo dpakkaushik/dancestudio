@@ -865,6 +865,8 @@ test.describe.serial("DanceOS, end to end", () => {
     await expect(owner.getByText(/no two published classes share one/)).toHaveCount(0);
     await expect(roomB.getByTestId("room-amenities")).toContainText("AC");
     await owner.getByRole("button", { name: "Remove Studio B" }).click();
+    /* ⚠ a trash icon that asks first (12 Oct 2026) */
+    await owner.getByRole("alertdialog", { name: "Remove this room?" }).getByRole("button", { name: "Remove it" }).click();
     await expect(owner.getByTestId("room-card").filter({ hasText: "Studio B" })).toHaveCount(0, { timeout: 15_000 });
 
     /* ---- THE TRAINER SIGNS UP FIRST, AND IS THEN ASKED BY NAME (Step 12b,
@@ -2150,6 +2152,8 @@ test.describe.serial("DanceOS, end to end", () => {
     const picSheet = trainer.getByRole("dialog", { name: "Profile picture" });
     await expect(picSheet.getByLabel("Change your photo")).toBeAttached();
     await picSheet.getByRole("button", { name: "Remove the photo" }).click();
+    /* ⚠ every delete asks first since 12 Oct 2026 */
+    await trainer.getByRole("alertdialog", { name: "Remove this photo?" }).getByRole("button", { name: "Remove", exact: true }).click();
     await expect(trainer.getByTestId("hero-disc").locator("img")).toHaveCount(0, { timeout: 20_000 });
     await picSheet.getByLabel("Add a photo").setInputFiles(ONE_PX_PNG);
     await confirmCrop(trainer);

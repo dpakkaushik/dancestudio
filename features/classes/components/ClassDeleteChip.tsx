@@ -3,7 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
-import { toolBtn } from "@/components/ui/ToolCard";
+import { DeleteIcon } from "@/components/ui/DeleteIconButton";
 import { deleteClassAction } from "@/features/classes/server-actions/classes";
 
 /** DELETE, ON THE TOP RIGHT OF THE CLASS PAGE (4 Oct 2026, the user: "delete
@@ -95,21 +95,17 @@ export function ClassDeleteChip({
 
   return (
     <>
-      <button
-        type="button"
-        data-testid="class-delete"
-        aria-label={`Delete ${title}`}
+      {/* ⚠ THE APP'S ONE DELETE — a trash icon (12 Oct 2026, the user: "these
+          types of delete in sections should look similar and should just be an
+          icon and ask before deleting always") */}
+      <DeleteIcon
+        testId="class-delete"
+        label={`Delete ${title}`}
         onClick={() => {
           setErr(null);
           setOpen(true);
         }}
-        /* ⚠ THE APP'S OWN DELETE (12 Oct 2026, the user: "delete button on class
-           detail should be similar to others") — the routine page's toolBtn("danger")
-           pill, one word, on a solid ground because it stands over the poster */
-        style={{ ...toolBtn("danger", "#F87171", { flex: "0 0 auto", padding: "5px 11px", fontSize: 11 }), background: "var(--solid)" }}
-      >
-        Delete
-      </button>
+      />
       {open ? (
         <ConfirmDialog
           title={ask.title}

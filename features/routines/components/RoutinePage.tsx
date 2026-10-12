@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState, useTransition, type CSSProperties, type ReactNode } from "react";
-import { ToolActions, ToolBody, ToolCard, ToolChip, ToolFace, ToolFacts, ToolHead, inkOn, toolBtn } from "@/components/ui/ToolCard";
+import { ToolActions, ToolBody, ToolCard, ToolChip, ToolFace, ToolFacts, ToolHead, inkOn } from "@/components/ui/ToolCard";
 import { FigureHead } from "@/components/ui/FigureHead";
 import { SegmentedPanels } from "@/features/shell/components/SegmentedNav";
 import { DOS_TOOLS } from "@/features/businesses/components/biz-kit";
@@ -12,6 +12,7 @@ import { DOS_UI, INK, LILAC, MUTED, SUB } from "@/lib/design/tokens";
 import { photoUrl } from "@/lib/media/photo";
 import { deleteRoutineAction } from "@/features/routines/server-actions/routines";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
+import { DeleteIcon } from "@/components/ui/DeleteIconButton";
 import type { Routine, RoutineStudent } from "@/repositories/routines";
 import { RoutineClassesPanel, type RoutineClassAt } from "./RoutineClassesPanel";
 import { RoutineMediaButton } from "./routine-kit";
@@ -104,9 +105,7 @@ export function RoutinePage({
             <>
               <ToolChip word={live ? "LIVE" : "DRAFT"} fg={live ? "#22C55E" : SUB} bg={live ? "#22C55E1c" : "var(--el)"} />
               {/* ⚠ ONE WORD, TOP RIGHT (4 Oct 2026) — and still behind a confirm */}
-              <button type="button" onClick={() => setConfirm(true)} aria-label={`Delete ${routine.title}`} style={toolBtn("danger", col, { flex: "0 0 auto", padding: "5px 11px", fontSize: 11 })}>
-                Delete
-              </button>
+              <DeleteIcon size={32} label={`Delete ${routine.title}`} onClick={() => setConfirm(true)} />
             </>
           }
         />
