@@ -2,7 +2,7 @@
 
 ## LAST SESSION (12 Oct 2026) — replaced on every push (Rule 13)
 
-> ### YOUR OWN PAGE IS THE VISITOR'S PAGE, DISABLED, AND THE CARD IS THE DETAIL DOOR (12 Oct 2026, latest) — no migration
+> ### YOUR OWN PAGE IS THE VISITOR'S PAGE, DISABLED, AND THE CARD IS THE DETAIL DOOR (12 Oct 2026, latest) — no migration · ✅ PUSHED AND LIVE (`f0e0c8d`: Vercel READY, alias confirmed on the sha through the API; the probe **10/10 on the live site**)
 > The user: *"when looking at your own profile should not say you are on this team or you manage etc should keep the same view and should just disable the buttons. detail buttons can be removed now as clicking on the tile takes to the detailed page for it."*
 > * **No "You are on this team · Manage ›" on a studio's page, no "You lead this crew · Manage ›" / "You are in this crew" on a crew's page.** Your own studio, crew and person page draw the visitor's view: the contact row is dimmed and unpressable (`ActionRow disabled`, `data-own-view="1"`), the bell on your own person page is drawn disabled ("This is you"), a membership on your own studio shows a disabled **Buy now** instead of "You are on this team". The Profile tab's contact row is dimmed too.
 > * **No Member Detail, Student Detail, Membership Details or Routine Detail buttons**: the whole card is the door (`ToolCard href`, the stretched link carrying the old button's accessible name, so `Member Detail — {name}` still finds it). The team card's ↑↓ keep `pointerEvents: auto`; a walk-in student keeps its Remove bar. ⚠ The "Class Detail ›" rows inside the class disclosures stay — tapping that tile opens the disclosure, not the class.
