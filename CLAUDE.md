@@ -2,7 +2,7 @@
 
 ## LAST SESSION (12 Oct 2026) — replaced on every push (Rule 13)
 
-> ### ONE TRASH ICON THAT ALWAYS ASKS, A POSTER THAT IS NOT CUT, A LIST VIEW THAT KEEPS ITS FIGURES, A CAMERA ON ADD A PHOTO, A NEW ENQUIRY SHEET, ROUND FOLLOW FACES, AND ONLY BOOKABLE CLASSES ON DISCOVER (12 Oct 2026, latest) — no migration
+> ### ONE TRASH ICON THAT ALWAYS ASKS, A POSTER THAT IS NOT CUT, A LIST VIEW THAT KEEPS ITS FIGURES, A CAMERA ON ADD A PHOTO, A NEW ENQUIRY SHEET, ROUND FOLLOW FACES, AND ONLY BOOKABLE CLASSES ON DISCOVER (12 Oct 2026, latest) — no migration · ✅ PUSHED AND LIVE (`063d7cc`: Vercel READY, alias confirmed on the sha through the API; ON THE LIVE SITE `stranger-smoke` **9/9**)
 > * **Poster** (`poster.tsx`): `DOS_SLEEVE` 306 → 340, the backdrop's bottom inset 28, the poster up 14px — the page's 22px sheet overlap had covered the poster's foot, its ⊕ and the squircle's bottom curve. The class page's Delete sits at 20/24 inside the squircle, clear of the bar's curved edge.
 > * **`components/ui/DeleteIconButton.tsx`**: `DeleteIcon` (36px round red trash, trigger only) and `DeleteIconButton` (asks in `ConfirmDialog` first; `onConfirm` may return an error to keep the dialog open). On the class page, a closed draft's card, the routine page, a membership, assets, rooms, students, crew members, the member sheet, a practice's call-off and the photo picker's Remove. **Rooms, students, crew Remove, practice Call off and Remove the photo did NOT ask before — they do now.** Accessible names unchanged; e2e/shoots re-cut for the new confirms.
 > * **List view** (`globals.css`, `data-tc="fact|factval|factlabel"`): the figures fold into one row of "value LABEL" pills instead of vanishing, the sub-line stays, and a class keeps its seat bar.
