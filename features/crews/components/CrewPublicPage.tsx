@@ -1,4 +1,3 @@
-import Link from "next/link";
 import { ActionRow, CallButton, MailButton, MessageButton, whatsappHrefOf } from "@/features/profiles/components/ContactButtons";
 import { EntityBand } from "@/features/profiles/components/profile-band";
 import { TopPanel } from "@/components/ui/TopPanel";
@@ -12,7 +11,7 @@ import { ProfileLink, ProfileShare } from "@/features/profiles/components/Profil
 import { StatsChip } from "@/features/profiles/components/StatsChip";
 import { HeroDot, HeroFact, HeroId, IdentityHero } from "@/features/profiles/components/hero-kit";
 import { memberNoWords } from "@/types/profile";
-import { PeopleGroup, PersonChip, smallBox } from "@/features/profiles/components/profile-kit";
+import { PeopleGroup, PersonChip } from "@/features/profiles/components/profile-kit";
 import { DOS_UI, GOLD, INK, LILAC, MUTED } from "@/lib/design/tokens";
 import { photoUrl } from "@/lib/media/photo";
 import type { HeaderPhoto } from "@/repositories/headerPhotos";
@@ -170,17 +169,11 @@ export function CrewPublicPage({
         {/* ── what the crew's own people get here. ⚠ FOLLOW LEFT THIS BLOCK (20 Sep
             2026) for the bell in the figures row, so a visitor sees nothing here
             and goes straight to the buttons. ── */}
-        {viewer === "other" ? null : (
-          <div style={{ marginTop: 12 }}>
-            {viewer === "leader" ? (
-              <Link href={`/crews/${crew.id}/manage`} style={smallBox(false, RC)}>
-                You lead this crew · Manage ›
-              </Link>
-            ) : (
-              <div style={{ ...smallBox(false, RC), cursor: "default" }}>You are in this crew</div>
-            )}
-          </div>
-        )}
+        {/* ⚠ NO "You lead this crew · Manage ›" / "You are in this crew" STRIP
+            (12 Oct 2026, the user: "when looking at your own profile should not
+            say you are on this team or you manage etc should keep the same view
+            and should just disable the buttons"). The crew's own people see the
+            visitor's page with the contact row dimmed. */}
 
         {/* ── THE BUTTONS A CREW'S PAGE CARRIES: Call · Mail · Message. ⚠ NO
             ENQUIRY (4 Oct 2026, the user: "remove enquiries for crew") — a crew is
@@ -190,7 +183,7 @@ export function CrewPublicPage({
             links, the same step the band's own rows take (`ActionRow` carries
             the measurement). 6 for the crew's own people, whose row follows the
             strip above instead, and a strip pads nothing. */}
-        <ActionRow marginTop={viewer === "other" ? 12 : 6}>
+        <ActionRow marginTop={12} disabled={viewer !== "other"}>
           {/* CALL IS A SWITCH (push 2): the number reaches this page only while the leader's switch is on — the policy on crew_contacts is the switch */}
           {crew.phone && crew.phonePublic ? <CallButton phone={crew.phone} /> : null}
           {crew.contactEmail ? <MailButton email={crew.contactEmail} /> : null}

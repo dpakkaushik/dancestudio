@@ -1,4 +1,3 @@
-import Link from "next/link";
 import { EnquiryButton } from "@/features/enquiries/components/EnquirySheet";
 import { ReportButton } from "@/features/reports/components/ReportButton";
 import { TopPanel } from "@/components/ui/TopPanel";
@@ -24,7 +23,7 @@ import { ProfileLink, ProfileShare } from "./ProfileShare";
 import { StatsChip } from "./StatsChip";
 import { memberNoWords } from "@/types/profile";
 import { HeroDot, HeroFact, HeroId, IdentityHero } from "./hero-kit";
-import { PROFILE_RING, ScheduleBar, smallBox } from "./profile-kit";
+import { PROFILE_RING, ScheduleBar } from "./profile-kit";
 
 /** A STUDIO'S PUBLIC PAGE, lifted from prototype S_profiletab with
  *  `publicEntity="studio"` (10565-11060): THE PROFILE, LIT LIKE A PLAYER — the
@@ -61,7 +60,6 @@ export function PublicProfile({
   isMember,
   scheduleHref,
   nextSessions = [],
-  manageHref,
   memberships = [],
   address = "",
   rooms = [],
@@ -99,7 +97,8 @@ export function PublicProfile({
    *  through the schedule page's own function, in the schedule page's own
    *  window, so the two cannot disagree about what is coming. */
   nextSessions?: CalendarEntry[];
-  manageHref: string;
+  /** ⚠ unused since 12 Oct 2026 — the "You are on this team · Manage ›" strip is gone */
+  manageHref?: string;
   /** what this business has ON SALE (19 Sep 2026) — live ones of a listed business */
   memberships?: MembershipOnSaleRow[];
   /** THE STUDIO'S FULL ADDRESS in words (5 Oct 2026) — `fullAddressOf`, the pin
@@ -274,13 +273,11 @@ export function PublicProfile({
             others that had neither. `BusinessFollowersButton` is deleted rather
             than left standing: this repo has paid twice for a component
             nothing renders. */}
-        {isMember ? (
-          <div style={{ marginTop: 12 }}>
-            <Link href={manageHref} style={smallBox(false, RC)}>
-              You are on this team · Manage ›
-            </Link>
-          </div>
-        ) : null}
+        {/* ⚠ NO "You are on this team · Manage ›" STRIP (12 Oct 2026, the user:
+            "when looking at your own profile should not say you are on this team
+            or you manage etc should keep the same view and should just disable
+            the buttons"). The team sees exactly what a visitor sees, with the
+            contact row dimmed; the desk is the switcher's door. */}
 
         {/* ── THE BUTTONS A STUDIO'S PAGE CARRIES (19 Sep 2026): Enquiry · Call · Mail ·
             Location — ONE BLOCK with Follow above them (the user, later that day:
@@ -289,7 +286,7 @@ export function PublicProfile({
             −6 since 27 Sep 2026, landing it 8px under the links, which is the
             band's own step (`ActionRow` carries the measurement). 6 for the
             team, whose row follows the strip above instead. */}
-        <ActionRow marginTop={isMember ? 6 : 12}>
+        <ActionRow marginTop={12} disabled={isMember}>
           {asksGoHere ? (
             <EnquiryButton
               businessId={business.id}

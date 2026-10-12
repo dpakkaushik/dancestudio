@@ -1714,7 +1714,9 @@ test.describe.serial("DanceOS, end to end", () => {
        page's own `Open {name}'s profile` — and the ROLE is the gold right-hand
        word now instead of being buried in the sub line beside the city. */
     await expect(trainer.locator('a[href^="/person/"]')).toHaveCount(2);
-    await expect(trainer.getByText("You are in this crew")).toBeVisible();
+    /* ⚠ NO "You are in this crew" STRIP (12 Oct 2026, the user) — a member sees
+       the visitor's page, so the strip is asserted ABSENT */
+    await expect(trainer.getByText("You are in this crew")).toHaveCount(0);
     /* ⚠ SCOPED TO THE ROW (27 Sep 2026). "Crew leader" is now BOTH the group's
        heading and the leader's own right-hand word — the same shape a studio's
        page has had all along (an Owner group over a row that says Owner), and
@@ -3840,7 +3842,9 @@ test.describe.serial("DanceOS, end to end", () => {
     await expect(row.getByRole("link", { name: `Open the song for ${routineName}` })).toHaveAttribute("href", "https://youtu.be/ilahi-instrumental");
     await expect(row.getByRole("link", { name: `Open the video for ${routineName}` })).toHaveAttribute("href", "https://youtu.be/breath-release");
     /* ⚠ ROUTINE DETAIL beside them, and the head says just "Routine" (4 Oct 2026) */
-    await expect(row.getByRole("link", { name: "Routine Detail", exact: true })).toHaveAttribute("href", /\/routines\/[0-9a-f-]+$/);
+    /* ⚠ NO ROUTINE DETAIL BUTTON (12 Oct 2026) — the card itself is the door */
+    await expect(row.getByRole("link", { name: "Routine Detail", exact: true })).toHaveCount(0);
+    await expect(row.getByRole("link", { name: `Open ${routineName}`, exact: true })).toHaveAttribute("href", /\/routines\/[0-9a-f-]+$/);
     await expect(row.getByText("Your routine", { exact: true })).toHaveCount(0);
 
     // ── the class page: the class's CONFIRMED ARTIST puts it on, and it shows

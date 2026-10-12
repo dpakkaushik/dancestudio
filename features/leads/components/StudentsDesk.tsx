@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import { useState } from "react";
 import { deleteLeadAction } from "@/features/leads/server-actions/leads";
 import { DeskAddButton } from "@/features/settings/components/settings-kit";
@@ -9,7 +8,7 @@ import { columnTab, columnTrack } from "@/components/ui/ColumnTabs";
 import { DeskBody, DeskTop } from "@/components/ui/DeskSections";
 import { FigureHead } from "@/components/ui/FigureHead";
 import { DeleteIconButton } from "@/components/ui/DeleteIconButton";
-import { ToolActions, ToolBody, ToolCard, ToolChip, ToolFacts, ToolHead, toolBtn } from "@/components/ui/ToolCard";
+import { ToolActions, ToolBody, ToolCard, ToolChip, ToolFacts, ToolHead } from "@/components/ui/ToolCard";
 import { DOS_UI, INK, LILAC, SUB } from "@/lib/design/tokens";
 import { FORM_TITLE } from "@/components/ui/formTitle";
 import { useCloseOnBack } from "@/lib/hooks/useCloseOnBack";
@@ -168,14 +167,19 @@ export function StudentsDesk({
            there IS a page — a walk-in has none and does not pretend. Then the four
            figures a student is read by, and one button on a bar of its own. */
         return (
-          <ToolCard key={key} testId="student-card">
+          /* ⚠ THE WHOLE CARD OPENS STUDENT DETAIL (12 Oct 2026, the user: "detail
+             buttons can be removed now as clicking on the tile takes to the
+             detailed page") — a walk-in has no page and no door */
+          <ToolCard
+            key={key}
+            testId="student-card"
+            href={s.userId ? `/business/${businessId}/students/${s.userId}` : undefined}
+            hrefLabel={s.userId ? `Student Detail — ${s.name}` : undefined}
+          >
             <ToolHead
               tint={TINT}
               name={s.name}
               photoPath={s.photoPath}
-              /* the face opens the STUDENT'S DETAIL, never their profile (12 Oct 2026) */
-              href={s.userId ? `/business/${businessId}/students/${s.userId}` : undefined}
-              hrefLabel={`${s.name} — student detail`}
               eyebrow={walkIn ? "Walk-in" : "Student"}
               /* ⚠ NOTHING UNDER THE NAME, AND "MEMBER" SAID ONCE (4 Oct 2026, the
                  user: "student cards- no second line below name, member only as a
@@ -208,25 +212,11 @@ export function StudentsDesk({
                 ]}
               />
             </ToolBody>
-            {s.userId || (s.leadId && walkIn) ? (
+            {s.leadId && walkIn ? (
               <ToolActions>
-                {/* ⚠ ONE BUTTON (4 Oct 2026, the user: "remove all buttons and one
-                    common button called Student detail which takes inside page.
-                    clicking on profile pic takes on profile"). Profile, Stats,
-                    Membership and WhatsApp are gone: the face and the name above
-                    are the door to their profile, and every column of the page
-                    behind this button is one press inside it. */}
-                {/* ⚠ THE MEMBERSHIP CARD'S BUTTON, EXACTLY (4 Oct 2026, the user:
-                    "button to be similar to membership detail button in terms of
-                    design. d capital for detail") — tinted, with the › */}
-                {s.userId ? (
-                  <Link href={`/business/${businessId}/students/${s.userId}`} aria-label={`Student Detail — ${s.name}`} data-testid="student-detail" style={toolBtn("tinted", TINT)}>
-                    Student Detail ›
-                  </Link>
-                ) : null}
                 {/* ⚠ A WALK-IN KEEPS ITS REMOVE, and only that: it has no account,
-                    so no page behind a Student detail button, and Remove is the one
-                    way a row the desk itself typed can come off the list */}
+                    so no page behind the card, and Remove is the one way a row
+                    the desk itself typed can come off the list */}
                 {s.leadId && walkIn ? (
                   <DeleteIconButton
                     label={`Remove ${s.name}`}

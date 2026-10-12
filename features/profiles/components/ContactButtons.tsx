@@ -184,10 +184,22 @@ export function LocationButton({ query, href }: { query?: string; href?: string 
  *  `position: fixed` scrim at 930 IN PLACE, unportalled, so that sheet would be
  *  trapped inside a 38px row. That is the 16 Sep lesson this repo has now paid
  *  for four times: z-index is only comparable inside ONE stacking context. */
-export function ActionRow({ children, gap = 6, marginTop = -6 }: { children: ReactNode; gap?: number; marginTop?: number }) {
+/** ⚠ `disabled` (12 Oct 2026, the user: *"when looking at your own profile
+ *  should not say you are on this team … should keep the same view and should
+ *  just disable the buttons"*): your own page draws the SAME row a visitor sees,
+ *  dimmed and not pressable — you do not call or mail yourself. */
+export function ActionRow({ children, gap = 6, marginTop = -6, disabled = false }: { children: ReactNode; gap?: number; marginTop?: number; disabled?: boolean }) {
   /* `Children.toArray` drops the nulls a `cond ? <X/> : null` leaves behind */
   const cells = Children.toArray(children);
   if (cells.length === 0) return null;
   const cols = cells.length <= 4 ? cells.length : Math.ceil(cells.length / 2);
-  return <div style={{ display: "grid", gridTemplateColumns: `repeat(${cols}, 1fr)`, gap, marginTop, position: "relative" }}>{cells}</div>;
+  return (
+    <div
+      aria-disabled={disabled || undefined}
+      data-own-view={disabled ? "1" : undefined}
+      style={{ display: "grid", gridTemplateColumns: `repeat(${cols}, 1fr)`, gap, marginTop, position: "relative", ...(disabled ? { opacity: 0.5, pointerEvents: "none" } : null) }}
+    >
+      {cells}
+    </div>
+  );
 }

@@ -271,7 +271,8 @@ export function MyProfilePage({
             fields. ⚠ Enquiry is drawn and disabled with its reason, as on your
             own public page. ── */}
         {/* no gap of its own — the hero's own bottom padding is it (21 Sep 2026) */}
-        <ActionRow marginTop={12}>
+        {/* your own profile: the visitor's row, dimmed (12 Oct 2026) */}
+        <ActionRow marginTop={12} disabled>
           {asksGoHere ? (
             <EnquiryButton
               businessId={asksGoHere}

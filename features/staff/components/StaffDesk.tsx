@@ -17,7 +17,6 @@ import {
   reorderMembersAction,
   revokeInviteAction,
 } from "@/features/staff/server-actions/staff";
-import Link from "next/link";
 import { DeskAddButton } from "@/features/settings/components/settings-kit";
 import { DeskBody, DeskTop } from "@/components/ui/DeskSections";
 import { ToolActions, ToolBody, ToolCard, ToolChip, ToolFace, ToolFacts, ToolHead, toolBtn } from "@/components/ui/ToolCard";
@@ -460,17 +459,20 @@ export function StaffDesk({
                  — no edge; the wash, the face, the tiles and the buttons are Team's,
                  and only the eyebrow (FACULTY · ARTIST) keeps the role's colour */
               return (
-                <ToolCard key={m.userId}>
+                /* ⚠ THE WHOLE CARD IS THE DOOR TO MEMBER DETAIL (12 Oct 2026, the
+                   user: "detail buttons can be removed now as clicking on the tile
+                   takes to the detailed page") — one stretched link, its accessible
+                   name the old button's, so the button went */
+                <ToolCard
+                  key={m.userId}
+                  href={manageable ? `/business/${businessId}/staff/${m.userId}` : undefined}
+                  hrefLabel={manageable ? `Member Detail — ${m.name}` : undefined}
+                >
                   <ToolHead
                     tint={TEAM_TINT}
                     eyebrowTint={L.colour}
                     name={m.name}
                     photoPath={m.avatarPath}
-                    /* ⚠ THE FACE OPENS THE MEMBER'S DETAIL, NOT THEIR PROFILE (12 Oct
-                       2026, the user: "should take to detail inside the cards always") —
-                       only where Member Detail is offered; elsewhere it is no door */
-                    href={manageable ? `/business/${businessId}/staff/${m.userId}` : undefined}
-                    hrefLabel={manageable ? `${m.name} — member detail` : undefined}
                     eyebrow={`${MEMBER_ROLE_WORD[m.role]} · ${KIND_WORD[kindOf(m.isArtist)]}`}
                     /* ⚠ NO DANCE STYLES ON A TEAM CARD (4 Oct 2026, the user) — the city alone */
                     sub={m.city || null}
@@ -502,7 +504,7 @@ export function StaffDesk({
                                   [next[a], next[b]] = [next[b], next[a]];
                                   void run(() => reorderMembersAction({ businessId, userIds: next }), null);
                                 }}
-                                style={{ fontSize: 12, lineHeight: 1.1, padding: "3px 7px", background: off ? "transparent" : "var(--el)", borderRadius: 8, border: "none", cursor: off ? "default" : "pointer", color: off ? EL : SUB, fontFamily: "inherit" }}
+                                style={{ fontSize: 12, lineHeight: 1.1, padding: "3px 7px", background: off ? "transparent" : "var(--el)", borderRadius: 8, border: "none", cursor: off ? "default" : "pointer", color: off ? EL : SUB, fontFamily: "inherit", pointerEvents: "auto" }}
                               >
                                 {dir === -1 ? "↑" : "↓"}
                               </button>
@@ -547,13 +549,6 @@ export function StaffDesk({
                       >
                         Pay
                       </button>
-                      {/* ⚠ "MEMBER DETAIL", AND NO MANAGE BUTTON (4 Oct 2026, the
-                          user: "Remove manage button from card and shift inside
-                          history page on top right as a pill. history to be renamed
-                          as Member Detail") — the sheet is the pill on that page */}
-                      <Link href={`/business/${businessId}/staff/${m.userId}`} aria-label={`Member Detail — ${m.name}`} style={toolBtn("tinted", TEAM_TINT)}>
-                        Member Detail ›
-                      </Link>
                     </ToolActions>
                   ) : null}
                 </ToolCard>

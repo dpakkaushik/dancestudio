@@ -190,9 +190,22 @@ export function MembershipsOnSale({
                own team, and `why_no_membership` says exactly that — "a
                membership is for the people who come to dance". A dash made a
                real rule look like a broken button. */
-            <span style={{ flexShrink: 0, fontSize: 10.5, fontWeight: 700, color: "var(--muted)", textAlign: "right", maxWidth: 130, lineHeight: 1.35 }}>
-              {m.leftCount === 0 ? "All taken" : "You are on this team"}
-            </span>
+            m.leftCount === 0 ? (
+              <span style={{ flexShrink: 0, fontSize: 10.5, fontWeight: 700, color: "var(--muted)", textAlign: "right", maxWidth: 130, lineHeight: 1.35 }}>All taken</span>
+            ) : (
+              /* ⚠ YOUR OWN PAGE (12 Oct 2026, the user: "should not say you are on
+                 this team … should keep the same view and should just disable the
+                 buttons") — the visitor's Buy now, disabled */
+              <button
+                type="button"
+                disabled
+                aria-label={`Buy ${m.name} — not for your own team`}
+                title="Not for your own team"
+                style={{ ...buyBox, color: inkOn(accent), background: accent, border: `1.5px solid ${accent}`, opacity: 0.45, cursor: "not-allowed" }}
+              >
+                Buy now
+              </button>
+            )
             )}
           </div>
         </div>

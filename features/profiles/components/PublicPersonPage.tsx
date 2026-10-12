@@ -226,15 +226,16 @@ export function PublicPersonPage({
                 /org/{id}, so a link shared from here 404s for the reader. */
             chips={
               <>
-                {isMe ? null : (
-                  <FollowToggle
-                    target={{ kind: "person", id: profile.id }}
-                    initialFollowing={following}
-                    initialFollowers={person.followers}
-                    accent={RC}
-                    signedIn={signedIn}
-                  />
-                )}
+                {/* ⚠ DRAWN ON YOUR OWN PAGE TOO, DISABLED (12 Oct 2026, the user:
+                    "should keep the same view and should just disable the buttons") */}
+                <FollowToggle
+                  target={{ kind: "person", id: profile.id }}
+                  initialFollowing={following}
+                  initialFollowers={person.followers}
+                  accent={RC}
+                  signedIn={signedIn}
+                  cannotFollow={isMe ? "This is you" : null}
+                />
                 {/* ⚠ ONE ADDRESS, WHOEVER IS LOOKING (22 Sep 2026). This was
                 `isMe ? "/stats" : …` because your own record and a visitor's
                 view of it were two different addresses; `/person/{id}/stats`
@@ -258,7 +259,7 @@ export function PublicPersonPage({
             available"). A user's page carries none — the row is simply not drawn.
             One block; Follow is the bell in the figures row above. ── */}
         {/* no gap of its own — the hero's own bottom padding is it (21 Sep 2026) */}
-        <ActionRow marginTop={12}>
+        <ActionRow marginTop={12} disabled={isMe}>
           {asksGoHere ? (
             <EnquiryButton
               businessId={person.artistPageId as string}

@@ -340,14 +340,9 @@ export function MembershipsScreen({
                 {/* how much of what was SOLD has actually been danced — the seller's own bar */}
                 {m.unitsSold > 0 ? <ProgressBar used={m.unitsUsed} total={m.unitsSold} tint="#8B5CF6" unit={m.unit} leftWord="still owed" usedWord="danced" testId="selling-progress" /> : null}
               </ToolBody>
-              <ToolActions>
-                {/* ⚠ "MEMBERSHIP DETAILS" (3 Oct 2026, the user: "Usage & Holders to
-                    be called Membership Details"; the capital D on 4 Oct 2026, "d
-                    capital for detail for both membership and student") */}
-                <Link href={detailHref} style={toolBtn("tinted", TINT)}>
-                  Membership Details ›
-                </Link>
-              </ToolActions>
+              {/* ⚠ NO "Membership Details ›" BUTTON (12 Oct 2026, the user: "detail
+                  buttons can be removed now as clicking on the tile takes to the
+                  detailed page") — the card's own link opens the details */}
             </ToolCard>
             );
           })}
